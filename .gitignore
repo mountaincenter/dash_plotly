@@ -1,0 +1,45 @@
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# 仮想環境（必要に応じて）
+.venv/
+venv/
+.env
+.env.*
+
+# 型/静的解析のキャッシュ（使っていれば）
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+# *.ipynb はコミット（分析の再現性確保）。必要なら export 物は別管理で
+
+# ---- データ（ローカル生成物はGitに載せない）----
+data/parquet/
+data/csv/*.csv
+# もしサンプルを残したい場合は上記を外して、個別に allowlist してください
+# 例) !data/csv/sample.csv
+
+# ---- ログ ----
+*.log
+logs/
+
+# ---- Docker / Compose（任意で無視）----
+# コンテナ方式に進むなら Dockerfile はコミット推奨
+docker-compose.override.yml
