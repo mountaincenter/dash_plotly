@@ -1,0 +1,23 @@
+services:
+  web:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app
+    environment:
+      - PORT=${PORT}
+      - DEBUG=${DEBUG}
+      - DATA_BUCKET=${DATA_BUCKET}
+      - CORE30_META_KEY=${CORE30_META_KEY}
+      - CORE30_PRICES_KEY=${CORE30_PRICES_KEY}
+      - CORE30_ANOMALY_KEY=${CORE30_ANOMALY_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_PROFILE=${AWS_PROFILE}
+    volumes:
+      - ./:/app
+      # 認証A: ホストの AWS 資格情報を使う場合（.env.s3 が AWS_PROFILE を持つとき有効）
+      - ~/.aws:/root/.aws:ro
+    ports:
+      - "${PORT}:${PORT}"
+    command: python server.py
