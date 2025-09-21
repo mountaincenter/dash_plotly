@@ -1,0 +1,22 @@
+name: OIDC Smoke Test
+
+on:
+  workflow_dispatch: {} # 手動実行のみ
+
+permissions:
+  id-token: write # OIDCで必須
+  contents: read
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Print caller identity
+        run: |
+          aws sts get-caller-identity
