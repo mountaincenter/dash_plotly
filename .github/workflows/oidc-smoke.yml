@@ -21,3 +21,10 @@ jobs:
           audience: sts.amazonaws.com
 
       - run: aws sts get-caller-identity
+
+      - name: Show config (例：デバッグ時のみ)
+        run: |
+          echo "ECR_REPO=${{ vars.ECR_REPO }}"
+          echo "APP_RUNNER_SERVICE_ARN=${{ vars.APP_RUNNER_SERVICE_ARN }}"
+          echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
+          echo "PARQUET_PREFIX=${{ vars.PARQUET_PREFIX }}"
