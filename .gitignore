@@ -43,3 +43,8 @@ logs/
 # ---- Docker / Compose（任意で無視）----
 # コンテナ方式に進むなら Dockerfile はコミット推奨
 docker-compose.override.yml
+
+# keep only manifest.json under data/parquet
+!data/
+!data/parquet/
+!data/parquet/manifest.json
