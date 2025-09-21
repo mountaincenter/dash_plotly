@@ -1,0 +1,56 @@
+name: S3 Sync (parquet)
+
+on:
+  # 手動実行で dry-run/本番を切替
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no changes)?"
+        type: boolean
+        default: true
+  # main へ push された時に data/parquet 配下の差分で起動
+  push:
+    branches: [main]
+    paths:
+      - "data/parquet/**"
+
+permissions:
+  id-token: write # OIDC で必須
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment:
+      name: "AWS_OIDC" # ← これを必ず付ける（環境を紐づけ）
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # OIDC で AWS 認証（事前に role の信頼ポリシーと repo 環境設定を作成済みであること）
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }} # ← Environment secret
+          aws-region: ${{ vars.AWS_REGION }} # ← Environment var
+
+      # 実行（--delete でS3側の削除も反映、--exact-timestampsで厳密比較）
+      - name: Sync data/parquet -> s3://${{ vars.S3_BUCKET }}/${{ vars.PARQUET_PREFIX }}
+        env:
+          BUCKET: ${{ vars.S3_BUCKET }}
+          PREFIX: ${{ vars.PARQUET_PREFIX }}
+          DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+          SRC="data/parquet"
+          DST="s3://${BUCKET}/${PREFIX}"
+          # 既定ヘッダ（必要に応じて調整）
+          FLAGS=(--exact-timestamps --delete --sse AES256 --cache-control "max-age=60")
+          if [ "${DRYRUN}" = "true" ]; then FLAGS+=(--dryrun); fi
+
+          echo ">>> Sync ${SRC} -> ${DST} (dry-run=${DRYRUN})"
+          aws s3 sync "${SRC}" "${DST}" "${FLAGS[@]}"
+
+      # 結果の確認（一覧表示）
+      - name: List objects (after sync)
+        run: |
+          aws s3 ls "s3://${{ vars.S3_BUCKET }}/${{ vars.PARQUET_PREFIX }}" --recursive
