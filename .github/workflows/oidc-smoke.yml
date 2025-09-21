@@ -9,7 +9,7 @@ jobs:
   whoami:
     runs-on: ubuntu-latest
     environment:
-      name: "AWS_ROLE_ARN" # ← これを必ず付ける（環境を紐づけ）
+      name: "AWS_OIDC" # ← これを必ず付ける（環境を紐づけ）
 
     steps:
       - uses: actions/checkout@v4
