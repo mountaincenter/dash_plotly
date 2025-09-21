@@ -1,56 +1,128 @@
-name: S3 Sync (parquet)
+name: S3 Reconcile by manifest.json
 
 on:
-  # 手動実行で dry-run/本番を切替
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Preview only (no changes)?"
+        description: "Preview only (no changes to S3)"
         type: boolean
         default: true
-  # main へ push された時に data/parquet 配下の差分で起動
   push:
     branches: [main]
     paths:
-      - "data/parquet/**"
+      - "data/parquet/manifest.json"
 
 permissions:
-  id-token: write # OIDC で必須
+  id-token: write
   contents: read
 
 jobs:
-  sync:
+  reconcile:
     runs-on: ubuntu-latest
     environment:
-      name: "AWS_OIDC" # ← これを必ず付ける（環境を紐づけ）
+      name: "AWS_OIDC" # ← あなたが作成した環境名
+
+    env:
+      MANIFEST_PATH: data/parquet/manifest.json
 
     steps:
       - uses: actions/checkout@v4
 
-      # OIDC で AWS 認証（事前に role の信頼ポリシーと repo 環境設定を作成済みであること）
+      # OIDC で AWS 認証
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }} # ← Environment secret
-          aws-region: ${{ vars.AWS_REGION }} # ← Environment var
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      # 実行（--delete でS3側の削除も反映、--exact-timestampsで厳密比較）
-      - name: Sync data/parquet -> s3://${{ vars.S3_BUCKET }}/${{ vars.PARQUET_PREFIX }}
+      - name: Show inputs/vars
+        run: |
+          echo "dry_run=${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}"
+          echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
+          echo "PARQUET_PREFIX=${{ vars.PARQUET_PREFIX }}"
+
+      - name: Validate manifest.json
+        run: |
+          test -f "$MANIFEST_PATH" || { echo "::error::manifest not found: $MANIFEST_PATH"; exit 1; }
+          jq type "$MANIFEST_PATH" >/dev/null
+
+      - name: Upload manifest.json itself
+        env:
+          BUCKET: ${{ vars.S3_BUCKET }}
+          PREFIX: ${{ vars.PARQUET_PREFIX }}
+        run: |
+          set -euo pipefail
+          DEST="s3://${BUCKET}/${PREFIX%/}/manifest.json"
+          echo ">> PUT $MANIFEST_PATH -> $DEST"
+          aws s3 cp "$MANIFEST_PATH" "$DEST" --only-show-errors
+
+      - name: Ensure “wanted set” exists (best-effort Put if local_path exists)
         env:
           BUCKET: ${{ vars.S3_BUCKET }}
           PREFIX: ${{ vars.PARQUET_PREFIX }}
           DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           set -euo pipefail
-          SRC="data/parquet"
-          DST="s3://${BUCKET}/${PREFIX}"
-          # 既定ヘッダ（必要に応じて調整）
-          FLAGS=(--exact-timestamps --delete --sse AES256 --cache-control "max-age=60")
-          if [ "${DRYRUN}" = "true" ]; then FLAGS+=(--dryrun); fi
+          # jq: manifest の keys（S3 キー）を配列に
+          mapfile -t WANTED < <(jq -r 'keys[]' "$MANIFEST_PATH")
+          echo "Wanted keys (${#WANTED[@]}):"
+          printf '  - %s\n' "${WANTED[@]}"
 
-          echo ">>> Sync ${SRC} -> ${DST} (dry-run=${DRYRUN})"
-          aws s3 sync "${SRC}" "${DST}" "${FLAGS[@]}"
+          # best-effort: manifest に local_path があって、かつ存在するなら upload（無ければ skip）
+          for key in "${WANTED[@]}"; do
+            lp=$(jq -r --arg k "$key" '.[$k].local_path // empty' "$MANIFEST_PATH")
+            [ -n "$lp" ] && [ -f "$lp" ] || continue
+            if [ "$DRYRUN" = "true" ]; then
+              echo "[dry-run] would upload $lp -> s3://${BUCKET}/${key}"
+            else
+              echo "PUT $lp -> s3://${BUCKET}/${key}"
+              aws s3 cp "$lp" "s3://${BUCKET}/${key}" --only-show-errors
+            fi
+          done
 
-      # 結果の確認（一覧表示）
-      - name: List objects (after sync)
+      - name: Delete objects NOT in manifest (make S3 clean)
+        env:
+          BUCKET: ${{ vars.S3_BUCKET }}
+          PREFIX: ${{ vars.PARQUET_PREFIX }}
+          DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+
+          # 1) S3 側の現状キー
+          mapfile -t HAVE < <(aws s3api list-objects-v2 \
+            --bucket "$BUCKET" --prefix "$PREFIX" \
+            --query 'Contents[].Key' --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
+
+          echo "S3 has (${#HAVE[@]}):"
+          printf '  - %s\n' "${HAVE[@]}"
+
+          # 2) manifest の wanted セット
+          mapfile -t WANTED < <(jq -r 'keys[]' "$MANIFEST_PATH")
+
+          # 3) 常に保護したいキー（manifest 自身など）を追加
+          PROTECT=("${PREFIX%/}/manifest.json")
+
+          # 4) 差分計算: HAVE - (WANTED ∪ PROTECT)
+          to_delete=()
+          for key in "${HAVE[@]}"; do
+            skip=false
+            for w in "${WANTED[@]}";   do [ "$key" = "$w" ] && { skip=true; break; }; done
+            for p in "${PROTECT[@]}";  do [ "$key" = "$p" ] && { skip=true; break; }; done
+            $skip || to_delete+=("$key")
+          done
+
+          echo "Extra keys to delete (${#to_delete[@]}):"
+          printf '  - %s\n' "${to_delete[@]}" || true
+
+          # 5) 削除（dry-run 対応）
+          for key in "${to_delete[@]}"; do
+            if [ "$DRYRUN" = "true" ]; then
+              echo "[dry-run] would delete s3://${BUCKET}/${key}"
+            else
+              echo "DELETE s3://${BUCKET}/${key}"
+              aws s3 rm "s3://${BUCKET}/${key}" --only-show-errors || true
+            fi
+          done
+
+      - name: List objects (after reconcile)
         run: |
           aws s3 ls "s3://${{ vars.S3_BUCKET }}/${{ vars.PARQUET_PREFIX }}" --recursive
