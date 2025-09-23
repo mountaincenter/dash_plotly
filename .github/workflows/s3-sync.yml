@@ -20,7 +20,7 @@ jobs:
   reconcile:
     runs-on: ubuntu-latest
     environment:
-      name: "AWS_OIDC" # ← あなたが作成した環境名
+      name: "AWS_OIDC" # ← 既存の環境名
 
     env:
       MANIFEST_PATH: data/parquet/manifest.json
@@ -44,6 +44,8 @@ jobs:
         run: |
           test -f "$MANIFEST_PATH" || { echo "::error::manifest not found: $MANIFEST_PATH"; exit 1; }
           jq type "$MANIFEST_PATH" >/dev/null
+          # items[].key が必須（簡易スキーマ検証）
+          jq -e '.items and (.items | type=="array") and ([.items[].key] | length>0)' "$MANIFEST_PATH" >/dev/null
 
       - name: Upload manifest.json itself
         env:
@@ -55,27 +57,34 @@ jobs:
           echo ">> PUT $MANIFEST_PATH -> $DEST"
           aws s3 cp "$MANIFEST_PATH" "$DEST" --only-show-errors
 
-      - name: Ensure “wanted set” exists (best-effort Put if local_path exists)
+      - name: Ensure “wanted set” exists (best-effort Put if local file exists)
         env:
           BUCKET: ${{ vars.S3_BUCKET }}
           PREFIX: ${{ vars.PARQUET_PREFIX }}
           DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           set -euo pipefail
-          # jq: manifest の keys（S3 キー）を配列に
-          mapfile -t WANTED < <(jq -r 'keys[]' "$MANIFEST_PATH")
-          echo "Wanted keys (${#WANTED[@]}):"
-          printf '  - %s\n' "${WANTED[@]}"
 
-          # best-effort: manifest に local_path があって、かつ存在するなら upload（無ければ skip）
-          for key in "${WANTED[@]}"; do
-            lp=$(jq -r --arg k "$key" '.[$k].local_path // empty' "$MANIFEST_PATH")
-            [ -n "$lp" ] && [ -f "$lp" ] || continue
-            if [ "$DRYRUN" = "true" ]; then
-              echo "[dry-run] would upload $lp -> s3://${BUCKET}/${key}"
+          # === wanted keys: manifest の items[].key を列挙 ===
+          mapfile -t WANTED_KEYS < <(jq -r '.items[].key' "$MANIFEST_PATH")
+          echo "Wanted keys (${#WANTED_KEYS[@]}):"
+          printf '  - %s\n' "${WANTED_KEYS[@]}"
+
+          BASE_DIR="$(dirname "$MANIFEST_PATH")"
+
+          # === ローカルに存在するものだけ PUT（best-effort） ===
+          for key in "${WANTED_KEYS[@]}"; do
+            lp="${BASE_DIR%/}/${key}"
+            s3key="${PREFIX%/}/${key}"
+            if [ -f "$lp" ]; then
+              if [ "$DRYRUN" = "true" ]; then
+                echo "[dry-run] would upload $lp -> s3://${BUCKET}/${s3key}"
+              else
+                echo "PUT $lp -> s3://${BUCKET}/${s3key}"
+                aws s3 cp "$lp" "s3://${BUCKET}/${s3key}" --only-show-errors
+              fi
             else
-              echo "PUT $lp -> s3://${BUCKET}/${key}"
-              aws s3 cp "$lp" "s3://${BUCKET}/${key}" --only-show-errors
+              echo "::warning::local file not found, skip: $lp"
             fi
           done
 
@@ -87,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 1) S3 側の現状キー
+          # 1) S3 側の現状キー（prefix 配下）
           mapfile -t HAVE < <(aws s3api list-objects-v2 \
             --bucket "$BUCKET" --prefix "$PREFIX" \
             --query 'Contents[].Key' --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
@@ -95,18 +104,22 @@ jobs:
           echo "S3 has (${#HAVE[@]}):"
           printf '  - %s\n' "${HAVE[@]}"
 
-          # 2) manifest の wanted セット
-          mapfile -t WANTED < <(jq -r 'keys[]' "$MANIFEST_PATH")
+          # 2) manifest の wanted（S3 フルキーに正規化）
+          mapfile -t WANTED_S3KEYS < <(jq -r --arg p "${PREFIX%/}/" '.items[].key | "\($p)\(.)"' "$MANIFEST_PATH")
 
-          # 3) 常に保護したいキー（manifest 自身など）を追加
+          # 3) 常に保護したいキー（manifest 自身のみ）
           PROTECT=("${PREFIX%/}/manifest.json")
 
-          # 4) 差分計算: HAVE - (WANTED ∪ PROTECT)
+          # 4) 差分計算: HAVE - (WANTED_S3KEYS ∪ PROTECT)
           to_delete=()
           for key in "${HAVE[@]}"; do
             skip=false
-            for w in "${WANTED[@]}";   do [ "$key" = "$w" ] && { skip=true; break; }; done
-            for p in "${PROTECT[@]}";  do [ "$key" = "$p" ] && { skip=true; break; }; done
+            for w in "${WANTED_S3KEYS[@]}"; do
+              if [ "$key" = "$w" ]; then skip=true; break; fi
+            done
+            for p in "${PROTECT[@]}"; do
+              if [ "$key" = "$p" ]; then skip=true; break; fi
+            done
             $skip || to_delete+=("$key")
           done
 

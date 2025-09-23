@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-21T22:31:40.787354+00:00",
+  "generated_at": "2025-09-23T13:18:28.806457+00:00",
   "items": [
     {
       "key": "core30_anomaly.parquet",
@@ -18,6 +18,12 @@
       "bytes": 272928,
       "sha256": "13a6836419c707141dcfb7721f9ced8ec1d63f2df9e688df6d9f20e86835e6e2",
       "mtime": "2025-09-21T21:54:56.894958+00:00"
+    },
+    {
+      "key": "topixweight_j.parquet",
+      "bytes": 56837,
+      "sha256": "dda7e617fb56b0cbd48d53a45d1d33b8632d5267476766eb42036e20253a07e9",
+      "mtime": "2025-09-23T13:18:28.806037+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."

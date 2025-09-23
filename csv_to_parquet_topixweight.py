@@ -8,15 +8,21 @@
 # - code -> ticker を追加（.T 付与／既に .T ならそのまま）
 # - weight は "0.0066%" → 0.0066 のように %記号を除去して float 化（百分率）
 # を行い、./data/parquet/topixweight_j.parquet へ保存する。
+# さらに、保存後に ./data/parquet/manifest.json を
+# {"generated_at", "items":[{key,bytes,sha256,mtime}], "note"} 形式で upsert する。
 
 from pathlib import Path
 import sys
+import json
+import hashlib
+from datetime import datetime, timezone
 import pandas as pd
 
 # ===== 入出力（指定通り） =====
 INPUT_CSV  = Path("./data/csv/topixweight_j.csv")
 OUTPUT_DIR = Path("./data/parquet")
 OUTPUT_PARQUET = OUTPUT_DIR / f"{INPUT_CSV.stem}.parquet"  # => topixweight_j.parquet
+MANIFEST_PATH  = OUTPUT_DIR / "manifest.json"
 
 # 列名マッピング（ご指定反映: classification → size_class）
 COLUMNS_MAP = {
@@ -51,6 +57,56 @@ def _to_float_percent(series: pd.Series) -> pd.Series:
     s = series.astype("string")
     s = s.str.replace(",", "", regex=False).str.replace("%", "", regex=False).str.strip()
     return pd.to_numeric(s, errors="coerce")
+
+# ===== manifest 用ユーティリティ（追加） =====
+def _sha256_of(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def _load_manifest_items(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+        items = obj.get("items", [])
+        return items if isinstance(items, list) else []
+    except Exception:
+        return []
+
+def _upsert_manifest_item(items: list[dict], key: str, file_path: Path) -> list[dict]:
+    stat = file_path.stat()
+    newitem = {
+        "key": key,
+        "bytes": stat.st_size,
+        "sha256": _sha256_of(file_path),
+        "mtime": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+    }
+    out = []
+    found = False
+    for it in items:
+        if isinstance(it, dict) and it.get("key") == key:
+            out.append(newitem)
+            found = True
+        else:
+            out.append(it)
+    if not found:
+        out.append(newitem)
+    out.sort(key=lambda d: d.get("key", ""))
+    return out
+
+def _write_manifest_atomic(path: Path, items: list[dict]) -> None:
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "items": items,
+        "note": "Auto-generated. Do not edit by hand."
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
 
 def main() -> int:
     # 入力存在チェック
@@ -90,6 +146,16 @@ def main() -> int:
         return 1
 
     print(f"[OK] saved: {OUTPUT_PARQUET}  (rows={len(df)}, cols={len(df.columns)})")
+
+    # ===== manifest.json を upsert（追加） =====
+    try:
+        items = _load_manifest_items(MANIFEST_PATH)
+        items = _upsert_manifest_item(items, OUTPUT_PARQUET.name, OUTPUT_PARQUET)
+        _write_manifest_atomic(MANIFEST_PATH, items)
+        print(f"[OK] manifest updated: {MANIFEST_PATH}")
+    except Exception as e:
+        print(f"[WARN] manifest 更新に失敗しました: {e}", file=sys.stderr)
+
     return 0
 
 if __name__ == "__main__":
