@@ -1,23 +1,29 @@
+# 共通定義（ビルドや実行コマンドなど）
+x-app-base: &app_base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  working_dir: /app
+  volumes:
+    - ./:/app
+    - ~/.aws:/root/.aws:ro # ホストのAWS認証を使う場合のみ
+  command: python server.py # server.py は PORT を読む実装
+
 services:
-  web:
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: Dockerfile
-    working_dir: /app
-    environment:
-      - PORT=${PORT}
-      - DEBUG=${DEBUG}
-      - DATA_BUCKET=${DATA_BUCKET}
-      - CORE30_META_KEY=${CORE30_META_KEY}
-      - CORE30_PRICES_KEY=${CORE30_PRICES_KEY}
-      - CORE30_ANOMALY_KEY=${CORE30_ANOMALY_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_PROFILE=${AWS_PROFILE}
-    volumes:
-      - ./:/app
-      # 認証A: ホストの AWS 資格情報を使う場合（.env.s3 が AWS_PROFILE を持つとき有効）
-      - ~/.aws:/root/.aws:ro
+  # dev: ローカルParquet参照（PORT=8050）
+  web-dev:
+    <<: *app_base
+    container_name: dash_plotly_dev
+    env_file:
+      - .env.dev
     ports:
-      - "${PORT}:${PORT}"
-    command: python server.py
+      - "8050:8050"
+
+  # stg: S3参照（PORT=8051）
+  web-stg:
+    <<: *app_base
+    container_name: dash_plotly_stg
+    env_file:
+      - .env.stg
+    ports:
+      - "8051:8051"
