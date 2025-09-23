@@ -45,6 +45,5 @@ logs/
 docker-compose.override.yml
 
 # keep only manifest.json under data/parquet
-!data/
-!data/parquet/
+data/parquet/*
 !data/parquet/manifest.json

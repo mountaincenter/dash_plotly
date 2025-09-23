@@ -1,6 +1,12 @@
 {
-  "generated_at": "2025-09-21T21:54:56.896330+00:00",
+  "generated_at": "2025-09-21T22:31:40.787354+00:00",
   "items": [
+    {
+      "key": "core30_anomaly.parquet",
+      "bytes": 87054,
+      "sha256": "f655a5416ea0ae8f88f6271fa27dd5a52757ff79563c7e73f86c1391e20a81bd",
+      "mtime": "2025-09-21T22:31:40.785908+00:00"
+    },
     {
       "key": "core30_meta.parquet",
       "bytes": 3149,
@@ -14,11 +20,5 @@
       "mtime": "2025-09-21T21:54:56.894958+00:00"
     }
   ],
-  "note": "Auto-generated. Do not edit by hand.",
-  "parquet/core30_anomaly.parquet": {
-    "sha256": "f655a5416ea0ae8f88f6271fa27dd5a52757ff79563c7e73f86c1391e20a81bd",
-    "size": 87054,
-    "last_modified": "2025-09-21T22:03:33.401306+00:00",
-    "local_path": "data/parquet/core30_anomaly.parquet"
-  }
+  "note": "Auto-generated. Do not edit by hand."
 }
