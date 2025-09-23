@@ -20,7 +20,7 @@ jobs:
   reconcile:
     runs-on: ubuntu-latest
     environment:
-      name: "AWS_OIDC" # ← 既存の環境名
+      name: "AWS_OIDC"
 
     env:
       MANIFEST_PATH: data/parquet/manifest.json
@@ -28,7 +28,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # OIDC で AWS 認証
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -42,9 +41,9 @@ jobs:
 
       - name: Validate manifest.json
         run: |
+          set -euo pipefail
           test -f "$MANIFEST_PATH" || { echo "::error::manifest not found: $MANIFEST_PATH"; exit 1; }
           jq type "$MANIFEST_PATH" >/dev/null
-          # items[].key が必須（簡易スキーマ検証）
           jq -e '.items and (.items | type=="array") and ([.items[].key] | length>0)' "$MANIFEST_PATH" >/dev/null
 
       - name: Upload manifest.json itself
@@ -57,36 +56,30 @@ jobs:
           echo ">> PUT $MANIFEST_PATH -> $DEST"
           aws s3 cp "$MANIFEST_PATH" "$DEST" --only-show-errors
 
-      - name: Ensure “wanted set” exists (best-effort Put if local file exists)
+      - name: Report missing objects listed in manifest (informational)
         env:
           BUCKET: ${{ vars.S3_BUCKET }}
           PREFIX: ${{ vars.PARQUET_PREFIX }}
-          DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           set -euo pipefail
-
-          # === wanted keys: manifest の items[].key を列挙 ===
-          mapfile -t WANTED_KEYS < <(jq -r '.items[].key' "$MANIFEST_PATH")
-          echo "Wanted keys (${#WANTED_KEYS[@]}):"
-          printf '  - %s\n' "${WANTED_KEYS[@]}"
-
-          BASE_DIR="$(dirname "$MANIFEST_PATH")"
-
-          # === ローカルに存在するものだけ PUT（best-effort） ===
-          for key in "${WANTED_KEYS[@]}"; do
-            lp="${BASE_DIR%/}/${key}"
-            s3key="${PREFIX%/}/${key}"
-            if [ -f "$lp" ]; then
-              if [ "$DRYRUN" = "true" ]; then
-                echo "[dry-run] would upload $lp -> s3://${BUCKET}/${s3key}"
-              else
-                echo "PUT $lp -> s3://${BUCKET}/${s3key}"
-                aws s3 cp "$lp" "s3://${BUCKET}/${s3key}" --only-show-errors
-              fi
-            else
-              echo "::warning::local file not found, skip: $lp"
-            fi
+          mapfile -t HAVE < <(aws s3api list-objects-v2 \
+            --bucket "$BUCKET" --prefix "$PREFIX" \
+            --query 'Contents[].Key' --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
+          mapfile -t WANTED_S3KEYS < <(jq -r --arg p "${PREFIX%/}/" '.items[].key | "\($p)\(.)"' "$MANIFEST_PATH")
+          missing=()
+          for w in "${WANTED_S3KEYS[@]}"; do
+            found=false
+            for h in "${HAVE[@]}"; do
+              if [ "$w" = "$h" ]; then found=true; break; fi
+            done
+            $found || missing+=("$w")
           done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::warning::Missing objects on S3 (listed in manifest but not found):"
+            printf '  - %s\n' "${missing[@]}"
+          else
+            echo "All manifest-listed objects exist on S3."
+          fi
 
       - name: Delete objects NOT in manifest (make S3 clean)
         env:
@@ -95,38 +88,22 @@ jobs:
           DRYRUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           set -euo pipefail
-
-          # 1) S3 側の現状キー（prefix 配下）
           mapfile -t HAVE < <(aws s3api list-objects-v2 \
             --bucket "$BUCKET" --prefix "$PREFIX" \
             --query 'Contents[].Key' --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
-
           echo "S3 has (${#HAVE[@]}):"
           printf '  - %s\n' "${HAVE[@]}"
-
-          # 2) manifest の wanted（S3 フルキーに正規化）
           mapfile -t WANTED_S3KEYS < <(jq -r --arg p "${PREFIX%/}/" '.items[].key | "\($p)\(.)"' "$MANIFEST_PATH")
-
-          # 3) 常に保護したいキー（manifest 自身のみ）
           PROTECT=("${PREFIX%/}/manifest.json")
-
-          # 4) 差分計算: HAVE - (WANTED_S3KEYS ∪ PROTECT)
           to_delete=()
           for key in "${HAVE[@]}"; do
             skip=false
-            for w in "${WANTED_S3KEYS[@]}"; do
-              if [ "$key" = "$w" ]; then skip=true; break; fi
-            done
-            for p in "${PROTECT[@]}"; do
-              if [ "$key" = "$p" ]; then skip=true; break; fi
-            done
+            for w in "${WANTED_S3KEYS[@]}"; do [ "$key" = "$w" ] && { skip=true; break; }; done
+            for p in "${PROTECT[@]}";    do [ "$key" = "$p" ] && { skip=true; break; }; done
             $skip || to_delete+=("$key")
           done
-
           echo "Extra keys to delete (${#to_delete[@]}):"
           printf '  - %s\n' "${to_delete[@]}" || true
-
-          # 5) 削除（dry-run 対応）
           for key in "${to_delete[@]}"; do
             if [ "$DRYRUN" = "true" ]; then
               echo "[dry-run] would delete s3://${BUCKET}/${key}"

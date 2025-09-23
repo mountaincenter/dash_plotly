@@ -10,9 +10,11 @@
 # を行い、./data/parquet/topixweight_j.parquet へ保存する。
 # さらに、保存後に ./data/parquet/manifest.json を
 # {"generated_at", "items":[{key,bytes,sha256,mtime}], "note"} 形式で upsert する。
+# ※ パイプライン実行時は環境変数 PIPELINE_NO_MANIFEST=1 で manifest 更新を抑止。
 
 from pathlib import Path
 import sys
+import os
 import json
 import hashlib
 from datetime import datetime, timezone
@@ -58,7 +60,7 @@ def _to_float_percent(series: pd.Series) -> pd.Series:
     s = s.str.replace(",", "", regex=False).str.replace("%", "", regex=False).str.strip()
     return pd.to_numeric(s, errors="coerce")
 
-# ===== manifest 用ユーティリティ（追加） =====
+# ===== manifest 用ユーティリティ =====
 def _sha256_of(path: Path, chunk_size: int = 1024 * 1024) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -147,7 +149,11 @@ def main() -> int:
 
     print(f"[OK] saved: {OUTPUT_PARQUET}  (rows={len(df)}, cols={len(df.columns)})")
 
-    # ===== manifest.json を upsert（追加） =====
+    # ===== manifest.json を upsert（※PIPELINE_NO_MANIFEST=1 なら抑止） =====
+    if os.getenv("PIPELINE_NO_MANIFEST") == "1":
+        print("[INFO] PIPELINE_NO_MANIFEST=1 → manifest 更新はスキップします。")
+        return 0
+
     try:
         items = _load_manifest_items(MANIFEST_PATH)
         items = _upsert_manifest_item(items, OUTPUT_PARQUET.name, OUTPUT_PARQUET)
