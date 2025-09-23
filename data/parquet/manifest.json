@@ -1,23 +1,23 @@
 {
-  "generated_at": "2025-09-23T14:10:29.558742+00:00",
+  "generated_at": "2025-09-23T16:57:51.961211+00:00",
   "items": [
     {
       "key": "core30_anomaly.parquet",
       "bytes": 87054,
       "sha256": "705366fbc535f515fa0df466ce11de3e53a3ad814de101320cf160f24a1cc9c4",
-      "mtime": "2025-09-23T14:10:29.079033+00:00"
+      "mtime": "2025-09-23T16:57:51.341093+00:00"
     },
     {
       "key": "core30_meta.parquet",
       "bytes": 3149,
       "sha256": "e5c964e8cfc0e181ef440bd0e5028f64d570549941636f767d89a7f5ad67606a",
-      "mtime": "2025-09-23T14:10:19.114086+00:00"
+      "mtime": "2025-09-23T16:57:41.187156+00:00"
     },
     {
       "key": "core30_prices_1y_1d.parquet",
-      "bytes": 270807,
-      "sha256": "49c74e84ab2060805e9b81aa6eb384c0a554c6cc014b7b9dbe7830c9737bb969",
-      "mtime": "2025-09-23T14:10:19.118091+00:00"
+      "bytes": 270784,
+      "sha256": "c8b2705592eb9f8217c972136af155a051fcade0509c21cda293d94566683a03",
+      "mtime": "2025-09-23T16:57:41.190353+00:00"
     },
     {
       "key": "topixweight_j.parquet",
