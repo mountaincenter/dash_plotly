@@ -17,7 +17,7 @@ RUN python -m pip install --upgrade pip && \
 COPY . .
 
 # 既定ポート（composeの環境変数で上書き可能）
-ENV PORT=8080
+ENV PORT=8050
 
 # 厳守: app.run を呼ぶ server.py を実行
 CMD ["python", "-m", "server.main"]
