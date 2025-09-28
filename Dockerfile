@@ -20,4 +20,4 @@ COPY . .
 ENV PORT=8080
 
 # 厳守: app.run を呼ぶ server.py を実行
-CMD ["python", "server.py"]
+CMD ["python", "-m", "server.main"]

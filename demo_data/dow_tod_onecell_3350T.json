@@ -1,0 +1,163 @@
+{
+  "meta": {
+    "ticker": "3350.T",
+    "generated_at_utc": "2025-09-26T02:42:37.187990+00:00",
+    "notes": "demo export (DOW=日足ボラ、TOD=5m 時刻要約)"
+  },
+  "dow_volatility": {
+    "short": [
+      {
+        "曜日": "月",
+        "n": 6,
+        "median_vol": 60.0,
+        "iqr_low": 49.25,
+        "iqr_high": 69.25,
+        "mean_vol": 60.666666666666664
+      },
+      {
+        "曜日": "金",
+        "n": 9,
+        "median_vol": 60.0,
+        "iqr_low": 40.0,
+        "iqr_high": 84.0,
+        "mean_vol": 65.44444444444444
+      },
+      {
+        "曜日": "木",
+        "n": 8,
+        "median_vol": 59.0,
+        "iqr_low": 49.25,
+        "iqr_high": 80.25,
+        "mean_vol": 67.125
+      },
+      {
+        "曜日": "水",
+        "n": 8,
+        "median_vol": 51.5,
+        "iqr_low": 47.5,
+        "iqr_high": 63.25,
+        "mean_vol": 64.0
+      },
+      {
+        "曜日": "火",
+        "n": 7,
+        "median_vol": 46.0,
+        "iqr_low": 35.0,
+        "iqr_high": 94.0,
+        "mean_vol": 67.71428571428571
+      }
+    ],
+    "mid": [
+      {
+        "曜日": "木",
+        "n": 12,
+        "median_vol": 71.0,
+        "iqr_low": 58.0,
+        "iqr_high": 84.0,
+        "mean_vol": 72.5
+      },
+      {
+        "曜日": "金",
+        "n": 13,
+        "median_vol": 66.0,
+        "iqr_low": 57.0,
+        "iqr_high": 77.0,
+        "mean_vol": 66.6923076923077
+      },
+      {
+        "曜日": "月",
+        "n": 9,
+        "median_vol": 63.0,
+        "iqr_low": 59.0,
+        "iqr_high": 82.0,
+        "mean_vol": 70.44444444444444
+      },
+      {
+        "曜日": "水",
+        "n": 12,
+        "median_vol": 54.0,
+        "iqr_low": 47.5,
+        "iqr_high": 86.5,
+        "mean_vol": 67.5
+      },
+      {
+        "曜日": "火",
+        "n": 11,
+        "median_vol": 54.0,
+        "iqr_low": 40.5,
+        "iqr_high": 119.5,
+        "mean_vol": 83.45454545454545
+      }
+    ],
+    "effect_size": {
+      "short": 0.23728813559322035,
+      "mid": 0.2698412698412698
+    }
+  },
+  "tod_5m": {
+    "high": [
+      {
+        "weekday": "Friday",
+        "mode_time": "09:05",
+        "coverage": 0.38461538461538464,
+        "n": 13
+      },
+      {
+        "weekday": "Monday",
+        "mode_time": "09:05",
+        "coverage": 0.2222222222222222,
+        "n": 9
+      },
+      {
+        "weekday": "Thursday",
+        "mode_time": "09:10",
+        "coverage": 0.23076923076923078,
+        "n": 13
+      },
+      {
+        "weekday": "Tuesday",
+        "mode_time": "09:00",
+        "coverage": 0.25,
+        "n": 12
+      },
+      {
+        "weekday": "Wednesday",
+        "mode_time": "09:05",
+        "coverage": 0.23076923076923078,
+        "n": 13
+      }
+    ],
+    "low": [
+      {
+        "weekday": "Friday",
+        "mode_time": "15:20",
+        "coverage": 0.15384615384615385,
+        "n": 13
+      },
+      {
+        "weekday": "Monday",
+        "mode_time": "09:00",
+        "coverage": 0.2222222222222222,
+        "n": 9
+      },
+      {
+        "weekday": "Thursday",
+        "mode_time": "09:05",
+        "coverage": 0.15384615384615385,
+        "n": 13
+      },
+      {
+        "weekday": "Tuesday",
+        "mode_time": "09:05",
+        "coverage": 0.16666666666666666,
+        "n": 12
+      },
+      {
+        "weekday": "Wednesday",
+        "mode_time": "09:05",
+        "coverage": 0.15384615384615385,
+        "n": 13
+      }
+    ]
+  }
+}

@@ -25,31 +25,31 @@ def build_layout(src_label: str, anom_src_label: str, dropdown_options: Sequence
         children=[
             html.H2("TOPIX Core 30 — 1年・日足 / 月次（年×月）", style={"marginBottom": "8px"}),
 
-            dcc.Dropdown(
-                id="ticker-dd",
-                options=list(dropdown_options),
-                value=initial_value,
-                placeholder="銘柄を選択（{code}:{stock_name}）",
-                clearable=False,
-                style={"marginBottom": "12px"},
-            ),
+                        dcc.Dropdown(
+                            id="ticker-dd",
+                            options=list(dropdown_options),
+                            value=initial_value,
+                            placeholder="銘柄を選択（{code}:{stock_name}）",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
 
-            dcc.Tabs(
-                id="tabs",
-                value="tab-1",
-                children=[
-                    dcc.Tab(
-                        label="チャート / テーブル",
-                        value="tab-1",
-                        children=[
-                            dcc.Graph(id="price-chart", config={"displayModeBar": True}),
-                            html.Div(id="price-table", style={"marginTop": "8px"}),
-                            html.Div(
-                                [
-                                    html.Span("※ データ取得は分析パイプライン側（1y/1d）。本アプリは可視化のみ。"),
-                                    html.Br(),
-                                    html.Span(f"データソース: {src_label} / アノマリー: {anom_src_label}"),
-                                ],
+                        dcc.Tabs(
+                            id="tabs",
+                            value="tab-1",
+                            children=[
+                                dcc.Tab(
+                                    label="チャート / テーブル",
+                                    value="tab-1",
+                                    children=[
+                                        dcc.Graph(id="price-chart", config={"displayModeBar": True}),
+                                        html.Div(id="price-table", style={"marginTop": "8px"}),
+                                        html.Div(
+                                            [
+                                                html.Span("※ データ取得は分析パイプライン側（1y/1d）。本アプリは可視化のみ。"),
+                                                html.Br(),
+                                                html.Span(f"データソース: {src_label} / アノマリー: {anom_src_label}"),
+                                            ],
                                 style={"fontSize": "12px", "color": "#555"},
                             ),
                         ],

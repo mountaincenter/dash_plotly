@@ -7,7 +7,7 @@ x-app-base: &app_base
   volumes:
     - ./:/app
     - ~/.aws:/root/.aws:ro # ホストのAWS認証を使う場合のみ
-  command: python server.py # server.py は PORT を読む実装
+  command: python -m server.main # server.py は PORT を読む実装
 
 services:
   # dev: ローカルParquet参照（PORT=8050）
