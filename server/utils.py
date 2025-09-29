@@ -103,16 +103,19 @@ def to_ticker(code: str) -> str:
 # 公開API向けローダ
 # ==============================
 def load_core30_meta() -> List[Dict]:
-    """
-    優先: S3（DATA_BUCKET + CORE30_META_KEY）
-    代替: ローカル META_PATH
-    """
-    df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY) or _read_parquet_local(META_PATH)
-    if df is None:
+    # まずS3
+    df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
+    # 取れなかった/空ならローカルへ
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        df = _read_parquet_local(META_PATH)
+
+    if df is None or df.empty:
         return []
+
     need = {"code", "stock_name"}
     if not need.issubset(df.columns):
         return []
+
     out = df[["code", "stock_name"]].drop_duplicates(subset=["code"]).copy()
     if "ticker" not in out.columns:
         out["ticker"] = out["code"].astype(str).map(to_ticker)
@@ -123,11 +126,10 @@ def load_core30_meta() -> List[Dict]:
     return out.to_dict(orient="records")
 
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
-    """
-    優先: S3（DATA_BUCKET + CORE30_PRICES_KEY）
-    代替: ローカル PRICES_1D_PATH
-    """
-    return _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY) or _read_parquet_local(PRICES_1D_PATH)
+    df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        df = _read_parquet_local(PRICES_1D_PATH)
+    return df
 
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
