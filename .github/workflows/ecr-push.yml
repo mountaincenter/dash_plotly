@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
+      - "server/**"
       - "server.py"
+      - "common_cfg/**"
       - "requirements.txt"
       - "Dockerfile"
-      - "**/*.py"
-      - "dash/**"
-      - "app/**"
+      - "docker-compose.yml"
       - ".github/workflows/ecr-push.yml"
   workflow_dispatch: {}
 
@@ -22,6 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: AWS_OIDC
+    env:
+      # ← ここで contexts を一度だけ評価して環境変数化（VSCode の警告が消える）
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +34,8 @@ jobs:
       # OIDC で AWS 認証
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Resolve AWS account id
         id: aws
@@ -38,54 +43,40 @@ jobs:
           echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
 
       - name: Ensure ECR repository exists
-        env:
-          REPO: ${{ vars.ECR_REPOSITORY }}
         run: |
-          aws ecr describe-repositories --repository-names "$REPO" >/dev/null 2>&1 || \
-          aws ecr create-repository --repository-name "$REPO" \
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" \
             --image-scanning-configuration scanOnPush=true \
             --encryption-configuration encryptionType=AES256 \
             >/dev/null
 
       - name: Login to ECR
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          ACCOUNT_ID: ${{ steps.aws.outputs.account_id }}
         run: |
+          ACCOUNT_ID="${{ steps.aws.outputs.account_id }}"
           aws ecr get-login-password --region "$AWS_REGION" | \
           docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
       - name: Build and tag image
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          ACCOUNT_ID: ${{ steps.aws.outputs.account_id }}
-          REPO: ${{ vars.ECR_REPOSITORY }}
         run: |
-          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO"
+          ACCOUNT_ID="${{ steps.aws.outputs.account_id }}"
+          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
           TAG="${GITHUB_SHA::7}"
           docker build -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
 
       - name: Push image
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          ACCOUNT_ID: ${{ steps.aws.outputs.account_id }}
-          REPO: ${{ vars.ECR_REPOSITORY }}
         run: |
-          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO"
+          ACCOUNT_ID="${{ steps.aws.outputs.account_id }}"
+          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
           TAG="${GITHUB_SHA::7}"
           docker push "$IMAGE:$TAG"
           docker push "$IMAGE:latest"
 
-      # （任意）イメージダイジェストを出力（後段デプロイで使う）
       - name: Output image digest
         id: img
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          ACCOUNT_ID: ${{ steps.aws.outputs.account_id }}
-          REPO: ${{ vars.ECR_REPOSITORY }}
         run: |
-          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO"
-          DIGEST=$(aws ecr describe-images --repository-name "$REPO" --image-ids imageTag=latest \
+          ACCOUNT_ID="${{ steps.aws.outputs.account_id }}"
+          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
+          DIGEST=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag=latest \
                    --query 'imageDetails[0].imageDigest' --output text)
           echo "image=$IMAGE@${DIGEST}" >> $GITHUB_OUTPUT
           echo "Pushed: $IMAGE@${DIGEST}"

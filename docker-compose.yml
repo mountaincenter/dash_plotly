@@ -1,4 +1,5 @@
-# 共通定義（ビルドや実行コマンドなど）
+# version は記載しない（指定どおり）
+
 x-app-base: &app_base
   build:
     context: .
@@ -6,24 +7,20 @@ x-app-base: &app_base
   working_dir: /app
   volumes:
     - ./:/app
-    - ~/.aws:/root/.aws:ro # ホストのAWS認証を使う場合のみ
-  command: python -m server.main # server.py は PORT を読む実装
+    # 必要な場合のみコメントを外す（AWS 認証をホストから使う）
+    # - ~/.aws:/root/.aws:ro
+  environment:
+    # 開発時は 8000 固定。App Runner ではサービス側が PORT を注入する想定。
+    - PORT=8000
 
 services:
-  # dev: ローカルParquet参照（PORT=8050）
-  web-dev:
+  web:
     <<: *app_base
-    container_name: dash_plotly_dev
-    env_file:
-      - .env.dev
+    container_name: fastapi_dev
+    # 開発用の環境変数ファイルがある場合
+    # env_file:
+    #   - .env.dev
     ports:
-      - "8050:8050"
-
-  # stg: S3参照（PORT=8051）
-  web-stg:
-    <<: *app_base
-    container_name: dash_plotly_stg
-    env_file:
-      - .env.stg
-    ports:
-      - "8051:8051"
+      - "8000:8000"
+    command: >
+      sh -c "uvicorn server.main:app --host 0.0.0.0 --port $${PORT} --reload"

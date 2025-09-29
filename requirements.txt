@@ -1,9 +1,9 @@
-dash==3.2.0
-plotly==6.3.0
-numpy==2.1.1
-pandas==2.2.2
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+pydantic==2.11.9
+orjson==3.11.3
+numpy==2.3.3
+pandas==2.3.2
 pyarrow==21.0.0
-boto3==1.34.160
-dash-mantine-components>=2.3.0,<3
-dash-iconify>=0.1.2 
-flask-cors==6.0.1   # アイコン使うなら（不要なら削除OK）
+boto3==1.40.40
+python-dotenv==1.1.1

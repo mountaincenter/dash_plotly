@@ -6,7 +6,7 @@ common_cfg.env: .env 系ファイルを必要に応じてロード
 """
 from pathlib import Path
 
-_ENV_NAMES = (".env.stg", ".env.dev", ".env", ".env.s3")
+_ENV_NAMES = (".env.s3", ".env.dev")
 
 def _iter_search_dirs(max_up: int = 5):
     """CWD から親に向かって max_up 階層まで探索"""

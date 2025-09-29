@@ -1,9 +1,12 @@
-# server.py （互換ラッパー）
-from server.main import create_dash_app, run
-
-# Gunicorn 等が "app" を探す場合に備えて公開
-_dash = create_dash_app()
-app = _dash.server  # Flask インスタンス
+# server.py （FastAPI 互換ラッパ）
+from server.main import app  # FastAPI インスタンスを公開
 
 if __name__ == "__main__":
-    run()
+    import os
+    import uvicorn
+    uvicorn.run(
+        "server.main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8000")),
+        reload=True,
+    )

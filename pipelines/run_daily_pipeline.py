@@ -4,7 +4,6 @@
 run_daily_pipeline.py
 - 1) analyze/csv_to_parquet_topixweight.py（CSV変更時のみ）
 - 2) analyze/fetch_core30_yf.ipynb
-- 3) analyze/anomaly.ipynb
 - 各処理の manifest/S3 は PIPELINE_NO_* で抑止し、最後に manifest を一括生成→S3へ
 """
 
@@ -22,7 +21,6 @@ from typing import List, Optional
 # ---- 共有ユーティリティ ----
 from common_cfg.paths import (
     PARQUET_DIR,
-    CORE30_ANOMALY_PARQUET as OUT_ANOMALY,
     CORE30_META_PARQUET as OUT_CORE30_META,
     CORE30_PRICES_PARQUET as OUT_CORE30_1D,
     TOPIX_WEIGHT_PARQUET as OUT_TOPIX,
@@ -31,6 +29,9 @@ from common_cfg.paths import (
 from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_files
+from common_cfg.env import load_dotenv_cascade
+# ★ 追加：.env.s3 → .env の順で読み込み（空の上書きに注意）
+load_dotenv_cascade()
 
 ROOT = Path(".").resolve()
 CSV_DIR = ROOT / "data" / "csv"
@@ -39,7 +40,6 @@ INPUT_TOPIX_CSV = CSV_DIR / "topixweight_j.csv"
 ANALYZE_DIR    = ROOT / "analyze"
 TOPIX_PY       = ANALYZE_DIR / "csv_to_parquet_topixweight.py"
 CORE30_IPYNB   = ANALYZE_DIR / "fetch_core30_yf.ipynb"
-ANOMALY_IPYNB  = ANALYZE_DIR / "anomaly.ipynb"
 
 STATE_DIR     = PARQUET_DIR / "_state"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,8 @@ def _record_csv_hash():
 
 
 def _gather_manifest_items() -> list[dict]:
-    targets = [OUT_ANOMALY, OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX]
+    # anomaly 成果物は削除
+    targets = [OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX]
     items = []
     for p in targets:
         if p.exists():
@@ -128,7 +129,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force-topix", action="store_true")
     ap.add_argument("--skip-core30", action="store_true")
-    ap.add_argument("--skip-anomaly", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -158,18 +158,7 @@ def main() -> int:
     else:
         print("[STEP] skip fetch_core30_yf.ipynb")
 
-    # 3) anomaly
-    if not args.skip_anomaly:
-        try:
-            print("[STEP] run anomaly.ipynb")
-            _run_notebook(ANOMALY_IPYNB, extra_env=pipeline_env)
-        except Exception as e:
-            print(f"[ERROR] anomaly 実行に失敗: {e}")
-            return 1
-    else:
-        print("[STEP] skip anomaly.ipynb")
-
-    # 4) manifest を一括生成
+    # 3) manifest を一括生成
     try:
         print("[STEP] write manifest.json (aggregate)")
         items = _gather_manifest_items()
@@ -179,10 +168,10 @@ def main() -> int:
         print(f"[ERROR] manifest 作成に失敗: {e}")
         return 1
 
-    # 5) S3（manifest + 成果物）
+    # 4) S3（manifest + 成果物）
     try:
         print("[STEP] upload to S3 (aggregate)")
-        files = [MANIFEST_PATH] + [p for p in [OUT_ANOMALY, OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX] if p.exists()]
+        files = [MANIFEST_PATH] + [p for p in [OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX] if p.exists()]
         _maybe_upload_to_s3(files, dry_run=args.dry_run)
     except Exception as e:
         print(f"[ERROR] S3 アップロードに失敗: {e}")
