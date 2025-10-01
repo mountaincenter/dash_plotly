@@ -1,17 +1,17 @@
 {
-  "generated_at": "2025-09-29T16:19:36.797931+00:00",
+  "generated_at": "2025-10-01T06:59:13.610062+00:00",
   "items": [
     {
       "key": "core30_meta.parquet",
       "bytes": 3149,
       "sha256": "e5c964e8cfc0e181ef440bd0e5028f64d570549941636f767d89a7f5ad67606a",
-      "mtime": "2025-09-29T16:19:29.502774+00:00"
+      "mtime": "2025-10-01T06:59:01.512899+00:00"
     },
     {
       "key": "core30_prices_max_1d.parquet",
-      "bytes": 7638619,
-      "sha256": "3ef7c058bc4e8a1f904bfb6136d2cdc735747864b05dcadd09d6ffa6328f9ed1",
-      "mtime": "2025-09-29T16:19:32.100942+00:00"
+      "bytes": 7639089,
+      "sha256": "eec085144b1a5ed9f7e0a15256b4ed3331d0c2dce83d945b2389af8633ff6c22",
+      "mtime": "2025-10-01T06:59:04.696032+00:00"
     },
     {
       "key": "topixweight_j.parquet",

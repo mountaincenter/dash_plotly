@@ -120,7 +120,7 @@ def core30_prices_snapshot_last2():
 
 @router.get("/perf/returns")
 def core30_perf_returns(
-    windows: Optional[str] = Query(default=None, description="例: 5d,1mo,3mo,ytd,1y,5y,all"),
+    windows: Optional[str] = Query(default=None, description="例: 5d,1mo,3mo,ytd,1y,3y,5y,all"),
 ):
     df = read_prices_1d_df()
     if df is None:
@@ -130,7 +130,7 @@ def core30_perf_returns(
         return []
 
     win_param = (windows or "").strip()
-    default_wins = ["5d", "1mo", "3mo", "ytd", "1y", "5y", "all"]
+    default_wins = ["5d", "1mo", "3mo", "ytd", "1y", "3y","5y", "all"]
     wins = [w.strip() for w in win_param.split(",") if w.strip()] or default_wins
 
     days_map = {"5d": 7, "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "3y": 365*3, "5y": 365*5}
