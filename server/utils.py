@@ -20,6 +20,7 @@ def _get_env(name: str) -> Optional[str]:
 _S3_BUCKET = _get_env("DATA_BUCKET")
 _S3_META_KEY = _get_env("CORE30_META_KEY")            # 例: parquet/core30_meta.parquet
 _S3_PRICES_1D_KEY = _get_env("CORE30_PRICES_KEY")     # 例: parquet/core30_prices_max_1d.parquet
+_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"  # S3 prefix (default: parquet)
 _AWS_REGION = _get_env("AWS_REGION")
 _AWS_PROFILE = _get_env("AWS_PROFILE")
 _AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")          # 任意（LocalStack/MinIO等）
@@ -40,6 +41,7 @@ except Exception:
     PRICES_1D_PATH = Path(__file__).resolve().parent.parent / "data" / "parquet" / "core30_prices_max_1d.parquet"
 
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
+PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
 
 # ==============================
 # S3 / Local 読み込みヘルパ
@@ -129,6 +131,22 @@ def read_prices_1d_df() -> Optional[pd.DataFrame]:
     df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         df = _read_parquet_local(PRICES_1D_PATH)
+    return df
+
+def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
+    """
+    指定した period と interval に対応する Parquet を読み込む。
+    ファイル名: core30_prices_{period}_{interval}.parquet
+    S3 → ローカル の順で試行。
+    """
+    filename = f"core30_prices_{period}_{interval}.parquet"
+    s3_key = f"{_S3_PREFIX}/{filename}"
+
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        local_path = PARQUET_DIR / filename
+        df = _read_parquet_local(local_path)
+
     return df
 
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:

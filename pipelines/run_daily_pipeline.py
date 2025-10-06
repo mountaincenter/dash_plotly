@@ -22,7 +22,6 @@ from typing import List, Optional
 from common_cfg.paths import (
     PARQUET_DIR,
     CORE30_META_PARQUET as OUT_CORE30_META,
-    CORE30_PRICES_PARQUET as OUT_CORE30_1D,
     TOPIX_WEIGHT_PARQUET as OUT_TOPIX,
     MANIFEST_JSON as MANIFEST_PATH,
 )
@@ -97,8 +96,22 @@ def _record_csv_hash():
 
 
 def _gather_manifest_items() -> list[dict]:
-    # anomaly 成果物は削除
-    targets = [OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX]
+    # Core30の全ファイルを収集（メタ + 複数のpricesファイル）
+    UNIVERSE = "core30"
+    FILES_TO_GENERATE = [
+        ("max_1d", "max", "1d"),
+        ("max_1wk", "max", "1wk"),
+        ("max_1mo", "max", "1mo"),
+        ("730d_1h", "730d", "1h"),
+        ("60d_5m", "60d", "5m"),
+        ("60d_15m", "60d", "15m"),
+    ]
+
+    targets = [OUT_CORE30_META, OUT_TOPIX]
+    # 複数の prices ファイルを追加
+    for suffix, _, _ in FILES_TO_GENERATE:
+        targets.append(PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet")
+
     items = []
     for p in targets:
         if p.exists():
@@ -171,7 +184,21 @@ def main() -> int:
     # 4) S3（manifest + 成果物）
     try:
         print("[STEP] upload to S3 (aggregate)")
-        files = [MANIFEST_PATH] + [p for p in [OUT_CORE30_META, OUT_CORE30_1D, OUT_TOPIX] if p.exists()]
+        # Core30の全ファイルを収集
+        UNIVERSE = "core30"
+        FILES_TO_GENERATE = [
+            ("max_1d", "max", "1d"),
+            ("max_1wk", "max", "1wk"),
+            ("max_1mo", "max", "1mo"),
+            ("730d_1h", "730d", "1h"),
+            ("60d_5m", "60d", "5m"),
+            ("60d_15m", "60d", "15m"),
+        ]
+        files = [MANIFEST_PATH, OUT_CORE30_META, OUT_TOPIX]
+        for suffix, _, _ in FILES_TO_GENERATE:
+            p = PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet"
+            if p.exists():
+                files.append(p)
         _maybe_upload_to_s3(files, dry_run=args.dry_run)
     except Exception as e:
         print(f"[ERROR] S3 アップロードに失敗: {e}")

@@ -1,23 +1,47 @@
 {
-  "generated_at": "2025-10-02T14:28:25.198941+00:00",
+  "generated_at": "2025-10-06T15:50:56.286583+00:00",
   "items": [
     {
       "key": "core30_meta.parquet",
       "bytes": 3149,
       "sha256": "e5c964e8cfc0e181ef440bd0e5028f64d570549941636f767d89a7f5ad67606a",
-      "mtime": "2025-10-02T14:28:12.078120+00:00"
+      "mtime": "2025-10-06T15:50:46.022202492+00:00"
+    },
+    {
+      "key": "core30_prices_60d_15m.parquet",
+      "bytes": 625799,
+      "sha256": "6cc3c437bef5846e8bf55303d52fc54a0039e0dc4e01e82e9aa7e0f856156ef0",
+      "mtime": "2025-10-06T15:50:56.277585983+00:00"
+    },
+    {
+      "key": "core30_prices_60d_5m.parquet",
+      "bytes": 1457485,
+      "sha256": "101a7c5af50438671f40fd0e77366375ae7a87b67e9fff08a0454ca55c225b59",
+      "mtime": "2025-10-06T15:50:55.051358223+00:00"
+    },
+    {
+      "key": "core30_prices_730d_1h.parquet",
+      "bytes": 2479930,
+      "sha256": "99125d89ef66dd152b7e69935bffa85c1f8a8a1174bb1ecfda70636f8e8fa839",
+      "mtime": "2025-10-06T15:50:53.339881897+00:00"
     },
     {
       "key": "core30_prices_max_1d.parquet",
-      "bytes": 7644641,
-      "sha256": "525d509b9dd46dcbb35f424447c69c2913464950183c0a96b400add5da66e939",
-      "mtime": "2025-10-02T14:28:15.280581+00:00"
+      "bytes": 7698932,
+      "sha256": "e8d3fd4d84bd3abc32b7e0a06e881cb38b72e1b8cc04b84c71af38bef1bfa6cc",
+      "mtime": "2025-10-06T15:50:48.665326834+00:00"
     },
     {
-      "key": "topixweight_j.parquet",
-      "bytes": 56837,
-      "sha256": "dda7e617fb56b0cbd48d53a45d1d33b8632d5267476766eb42036e20253a07e9",
-      "mtime": "2025-09-23T14:10:14.652402+00:00"
+      "key": "core30_prices_max_1mo.parquet",
+      "bytes": 402486,
+      "sha256": "445573d65315ac459438a7a86718ed5bebf1a6b1816891903db62351fff9bf17",
+      "mtime": "2025-10-06T15:50:51.006192207+00:00"
+    },
+    {
+      "key": "core30_prices_max_1wk.parquet",
+      "bytes": 1740068,
+      "sha256": "2cf04568e4bc901d05b960715e262468b30c5a9c074321dbbb0ed4ba387b9134",
+      "mtime": "2025-10-06T15:50:49.991550207+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."
