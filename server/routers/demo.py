@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import json
+from functools import cache
 from typing import Optional
+
 import pandas as pd
 from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 # 👇 utils は相対 import
 from ..utils import (
-    safe_demo_path,
     filter_bb_payload,
-    parse_date_param,
     normalize_prices,
+    parse_date_param,
+    safe_demo_path,
     to_json_records,  # 既存利用箇所のため残置（価格APIでは未使用）
 )
 
@@ -82,6 +84,26 @@ def demo_parquet_download(fname: str):
 
 # ====== 価格データ（period/interval/コード可変・*_demo フォールバック無し） ======
 
+
+@cache
+def _load_parquet_cached(name: str) -> pd.DataFrame | None:
+    """
+    ファイル名を与えられ、demo_data から parquet を読み出して DataFrame を返す。
+    読み込み済みのファイルはインメモリでキャッシュされる。
+    見つからない or 失敗した場合は None を返す。
+    """
+    p = safe_demo_path(name, {".parquet"})
+    if not p:
+        return None
+    try:
+        # ここで読み込みと共通の前処理を行う
+        df = pd.read_parquet(str(p), engine="pyarrow")
+        df = normalize_prices(df)
+        return df
+    except Exception:
+        return None
+
+
 def _load_and_respond_prices(
     *,
     period: str,
@@ -91,24 +113,22 @@ def _load_and_respond_prices(
     end: Optional[str],
 ):
     """
-    demo_data から parquet を読み出して JSON で返却。
-    *_demo へのフォールバックは行わず、
-    prices_{period}_{interval}_{CODE}.parquet のみを対象とする。
-    見つからない場合は空配列 [] を返す。
+    キャッシュされた Parquet データを使って JSON を返却。
     """
     code = code.upper().replace(".T", "T")
     name = f"prices_{period}_{interval}_{code}.parquet"
 
-    p = safe_demo_path(name, {".parquet"})
-    if not p:
-        return []  # 見つからない場合は空配列（既存の挙動に合わせる）
+    # キャッシュされた関数を呼び出す
+    df_orig = _load_parquet_cached(name)
+
+    # 見つからない or 不正なデータなら空配列
+    if df_orig is None or df_orig.empty:
+        return []
+
+    # ⚠️ キャッシュされた DF を直接変更しないよう、必ずコピーして使う
+    df = df_orig.copy()
 
     try:
-        df = pd.read_parquet(str(p), engine="pyarrow")
-        df = normalize_prices(df)
-        if df is None or df.empty:
-            return []
-
         # --- フィルタ（日付の上限は“日付のみ”指定なら翌日0時未満で絞る）---
         start_dt = parse_date_param(start) if start else None
         end_dt = parse_date_param(end) if end else None

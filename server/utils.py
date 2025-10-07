@@ -5,6 +5,7 @@ import os
 import json
 import re
 import unicodedata
+from functools import cache
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
@@ -104,6 +105,7 @@ def to_ticker(code: str) -> str:
 # ==============================
 # 公開API向けローダ
 # ==============================
+@cache
 def load_core30_meta() -> List[Dict]:
     # まずS3
     df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
@@ -127,12 +129,14 @@ def load_core30_meta() -> List[Dict]:
     out = out.sort_values("code", key=lambda s: s.astype(str)).reset_index(drop=True)
     return out.to_dict(orient="records")
 
+@cache
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
     df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         df = _read_parquet_local(PRICES_1D_PATH)
     return df
 
+@cache
 def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
     """
     指定した period と interval に対応する Parquet を読み込む。
