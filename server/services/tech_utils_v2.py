@@ -82,8 +82,7 @@ def efficiency_ratio(close: pd.Series, window: int = 14) -> pd.Series:
     delta = close.diff().abs()
     num = (close - close.shift(window)).abs()
     den = delta.rolling(window, min_periods=window).sum()
-    with pd.option_context("mode.use_inf_as_na", True):
-        er = (num / den).where(den > 0)
+    er = num / den.replace(0, np.nan)
     return er
 
 def obv_slope(close: pd.Series, vol: pd.Series, lookback: int = 5) -> pd.Series:
@@ -94,8 +93,7 @@ def obv_slope(close: pd.Series, vol: pd.Series, lookback: int = 5) -> pd.Series:
 def volume_z(vol: pd.Series, window: int = 20) -> pd.Series:
     ma = vol.rolling(window, min_periods=window).mean()
     sd = vol.rolling(window, min_periods=window).std(ddof=0)
-    with pd.option_context("mode.use_inf_as_na", True):
-        return ((vol - ma) / sd).where(sd > 0)
+    return (vol - ma) / sd.replace(0, np.nan)
 
 def cmf(close: pd.Series, high: pd.Series, low: pd.Series, vol: pd.Series, window: int = 20) -> pd.Series:
     mfm = ((close - low) - (high - close)) / (high - low).replace(0, np.nan)

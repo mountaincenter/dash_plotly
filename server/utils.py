@@ -79,7 +79,147 @@ _ALLOWED = re.compile(r"[^A-Za-z0-9._-]")
 def _secure_filename(filename: str) -> str:
     if not isinstance(filename, str):
         filename = str(filename or "")
+# ==============================
+# 環境変数（S3設定）
+# ==============================
+def _get_env(name: str) -> Optional[str]:
+    v = os.getenv(name)
+    return v if (v is not None and str(v).strip() != "") else None
+
+_S3_BUCKET = _get_env("DATA_BUCKET")
+_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"
+_AWS_REGION = _get_env("AWS_REGION")
+_AWS_PROFILE = _get_env("AWS_PROFILE")
+_AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
+
+# ---- 既存ローカルパス（フォールバック用） ----
+PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
+DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
+
+META_PATH = PARQUET_DIR / "core30_meta.parquet"
+PRICES_1D_PATH = PARQUET_DIR / "core30_prices_max_1d.parquet"
+TECH_SNAPSHOT_PATH = PARQUET_DIR / "core30_tech_snapshot_1d.parquet"
+
+# ==============================
+# S3 / Local 読み込みヘルパ
+# ==============================
+def _read_parquet_local(path: Path) -> Optional[pd.DataFrame]:
+    if not path.exists():
+        return None
+    try:
+        return pd.read_parquet(str(path), engine="pyarrow")
+    except Exception:
+        return None
+
+def _read_parquet_s3(bucket: Optional[str], key: Optional[str]) -> Optional[pd.DataFrame]:
+    if not bucket or not key:
+        return None
+    try:
+        import boto3
+        from io import BytesIO
+
+        session_kwargs = {}
+        if _AWS_PROFILE:
+            session_kwargs["profile_name"] = _AWS_PROFILE
+        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
+
+        client_kwargs = {}
+        if _AWS_REGION:
+            client_kwargs["region_name"] = _AWS_REGION
+        if _AWS_ENDPOINT:
+            client_kwargs["endpoint_url"] = _AWS_ENDPOINT
+
+        s3 = session.client("s3", **client_kwargs)
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        data = obj["Body"].read()
+        return pd.read_parquet(BytesIO(data), engine="pyarrow")
+    except Exception:
+        return None
+
+# ==============================
+# 既存ユーティリティ
+# ==============================
+_ALLOWED = re.compile(r"[^A-Za-z0-9._-]")
+
+def _secure_filename(filename: str) -> str:
+    if not isinstance(filename, str):
+        filename = str(filename or "")
     filename = filename.replace("/", "_").replace("\\", "_")
+    filename = unicodedata.normalize("NFKC", filename)
+    filename = _ALLOWED.sub("_", filename)
+    filename = filename.lstrip(".")
+    filename = re.sub(r"_+", "_", filename)
+    filename = filename.strip(" ._")
+    if not filename:
+        filename = "file"
+    return filename[:255]
+
+def to_ticker(code: str) -> str:
+    s = str(code).strip()
+    return s if s.endswith(".T") else f"{s}.T"
+
+# ==============================
+# 公開API向けローダ
+# ==============================
+@cache
+def load_core30_meta() -> List[Dict]:
+    s3_key = f"{_S3_PREFIX}/{META_PATH.name}"
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    if df is None or df.empty:
+        df = _read_parquet_local(META_PATH)
+
+    if df is None or df.empty:
+        return []
+
+    need = {"code", "stock_name"}
+    if not need.issubset(df.columns):
+        return []
+
+    out = df[["code", "stock_name"]].drop_duplicates(subset=["code"]).copy()
+    if "ticker" not in out.columns:
+        out["ticker"] = out["code"].astype(str).map(to_ticker)
+    out["code"] = out["code"].astype("string")
+    out["stock_name"] = out["stock_name"].astype("string")
+    out["ticker"] = out["ticker"].astype("string")
+    out = out.sort_values("code", key=lambda s: s.astype(str)).reset_index(drop=True)
+    return out.to_dict(orient="records")
+
+@cache
+def read_prices_1d_df() -> Optional[pd.DataFrame]:
+    s3_key = f"{_S3_PREFIX}/{PRICES_1D_PATH.name}"
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    if df is None or df.empty:
+        df = _read_parquet_local(PRICES_1D_PATH)
+    return df
+
+@cache
+def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
+    filename = f"core30_prices_{period}_{interval}.parquet"
+    s3_key = f"{_S3_PREFIX}/{filename}"
+
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    if df is None or df.empty:
+        local_path = PARQUET_DIR / filename
+        df = _read_parquet_local(local_path)
+
+    return df
+
+@cache
+def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
+    """事前計算されたテクニカル指標スナップショットを読み込む"""
+    s3_key = f"{_S3_PREFIX}/{TECH_SNAPSHOT_PATH.name}"
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    if df is None or df.empty:
+        df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+
+    if df is None or df.empty:
+        return None
+
+    # JSON文字列の列を辞書に変換
+    for col in ["values", "votes", "overall"]:
+        if col in df.columns and isinstance(df[col].iloc[0], str):
+            df[col] = df[col].apply(json.loads)
+    return df
     filename = unicodedata.normalize("NFKC", filename)
     filename = _ALLOWED.sub("_", filename)
     filename = filename.lstrip(".")

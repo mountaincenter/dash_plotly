@@ -1,53 +1,53 @@
 {
-  "generated_at": "2025-10-07T06:29:46.197267+00:00",
+  "generated_at": "2025-10-07T07:43:58.298654+00:00",
   "items": [
     {
       "key": "core30_meta.parquet",
       "bytes": 3149,
       "sha256": "e5c964e8cfc0e181ef440bd0e5028f64d570549941636f767d89a7f5ad67606a",
-      "mtime": "2025-10-07T06:29:32.828251+00:00"
+      "mtime": "2025-10-07T07:43:43.603602+00:00"
     },
     {
       "key": "core30_prices_60d_15m.parquet",
-      "bytes": 646838,
-      "sha256": "09c4c9900660096e2c4b5ed61ec209e7cef66c1cad7f5de00b45779285e67232",
-      "mtime": "2025-10-07T06:29:43.303278+00:00"
+      "bytes": 640951,
+      "sha256": "b3e74601b940e6caababaff41b8d719674ed0cfb00367a4f1dbbce2ea5ba4186",
+      "mtime": "2025-10-07T07:43:53.374632+00:00"
     },
     {
       "key": "core30_prices_60d_5m.parquet",
-      "bytes": 1477977,
-      "sha256": "e382af2da617266e6dc963805a3b0c4623a74130f83b7d585b640c61f73c889c",
-      "mtime": "2025-10-07T06:29:42.080276+00:00"
+      "bytes": 1459428,
+      "sha256": "e78429c2fa4e00898f1c8f18f9e35e047ee85f3c689c6b4f510a8a7179cffdbb",
+      "mtime": "2025-10-07T07:43:52.330228+00:00"
     },
     {
       "key": "core30_prices_730d_1h.parquet",
       "bytes": 2491605,
       "sha256": "7d6f99d255aaee24bc8ea5d3bfc4a71d9d47ebca6e0dbdb86a52149c77ef7bf9",
-      "mtime": "2025-10-07T06:29:40.325033+00:00"
+      "mtime": "2025-10-07T07:43:50.488247+00:00"
     },
     {
       "key": "core30_prices_max_1d.parquet",
       "bytes": 7696171,
       "sha256": "26f41857fff829c45820c51fdd12e27c11327250079209d981354d805f549772",
-      "mtime": "2025-10-07T06:29:35.454416+00:00"
+      "mtime": "2025-10-07T07:43:46.038805+00:00"
     },
     {
       "key": "core30_prices_max_1mo.parquet",
       "bytes": 402486,
       "sha256": "445573d65315ac459438a7a86718ed5bebf1a6b1816891903db62351fff9bf17",
-      "mtime": "2025-10-07T06:29:37.973089+00:00"
+      "mtime": "2025-10-07T07:43:48.197137+00:00"
     },
     {
       "key": "core30_prices_max_1wk.parquet",
       "bytes": 1766933,
       "sha256": "b7bfa9218bc19b3bf7f550f87106f5e48ab71183a5a08653453b17e761b2eb3e",
-      "mtime": "2025-10-07T06:29:36.993836+00:00"
+      "mtime": "2025-10-07T07:43:47.271840+00:00"
     },
     {
       "key": "core30_tech_snapshot_1d.parquet",
       "bytes": 15745,
       "sha256": "470d8cdee05843a9f32fe7161221a2c292f5576b1158d1544fa7065ffa3e08e9",
-      "mtime": "2025-10-07T06:29:46.188999+00:00"
+      "mtime": "2025-10-07T07:43:58.288659+00:00"
     },
     {
       "key": "topixweight_j.parquet",
