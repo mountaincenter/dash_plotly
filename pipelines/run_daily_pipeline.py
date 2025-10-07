@@ -4,6 +4,7 @@
 run_daily_pipeline.py
 - 1) analyze/csv_to_parquet_topixweight.py（CSV変更時のみ）
 - 2) analyze/fetch_core30_yf.ipynb
+- 3) テクニカル指標のスナップショットを事前計算
 - 各処理の manifest/S3 は PIPELINE_NO_* で抑止し、最後に manifest を一括生成→S3へ
 """
 
@@ -18,6 +19,8 @@ import subprocess
 import sys
 from typing import List, Optional
 
+import pandas as pd
+
 # ---- 共有ユーティリティ ----
 from common_cfg.paths import (
     PARQUET_DIR,
@@ -29,8 +32,12 @@ from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_files
 from common_cfg.env import load_dotenv_cascade
+
 # ★ 追加：.env.s3 → .env の順で読み込み（空の上書きに注意）
 load_dotenv_cascade()
+
+# ---- パイプライン内でのみインポート（PYTHONPATH設定後） ----
+# server 以下のモジュールは _run_cmd で PYTHONPATH を設定した後に import する
 
 ROOT = Path(".").resolve()
 CSV_DIR = ROOT / "data" / "csv"
@@ -43,6 +50,9 @@ CORE30_IPYNB   = ANALYZE_DIR / "fetch_core30_yf.ipynb"
 STATE_DIR     = PARQUET_DIR / "_state"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 CSV_HASH_FILE = STATE_DIR / "topixweight_j.csv.sha256"
+
+# 新しい成果物パス
+OUT_TECH_SNAPSHOT = PARQUET_DIR / "core30_tech_snapshot_1d.parquet"
 
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
@@ -95,6 +105,49 @@ def _record_csv_hash():
         CSV_HASH_FILE.write_text(sha256_of(INPUT_TOPIX_CSV))
 
 
+def _run_tech_analysis_snapshot() -> None:
+    """テクニカル指標のスナップショットを計算して保存する"""
+    print("[STEP] run technical analysis snapshot generation")
+    # PYTHONPATH設定済みの環境で import
+    from server.utils import read_prices_1d_df, normalize_prices
+    from server.services.tech_utils_v2 import evaluate_latest_snapshot
+
+    df = read_prices_1d_df()
+    if df is None or df.empty:
+        print("[WARN] prices data not found, skipping tech analysis.")
+        return
+
+    out = normalize_prices(df)
+    if out is None or out.empty:
+        print("[WARN] normalized prices are empty, skipping tech analysis.")
+        return
+
+    res = []
+    for _, grp in out.sort_values(["ticker", "date"]).groupby("ticker", sort=False):
+        grp = grp.dropna(subset=["Close"]).copy()
+        if grp.empty:
+            continue
+        grp = grp.set_index("date")
+        try:
+            res.append(evaluate_latest_snapshot(grp))
+        except Exception as e:
+            ticker = grp["ticker"].iloc[0]
+            print(f"[WARN] Failed to evaluate snapshot for {ticker}: {e}")
+
+    if not res:
+        print("[WARN] No snapshot data generated.")
+        return
+
+    snapshot_df = pd.DataFrame(res)
+    # ネストした辞書はJSON文字列に変換して保存
+    for col in ["values", "votes", "overall"]:
+        if col in snapshot_df.columns:
+            snapshot_df[col] = snapshot_df[col].apply(json.dumps)
+
+    snapshot_df.to_parquet(OUT_TECH_SNAPSHOT, engine="pyarrow", index=False)
+    print(f"[OK] tech snapshot saved: {OUT_TECH_SNAPSHOT}")
+
+
 def _gather_manifest_items() -> list[dict]:
     # Core30の全ファイルを収集（メタ + 複数のpricesファイル）
     UNIVERSE = "core30"
@@ -107,7 +160,7 @@ def _gather_manifest_items() -> list[dict]:
         ("60d_15m", "60d", "15m"),
     ]
 
-    targets = [OUT_CORE30_META, OUT_TOPIX]
+    targets = [OUT_CORE30_META, OUT_TOPIX, OUT_TECH_SNAPSHOT] # ★ スナップショット追加
     # 複数の prices ファイルを追加
     for suffix, _, _ in FILES_TO_GENERATE:
         targets.append(PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet")
@@ -131,6 +184,9 @@ def _gather_manifest_items() -> list[dict]:
 
 def _maybe_upload_to_s3(files: list[Path], *, dry_run: bool) -> None:
     cfg = load_s3_config()
+    if not cfg.bucket:
+        print("[INFO] S3 bucket not configured, skipping upload.")
+        return
     if dry_run:
         for p in files:
             print(f"[PUT] s3://{cfg.bucket}/{cfg.prefix}{p.name} (dry-run)")
@@ -171,7 +227,17 @@ def main() -> int:
     else:
         print("[STEP] skip fetch_core30_yf.ipynb")
 
-    # 3) manifest を一括生成
+    # 3) テクニカル指標スナップショット計算 ★追加ステップ
+    try:
+        _run_tech_analysis_snapshot()
+    except Exception as e:
+        print(f"[ERROR] テクニカル分析スナップショットの生成に失敗: {e}")
+        # エラー詳細を出力
+        import traceback
+        traceback.print_exc()
+        return 1
+
+    # 4) manifest を一括生成
     try:
         print("[STEP] write manifest.json (aggregate)")
         items = _gather_manifest_items()
@@ -181,7 +247,7 @@ def main() -> int:
         print(f"[ERROR] manifest 作成に失敗: {e}")
         return 1
 
-    # 4) S3（manifest + 成果物）
+    # 5) S3（manifest + 成果物）
     try:
         print("[STEP] upload to S3 (aggregate)")
         # Core30の全ファイルを収集
@@ -194,7 +260,7 @@ def main() -> int:
             ("60d_5m", "60d", "5m"),
             ("60d_15m", "60d", "15m"),
         ]
-        files = [MANIFEST_PATH, OUT_CORE30_META, OUT_TOPIX]
+        files = [MANIFEST_PATH, OUT_CORE30_META, OUT_TOPIX, OUT_TECH_SNAPSHOT] # ★ スナップショット追加
         for suffix, _, _ in FILES_TO_GENERATE:
             p = PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet"
             if p.exists():
@@ -209,4 +275,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # PYTHONPATH を設定して server 以下のモジュールを import できるようにする
+    sys.path.insert(0, str(ROOT))
+    main()

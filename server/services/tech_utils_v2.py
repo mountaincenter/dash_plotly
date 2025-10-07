@@ -268,3 +268,80 @@ def score_cmf(v: float | None) -> int:
     if v <= t["sell2"]: return -2
     if v <  t["sell1"]: return -1
     return 0
+
+def evaluate_latest_snapshot(x: pd.DataFrame) -> Dict[str, Any]:
+    """
+    前提: x は単一 ticker の DataFrame（index: date 昇順）
+    必須列: Close / High / Low （Volume は任意）
+    """
+    # index は date
+    last_ts = x.index[-1]
+    date_str = pd.Timestamp(last_ts).strftime("%Y-%m-%d")
+
+    c = x["Close"]; h = x["High"]; l = x["Low"]
+    v = x["Volume"] if "Volume" in x.columns else pd.Series(index=x.index, dtype=float)
+
+    # 値の算出
+    rsi_val    = rsi14(c)
+    mh_val     = macd_hist(c)
+    pb_val     = bb_percent_b(c)
+    dev_val    = sma_dev_pct(c)
+    roc12_val  = roc(c, 12)
+    dch_val    = donchian_dist(c, 20)
+    atr14_val  = atr(c, h, l, 14)
+    atr_pct = (atr14_val / c * 100.0).replace([np.inf, -np.inf], np.nan)
+    rv20_val   = rv(c, 20)
+    er14_val   = efficiency_ratio(c, 14)
+    obv_k_val  = obv_slope(c, v, 5)
+    cmf20_val  = cmf(c, h, l, v, 20)
+    volz_val   = volume_z(v, 20) if "Volume" in x.columns else pd.Series(index=x.index, dtype=float)
+
+    # 既存スコア
+    ma_score_val   = score_ma_series(c)
+    ichi_score_val = score_ichimoku(c)
+
+    # 方向投票
+    votes: Dict[str, int] = {
+        "rsi14":         score_rsi(safe_float(rsi_val.loc[last_ts])),
+        "macd_hist":     score_macd_hist(safe_float(mh_val.loc[last_ts])),
+        "percent_b":     score_percent_b(safe_float(pb_val.loc[last_ts])),
+        "sma25_dev_pct": score_sma25_dev(safe_float(dev_val.loc[last_ts])),
+        "roc12":         score_roc12(safe_float(roc12_val.loc[last_ts])),
+        "donchian":      score_donchian(safe_float(dch_val["dist_up"].loc[last_ts]), safe_float(dch_val["dist_dn"].loc[last_ts])),
+        "obv_slope":     score_obv_slope(safe_float(obv_k_val.loc[last_ts])),
+        "cmf20":         score_cmf(safe_float(cmf20_val.loc[last_ts])),
+    }
+    v_ma   = int(safe_float(ma_score_val.loc[last_ts]) or 0)
+    v_ichi = int(safe_float(ichi_score_val.loc[last_ts]) or 0)
+
+    vote_vals = list(votes.values()) + [v_ma, v_ichi]
+    # NaN考慮の安全平均 → 丸め → クリップ
+    mean = np.nanmean([float(s) for s in vote_vals]) if vote_vals else 0.0
+    overall = int(np.clip(np.rint(mean), -2, 2))
+
+    out: Dict[str, Any] = {
+        "ticker": str(x["ticker"].iloc[-1]),
+        "date":   date_str,
+        "values": {
+            "rsi14": safe_float(rsi_val.loc[last_ts]),
+            "macd_hist": safe_float(mh_val.loc[last_ts]),
+            "percent_b": safe_float(pb_val.loc[last_ts]),
+            "sma25_dev_pct": safe_float(dev_val.loc[last_ts]),
+            "roc12": safe_float(roc12_val.loc[last_ts]),
+            "donchian_dist_up": safe_float(dch_val["dist_up"].loc[last_ts]),
+            "donchian_dist_dn": safe_float(dch_val["dist_dn"].loc[last_ts]),
+            "atr14_pct": safe_float(atr_pct.loc[last_ts]),
+            "rv20": safe_float(rv20_val.loc[last_ts]),
+            "er14": safe_float(er14_val.loc[last_ts]),
+            "obv_slope": safe_float(obv_k_val.loc[last_ts]),
+            "cmf20": safe_float(cmf20_val.loc[last_ts]),
+            "vol_z20": safe_float(volz_val.loc[last_ts]),
+        },
+        "votes": {
+            **{k: {"score": int(v), "label": label_from_score(int(v))} for k, v in votes.items()},
+            "ma": {"score": v_ma, "label": label_from_score(v_ma)},
+            "ichimoku": {"score": v_ichi, "label": label_from_score(v_ichi)},
+        },
+        "overall": {"score": overall, "label": label_from_score(overall)},
+    }
+    return out

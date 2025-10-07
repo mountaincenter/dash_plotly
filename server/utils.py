@@ -19,30 +19,21 @@ def _get_env(name: str) -> Optional[str]:
     return v if (v is not None and str(v).strip() != "") else None
 
 _S3_BUCKET = _get_env("DATA_BUCKET")
-_S3_META_KEY = _get_env("CORE30_META_KEY")            # 例: parquet/core30_meta.parquet
-_S3_PRICES_1D_KEY = _get_env("CORE30_PRICES_KEY")     # 例: parquet/core30_prices_max_1d.parquet
-_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"  # S3 prefix (default: parquet)
+_S3_META_KEY = _get_env("CORE30_META_KEY")
+_S3_PRICES_1D_KEY = _get_env("CORE30_PRICES_KEY")
+_S3_TECH_SNAPSHOT_KEY = _get_env("CORE30_TECH_SNAPSHOT_KEY") # 追加
+_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"
 _AWS_REGION = _get_env("AWS_REGION")
 _AWS_PROFILE = _get_env("AWS_PROFILE")
-_AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")          # 任意（LocalStack/MinIO等）
+_AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
 
 # ---- 既存ローカルパス（フォールバック用） ----
-try:
-    from common_cfg.paths import OUT_META  # data/parquet/core30_meta.parquet
-    META_PATH = Path(str(OUT_META)).resolve()
-except Exception:
-    META_PATH = Path(__file__).resolve().parent.parent / "data" / "parquet" / "core30_meta.parquet"
-
-try:
-    from common_cfg.paths import OUT_PRICES
-    PRICES_1D_PATH = Path(str(OUT_PRICES)).resolve()
-    if "max_1d" not in PRICES_1D_PATH.name:
-        raise Exception("OUT_PRICES is not max_1d file.")
-except Exception:
-    PRICES_1D_PATH = Path(__file__).resolve().parent.parent / "data" / "parquet" / "core30_prices_max_1d.parquet"
-
-DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
 PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
+DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
+
+META_PATH = PARQUET_DIR / "core30_meta.parquet"
+PRICES_1D_PATH = PARQUET_DIR / "core30_prices_max_1d.parquet"
+TECH_SNAPSHOT_PATH = PARQUET_DIR / "core30_tech_snapshot_1d.parquet" # 追加
 
 # ==============================
 # S3 / Local 読み込みヘルパ
@@ -107,10 +98,8 @@ def to_ticker(code: str) -> str:
 # ==============================
 @cache
 def load_core30_meta() -> List[Dict]:
-    # まずS3
     df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
-    # 取れなかった/空ならローカルへ
-    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+    if df is None or df.empty:
         df = _read_parquet_local(META_PATH)
 
     if df is None or df.empty:
@@ -132,25 +121,36 @@ def load_core30_meta() -> List[Dict]:
 @cache
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
     df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
-    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+    if df is None or df.empty:
         df = _read_parquet_local(PRICES_1D_PATH)
     return df
 
 @cache
 def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
-    """
-    指定した period と interval に対応する Parquet を読み込む。
-    ファイル名: core30_prices_{period}_{interval}.parquet
-    S3 → ローカル の順で試行。
-    """
     filename = f"core30_prices_{period}_{interval}.parquet"
     s3_key = f"{_S3_PREFIX}/{filename}"
 
     df = _read_parquet_s3(_S3_BUCKET, s3_key)
-    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+    if df is None or df.empty:
         local_path = PARQUET_DIR / filename
         df = _read_parquet_local(local_path)
 
+    return df
+
+@cache
+def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
+    """事前計算されたテクニカル指標スナップショットを読み込む"""
+    df = _read_parquet_s3(_S3_BUCKET, _S3_TECH_SNAPSHOT_KEY)
+    if df is None or df.empty:
+        df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+
+    if df is None or df.empty:
+        return None
+
+    # JSON文字列の列を辞書に変換
+    for col in ["values", "votes", "overall"]:
+        if col in df.columns and isinstance(df[col].iloc[0], str):
+            df[col] = df[col].apply(json.loads)
     return df
 
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:
