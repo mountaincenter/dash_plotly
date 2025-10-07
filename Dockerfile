@@ -14,6 +14,11 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# ★ セキュリティ：openssl のみ最小アップグレード（CVE-2025-9230 対応）
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends --only-upgrade openssl && \
+    rm -rf /var/lib/apt/lists/*
+
 # 作業ディレクトリ
 WORKDIR /app
 
@@ -35,4 +40,5 @@ EXPOSE 8000
 # FastAPI(Uvicorn) 起動
 # - 環境変数 PORT を利用（App Runner 側から上書き可能）
 # - --proxy-headers: リバースプロキシ環境でのヘッダ考慮
-CMD ["sh", "-c", "uvicorn server.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers"]
+# - keep-alive短縮＆アクセスログ無効化（追加費用なしの微調整）
+CMD ["sh", "-c", "uvicorn server.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --timeout-keep-alive 15 --no-access-log"]
