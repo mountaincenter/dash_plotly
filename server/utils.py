@@ -205,15 +205,16 @@ def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
 
 @cache
 def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
-    """事前計算されたテクニカル指標スナップショットを読み込む"""
-    df = _read_parquet_s3(_S3_BUCKET, _S3_TECH_SNAPSHOT_KEY)
+    """【診断用】事前計算されたテクニカル指標スナップショットを読み込む。テストのため、わざとmetaファイルを読み込む"""
+    s3_key = f"{_S3_PREFIX}/core30_meta.parquet"  # ★★★ 診断のため、既知の正常なファイルに書き換え ★★★
+    df = _read_parquet_s3(_S3_BUCKET, s3_key)
     if df is None or df.empty:
-        df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+        df = _read_parquet_local(TECH_SNAPSHOT_PATH) # ローカルはそのまま
 
     if df is None or df.empty:
         return None
 
-    # JSON文字列の列を辞書に変換
+    # JSON文字列の列を辞書に変換 (この部分はmetaデータにはないのでスキップされる)
     for col in ["values", "votes", "overall"]:
         if col in df.columns and isinstance(df[col].iloc[0], str):
             df[col] = df[col].apply(json.loads)
