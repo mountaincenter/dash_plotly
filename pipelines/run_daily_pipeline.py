@@ -3,7 +3,7 @@
 """
 run_daily_pipeline.py
 - 1) analyze/create_master_meta.py（統合メタデータ生成）
-- 2) analyze/fetch_core30_yf.ipynb
+- 2) analyze/fetch_core30_prices.py（価格データ取得）
 - 3) テクニカル指標のスナップショットを事前計算
 - 各処理の manifest/S3 は PIPELINE_NO_* で抑止し、最後に manifest を一括生成→S3へ
 """
@@ -43,7 +43,7 @@ load_dotenv_cascade()
 
 ROOT = Path(".").resolve()
 ANALYZE_DIR    = ROOT / "analyze"
-CORE30_IPYNB   = ANALYZE_DIR / "fetch_core30_yf.ipynb"
+CORE30_SCRIPT  = ANALYZE_DIR / "fetch_core30_prices.py"
 MASTER_META_PY = ANALYZE_DIR / "create_master_meta.py"
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
@@ -65,19 +65,6 @@ def _run_py_script(script: Path, extra_env: Optional[dict] = None) -> None:
     if not script.exists():
         raise FileNotFoundError(f"not found: {script}")
     _run_cmd([sys.executable, str(script)], extra_env=extra_env)
-
-
-def _run_notebook(nb_path: Path, extra_env: Optional[dict] = None) -> None:
-    if not nb_path.exists():
-        raise FileNotFoundError(f"not found: {nb_path}")
-    executed = nb_path.with_name(nb_path.stem + "_executed.ipynb")
-    _run_cmd([
-        "jupyter", "nbconvert",
-        "--to", "notebook",
-        "--execute", str(nb_path),
-        "--output", str(executed.name),
-        "--ExecutePreprocessor.timeout=0"
-    ], cwd=nb_path.parent, extra_env=extra_env)
 
 
 def _run_tech_analysis_snapshot() -> None:
@@ -175,16 +162,16 @@ def main() -> int:
         print(f"[ERROR] master meta 生成に失敗: {e}")
         return 1
 
-    # 2) fetch_core30
+    # 2) fetch_core30 prices
     if not args.skip_core30:
         try:
-            print("[STEP] run fetch_core30_yf.ipynb")
-            _run_notebook(CORE30_IPYNB, extra_env=pipeline_env)
+            print("[STEP] run fetch_core30_prices.py")
+            _run_py_script(CORE30_SCRIPT, extra_env=pipeline_env)
         except Exception as e:
             print(f"[ERROR] fetch_core30 実行に失敗: {e}")
             return 1
     else:
-        print("[STEP] skip fetch_core30_yf.ipynb")
+        print("[STEP] skip fetch_core30 prices")
 
     # 3) テクニカル指標スナップショット計算 ★追加ステップ
     try:

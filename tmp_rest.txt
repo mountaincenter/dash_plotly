@@ -1,0 +1,229 @@
+# === フラット化（スキーマ維持 + 欠損抑制） ===
+def _flatten_multi(raw: pd.DataFrame, tickers: list[str], interval: str) -> pd.DataFrame:
+    """
+    yfinance.download を用いて単階層のOHLCV(+Adj Close)へ整形。
+    5m/15m/1h: JST（Asia/Tokyo）に変換してから naive へ落とす。
+    1d/1wk/1mo: UTC 0:00 のまま（タイムゾーン情報のみ削除）。
+    """
+    frames = []
+    if isinstance(raw.columns, pd.MultiIndex):
+        lv0 = raw.columns.get_level_values(0)
+        for t in tickers:
+            if t in lv0:
+                sub = raw[t].copy()
+                if sub.empty:
+                    continue
+                sub = sub.reset_index()
+                if "Datetime" in sub.columns:
+                    sub = sub.rename(columns={"Datetime": "date"})
+                elif "Date" in sub.columns:
+                    sub = sub.rename(columns={"Date": "date"})
+                elif "index" in sub.columns:
+                    sub = sub.rename(columns={"index": "date"})
+                else:
+                    sub.columns = ["date"] + [c for c in sub.columns[1:]]
+                sub["ticker"] = t
+                keep = [c for c in ["date","Open","High","Low","Close","Volume","ticker"] if c in sub.columns]
+                sub = sub[keep].copy()
+                frames.append(sub)
+    else:
+        sub = raw.reset_index()
+        if "Datetime" in sub.columns:
+            sub = sub.rename(columns={"Datetime": "date"})
+        elif "Date" in sub.columns:
+            sub = sub.rename(columns={"Date": "date"})
+        elif "index" in sub.columns:
+            sub = sub.rename(columns={"index": "date"})
+        sub["ticker"] = tickers[0] if tickers else "UNKNOWN"
+        keep = [c for c in ["date","Open","High","Low","Close","Volume","ticker"] if c in sub.columns]
+        sub = sub[keep].copy()
+        frames.append(sub)
+
+    if not frames:
+        return pd.DataFrame(columns=["date","Open","High","Low","Close","Volume","ticker"])
+
+    out = pd.concat(frames, ignore_index=True)
+
+    # date列の処理
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    
+    # interval に応じてタイムゾーン処理を分岐
+    if interval in ("5m", "15m", "1h"):
+        # 5m/15m/1h: JST に変換
+        try:
+            if out["date"].dt.tz is not None:
+                out["date"] = out["date"].dt.tz_convert("Asia/Tokyo")
+            else:
+                out["date"] = out["date"].dt.tz_localize("UTC").dt.tz_convert("Asia/Tokyo")
+            out["date"] = out["date"].dt.tz_localize(None)
+        except Exception:
+            try:
+                out["date"] = out["date"].dt.tz_localize(None)
+            except Exception:
+                pass
+    else:
+        # 1d/1wk/1mo: UTC 0:00 のまま（タイムゾーン情報のみ削除）
+        try:
+            out["date"] = out["date"].dt.tz_localize(None)
+        except Exception:
+            pass
+
+    # 型統一
+    for c in ["Open","High","Low","Close","Volume"]:
+        if c in out.columns:
+            out[c] = pd.to_numeric(out[c], errors="coerce")
+
+    # 欠損抑制: dateがNaTは除外 / OHLCのいずれかが欠損する行は除外（Volumeは欠損許容）
+    out = out[out["date"].notna()].copy()
+    need_ohlc = [c for c in ["Open","High","Low","Close"] if c in out.columns]
+    if need_ohlc:
+        out = out.dropna(subset=need_ohlc, how="any")
+
+    # 重複除去の前に整列
+    if "ticker" in out.columns:
+        out = out.sort_values(["ticker","date"]).reset_index(drop=True)
+    else:
+        out = out.sort_values(["date"]).reset_index(drop=True)
+
+    return out
+
+def _fetch_prices(period: str, interval: str) -> pd.DataFrame:
+    """
+    period × interval 指定で yfinance を取得し、スキーマを揃えて返す。
+    auto_adjust は明示的に True（欠落や将来のデフォルト変更に影響されない）。
+    """
+    try:
+        raw = yf.download(
+            tickers,
+            period=period,
+            interval=interval,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=True,  # ← 明示
+        )
+        df = _flatten_multi(raw, tickers, interval)
+        if df.empty:
+            raise RuntimeError("yf.download returned empty. fallback to per-ticker.")
+    except Exception:
+        frames = []
+        for t in tickers:
+            try:
+                r = yf.download(
+                    t,
+                    period=period,
+                    interval=interval,
+                    group_by="ticker",
+                    threads=True,
+                    progress=False,
+                    auto_adjust=True,  # ← 明示
+                )
+                f = _flatten_multi(r, [t], interval)
+                if not f.empty:
+                    frames.append(f)
+            except Exception:
+                pass
+        df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    need = {"date","Open","High","Low","Close","ticker"}
+    if df.empty or not need.issubset(df.columns):
+        raise RuntimeError(f"No price data collected or required columns missing for period={period} interval={interval}.")
+    return df
+
+def _append_or_create(path: Path, new_df: pd.DataFrame) -> int:
+    """
+    追記のみ運用:
+      - 既存があれば読み込み→縦結合→(ticker,date)で重複排除（欠損の少ない行を優先）→上書き保存
+      - なければ新規保存
+    戻り値: 書き出し後の総行数
+    """
+    cols = ["date","Open","High","Low","Close","Volume","ticker"]
+    if path.exists():
+        try:
+            existing = pd.read_parquet(path, engine="pyarrow")
+        except Exception:
+            existing = pd.DataFrame(columns=cols)
+    else:
+        existing = pd.DataFrame(columns=cols)
+
+    # 列補完（最小限の型安全）
+    for c in cols:
+        if c not in new_df.columns:
+            new_df[c] = pd.Series(dtype=existing[c].dtype if c in existing.columns else "float64")
+        if c not in existing.columns:
+            existing[c] = pd.Series(dtype=new_df[c].dtype)
+
+    # FutureWarning 回避: 空でないものだけを concat
+    frames = []
+    if not existing.empty:
+        frames.append(existing[cols])
+    if not new_df.empty:
+        frames.append(new_df[cols])
+
+    if frames:
+        both = pd.concat(frames, ignore_index=True)
+    else:
+        both = pd.DataFrame(columns=cols)
+
+    # 冪等 & 欠損抑制:
+    #  - (ticker,date) 重複時は「欠損カウントが少ない行」を優先
+    #  - その後、OHLC 欠損行は除外（Volume は許容）
+    if not both.empty:
+        na_cols = [c for c in ["Open","High","Low","Close","Volume"] if c in both.columns]
+        both["_na"] = both[na_cols].isna().sum(axis=1)
+        both = both.sort_values(["ticker","date","_na"], ascending=[True, True, True]).drop_duplicates(
+            subset=["ticker","date"], keep="first"
+        )
+        both = both.drop(columns=["_na"], errors="ignore")
+        # 最終ガード（OHLC 欠損を弾く）
+        need_ohlc = [c for c in ["Open","High","Low","Close"] if c in both.columns]
+        if need_ohlc:
+            both = both.dropna(subset=need_ohlc, how="any")
+        both = both.sort_values(["ticker","date"]).reset_index(drop=True)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    both.to_parquet(path, engine="pyarrow", index=False)
+    return len(both)
+
+# ==== 保存 ====
+OUT_META.parent.mkdir(parents=True, exist_ok=True)
+core.to_parquet(OUT_META, engine="pyarrow", index=False)
+print(f"[OK] meta saved: {OUT_META} rows={len(core)}")
+
+written_files: list[Path] = [OUT_META]
+
+# 各ファイルを生成
+for suffix, period, interval in FILES_TO_GENERATE:
+    out_path = PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet"
+    df_iv = _fetch_prices(period=period, interval=interval)
+    n_rows = _append_or_create(out_path, df_iv)
+    print(f"[OK] prices ({suffix}) saved: {out_path} rows={n_rows}")
+    written_files.append(out_path)
+
+# ==== manifest 更新（新リストで上書き；旧 1y_1d のキーは消滅） ====
+if not NO_MANIFEST:
+    items = []
+    for p in written_files:
+        stat = p.stat()
+        items.append({
+            "key": p.name,  # ← ファイル名そのまま（S3キーではない）
+            "bytes": stat.st_size,
+            "sha256": sha256_of(p),
+            "mtime": pd.Timestamp(stat.st_mtime, unit="s", tz="UTC").isoformat(),
+        })
+    write_manifest_atomic(items, MANIFEST_PATH)
+    print(f"[OK] manifest updated: {MANIFEST_PATH} (entries={len(items)})")
+else:
+    print("[INFO] PIPELINE_NO_MANIFEST=1 → manifest 更新はスキップ")
+
+# ==== S3 アップロード（抑止可能）====
+_to_upload = (written_files + [MANIFEST_PATH]) if not NO_MANIFEST else written_files
+maybe_upload_files_s3(
+    _to_upload,
+    bucket=DATA_BUCKET,
+    prefix=PARQUET_PREFIX,
+    aws_region=AWS_REGION,
+    aws_profile=AWS_PROFILE,
+    dry_run=False
+)
+print(f"[OK] S3 upload done (count={len(_to_upload)})")
