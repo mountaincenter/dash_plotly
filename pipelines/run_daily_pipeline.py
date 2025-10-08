@@ -3,7 +3,7 @@
 """
 run_daily_pipeline.py
 - 1) analyze/create_master_meta.py（統合メタデータ生成）
-- 2) analyze/fetch_core30_prices.py（価格データ取得）
+- 2) analyze/fetch_prices.py（全銘柄価格データ取得）
 - 3) テクニカル指標のスナップショットを事前計算
 - 各処理の manifest/S3 は PIPELINE_NO_* で抑止し、最後に manifest を一括生成→S3へ
 """
@@ -42,9 +42,9 @@ load_dotenv_cascade()
 # server 以下のモジュールは _run_cmd で PYTHONPATH を設定した後に import する
 
 ROOT = Path(".").resolve()
-ANALYZE_DIR    = ROOT / "analyze"
-CORE30_SCRIPT  = ANALYZE_DIR / "fetch_core30_prices.py"
-MASTER_META_PY = ANALYZE_DIR / "create_master_meta.py"
+ANALYZE_DIR        = ROOT / "analyze"
+FETCH_PRICES_SCRIPT = ANALYZE_DIR / "fetch_prices.py"
+MASTER_META_PY     = ANALYZE_DIR / "create_master_meta.py"
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
 def _run_cmd(cmd, cwd: Optional[Path] = None, extra_env: Optional[dict] = None) -> None:
@@ -111,7 +111,7 @@ def _run_tech_analysis_snapshot() -> None:
 
 
 def _gather_manifest_items() -> list[dict]:
-    # Core30の全ファイルを収集（メタ + 複数のpricesファイル）
+    # 生成ファイルを収集（メタ + 複数のpricesファイル）
     targets = [OUT_TECH_SNAPSHOT, OUT_MASTER_META]
     for period, interval in PRICE_SPECS:
         targets.append(price_parquet(period, interval))
@@ -147,7 +147,7 @@ def _maybe_upload_to_s3(files: list[Path], *, dry_run: bool) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--skip-core30", action="store_true")
+    ap.add_argument("--skip-prices", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -162,16 +162,16 @@ def main() -> int:
         print(f"[ERROR] master meta 生成に失敗: {e}")
         return 1
 
-    # 2) fetch_core30 prices
-    if not args.skip_core30:
+    # 2) fetch prices
+    if not args.skip_prices:
         try:
-            print("[STEP] run fetch_core30_prices.py")
-            _run_py_script(CORE30_SCRIPT, extra_env=pipeline_env)
+            print("[STEP] run fetch_prices.py")
+            _run_py_script(FETCH_PRICES_SCRIPT, extra_env=pipeline_env)
         except Exception as e:
-            print(f"[ERROR] fetch_core30 実行に失敗: {e}")
+            print(f"[ERROR] fetch_prices 実行に失敗: {e}")
             return 1
     else:
-        print("[STEP] skip fetch_core30 prices")
+        print("[STEP] skip fetch prices")
 
     # 3) テクニカル指標スナップショット計算 ★追加ステップ
     try:

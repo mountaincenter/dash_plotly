@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-fetch_core30_prices.py
-- Read meta.parquet and extract TOPIX Core30 tickers
+fetch_prices.py
+- Read meta.parquet and extract the entire ticker universe
 - Download price data via yfinance across predefined intervals
 - Append/update parquet outputs under data/parquet/prices_*.parquet
 """
@@ -34,30 +34,29 @@ from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3io import maybe_upload_files_s3
 
 
-def load_core30_universe() -> pd.DataFrame:
+def load_universe() -> pd.DataFrame:
     meta_path = MASTER_META_PARQUET
     if not meta_path.exists():
         raise FileNotFoundError(f"not found: {meta_path}")
 
     meta_df = pd.read_parquet(meta_path, engine="pyarrow")
-    required_cols = {"code", "stock_name", "ticker", "tag1"}
+    required_cols = {"code", "stock_name", "ticker"}
     missing = required_cols.difference(meta_df.columns)
     if missing:
         raise KeyError(f"meta parquet missing columns: {sorted(missing)}")
 
-    core = (
-        meta_df.loc[meta_df["tag1"].astype("string").str.upper() == "TOPIX_CORE30", ["code", "stock_name", "ticker"]]
-        .dropna(subset=["ticker"])
+    universe = (
+        meta_df.loc[meta_df["ticker"].notna(), ["code", "stock_name", "ticker"]]
         .drop_duplicates(subset=["ticker"])
         .reset_index(drop=True)
     )
-    core["code"] = core["code"].astype("string")
-    core["stock_name"] = core["stock_name"].astype("string")
-    core["ticker"] = core["ticker"].astype("string")
+    universe["code"] = universe["code"].astype("string")
+    universe["stock_name"] = universe["stock_name"].astype("string")
+    universe["ticker"] = universe["ticker"].astype("string")
 
-    if core.empty:
-        raise RuntimeError("Core30 list is empty. Check tag1 values in meta.parquet.")
-    return core
+    if universe.empty:
+        raise RuntimeError("Universe is empty. Check ticker values in meta.parquet.")
+    return universe
 
 
 def _flatten_multi(raw: pd.DataFrame, tickers: List[str], interval: str) -> pd.DataFrame:
@@ -216,9 +215,9 @@ def _append_or_create(path: Path, new_df: pd.DataFrame) -> int:
 def main() -> int:
     load_dotenv_cascade()
 
-    core = load_core30_universe()
-    tickers: List[str] = core["ticker"].tolist()
-    print(f"[INFO] core30 universe size: {len(tickers)}")
+    universe = load_universe()
+    tickers: List[str] = universe["ticker"].tolist()
+    print(f"[INFO] universe size: {len(tickers)}")
 
     written_files: List[Path] = []
     for period, interval in PRICE_SPECS:
@@ -236,6 +235,9 @@ def main() -> int:
         print(f"[OK] prices ({suffix}) saved: {out_path} rows={rows}")
         written_files.append(out_path)
 
+    if not written_files:
+        raise RuntimeError("No price parquet files were written.")
+
     if not NO_MANIFEST:
         items = []
         for p in written_files:
@@ -252,15 +254,16 @@ def main() -> int:
         print("[INFO] PIPELINE_NO_MANIFEST=1 → manifest 更新はスキップ")
 
     if not NO_S3:
+        upload_targets = written_files + ([] if NO_MANIFEST else [MANIFEST_PATH])
         maybe_upload_files_s3(
-            written_files + ([] if NO_MANIFEST else [MANIFEST_PATH]),
+            upload_targets,
             bucket=DATA_BUCKET,
             prefix=PARQUET_PREFIX,
             aws_region=AWS_REGION,
             aws_profile=AWS_PROFILE,
             dry_run=False,
         )
-        print(f"[OK] S3 upload done (count={len(written_files)})")
+        print(f"[OK] S3 upload done (count={len(upload_targets)})")
     else:
         print("[INFO] PIPELINE_NO_S3=1 → S3 送信はスキップ")
     return 0

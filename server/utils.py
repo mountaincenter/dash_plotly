@@ -19,11 +19,8 @@ def _get_env(name: str) -> Optional[str]:
     return v if (v is not None and str(v).strip() != "") else None
 
 _S3_BUCKET = _get_env("DATA_BUCKET")
-_S3_META_KEY = _get_env("CORE30_META_KEY")
-_S3_MASTER_META_KEY = _get_env("MASTER_META_KEY") or _S3_META_KEY
-_S3_PRICES_1D_KEY = _get_env("CORE30_PRICES_KEY")
-_S3_TECH_SNAPSHOT_KEY = _get_env("CORE30_TECH_SNAPSHOT_KEY")  # backward compat
-_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"
+_S3_PREFIX_RAW = _get_env("PARQUET_PREFIX")
+_S3_PREFIX = (_S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet")
 _AWS_REGION = _get_env("AWS_REGION")
 _AWS_PROFILE = _get_env("AWS_PROFILE")
 _AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
@@ -36,10 +33,21 @@ MASTER_META_PATH = PARQUET_DIR / "meta.parquet"
 PRICES_1D_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 TECH_SNAPSHOT_PATH = PARQUET_DIR / "tech_snapshot_1d.parquet"
 
-if not _S3_PRICES_1D_KEY:
-    _S3_PRICES_1D_KEY = f"{_S3_PREFIX}/{PRICES_1D_PATH.name}"
-if not _S3_TECH_SNAPSHOT_KEY:
-    _S3_TECH_SNAPSHOT_KEY = f"{_S3_PREFIX}/{TECH_SNAPSHOT_PATH.name}"
+def _s3_key(default_name: str) -> str:
+    return f"{_S3_PREFIX}/{default_name}" if _S3_PREFIX else default_name
+
+def _env_s3_key(*names: str, default: Optional[str] = None) -> Optional[str]:
+    for name in names:
+        value = _get_env(name)
+        if value:
+            return value.lstrip("/")
+    if default:
+        return _s3_key(default)
+    return None
+
+_S3_MASTER_META_KEY = _env_s3_key("MASTER_META_KEY", "META_KEY", "CORE30_META_KEY", default=MASTER_META_PATH.name)
+_S3_PRICES_1D_KEY = _env_s3_key("PRICES_MAX_1D_KEY", "PRICES_1D_KEY", "CORE30_PRICES_KEY", default=PRICES_1D_PATH.name)
+_S3_TECH_SNAPSHOT_KEY = _env_s3_key("TECH_SNAPSHOT_KEY", "CORE30_TECH_SNAPSHOT_KEY", default=TECH_SNAPSHOT_PATH.name)
 
 # ==============================
 # S3 / Local 読み込みヘルパ
@@ -104,40 +112,6 @@ def to_ticker(code: str) -> str:
 # 公開API向けローダ
 # ==============================
 @cache
-def load_core30_meta() -> List[Dict]:
-    master = load_master_meta("TOPIX_CORE30")
-    if master:
-        out: List[Dict] = []
-        for item in master:
-            code = item.get("code")
-            stock_name = item.get("stock_name")
-            ticker = item.get("ticker") or (to_ticker(code) if code else None)
-            out.append({
-                "code": str(code) if code not in (None, "") else "",
-                "stock_name": stock_name,
-                "ticker": ticker,
-            })
-        out.sort(key=lambda x: x.get("code") or "")
-        return out
-
-    df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
-    if df is None or df.empty:
-        return []
-
-    need = {"code", "stock_name"}
-    if not need.issubset(df.columns):
-        return []
-
-    out_df = df[["code", "stock_name"]].drop_duplicates(subset=["code"]).copy()
-    if "ticker" not in out_df.columns:
-        out_df["ticker"] = out_df["code"].astype(str).map(to_ticker)
-    out_df["code"] = out_df["code"].astype("string")
-    out_df["stock_name"] = out_df["stock_name"].astype("string")
-    out_df["ticker"] = out_df["ticker"].astype("string")
-    out_df = out_df.sort_values("code", key=lambda s: s.astype(str)).reset_index(drop=True)
-    return out_df.to_dict(orient="records")
-
-
 def _resolve_tag(tag: Optional[str]) -> Optional[str]:
     if not tag:
         return None
@@ -161,9 +135,9 @@ def _resolve_tag(tag: Optional[str]) -> Optional[str]:
 
 @cache
 def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
-    df = _read_parquet_s3(_S3_BUCKET, _S3_MASTER_META_KEY)
-    if df is None or df.empty:
-        df = _read_parquet_local(MASTER_META_PATH)
+    df = _read_parquet_local(MASTER_META_PATH)
+    if (df is None or df.empty) and _S3_BUCKET and _S3_MASTER_META_KEY:
+        df = _read_parquet_s3(_S3_BUCKET, _S3_MASTER_META_KEY)
     if df is None or df.empty:
         return []
 
@@ -181,30 +155,28 @@ def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
 
 @cache
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
-    df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
-    if df is None or df.empty:
-        df = _read_parquet_local(PRICES_1D_PATH)
+    df = _read_parquet_local(PRICES_1D_PATH)
+    if (df is None or df.empty) and _S3_BUCKET and _S3_PRICES_1D_KEY:
+        df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
     return df
 
 @cache
 def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
     filename = f"prices_{period}_{interval}.parquet"
-    s3_key = f"{_S3_PREFIX}/{filename}"
-
-    df = _read_parquet_s3(_S3_BUCKET, s3_key)
-    if df is None or df.empty:
-        local_path = PARQUET_DIR / filename
-        df = _read_parquet_local(local_path)
+    local_path = PARQUET_DIR / filename
+    df = _read_parquet_local(local_path)
+    if (df is None or df.empty) and _S3_BUCKET:
+        s3_key = _s3_key(filename)
+        df = _read_parquet_s3(_S3_BUCKET, s3_key)
 
     return df
 
 @cache
 def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
     """事前計算されたテクニカル指標スナップショットを読み込む"""
-    s3_key = f"{_S3_PREFIX}/{TECH_SNAPSHOT_PATH.name}"
-    df = _read_parquet_s3(_S3_BUCKET, s3_key)
-    if df is None or df.empty:
-        df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+    df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+    if (df is None or df.empty) and _S3_BUCKET and _S3_TECH_SNAPSHOT_KEY:
+        df = _read_parquet_s3(_S3_BUCKET, _S3_TECH_SNAPSHOT_KEY)
 
     if df is None or df.empty:
         return None

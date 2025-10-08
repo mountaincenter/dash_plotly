@@ -25,7 +25,7 @@ SRP/DRY/MECE を満たし、ローカル検証〜S3同期〜ECR/App Runner デ�
 │   ├── s3cfg.py                 # S3関連ENV（BUCKET/PREFIX/REGION/PROFILE）
 │   └── s3io.py                  # S3アップロード共通（endpoint_url対応）
 ├── analyze/                     # 解析・実験（壊してOK）
-│   ├── fetch_core30_yf.ipynb
+│   ├── fetch_yf.ipynb
 │   ├── anomaly.ipynb
 │   └── README.md（任意）
 ├── pipelines/                   # 本番想定のデータ生成スクリプト
@@ -34,9 +34,9 @@ SRP/DRY/MECE を満たし、ローカル検証〜S3同期〜ECR/App Runner デ�
 │   ├── csv/
 │   └── parquet/
 │       ├── _state/              # 入力CSVのハッシュ等
-│       ├── core30_anomaly.parquet
-│       ├── core30_meta.parquet
-│       ├── core30_prices_1y_1d.parquet
+│       ├── meta.parquet
+│       ├── prices_max_1d.parquet
+│       ├── prices_60d_5m.parquet
 │       └── manifest.json
 ├── docker-compose.yml           # web-dev(ローカル), web-stg(S3) を同居
 ├── Dockerfile
@@ -93,7 +93,7 @@ docker compose up -d web-dev web-stg
 
 ### 3.3 S3 キー
 
-- `PARQUET_PREFIX/key.parquet`（例：`parquet/core30_meta.parquet`）
+- `PARQUET_PREFIX/key.parquet`（例：`parquet/meta.parquet`）
 - manifest は `parquet/manifest.json`
 
 ---

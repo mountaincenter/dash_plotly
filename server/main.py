@@ -12,7 +12,7 @@ from server.routers.tech import router as tech_router
 
 import os
 
-app = FastAPI(title="Core30 API", version="1.0.0")
+app = FastAPI(title="Market Data API", version="1.0.0")
 
 # === 圧縮（1KB以上を自動gzip） ===
 app.add_middleware(GZipMiddleware, minimum_size=1024)

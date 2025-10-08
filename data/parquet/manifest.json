@@ -1,53 +1,53 @@
 {
-  "generated_at": "2025-10-08T16:41:40.219844+00:00",
+  "generated_at": "2025-10-08T19:15:08.027239+00:00",
   "items": [
     {
       "key": "meta.parquet",
       "bytes": 8545,
       "sha256": "9ca4533c80188eff73f252fab77bffcd8ebbb86553395221a118f50e93ae32f1",
-      "mtime": "2025-10-08T16:41:28.967596+00:00"
+      "mtime": "2025-10-08T19:14:52.181795+00:00"
     },
     {
       "key": "prices_60d_15m.parquet",
-      "bytes": 647520,
-      "sha256": "ca5e58b83717b9733fcf2a6375df98aa1f710fc4124fdcdaa0910e811d677933",
-      "mtime": "2025-10-08T16:41:39.537910+00:00"
+      "bytes": 1064979,
+      "sha256": "81737c95d96c0b3aad1b842c12468c9711dfec4c90c56c5436bb055ddffac566",
+      "mtime": "2025-10-08T19:15:07.385468+00:00"
     },
     {
       "key": "prices_60d_5m.parquet",
-      "bytes": 1556030,
-      "sha256": "73f6ee83169034c837bcb0ef7a1fb8ed726d2020b91e7fa0ac2d5237d7e4f202",
-      "mtime": "2025-10-08T16:41:38.343399+00:00"
+      "bytes": 2623199,
+      "sha256": "feebd3dbe04a75e0a0a858f1ba85503042abf24717bfad335237c79e6b778bc8",
+      "mtime": "2025-10-08T19:15:05.671514+00:00"
     },
     {
       "key": "prices_730d_1h.parquet",
-      "bytes": 2430738,
-      "sha256": "14caa35606bf1b7b4ad75eb1892464bfc36249f15d290c55065020b0a622ed42",
-      "mtime": "2025-10-08T16:41:36.507761+00:00"
+      "bytes": 3932690,
+      "sha256": "2490712e594839120904fe8ec9d2f70853c894b471c7ebde7fdf5eaf27f75755",
+      "mtime": "2025-10-08T19:15:02.676428+00:00"
     },
     {
       "key": "prices_max_1d.parquet",
-      "bytes": 7694032,
-      "sha256": "9f5b67b58208345ac2cc80e46c7ec7f20f3d3c5d1772f68ed6c327990bc900b2",
-      "mtime": "2025-10-08T16:41:31.921813+00:00"
+      "bytes": 10894236,
+      "sha256": "f756f81a6b43742ca0da41ae854fc332d39679a536a0bdc952c003d165016aa7",
+      "mtime": "2025-10-08T19:14:56.307200+00:00"
     },
     {
       "key": "prices_max_1mo.parquet",
-      "bytes": 402486,
-      "sha256": "445573d65315ac459438a7a86718ed5bebf1a6b1816891903db62351fff9bf17",
-      "mtime": "2025-10-08T16:41:34.124634+00:00"
+      "bytes": 623646,
+      "sha256": "d33956b614be71d6bb3626df8a1f4eedd9a06ddb51083f64ccd00721b4df9b00",
+      "mtime": "2025-10-08T19:14:59.484482+00:00"
     },
     {
       "key": "prices_max_1wk.parquet",
-      "bytes": 1766933,
-      "sha256": "b7bfa9218bc19b3bf7f550f87106f5e48ab71183a5a08653453b17e761b2eb3e",
-      "mtime": "2025-10-08T16:41:33.176526+00:00"
+      "bytes": 2688673,
+      "sha256": "7691bd3e5b2cae8be944d8bb17a82bebd3f672fd12e331cc329a223d8173e4c4",
+      "mtime": "2025-10-08T19:14:58.244159+00:00"
     },
     {
       "key": "tech_snapshot_1d.parquet",
-      "bytes": 15522,
-      "sha256": "53c47246276c6690fb2070b546e323e55c8b2490b422a7dc081c444769d2a86a",
-      "mtime": "2025-10-08T16:41:40.211886+00:00"
+      "bytes": 21088,
+      "sha256": "f3747102b46e1af2dc4cd9b87afec123541578d5be696b8b27fbb799bbc034c3",
+      "mtime": "2025-10-08T19:15:08.014930+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."
