@@ -3,9 +3,12 @@ from fastapi import FastAPI, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from server.routers.core30 import router as core30_router
 from server.routers.health import router as health_router
 from server.routers.demo import router as demo_router
+from server.routers.stocks import router as stocks_router
+from server.routers.meta import router as meta_router
+from server.routers.prices import router as prices_router
+from server.routers.tech import router as tech_router
 
 import os
 
@@ -44,13 +47,19 @@ async def _warmup():
     except Exception:
         pass
 
-# === キャッシュ系ヘッダの付与（/core30, /demo のGETのみ） ===
+# === キャッシュ系ヘッダの付与（/prices, /tech, /stocks, /demo のGETのみ） ===
 # 既にハンドラ側で Cache-Control/ETag を設定している場合はそれを尊重
 @app.middleware("http")
 async def _cache_headers(request: Request, call_next):
     response: Response = await call_next(request)
     p = request.url.path or ""
-    if request.method == "GET" and (p.startswith("/core30") or p.startswith("/demo")):
+    if request.method == "GET" and (
+        p.startswith("/demo")
+        or p.startswith("/stocks")
+        or p.startswith("/meta")
+        or p.startswith("/prices")
+        or p.startswith("/tech")
+    ):
         # 既存ヘッダが無ければ付与（stale-while-revalidateで中間キャッシュを活用）
         if "cache-control" not in {k.lower() for k in response.headers.keys()}:
             response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
@@ -59,5 +68,8 @@ async def _cache_headers(request: Request, call_next):
 
 # === 既存のルーター登録（変更なし） ===
 app.include_router(health_router)
-app.include_router(core30_router, prefix="/core30", tags=["core30"])
+app.include_router(stocks_router, prefix="/stocks", tags=["stocks"])
+app.include_router(meta_router, tags=["stocks"])
+app.include_router(prices_router, tags=["prices"])
+app.include_router(tech_router, tags=["tech"])
 app.include_router(demo_router)

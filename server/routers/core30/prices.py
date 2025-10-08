@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import json
 import pandas as pd
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -58,7 +59,8 @@ def to_json_records(df: pd.DataFrame, *, include_time: bool = False) -> List[Dic
     else:
         g["date"] = g["date"].dt.strftime("%Y-%m-%d")
 
-    return g.to_dict(orient="records")
+    g = g.where(pd.notna(g), None)
+    return json.loads(g.to_json(orient="records"))
 
 
 @router.get("/prices/max/1d")

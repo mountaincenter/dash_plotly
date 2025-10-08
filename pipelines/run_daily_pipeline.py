@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 run_daily_pipeline.py
-- 1) analyze/csv_to_parquet_topixweight.py（CSV変更時のみ）
+- 1) analyze/create_master_meta.py（統合メタデータ生成）
 - 2) analyze/fetch_core30_yf.ipynb
 - 3) テクニカル指標のスナップショットを事前計算
 - 各処理の manifest/S3 は PIPELINE_NO_* で抑止し、最後に manifest を一括生成→S3へ
@@ -24,9 +24,11 @@ import pandas as pd
 # ---- 共有ユーティリティ ----
 from common_cfg.paths import (
     PARQUET_DIR,
-    CORE30_META_PARQUET as OUT_CORE30_META,
-    TOPIX_WEIGHT_PARQUET as OUT_TOPIX,
+    MASTER_META_PARQUET as OUT_MASTER_META,
+    TECH_SNAPSHOT_PARQUET as OUT_TECH_SNAPSHOT,
     MANIFEST_JSON as MANIFEST_PATH,
+    PRICE_SPECS,
+    price_parquet,
 )
 from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3cfg import load_s3_config
@@ -40,20 +42,9 @@ load_dotenv_cascade()
 # server 以下のモジュールは _run_cmd で PYTHONPATH を設定した後に import する
 
 ROOT = Path(".").resolve()
-CSV_DIR = ROOT / "data" / "csv"
-INPUT_TOPIX_CSV = CSV_DIR / "topixweight_j.csv"
-
 ANALYZE_DIR    = ROOT / "analyze"
-TOPIX_PY       = ANALYZE_DIR / "csv_to_parquet_topixweight.py"
 CORE30_IPYNB   = ANALYZE_DIR / "fetch_core30_yf.ipynb"
-
-STATE_DIR     = PARQUET_DIR / "_state"
-STATE_DIR.mkdir(parents=True, exist_ok=True)
-CSV_HASH_FILE = STATE_DIR / "topixweight_j.csv.sha256"
-
-# 新しい成果物パス
-OUT_TECH_SNAPSHOT = PARQUET_DIR / "core30_tech_snapshot_1d.parquet"
-
+MASTER_META_PY = ANALYZE_DIR / "create_master_meta.py"
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
 def _run_cmd(cmd, cwd: Optional[Path] = None, extra_env: Optional[dict] = None) -> None:
@@ -87,22 +78,6 @@ def _run_notebook(nb_path: Path, extra_env: Optional[dict] = None) -> None:
         "--output", str(executed.name),
         "--ExecutePreprocessor.timeout=0"
     ], cwd=nb_path.parent, extra_env=extra_env)
-
-
-def _should_run_topix(force: bool) -> bool:
-    if force:
-        return True
-    if not INPUT_TOPIX_CSV.exists():
-        print("[WARN] 入力CSVが見つからないため topixweight 変換はスキップします。")
-        return False
-    new_hash = sha256_of(INPUT_TOPIX_CSV)
-    old_hash = CSV_HASH_FILE.read_text().strip() if CSV_HASH_FILE.exists() else ""
-    return new_hash != old_hash
-
-
-def _record_csv_hash():
-    if INPUT_TOPIX_CSV.exists():
-        CSV_HASH_FILE.write_text(sha256_of(INPUT_TOPIX_CSV))
 
 
 def _run_tech_analysis_snapshot() -> None:
@@ -150,20 +125,9 @@ def _run_tech_analysis_snapshot() -> None:
 
 def _gather_manifest_items() -> list[dict]:
     # Core30の全ファイルを収集（メタ + 複数のpricesファイル）
-    UNIVERSE = "core30"
-    FILES_TO_GENERATE = [
-        ("max_1d", "max", "1d"),
-        ("max_1wk", "max", "1wk"),
-        ("max_1mo", "max", "1mo"),
-        ("730d_1h", "730d", "1h"),
-        ("60d_5m", "60d", "5m"),
-        ("60d_15m", "60d", "15m"),
-    ]
-
-    targets = [OUT_CORE30_META, OUT_TOPIX, OUT_TECH_SNAPSHOT] # ★ スナップショット追加
-    # 複数の prices ファイルを追加
-    for suffix, _, _ in FILES_TO_GENERATE:
-        targets.append(PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet")
+    targets = [OUT_TECH_SNAPSHOT, OUT_MASTER_META]
+    for period, interval in PRICE_SPECS:
+        targets.append(price_parquet(period, interval))
 
     items = []
     for p in targets:
@@ -196,7 +160,6 @@ def _maybe_upload_to_s3(files: list[Path], *, dry_run: bool) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--force-topix", action="store_true")
     ap.add_argument("--skip-core30", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -204,16 +167,12 @@ def main() -> int:
     # パイプライン実行中は子処理の manifest/S3 を抑止
     pipeline_env = {"PIPELINE_NO_MANIFEST": "1", "PIPELINE_NO_S3": "1"}
 
-    # 1) topixweight（CSV変更時のみ）
+    # 1) master meta (always regenerate to keep tags in sync)
     try:
-        if _should_run_topix(args.force_topix):
-            print("[STEP] run csv_to_parquet_topixweight.py")
-            _run_py_script(TOPIX_PY, extra_env=pipeline_env)
-            _record_csv_hash()
-        else:
-            print("[STEP] skip topixweight (no CSV change)")
+        print("[STEP] run create_master_meta.py")
+        _run_py_script(MASTER_META_PY, extra_env=pipeline_env)
     except Exception as e:
-        print(f"[ERROR] topixweight 変換に失敗: {e}")
+        print(f"[ERROR] master meta 生成に失敗: {e}")
         return 1
 
     # 2) fetch_core30
@@ -250,19 +209,9 @@ def main() -> int:
     # 5) S3（manifest + 成果物）
     try:
         print("[STEP] upload to S3 (aggregate)")
-        # Core30の全ファイルを収集
-        UNIVERSE = "core30"
-        FILES_TO_GENERATE = [
-            ("max_1d", "max", "1d"),
-            ("max_1wk", "max", "1wk"),
-            ("max_1mo", "max", "1mo"),
-            ("730d_1h", "730d", "1h"),
-            ("60d_5m", "60d", "5m"),
-            ("60d_15m", "60d", "15m"),
-        ]
-        files = [MANIFEST_PATH, OUT_CORE30_META, OUT_TOPIX, OUT_TECH_SNAPSHOT] # ★ スナップショット追加
-        for suffix, _, _ in FILES_TO_GENERATE:
-            p = PARQUET_DIR / f"{UNIVERSE}_prices_{suffix}.parquet"
+        files = [MANIFEST_PATH, OUT_TECH_SNAPSHOT, OUT_MASTER_META]
+        for period, interval in PRICE_SPECS:
+            p = price_parquet(period, interval)
             if p.exists():
                 files.append(p)
         _maybe_upload_to_s3(files, dry_run=args.dry_run)

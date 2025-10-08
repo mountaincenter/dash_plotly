@@ -20,8 +20,9 @@ def _get_env(name: str) -> Optional[str]:
 
 _S3_BUCKET = _get_env("DATA_BUCKET")
 _S3_META_KEY = _get_env("CORE30_META_KEY")
+_S3_MASTER_META_KEY = _get_env("MASTER_META_KEY") or _S3_META_KEY
 _S3_PRICES_1D_KEY = _get_env("CORE30_PRICES_KEY")
-_S3_TECH_SNAPSHOT_KEY = _get_env("CORE30_TECH_SNAPSHOT_KEY") # 追加
+_S3_TECH_SNAPSHOT_KEY = _get_env("CORE30_TECH_SNAPSHOT_KEY")  # backward compat
 _S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"
 _AWS_REGION = _get_env("AWS_REGION")
 _AWS_PROFILE = _get_env("AWS_PROFILE")
@@ -31,9 +32,14 @@ _AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
 PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
 
-META_PATH = PARQUET_DIR / "core30_meta.parquet"
-PRICES_1D_PATH = PARQUET_DIR / "core30_prices_max_1d.parquet"
-TECH_SNAPSHOT_PATH = PARQUET_DIR / "core30_tech_snapshot_1d.parquet" # 追加
+MASTER_META_PATH = PARQUET_DIR / "meta.parquet"
+PRICES_1D_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+TECH_SNAPSHOT_PATH = PARQUET_DIR / "tech_snapshot_1d.parquet"
+
+if not _S3_PRICES_1D_KEY:
+    _S3_PRICES_1D_KEY = f"{_S3_PREFIX}/{PRICES_1D_PATH.name}"
+if not _S3_TECH_SNAPSHOT_KEY:
+    _S3_TECH_SNAPSHOT_KEY = f"{_S3_PREFIX}/{TECH_SNAPSHOT_PATH.name}"
 
 # ==============================
 # S3 / Local 読み込みヘルパ
@@ -80,71 +86,6 @@ _ALLOWED = re.compile(r"[^A-Za-z0-9._-]")
 def _secure_filename(filename: str) -> str:
     if not isinstance(filename, str):
         filename = str(filename or "")
-# ==============================
-# 環境変数（S3設定）
-# ==============================
-def _get_env(name: str) -> Optional[str]:
-    v = os.getenv(name)
-    return v if (v is not None and str(v).strip() != "") else None
-
-_S3_BUCKET = _get_env("DATA_BUCKET")
-_S3_PREFIX = _get_env("PARQUET_PREFIX") or "parquet"
-_AWS_REGION = _get_env("AWS_REGION")
-_AWS_PROFILE = _get_env("AWS_PROFILE")
-_AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
-
-# ---- 既存ローカルパス（フォールバック用） ----
-PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
-DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
-
-META_PATH = PARQUET_DIR / "core30_meta.parquet"
-PRICES_1D_PATH = PARQUET_DIR / "core30_prices_max_1d.parquet"
-TECH_SNAPSHOT_PATH = PARQUET_DIR / "core30_tech_snapshot_1d.parquet"
-
-# ==============================
-# S3 / Local 読み込みヘルパ
-# ==============================
-def _read_parquet_local(path: Path) -> Optional[pd.DataFrame]:
-    if not path.exists():
-        return None
-    try:
-        return pd.read_parquet(str(path), engine="pyarrow")
-    except Exception:
-        return None
-
-def _read_parquet_s3(bucket: Optional[str], key: Optional[str]) -> Optional[pd.DataFrame]:
-    if not bucket or not key:
-        return None
-    try:
-        import boto3
-        from io import BytesIO
-
-        session_kwargs = {}
-        if _AWS_PROFILE:
-            session_kwargs["profile_name"] = _AWS_PROFILE
-        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
-
-        client_kwargs = {}
-        if _AWS_REGION:
-            client_kwargs["region_name"] = _AWS_REGION
-        if _AWS_ENDPOINT:
-            client_kwargs["endpoint_url"] = _AWS_ENDPOINT
-
-        s3 = session.client("s3", **client_kwargs)
-        obj = s3.get_object(Bucket=bucket, Key=key)
-        data = obj["Body"].read()
-        return pd.read_parquet(BytesIO(data), engine="pyarrow")
-    except Exception:
-        return None
-
-# ==============================
-# 既存ユーティリティ
-# ==============================
-_ALLOWED = re.compile(r"[^A-Za-z0-9._-]")
-
-def _secure_filename(filename: str) -> str:
-    if not isinstance(filename, str):
-        filename = str(filename or "")
     filename = filename.replace("/", "_").replace("\\", "_")
     filename = unicodedata.normalize("NFKC", filename)
     filename = _ALLOWED.sub("_", filename)
@@ -164,10 +105,22 @@ def to_ticker(code: str) -> str:
 # ==============================
 @cache
 def load_core30_meta() -> List[Dict]:
-    df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
-    if df is None or df.empty:
-        df = _read_parquet_local(META_PATH)
+    master = load_master_meta("TOPIX_CORE30")
+    if master:
+        out: List[Dict] = []
+        for item in master:
+            code = item.get("code")
+            stock_name = item.get("stock_name")
+            ticker = item.get("ticker") or (to_ticker(code) if code else None)
+            out.append({
+                "code": str(code) if code not in (None, "") else "",
+                "stock_name": stock_name,
+                "ticker": ticker,
+            })
+        out.sort(key=lambda x: x.get("code") or "")
+        return out
 
+    df = _read_parquet_s3(_S3_BUCKET, _S3_META_KEY)
     if df is None or df.empty:
         return []
 
@@ -175,14 +128,56 @@ def load_core30_meta() -> List[Dict]:
     if not need.issubset(df.columns):
         return []
 
-    out = df[["code", "stock_name"]].drop_duplicates(subset=["code"]).copy()
-    if "ticker" not in out.columns:
-        out["ticker"] = out["code"].astype(str).map(to_ticker)
-    out["code"] = out["code"].astype("string")
-    out["stock_name"] = out["stock_name"].astype("string")
-    out["ticker"] = out["ticker"].astype("string")
-    out = out.sort_values("code", key=lambda s: s.astype(str)).reset_index(drop=True)
-    return out.to_dict(orient="records")
+    out_df = df[["code", "stock_name"]].drop_duplicates(subset=["code"]).copy()
+    if "ticker" not in out_df.columns:
+        out_df["ticker"] = out_df["code"].astype(str).map(to_ticker)
+    out_df["code"] = out_df["code"].astype("string")
+    out_df["stock_name"] = out_df["stock_name"].astype("string")
+    out_df["ticker"] = out_df["ticker"].astype("string")
+    out_df = out_df.sort_values("code", key=lambda s: s.astype(str)).reset_index(drop=True)
+    return out_df.to_dict(orient="records")
+
+
+def _resolve_tag(tag: Optional[str]) -> Optional[str]:
+    if not tag:
+        return None
+    tag_norm = str(tag).strip()
+    if not tag_norm:
+        return None
+    lut = {
+        "core30": "TOPIX_CORE30",
+        "topix": "TOPIX_CORE30",
+        "topix_core30": "TOPIX_CORE30",
+        "topixcore30": "TOPIX_CORE30",
+        "takaichi": "高市銘柄",
+        "takaichi_stock": "高市銘柄",
+        "高市": "高市銘柄",
+        "高市銘柄": "高市銘柄",
+        "topix_core30_upper": "TOPIX_CORE30",
+    }
+    key = tag_norm.lower()
+    return lut.get(key, tag_norm)
+
+
+@cache
+def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
+    df = _read_parquet_s3(_S3_BUCKET, _S3_MASTER_META_KEY)
+    if df is None or df.empty:
+        df = _read_parquet_local(MASTER_META_PATH)
+    if df is None or df.empty:
+        return []
+
+    cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "tag1", "tag2", "tag3"]
+    for col in cols:
+        if col not in df.columns:
+            df[col] = pd.NA
+    df = df[cols].copy()
+    resolved_tag = _resolve_tag(tag)
+    if resolved_tag:
+        df = df[df["tag1"].astype("string").str.lower() == str(resolved_tag).lower()]
+    df = df.sort_values(["tag1", "code"], kind="mergesort")
+    df = df.where(pd.notna(df), None)
+    return df.to_dict(orient="records")
 
 @cache
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
@@ -193,7 +188,7 @@ def read_prices_1d_df() -> Optional[pd.DataFrame]:
 
 @cache
 def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
-    filename = f"core30_prices_{period}_{interval}.parquet"
+    filename = f"prices_{period}_{interval}.parquet"
     s3_key = f"{_S3_PREFIX}/{filename}"
 
     df = _read_parquet_s3(_S3_BUCKET, s3_key)

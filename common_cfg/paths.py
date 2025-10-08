@@ -9,14 +9,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PARQUET_DIR = ROOT / "data" / "parquet"
-TOPIX_WEIGHT_PARQUET = PARQUET_DIR / "topixweight_j.parquet"
-CORE30_META_PARQUET = PARQUET_DIR / "core30_meta.parquet"
-CORE30_PRICES_PARQUET = PARQUET_DIR / "core30_prices_max_1d.parquet"
+MASTER_META_PARQUET = PARQUET_DIR / "meta.parquet"
+CORE30_META_PARQUET = MASTER_META_PARQUET  # backward compatibility alias
+
+PRICE_FILE_TEMPLATE = "prices_{period}_{interval}.parquet"
+
+
+def price_parquet(period: str, interval: str):
+    return PARQUET_DIR / PRICE_FILE_TEMPLATE.format(period=period, interval=interval)
+
+
+PRICE_SPECS = [
+    ("max", "1d"),
+    ("max", "1wk"),
+    ("max", "1mo"),
+    ("730d", "1h"),
+    ("60d", "5m"),
+    ("60d", "15m"),
+]
+
+PRICES_MAX_1D_PARQUET = price_parquet("max", "1d")
+CORE30_PRICES_PARQUET = PRICES_MAX_1D_PARQUET  # backward compatibility alias
 MANIFEST_JSON = PARQUET_DIR / "manifest.json"
+TECH_SNAPSHOT_PARQUET = PARQUET_DIR / "tech_snapshot_1d.parquet"
+CORE30_TECH_SNAPSHOT_PARQUET = TECH_SNAPSHOT_PARQUET  # backward compatibility alias
 
 # ---- 後方互換エイリアス（ノート/旧コードが期待する名前）----
-WEIGHT_PARQUET = TOPIX_WEIGHT_PARQUET
-OUT_META = CORE30_META_PARQUET
+OUT_META = MASTER_META_PARQUET
 OUT_PRICES = CORE30_PRICES_PARQUET
 MANIFEST_PATH = MANIFEST_JSON
-META_PARQUET = CORE30_META_PARQUET
+META_PARQUET = MASTER_META_PARQUET

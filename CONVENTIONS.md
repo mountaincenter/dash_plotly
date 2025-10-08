@@ -27,13 +27,11 @@ SRP/DRY/MECE を満たし、ローカル検証〜S3同期〜ECR/App Runner デ�
 ├── analyze/                     # 解析・実験（壊してOK）
 │   ├── fetch_core30_yf.ipynb
 │   ├── anomaly.ipynb
-│   ├── csv_to_parquet_topixweight.py
 │   └── README.md（任意）
 ├── pipelines/                   # 本番想定のデータ生成スクリプト
 │   └── run_daily_pipeline.py    # 同時実行・manifest集約・S3アップロード
 ├── data/
 │   ├── csv/
-│   │   └── topixweight_j.csv
 │   └── parquet/
 │       ├── _state/              # 入力CSVのハッシュ等
 │       ├── core30_anomaly.parquet
