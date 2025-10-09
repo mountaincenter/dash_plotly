@@ -1,0 +1,15 @@
+name: demo-cron
+
+on:
+  schedule:
+    # GitHub Actions のスケジュールは最小 1 分間隔
+    - cron: "*/1 * * * *"
+  workflow_dispatch:
+
+jobs:
+  print-timestamp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show current time
+        run: |
+          echo "workflow run at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
