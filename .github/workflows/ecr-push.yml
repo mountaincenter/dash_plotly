@@ -1,16 +1,10 @@
 name: Build & Push to ECR
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "server/**"
-      - "server.py"
-      - "common_cfg/**"
-      - "requirements.txt"
-      - "Dockerfile"
-      - "docker-compose.yml"
-      - ".github/workflows/ecr-push.yml"
+  workflow_run:
+    workflows: ["Update Parquet"]
+    types:
+      - completed
   workflow_dispatch: {}
 
 permissions:
@@ -20,6 +14,7 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: AWS_OIDC
     env:
