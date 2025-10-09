@@ -219,8 +219,8 @@ def prices_snapshot_last2():
 @router.get("/perf/returns", summary="Get rolling returns for tickers")
 def perf_returns(
     windows: str = Query(
-        default="5d,1mo,3mo,ytd,1y,3y,5y,all",
-        description="Comma separated list of windows (e.g. 5d,1mo,3mo)",
+        default="1d,5d,1mo,3mo,6mo,ytd,1y,3y,5y,all",
+        description="Comma separated list of windows (e.g. 1d,5d,1mo)",
     ),
     tag: Optional[str] = Query(
         default=None,
@@ -249,7 +249,7 @@ def perf_returns(
 
     wins = [w.strip() for w in (windows or "").split(",") if w.strip()]
     if not wins:
-        wins = ["5d", "1mo", "3mo", "ytd", "1y", "3y", "5y", "all"]
+        wins = ["1d", "5d", "1mo", "3mo", "6mo", "ytd", "1y", "3y", "5y", "all"]
 
     days_map = {
         "5d": 7,
@@ -291,7 +291,11 @@ def perf_returns(
         row: Dict[str, Any] = {"ticker": ticker, "date": last_date.strftime("%Y-%m-%d")}
         for w in wins:
             key = f"r_{w}"
-            if w == "ytd":
+            if w == "1d":
+                base = float(g.iloc[-2]["Close"]) if len(g) >= 2 else None
+                row[key] = pct_return(last_close, base)
+                continue
+            elif w == "ytd":
                 start_of_year = pd.Timestamp(year=last_date.year, month=1, day=1)
                 base = base_close_before_or_on(start_of_year)
                 row[key] = pct_return(last_close, base)
