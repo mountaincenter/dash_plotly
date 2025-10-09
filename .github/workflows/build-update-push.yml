@@ -1,10 +1,8 @@
-name: Build & Push to ECR
+name: Build, Update Parquet & Push to ECR
 
 on:
-  workflow_run:
-    workflows: ["Update Parquet"]
-    types:
-      - completed
+  push:
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -12,25 +10,41 @@ permissions:
   contents: read
 
 jobs:
-  build-and-push:
+  build-update-push:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: AWS_OIDC
     env:
-      # ← ここで contexts を一度だけ評価して環境変数化（VSCode の警告が消える）
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      DATA_BUCKET: ${{ vars.DATA_BUCKET }}
+      PARQUET_PREFIX: ${{ vars.PARQUET_PREFIX }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # OIDC で AWS 認証
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run parquet pipeline
+        run: python -m pipelines.run_daily_pipeline --target s3
+        env:
+          DATA_BUCKET: ${{ env.DATA_BUCKET }}
+          PARQUET_PREFIX: ${{ env.PARQUET_PREFIX }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+
+      - name: Sync parquet to S3
+        run: aws s3 sync data/parquet "s3://${{ env.DATA_BUCKET }}/${{ env.PARQUET_PREFIX }}" --delete
 
       - name: Resolve AWS account id
         id: aws
