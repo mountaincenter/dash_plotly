@@ -17,9 +17,8 @@ services:
   web:
     <<: *app_base
     container_name: fastapi_dev
-    # 開発用の環境変数ファイルがある場合
-    # env_file:
-    #   - .env.dev
+    env_file:
+      - .env.dev
     ports:
       - "8000:8000"
     command: >

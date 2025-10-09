@@ -4,10 +4,11 @@ from __future__ import annotations
 import os
 import json
 import re
+import time
 import unicodedata
 from functools import cache
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -32,6 +33,17 @@ DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
 MASTER_META_PATH = PARQUET_DIR / "meta.parquet"
 PRICES_1D_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 TECH_SNAPSHOT_PATH = PARQUET_DIR / "tech_snapshot_1d.parquet"
+
+def _env_int(name: str, default: int) -> int:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return default
+
+_DATA_CACHE_SECONDS = max(0, _env_int("DATA_CACHE_SECONDS", 300))
 
 def _s3_key(default_name: str) -> str:
     return f"{_S3_PREFIX}/{default_name}" if _S3_PREFIX else default_name
@@ -85,6 +97,50 @@ def _read_parquet_s3(bucket: Optional[str], key: Optional[str]) -> Optional[pd.D
     except Exception as e:
         print(f"!!! S3 READ ERROR: Failed to read s3://{bucket}/{key}. Error: {e}")
         return None
+
+# ==============================
+# DataFrame キャッシュ
+# ==============================
+class _DataFrameCache:
+    def __init__(self, ttl_seconds: int):
+        self._ttl_seconds = max(0, ttl_seconds)
+        self._store: Dict[Tuple, Tuple[Optional[float], float, Optional[pd.DataFrame]]] = {}
+
+    def get(
+        self,
+        key: Tuple,
+        loader: Callable[[], Optional[pd.DataFrame]],
+        *,
+        local_path: Optional[Path] = None,
+    ) -> Optional[pd.DataFrame]:
+        if self._ttl_seconds == 0:
+            return loader()
+
+        now = time.time()
+        mtime: Optional[float] = None
+        if local_path is not None:
+            try:
+                mtime = local_path.stat().st_mtime
+            except FileNotFoundError:
+                mtime = None
+
+        cached = self._store.get(key)
+        if cached:
+            cached_mtime, expires_at, df = cached
+            if (mtime is None or mtime == cached_mtime) and now < expires_at:
+                return df
+
+        df = loader()
+        if df is None:
+            # Avoid caching failures so next call can retry immediately.
+            self._store.pop(key, None)
+            return None
+
+        expires_at = now + self._ttl_seconds
+        self._store[key] = (mtime, expires_at, df)
+        return df
+
+_df_cache = _DataFrameCache(_DATA_CACHE_SECONDS)
 
 # ==============================
 # 既存ユーティリティ
@@ -153,39 +209,44 @@ def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
     df = df.where(pd.notna(df), None)
     return df.to_dict(orient="records")
 
-@cache
 def read_prices_1d_df() -> Optional[pd.DataFrame]:
-    df = _read_parquet_local(PRICES_1D_PATH)
-    if (df is None or df.empty) and _S3_BUCKET and _S3_PRICES_1D_KEY:
-        df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
-    return df
+    def _load() -> Optional[pd.DataFrame]:
+        df = _read_parquet_local(PRICES_1D_PATH)
+        if (df is None or df.empty) and _S3_BUCKET and _S3_PRICES_1D_KEY:
+            df = _read_parquet_s3(_S3_BUCKET, _S3_PRICES_1D_KEY)
+        return df
 
-@cache
+    return _df_cache.get(("prices_1d",), _load, local_path=PRICES_1D_PATH)
+
 def read_prices_df(period: str, interval: str) -> Optional[pd.DataFrame]:
     filename = f"prices_{period}_{interval}.parquet"
     local_path = PARQUET_DIR / filename
-    df = _read_parquet_local(local_path)
-    if (df is None or df.empty) and _S3_BUCKET:
-        s3_key = _s3_key(filename)
-        df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    def _load() -> Optional[pd.DataFrame]:
+        df = _read_parquet_local(local_path)
+        if (df is None or df.empty) and _S3_BUCKET:
+            s3_key = _s3_key(filename)
+            df = _read_parquet_s3(_S3_BUCKET, s3_key)
+        return df
 
-    return df
+    return _df_cache.get(("prices", period, interval), _load, local_path=local_path)
 
-@cache
 def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
     """事前計算されたテクニカル指標スナップショットを読み込む"""
-    df = _read_parquet_local(TECH_SNAPSHOT_PATH)
-    if (df is None or df.empty) and _S3_BUCKET and _S3_TECH_SNAPSHOT_KEY:
-        df = _read_parquet_s3(_S3_BUCKET, _S3_TECH_SNAPSHOT_KEY)
+    def _load() -> Optional[pd.DataFrame]:
+        df = _read_parquet_local(TECH_SNAPSHOT_PATH)
+        if (df is None or df.empty) and _S3_BUCKET and _S3_TECH_SNAPSHOT_KEY:
+            df = _read_parquet_s3(_S3_BUCKET, _S3_TECH_SNAPSHOT_KEY)
 
-    if df is None or df.empty:
-        return None
+        if df is None or df.empty:
+            return df
 
-    # JSON文字列の列を辞書に変換
-    for col in ["values", "votes", "overall"]:
-        if col in df.columns and isinstance(df[col].iloc[0], str):
-            df[col] = df[col].apply(json.loads)
-    return df
+        # JSON文字列の列を辞書に変換
+        for col in ["values", "votes", "overall"]:
+            if col in df.columns and isinstance(df[col].iloc[0], str):
+                df[col] = df[col].apply(json.loads)
+        return df
+
+    return _df_cache.get(("tech_snapshot",), _load, local_path=TECH_SNAPSHOT_PATH)
 
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
