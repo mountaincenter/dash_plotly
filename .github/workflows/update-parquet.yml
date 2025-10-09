@@ -3,18 +3,6 @@ name: Update Parquet
 on:
   push:
     branches: [main]
-    paths:
-      - "server/**"
-      - "server.py"
-      - "common_cfg/**"
-      - "Dockerfile"
-      - "docker-compose.yml"
-      - "pipelines/**"
-      - "data/parquet/**"
-      - "requirements.txt"
-      - "pyproject.toml"
-      - "poetry.lock"
-      - ".github/workflows/update-parquet.yml"
   workflow_dispatch: {}
 
 permissions:
