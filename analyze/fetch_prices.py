@@ -71,12 +71,26 @@ def load_universe() -> pd.DataFrame:
 def _flatten_multi(raw: pd.DataFrame, tickers: List[str], interval: str) -> pd.DataFrame:
     frames = []
     if isinstance(raw.columns, pd.MultiIndex):
-        lv0 = raw.columns.get_level_values(0)
-        for t in tickers:
-            if t in lv0:
-                sub = raw[t].copy()
+        aligned = raw
+        ticker_level = None
+        for level in range(aligned.columns.nlevels):
+            level_values = aligned.columns.get_level_values(level)
+            if any(t in level_values for t in tickers):
+                ticker_level = level
+                break
+        if ticker_level is not None and ticker_level != 0:
+            aligned = aligned.swaplevel(0, ticker_level, axis=1)
+        if isinstance(aligned.columns, pd.MultiIndex):
+            aligned = aligned.sort_index(axis=1)
+            lv0 = aligned.columns.get_level_values(0)
+            for t in tickers:
+                if t not in lv0:
+                    continue
+                sub = aligned[t].copy()
                 if sub.empty:
                     continue
+                if isinstance(sub.columns, pd.MultiIndex):
+                    sub.columns = sub.columns.get_level_values(-1)
                 sub = sub.reset_index()
                 if "Datetime" in sub.columns:
                     sub = sub.rename(columns={"Datetime": "date"})
