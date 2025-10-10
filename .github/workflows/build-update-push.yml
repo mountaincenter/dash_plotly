@@ -37,14 +37,94 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run parquet pipeline
-        run: python -m pipelines.run_daily_pipeline --target s3
+        run: python -m pipelines.run_daily_pipeline --target local
         env:
           DATA_BUCKET: ${{ env.DATA_BUCKET }}
           PARQUET_PREFIX: ${{ env.PARQUET_PREFIX }}
           AWS_REGION: ${{ env.AWS_REGION }}
 
-      - name: Sync parquet to S3
-        run: aws s3 sync data/parquet "s3://${{ env.DATA_BUCKET }}/${{ env.PARQUET_PREFIX }}" --delete
+      - name: Upload parquet artifacts to S3 (manifest-driven)
+        env:
+          DATA_BUCKET: ${{ env.DATA_BUCKET }}
+          PARQUET_PREFIX: ${{ env.PARQUET_PREFIX }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+import boto3
+
+DATA_BUCKET = os.environ.get("DATA_BUCKET")
+PARQUET_PREFIX = os.environ.get("PARQUET_PREFIX", "parquet/")
+AWS_REGION = os.environ.get("AWS_REGION")
+
+if not DATA_BUCKET:
+    raise SystemExit("DATA_BUCKET is required to upload parquet artifacts.")
+
+prefix = PARQUET_PREFIX.rstrip("/") + "/" if PARQUET_PREFIX else ""
+base = Path("data/parquet")
+manifest_path = base / "manifest.json"
+
+if not manifest_path.exists():
+    raise SystemExit(f"manifest not found: {manifest_path}")
+
+session = boto3.session.Session(region_name=AWS_REGION)
+s3 = session.client("s3")
+
+with manifest_path.open("r", encoding="utf-8") as fh:
+    manifest = json.load(fh)
+
+items = manifest.get("items")
+if not isinstance(items, list) or not items:
+    raise SystemExit("manifest items missing or empty.")
+
+def upload_file(local_path: Path, key: str, *, content_type: str) -> None:
+    if not local_path.exists():
+        raise FileNotFoundError(local_path)
+    extra = {
+        "ServerSideEncryption": "AES256",
+        "CacheControl": "max-age=60",
+        "ContentType": content_type,
+    }
+    s3.upload_file(str(local_path), DATA_BUCKET, key, ExtraArgs=extra)
+    print(f"[PUT] s3://{DATA_BUCKET}/{key}")
+
+object_keys = []
+for item in items:
+    key = item.get("key")
+    if not key:
+        raise SystemExit("manifest item missing key.")
+    local_path = base / key
+    dest_key = f"{prefix}{key}"
+    upload_file(local_path, dest_key, content_type="application/octet-stream")
+    object_keys.append(dest_key)
+
+upload_file(manifest_path, f"{prefix}manifest.json", content_type="application/json")
+object_keys.append(f"{prefix}manifest.json")
+
+# Delete extra objects not listed in manifest (excluding manifest.json which was just uploaded)
+page_iterator = s3.get_paginator("list_objects_v2").paginate(
+    Bucket=DATA_BUCKET,
+    Prefix=prefix,
+)
+current_keys: list[str] = []
+for page in page_iterator:
+    for obj in page.get("Contents", []):
+        current_keys.append(obj["Key"])
+
+extras = sorted(set(current_keys) - set(object_keys))
+if extras:
+    for idx in range(0, len(extras), 1000):
+        batch = extras[idx : idx + 1000]
+        delete_payload = {"Objects": [{"Key": key} for key in batch]}
+        s3.delete_objects(Bucket=DATA_BUCKET, Delete=delete_payload)
+        for key in batch:
+            print(f"[DEL] s3://{DATA_BUCKET}/{key}")
+else:
+    print("No extra S3 objects to delete.")
+PY
 
       - name: Resolve AWS account id
         id: aws
