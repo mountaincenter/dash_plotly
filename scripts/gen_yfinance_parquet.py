@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate yfinance-smoke-test.parquet for multiple tickers across
+Generate yfinance-smoke parquet files for multiple tickers across
 period/interval combinations that mirror the main pipeline granularity.
 """
 
@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 
 import pandas as pd
 import yfinance as yf
 
-OUT_PATH = Path("yfinance-smoke-test.parquet")
+OUTPUT_TEMPLATE = "yfinance-smoke-test-{period}-{interval}.parquet"
 TICKERS = [
     "2914.T",
     "3382.T",
@@ -76,10 +76,10 @@ SPECS: List[Tuple[str, str]] = [
 SLEEP_BETWEEN_CALLS = 1.0
 
 
-def _prepare_frame(df: pd.DataFrame, *, ticker: str, period: str, interval: str) -> pd.DataFrame:
+def _prepare_frame(df: pd.DataFrame, *, ticker: str) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(
-            columns=["date", "Open", "High", "Low", "Close", "Volume", "interval", "period", "ticker"]
+            columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
         )
 
     df = df.reset_index()
@@ -101,17 +101,13 @@ def _prepare_frame(df: pd.DataFrame, *, ticker: str, period: str, interval: str)
     else:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
-    df = df.assign(
-        interval=interval,
-        period=period,
-        ticker=ticker,
-    )
+    df = df.assign(ticker=ticker)
     return df
 
 
-def fetch_specs(ticker: str, specs: Iterable[Tuple[str, str]]) -> pd.DataFrame:
+def fetch_for_spec(period: str, interval: str) -> pd.DataFrame:
     frames: List[pd.DataFrame] = []
-    for period, interval in specs:
+    for ticker in TICKERS:
         print(f"[INFO] downloading {ticker} period={period} interval={interval}")
         df = yf.download(
             ticker,
@@ -120,26 +116,30 @@ def fetch_specs(ticker: str, specs: Iterable[Tuple[str, str]]) -> pd.DataFrame:
             auto_adjust=True,
             progress=False,
         )
-        prepared = _prepare_frame(df, ticker=ticker, period=period, interval=interval)
+        prepared = _prepare_frame(df, ticker=ticker)
         frames.append(prepared)
         time.sleep(SLEEP_BETWEEN_CALLS)
     combined = pd.concat(frames, ignore_index=True)
     combined = combined[
-        ["date", "Open", "High", "Low", "Close", "Volume", "interval", "period", "ticker"]
+        ["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
     ]
-    combined = combined.sort_values(["ticker", "interval", "date"]).reset_index(drop=True)
+    combined = combined.sort_values(["ticker", "date"]).reset_index(drop=True)
     return combined
 
 
 def main() -> int:
-    frames: List[pd.DataFrame] = []
-    for ticker in TICKERS:
-        frames.append(fetch_specs(ticker, SPECS))
-    df = pd.concat(frames, ignore_index=True)
-    if df.empty:
-        raise RuntimeError("No data retrieved from yfinance; check network or API status.")
-    df.to_parquet(OUT_PATH, index=False)
-    print(f"[OK] saved parquet: {OUT_PATH} rows={len(df)}")
+    generated = []
+    for period, interval in SPECS:
+        df = fetch_for_spec(period, interval)
+        if df.empty:
+            raise RuntimeError(f"No data retrieved for period={period} interval={interval}")
+        out_path = Path(OUTPUT_TEMPLATE.format(period=period, interval=interval))
+        df.to_parquet(out_path, index=False)
+        print(f"[OK] saved parquet: {out_path} rows={len(df)}")
+        generated.append(out_path)
+
+    summary = ", ".join(str(p) for p in generated)
+    print(f"[INFO] generated files: {summary}")
     return 0
 
 

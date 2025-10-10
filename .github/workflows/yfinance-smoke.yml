@@ -30,7 +30,7 @@ jobs:
       - name: Run yfinance smoke script (5 tickers)
         run: python scripts/yfinance_smoke.py
 
-      - name: Generate parquet sample via yfinance
+      - name: Generate parquet samples via yfinance
         run: python scripts/gen_yfinance_parquet.py
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -49,17 +49,25 @@ jobs:
             exit 1
           fi
           PREFIX="${PARQUET_PREFIX:-parquet/}"
-          DEST_KEY="${PREFIX%/}/smoke/yfinance-smoke-test.parquet"
-          aws s3 cp \
-            yfinance-smoke-test.parquet \
-            "s3://${S3_BUCKET}/${DEST_KEY}" \
-            --sse AES256 \
-            --cache-control "max-age=60" \
-            --only-show-errors
-          echo "uploaded to s3://${S3_BUCKET}/${DEST_KEY}"
+          shopt -s nullglob
+          files=(yfinance-smoke-test-*.parquet)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No parquet files found to upload."
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            dest_key="${PREFIX%/}/smoke/${file}"
+            aws s3 cp \
+              "$file" \
+              "s3://${S3_BUCKET}/${dest_key}" \
+              --sse AES256 \
+              --cache-control "max-age=60" \
+              --only-show-errors
+            echo "uploaded to s3://${S3_BUCKET}/${dest_key}"
+          done
 
       - name: Upload parquet artifact
         uses: actions/upload-artifact@v4
         with:
           name: yfinance-smoke-test
-          path: yfinance-smoke-test.parquet
+          path: yfinance-smoke-test-*.parquet
