@@ -15,46 +15,57 @@ import yfinance as yf
 
 OUT_PATH = Path("yfinance-smoke-test.parquet")
 TICKERS = [
-    "7203.T",  # Toyota
-    "8035.T",  # Tokyo Electron
-    "6501.T",  # Hitachi
-    "9432.T",  # NTT
-    "3382.T",  # Seven & i
-    "2914.T",  # Japan Tobacco
-    "4502.T",  # Takeda Pharmaceutical
-    "9984.T",  # SoftBank Group
-    "6758.T",  # Sony Group
-    "9983.T",  # Fast Retailing
-    "8306.T",  # Mitsubishi UFJ
-    "4063.T",  # Shin-Etsu Chemical
-    "6273.T",  # SMC
-    "6762.T",  # TDK
-    "2503.T",  # Kirin Holdings
-    "8630.T",  # Sompo Holdings
-    "6981.T",  # Murata Manufacturing
-    "8001.T",  # Itochu
-    "5401.T",  # Nippon Steel
-    "6701.T",  # NEC
-    "8058.T",  # Mitsubishi Corp
-    "6367.T",  # Daikin Industries
-    "8031.T",  # Mitsui & Co.
-    "9101.T",  # Nippon Yusen
-    "7011.T",  # Mitsubishi Heavy Industries
-    "9142.T",  # JR Central
-    "6098.T",  # Recruit Holdings
-    "6988.T",  # Nidec
-    "4689.T",  # Z Holdings
-    "4061.T",  # Denka
-    "6752.T",  # Panasonic
-    "6301.T",  # Komatsu
-    "7201.T",  # Nissan
-    "8411.T",  # Mizuho Financial Group
-    "9020.T",  # JR East
-    "9021.T",  # JR West
-    "6503.T",  # Mitsubishi Electric
-    "6954.T",  # Fanuc
-    "7751.T",  # Canon
-    "4503.T",  # Astellas Pharma
+    "2914.T",
+    "3382.T",
+    "4063.T",
+    "4502.T",
+    "4568.T",
+    "6098.T",
+    "6367.T",
+    "6501.T",
+    "6503.T",
+    "6758.T",
+    "6861.T",
+    "6981.T",
+    "7011.T",
+    "7203.T",
+    "7267.T",
+    "7741.T",
+    "7974.T",
+    "8001.T",
+    "8031.T",
+    "8035.T",
+    "8058.T",
+    "8306.T",
+    "8316.T",
+    "8411.T",
+    "8766.T",
+    "9432.T",
+    "9433.T",
+    "9434.T",
+    "9983.T",
+    "9984.T",
+    "1605.T",
+    "186A.T",
+    "2168.T",
+    "2749.T",
+    "3692.T",
+    "4204.T",
+    "5020.T",
+    "5595.T",
+    "5631.T",
+    "6232.T",
+    "6330.T",
+    "6701.T",
+    "6762.T",
+    "6920.T",
+    "6946.T",
+    "6965.T",
+    "7013.T",
+    "7711.T",
+    "8060.T",
+    "9142.T",
+    "9501.T",
 ]
 SPECS: List[Tuple[str, str]] = [
     ("max", "1d"),
