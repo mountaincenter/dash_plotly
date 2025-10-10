@@ -20,7 +20,36 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas
+          pip install pandas pyarrow yfinance
 
-      - name: Run yfinance smoke test
-        run: python scripts/yfinance_smoke.py
+      - name: Generate parquet sample via yfinance
+        run: python scripts/gen_yfinance_parquet.py
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload sample parquet to S3
+        env:
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_KEY: smoke/yfinance-smoke-test.parquet
+        run: |
+          set -euo pipefail
+          if [ -z "${S3_BUCKET}" ]; then
+            echo "::error::S3_BUCKET (vars.S3_BUCKET) is not defined."
+            exit 1
+          fi
+          aws s3 cp \
+            yfinance-smoke-test.parquet \
+            "s3://${S3_BUCKET}/${S3_KEY}" \
+            --sse AES256 \
+            --cache-control "max-age=60" \
+            --only-show-errors
+          echo "uploaded to s3://${S3_BUCKET}/${S3_KEY}"
+
+      - name: Upload parquet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yfinance-smoke-test
+          path: yfinance-smoke-test.parquet

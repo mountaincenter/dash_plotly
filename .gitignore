@@ -35,6 +35,7 @@ data/parquet/
 data/csv/*.csv
 # もしサンプルを残したい場合は上記を外して、個別に allowlist してください
 # 例) !data/csv/sample.csv
+yfinance-smoke-test.parquet
 
 # ---- ログ ----
 *.log

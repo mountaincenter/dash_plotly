@@ -1,53 +1,53 @@
 {
-  "generated_at": "2025-10-10T06:55:51.621676+00:00",
+  "generated_at": "2025-10-10T13:26:55.844000+00:00",
   "items": [
     {
       "key": "meta.parquet",
       "bytes": 8545,
       "sha256": "9ca4533c80188eff73f252fab77bffcd8ebbb86553395221a118f50e93ae32f1",
-      "mtime": "2025-10-10T06:52:48.806119+00:00"
+      "mtime": "2025-10-10T13:25:23.511751+00:00"
     },
     {
       "key": "prices_60d_15m.parquet",
       "bytes": 1065143,
       "sha256": "a06892b03c136b8f1a717e8fe2c47ee22588892aec7846e629e521ccdab34be0",
-      "mtime": "2025-10-10T06:55:51.013142+00:00"
+      "mtime": "2025-10-10T13:26:55.240228+00:00"
     },
     {
       "key": "prices_60d_5m.parquet",
       "bytes": 2701384,
       "sha256": "864255177b897f7e795f42c2f918674c1ddee6632fe4901175f55bd0f617c09f",
-      "mtime": "2025-10-10T06:55:26.207678+00:00"
+      "mtime": "2025-10-10T13:26:44.644161+00:00"
     },
     {
       "key": "prices_730d_1h.parquet",
       "bytes": 3946883,
       "sha256": "f4d76bf28b1fd46e031406b49eed9e86869ea5c43f799f223371487cb0bda1c6",
-      "mtime": "2025-10-10T06:54:48.238767+00:00"
+      "mtime": "2025-10-10T13:26:26.959974+00:00"
     },
     {
       "key": "prices_max_1d.parquet",
       "bytes": 10889868,
       "sha256": "32e207efd32939d297a93da9702c459787b152215ee3d5c34beac696b3635a6c",
-      "mtime": "2025-10-10T06:53:37.008673+00:00"
+      "mtime": "2025-10-10T13:25:43.632673+00:00"
     },
     {
       "key": "prices_max_1mo.parquet",
       "bytes": 623646,
       "sha256": "d33956b614be71d6bb3626df8a1f4eedd9a06ddb51083f64ccd00721b4df9b00",
-      "mtime": "2025-10-10T06:54:09.287359+00:00"
+      "mtime": "2025-10-10T13:26:04.798577+00:00"
     },
     {
       "key": "prices_max_1wk.parquet",
       "bytes": 2688673,
       "sha256": "7691bd3e5b2cae8be944d8bb17a82bebd3f672fd12e331cc329a223d8173e4c4",
-      "mtime": "2025-10-10T06:53:59.150800+00:00"
+      "mtime": "2025-10-10T13:25:56.106313+00:00"
     },
     {
       "key": "tech_snapshot_1d.parquet",
       "bytes": 21282,
       "sha256": "e5a2a15d98c6d7d6cbe7881aa58fcee98d22730ca485ae4ddfcbc93dd9ca0122",
-      "mtime": "2025-10-10T06:55:51.607367+00:00"
+      "mtime": "2025-10-10T13:26:55.829808+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."
