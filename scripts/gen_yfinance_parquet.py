@@ -20,6 +20,11 @@ TICKERS = [
     "6501.T",  # Hitachi
     "9432.T",  # NTT
     "3382.T",  # Seven & i
+    "2914.T",  # Japan Tobacco
+    "4502.T",  # Takeda Pharmaceutical
+    "9984.T",  # SoftBank Group
+    "6758.T",  # Sony Group
+    "9983.T",  # Fast Retailing
 ]
 SPECS: List[Tuple[str, str]] = [
     ("max", "1d"),
