@@ -27,16 +27,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas pyarrow yfinance boto3
 
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+
       - name: Run yfinance smoke script (5 tickers)
         run: python scripts/yfinance_smoke.py
 
       - name: Generate parquet samples via yfinance
         run: python scripts/gen_yfinance_parquet.py
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
 
       - name: Upload sample parquet to S3
         env:
