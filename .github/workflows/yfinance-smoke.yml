@@ -41,20 +41,22 @@ jobs:
       - name: Upload sample parquet to S3
         env:
           S3_BUCKET: ${{ vars.S3_BUCKET }}
-          S3_KEY: smoke/yfinance-smoke-test.parquet
+          PARQUET_PREFIX: ${{ vars.PARQUET_PREFIX }}
         run: |
           set -euo pipefail
           if [ -z "${S3_BUCKET}" ]; then
             echo "::error::S3_BUCKET (vars.S3_BUCKET) is not defined."
             exit 1
           fi
+          PREFIX="${PARQUET_PREFIX:-parquet/}"
+          DEST_KEY="${PREFIX%/}/smoke/yfinance-smoke-test.parquet"
           aws s3 cp \
             yfinance-smoke-test.parquet \
-            "s3://${S3_BUCKET}/${S3_KEY}" \
+            "s3://${S3_BUCKET}/${DEST_KEY}" \
             --sse AES256 \
             --cache-control "max-age=60" \
             --only-show-errors
-          echo "uploaded to s3://${S3_BUCKET}/${S3_KEY}"
+          echo "uploaded to s3://${S3_BUCKET}/${DEST_KEY}"
 
       - name: Upload parquet artifact
         uses: actions/upload-artifact@v4
