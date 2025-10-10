@@ -10,9 +10,11 @@ fetch_prices.py
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import Iterable, List
 import sys
 import time
+import os
+import random
 
 import pandas as pd
 import yfinance as yf
@@ -33,6 +35,11 @@ from common_cfg.paths import (
 from common_cfg.s3cfg import DATA_BUCKET, PARQUET_PREFIX, AWS_REGION, AWS_PROFILE
 from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3io import maybe_upload_files_s3
+
+YF_MAX_ATTEMPTS = max(1, int(os.getenv("YF_MAX_ATTEMPTS", "3")))
+YF_BATCH_SIZE = max(1, int(os.getenv("YF_BATCH_SIZE", "5")))
+YF_RETRY_WAIT_BASE = max(0.5, float(os.getenv("YF_RETRY_WAIT_BASE", "2.0")))
+YF_RETRY_WAIT_JITTER = max(0.0, float(os.getenv("YF_RETRY_WAIT_JITTER", "1.0")))
 
 
 def load_universe() -> pd.DataFrame:
@@ -134,9 +141,13 @@ def _flatten_multi(raw: pd.DataFrame, tickers: List[str], interval: str) -> pd.D
 
 
 def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFrame:
+    def _retry_sleep(attempt: int) -> None:
+        wait = YF_RETRY_WAIT_BASE * (attempt + 1) + random.uniform(0, YF_RETRY_WAIT_JITTER)
+        time.sleep(wait)
+
     def _download_batch(batch: List[str]) -> pd.DataFrame:
         last_err: Exception | None = None
-        for attempt in range(3):
+        for attempt in range(YF_MAX_ATTEMPTS):
             try:
                 raw = yf.download(
                     batch,
@@ -152,20 +163,31 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
                     return df
             except Exception as exc:
                 last_err = exc
-            time.sleep(1 + attempt)
+            _retry_sleep(attempt)
         if last_err:
             raise last_err
         return pd.DataFrame()
 
-    try:
-        df = _download_batch(tickers)
-        if df.empty:
-            raise RuntimeError("yf.download returned empty. fallback to per-ticker.")
-    except Exception:
-        frames = []
-        for t in tickers:
+    def _chunked(seq: List[str], size: int) -> Iterable[List[str]]:
+        for idx in range(0, len(seq), size):
+            yield seq[idx : idx + size]
+
+    frames: list[pd.DataFrame] = []
+    failed_tickers: list[str] = []
+
+    for chunk in _chunked(tickers, YF_BATCH_SIZE):
+        try:
+            chunk_df = _download_batch(chunk)
+            if not chunk_df.empty:
+                frames.append(chunk_df)
+                continue
+            raise RuntimeError("yf.download returned empty for chunk")
+        except Exception as err:
+            print(f"[WARN] chunk download failed (size={len(chunk)}): {err}")
+
+        for t in chunk:
             last_error: Exception | None = None
-            for attempt in range(3):
+            for attempt in range(YF_MAX_ATTEMPTS):
                 try:
                     raw = yf.download(
                         t,
@@ -182,11 +204,16 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
                         break
                 except Exception as exc:
                     last_error = exc
-                    time.sleep(1 + attempt)
+                    _retry_sleep(attempt)
             else:
+                failed_tickers.append(t)
                 if last_error:
                     print(f"[WARN] failed to download ticker {t} after retries: {last_error}")
-        df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    if failed_tickers:
+        print(f"[WARN] download failures ({len(failed_tickers)} tickers) for period={period} interval={interval}: {failed_tickers}")
+
+    df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
     if df.empty or not need.issubset(df.columns):
