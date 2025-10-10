@@ -1,11 +1,11 @@
 {
-  "generated_at": "2025-10-09T09:42:43.805164+00:00",
+  "generated_at": "2025-10-10T03:24:05.870833+00:00",
   "items": [
     {
       "key": "meta.parquet",
       "bytes": 8545,
       "sha256": "9ca4533c80188eff73f252fab77bffcd8ebbb86553395221a118f50e93ae32f1",
-      "mtime": "2025-10-09T09:42:25.911891+00:00"
+      "mtime": "2025-10-10T03:24:05.115649+00:00"
     },
     {
       "key": "prices_60d_15m.parquet",
@@ -29,7 +29,7 @@
       "key": "prices_max_1d.parquet",
       "bytes": 10865203,
       "sha256": "276b96a1dbd893148b37a9be5f7f5ec211413767e05ddf8eb0575171009f77a5",
-      "mtime": "2025-10-09T09:42:30.185188+00:00"
+      "mtime": "2025-10-09T09:58:57.171732+00:00"
     },
     {
       "key": "prices_max_1mo.parquet",
@@ -47,7 +47,7 @@
       "key": "tech_snapshot_1d.parquet",
       "bytes": 21016,
       "sha256": "40e5d762452e0e2461d874c67cf3bd75033232c0bd95ea365054216852c3cc84",
-      "mtime": "2025-10-09T09:42:43.770662+00:00"
+      "mtime": "2025-10-10T03:24:05.855171+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."

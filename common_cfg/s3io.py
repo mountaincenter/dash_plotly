@@ -8,25 +8,40 @@ from pathlib import Path
 from .s3cfg import S3Config, load_s3_config
 import sys
 
+
+def _init_s3_client(cfg: S3Config):
+    try:
+        import boto3
+    except Exception as exc:
+        print(f"[WARN] boto3 import failed: {exc}", file=sys.stderr)
+        return None
+
+    session_kwargs: dict = {}
+    if cfg.profile:
+        session_kwargs["profile_name"] = cfg.profile
+    try:
+        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
+    except Exception as exc:
+        print(f"[WARN] boto3 session init failed: {exc}", file=sys.stderr)
+        return None
+
+    client_kwargs: dict = {}
+    if cfg.region:
+        client_kwargs["region_name"] = cfg.region
+    if cfg.endpoint_url:
+        client_kwargs["endpoint_url"] = cfg.endpoint_url
+    try:
+        return session.client("s3", **client_kwargs)
+    except Exception as exc:
+        print(f"[WARN] boto3 client init failed: {exc}", file=sys.stderr)
+        return None
+
 def upload_files(cfg: S3Config, files: list[Path]) -> None:
     if not cfg.bucket:
         print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
         return
-    try:
-        import boto3
-        session_kwargs: dict = {}
-        if cfg.profile:
-            session_kwargs["profile_name"] = cfg.profile
-        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
-
-        client_kwargs: dict = {}
-        if cfg.region:
-            client_kwargs["region_name"] = cfg.region
-        if cfg.endpoint_url:
-            client_kwargs["endpoint_url"] = cfg.endpoint_url
-        s3 = session.client("s3", **client_kwargs)
-    except Exception as e:
-        print(f"[WARN] boto3 init failed: {e}", file=sys.stderr)
+    s3 = _init_s3_client(cfg)
+    if s3 is None:
         return
 
     for p in files:
@@ -41,6 +56,24 @@ def upload_files(cfg: S3Config, files: list[Path]) -> None:
             print(f"[OK] uploaded: s3://{cfg.bucket}/{key}")
         except Exception as e:
             print(f"[WARN] upload failed: {p} → s3://{cfg.bucket}/{key} : {e}", file=sys.stderr)
+
+def download_file(cfg: S3Config, filename: str, dest: Path) -> bool:
+    if not cfg.bucket:
+        print("[INFO] S3 download skipped: bucket not set.", file=sys.stderr)
+        return False
+    s3 = _init_s3_client(cfg)
+    if s3 is None:
+        return False
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    key = f"{cfg.prefix}{filename}"
+    try:
+        s3.download_file(cfg.bucket, key, str(dest))
+        print(f"[OK] downloaded: s3://{cfg.bucket}/{key} -> {dest}")
+        return True
+    except Exception as exc:
+        print(f"[WARN] download failed: s3://{cfg.bucket}/{key} : {exc}", file=sys.stderr)
+        return False
 
 # ---- 後方互換ラッパー（ノートブックが直接呼ぶ想定のシグネチャ）----
 def maybe_upload_files_s3(

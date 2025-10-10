@@ -32,7 +32,7 @@ from common_cfg.paths import (
 )
 from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3cfg import load_s3_config
-from common_cfg.s3io import upload_files
+from common_cfg.s3io import upload_files, download_file
 from common_cfg.env import load_dotenv_cascade
 
 # ★ 追加：.env.s3 → .env の順で読み込み（空の上書きに注意）
@@ -45,6 +45,11 @@ ROOT = Path(".").resolve()
 ANALYZE_DIR        = ROOT / "analyze"
 FETCH_PRICES_SCRIPT = ANALYZE_DIR / "fetch_prices.py"
 MASTER_META_PY     = ANALYZE_DIR / "create_master_meta.py"
+CSV_DATA_SRC = [
+    ROOT / "data" / "csv" / "data_j.csv",
+    ROOT / "data" / "csv" / "topixweight_j.csv",
+    ROOT / "data" / "csv" / "takaichi_stock_issue.csv",
+]
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
 def _run_cmd(cmd, cwd: Optional[Path] = None, extra_env: Optional[dict] = None) -> None:
@@ -145,6 +150,26 @@ def _maybe_upload_to_s3(files: list[Path], *, dry_run: bool) -> None:
     upload_files(cfg, files)
 
 
+def _prepare_meta_inputs() -> str:
+    missing = [p for p in CSV_DATA_SRC if not p.exists()]
+    if not missing:
+        return "local"
+
+    print("[INFO] meta CSV sources missing; attempting to download meta parquet from S3.")
+    for p in missing:
+        print(f"       missing: {p}")
+
+    cfg = load_s3_config()
+    if not cfg.bucket:
+        print("[ERROR] S3 bucket not configured; cannot download meta parquet.")
+        return "missing"
+
+    if download_file(cfg, OUT_MASTER_META.name, OUT_MASTER_META):
+        return "s3"
+
+    return "missing"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-prices", action="store_true")
@@ -161,13 +186,21 @@ def main() -> int:
     target = args.target
     upload_to_s3 = target != "local"
 
-    # 1) master meta (always regenerate to keep tags in sync)
-    try:
-        print("[STEP] run create_master_meta.py")
-        _run_py_script(MASTER_META_PY, extra_env=pipeline_env)
-    except Exception as e:
-        print(f"[ERROR] master meta 生成に失敗: {e}")
+    meta_source = _prepare_meta_inputs()
+    if meta_source == "missing":
+        print("[ERROR] meta parquet could not be prepared.")
         return 1
+
+    # 1) master meta (always regenerate when sources exist)
+    if meta_source == "local":
+        try:
+            print("[STEP] run create_master_meta.py")
+            _run_py_script(MASTER_META_PY, extra_env=pipeline_env)
+        except Exception as e:
+            print(f"[ERROR] master meta 生成に失敗: {e}")
+            return 1
+    else:
+        print("[STEP] skip create_master_meta.py (using S3 meta parquet)")
 
     # 2) fetch prices
     if not args.skip_prices:
