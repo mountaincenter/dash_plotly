@@ -7,6 +7,7 @@ period/interval combinations that mirror the main pipeline granularity.
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 from typing import Sequence
 
@@ -18,64 +19,47 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PRICE_SPECS
+from common_cfg.s3cfg import S3Config, load_s3_config
+from common_cfg.s3io import download_file
 
 OUTPUT_TEMPLATE = "yfinance-smoke-test-{period}-{interval}.parquet"
 DEFAULT_COLUMNS = ["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
 
-# Tickers extracted from meta.parquet (TOPIX Core30 + 高市銘柄ユニバース)
-TICKERS = [
-    "2914.T",
-    "3382.T",
-    "4063.T",
-    "4502.T",
-    "4568.T",
-    "6098.T",
-    "6367.T",
-    "6501.T",
-    "6503.T",
-    "6758.T",
-    "6861.T",
-    "6981.T",
-    "7011.T",
-    "7203.T",
-    "7267.T",
-    "7741.T",
-    "7974.T",
-    "8001.T",
-    "8031.T",
-    "8035.T",
-    "8058.T",
-    "8306.T",
-    "8316.T",
-    "8411.T",
-    "8766.T",
-    "9432.T",
-    "9433.T",
-    "9434.T",
-    "9983.T",
-    "9984.T",
-    "7013.T",
-    "5631.T",
-    "6946.T",
-    "6701.T",
-    "3692.T",
-    "6232.T",
-    "8060.T",
-    "6920.T",
-    "6965.T",
-    "7711.T",
-    "6762.T",
-    "6330.T",
-    "1605.T",
-    "5020.T",
-    "4204.T",
-    "186A.T",
-    "5595.T",
-    "2168.T",
-    "9142.T",
-    "2749.T",
-    "9501.T",
-]
+
+def _load_tickers_from_s3() -> list[str]:
+    cfg = load_s3_config()
+    bucket = cfg.bucket or "dash-plotly"
+    prefix = cfg.prefix or "parquet/"
+    effective_cfg = S3Config(
+        bucket=bucket,
+        prefix=prefix,
+        region=cfg.region,
+        profile=cfg.profile,
+        endpoint_url=cfg.endpoint_url,
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dest = Path(tmpdir) / "meta.parquet"
+        ok = download_file(effective_cfg, "meta.parquet", dest)
+        if not ok or not dest.exists():
+            raise RuntimeError(
+                f"Failed to download meta.parquet from s3://{bucket}/{prefix}meta.parquet"
+            )
+        meta_df = pd.read_parquet(dest, engine="pyarrow")
+
+    if "ticker" not in meta_df.columns:
+        raise KeyError("meta.parquet missing 'ticker' column")
+
+    tickers = (
+        meta_df["ticker"]
+        .dropna()
+        .astype("string")
+        .drop_duplicates()
+        .tolist()
+    )
+    if not tickers:
+        raise RuntimeError("Ticker universe from meta.parquet is empty.")
+    return tickers
 
 
 def _flatten_multi(raw: pd.DataFrame, tickers: Sequence[str], interval: str) -> pd.DataFrame:
@@ -219,7 +203,7 @@ def fetch_for_spec(tickers: Sequence[str], period: str, interval: str) -> pd.Dat
 
 
 def main() -> int:
-    tickers = TICKERS
+    tickers = _load_tickers_from_s3()
     if not tickers:
         raise RuntimeError("Ticker universe is empty.")
     print(f"[INFO] universe size: {len(tickers)}")
