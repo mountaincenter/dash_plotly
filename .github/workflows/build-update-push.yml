@@ -18,7 +18,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-      DATA_BUCKET: ${{ vars.DATA_BUCKET }}
+      DATA_BUCKET: ${{ vars.DATA_BUCKET || vars.S3_BUCKET }}
       PARQUET_PREFIX: ${{ vars.PARQUET_PREFIX }}
 
     steps:
