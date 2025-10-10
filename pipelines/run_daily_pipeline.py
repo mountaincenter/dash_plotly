@@ -182,10 +182,10 @@ def _prepare_price_inputs() -> bool:
         print("[ERROR] S3 bucket not configured; cannot download price parquet files.")
         return False
 
-    ok = True
+    ok = False
     for path in missing:
-        if not download_file(cfg, path.name, path):
-            ok = False
+        if download_file(cfg, path.name, path):
+            ok = True
     return ok
 
 
@@ -222,8 +222,7 @@ def main() -> int:
         print("[STEP] skip create_master_meta.py (using S3 meta parquet)")
 
     if not _prepare_price_inputs():
-        print("[ERROR] price parquet files could not be prepared.")
-        return 1
+        print("[WARN] price parquet files could not be prepared from S3. proceeding without baseline.")
 
     # 2) fetch prices
     if not args.skip_prices:

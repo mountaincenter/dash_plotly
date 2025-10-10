@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 import sys
+import time
 
 import pandas as pd
 import yfinance as yf
@@ -133,37 +134,58 @@ def _flatten_multi(raw: pd.DataFrame, tickers: List[str], interval: str) -> pd.D
 
 
 def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFrame:
+    def _download_batch(batch: List[str]) -> pd.DataFrame:
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                raw = yf.download(
+                    batch,
+                    period=period,
+                    interval=interval,
+                    group_by="ticker",
+                    threads=False,
+                    progress=False,
+                    auto_adjust=True,
+                )
+                df = _flatten_multi(raw, batch, interval)
+                if not df.empty:
+                    return df
+            except Exception as exc:
+                last_err = exc
+            time.sleep(1 + attempt)
+        if last_err:
+            raise last_err
+        return pd.DataFrame()
+
     try:
-        raw = yf.download(
-            tickers,
-            period=period,
-            interval=interval,
-            group_by="ticker",
-            threads=True,
-            progress=False,
-            auto_adjust=True,
-        )
-        df = _flatten_multi(raw, tickers, interval)
+        df = _download_batch(tickers)
         if df.empty:
             raise RuntimeError("yf.download returned empty. fallback to per-ticker.")
     except Exception:
         frames = []
         for t in tickers:
-            try:
-                raw = yf.download(
-                    t,
-                    period=period,
-                    interval=interval,
-                    group_by="ticker",
-                    threads=True,
-                    progress=False,
-                    auto_adjust=True,
-                )
-                sub = _flatten_multi(raw, [t], interval)
-                if not sub.empty:
-                    frames.append(sub)
-            except Exception:
-                continue
+            last_error: Exception | None = None
+            for attempt in range(3):
+                try:
+                    raw = yf.download(
+                        t,
+                        period=period,
+                        interval=interval,
+                        group_by="ticker",
+                        threads=False,
+                        progress=False,
+                        auto_adjust=True,
+                    )
+                    sub = _flatten_multi(raw, [t], interval)
+                    if not sub.empty:
+                        frames.append(sub)
+                        break
+                except Exception as exc:
+                    last_error = exc
+                    time.sleep(1 + attempt)
+            else:
+                if last_error:
+                    print(f"[WARN] failed to download ticker {t} after retries: {last_error}")
         df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
