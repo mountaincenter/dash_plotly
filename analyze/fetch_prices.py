@@ -37,9 +37,10 @@ from common_cfg.manifest import sha256_of, write_manifest_atomic
 from common_cfg.s3io import maybe_upload_files_s3
 
 YF_MAX_ATTEMPTS = max(1, int(os.getenv("YF_MAX_ATTEMPTS", "3")))
-YF_BATCH_SIZE = max(1, int(os.getenv("YF_BATCH_SIZE", "5")))
+YF_BATCH_SIZE = max(1, int(os.getenv("YF_BATCH_SIZE", "1")))
 YF_RETRY_WAIT_BASE = max(0.5, float(os.getenv("YF_RETRY_WAIT_BASE", "2.0")))
 YF_RETRY_WAIT_JITTER = max(0.0, float(os.getenv("YF_RETRY_WAIT_JITTER", "1.0")))
+YF_BATCH_DELAY = max(0.0, float(os.getenv("YF_BATCH_DELAY", "1.0")))
 
 
 def load_universe() -> pd.DataFrame:
@@ -168,47 +169,58 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
             raise last_err
         return pd.DataFrame()
 
-    def _chunked(seq: List[str], size: int) -> Iterable[List[str]]:
-        for idx in range(0, len(seq), size):
-            yield seq[idx : idx + size]
-
     frames: list[pd.DataFrame] = []
     failed_tickers: list[str] = []
 
-    for chunk in _chunked(tickers, YF_BATCH_SIZE):
-        try:
-            chunk_df = _download_batch(chunk)
-            if not chunk_df.empty:
-                frames.append(chunk_df)
-                continue
-            raise RuntimeError("yf.download returned empty for chunk")
-        except Exception as err:
-            print(f"[WARN] chunk download failed (size={len(chunk)}): {err}")
+    ticker_iterable: Iterable[List[str]]
+    if YF_BATCH_SIZE > 1:
+        def _chunked(seq: List[str], size: int) -> Iterable[List[str]]:
+            for idx in range(0, len(seq), size):
+                yield seq[idx : idx + size]
+        ticker_iterable = _chunked(tickers, YF_BATCH_SIZE)
+    else:
+        ticker_iterable = ([t] for t in tickers)
 
-        for t in chunk:
-            last_error: Exception | None = None
-            for attempt in range(YF_MAX_ATTEMPTS):
-                try:
-                    raw = yf.download(
-                        t,
-                        period=period,
-                        interval=interval,
-                        group_by="ticker",
-                        threads=False,
-                        progress=False,
-                        auto_adjust=True,
-                    )
-                    sub = _flatten_multi(raw, [t], interval)
-                    if not sub.empty:
-                        frames.append(sub)
-                        break
-                except Exception as exc:
-                    last_error = exc
+    for chunk in ticker_iterable:
+        # When batch size >1 we try combined download first.
+        batch_handled = False
+        if len(chunk) > 1:
+            try:
+                chunk_df = _download_batch(chunk)
+                if not chunk_df.empty:
+                    frames.append(chunk_df)
+                    batch_handled = True
+            except Exception as err:
+                print(f"[WARN] chunk download failed (size={len(chunk)}): {err}")
+
+        if not batch_handled:
+            for t in chunk:
+                last_error: Exception | None = None
+                for attempt in range(YF_MAX_ATTEMPTS):
+                    try:
+                        raw = yf.download(
+                            t,
+                            period=period,
+                            interval=interval,
+                            group_by="ticker",
+                            threads=False,
+                            progress=False,
+                            auto_adjust=True,
+                        )
+                        sub = _flatten_multi(raw, [t], interval)
+                        if not sub.empty:
+                            frames.append(sub)
+                            break
+                        last_error = RuntimeError("empty dataframe")
+                    except Exception as exc:
+                        last_error = exc
                     _retry_sleep(attempt)
-            else:
-                failed_tickers.append(t)
-                if last_error:
-                    print(f"[WARN] failed to download ticker {t} after retries: {last_error}")
+                else:
+                    failed_tickers.append(t)
+                    if last_error:
+                        print(f"[WARN] failed to download ticker {t} after retries: {last_error}")
+                if YF_BATCH_DELAY:
+                    time.sleep(YF_BATCH_DELAY)
 
     if failed_tickers:
         print(f"[WARN] download failures ({len(failed_tickers)} tickers) for period={period} interval={interval}: {failed_tickers}")
