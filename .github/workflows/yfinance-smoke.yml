@@ -1,6 +1,9 @@
 name: YFinance Smoke Test
 
 on:
+  push:
+    branches:
+      - yfinance-smoke
   workflow_dispatch: {}
 
 jobs:
