@@ -149,10 +149,17 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-prices", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--target",
+        choices=["s3", "local"],
+        help="upload destination. omit to auto-detect (defaults to S3 when configured).",
+    )
     args = ap.parse_args()
 
     # パイプライン実行中は子処理の manifest/S3 を抑止
     pipeline_env = {"PIPELINE_NO_MANIFEST": "1", "PIPELINE_NO_S3": "1"}
+    target = args.target
+    upload_to_s3 = target != "local"
 
     # 1) master meta (always regenerate to keep tags in sync)
     try:
@@ -194,17 +201,20 @@ def main() -> int:
         return 1
 
     # 5) S3（manifest + 成果物）
-    try:
-        print("[STEP] upload to S3 (aggregate)")
-        files = [MANIFEST_PATH, OUT_TECH_SNAPSHOT, OUT_MASTER_META]
-        for period, interval in PRICE_SPECS:
-            p = price_parquet(period, interval)
-            if p.exists():
-                files.append(p)
-        _maybe_upload_to_s3(files, dry_run=args.dry_run)
-    except Exception as e:
-        print(f"[ERROR] S3 アップロードに失敗: {e}")
-        return 1
+    if upload_to_s3:
+        try:
+            print(f"[STEP] upload to S3 (target={target or 'auto'})")
+            files = [MANIFEST_PATH, OUT_TECH_SNAPSHOT, OUT_MASTER_META]
+            for period, interval in PRICE_SPECS:
+                p = price_parquet(period, interval)
+                if p.exists():
+                    files.append(p)
+            _maybe_upload_to_s3(files, dry_run=args.dry_run)
+        except Exception as e:
+            print(f"[ERROR] S3 アップロードに失敗: {e}")
+            return 1
+    else:
+        print("[STEP] skip S3 upload (target=local)")
 
     print("[DONE] pipeline completed.")
     return 0
