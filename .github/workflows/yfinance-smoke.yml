@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow yfinance
+          pip install pandas pyarrow yfinance boto3
 
       - name: Run yfinance smoke script (5 tickers)
         run: python scripts/yfinance_smoke.py
