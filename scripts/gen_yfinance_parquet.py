@@ -1,36 +1,49 @@
 #!/usr/bin/env python3
 """
-Generate yfinance-smoke parquet files for multiple tickers across
-period/interval combinations that mirror the main pipeline granularity.
+Generate price parquet files via yfinance using the same granularity and
+post-processing as the main pipeline, then update S3 artifacts.
+Also produces yfinance-smoke-test-{period}-{interval}.parquet samples.
 """
 
 from __future__ import annotations
 
+import json
 import sys
-import tempfile
 from pathlib import Path
-from typing import Sequence
+from typing import List, Tuple
 
 import pandas as pd
-import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from common_cfg.paths import PRICE_SPECS
+from common_cfg.env import load_dotenv_cascade
+from common_cfg.manifest import sha256_of, write_manifest_atomic
+from common_cfg.paths import (
+    MASTER_META_PARQUET,
+    MANIFEST_PATH,
+    PARQUET_DIR,
+    PRICE_SPECS,
+    TECH_SNAPSHOT_PARQUET,
+    price_parquet,
+)
 from common_cfg.s3cfg import S3Config, load_s3_config
-from common_cfg.s3io import download_file
+from common_cfg.s3io import download_file, upload_files
 
-OUTPUT_TEMPLATE = "yfinance-smoke-test-{period}-{interval}.parquet"
+from analyze import fetch_prices as fp
+from server.utils import read_prices_1d_df, normalize_prices
+from server.services.tech_utils_v2 import evaluate_latest_snapshot
+
+OUTPUT_TEMPLATE = "prices_{period}_{interval}.parquet"
 DEFAULT_COLUMNS = ["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
 
 
-def _load_tickers_from_s3() -> list[str]:
+def _load_s3_cfg() -> S3Config:
     cfg = load_s3_config()
     bucket = cfg.bucket or "dash-plotly"
     prefix = cfg.prefix or "parquet/"
-    effective_cfg = S3Config(
+    return S3Config(
         bucket=bucket,
         prefix=prefix,
         region=cfg.region,
@@ -38,187 +51,176 @@ def _load_tickers_from_s3() -> list[str]:
         endpoint_url=cfg.endpoint_url,
     )
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        dest = Path(tmpdir) / "meta.parquet"
-        ok = download_file(effective_cfg, "meta.parquet", dest)
-        if not ok or not dest.exists():
-            raise RuntimeError(
-                f"Failed to download meta.parquet from s3://{bucket}/{prefix}meta.parquet"
-            )
-        meta_df = pd.read_parquet(dest, engine="pyarrow")
 
-    if "ticker" not in meta_df.columns:
-        raise KeyError("meta.parquet missing 'ticker' column")
-
-    tickers = (
-        meta_df["ticker"]
-        .dropna()
-        .astype("string")
-        .drop_duplicates()
-        .tolist()
+def _ensure_meta_parquet() -> None:
+    cfg = _load_s3_cfg()
+    dest = MASTER_META_PARQUET
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    print(
+        f"[INFO] local CSV sources missing; downloading meta parquet from "
+        f"s3://{cfg.bucket}/{cfg.prefix}meta.parquet"
     )
+    ok = download_file(cfg, "meta.parquet", dest)
+    if not ok:
+        if dest.exists():
+            print("[WARN] S3 download failed; falling back to existing local meta.parquet")
+            return
+        raise RuntimeError("meta.parquet unavailable (no CSV sources and S3 download failed)")
+
+
+def _prepare_universe() -> pd.DataFrame:
+    _ensure_meta_parquet()
+    universe = fp.load_universe()
+    tickers = universe["ticker"].tolist()
     if not tickers:
-        raise RuntimeError("Ticker universe from meta.parquet is empty.")
-    return tickers
+        raise RuntimeError("Ticker universe is empty after meta preparation.")
+    return universe
 
 
-def _flatten_multi(raw: pd.DataFrame, tickers: Sequence[str], interval: str) -> pd.DataFrame:
-    frames = []
-    if isinstance(raw.columns, pd.MultiIndex):
-        aligned = raw
-        ticker_level = None
-        for level in range(aligned.columns.nlevels):
-            level_values = aligned.columns.get_level_values(level)
-            if any(ticker in level_values for ticker in tickers):
-                ticker_level = level
-                break
-        if ticker_level is not None and ticker_level != 0:
-            aligned = aligned.swaplevel(0, ticker_level, axis=1)
-        if isinstance(aligned.columns, pd.MultiIndex):
-            aligned = aligned.sort_index(axis=1)
-            lv0 = aligned.columns.get_level_values(0)
-            for ticker in tickers:
-                if ticker not in lv0:
-                    continue
-                sub = aligned[ticker].copy()
-                if sub.empty:
-                    continue
-                if isinstance(sub.columns, pd.MultiIndex):
-                    sub.columns = sub.columns.get_level_values(-1)
-                sub = sub.reset_index()
-                if "Datetime" in sub.columns:
-                    sub = sub.rename(columns={"Datetime": "date"})
-                elif "Date" in sub.columns:
-                    sub = sub.rename(columns={"Date": "date"})
-                elif "index" in sub.columns:
-                    sub = sub.rename(columns={"index": "date"})
-                else:
-                    sub.columns = ["date"] + list(sub.columns[1:])
-                sub["ticker"] = ticker
-                keep = [c for c in DEFAULT_COLUMNS if c in sub.columns]
-                frames.append(sub[keep].copy())
-    else:
-        sub = raw.reset_index()
-        if "Datetime" in sub.columns:
-            sub = sub.rename(columns={"Datetime": "date"})
-        elif "Date" in sub.columns:
-            sub = sub.rename(columns={"Date": "date"})
-        elif "index" in sub.columns:
-            sub = sub.rename(columns={"index": "date"})
-        sub["ticker"] = tickers[0] if tickers else "UNKNOWN"
-        keep = [c for c in DEFAULT_COLUMNS if c in sub.columns]
-        frames.append(sub[keep].copy())
+def _fetch_and_update_prices(tickers: List[str]) -> Tuple[List[Path], List[Path]]:
+    generated_files: List[Path] = []
+    sample_files: List[Path] = []
 
-    if not frames:
-        return pd.DataFrame(columns=DEFAULT_COLUMNS)
+    for period, interval in PRICE_SPECS:
+        suffix = f"{period}_{interval}"
+        out_path = price_parquet(period, interval)
+        sample_path = Path(OUTPUT_TEMPLATE.format(period=period, interval=interval))
+        print(f"[STEP] fetching prices ({suffix}) for {len(tickers)} tickers")
 
-    out = pd.concat(frames, ignore_index=True)
-    out["date"] = pd.to_datetime(out["date"], errors="coerce")
-
-    if interval in ("5m", "15m", "1h"):
         try:
-            if out["date"].dt.tz is not None:
-                out["date"] = out["date"].dt.tz_convert("Asia/Tokyo")
-            else:
-                out["date"] = out["date"].dt.tz_localize("UTC").dt.tz_convert("Asia/Tokyo")
-            out["date"] = out["date"].dt.tz_localize(None)
-        except Exception:
-            try:
-                out["date"] = out["date"].dt.tz_localize(None)
-            except Exception:
-                pass
-    else:
+            df_new = fp._fetch_prices(tickers, period, interval)  # noqa: SLF001
+        except Exception as exc:
+            print(f"[WARN] skipping prices ({suffix}) due to error: {exc}")
+            if out_path.exists():
+                print(f"[INFO] using existing parquet for {suffix}: {out_path}")
+                generated_files.append(out_path)
+            continue
+
+        if df_new.empty:
+            print(f"[WARN] prices ({suffix}) returned empty dataframe. skipping write.")
+            if out_path.exists():
+                print(f"[INFO] using existing parquet for {suffix}: {out_path}")
+                generated_files.append(out_path)
+            continue
+
+        sample_df = df_new.copy()
+        for col in DEFAULT_COLUMNS:
+            if col not in sample_df.columns:
+                sample_df[col] = pd.NA
+        sample_df = sample_df[DEFAULT_COLUMNS].sort_values(["ticker", "date"]).reset_index(drop=True)
+        sample_df.to_parquet(sample_path, index=False)
+        sample_files.append(sample_path)
+        print(f"[OK] saved sample parquet: {sample_path} rows={len(sample_df)}")
+
+        rows = fp._append_or_create(out_path, df_new)  # noqa: SLF001
+        print(f"[OK] prices ({suffix}) saved: {out_path} rows={rows}")
+        generated_files.append(out_path)
+
+    return generated_files, sample_files
+
+
+def _generate_tech_snapshot() -> Path | None:
+    print("[STEP] generate tech snapshot parquet")
+    df = read_prices_1d_df()
+    if df is None or df.empty:
+        print("[WARN] prices_... files missing; tech snapshot skipped.")
+        return None
+
+    norm = normalize_prices(df)
+    if norm is None or norm.empty:
+        print("[WARN] normalized prices empty; tech snapshot skipped.")
+        return None
+
+    results = []
+    for _, grp in norm.sort_values(["ticker", "date"]).groupby("ticker", sort=False):
+        grp = grp.dropna(subset=["Close"]).copy()
+        if grp.empty:
+            continue
+        grp = grp.set_index("date")
         try:
-            out["date"] = out["date"].dt.tz_localize(None)
-        except Exception:
-            pass
+            results.append(evaluate_latest_snapshot(grp))
+        except Exception as exc:
+            ticker = grp["ticker"].iloc[0]
+            print(f"[WARN] Failed to evaluate snapshot for {ticker}: {exc}")
 
-    for col in ["Open", "High", "Low", "Close", "Volume"]:
-        if col in out.columns:
-            out[col] = pd.to_numeric(out[col], errors="coerce")
+    if not results:
+        print("[WARN] No snapshot data generated.")
+        return None
 
-    out = out[out["date"].notna()].copy()
-    need_ohlc = [c for c in ["Open", "High", "Low", "Close"] if c in out.columns]
-    if need_ohlc:
-        out = out.dropna(subset=need_ohlc, how="any")
+    snapshot_df = pd.DataFrame(results)
+    for col in ["values", "votes", "overall"]:
+        if col in snapshot_df.columns:
+            snapshot_df[col] = snapshot_df[col].apply(json.dumps)
 
-    if "ticker" in out.columns:
-        out = out.sort_values(["ticker", "date"]).reset_index(drop=True)
-    else:
-        out = out.sort_values(["date"]).reset_index(drop=True)
-
-    return out
+    TECH_SNAPSHOT_PARQUET.parent.mkdir(parents=True, exist_ok=True)
+    snapshot_df.to_parquet(TECH_SNAPSHOT_PARQUET, engine="pyarrow", index=False)
+    print(f"[OK] tech snapshot saved: {TECH_SNAPSHOT_PARQUET}")
+    return TECH_SNAPSHOT_PARQUET
 
 
-def _fetch_prices(tickers: Sequence[str], period: str, interval: str) -> pd.DataFrame:
-    try:
-        raw = yf.download(
-            tickers,
-            period=period,
-            interval=interval,
-            group_by="ticker",
-            threads=True,
-            progress=False,
-            auto_adjust=True,
+def _write_manifest(files: List[Path]) -> None:
+    items = []
+    for path in files:
+        if not path.exists():
+            print(f"[INFO] manifest skip (missing): {path.name}")
+            continue
+        stat = path.stat()
+        items.append(
+            {
+                "key": path.name,
+                "bytes": stat.st_size,
+                "sha256": sha256_of(path),
+                "mtime": pd.Timestamp(stat.st_mtime, unit="s", tz="UTC").isoformat(),
+            }
         )
-        df = _flatten_multi(raw, tickers, interval)
-        if df.empty:
-            raise RuntimeError("yf.download returned empty. fallback to per-ticker.")
-    except Exception:
-        frames = []
-        for ticker in tickers:
-            try:
-                raw_single = yf.download(
-                    ticker,
-                    period=period,
-                    interval=interval,
-                    group_by="ticker",
-                    threads=True,
-                    progress=False,
-                    auto_adjust=True,
-                )
-                flattened = _flatten_multi(raw_single, [ticker], interval)
-                if not flattened.empty:
-                    frames.append(flattened)
-            except Exception:
-                continue
-        df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-    need = {"date", "Open", "High", "Low", "Close", "ticker"}
-    if df.empty or not need.issubset(df.columns):
-        raise RuntimeError(
-            f"No price data collected or required columns missing for period={period} interval={interval}."
-        )
-    return df
+    if not items:
+        raise RuntimeError("No files available to build manifest.")
+
+    MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    write_manifest_atomic(items, MANIFEST_PATH)
+    print(f"[OK] manifest updated: {MANIFEST_PATH} (entries={len(items)})")
 
 
-def fetch_for_spec(tickers: Sequence[str], period: str, interval: str) -> pd.DataFrame:
-    df = _fetch_prices(tickers, period, interval)
-    for col in DEFAULT_COLUMNS:
-        if col not in df.columns:
-            df[col] = pd.NA
-    df = df[DEFAULT_COLUMNS].copy()
-    df = df.sort_values(["ticker", "date"]).reset_index(drop=True)
-    return df
+def _upload_to_s3(files: List[Path]) -> None:
+    cfg = _load_s3_cfg()
+    if not cfg.bucket:
+        print("[INFO] S3 bucket not configured; upload skipped.")
+        return
+    if not files:
+        print("[INFO] No files to upload to S3.")
+        return
+    upload_files(cfg, files)
 
 
 def main() -> int:
-    tickers = _load_tickers_from_s3()
-    if not tickers:
-        raise RuntimeError("Ticker universe is empty.")
+    load_dotenv_cascade()
+
+    universe = _prepare_universe()
+    tickers = universe["ticker"].tolist()
     print(f"[INFO] universe size: {len(tickers)}")
 
-    generated = []
-    for period, interval in PRICE_SPECS:
-        print(f"[INFO] fetching prices period={period} interval={interval}")
-        df = fetch_for_spec(tickers, period, interval)
-        out_path = Path(OUTPUT_TEMPLATE.format(period=period, interval=interval))
-        df.to_parquet(out_path, index=False)
-        print(f"[OK] saved parquet: {out_path} rows={len(df)}")
-        generated.append(out_path)
+    PARQUET_DIR.mkdir(parents=True, exist_ok=True)
 
-    summary = ", ".join(str(p) for p in generated)
-    print(f"[INFO] generated files: {summary}")
+    price_files, sample_files = _fetch_and_update_prices(tickers)
+    if not price_files:
+        raise RuntimeError("No price parquet files were written.")
+
+    tech_snapshot = _generate_tech_snapshot()
+
+    manifest_targets = [MASTER_META_PARQUET] + price_files
+    if tech_snapshot:
+        manifest_targets.append(tech_snapshot)
+    _write_manifest(manifest_targets)
+
+    upload_targets = list(price_files)
+    if tech_snapshot:
+        upload_targets.append(tech_snapshot)
+    upload_targets.append(MANIFEST_PATH)
+    _upload_to_s3(upload_targets)
+
+    samples_summary = ", ".join(str(p) for p in sample_files)
+    print(f"[INFO] generated sample files: {samples_summary}")
     return 0
 
 
