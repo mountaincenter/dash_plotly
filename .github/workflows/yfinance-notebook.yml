@@ -1,0 +1,32 @@
+name: YFinance Notebook
+
+on:
+  push:
+    branches:
+      - yfinance-smoke
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas nbformat
+
+      - name: Generate notebook
+        run: python scripts/gen_yfinance_notebook.py
+
+      - name: Upload notebook artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yfinance-smoke-test-notebook
+          path: yfinance-smoke-test.ipynb
