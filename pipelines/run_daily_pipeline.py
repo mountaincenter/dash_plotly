@@ -50,6 +50,7 @@ CSV_DATA_SRC = [
     ROOT / "data" / "csv" / "topixweight_j.csv",
     ROOT / "data" / "csv" / "takaichi_stock_issue.csv",
 ]
+PRICE_PARQUET_PATHS = [price_parquet(period, interval) for period, interval in PRICE_SPECS]
 
 # 先頭付近の既存 import の下にある _run_cmd をこの実装に差し替え
 def _run_cmd(cmd, cwd: Optional[Path] = None, extra_env: Optional[dict] = None) -> None:
@@ -170,6 +171,24 @@ def _prepare_meta_inputs() -> str:
     return "missing"
 
 
+def _prepare_price_inputs() -> bool:
+    missing = [p for p in PRICE_PARQUET_PATHS if not p.exists()]
+    if not missing:
+        return True
+
+    print("[INFO] price parquet sources missing; attempting to download from S3.")
+    cfg = load_s3_config()
+    if not cfg.bucket:
+        print("[ERROR] S3 bucket not configured; cannot download price parquet files.")
+        return False
+
+    ok = True
+    for path in missing:
+        if not download_file(cfg, path.name, path):
+            ok = False
+    return ok
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-prices", action="store_true")
@@ -201,6 +220,10 @@ def main() -> int:
             return 1
     else:
         print("[STEP] skip create_master_meta.py (using S3 meta parquet)")
+
+    if not _prepare_price_inputs():
+        print("[ERROR] price parquet files could not be prepared.")
+        return 1
 
     # 2) fetch prices
     if not args.skip_prices:

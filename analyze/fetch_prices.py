@@ -219,7 +219,7 @@ def main() -> int:
     tickers: List[str] = universe["ticker"].tolist()
     print(f"[INFO] universe size: {len(tickers)}")
 
-    written_files: List[Path] = []
+    available_files: set[Path] = set()
     for period, interval in PRICE_SPECS:
         suffix = f"{period}_{interval}"
         out_path = price_parquet(period, interval)
@@ -227,20 +227,26 @@ def main() -> int:
             df_iv = _fetch_prices(tickers, period, interval)
         except Exception as e:
             print(f"[WARN] skipping prices ({suffix}) due to error: {e}")
+            if out_path.exists():
+                print(f"[INFO] using existing parquet for {suffix}: {out_path}")
+                available_files.add(out_path)
             continue
         if df_iv.empty:
             print(f"[WARN] prices ({suffix}) returned empty dataframe. skipping write.")
+            if out_path.exists():
+                print(f"[INFO] using existing parquet for {suffix}: {out_path}")
+                available_files.add(out_path)
             continue
         rows = _append_or_create(out_path, df_iv)
         print(f"[OK] prices ({suffix}) saved: {out_path} rows={rows}")
-        written_files.append(out_path)
+        available_files.add(out_path)
 
-    if not written_files:
+    if not available_files:
         raise RuntimeError("No price parquet files were written.")
 
     if not NO_MANIFEST:
         items = []
-        for p in written_files:
+        for p in sorted(available_files):
             stat = p.stat()
             items.append({
                 "key": p.name,
@@ -254,7 +260,7 @@ def main() -> int:
         print("[INFO] PIPELINE_NO_MANIFEST=1 → manifest 更新はスキップ")
 
     if not NO_S3:
-        upload_targets = written_files + ([] if NO_MANIFEST else [MANIFEST_PATH])
+        upload_targets = list(available_files) + ([] if NO_MANIFEST else [MANIFEST_PATH])
         maybe_upload_files_s3(
             upload_targets,
             bucket=DATA_BUCKET,
