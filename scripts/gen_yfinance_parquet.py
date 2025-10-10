@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import List, Sequence
+from typing import Sequence
 
 import pandas as pd
 import yfinance as yf
@@ -17,36 +17,65 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from common_cfg.env import load_dotenv_cascade
-from common_cfg.paths import MASTER_META_PARQUET, PRICE_SPECS
+from common_cfg.paths import PRICE_SPECS
 
 OUTPUT_TEMPLATE = "yfinance-smoke-test-{period}-{interval}.parquet"
 DEFAULT_COLUMNS = ["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
 
-
-def _load_universe() -> List[str]:
-    load_dotenv_cascade()
-
-    if not MASTER_META_PARQUET.exists():
-        raise FileNotFoundError(f"not found: {MASTER_META_PARQUET}")
-
-    meta_df = pd.read_parquet(MASTER_META_PARQUET, engine="pyarrow")
-    required = {"code", "stock_name", "ticker"}
-    missing = required.difference(meta_df.columns)
-    if missing:
-        raise KeyError(f"meta parquet missing columns: {sorted(missing)}")
-
-    universe = (
-        meta_df.loc[meta_df["ticker"].notna(), ["ticker"]]
-        .drop_duplicates(subset=["ticker"])
-        .reset_index(drop=True)
-    )
-    universe["ticker"] = universe["ticker"].astype("string")
-
-    tickers = universe["ticker"].dropna().tolist()
-    if not tickers:
-        raise RuntimeError("Universe is empty. Check ticker values in meta.parquet.")
-    return tickers
+# Tickers extracted from meta.parquet (TOPIX Core30 + 高市銘柄ユニバース)
+TICKERS = [
+    "2914.T",
+    "3382.T",
+    "4063.T",
+    "4502.T",
+    "4568.T",
+    "6098.T",
+    "6367.T",
+    "6501.T",
+    "6503.T",
+    "6758.T",
+    "6861.T",
+    "6981.T",
+    "7011.T",
+    "7203.T",
+    "7267.T",
+    "7741.T",
+    "7974.T",
+    "8001.T",
+    "8031.T",
+    "8035.T",
+    "8058.T",
+    "8306.T",
+    "8316.T",
+    "8411.T",
+    "8766.T",
+    "9432.T",
+    "9433.T",
+    "9434.T",
+    "9983.T",
+    "9984.T",
+    "7013.T",
+    "5631.T",
+    "6946.T",
+    "6701.T",
+    "3692.T",
+    "6232.T",
+    "8060.T",
+    "6920.T",
+    "6965.T",
+    "7711.T",
+    "6762.T",
+    "6330.T",
+    "1605.T",
+    "5020.T",
+    "4204.T",
+    "186A.T",
+    "5595.T",
+    "2168.T",
+    "9142.T",
+    "2749.T",
+    "9501.T",
+]
 
 
 def _flatten_multi(raw: pd.DataFrame, tickers: Sequence[str], interval: str) -> pd.DataFrame:
@@ -177,7 +206,9 @@ def fetch_for_spec(tickers: Sequence[str], period: str, interval: str) -> pd.Dat
 
 
 def main() -> int:
-    tickers = _load_universe()
+    tickers = TICKERS
+    if not tickers:
+        raise RuntimeError("Ticker universe is empty.")
     print(f"[INFO] universe size: {len(tickers)}")
 
     generated = []
