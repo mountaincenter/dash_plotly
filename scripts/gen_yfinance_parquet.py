@@ -1,26 +1,40 @@
 #!/usr/bin/env python3
 """
-Generate yfinance-smoke-test.parquet using period=5d and intervals=1d/5m.
-Intended for temporary smoke checks in CI.
+Generate yfinance-smoke-test.parquet for multiple tickers across
+period/interval combinations that mirror the main pipeline granularity.
 """
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
-from typing import List
+from typing import Iterable, List, Tuple
 
 import pandas as pd
 import yfinance as yf
 
 OUT_PATH = Path("yfinance-smoke-test.parquet")
-TICKER = "7203.T"
-PERIOD = "5d"
-INTERVALS = ["1d", "5m"]
+TICKERS = [
+    "7203.T",  # Toyota
+    "8035.T",  # Tokyo Electron
+    "6501.T",  # Hitachi
+    "9432.T",  # NTT
+    "3382.T",  # Seven & i
+]
+SPECS: List[Tuple[str, str]] = [
+    ("max", "1d"),
+    ("730d", "1h"),
+    ("60d", "15m"),
+    ("60d", "5m"),
+]
+SLEEP_BETWEEN_CALLS = 1.0
 
 
-def _prepare_frame(df: pd.DataFrame, *, interval: str) -> pd.DataFrame:
+def _prepare_frame(df: pd.DataFrame, *, ticker: str, period: str, interval: str) -> pd.DataFrame:
     if df.empty:
-        return pd.DataFrame(columns=["date", "Open", "High", "Low", "Close", "Volume", "interval", "ticker"])
+        return pd.DataFrame(
+            columns=["date", "Open", "High", "Low", "Close", "Volume", "interval", "period", "ticker"]
+        )
 
     df = df.reset_index()
     ts_col = None
@@ -43,14 +57,15 @@ def _prepare_frame(df: pd.DataFrame, *, interval: str) -> pd.DataFrame:
 
     df = df.assign(
         interval=interval,
-        ticker=TICKER,
+        period=period,
+        ticker=ticker,
     )
     return df
 
 
-def fetch_all(ticker: str, *, period: str, intervals: List[str]) -> pd.DataFrame:
-    frames = []
-    for interval in intervals:
+def fetch_specs(ticker: str, specs: Iterable[Tuple[str, str]]) -> pd.DataFrame:
+    frames: List[pd.DataFrame] = []
+    for period, interval in specs:
         print(f"[INFO] downloading {ticker} period={period} interval={interval}")
         df = yf.download(
             ticker,
@@ -59,16 +74,22 @@ def fetch_all(ticker: str, *, period: str, intervals: List[str]) -> pd.DataFrame
             auto_adjust=True,
             progress=False,
         )
-        prepared = _prepare_frame(df, interval=interval)
+        prepared = _prepare_frame(df, ticker=ticker, period=period, interval=interval)
         frames.append(prepared)
+        time.sleep(SLEEP_BETWEEN_CALLS)
     combined = pd.concat(frames, ignore_index=True)
-    combined = combined[["date", "Open", "High", "Low", "Close", "Volume", "interval", "ticker"]]
-    combined = combined.sort_values(["interval", "date"]).reset_index(drop=True)
+    combined = combined[
+        ["date", "Open", "High", "Low", "Close", "Volume", "interval", "period", "ticker"]
+    ]
+    combined = combined.sort_values(["ticker", "interval", "date"]).reset_index(drop=True)
     return combined
 
 
 def main() -> int:
-    df = fetch_all(TICKER, period=PERIOD, intervals=INTERVALS)
+    frames: List[pd.DataFrame] = []
+    for ticker in TICKERS:
+        frames.append(fetch_specs(ticker, SPECS))
+    df = pd.concat(frames, ignore_index=True)
     if df.empty:
         raise RuntimeError("No data retrieved from yfinance; check network or API status.")
     df.to_parquet(OUT_PATH, index=False)
