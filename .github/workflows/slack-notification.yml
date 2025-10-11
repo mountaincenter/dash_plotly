@@ -1,0 +1,18 @@
+name: Slack Notification Demo
+
+on:
+  push:
+    branches:
+      - slack_notification
+
+jobs:
+  notify_on_success:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE="{\"text\": \"✅ Workflow *${{ github.workflow }}* in `${{ github.repository }}` succeeded.\", \"blocks\": [{\"type\": \"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"✅ Workflow *${{ github.workflow }}* in `${{ github.repository }}` succeeded.\"}}, {\"type\": \"section\", \"fields\": [{\"type\": \"mrkdwn\", \"text\": \"*Branch:*\n`${{ github.ref_name }}`\"}, {\"type\": \"mrkdwn\", \"text\": \"*Commit:*\n`${{ github.sha }}`\"}]}, {\"type\": \"actions\", \"elements\": [{\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"View Workflow Run\"}, \"url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}]}"
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
