@@ -3,6 +3,7 @@ name: YFinance Smoke Test
 on:
   push:
     branches:
+      - main
       - yfinance-smoke
   workflow_dispatch: {}
 
@@ -37,34 +38,6 @@ jobs:
 
       - name: Generate parquet samples via yfinance
         run: python scripts/gen_yfinance_parquet.py
-
-      - name: Upload sample parquet to S3
-        env:
-          S3_BUCKET: ${{ vars.S3_BUCKET }}
-          PARQUET_PREFIX: ${{ vars.PARQUET_PREFIX }}
-        run: |
-          set -euo pipefail
-          if [ -z "${S3_BUCKET:-}" ]; then
-            echo "::error::S3_BUCKET (vars.S3_BUCKET) is not defined."
-            exit 1
-          fi
-          PREFIX="${PARQUET_PREFIX:-parquet/}"
-          shopt -s nullglob
-          files=(yfinance-smoke-test-*.parquet)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No parquet files found to upload."
-            exit 1
-          fi
-          for file in "${files[@]}"; do
-            dest_key="${PREFIX%/}/smoke/${file}"
-            aws s3 cp \
-              "$file" \
-              "s3://${S3_BUCKET}/${dest_key}" \
-              --sse AES256 \
-              --cache-control "max-age=60" \
-              --only-show-errors
-            echo "uploaded to s3://${S3_BUCKET}/${dest_key}"
-          done
 
       - name: Upload parquet artifact
         uses: actions/upload-artifact@v4
