@@ -6,13 +6,20 @@ on:
       - slack_notification
 
 jobs:
-  notify_on_success:
+  notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Slack notification
+      - name: Send Slack notification on success
         if: success()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           MESSAGE='{"text": "✅ Workflow *${{ github.workflow }}* in `${{ github.repository }}` succeeded.", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "✅ Workflow *${{ github.workflow }}* in `${{ github.repository }}` succeeded."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Commit:*\n`${{ github.sha }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{"text": "❌ Workflow *${{ github.workflow }}* in `${{ github.repository }}` failed.", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "❌ Workflow *${{ github.workflow }}* in `${{ github.repository }}` failed."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Commit:*\n`${{ github.sha }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
