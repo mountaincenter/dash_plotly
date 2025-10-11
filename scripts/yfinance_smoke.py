@@ -10,24 +10,37 @@ from __future__ import annotations
 import yfinance as yf
 
 
-def main() -> int:
-    ticker = "7203.T"
-    period = "10d"
-    intervals = ["1d", "5m"]
+TICKERS = [
+    "7203.T",  # Toyota
+    "8035.T",  # Tokyo Electron
+    "6501.T",  # Hitachi
+    "9432.T",  # NTT
+    "3382.T",  # Seven & i
+]
+PERIOD = "10d"
+INTERVALS = ["1d", "5m"]
 
-    for interval in intervals:
-        print(f"\n=== {ticker} period={period} interval={interval} ===")
-        df = yf.download(
-            ticker,
-            period=period,
-            interval=interval,
-            auto_adjust=True,
-            progress=False,
-        )
-        if df.empty:
-            print("No data returned.")
-            continue
-        print(df.head().to_string())
+
+def main() -> int:
+    for ticker in TICKERS:
+        for interval in INTERVALS:
+            print(f"\n=== {ticker} period={PERIOD} interval={interval} ===")
+            try:
+                df = yf.download(
+                    ticker,
+                    period=PERIOD,
+                    interval=interval,
+                    auto_adjust=True,
+                    progress=False,
+                )
+            except Exception as exc:
+                print(f"Failed to download {ticker} ({interval}): {exc}")
+                continue
+
+            if df.empty:
+                print("No data returned.")
+                continue
+            print(df.head().to_string())
     return 0
 
 

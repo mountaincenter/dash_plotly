@@ -29,37 +29,6 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run parquet pipeline
-        run: python -m pipelines.run_daily_pipeline --target local
-        env:
-          DATA_BUCKET: ${{ env.DATA_BUCKET }}
-          PARQUET_PREFIX: ${{ env.PARQUET_PREFIX }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-
-      - name: Upload parquet artifacts to S3 (manifest-driven)
-        env:
-          DATA_BUCKET: ${{ env.DATA_BUCKET }}
-          PARQUET_PREFIX: ${{ env.PARQUET_PREFIX }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-        run: |
-          set -euo pipefail
-          if [ -z "${DATA_BUCKET:-}" ]; then
-            echo "::error::DATA_BUCKET is not defined (vars.DATA_BUCKET or vars.S3_BUCKET)."
-            exit 1
-          fi
-          ARGS=(--bucket "${DATA_BUCKET}" --prefix "${PARQUET_PREFIX}")
-          if [ -n "${AWS_REGION:-}" ]; then
-            ARGS+=(--region "${AWS_REGION}")
-          fi
-          python scripts/upload_parquet_manifest.py "${ARGS[@]}"
-
       - name: Resolve AWS account id
         id: aws
         run: |
