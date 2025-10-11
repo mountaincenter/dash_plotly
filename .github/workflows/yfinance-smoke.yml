@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - yfinance-smoke
+  schedule:
+    - cron: '0 7 * * *'  # 16:00 JST
+    - cron: '0 17 * * *' # 02:00 JST
   workflow_dispatch: {}
 
 permissions:
@@ -39,8 +42,31 @@ jobs:
       - name: Generate parquet samples via yfinance
         run: python scripts/gen_yfinance_parquet.py
 
+      - name: Extract latest data date
+        id: data_info
+        # NOTE: gen_yfinance_parquet.py generates prices_max_1d.parquet in the project root
+        run: |
+          LATEST_DATE=$(python -c "import pandas as pd; print(pd.read_parquet('prices_max_1d.parquet')['date'].max())")
+          echo "latest_date=$LATEST_DATE" >> $GITHUB_OUTPUT
+
       - name: Upload parquet artifact
         uses: actions/upload-artifact@v4
         with:
           name: yfinance-smoke-test
           path: yfinance-smoke-test-*.parquet
+
+      - name: Send Slack notification on success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{"text": "✅ YFinance Data Update Succeeded", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "✅ *YFinance Data Update Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}, {"type": "mrkdwn", "text": "*Latest Data Date:*\n`${{ steps.data_info.outputs.latest_date }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{"text": "❌ YFinance Data Update Failed", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "❌ *YFinance Data Update Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
