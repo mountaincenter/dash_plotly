@@ -1,10 +1,9 @@
-name: YFinance Smoke Test
+name: Daily Data Update
 
 on:
   push:
     branches:
       - main
-      - yfinance-smoke
   schedule:
     - cron: '0 7 * * *'  # 16:00 JST
     - cron: '0 17 * * *' # 02:00 JST
@@ -52,38 +51,6 @@ jobs:
             echo "⚠️ Not updated yet for ${TODAY}, proceeding with 02:00 JST run"
           fi
 
-      - name: Update scalping lists from J-Quants
-        if: |
-          github.event_name == 'push' ||
-          github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '0 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
-        env:
-          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
-        run: |
-          echo "📊 Generating scalping lists from J-Quants..."
-          python jquants/generate_scalping_final.py
-          echo "📝 Updating meta.parquet with new scalping stocks..."
-          python analyze/create_master_meta.py
-
-      - name: Commit scalping updates
-        if: |
-          github.event_name == 'push' ||
-          github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '0 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/parquet/scalping_*.parquet data/parquet/meta.parquet
-          if ! git diff --staged --quiet; then
-            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
-            git commit -m "自動更新: スキャルピング銘柄 ${TIMESTAMP} [skip ci]"
-            git push
-            echo "✅ Pushed scalping updates to repository"
-          else
-            echo "ℹ️ No changes in scalping lists"
-          fi
 
       - name: Run yfinance smoke script (5 tickers)
         if: |
@@ -93,13 +60,21 @@ jobs:
           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
         run: python scripts/yfinance_smoke.py
 
-      - name: Generate parquet samples via yfinance
+      - name: Generate all data (J-Quants + YFinance + S3 upload)
         if: |
           github.event_name == 'push' ||
           github.event_name == 'workflow_dispatch' ||
           github.event.schedule == '0 7 * * *' ||
           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
-        run: python scripts/gen_yfinance_parquet.py
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+        run: |
+          echo "📊 Starting data pipeline..."
+          echo "  1. J-Quants scalping selection (fault-tolerant)"
+          echo "  2. YFinance OHLCV fetch for all stocks (Core30 + 高市 + scalping)"
+          echo "  3. Technical indicators calculation"
+          echo "  4. Upload to S3"
+          python scripts/gen_yfinance_parquet.py
 
       - name: Mark as updated today
         if: |
@@ -149,7 +124,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
-          MESSAGE='{"text": "ℹ️ YFinance Update Skipped (Already Updated)", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "ℹ️ *YFinance Update Skipped*\nData already updated today (`'"${TODAY}"'`). Skipping 02:00 JST run to reduce load."}}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          MESSAGE='{"text": "ℹ️ Daily Data Update Skipped (Already Updated)", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "ℹ️ *Daily Data Update Skipped*\nData already updated today (`'"${TODAY}"'`). Skipping 02:00 JST run to reduce load."}}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
 
       - name: Send Slack notification on success
@@ -162,7 +137,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          MESSAGE='{"text": "✅ YFinance Data Update Succeeded", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "✅ *YFinance Data Update Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}, {"type": "mrkdwn", "text": "*Latest Data Date:*\n`${{ steps.data_info.outputs.latest_date }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          MESSAGE='{"text": "✅ Daily Data Update Succeeded", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "✅ *Daily Data Update Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}, {"type": "mrkdwn", "text": "*Latest Data Date:*\n`${{ steps.data_info.outputs.latest_date }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
 
       - name: Send Slack notification on failure
@@ -170,5 +145,5 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          MESSAGE='{"text": "❌ YFinance Data Update Failed", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "❌ *YFinance Data Update Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          MESSAGE='{"text": "❌ Daily Data Update Failed", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "❌ *Daily Data Update Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"}, {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}]}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL

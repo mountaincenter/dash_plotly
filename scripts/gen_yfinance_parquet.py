@@ -193,16 +193,43 @@ def _upload_to_s3(files: List[Path]) -> None:
     upload_files(cfg, files)
 
 
-def _generate_scalping_lists() -> Tuple[Path, Path]:
-    """Generate scalping watchlists"""
+def _generate_scalping_lists() -> Tuple[Path | None, Path | None]:
+    """Generate scalping watchlists (fault-tolerant: failure does not block main pipeline)"""
     print("[STEP] generate scalping watchlists")
     import subprocess
     scalping_script = ROOT / "analyze" / "generate_scalping_lists.py"
-    subprocess.run([sys.executable, str(scalping_script)], check=True)
 
-    scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
-    scalping_active = PARQUET_DIR / "scalping_active.parquet"
-    return scalping_entry, scalping_active
+    try:
+        result = subprocess.run(
+            [sys.executable, str(scalping_script)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout
+        )
+        print(result.stdout)
+
+        scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
+        scalping_active = PARQUET_DIR / "scalping_active.parquet"
+
+        if scalping_entry.exists() and scalping_active.exists():
+            print(f"[OK] scalping lists generated: {scalping_entry.name}, {scalping_active.name}")
+            return scalping_entry, scalping_active
+        else:
+            print("[WARN] scalping list generation completed but files not found")
+            return None, None
+
+    except subprocess.TimeoutExpired:
+        print("[WARN] scalping list generation timed out (J-Quants may be slow/unavailable)")
+        return None, None
+    except subprocess.CalledProcessError as e:
+        print(f"[WARN] scalping list generation failed: {e}")
+        if e.stderr:
+            print(f"[WARN] Error output: {e.stderr}")
+        return None, None
+    except Exception as e:
+        print(f"[WARN] unexpected error during scalping list generation: {e}")
+        return None, None
 
 
 def main() -> int:
@@ -226,18 +253,18 @@ def main() -> int:
     manifest_targets = [MASTER_META_PARQUET] + price_files
     if tech_snapshot:
         manifest_targets.append(tech_snapshot)
-    if scalping_entry.exists():
+    if scalping_entry and scalping_entry.exists():
         manifest_targets.append(scalping_entry)
-    if scalping_active.exists():
+    if scalping_active and scalping_active.exists():
         manifest_targets.append(scalping_active)
     _write_manifest(manifest_targets)
 
     upload_targets = list(price_files)
     if tech_snapshot:
         upload_targets.append(tech_snapshot)
-    if scalping_entry.exists():
+    if scalping_entry and scalping_entry.exists():
         upload_targets.append(scalping_entry)
-    if scalping_active.exists():
+    if scalping_active and scalping_active.exists():
         upload_targets.append(scalping_active)
     upload_targets.append(MANIFEST_PATH)
     _upload_to_s3(upload_targets)
