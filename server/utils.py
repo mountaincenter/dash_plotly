@@ -520,6 +520,74 @@ def merge_price_data_into_meta(meta_list: List[Dict]) -> List[Dict]:
 
     return result
 
+def _calculate_perf_for_enriched(prices_df: pd.DataFrame, tickers: List[str]) -> Dict[str, Dict]:
+    """パフォーマンス指標を計算（enriched用）"""
+    if prices_df is None or prices_df.empty:
+        return {}
+
+    df = prices_df[prices_df["ticker"].isin(tickers)].copy()
+    if df.empty:
+        return {}
+
+    windows = ["5d", "1mo", "3mo", "ytd", "1y", "3y", "5y", "all"]
+    days_map = {
+        "5d": 7,
+        "1mo": 30,
+        "3mo": 90,
+        "1y": 365,
+        "3y": 365 * 3,
+        "5y": 365 * 5,
+    }
+
+    def pct_return(last_close: float, base_close: Optional[float]) -> Optional[float]:
+        if (
+            last_close is None
+            or base_close is None
+            or pd.isna(last_close)
+            or pd.isna(base_close)
+            or base_close == 0
+        ):
+            return None
+        return float((float(last_close) / float(base_close) - 1.0) * 100.0)
+
+    perf_map = {}
+    for ticker, grp in df.sort_values(["ticker", "date"]).groupby("ticker"):
+        g = grp[["date", "Close"]].dropna(subset=["Close"])
+        if g.empty:
+            continue
+        last_row = g.iloc[-1]
+        last_date = last_row["date"]
+        last_close = float(last_row["Close"])
+
+        def base_close_before_or_on(target_dt: pd.Timestamp) -> Optional[float]:
+            sel = g[g["date"] <= target_dt]
+            if sel.empty:
+                return None
+            return float(sel.iloc[-1]["Close"])
+
+        perf = {}
+        for w in windows:
+            if w == "ytd":
+                start_of_year = pd.Timestamp(year=last_date.year, month=1, day=1)
+                base = base_close_before_or_on(start_of_year)
+                perf[f"r_{w}"] = pct_return(last_close, base)
+            elif w == "all":
+                base = float(g.iloc[0]["Close"])
+                perf[f"r_{w}"] = pct_return(last_close, base)
+            else:
+                days = days_map.get(w)
+                if not days:
+                    perf[f"r_{w}"] = None
+                else:
+                    target = last_date - pd.Timedelta(days=days)
+                    base = base_close_before_or_on(target)
+                    perf[f"r_{w}"] = pct_return(last_close, base)
+
+        perf_map[str(ticker)] = perf
+
+    return perf_map
+
+
 def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
     """メタデータに価格・パフォーマンス・テクニカルデータを統合
 
@@ -535,7 +603,7 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
     # 1. 価格データをマージ
     enriched = merge_price_data_into_meta(meta_list)
 
-    # 2. TR, ATR14, vol_ma10 を価格データから計算
+    # 2. TR, ATR14, vol_ma10, パフォーマンスを価格データから計算
     prices_df = read_prices_1d_df()
     if prices_df is not None and not prices_df.empty:
         # TR, ATR14 を計算（routers/prices.py の _add_volatility_columns と同じロジック）
@@ -581,7 +649,11 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                 "vol_ma10": float(latest["vol_ma10"]) if pd.notna(latest.get("vol_ma10")) else None,
             }
 
-        # enriched にマージ
+        # 3. パフォーマンスデータを計算
+        tickers = [m["ticker"] for m in meta_list if m.get("ticker")]
+        perf_map = _calculate_perf_for_enriched(prices_df, tickers)
+
+        # enriched にテクニカルとパフォーマンスをマージ
         for stock in enriched:
             ticker = stock.get("ticker")
             if ticker and ticker in tech_map:
@@ -596,6 +668,23 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                     "atr14_pct": None,
                     "vol_ma10": None,
                 })
+
+            # パフォーマンスデータをマージ
+            if ticker and ticker in perf_map:
+                perf = perf_map[ticker]
+                stock.update(perf)
+            else:
+                # パフォーマンスデータがない場合はnullで埋める
+                stock.update({
+                    "r_5d": None,
+                    "r_1mo": None,
+                    "r_3mo": None,
+                    "r_ytd": None,
+                    "r_1y": None,
+                    "r_3y": None,
+                    "r_5y": None,
+                    "r_all": None,
+                })
     else:
         # 価格データがない場合は全てnullで埋める
         for stock in enriched:
@@ -605,6 +694,14 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                 "atr14": None,
                 "atr14_pct": None,
                 "vol_ma10": None,
+                "r_5d": None,
+                "r_1mo": None,
+                "r_3mo": None,
+                "r_ytd": None,
+                "r_1y": None,
+                "r_3y": None,
+                "r_5y": None,
+                "r_all": None,
             })
 
     return enriched
