@@ -603,7 +603,40 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
     # 1. 価格データをマージ
     enriched = merge_price_data_into_meta(meta_list)
 
-    # 2. TR, ATR14, vol_ma10, パフォーマンスを価格データから計算
+    # 2. テクニカル評価データを取得
+    tech_snapshot_df = read_tech_snapshot_df()
+    tech_rating_map = {}
+    if tech_snapshot_df is not None and not tech_snapshot_df.empty:
+        for _, row in tech_snapshot_df.iterrows():
+            ticker = str(row["ticker"])
+            values = row.get("values", {}) or {}
+            votes = row.get("votes", {}) or {}
+            overall = row.get("overall", {}) or {}
+
+            date_value = row.get("date")
+            if pd.notna(date_value):
+                if hasattr(date_value, 'strftime'):
+                    date_str = date_value.strftime("%Y-%m-%d")
+                else:
+                    date_str = str(date_value)
+            else:
+                date_str = None
+
+            tech_rating_map[ticker] = {
+                "date": date_str,
+                # 数値データ
+                "rsi14": values.get("rsi14"),
+                "macd_hist": values.get("macd_hist"),
+                "bb_percent_b": values.get("percent_b"),  # フロントエンドはbb_percent_bを期待
+                "sma25_dev_pct": values.get("sma25_dev_pct"),
+                # 評価データ
+                "overall_rating": overall.get("label"),
+                "tech_rating": votes.get("rsi14", {}).get("label") or votes.get("macd_hist", {}).get("label"),  # テクニカル総合
+                "ma_rating": votes.get("ma", {}).get("label"),
+                "ichimoku_rating": votes.get("ichimoku", {}).get("label"),
+            }
+
+    # 3. TR, ATR14, vol_ma10, パフォーマンスを価格データから計算
     prices_df = read_prices_1d_df()
     if prices_df is not None and not prices_df.empty:
         # TR, ATR14 を計算（routers/prices.py の _add_volatility_columns と同じロジック）
@@ -649,13 +682,15 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                 "vol_ma10": float(latest["vol_ma10"]) if pd.notna(latest.get("vol_ma10")) else None,
             }
 
-        # 3. パフォーマンスデータを計算
+        # 4. パフォーマンスデータを計算
         tickers = [m["ticker"] for m in meta_list if m.get("ticker")]
         perf_map = _calculate_perf_for_enriched(prices_df, tickers)
 
-        # enriched にテクニカルとパフォーマンスをマージ
+        # enriched にテクニカル、パフォーマンス、評価データをマージ
         for stock in enriched:
             ticker = stock.get("ticker")
+
+            # TR, ATR14, vol_ma10
             if ticker and ticker in tech_map:
                 tech = tech_map[ticker]
                 stock.update(tech)
@@ -685,9 +720,28 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                     "r_5y": None,
                     "r_all": None,
                 })
+
+            # テクニカル評価データをマージ
+            if ticker and ticker in tech_rating_map:
+                rating = tech_rating_map[ticker]
+                stock.update(rating)
+            else:
+                # テクニカル評価がない場合はnullで埋める
+                stock.update({
+                    "rsi14": None,
+                    "macd_hist": None,
+                    "bb_percent_b": None,
+                    "sma25_dev_pct": None,
+                    "overall_rating": None,
+                    "tech_rating": None,
+                    "ma_rating": None,
+                    "ichimoku_rating": None,
+                })
     else:
         # 価格データがない場合は全てnullで埋める
         for stock in enriched:
+            ticker = stock.get("ticker")
+
             stock.update({
                 "tr": None,
                 "tr_pct": None,
@@ -703,5 +757,21 @@ def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
                 "r_5y": None,
                 "r_all": None,
             })
+
+            # テクニカル評価データはtech_snapshotから取得可能
+            if ticker and ticker in tech_rating_map:
+                rating = tech_rating_map[ticker]
+                stock.update(rating)
+            else:
+                stock.update({
+                    "rsi14": None,
+                    "macd_hist": None,
+                    "bb_percent_b": None,
+                    "sma25_dev_pct": None,
+                    "overall_rating": None,
+                    "tech_rating": None,
+                    "ma_rating": None,
+                    "ichimoku_rating": None,
+                })
 
     return enriched
