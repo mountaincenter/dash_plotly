@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow yfinance boto3
+          pip install pandas pyarrow yfinance boto3 python-dotenv requests
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
