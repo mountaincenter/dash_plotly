@@ -193,6 +193,18 @@ def _upload_to_s3(files: List[Path]) -> None:
     upload_files(cfg, files)
 
 
+def _generate_scalping_lists() -> Tuple[Path, Path]:
+    """Generate scalping watchlists"""
+    print("[STEP] generate scalping watchlists")
+    import subprocess
+    scalping_script = ROOT / "analyze" / "generate_scalping_lists.py"
+    subprocess.run([sys.executable, str(scalping_script)], check=True)
+
+    scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
+    scalping_active = PARQUET_DIR / "scalping_active.parquet"
+    return scalping_entry, scalping_active
+
+
 def main() -> int:
     load_dotenv_cascade()
 
@@ -208,14 +220,25 @@ def main() -> int:
 
     tech_snapshot = _generate_tech_snapshot()
 
+    # Generate scalping lists
+    scalping_entry, scalping_active = _generate_scalping_lists()
+
     manifest_targets = [MASTER_META_PARQUET] + price_files
     if tech_snapshot:
         manifest_targets.append(tech_snapshot)
+    if scalping_entry.exists():
+        manifest_targets.append(scalping_entry)
+    if scalping_active.exists():
+        manifest_targets.append(scalping_active)
     _write_manifest(manifest_targets)
 
     upload_targets = list(price_files)
     if tech_snapshot:
         upload_targets.append(tech_snapshot)
+    if scalping_entry.exists():
+        upload_targets.append(scalping_entry)
+    if scalping_active.exists():
+        upload_targets.append(scalping_active)
     upload_targets.append(MANIFEST_PATH)
     _upload_to_s3(upload_targets)
 

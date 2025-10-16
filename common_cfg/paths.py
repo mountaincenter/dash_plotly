@@ -21,9 +21,8 @@ def price_parquet(period: str, interval: str):
 
 PRICE_SPECS = [
     ("max", "1d"),
-    ("max", "1wk"),
     ("max", "1mo"),
-    ("730d", "1h"),
+    ("max", "1h"),  # 730d → max に変更（新規上場銘柄対応）
     ("60d", "5m"),
     ("60d", "15m"),
 ]

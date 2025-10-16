@@ -9,6 +9,7 @@ from server.routers.stocks import router as stocks_router
 from server.routers.meta import router as meta_router
 from server.routers.prices import router as prices_router
 from server.routers.tech import router as tech_router
+from server.routers.scalping import router as scalping_router
 
 import os
 
@@ -59,6 +60,7 @@ async def _cache_headers(request: Request, call_next):
         or p.startswith("/meta")
         or p.startswith("/prices")
         or p.startswith("/tech")
+        or p.startswith("/scalping")
     ):
         # 既存ヘッダが無ければ付与（stale-while-revalidateで中間キャッシュを活用）
         if "cache-control" not in {k.lower() for k in response.headers.keys()}:
@@ -72,4 +74,5 @@ app.include_router(stocks_router, prefix="/stocks", tags=["stocks"])
 app.include_router(meta_router, tags=["stocks"])
 app.include_router(prices_router, tags=["prices"])
 app.include_router(tech_router, tags=["tech"])
+app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
 app.include_router(demo_router)

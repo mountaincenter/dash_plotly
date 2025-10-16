@@ -160,13 +160,13 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
         wait = YF_RETRY_WAIT_BASE * (attempt + 1) + random.uniform(0, YF_RETRY_WAIT_JITTER)
         time.sleep(wait)
 
-    def _download_batch(batch: List[str]) -> pd.DataFrame:
+    def _download_batch(batch: List[str], dl_period: str) -> pd.DataFrame:
         last_err: Exception | None = None
         for attempt in range(YF_MAX_ATTEMPTS):
             try:
                 raw = yf.download(
                     batch,
-                    period=period,
+                    period=dl_period,
                     interval=interval,
                     group_by="ticker",
                     threads=False,
@@ -195,12 +195,16 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
     else:
         ticker_iterable = ([t] for t in tickers)
 
+    # For 1h interval with max period, first try 730d then retry failures with max
+    use_730d_fallback = (interval == "1h" and period == "max")
+    primary_period = "730d" if use_730d_fallback else period
+
     for chunk in ticker_iterable:
         # When batch size >1 we try combined download first.
         batch_handled = False
         if len(chunk) > 1:
             try:
-                chunk_df = _download_batch(chunk)
+                chunk_df = _download_batch(chunk, primary_period)
                 if not chunk_df.empty:
                     frames.append(chunk_df)
                     batch_handled = True
@@ -214,7 +218,7 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
                     try:
                         raw = yf.download(
                             t,
-                            period=period,
+                            period=primary_period,
                             interval=interval,
                             group_by="ticker",
                             threads=False,
@@ -232,9 +236,45 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
                 else:
                     failed_tickers.append(t)
                     if last_error:
-                        print(f"[WARN] failed to download ticker {t} after retries: {last_error}")
+                        print(f"[WARN] failed to download ticker {t} with period={primary_period}: {last_error}")
                 if YF_BATCH_DELAY:
                     time.sleep(YF_BATCH_DELAY)
+
+    # Retry failed tickers with period="max" if using 730d fallback strategy
+    if use_730d_fallback and failed_tickers:
+        print(f"[INFO] Retrying {len(failed_tickers)} failed tickers with period=max for interval={interval}")
+        retry_success = []
+        for t in failed_tickers:
+            last_error: Exception | None = None
+            for attempt in range(YF_MAX_ATTEMPTS):
+                try:
+                    raw = yf.download(
+                        t,
+                        period="max",
+                        interval=interval,
+                        group_by="ticker",
+                        threads=False,
+                        progress=False,
+                        auto_adjust=True,
+                    )
+                    sub = _flatten_multi(raw, [t], interval)
+                    if not sub.empty:
+                        frames.append(sub)
+                        retry_success.append(t)
+                        print(f"[OK] successfully downloaded {t} with period=max")
+                        break
+                    last_error = RuntimeError("empty dataframe")
+                except Exception as exc:
+                    last_error = exc
+                _retry_sleep(attempt)
+            else:
+                if last_error:
+                    print(f"[WARN] failed to download ticker {t} even with period=max: {last_error}")
+            if YF_BATCH_DELAY:
+                time.sleep(YF_BATCH_DELAY)
+
+        # Update failed_tickers to only include those that failed with max too
+        failed_tickers = [t for t in failed_tickers if t not in retry_success]
 
     if failed_tickers:
         print(f"[WARN] download failures ({len(failed_tickers)} tickers) for period={period} interval={interval}: {failed_tickers}")
