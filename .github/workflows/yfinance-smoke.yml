@@ -36,27 +36,129 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
 
+      - name: Check if already updated today (02:00 JST only)
+        id: check_updated
+        if: github.event.schedule == '0 17 * * *'
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+          # S3から更新フラグをチェック
+          if aws s3 cp "s3://${BUCKET}/${PREFIX}update_flag_${TODAY}.txt" ./flag.txt 2>/dev/null; then
+            echo "already_updated=true" >> $GITHUB_OUTPUT
+            echo "✅ Already updated today (${TODAY}), skipping 02:00 JST run"
+          else
+            echo "already_updated=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Not updated yet for ${TODAY}, proceeding with 02:00 JST run"
+          fi
+
+      - name: Update scalping lists from J-Quants
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+        run: |
+          echo "📊 Generating scalping lists from J-Quants..."
+          python jquants/generate_scalping_final.py
+          echo "📝 Updating meta.parquet with new scalping stocks..."
+          python analyze/create_master_meta.py
+
+      - name: Commit scalping updates
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/parquet/scalping_*.parquet data/parquet/meta.parquet
+          if ! git diff --staged --quiet; then
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+            git commit -m "自動更新: スキャルピング銘柄 ${TIMESTAMP} [skip ci]"
+            git push
+            echo "✅ Pushed scalping updates to repository"
+          else
+            echo "ℹ️ No changes in scalping lists"
+          fi
+
       - name: Run yfinance smoke script (5 tickers)
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
         run: python scripts/yfinance_smoke.py
 
       - name: Generate parquet samples via yfinance
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
         run: python scripts/gen_yfinance_parquet.py
+
+      - name: Mark as updated today
+        if: |
+          success() &&
+          (github.event_name == 'push' ||
+           github.event_name == 'workflow_dispatch' ||
+           github.event.schedule == '0 7 * * *' ||
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "Updated at ${TIMESTAMP}" > update_flag_${TODAY}.txt
+          aws s3 cp update_flag_${TODAY}.txt "s3://${BUCKET}/${PREFIX}update_flag_${TODAY}.txt"
+          echo "✅ Marked ${TODAY} as updated in S3"
 
       - name: Extract latest data date
         id: data_info
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
         # NOTE: gen_yfinance_parquet.py generates prices_max_1d.parquet in the project root
         run: |
           LATEST_DATE=$(python -c "import pandas as pd; print(pd.read_parquet('prices_max_1d.parquet')['date'].max())")
           echo "latest_date=$LATEST_DATE" >> $GITHUB_OUTPUT
 
       - name: Upload parquet artifact
+        if: |
+          github.event_name == 'push' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '0 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
         uses: actions/upload-artifact@v4
         with:
           name: yfinance-smoke-test
           path: yfinance-smoke-test-*.parquet
 
+      - name: Send Slack notification (skipped 02:00 JST)
+        if: |
+          success() &&
+          github.event.schedule == '0 17 * * *' &&
+          steps.check_updated.outputs.already_updated == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          MESSAGE='{"text": "ℹ️ YFinance Update Skipped (Already Updated)", "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "ℹ️ *YFinance Update Skipped*\nData already updated today (`'"${TODAY}"'`). Skipping 02:00 JST run to reduce load."}}, {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Workflow Run"}, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]}]}'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+
       - name: Send Slack notification on success
-        if: success()
+        if: |
+          success() &&
+          (github.event_name == 'push' ||
+           github.event_name == 'workflow_dispatch' ||
+           github.event.schedule == '0 7 * * *' ||
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |

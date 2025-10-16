@@ -197,15 +197,56 @@ def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
     if df is None or df.empty:
         return []
 
-    cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "tag1", "tag2", "tag3"]
+    # 旧スキーマ（tag1, tag2, tag3）から新スキーマ（categories, tags）への変換
+    if "tag1" in df.columns and "categories" not in df.columns:
+        # tag1 を categories 配列に変換
+        def build_categories(row):
+            cats = []
+            for col in ["tag1", "tag2", "tag3"]:
+                if col in row and pd.notna(row[col]) and row[col]:
+                    cats.append(str(row[col]))
+            return cats if cats else None
+
+        df["categories"] = df.apply(build_categories, axis=1)
+        df["tags"] = None  # 旧スキーマにはtagsがない
+
+    # 新スキーマ: categories, tags (配列)
+    cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags"]
     for col in cols:
         if col not in df.columns:
             df[col] = pd.NA
     df = df[cols].copy()
+
+    # tagフィルタリング: categoriesの配列に含まれるかチェック
     resolved_tag = _resolve_tag(tag)
     if resolved_tag:
-        df = df[df["tag1"].astype("string").str.lower() == str(resolved_tag).lower()]
-    df = df.sort_values(["tag1", "code"], kind="mergesort")
+        def contains_tag(cats):
+            if cats is None:
+                return False
+            # numpy.ndarray or list をサポート
+            try:
+                return resolved_tag in cats
+            except (TypeError, ValueError):
+                return False
+        df = df[df["categories"].apply(contains_tag)]
+
+    # ソート: categories配列の最初の要素でソート
+    def get_first_category(x):
+        if x is None:
+            return ""
+        try:
+            return x[0] if len(x) > 0 else ""
+        except (TypeError, IndexError):
+            return ""
+    df["_sort_key"] = df["categories"].apply(get_first_category)
+    df = df.sort_values(["_sort_key", "code"], kind="mergesort")
+    df = df.drop(columns=["_sort_key"])
+
+    # numpy.ndarray を list に変換（JSON serialization対応）
+    for col in ["categories", "tags"]:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x)
+
     df = df.where(pd.notna(df), None)
     return df.to_dict(orient="records")
 
@@ -247,6 +288,77 @@ def read_tech_snapshot_df() -> Optional[pd.DataFrame]:
         return df
 
     return _df_cache.get(("tech_snapshot",), _load, local_path=TECH_SNAPSHOT_PATH)
+
+def load_scalping_meta(category: str) -> List[Dict]:
+    """スキャルピング銘柄メタデータを読み込む
+
+    Args:
+        category: "entry" または "active"
+
+    Returns:
+        meta.parquet互換の辞書リスト
+    """
+    if category not in ("entry", "active"):
+        return []
+
+    filename = f"scalping_{category}.parquet"
+    local_path = PARQUET_DIR / filename
+
+    df = _read_parquet_local(local_path)
+    if (df is None or df.empty) and _S3_BUCKET:
+        s3_key = _s3_key(filename)
+        df = _read_parquet_s3(_S3_BUCKET, s3_key)
+
+    if df is None or df.empty:
+        return []
+
+    # meta.parquet互換スキーマに変換
+    # code を ticker から抽出 (例: "7203.T" -> "7203")
+    df["code"] = df["ticker"].str.replace(".T", "", regex=False)
+
+    # categories を配列で追加
+    category_name = f"SCALPING_{category.upper()}"
+    df["categories"] = [[category_name]] * len(df)
+
+    # tags は既に配列形式（J-Quants生成時に設定済み）
+    # tags が文字列の場合は配列に変換
+    if "tags" in df.columns:
+        def normalize_tags(x):
+            if isinstance(x, list):
+                return x
+            if hasattr(x, '__iter__') and not isinstance(x, str):
+                # numpy.ndarray などの iterable
+                return list(x)
+            if pd.isna(x) or x is None or x == "":
+                return []
+            return [x]
+        df["tags"] = df["tags"].apply(normalize_tags)
+    else:
+        df["tags"] = [[] for _ in range(len(df))]
+
+    # series, topixnewindexseries が存在しない場合のみ None で埋める
+    # （既存のデータがあれば保持する）
+
+    # meta.parquet と同じカラム順序
+    cols = ["ticker", "code", "stock_name", "market", "sectors",
+            "series", "topixnewindexseries", "categories", "tags"]
+
+    # 存在しないカラムは None で埋める
+    for col in cols:
+        if col not in df.columns:
+            df[col] = None
+
+    result = df[cols].copy()
+
+    # numpy.ndarray を list に変換（JSON serialization対応）
+    for col in ["categories", "tags"]:
+        if col in result.columns:
+            result[col] = result[col].apply(
+                lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x
+            )
+
+    result = result.where(pd.notna(result), None)
+    return result.to_dict(orient="records")
 
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
@@ -339,3 +451,160 @@ def filter_bb_payload(data: dict, start_dt: Optional[pd.Timestamp], end_dt: Opti
             "end": end_dt.strftime("%Y-%m-%d") if end_dt else None,
         }
     return out
+
+def merge_price_data_into_meta(meta_list: List[Dict]) -> List[Dict]:
+    """メタデータに価格・パフォーマンスデータをマージ
+
+    Args:
+        meta_list: メタデータの辞書リスト（ticker, code, stock_name, ...を含む）
+
+    Returns:
+        価格データがマージされた辞書リスト（Row[]型互換）
+    """
+    if not meta_list:
+        return []
+
+    # スナップショット取得（prices_max_1d から最新2日分）
+    prices_df = read_prices_1d_df()
+    snapshot_data = {}
+
+    if prices_df is not None and not prices_df.empty:
+        # 各tickerの最新2日分を取得
+        for ticker in set(m["ticker"] for m in meta_list if m.get("ticker")):
+            ticker_df = prices_df[prices_df["ticker"] == ticker].sort_values("date", ascending=False).head(2)
+            if len(ticker_df) >= 1:
+                latest = ticker_df.iloc[0]
+                prev = ticker_df.iloc[1] if len(ticker_df) >= 2 else None
+
+                close = float(latest["Close"]) if pd.notna(latest["Close"]) else None
+                prev_close = float(prev["Close"]) if prev is not None and pd.notna(prev["Close"]) else None
+                diff = (close - prev_close) if (close is not None and prev_close is not None) else None
+
+                snapshot_data[ticker] = {
+                    "date": latest["date"].strftime("%Y-%m-%d") if pd.notna(latest["date"]) else None,
+                    "close": close,
+                    "prevClose": prev_close,
+                    "diff": diff,
+                    "volume": float(latest["Volume"]) if pd.notna(latest.get("Volume")) else None,
+                }
+
+    # メタデータとマージ
+    result = []
+    for meta in meta_list:
+        ticker = meta.get("ticker")
+        row = {**meta}  # メタデータをコピー
+
+        # スナップショットデータを追加
+        if ticker and ticker in snapshot_data:
+            snap = snapshot_data[ticker]
+            row.update({
+                "date": snap["date"],
+                "close": snap["close"],
+                "prevClose": snap["prevClose"],
+                "diff": snap["diff"],
+                "pct_diff": (snap["diff"] / snap["prevClose"] * 100) if (snap["diff"] is not None and snap["prevClose"] is not None and snap["prevClose"] != 0) else None,
+                "volume": snap["volume"],
+            })
+        else:
+            # データがない場合はnullで埋める
+            row.update({
+                "date": None,
+                "close": None,
+                "prevClose": None,
+                "diff": None,
+                "pct_diff": None,
+                "volume": None,
+            })
+
+        result.append(row)
+
+    return result
+
+def enrich_stocks_with_all_data(meta_list: List[Dict]) -> List[Dict]:
+    """メタデータに価格・パフォーマンス・テクニカルデータを統合
+
+    Args:
+        meta_list: メタデータの辞書リスト
+
+    Returns:
+        全データが統合された辞書リスト（Row[]型完全互換）
+    """
+    if not meta_list:
+        return []
+
+    # 1. 価格データをマージ
+    enriched = merge_price_data_into_meta(meta_list)
+
+    # 2. TR, ATR14, vol_ma10 を価格データから計算
+    prices_df = read_prices_1d_df()
+    if prices_df is not None and not prices_df.empty:
+        # TR, ATR14 を計算（routers/prices.py の _add_volatility_columns と同じロジック）
+        df = prices_df.copy()
+        df = df.sort_values(["ticker", "date"])
+        df["prevClose"] = df.groupby("ticker")["Close"].shift(1)
+
+        # True Range (TR)
+        hl = df["High"] - df["Low"]
+        hp = (df["High"] - df["prevClose"]).abs()
+        lp = (df["Low"] - df["prevClose"]).abs()
+        df["tr"] = pd.concat([hl, hp, lp], axis=1).max(axis=1)
+
+        # ATR(14): EMA(TR, span=14)
+        df["atr14"] = (
+            df.groupby("ticker", group_keys=False)["tr"]
+            .apply(lambda s: s.ewm(span=14, adjust=False).mean())
+        )
+
+        # %表記
+        with pd.option_context("mode.use_inf_as_na", True):
+            df["tr_pct"] = (df["tr"] / df["prevClose"] * 100.0).where(df["prevClose"] > 0)
+            df["atr14_pct"] = (df["atr14"] / df["Close"] * 100.0).where(df["Close"] > 0)
+
+        # vol_ma10
+        if "Volume" in df.columns:
+            df["vol_ma10"] = (
+                df.groupby("ticker")["Volume"]
+                .rolling(window=10, min_periods=1)
+                .mean()
+                .reset_index(level=0, drop=True)
+            )
+
+        # 各tickerの最新値を取得
+        tech_map = {}
+        for ticker, grp in df.groupby("ticker"):
+            latest = grp.iloc[-1]
+            tech_map[str(ticker)] = {
+                "tr": float(latest["tr"]) if pd.notna(latest.get("tr")) else None,
+                "tr_pct": float(latest["tr_pct"]) if pd.notna(latest.get("tr_pct")) else None,
+                "atr14": float(latest["atr14"]) if pd.notna(latest.get("atr14")) else None,
+                "atr14_pct": float(latest["atr14_pct"]) if pd.notna(latest.get("atr14_pct")) else None,
+                "vol_ma10": float(latest["vol_ma10"]) if pd.notna(latest.get("vol_ma10")) else None,
+            }
+
+        # enriched にマージ
+        for stock in enriched:
+            ticker = stock.get("ticker")
+            if ticker and ticker in tech_map:
+                tech = tech_map[ticker]
+                stock.update(tech)
+            else:
+                # テクニカルデータがない場合はnullで埋める
+                stock.update({
+                    "tr": None,
+                    "tr_pct": None,
+                    "atr14": None,
+                    "atr14_pct": None,
+                    "vol_ma10": None,
+                })
+    else:
+        # 価格データがない場合は全てnullで埋める
+        for stock in enriched:
+            stock.update({
+                "tr": None,
+                "tr_pct": None,
+                "atr14": None,
+                "atr14_pct": None,
+                "vol_ma10": None,
+            })
+
+    return enriched

@@ -20,10 +20,12 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 
-from common_cfg.paths import MASTER_META_PARQUET
+from common_cfg.paths import MASTER_META_PARQUET, PARQUET_DIR
 INPUT_TOPIX = ROOT / "data" / "csv" / "topixweight_j.csv"
 INPUT_DATA = ROOT / "data" / "csv" / "data_j.csv"
 INPUT_TAKAICHI = ROOT / "data" / "csv" / "takaichi_stock_issue.csv"
+INPUT_SCALPING_ENTRY = PARQUET_DIR / "scalping_entry.parquet"
+INPUT_SCALPING_ACTIVE = PARQUET_DIR / "scalping_active.parquet"
 OUTPUT_PARQUET = MASTER_META_PARQUET
 
 ENCODINGS: Iterable[str] = ("utf-8", "cp932", "utf-8-sig", "utf-16")
@@ -172,12 +174,41 @@ def build_takaichi_meta(base_lookup: pd.DataFrame) -> pd.DataFrame:
     return merged[required_cols]
 
 
+def build_scalping_meta(parquet_path: Path, tag1_value: str) -> pd.DataFrame:
+    """スキャルピング銘柄メタデータを読み込み、meta.parquet互換形式に変換"""
+    if not parquet_path.exists():
+        print(f"[INFO] scalping parquet not found, skipping: {parquet_path.name}")
+        return pd.DataFrame()
+
+    df = pd.read_parquet(parquet_path)
+    if df.empty:
+        return pd.DataFrame()
+
+    # ticker から code を抽出（"1234.T" → "1234"）
+    df["code"] = df["ticker"].str.replace(".T", "", regex=False)
+
+    # tag1, tag2, tag3 を設定
+    df["tag1"] = tag1_value
+    df["tag2"] = pd.NA
+    df["tag3"] = pd.NA
+
+    # 必要なカラムを選択
+    required_cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "tag1", "tag2", "tag3"]
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    return df[required_cols].drop_duplicates(subset=["ticker"])
+
+
 def main() -> int:
     base_lookup = build_data_master()
 
     frames = [
         build_topix_meta(base_lookup),
         build_takaichi_meta(base_lookup),
+        build_scalping_meta(INPUT_SCALPING_ENTRY, "SCALPING_ENTRY"),
+        build_scalping_meta(INPUT_SCALPING_ACTIVE, "SCALPING_ACTIVE"),
     ]
     combined = pd.concat(frames, ignore_index=True)
     combined = combined.dropna(subset=["code"], how="all")
@@ -188,6 +219,10 @@ def main() -> int:
     combined.to_parquet(OUTPUT_PARQUET, engine="pyarrow", compression="snappy", index=False)
 
     print(f"[OK] saved: {OUTPUT_PARQUET} (rows={len(combined)}, cols={len(combined.columns)})")
+    print(f"     - TOPIX_CORE30: {len(combined[combined['tag1'] == 'TOPIX_CORE30'])}")
+    print(f"     - 高市銘柄: {len(combined[combined['tag1'] == '高市銘柄'])}")
+    print(f"     - SCALPING_ENTRY: {len(combined[combined['tag1'] == 'SCALPING_ENTRY'])}")
+    print(f"     - SCALPING_ACTIVE: {len(combined[combined['tag1'] == 'SCALPING_ACTIVE'])}")
     return 0
 
 
