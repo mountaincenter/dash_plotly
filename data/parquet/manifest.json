@@ -1,47 +1,59 @@
 {
-  "generated_at": "2025-10-16T12:27:41.793891+00:00",
+  "generated_at": "2025-10-17T05:10:29.869838+00:00",
   "items": [
     {
       "key": "meta.parquet",
       "bytes": 10757,
       "sha256": "a63dd6515f67e49b18e5ff767c3251e0a17221ae12b163c26d81d73cc8505d01",
-      "mtime": "2025-10-16T12:15:05.094671+00:00"
+      "mtime": "2025-10-17T05:01:16.632591963+00:00"
     },
     {
       "key": "prices_60d_15m.parquet",
-      "bytes": 1981506,
-      "sha256": "5077a13552def02a1f293d53a1d0444a754f2bb79f493ba113aed5a072f5bad1",
-      "mtime": "2025-10-16T12:27:40.337507+00:00"
+      "bytes": 2120008,
+      "sha256": "4f29fef5a664316db73759b9bb9b2d59a123d1d0245bff03835cbed0eef026fb",
+      "mtime": "2025-10-17T05:10:27.322149277+00:00"
     },
     {
       "key": "prices_60d_5m.parquet",
-      "bytes": 4785510,
-      "sha256": "ec6dc3a940bec09c3dfa0b6aa50326446e95bb0952367cd95ac063ce07f4e79f",
-      "mtime": "2025-10-16T12:25:22.081097+00:00"
+      "bytes": 5241156,
+      "sha256": "b80cc8dfb0bc3abaec0edef5c59a6f3eadf60627f00d51b11f7a0e2066d4a063",
+      "mtime": "2025-10-17T05:08:40.423252583+00:00"
     },
     {
       "key": "prices_max_1d.parquet",
-      "bytes": 18249409,
-      "sha256": "f909191610bea109aa84d7edfc0257e3983dd40aa1c41f68f16e0b493cb53026",
-      "mtime": "2025-10-16T12:17:41.048676+00:00"
+      "bytes": 19957327,
+      "sha256": "e9266d898709cf132c71cd3b35dfb47fe4e5872bc54179f8e64ada9d141720df",
+      "mtime": "2025-10-17T05:03:11.745239973+00:00"
     },
     {
       "key": "prices_max_1h.parquet",
-      "bytes": 7005321,
-      "sha256": "fe9b08a71acf16dfdea4f93646cf64e46348aeafd52655725247185d02d1f1dc",
-      "mtime": "2025-10-16T12:22:48.898202+00:00"
+      "bytes": 7628513,
+      "sha256": "64264708fc699ba2baa5623bd6e41e75c90cec6e5a65286d74a0eb5beb819a51",
+      "mtime": "2025-10-17T05:06:45.837341070+00:00"
     },
     {
       "key": "prices_max_1mo.parquet",
-      "bytes": 1168732,
-      "sha256": "8c601598dbb4d040a82d7d1c79838d8c89603ea765c2ede11df3b1c5e374964d",
-      "mtime": "2025-10-16T12:19:49.937953+00:00"
+      "bytes": 1282667,
+      "sha256": "d805568d831081d6a51c99df23daffff252bb8e0f0de449137d77ac5b5cc72de",
+      "mtime": "2025-10-17T05:04:47.717654705+00:00"
+    },
+    {
+      "key": "scalping_active.parquet",
+      "bytes": 11506,
+      "sha256": "085d8951845361c378820519c7935d4f753c212aa911e8e98321ae9cb7987de9",
+      "mtime": "2025-10-17T04:14:54.955069542+00:00"
+    },
+    {
+      "key": "scalping_entry.parquet",
+      "bytes": 11281,
+      "sha256": "45d614ac9820938c343b9b2404d06244f6af2947529ee5606119f2d6c60f2621",
+      "mtime": "2025-10-17T04:23:09.660889864+00:00"
     },
     {
       "key": "tech_snapshot_1d.parquet",
-      "bytes": 35228,
-      "sha256": "089d3e6b69060a7e2c1f797a7b7af2fc5bb075c30d073b98c222fc57165defc6",
-      "mtime": "2025-10-16T12:27:41.772074+00:00"
+      "bytes": 37747,
+      "sha256": "e0433a638ac57d532aadc0e777bde198c5c0469c43426caeba472b6310fe02ac",
+      "mtime": "2025-10-17T05:10:29.804636002+00:00"
     }
   ],
   "note": "Auto-generated. Do not edit by hand."

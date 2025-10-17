@@ -8,6 +8,7 @@ Also produces yfinance-smoke-test-{period}-{interval}.parquet samples.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -193,53 +194,65 @@ def _upload_to_s3(files: List[Path]) -> None:
     upload_files(cfg, files)
 
 
-def _generate_scalping_lists() -> Tuple[Path | None, Path | None]:
-    """Generate scalping watchlists (fault-tolerant: failure does not block main pipeline)"""
-    print("[STEP] generate scalping watchlists")
-    import subprocess
-    scalping_script = ROOT / "analyze" / "generate_scalping_lists.py"
-
+def _generate_scalping_stocks() -> None:
+    """Generate scalping stocks using J-Quants (fault-tolerant)"""
+    print("[STEP] generating scalping stocks via J-Quants")
     try:
+        # J-Quantsでスキャルピング銘柄を生成
         result = subprocess.run(
-            [sys.executable, str(scalping_script)],
-            check=True,
+            ["python", "jquants/generate_scalping_final.py"],
+            cwd=ROOT,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes timeout
+            timeout=600  # 10分タイムアウト
         )
-        print(result.stdout)
 
-        scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
-        scalping_active = PARQUET_DIR / "scalping_active.parquet"
-
-        if scalping_entry.exists() and scalping_active.exists():
-            print(f"[OK] scalping lists generated: {scalping_entry.name}, {scalping_active.name}")
-            return scalping_entry, scalping_active
+        if result.returncode == 0:
+            print("[OK] scalping stocks generated successfully")
+            print(result.stdout)
         else:
-            print("[WARN] scalping list generation completed but files not found")
-            return None, None
+            print(f"[ERROR] scalping generation failed with code {result.returncode}")
+            print(f"[ERROR] stderr: {result.stderr}")
+            print("[ACTION] Creating empty scalping files to prevent confusion")
+            _create_empty_scalping_files()
 
     except subprocess.TimeoutExpired:
-        print("[WARN] scalping list generation timed out (J-Quants may be slow/unavailable)")
-        return None, None
-    except subprocess.CalledProcessError as e:
-        print(f"[WARN] scalping list generation failed: {e}")
-        if e.stderr:
-            print(f"[WARN] Error output: {e.stderr}")
-        return None, None
+        print("[ERROR] scalping generation timed out after 10 minutes")
+        print("[ACTION] Creating empty scalping files to prevent confusion")
+        _create_empty_scalping_files()
     except Exception as e:
-        print(f"[WARN] unexpected error during scalping list generation: {e}")
-        return None, None
+        print(f"[ERROR] scalping generation failed: {e}")
+        print("[ACTION] Creating empty scalping files to prevent confusion")
+        _create_empty_scalping_files()
+
+
+def _create_empty_scalping_files() -> None:
+    """エラー時は空のスキャルピングファイルを作成（誤認防止）"""
+    scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
+    scalping_active = PARQUET_DIR / "scalping_active.parquet"
+
+    empty_df = pd.DataFrame(columns=["ticker", "code", "stock_name", "market", "sectors"])
+
+    scalping_entry.parent.mkdir(parents=True, exist_ok=True)
+    empty_df.to_parquet(scalping_entry, index=False)
+    print(f"[INFO] Created empty {scalping_entry.name}")
+
+    empty_df.to_parquet(scalping_active, index=False)
+    print(f"[INFO] Created empty {scalping_active.name}")
 
 
 def main() -> int:
     load_dotenv_cascade()
 
+    PARQUET_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate scalping stocks first (before loading universe)
+    _generate_scalping_stocks()
+
+    # Load universe (includes existing scalping stocks from parquet files)
     universe = _prepare_universe()
     tickers = universe["ticker"].tolist()
     print(f"[INFO] universe size: {len(tickers)}")
-
-    PARQUET_DIR.mkdir(parents=True, exist_ok=True)
 
     price_files, sample_files = _fetch_and_update_prices(tickers)
     if not price_files:
@@ -247,24 +260,25 @@ def main() -> int:
 
     tech_snapshot = _generate_tech_snapshot()
 
-    # Generate scalping lists
-    scalping_entry, scalping_active = _generate_scalping_lists()
+    # Check for existing scalping files
+    scalping_entry = PARQUET_DIR / "scalping_entry.parquet"
+    scalping_active = PARQUET_DIR / "scalping_active.parquet"
 
     manifest_targets = [MASTER_META_PARQUET] + price_files
     if tech_snapshot:
         manifest_targets.append(tech_snapshot)
-    if scalping_entry and scalping_entry.exists():
+    if scalping_entry.exists():
         manifest_targets.append(scalping_entry)
-    if scalping_active and scalping_active.exists():
+    if scalping_active.exists():
         manifest_targets.append(scalping_active)
     _write_manifest(manifest_targets)
 
     upload_targets = list(price_files)
     if tech_snapshot:
         upload_targets.append(tech_snapshot)
-    if scalping_entry and scalping_entry.exists():
+    if scalping_entry.exists():
         upload_targets.append(scalping_entry)
-    if scalping_active and scalping_active.exists():
+    if scalping_active.exists():
         upload_targets.append(scalping_active)
     upload_targets.append(MANIFEST_PATH)
     _upload_to_s3(upload_targets)

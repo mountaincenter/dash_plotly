@@ -4,9 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from server.routers.health import router as health_router
-from server.routers.demo import router as demo_router
 from server.routers.stocks import router as stocks_router
-from server.routers.meta import router as meta_router
 from server.routers.prices import router as prices_router
 from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
@@ -55,9 +53,7 @@ async def _cache_headers(request: Request, call_next):
     response: Response = await call_next(request)
     p = request.url.path or ""
     if request.method == "GET" and (
-        p.startswith("/demo")
-        or p.startswith("/stocks")
-        or p.startswith("/meta")
+        p.startswith("/stocks")
         or p.startswith("/prices")
         or p.startswith("/tech")
         or p.startswith("/scalping")
@@ -68,11 +64,9 @@ async def _cache_headers(request: Request, call_next):
         # 変更しない: ETag/Last-Modified は各エンドポイント側で付与していればそのまま使用
     return response
 
-# === 既存のルーター登録（変更なし） ===
+# === ルーター登録 ===
 app.include_router(health_router)
 app.include_router(stocks_router, prefix="/stocks", tags=["stocks"])
-app.include_router(meta_router, tags=["stocks"])
 app.include_router(prices_router, tags=["prices"])
 app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
-app.include_router(demo_router)

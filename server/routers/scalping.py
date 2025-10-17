@@ -15,7 +15,7 @@ from fastapi import APIRouter, Query
 from ..utils import (
     read_prices_1d_df,
     normalize_prices,
-    load_master_meta,
+    load_all_stocks,
 )
 
 router = APIRouter()
@@ -181,8 +181,8 @@ def _merge_with_latest_data(scalping_df: pd.DataFrame) -> List[Dict[str, Any]]:
     # Calculate performance
     perf_df = _calculate_perf(price_df, tickers)
 
-    # Load meta
-    meta = load_master_meta()
+    # Load meta from all_stocks.parquet
+    meta = load_all_stocks()
     if meta:
         meta_df = pd.DataFrame(meta)
     else:
