@@ -44,6 +44,40 @@ YF_BATCH_DELAY = max(0.0, float(os.getenv("YF_BATCH_DELAY", "1.0")))
 
 
 def load_universe() -> pd.DataFrame:
+    """
+    all_stocks.parquetから銘柄ユニバースを読み込む
+    all_stocks.parquetが存在しない場合は、meta.parquetとscalping_*.parquetから読み込む（フォールバック）
+    """
+    all_stocks_path = PARQUET_DIR / "all_stocks.parquet"
+
+    # all_stocks.parquetが存在する場合はそこから読み込む
+    if all_stocks_path.exists():
+        try:
+            all_stocks_df = pd.read_parquet(all_stocks_path, engine="pyarrow")
+            required_cols = {"code", "stock_name", "ticker"}
+            missing = required_cols.difference(all_stocks_df.columns)
+            if missing:
+                raise KeyError(f"all_stocks.parquet missing columns: {sorted(missing)}")
+
+            universe = (
+                all_stocks_df.loc[all_stocks_df["ticker"].notna(), ["code", "stock_name", "ticker"]]
+                .drop_duplicates(subset=["ticker"])
+                .reset_index(drop=True)
+            )
+
+            universe["code"] = universe["code"].astype("string")
+            universe["stock_name"] = universe["stock_name"].fillna("").astype("string")
+            universe["ticker"] = universe["ticker"].astype("string")
+
+            if universe.empty:
+                raise RuntimeError("Universe is empty in all_stocks.parquet.")
+
+            print(f"[INFO] Loaded {len(universe)} stocks from all_stocks.parquet")
+            return universe
+        except Exception as e:
+            print(f"[WARN] Failed to load all_stocks.parquet: {e}. Falling back to meta.parquet + scalping_*.parquet")
+
+    # フォールバック: meta.parquet + scalping_*.parquet
     meta_path = MASTER_META_PARQUET
     if not meta_path.exists():
         raise FileNotFoundError(f"not found: {meta_path}")
@@ -54,17 +88,47 @@ def load_universe() -> pd.DataFrame:
     if missing:
         raise KeyError(f"meta parquet missing columns: {sorted(missing)}")
 
+    # メタデータから銘柄取得
     universe = (
         meta_df.loc[meta_df["ticker"].notna(), ["code", "stock_name", "ticker"]]
         .drop_duplicates(subset=["ticker"])
         .reset_index(drop=True)
     )
+
+    # スキャルピング銘柄を追加
+    scalping_entry_path = PARQUET_DIR / "scalping_entry.parquet"
+    scalping_active_path = PARQUET_DIR / "scalping_active.parquet"
+
+    frames_to_merge = [universe]
+
+    for scalping_path in [scalping_entry_path, scalping_active_path]:
+        if scalping_path.exists():
+            try:
+                scalping_df = pd.read_parquet(scalping_path, engine="pyarrow")
+                if "ticker" in scalping_df.columns:
+                    scalping_tickers = scalping_df.loc[
+                        scalping_df["ticker"].notna(),
+                        ["ticker"]
+                    ].drop_duplicates(subset=["ticker"])
+                    # codeとstock_nameを追加（tickerから抽出）
+                    scalping_tickers["code"] = scalping_tickers["ticker"].str.replace(".T", "", regex=False)
+                    scalping_tickers["stock_name"] = scalping_df.get("stock_name", pd.Series(dtype="string"))
+                    frames_to_merge.append(scalping_tickers[["code", "stock_name", "ticker"]])
+            except Exception as e:
+                print(f"[WARN] Failed to load {scalping_path.name}: {e}")
+
+    # 統合して重複を削除
+    if len(frames_to_merge) > 1:
+        universe = pd.concat(frames_to_merge, ignore_index=True).drop_duplicates(subset=["ticker"]).reset_index(drop=True)
+
     universe["code"] = universe["code"].astype("string")
-    universe["stock_name"] = universe["stock_name"].astype("string")
+    universe["stock_name"] = universe["stock_name"].fillna("").astype("string")
     universe["ticker"] = universe["ticker"].astype("string")
 
     if universe.empty:
         raise RuntimeError("Universe is empty. Check ticker values in meta.parquet.")
+
+    print(f"[INFO] Loaded {len(universe)} stocks from meta.parquet + scalping_*.parquet")
     return universe
 
 
