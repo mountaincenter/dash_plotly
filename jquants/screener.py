@@ -6,11 +6,19 @@ J-Quants Scalping Screener
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Set
 import pandas as pd
 import numpy as np
 
+# tech_utils_v2をインポート
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from jquants.fetcher import JQuantsFetcher
+from server.services.tech_utils_v2 import evaluate_latest_snapshot
 
 
 class ScalpingScreener:
@@ -80,6 +88,48 @@ class ScalpingScreener:
 
         return df
 
+    def evaluate_technical_ratings(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        各銘柄のテクニカル評価を実行してoverall_ratingを追加
+
+        Args:
+            df: 株価データ（ticker, date, Close, High, Low, Volumeを含む）
+
+        Returns:
+            overall_rating列が追加されたDataFrame
+        """
+        print("[INFO] Evaluating technical ratings...")
+
+        df = df.sort_values(['ticker', 'date']).copy()
+        ratings = []
+
+        for ticker, grp in df.groupby('ticker', sort=False):
+            grp = grp.dropna(subset=['Close']).copy()
+            if grp.empty or len(grp) < 20:  # 最低20営業日分のデータが必要
+                continue
+
+            # dateをindexに設定
+            grp_indexed = grp.set_index('date')
+
+            try:
+                snapshot = evaluate_latest_snapshot(grp_indexed)
+                overall_label = snapshot['overall']['label']
+                ratings.append({'ticker': ticker, 'overall_rating': overall_label})
+            except Exception as e:
+                print(f"[WARN] Failed to evaluate {ticker}: {e}")
+                ratings.append({'ticker': ticker, 'overall_rating': '中立'})
+
+        if not ratings:
+            df['overall_rating'] = '中立'
+            return df
+
+        rating_df = pd.DataFrame(ratings)
+        df = df.merge(rating_df, on='ticker', how='left')
+        df['overall_rating'] = df['overall_rating'].fillna('中立')
+
+        print(f"[OK] Evaluated {len(ratings)} stocks")
+        return df
+
     def generate_entry_list(
         self,
         df_latest: pd.DataFrame,
@@ -90,7 +140,7 @@ class ScalpingScreener:
         エントリー向けスキャルピング銘柄リストを生成（初心者向け）
 
         Args:
-            df_latest: 最新日のテクニカル指標付き株価データ
+            df_latest: 最新日のテクニカル指標付き株価データ（overall_rating必須）
             meta_df: 銘柄メタ情報
             top_n: 上位何件を取得するか
 
@@ -99,6 +149,11 @@ class ScalpingScreener:
         """
         print("[INFO] Generating entry list (J-Quants)...")
 
+        # テクニカル評価フィルタ: 「買い」「強い買い」のみ
+        if 'overall_rating' not in df_latest.columns:
+            print("[ERROR] overall_rating column not found. Call evaluate_technical_ratings() first.")
+            return pd.DataFrame()
+
         df_entry = df_latest[
             (df_latest['Close'] >= 100) &
             (df_latest['Close'] <= 1500) &
@@ -106,7 +161,8 @@ class ScalpingScreener:
             (df_latest['atr14_pct'] >= 1.0) &
             (df_latest['atr14_pct'] <= 3.5) &
             (df_latest['change_pct'] >= -3.0) &
-            (df_latest['change_pct'] <= 3.0)
+            (df_latest['change_pct'] <= 3.0) &
+            (df_latest['overall_rating'].isin(['買い', '強い買い']))  # テクニカルフィルタ追加
         ].copy()
 
         if df_entry.empty:
@@ -184,7 +240,7 @@ class ScalpingScreener:
         アクティブ向けスキャルピング銘柄リストを生成（上級者向け）
 
         Args:
-            df_latest: 最新日のテクニカル指標付き株価データ
+            df_latest: 最新日のテクニカル指標付き株価データ（overall_rating必須）
             meta_df: 銘柄メタ情報
             entry_tickers: エントリーリストに含まれる銘柄（除外対象）
             top_n: 上位何件を取得するか
@@ -194,13 +250,19 @@ class ScalpingScreener:
         """
         print("[INFO] Generating active list (J-Quants)...")
 
+        # テクニカル評価フィルタ: 「買い」「強い買い」のみ
+        if 'overall_rating' not in df_latest.columns:
+            print("[ERROR] overall_rating column not found. Call evaluate_technical_ratings() first.")
+            return pd.DataFrame()
+
         df_active = df_latest[
             ~df_latest['ticker'].isin(entry_tickers) &
             (df_latest['Close'] >= 100) &
             (df_latest['Close'] <= 3000) &
             ((df_latest['Volume'] * df_latest['Close'] >= 50_000_000) | (df_latest['vol_ratio'] >= 150)) &
             (df_latest['atr14_pct'] >= 2.5) &
-            (df_latest['change_pct'].abs() >= 2.0)
+            (df_latest['change_pct'].abs() >= 2.0) &
+            (df_latest['overall_rating'].isin(['買い', '強い買い']))  # テクニカルフィルタ追加
         ].copy()
 
         if df_active.empty:

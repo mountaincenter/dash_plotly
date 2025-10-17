@@ -28,9 +28,9 @@ _AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
 
 # ---- 既存ローカルパス（フォールバック用） ----
 PARQUET_DIR = Path(__file__).resolve().parent.parent / "data" / "parquet"
-DEMO_DIR = Path(__file__).resolve().parent.parent / "demo_data"
 
 MASTER_META_PATH = PARQUET_DIR / "meta.parquet"
+ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 PRICES_1D_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 TECH_SNAPSHOT_PATH = PARQUET_DIR / "tech_snapshot_1d.parquet"
 
@@ -58,6 +58,7 @@ def _env_s3_key(*names: str, default: Optional[str] = None) -> Optional[str]:
     return None
 
 _S3_MASTER_META_KEY = _env_s3_key("MASTER_META_KEY", "META_KEY", "CORE30_META_KEY", default=MASTER_META_PATH.name)
+_S3_ALL_STOCKS_KEY = _env_s3_key("ALL_STOCKS_KEY", default=ALL_STOCKS_PATH.name)
 _S3_PRICES_1D_KEY = _env_s3_key("PRICES_MAX_1D_KEY", "PRICES_1D_KEY", "CORE30_PRICES_KEY", default=PRICES_1D_PATH.name)
 _S3_TECH_SNAPSHOT_KEY = _env_s3_key("TECH_SNAPSHOT_KEY", "CORE30_TECH_SNAPSHOT_KEY", default=TECH_SNAPSHOT_PATH.name)
 
@@ -293,12 +294,13 @@ def load_scalping_meta(category: str) -> List[Dict]:
     """スキャルピング銘柄メタデータを読み込む
 
     Args:
-        category: "entry" または "active"
+        category: "entry", "active"
 
     Returns:
         meta.parquet互換の辞書リスト
     """
-    if category not in ("entry", "active"):
+    valid_categories = ("entry", "active")
+    if category not in valid_categories:
         return []
 
     filename = f"scalping_{category}.parquet"
@@ -360,6 +362,80 @@ def load_scalping_meta(category: str) -> List[Dict]:
     result = result.where(pd.notna(result), None)
     return result.to_dict(orient="records")
 
+@cache
+def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
+    """all_stocks.parquetから全銘柄を読み込む（meta + scalping統合版）
+
+    Args:
+        tag: categoriesでフィルタリング（例: "TOPIX_CORE30", "高市銘柄", "SCALPING_ENTRY", "SCALPING_ACTIVE"）
+
+    Returns:
+        全銘柄の辞書リスト（meta.parquet互換）
+    """
+    df = _read_parquet_local(ALL_STOCKS_PATH)
+    if (df is None or df.empty) and _S3_BUCKET and _S3_ALL_STOCKS_KEY:
+        df = _read_parquet_s3(_S3_BUCKET, _S3_ALL_STOCKS_KEY)
+
+    # フォールバック: all_stocks.parquetがない場合はmeta.parquetとscalping_*.parquetから読み込む
+    if df is None or df.empty:
+        print("[WARN] all_stocks.parquet not found. Falling back to meta.parquet + scalping_*.parquet")
+        # meta.parquetから読み込み
+        meta = load_master_meta(tag=None)
+        # scalping_*.parquetから読み込み
+        scalping_entry = load_scalping_meta("entry")
+        scalping_active = load_scalping_meta("active")
+
+        # マージ
+        all_stocks = meta + scalping_entry + scalping_active
+
+        # tagフィルタリング
+        if tag:
+            resolved_tag = _resolve_tag(tag)
+            if resolved_tag:
+                all_stocks = [s for s in all_stocks if resolved_tag in (s.get("categories") or [])]
+
+        return all_stocks
+
+    # all_stocks.parquetから読み込み成功
+    # 必要なカラムを確認
+    cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags"]
+    for col in cols:
+        if col not in df.columns:
+            df[col] = pd.NA
+    df = df[cols].copy()
+
+    # tagフィルタリング: categoriesの配列に含まれるかチェック
+    resolved_tag = _resolve_tag(tag)
+    if resolved_tag:
+        def contains_tag(cats):
+            if cats is None:
+                return False
+            try:
+                return resolved_tag in cats
+            except (TypeError, ValueError):
+                return False
+        df = df[df["categories"].apply(contains_tag)]
+
+    # ソート: categories配列の最初の要素でソート
+    def get_first_category(x):
+        if x is None:
+            return ""
+        try:
+            return x[0] if len(x) > 0 else ""
+        except (TypeError, IndexError):
+            return ""
+    df["_sort_key"] = df["categories"].apply(get_first_category)
+    df = df.sort_values(["_sort_key", "code"], kind="mergesort")
+    df = df.drop(columns=["_sort_key"])
+
+    # numpy.ndarray を list に変換（JSON serialization対応）
+    for col in ["categories", "tags"]:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x)
+
+    df = df.where(pd.notna(df), None)
+    return df.to_dict(orient="records")
+
 def normalize_prices(df: pd.DataFrame) -> pd.DataFrame:
     need = {"date", "Open", "High", "Low", "Close", "ticker"}
     if not need.issubset(df.columns):
@@ -383,75 +459,8 @@ def to_json_records(df: pd.DataFrame) -> List[Dict]:
     return g.to_dict(orient="records")
 
 # ==============================
-# demo 用ユーティリティ（既存のまま）
+# メタデータとデータ統合
 # ==============================
-def safe_demo_path(fname: str, allow_ext: set[str]) -> Optional[Path]:
-    if not fname:
-        return None
-    sf = _secure_filename(fname)
-    p = (DEMO_DIR / sf)
-    try:
-        p = p.resolve()
-        if not str(p).startswith(str(DEMO_DIR.resolve())):
-            return None
-    except Exception:
-        return None
-    if p.suffix.lower() not in allow_ext:
-        return None
-    if not p.exists():
-        return None
-    return p
-
-def parse_date_param(v: Optional[str]) -> Optional[pd.Timestamp]:
-    if not v:
-        return None
-    try:
-        return pd.to_datetime(v).tz_localize(None)
-    except Exception:
-        return None
-
-def slice_xy_by_date(x: list[str], y: list, start_dt: Optional[pd.Timestamp], end_dt: Optional[pd.Timestamp]) -> Tuple[list, list]:
-    if not isinstance(x, list) or not isinstance(y, list) or len(x) != len(y):
-        return x, y
-    if start_dt is None and end_dt is None:
-        return x, y
-
-    def in_range(s: str) -> bool:
-        try:
-            d = pd.to_datetime(s).tz_localize(None)
-        except Exception:
-            return False
-        if start_dt is not None and d < start_dt:
-            return False
-        if end_dt is not None and d > end_dt:
-            return False
-        return True
-
-    idxs = [i for i, s in enumerate(x) if in_range(s)]
-    if not idxs:
-        return [], []
-    i0, i1 = idxs[0], idxs[-1] + 1
-    return x[i0:i1], y[i0:i1]
-
-def filter_bb_payload(data: dict, start_dt: Optional[pd.Timestamp], end_dt: Optional[pd.Timestamp]) -> dict:
-    if not isinstance(data, dict) or "series" not in data:
-        return data
-    series = data.get("series", {})
-    out = {"meta": data.get("meta", {}), "series": {}}
-    for key in ["close", "ma", "upper", "lower", "bandwidth"]:
-        obj = series.get(key)
-        if isinstance(obj, dict) and "x" in obj and "y" in obj:
-            sx, sy = slice_xy_by_date(obj.get("x", []), obj.get("y", []), start_dt, end_dt)
-            out["series"][key] = {"x": sx, "y": sy}
-        elif obj is not None:
-            out["series"][key] = obj
-    if "meta" in out and isinstance(out["meta"], dict):
-        out["meta"]["filtered_by"] = {
-            "start": start_dt.strftime("%Y-%m-%d") if start_dt else None,
-            "end": end_dt.strftime("%Y-%m-%d") if end_dt else None,
-        }
-    return out
-
 def merge_price_data_into_meta(meta_list: List[Dict]) -> List[Dict]:
     """メタデータに価格・パフォーマンスデータをマージ
 

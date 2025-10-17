@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import time
 from datetime import date, timedelta
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,6 +78,7 @@ def fetch_jquants_prices_batch(
 
 
 def main() -> int:
+    start_time = time.time()
     print("=" * 60)
     print("J-Quants Scalping Screening (Daily Data Only)")
     print("=" * 60)
@@ -103,8 +105,8 @@ def main() -> int:
 
     codes = stock_only["code"].dropna().astype(str).unique().tolist()
 
-    # 全銘柄で実行
-    print(f"  ✓ Running with all {len(codes)} stocks (stock only)")
+    # テスト: 全銘柄で実行
+    print(f"  ✓ Running with {len(codes)} stocks (test mode)")
 
     # J-Quants初期化
     print("\n[STEP 2] Initializing J-Quants...")
@@ -115,21 +117,36 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # 株価取得
+    # 株価取得（300日分でSMA200などの長期指標も計算可能に）
     print("\n[STEP 3] Fetching prices...")
-    df = fetch_jquants_prices_batch(client, codes, lookback_days=30, batch_size=500)
+    step3_start = time.time()
+    df = fetch_jquants_prices_batch(client, codes, lookback_days=300, batch_size=500)
+    print(f"  ⏱ Elapsed: {time.time() - step3_start:.1f}s")
 
     # テクニカル指標計算
     print("\n[STEP 4] Calculating indicators...")
+    step4_start = time.time()
     screener = ScalpingScreener()
     df = screener.calculate_technical_indicators(df)
+    print(f"  ⏱ Elapsed: {time.time() - step4_start:.1f}s")
+
+    # テクニカル評価を追加
+    print("\n[STEP 5] Evaluating technical ratings...")
+    step5_start = time.time()
+    df = screener.evaluate_technical_ratings(df)
+    print(f"  ⏱ Elapsed: {time.time() - step5_start:.1f}s")
 
     latest_date = df["date"].max()
     df_latest = df[df["date"] == latest_date].copy()
     print(f"  ✓ Latest: {latest_date}, {len(df_latest)} stocks")
 
+    # 評価分布を表示
+    if 'overall_rating' in df_latest.columns:
+        rating_dist = df_latest['overall_rating'].value_counts().to_dict()
+        print(f"  ✓ Rating distribution: {rating_dist}")
+
     # スクリーニング
-    print("\n[STEP 5] Screening...")
+    print("\n[STEP 6] Screening...")
 
     # エントリー向け（初心者）
     entry_list = screener.generate_entry_list(df_latest, stock_only, top_n=20)
@@ -141,7 +158,7 @@ def main() -> int:
     print(f"  ✓ Active: {len(active_list)} stocks")
 
     # 保存
-    print("\n[STEP 6] Saving...")
+    print("\n[STEP 7] Saving...")
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
 
     entry_list.to_parquet(SCALPING_ENTRY_PATH, index=False)
@@ -175,6 +192,10 @@ def main() -> int:
         print(active_list[cols].to_string(index=False))
 
     print("\n✅ Screening completed!")
+
+    total_time = time.time() - start_time
+    print(f"\n⏱ Total execution time: {total_time:.1f}s ({total_time/60:.1f}min)")
+
     return 0
 
 
