@@ -8,6 +8,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  actions: write  # 他のワークフローをトリガーするために必要
 
 jobs:
   scalping:
@@ -68,6 +69,14 @@ jobs:
             scalping_active.parquet
           if-no-files-found: warn
 
+      - name: Trigger YFinance workflow
+        if: success()
+        run: |
+          echo "🚀 Triggering YFinance data update workflow..."
+          gh workflow run yfinance-data-update.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Send Slack notification on success
         if: success()
         env:
@@ -82,7 +91,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."
+                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully.\n\n🚀 YFinance workflow triggered automatically."
                 }
               },
               {

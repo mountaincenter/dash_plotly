@@ -2,9 +2,9 @@ name: YFinance Data Update
 
 on:
   schedule:
-    - cron: '30 7 * * *'  # 16:30 JST (J-Quants完了後)
     - cron: '0 17 * * *'  # 02:00 JST (深夜更新)
   workflow_dispatch: {}
+  # J-Quants完了時に自動トリガー（jquants-scalping.ymlから呼び出し）
 
 permissions:
   id-token: write
@@ -50,8 +50,8 @@ jobs:
       - name: Download scalping results from S3
         if: |
           github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '30 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+          steps.check_updated.conclusion == 'skipped'
         run: |
           BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
           PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
@@ -74,8 +74,8 @@ for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
       - name: Run YFinance data update
         if: |
           github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '30 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+          steps.check_updated.conclusion == 'skipped'
         run: |
           echo "📊 Starting YFinance data pipeline..."
           echo "  1. YFinance OHLCV fetch for all stocks (Core30 + 高市 + scalping)"
@@ -87,8 +87,8 @@ for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
         if: |
           success() &&
           (github.event_name == 'workflow_dispatch' ||
-           github.event.schedule == '30 7 * * *' ||
-           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+           steps.check_updated.conclusion == 'skipped')
         run: |
           TODAY=$(date -u +%Y-%m-%d)
           BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
@@ -102,8 +102,8 @@ for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
         id: data_info
         if: |
           github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '30 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+          steps.check_updated.conclusion == 'skipped'
         run: |
           LATEST_DATE=$(python -c "import pandas as pd; print(pd.read_parquet('prices_max_1d.parquet')['date'].max())")
           echo "latest_date=$LATEST_DATE" >> $GITHUB_OUTPUT
@@ -111,8 +111,8 @@ for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
       - name: Upload parquet artifact
         if: |
           github.event_name == 'workflow_dispatch' ||
-          github.event.schedule == '30 7 * * *' ||
-          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+          steps.check_updated.conclusion == 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: yfinance-data-update
@@ -159,8 +159,8 @@ for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
         if: |
           success() &&
           (github.event_name == 'workflow_dispatch' ||
-           github.event.schedule == '30 7 * * *' ||
-           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true') ||
+           steps.check_updated.conclusion == 'skipped')
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
