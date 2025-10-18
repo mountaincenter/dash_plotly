@@ -46,21 +46,14 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup environment variables for scripts
+      - name: Setup J-Quants authentication
         run: |
           # Create .env.jquants for J-Quants API authentication
           cat > .env.jquants <<EOF
           JQUANTS_REFRESH_TOKEN=${{ secrets.JQUANTS_REFRESH_TOKEN }}
           EOF
 
-          # Create .env.s3 for S3 configuration
-          cat > .env.s3 <<EOF
-          S3_BUCKET=${{ env.S3_BUCKET }}
-          S3_PREFIX=${{ env.S3_PREFIX }}
-          AWS_REGION=${{ env.AWS_REGION }}
-          EOF
-
-          echo "✅ Environment files created"
+          echo "✅ J-Quants authentication configured"
 
       - name: Check if already updated today (02:00 JST only)
         id: check_updated
@@ -97,6 +90,11 @@ jobs:
           echo "Data Pipeline Execution (GitHub Actions)"
           echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           echo "============================================================"
+          echo ""
+          echo "Environment variables:"
+          echo "  S3_BUCKET=${{ env.S3_BUCKET }}"
+          echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
+          echo "  AWS_REGION=${{ env.AWS_REGION }}"
           echo ""
 
           # Force update flag for meta_jquants (manual trigger only)

@@ -38,7 +38,8 @@ def _env_fallback(key: str) -> str | None:
     return None
 
 def load_s3_config() -> S3Config:
-    bucket = os.getenv("DATA_BUCKET") or _env_fallback("DATA_BUCKET")
+    # GitHub Actions uses S3_BUCKET, local dev may use DATA_BUCKET
+    bucket = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or _env_fallback("S3_BUCKET") or _env_fallback("DATA_BUCKET")
     prefix = os.getenv("PARQUET_PREFIX") or _env_fallback("PARQUET_PREFIX") or "parquet/"
     region = os.getenv("AWS_REGION") or _env_fallback("AWS_REGION")
     profile = os.getenv("AWS_PROFILE") or _env_fallback("AWS_PROFILE")
