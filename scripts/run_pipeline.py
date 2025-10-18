@@ -42,15 +42,20 @@ class PipelineRunner:
         print(f"[STEP] {module_name}")
         print(f"[DESC] {description}")
         print("=" * 60)
+        print(f"[DEBUG] Step started at {datetime.now().isoformat()}")
 
         start_time = time.time()
 
         try:
             # 動的インポート
+            print(f"[DEBUG] Importing module: scripts.{module_name}")
             module = __import__(f"scripts.{module_name}", fromlist=["main"])
+            print(f"[DEBUG] Module imported successfully")
 
             # main()を実行
+            print(f"[DEBUG] Executing main() function...")
             exit_code = module.main()
+            print(f"[DEBUG] main() returned exit code: {exit_code}")
 
             elapsed_time = time.time() - start_time
 
@@ -66,6 +71,8 @@ class PipelineRunner:
             elapsed_time = time.time() - start_time
             error_msg = str(e)
             print(f"\n❌ EXCEPTION: {module_name} - {error_msg}")
+            import traceback
+            traceback.print_exc()
             return False, elapsed_time, error_msg
 
     def run(self) -> int:
@@ -74,12 +81,15 @@ class PipelineRunner:
         print("Data Pipeline Execution")
         print(f"Started at: {datetime.now().isoformat()}")
         print("=" * 60)
+        print(f"[DEBUG] Total steps to run: {len(self.steps)}")
 
         total_start = time.time()
 
-        for module_name, description in self.steps:
+        for idx, (module_name, description) in enumerate(self.steps, 1):
+            print(f"\n[DEBUG] ===== Starting step {idx}/{len(self.steps)}: {module_name} =====")
             success, elapsed, error = self.run_step(module_name, description)
             self.results.append((module_name, success, elapsed, error))
+            print(f"[DEBUG] Step {idx} result: success={success}, elapsed={elapsed:.2f}s")
 
             if not success:
                 print(f"\n⚠️  Pipeline stopped at {module_name}")

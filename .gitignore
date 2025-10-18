@@ -18,6 +18,7 @@ dist/
 venv/
 .env
 .env.*
+!.env.*.template
 
 # 型/静的解析のキャッシュ（使っていれば）
 .mypy_cache/

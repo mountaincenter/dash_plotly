@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]  # scripts/pipeline/ から2階層上 = プロジェクトルート
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -33,7 +33,14 @@ def should_force_update() -> bool:
 def download_from_s3_if_exists() -> bool:
     """S3からmeta_jquants.parquetをダウンロード（存在すれば）"""
     try:
+        print("[DEBUG] Loading S3 config...")
         cfg = load_s3_config()
+        print(f"[DEBUG] S3 config loaded: bucket={cfg.bucket}, prefix={cfg.prefix}, region={cfg.region}")
+
+        if not cfg.bucket:
+            print("[INFO] S3 download skipped: bucket not set")
+            return False
+
         print("[INFO] Trying to download meta_jquants.parquet from S3...")
         success = download_file(cfg, "meta_jquants.parquet", META_JQUANTS_PATH)
         if success:
@@ -44,6 +51,8 @@ def download_from_s3_if_exists() -> bool:
             return False
     except Exception as e:
         print(f"[WARN] S3 download failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -56,8 +65,11 @@ def create_meta_jquants() -> int:
     # J-Quants APIから上場銘柄情報を取得
     print("\n[STEP 1] Fetching listed stocks from J-Quants API...")
     try:
+        print("[DEBUG] Initializing J-Quants client...")
         client = JQuantsClient()
+        print("[DEBUG] J-Quants client initialized, creating fetcher...")
         fetcher = JQuantsFetcher(client)
+        print("[DEBUG] Fetcher created, fetching listed info...")
         df = fetcher.get_listed_info()
         print(f"  ✓ Retrieved {len(df)} stocks")
     except Exception as e:
@@ -193,18 +205,28 @@ def main() -> int:
     4. S3失敗 + ローカル存在 → 鮮度チェック（フォールバック）
     5. 両方ない → 新規作成
     """
+    print("\n[DEBUG] ===== create_meta_jquants main() started =====")
 
     # 1. 週次強制更新チェック（金曜日）
+    print("[DEBUG] Checking force update...")
     force_update = should_force_update()
+    print(f"[DEBUG] Force update: {force_update}")
     if force_update:
         print("[INFO] 週次強制更新（金曜日）: meta_jquants.parquetを再作成します")
         return create_meta_jquants()
 
     # 2. S3からダウンロード試行（ローカル存在に関わらず常に試行）
+    print("[DEBUG] Starting S3 download attempt...")
     print("[INFO] S3からmeta_jquants.parquetのダウンロードを試行します...")
-    if download_from_s3_if_exists():
+    download_success = download_from_s3_if_exists()
+    print(f"[DEBUG] S3 download result: {download_success}")
+
+    if download_success:
         # ダウンロード成功後、鮮度チェック
-        if is_file_fresh(META_JQUANTS_PATH, max_age_days=7):
+        print("[DEBUG] Checking file freshness...")
+        is_fresh = is_file_fresh(META_JQUANTS_PATH, max_age_days=7)
+        print(f"[DEBUG] File freshness: {is_fresh}")
+        if is_fresh:
             print("[OK] S3からダウンロードしたファイルは最新です（7日以内）")
             return 0
         else:
@@ -212,9 +234,15 @@ def main() -> int:
             return create_meta_jquants()
 
     # 3. S3失敗時、ローカルファイルをフォールバック（ローカル開発用）
-    if META_JQUANTS_PATH.exists():
+    print("[DEBUG] Checking local file existence...")
+    local_exists = META_JQUANTS_PATH.exists()
+    print(f"[DEBUG] Local file exists: {local_exists}")
+
+    if local_exists:
         print("[WARN] S3からのダウンロードに失敗しましたが、ローカルファイルが存在します")
-        if is_file_fresh(META_JQUANTS_PATH, max_age_days=7):
+        is_fresh = is_file_fresh(META_JQUANTS_PATH, max_age_days=7)
+        print(f"[DEBUG] Local file freshness: {is_fresh}")
+        if is_fresh:
             print(f"[INFO] ローカルのmeta_jquants.parquetは最新です（7日以内）: {META_JQUANTS_PATH}")
             return 0
         else:
@@ -223,6 +251,7 @@ def main() -> int:
             return create_meta_jquants()
 
     # 4. 両方ない場合は新規作成
+    print("[DEBUG] No existing file found, creating new...")
     print("[INFO] S3にもローカルにもmeta_jquants.parquetが存在しません")
     print("[INFO] 新規作成します")
     return create_meta_jquants()
