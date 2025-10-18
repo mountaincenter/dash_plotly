@@ -32,13 +32,17 @@ class JQuantsFetcher:
         Returns:
             銘柄情報のDataFrame
         """
+        print("[PROGRESS] Requesting /listed/info from J-Quants API...")
         data = self.client.request("/listed/info")
         info = data.get("info", [])
 
         if not info:
+            print("[PROGRESS] No data received from J-Quants API")
             return pd.DataFrame()
 
+        print(f"[PROGRESS] Received {len(info)} stocks from J-Quants API")
         df = pd.DataFrame(info)
+        print("[PROGRESS] Converted to DataFrame")
         return df
 
     def get_prices_daily(
@@ -106,15 +110,21 @@ class JQuantsFetcher:
             全銘柄の株価データを結合したDataFrame
         """
         frames = []
+        total = len(codes)
+        print(f"[PROGRESS] Fetching prices for {total} stocks from J-Quants API...")
 
-        for i, code in enumerate(codes):
+        for i, code in enumerate(codes, 1):
             try:
+                # 100銘柄ごとに進捗表示
+                if i % 100 == 0 or i == total:
+                    print(f"[PROGRESS] Processing stock {i}/{total} ({code})...")
+
                 df = self.get_prices_daily(code, from_date, to_date)
                 if not df.empty:
                     frames.append(df)
 
                 # レート制限対策
-                if i < len(codes) - 1 and batch_delay > 0:
+                if i < total and batch_delay > 0:
                     time.sleep(batch_delay)
 
             except Exception as e:
@@ -122,9 +132,12 @@ class JQuantsFetcher:
                 continue
 
         if not frames:
+            print("[PROGRESS] No price data retrieved")
             return pd.DataFrame()
 
+        print(f"[PROGRESS] Concatenating data from {len(frames)} stocks...")
         result = pd.concat(frames, ignore_index=True)
+        print(f"[PROGRESS] Total rows: {len(result)}")
         return result
 
     def convert_to_yfinance_format(self, df: pd.DataFrame) -> pd.DataFrame:

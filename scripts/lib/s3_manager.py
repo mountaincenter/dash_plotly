@@ -28,6 +28,7 @@ def upload_to_s3(files: List[Path]) -> bool:
         成功時True、失敗時False
     """
     try:
+        print(f"[PROGRESS] Preparing to upload {len(files)} files to S3...")
         cfg = load_s3_config()
         bucket = cfg.bucket or "dash-plotly"
         prefix = cfg.prefix or "parquet/"
@@ -44,6 +45,7 @@ def upload_to_s3(files: List[Path]) -> bool:
             print("[WARN] S3 bucket not configured; upload skipped.")
             return False
 
+        print(f"[PROGRESS] Uploading to s3://{bucket}/{prefix}...")
         upload_files(s3_cfg, files)
         print(f"[OK] Uploaded {len(files)} files to S3")
         return True

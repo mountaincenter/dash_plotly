@@ -250,6 +250,9 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
     frames: list[pd.DataFrame] = []
     failed_tickers: list[str] = []
 
+    total_tickers = len(tickers)
+    print(f"[PROGRESS] Fetching yfinance data for {total_tickers} stocks (period={period}, interval={interval})...")
+
     ticker_iterable: Iterable[List[str]]
     if YF_BATCH_SIZE > 1:
         def _chunked(seq: List[str], size: int) -> Iterable[List[str]]:
@@ -263,7 +266,12 @@ def _fetch_prices(tickers: List[str], period: str, interval: str) -> pd.DataFram
     use_730d_fallback = (interval == "1h" and period == "max")
     primary_period = "730d" if use_730d_fallback else period
 
+    processed = 0
     for chunk in ticker_iterable:
+        processed += len(chunk)
+        # 50銘柄ごとに進捗表示
+        if processed % 50 == 0 or processed == total_tickers:
+            print(f"[PROGRESS] yfinance processing: {processed}/{total_tickers} stocks...")
         # When batch size >1 we try combined download first.
         batch_handled = False
         if len(chunk) > 1:
