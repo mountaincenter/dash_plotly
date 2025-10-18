@@ -46,19 +46,7 @@ jobs:
         if: steps.jquants.outcome == 'failure'
         run: |
           echo "⚠️ J-Quants failed, creating empty scalping parquet files..."
-          python -c "
-import pandas as pd
-
-# 空のDataFrameを作成（最低限必要なカラム）
-empty_df = pd.DataFrame({'ticker': []})
-
-# 空のparquetファイルを生成
-empty_df.to_parquet('scalping_entry.parquet', index=False)
-empty_df.to_parquet('scalping_active.parquet', index=False)
-
-print('✅ Created empty scalping_entry.parquet')
-print('✅ Created empty scalping_active.parquet')
-"
+          python scripts/create_empty_scalping.py
 
       - name: Upload scalping results to S3
         if: always()
@@ -107,56 +95,11 @@ print('✅ Created empty scalping_active.parquet')
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          # 件数とティッカーリストを取得
-          RESULT=$(python -c "
-import pandas as pd
-import json
-
-try:
-    entry_df = pd.read_parquet('scalping_entry.parquet')
-    active_df = pd.read_parquet('scalping_active.parquet')
-
-    entry_count = len(entry_df)
-    active_count = len(active_df)
-
-    # ティッカーリスト取得（最大10件まで表示）
-    entry_tickers = entry_df['ticker'].tolist()[:10] if entry_count > 0 else []
-    active_tickers = active_df['ticker'].tolist()[:10] if active_count > 0 else []
-
-    # 追加情報（10件以上ある場合）
-    entry_more = f' (+{entry_count - 10} more)' if entry_count > 10 else ''
-    active_more = f' (+{active_count - 10} more)' if active_count > 10 else ''
-
-    # ティッカー文字列生成
-    if entry_count == 0:
-        entry_str = 'なし（0件）'
-    elif entry_tickers:
-        entry_str = ', '.join(entry_tickers) + entry_more
-    else:
-        entry_str = 'なし'
-
-    if active_count == 0:
-        active_str = 'なし（0件）'
-    elif active_tickers:
-        active_str = ', '.join(active_tickers) + active_more
-    else:
-        active_str = 'なし'
-
-    result = {
-        'entry_count': entry_count,
-        'active_count': active_count,
-        'entry_tickers': entry_str,
-        'active_tickers': active_str
-    }
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({'entry_count': 0, 'active_count': 0, 'entry_tickers': 'エラー', 'active_tickers': 'エラー'}))
-" 2>/dev/null)
-
-          ENTRY_COUNT=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['entry_count'])")
-          ACTIVE_COUNT=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['active_count'])")
-          ENTRY_TICKERS=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['entry_tickers'])")
-          ACTIVE_TICKERS=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['active_tickers'])")
+          RESULT=$(python scripts/get_scalping_info.py)
+          ENTRY_COUNT=$(echo "$RESULT" | jq -r '.entry_count')
+          ACTIVE_COUNT=$(echo "$RESULT" | jq -r '.active_count')
+          ENTRY_TICKERS=$(echo "$RESULT" | jq -r '.entry_tickers')
+          ACTIVE_TICKERS=$(echo "$RESULT" | jq -r '.active_tickers')
 
           MESSAGE='{
             "text": "✅ J-Quants Scalping Selection Succeeded",

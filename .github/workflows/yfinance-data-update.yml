@@ -57,19 +57,11 @@ jobs:
           PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
 
           echo "📥 Downloading scalping results from S3..."
-          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_entry.parquet" . 2>/dev/null || echo "⚠️ scalping_entry.parquet not found (will create empty file)"
-          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_active.parquet" . 2>/dev/null || echo "⚠️ scalping_active.parquet not found (will create empty file)"
+          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_entry.parquet" . 2>/dev/null || echo "⚠️ scalping_entry.parquet not found"
+          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_active.parquet" . 2>/dev/null || echo "⚠️ scalping_active.parquet not found"
 
           # ファイルが存在しない場合は空のparquetファイルを作成
-          python -c "
-import pandas as pd
-import os
-
-for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
-    if not os.path.exists(fname):
-        pd.DataFrame({'ticker': []}).to_parquet(fname, index=False)
-        print(f'Created empty {fname}')
-"
+          python scripts/create_empty_scalping.py
 
       - name: Run YFinance data update
         if: |
