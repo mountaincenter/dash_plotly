@@ -12,7 +12,7 @@ import time
 
 import pandas as pd
 
-from jquants.client import JQuantsClient
+from scripts.lib.jquants_client import JQuantsClient
 
 
 class JQuantsFetcher:

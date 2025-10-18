@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from common_cfg.env import load_dotenv_cascade
 from common_cfg.paths import PARQUET_DIR, MASTER_META_PARQUET
-from jquants.client import JQuantsClient
+from scripts.lib.jquants_client import JQuantsClient
 
 
 def fetch_core30_from_jquants(client: JQuantsClient) -> pd.DataFrame:
