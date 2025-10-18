@@ -70,7 +70,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Trigger YFinance workflow
-        if: success()
+        if: always()  # J-Quants成功/失敗に関わらず常にYFinanceを実行
         run: |
           echo "🚀 Triggering YFinance data update workflow..."
           gh workflow run yfinance-data-update.yml --ref main
@@ -91,7 +91,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully.\n\n🚀 YFinance workflow triggered automatically."
+                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully.\n\n🚀 YFinance workflow will be triggered regardless of J-Quants result."
                 }
               },
               {
@@ -129,7 +129,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "❌ *J-Quants Scalping Selection Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."
+                  "text": "❌ *J-Quants Scalping Selection Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed.\n\n⚠️ YFinance workflow will still be triggered to ensure data update."
                 }
               },
               {
