@@ -1,4 +1,4 @@
-name: Build, Update Parquet & Push to ECR
+name: Build & Push to ECR
 
 on:
   push:

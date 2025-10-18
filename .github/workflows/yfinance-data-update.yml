@@ -1,0 +1,233 @@
+name: YFinance Data Update
+
+on:
+  schedule:
+    - cron: '30 7 * * *'  # 16:30 JST (J-Quants完了後)
+    - cron: '0 17 * * *'  # 02:00 JST (深夜更新)
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+
+      - name: Check if already updated today (02:00 JST only)
+        id: check_updated
+        if: github.event.schedule == '0 17 * * *'
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+          if aws s3 cp "s3://${BUCKET}/${PREFIX}update_flag_${TODAY}.txt" ./flag.txt 2>/dev/null; then
+            echo "already_updated=true" >> $GITHUB_OUTPUT
+            echo "✅ Already updated today (${TODAY}), skipping 02:00 JST run"
+          else
+            echo "already_updated=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Not updated yet for ${TODAY}, proceeding with 02:00 JST run"
+          fi
+
+      - name: Download scalping results from S3
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '30 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        run: |
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+
+          echo "📥 Downloading scalping results from S3..."
+          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_entry.parquet" . 2>/dev/null || echo "⚠️ scalping_entry.parquet not found (will create empty file)"
+          aws s3 cp "s3://${BUCKET}/${PREFIX}scalping_active.parquet" . 2>/dev/null || echo "⚠️ scalping_active.parquet not found (will create empty file)"
+
+          # ファイルが存在しない場合は空のparquetファイルを作成
+          python -c "
+import pandas as pd
+import os
+
+for fname in ['scalping_entry.parquet', 'scalping_active.parquet']:
+    if not os.path.exists(fname):
+        pd.DataFrame({'ticker': []}).to_parquet(fname, index=False)
+        print(f'Created empty {fname}')
+"
+
+      - name: Run YFinance data update
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '30 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        run: |
+          echo "📊 Starting YFinance data pipeline..."
+          echo "  1. YFinance OHLCV fetch for all stocks (Core30 + 高市 + scalping)"
+          echo "  2. Technical indicators calculation"
+          echo "  3. Upload to S3"
+          python scripts/gen_yfinance_parquet.py
+
+      - name: Mark as updated today
+        if: |
+          success() &&
+          (github.event_name == 'workflow_dispatch' ||
+           github.event.schedule == '30 7 * * *' ||
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "Updated at ${TIMESTAMP}" > update_flag_${TODAY}.txt
+          aws s3 cp update_flag_${TODAY}.txt "s3://${BUCKET}/${PREFIX}update_flag_${TODAY}.txt"
+          echo "✅ Marked ${TODAY} as updated in S3"
+
+      - name: Extract latest data date
+        id: data_info
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '30 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        run: |
+          LATEST_DATE=$(python -c "import pandas as pd; print(pd.read_parquet('prices_max_1d.parquet')['date'].max())")
+          echo "latest_date=$LATEST_DATE" >> $GITHUB_OUTPUT
+
+      - name: Upload parquet artifact
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          github.event.schedule == '30 7 * * *' ||
+          (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true')
+        uses: actions/upload-artifact@v4
+        with:
+          name: yfinance-data-update
+          path: |
+            prices_max_1d.parquet
+            prices_max_1h.parquet
+            prices_60d_5m.parquet
+            prices_60d_15m.parquet
+
+      - name: Send Slack notification (skipped 02:00 JST)
+        if: |
+          success() &&
+          github.event.schedule == '0 17 * * *' &&
+          steps.check_updated.outputs.already_updated == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          MESSAGE='{
+            "text": "ℹ️ YFinance Data Update Skipped (Already Updated)",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "ℹ️ *YFinance Data Update Skipped*\nData already updated today (`'"${TODAY}"'`). Skipping 02:00 JST run."
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+
+      - name: Send Slack notification on success
+        if: |
+          success() &&
+          (github.event_name == 'workflow_dispatch' ||
+           github.event.schedule == '30 7 * * *' ||
+           (github.event.schedule == '0 17 * * *' && steps.check_updated.outputs.already_updated != 'true'))
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "✅ YFinance Data Update Succeeded",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *YFinance Data Update Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"},
+                  {"type": "mrkdwn", "text": "*Latest Data Date:*\n`${{ steps.data_info.outputs.latest_date }}`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "❌ YFinance Data Update Failed",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *YFinance Data Update Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL

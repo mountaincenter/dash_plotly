@@ -1,0 +1,145 @@
+name: J-Quants Scalping Selection
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # 16:00 JST (市場終了後)
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  scalping:
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install jquantsapi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+
+      - name: Run J-Quants scalping selection
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+        run: |
+          echo "📊 Starting J-Quants scalping stock selection..."
+          python jquants/generate_scalping_final.py
+
+      - name: Upload scalping results to S3
+        run: |
+          BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
+          PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
+
+          if [ -f "scalping_entry.parquet" ]; then
+            aws s3 cp scalping_entry.parquet "s3://${BUCKET}/${PREFIX}scalping_entry.parquet"
+            echo "✅ Uploaded scalping_entry.parquet"
+          else
+            echo "⚠️ scalping_entry.parquet not found"
+          fi
+
+          if [ -f "scalping_active.parquet" ]; then
+            aws s3 cp scalping_active.parquet "s3://${BUCKET}/${PREFIX}scalping_active.parquet"
+            echo "✅ Uploaded scalping_active.parquet"
+          else
+            echo "⚠️ scalping_active.parquet not found"
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jquants-scalping-results
+          path: |
+            scalping_entry.parquet
+            scalping_active.parquet
+          if-no-files-found: warn
+
+      - name: Send Slack notification on success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          ENTRY_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('scalping_entry.parquet')))" 2>/dev/null || echo "0")
+          ACTIVE_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('scalping_active.parquet')))" 2>/dev/null || echo "0")
+          MESSAGE='{
+            "text": "✅ J-Quants Scalping Selection Succeeded",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Entry Stocks:*\n`'"${ENTRY_COUNT}"'`"},
+                  {"type": "mrkdwn", "text": "*Active Stocks:*\n`'"${ACTIVE_COUNT}"'`"},
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
+
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "❌ J-Quants Scalping Selection Failed",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *J-Quants Scalping Selection Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
