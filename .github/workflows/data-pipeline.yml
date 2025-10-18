@@ -1,0 +1,318 @@
+name: Data Pipeline (02-06)
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # 16:00 JST (市場終了後) - メイン実行
+    - cron: '0 17 * * *'  # 02:00 JST (深夜) - フォールバック実行
+  workflow_dispatch:
+    inputs:
+      force_meta_jquants:
+        description: 'Force update meta_jquants.parquet (ignore 7-day freshness)'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      S3_BUCKET: ${{ vars.DATA_BUCKET || vars.S3_BUCKET }}
+      S3_PREFIX: ${{ vars.PARQUET_PREFIX || 'parquet/' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup environment variables for scripts
+        run: |
+          # Create .env.jquants for J-Quants API authentication
+          cat > .env.jquants <<EOF
+          JQUANTS_REFRESH_TOKEN=${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          EOF
+
+          # Create .env.s3 for S3 configuration
+          cat > .env.s3 <<EOF
+          S3_BUCKET=${{ env.S3_BUCKET }}
+          S3_PREFIX=${{ env.S3_PREFIX }}
+          AWS_REGION=${{ env.AWS_REGION }}
+          EOF
+
+          echo "✅ Environment files created"
+
+      - name: Check if already updated today (02:00 JST only)
+        id: check_updated
+        if: github.event.schedule == '0 17 * * *'
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+
+          # manifest.jsonをダウンロードしてupdate_flagをチェック
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}manifest.json" ./manifest.json 2>/dev/null; then
+            UPDATE_FLAG=$(jq -r '.update_flag // ""' manifest.json)
+
+            if [ "$UPDATE_FLAG" = "$TODAY" ]; then
+              echo "already_updated=true" >> $GITHUB_OUTPUT
+              echo "✅ Already updated today (${TODAY}), skipping 02:00 JST run"
+              exit 0
+            fi
+          fi
+
+          echo "already_updated=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Not updated yet for ${TODAY}, proceeding with 02:00 JST run"
+
+      - name: Skip if already updated
+        if: |
+          github.event.schedule == '0 17 * * *' &&
+          steps.check_updated.outputs.already_updated == 'true'
+        run: |
+          echo "::notice::Skipping pipeline execution - already updated today"
+          exit 0
+
+      - name: Run Data Pipeline (02-06)
+        id: pipeline
+        run: |
+          echo "============================================================"
+          echo "Data Pipeline Execution (GitHub Actions)"
+          echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "============================================================"
+          echo ""
+
+          # Force update flag for meta_jquants (manual trigger only)
+          if [ "${{ github.event.inputs.force_meta_jquants }}" = "true" ]; then
+            export FORCE_META_JQUANTS_UPDATE=1
+            echo "⚠️ Force update enabled for meta_jquants.parquet"
+          fi
+
+          # Run the pipeline
+          python scripts/run_pipeline.py
+          EXIT_CODE=$?
+
+          echo ""
+          echo "============================================================"
+          echo "Pipeline completed with exit code: $EXIT_CODE"
+          echo "============================================================"
+
+          exit $EXIT_CODE
+
+      - name: Extract data statistics
+        id: stats
+        if: success()
+        run: |
+          # meta_jquants statistics
+          META_JQUANTS_COUNT=0
+          if [ -f "data/parquet/meta_jquants.parquet" ]; then
+            META_JQUANTS_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/meta_jquants.parquet')))")
+          fi
+          echo "meta_jquants_count=$META_JQUANTS_COUNT" >> $GITHUB_OUTPUT
+
+          # scalping statistics
+          ENTRY_COUNT=0
+          ACTIVE_COUNT=0
+          if [ -f "data/parquet/scalping_entry.parquet" ]; then
+            ENTRY_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/scalping_entry.parquet')))")
+          fi
+          if [ -f "data/parquet/scalping_active.parquet" ]; then
+            ACTIVE_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/scalping_active.parquet')))")
+          fi
+          echo "scalping_entry_count=$ENTRY_COUNT" >> $GITHUB_OUTPUT
+          echo "scalping_active_count=$ACTIVE_COUNT" >> $GITHUB_OUTPUT
+
+          # all_stocks statistics
+          ALL_STOCKS_COUNT=0
+          if [ -f "data/parquet/all_stocks.parquet" ]; then
+            ALL_STOCKS_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/all_stocks.parquet')))")
+          fi
+          echo "all_stocks_count=$ALL_STOCKS_COUNT" >> $GITHUB_OUTPUT
+
+          # prices statistics
+          LATEST_DATE="N/A"
+          if [ -f "data/parquet/prices_max_1d.parquet" ]; then
+            LATEST_DATE=$(python -c "import pandas as pd; df=pd.read_parquet('data/parquet/prices_max_1d.parquet'); print(df['date'].max() if not df.empty else 'N/A')")
+          fi
+          echo "latest_price_date=$LATEST_DATE" >> $GITHUB_OUTPUT
+
+          echo "📊 Statistics extracted:"
+          echo "  - meta_jquants: $META_JQUANTS_COUNT stocks"
+          echo "  - scalping_entry: $ENTRY_COUNT stocks"
+          echo "  - scalping_active: $ACTIVE_COUNT stocks"
+          echo "  - all_stocks: $ALL_STOCKS_COUNT stocks"
+          echo "  - latest_price_date: $LATEST_DATE"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-output-${{ github.run_id }}
+          path: |
+            data/parquet/*.parquet
+            data/parquet/manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Send Slack notification (skipped 02:00 JST)
+        if: |
+          github.event.schedule == '0 17 * * *' &&
+          steps.check_updated.outputs.already_updated == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          MESSAGE='{
+            "text": "ℹ️ Data Pipeline Skipped (Already Updated)",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "ℹ️ *Data Pipeline Skipped*\nData already updated today (`'"${TODAY}"'`). Skipping 02:00 JST run."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`02:00 JST scheduled run`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
+
+      - name: Send Slack notification on success
+        if: success() && steps.pipeline.conclusion == 'success'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          TRIGGER_TIME="16:00 JST"
+          if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+            TRIGGER_TIME="02:00 JST"
+          fi
+
+          # J-Quants障害検知（空ファイルかどうか）
+          JQUANTS_STATUS="✅ 正常"
+          if [ "${{ steps.stats.outputs.meta_jquants_count }}" = "0" ]; then
+            JQUANTS_STATUS="⚠️ 障害発生（静的銘柄のみで更新）"
+          fi
+
+          MESSAGE='{
+            "text": "✅ Data Pipeline Succeeded",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Data Pipeline Succeeded*\nWorkflow `${{ github.workflow }}` completed successfully."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`'"${TRIGGER_TIME}"'`"},
+                  {"type": "mrkdwn", "text": "*J-Quants:*\n'"${JQUANTS_STATUS}"'"},
+                  {"type": "mrkdwn", "text": "*Latest Price Date:*\n`${{ steps.stats.outputs.latest_price_date }}`"}
+                ]
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*meta_jquants:*\n`${{ steps.stats.outputs.meta_jquants_count }}`銘柄"},
+                  {"type": "mrkdwn", "text": "*all_stocks:*\n`${{ steps.stats.outputs.all_stocks_count }}`銘柄"},
+                  {"type": "mrkdwn", "text": "*scalping_entry:*\n`${{ steps.stats.outputs.scalping_entry_count }}`銘柄"},
+                  {"type": "mrkdwn", "text": "*scalping_active:*\n`${{ steps.stats.outputs.scalping_active_count }}`銘柄"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
+
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          TRIGGER_TIME="16:00 JST"
+          if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+            TRIGGER_TIME="02:00 JST"
+          fi
+
+          MESSAGE='{
+            "text": "❌ Data Pipeline Failed",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *Data Pipeline Failed*\nWorkflow `${{ github.workflow }}` encountered an error."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`'"${TRIGGER_TIME}"'`"},
+                  {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "⚠️ *Action Required*\nPlease check the workflow logs and investigate the failure."
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true

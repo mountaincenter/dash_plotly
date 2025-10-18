@@ -75,6 +75,79 @@ def download_file(cfg: S3Config, filename: str, dest: Path) -> bool:
         print(f"[WARN] download failed: s3://{cfg.bucket}/{key} : {exc}", file=sys.stderr)
         return False
 
+def list_s3_files(cfg: S3Config) -> list[str]:
+    """
+    S3バケットのprefix以下のファイル一覧を取得
+
+    Args:
+        cfg: S3設定
+
+    Returns:
+        ファイル名のリスト（prefixを除いた相対パス）
+    """
+    if not cfg.bucket:
+        print("[INFO] S3 list skipped: bucket not set.", file=sys.stderr)
+        return []
+    s3 = _init_s3_client(cfg)
+    if s3 is None:
+        return []
+
+    try:
+        response = s3.list_objects_v2(Bucket=cfg.bucket, Prefix=cfg.prefix)
+
+        if "Contents" not in response:
+            return []
+
+        # prefixを除いたファイル名のみ返す
+        files = []
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            # prefixを除去
+            if key.startswith(cfg.prefix):
+                filename = key[len(cfg.prefix):]
+                if filename:  # 空文字列を除外
+                    files.append(filename)
+
+        return files
+
+    except Exception as exc:
+        print(f"[WARN] S3 list failed: s3://{cfg.bucket}/{cfg.prefix} : {exc}", file=sys.stderr)
+        return []
+
+def upload_file(cfg: S3Config, file_path: Path, s3_key_name: str) -> bool:
+    """
+    単一ファイルをS3にアップロード
+
+    Args:
+        cfg: S3設定
+        file_path: アップロードするローカルファイルのパス
+        s3_key_name: S3でのファイル名（prefixは自動追加される）
+
+    Returns:
+        成功/失敗
+    """
+    if not cfg.bucket:
+        print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
+        return False
+    s3 = _init_s3_client(cfg)
+    if s3 is None:
+        return False
+
+    key = f"{cfg.prefix}{s3_key_name}"
+    extra = {
+        "ContentType": "application/octet-stream",
+        "CacheControl": "max-age=60",
+        "ServerSideEncryption": "AES256",
+    }
+
+    try:
+        s3.upload_file(str(file_path), cfg.bucket, key, ExtraArgs=extra)
+        print(f"[OK] uploaded: s3://{cfg.bucket}/{key}")
+        return True
+    except Exception as e:
+        print(f"[WARN] upload failed: {file_path} → s3://{cfg.bucket}/{key} : {e}", file=sys.stderr)
+        return False
+
 # ---- 後方互換ラッパー（ノートブックが直接呼ぶ想定のシグネチャ）----
 def maybe_upload_files_s3(
     files: list[Path],

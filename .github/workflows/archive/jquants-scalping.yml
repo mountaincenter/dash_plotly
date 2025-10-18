@@ -33,6 +33,14 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
 
+      - name: Create meta_jquants.parquet
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+        run: |
+          echo "📊 Creating meta_jquants.parquet from J-Quants API..."
+          python jquants/create_meta_jquants.py
+          echo "✅ Created meta_jquants.parquet"
+
       - name: Run J-Quants scalping selection
         id: jquants
         continue-on-error: true
