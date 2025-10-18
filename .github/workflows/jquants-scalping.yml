@@ -34,29 +34,54 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
 
       - name: Run J-Quants scalping selection
+        id: jquants
+        continue-on-error: true
         env:
           JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
         run: |
           echo "📊 Starting J-Quants scalping stock selection..."
           python jquants/generate_scalping_final.py
 
+      - name: Create empty parquet files if J-Quants failed
+        if: steps.jquants.outcome == 'failure'
+        run: |
+          echo "⚠️ J-Quants failed, creating empty scalping parquet files..."
+          python -c "
+import pandas as pd
+
+# 空のDataFrameを作成（最低限必要なカラム）
+empty_df = pd.DataFrame({'ticker': []})
+
+# 空のparquetファイルを生成
+empty_df.to_parquet('scalping_entry.parquet', index=False)
+empty_df.to_parquet('scalping_active.parquet', index=False)
+
+print('✅ Created empty scalping_entry.parquet')
+print('✅ Created empty scalping_active.parquet')
+"
+
       - name: Upload scalping results to S3
+        if: always()
         run: |
           BUCKET="${{ vars.DATA_BUCKET || vars.S3_BUCKET }}"
           PREFIX="${{ vars.PARQUET_PREFIX || 'parquet/' }}"
 
+          # scalping_entry.parquet
           if [ -f "scalping_entry.parquet" ]; then
             aws s3 cp scalping_entry.parquet "s3://${BUCKET}/${PREFIX}scalping_entry.parquet"
             echo "✅ Uploaded scalping_entry.parquet"
           else
-            echo "⚠️ scalping_entry.parquet not found"
+            echo "❌ scalping_entry.parquet not found (should not happen)"
+            exit 1
           fi
 
+          # scalping_active.parquet
           if [ -f "scalping_active.parquet" ]; then
             aws s3 cp scalping_active.parquet "s3://${BUCKET}/${PREFIX}scalping_active.parquet"
             echo "✅ Uploaded scalping_active.parquet"
           else
-            echo "⚠️ scalping_active.parquet not found"
+            echo "❌ scalping_active.parquet not found (should not happen)"
+            exit 1
           fi
 
       - name: Upload artifact
@@ -78,12 +103,61 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send Slack notification on success
-        if: success()
+        if: steps.jquants.outcome == 'success'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          ENTRY_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('scalping_entry.parquet')))" 2>/dev/null || echo "0")
-          ACTIVE_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('scalping_active.parquet')))" 2>/dev/null || echo "0")
+          # 件数とティッカーリストを取得
+          RESULT=$(python -c "
+import pandas as pd
+import json
+
+try:
+    entry_df = pd.read_parquet('scalping_entry.parquet')
+    active_df = pd.read_parquet('scalping_active.parquet')
+
+    entry_count = len(entry_df)
+    active_count = len(active_df)
+
+    # ティッカーリスト取得（最大10件まで表示）
+    entry_tickers = entry_df['ticker'].tolist()[:10] if entry_count > 0 else []
+    active_tickers = active_df['ticker'].tolist()[:10] if active_count > 0 else []
+
+    # 追加情報（10件以上ある場合）
+    entry_more = f' (+{entry_count - 10} more)' if entry_count > 10 else ''
+    active_more = f' (+{active_count - 10} more)' if active_count > 10 else ''
+
+    # ティッカー文字列生成
+    if entry_count == 0:
+        entry_str = 'なし（0件）'
+    elif entry_tickers:
+        entry_str = ', '.join(entry_tickers) + entry_more
+    else:
+        entry_str = 'なし'
+
+    if active_count == 0:
+        active_str = 'なし（0件）'
+    elif active_tickers:
+        active_str = ', '.join(active_tickers) + active_more
+    else:
+        active_str = 'なし'
+
+    result = {
+        'entry_count': entry_count,
+        'active_count': active_count,
+        'entry_tickers': entry_str,
+        'active_tickers': active_str
+    }
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({'entry_count': 0, 'active_count': 0, 'entry_tickers': 'エラー', 'active_tickers': 'エラー'}))
+" 2>/dev/null)
+
+          ENTRY_COUNT=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['entry_count'])")
+          ACTIVE_COUNT=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['active_count'])")
+          ENTRY_TICKERS=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['entry_tickers'])")
+          ACTIVE_TICKERS=$(echo "$RESULT" | python -c "import sys, json; print(json.load(sys.stdin)['active_tickers'])")
+
           MESSAGE='{
             "text": "✅ J-Quants Scalping Selection Succeeded",
             "blocks": [
@@ -91,17 +165,24 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully.\n\n🚀 YFinance workflow will be triggered regardless of J-Quants result."
+                  "text": "✅ *J-Quants Scalping Selection Succeeded*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` completed successfully.\n\n🚀 YFinance workflow triggered automatically."
                 }
               },
               {
                 "type": "section",
                 "fields": [
-                  {"type": "mrkdwn", "text": "*Entry Stocks:*\n`'"${ENTRY_COUNT}"'`"},
-                  {"type": "mrkdwn", "text": "*Active Stocks:*\n`'"${ACTIVE_COUNT}"'`"},
+                  {"type": "mrkdwn", "text": "*Entry Stocks:*\n`'"${ENTRY_COUNT}"'`件"},
+                  {"type": "mrkdwn", "text": "*Active Stocks:*\n`'"${ACTIVE_COUNT}"'`件"},
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
                   {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
                 ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*📋 Entry銘柄:*\n`'"${ENTRY_TICKERS}"'`\n\n*📋 Active銘柄:*\n`'"${ACTIVE_TICKERS}"'`"
+                }
               },
               {
                 "type": "actions",
@@ -118,26 +199,35 @@ jobs:
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" $SLACK_WEBHOOK_URL
 
       - name: Send Slack notification on failure
-        if: failure()
+        if: steps.jquants.outcome == 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           MESSAGE='{
-            "text": "❌ J-Quants Scalping Selection Failed",
+            "text": "⚠️ J-Quants Scalping Selection Failed (Fallback Active)",
             "blocks": [
               {
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "❌ *J-Quants Scalping Selection Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` failed.\n\n⚠️ YFinance workflow will still be triggered to ensure data update."
+                  "text": "⚠️ *J-Quants Scalping Selection Failed*\nWorkflow `${{ github.workflow }}` in `${{ github.repository }}` encountered an error.\n\n✅ 空のparquetファイルを作成しました\n🚀 YFinance workflow triggered (Core30 + 高市株は更新されます)"
                 }
               },
               {
                 "type": "section",
                 "fields": [
+                  {"type": "mrkdwn", "text": "*Entry Stocks:*\n`0`件 (空ファイル)"},
+                  {"type": "mrkdwn", "text": "*Active Stocks:*\n`0`件 (空ファイル)"},
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
                   {"type": "mrkdwn", "text": "*Event:*\n`${{ github.event_name }}`"}
                 ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*📋 ファイル状態:*\n• `scalping_entry.parquet`: 空ファイル作成済み\n• `scalping_active.parquet`: 空ファイル作成済み\n\n*理由:* J-Quants API エラーまたはスクリプト実行失敗"
+                }
               },
               {
                 "type": "actions",
