@@ -35,10 +35,12 @@ jobs:
           echo "✅ J-Quants authentication configured"
 
       - name: Run trading calendar test
+        env:
+          TZ: Asia/Tokyo
         run: |
           echo "============================================================"
           echo "Trading Calendar API Test"
-          echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Started at: $(date +"%Y-%m-%d %H:%M:%S JST")"
           echo "============================================================"
           echo ""
 

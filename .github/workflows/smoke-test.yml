@@ -67,10 +67,11 @@ jobs:
         id: smoke_test
         env:
           NUM_STOCKS: ${{ github.event.inputs.num_stocks || 5 }}
+          TZ: Asia/Tokyo
         run: |
           echo "============================================================"
           echo "Smoke Test Execution (GitHub Actions)"
-          echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Started at: $(date +"%Y-%m-%d %H:%M:%S JST")"
           echo "============================================================"
           echo ""
           echo "Environment variables:"
