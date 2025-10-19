@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-03_generate_scalping.py
+generate_scalping.py
 J-Quants APIからスキャルピング銘柄を選定してscalping_{entry,active}.parquetを生成
 GitHub Actions対応: S3優先、meta_jquants.parquetを使用
 """
@@ -55,7 +55,7 @@ def load_meta_jquants() -> pd.DataFrame:
     # ファイルがない場合はエラー
     raise FileNotFoundError(
         f"meta_jquants.parquet not found: {META_JQUANTS_PATH}\n"
-        "Please run 02_create_meta_jquants.py first."
+        "Please run create_meta_jquants.py first."
     )
 
 
@@ -330,7 +330,7 @@ def main() -> int:
         df_active.to_parquet(SCALPING_ACTIVE_PATH, engine="pyarrow", index=False)
         print(f"  ✓ Saved: {SCALPING_ACTIVE_PATH}")
 
-        print("  ℹ S3アップロードは 06_update_manifest.py で一括実行されます")
+        print("  ℹ S3アップロードは update_manifest.py で一括実行されます")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1

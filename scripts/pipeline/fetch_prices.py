@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-05_fetch_prices.py
+fetch_prices.py
 all_stocks.parquetの銘柄に対してyfinanceで価格データを取得
 prices_{period}_{interval}.parquet, tech_snapshot_1d.parquet を生成
 GitHub Actions対応: all_stocks.parquetをローカルから読み込み
@@ -38,7 +38,7 @@ def load_all_stocks() -> pd.DataFrame:
     if not ALL_STOCKS_PATH.exists():
         raise FileNotFoundError(
             f"all_stocks.parquet not found: {ALL_STOCKS_PATH}\n"
-            "Please run 04_create_all_stocks.py first."
+            "Please run create_all_stocks.py first."
         )
 
     print(f"[INFO] Loading all_stocks.parquet: {ALL_STOCKS_PATH}")
@@ -216,7 +216,7 @@ def main() -> int:
     print(f"Price datasets: {success_count}/{len(PRICE_CONFIGS)} successful")
     print(f"Tech snapshot: {'✓' if tech_snapshot_path.exists() else '✗'}")
     print("=" * 60)
-    print("  ℹ S3アップロードは 06_update_manifest.py で一括実行されます")
+    print("  ℹ S3アップロードは update_manifest.py で一括実行されます")
 
     print("\n✅ Price fetch and tech snapshot generation completed!")
     return 0

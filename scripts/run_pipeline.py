@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
 run_pipeline.py
-データパイプライン実行スクリプト（02-06を順次実行）
+データパイプライン実行スクリプト（全5ステップを順次実行）
 GitHub Actionsとローカル開発の両方で使用
+
+実行順序:
+  1. create_meta_jquants  - J-Quants APIから全銘柄メタ情報取得
+  2. generate_scalping    - スキャルピング銘柄選定（meta_jquants使用）
+  3. create_all_stocks    - meta + scalping統合
+  4. fetch_prices         - yfinanceで価格データ取得
+  5. update_manifest      - manifest.json生成・S3一括アップロード
 """
 
 from __future__ import annotations

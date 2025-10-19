@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-06_update_manifest.py
+update_manifest.py
 manifest.jsonを生成してS3に全parquetファイルを一括アップロード
 GitHub Actions対応: 最終ステップ、update_flag削除も実行
 """
@@ -21,10 +21,11 @@ import pandas as pd
 from scripts.lib.s3_manager import upload_to_s3
 from common_cfg.paths import PARQUET_DIR
 
-# S3にアップロードするファイル（all_stocks.parquetは除外）
+# S3にアップロードするファイル
 UPLOAD_FILES = [
     "meta.parquet",
     "meta_jquants.parquet",
+    "all_stocks.parquet",
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_60d_15m.parquet",

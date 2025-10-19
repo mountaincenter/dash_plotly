@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-04_create_all_stocks.py
+create_all_stocks.py
 meta.parquet + scalping_*.parquet をマージして all_stocks.parquet を生成
 GitHub Actions対応: S3優先、全必要ファイルをロード
 """
@@ -54,7 +54,7 @@ def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         raise FileNotFoundError(
             f"meta.parquet not found in S3 or locally.\n"
             f"Expected path: {META_PATH}\n"
-            f"Run scripts/manual/create_meta.py and 06_update_manifest.py first."
+            f"Run scripts/manual/create_meta.py and update_manifest.py first."
         )
 
     meta = pd.read_parquet(META_PATH)
@@ -283,7 +283,7 @@ def main() -> int:
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
     all_stocks.to_parquet(ALL_STOCKS_PATH, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {ALL_STOCKS_PATH}")
-    print("  ℹ all_stocks.parquetはローカル専用（S3アップロード不要）")
+    print("  ℹ S3アップロードは update_manifest.py で一括実行されます")
 
     # サマリー
     print("\n" + "=" * 60)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-02_create_meta_jquants.py
+create_meta_jquants.py
 J-Quants APIから全銘柄の基本情報を取得してmeta_jquants.parquetを作成
 週次強制更新対応、S3からダウンロード優先
 """
@@ -26,7 +26,21 @@ META_JQUANTS_PATH = PARQUET_DIR / "meta_jquants.parquet"
 
 
 def should_force_update() -> bool:
-    """週次強制更新が必要かチェック（金曜日）"""
+    """
+    週次強制更新が必要かチェック
+
+    優先順位:
+    1. 環境変数 FORCE_META_UPDATE=true（check_trading_day.pyから設定）
+    2. フォールバック: 金曜日判定（ローカル開発用）
+    """
+    import os
+
+    # GitHub Actionsからの環境変数チェック
+    force_flag = os.getenv("FORCE_META_UPDATE", "").lower()
+    if force_flag == "true":
+        return True
+
+    # フォールバック: 金曜日判定（ローカル開発用）
     return datetime.now().weekday() == 4  # 4 = Friday
 
 
@@ -167,7 +181,7 @@ def create_meta_jquants() -> int:
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
     output_df.to_parquet(META_JQUANTS_PATH, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {META_JQUANTS_PATH}")
-    print("  ℹ S3アップロードは 06_update_manifest.py で一括実行されます")
+    print("  ℹ S3アップロードは update_manifest.py で一括実行されます")
 
     # サマリー表示
     print("\n" + "=" * 60)
@@ -208,7 +222,7 @@ def main() -> int:
     メイン処理（GitHub Actions対応: S3優先）
 
     処理順序:
-    1. 金曜日 → 強制再作成
+    1. 週次強制更新チェック（環境変数 or 金曜日）→ 強制再作成
     2. S3からダウンロード試行（常に最初に実行、GitHub Actions対応）
     3. S3成功 → 鮮度チェック（7日以内なら使用、古ければ再作成）
     4. S3失敗 + ローカル存在 → 鮮度チェック（フォールバック）
@@ -216,12 +230,12 @@ def main() -> int:
     """
     print("\n[DEBUG] ===== create_meta_jquants main() started =====")
 
-    # 1. 週次強制更新チェック（金曜日）
+    # 1. 週次強制更新チェック（環境変数 FORCE_META_UPDATE or 金曜日）
     print("[DEBUG] Checking force update...")
     force_update = should_force_update()
     print(f"[DEBUG] Force update: {force_update}")
     if force_update:
-        print("[INFO] 週次強制更新（金曜日）: meta_jquants.parquetを再作成します")
+        print("[INFO] 週次強制更新: meta_jquants.parquetを再作成します")
         return create_meta_jquants()
 
     # 2. S3からダウンロード試行（ローカル存在に関わらず常に試行）

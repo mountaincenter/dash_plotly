@@ -1,9 +1,10 @@
-name: Data Pipeline (02-06)
+name: Data Pipeline
 
 on:
   schedule:
-    - cron: '0 7 * * *'   # 16:00 JST (市場終了後) - メイン実行
-    - cron: '0 17 * * *'  # 02:00 JST (深夜) - フォールバック実行
+    # 毎日実行（営業日判定は check_trading_day.py で実施）
+    - cron: '0 7 * * *'   # 16:00 JST - メイン実行時刻
+    - cron: '0 17 * * *'  # 02:00 JST - フォールバック実行時刻
   workflow_dispatch:
     inputs:
       force_meta_jquants:
@@ -55,36 +56,35 @@ jobs:
 
           echo "✅ J-Quants authentication configured"
 
-      - name: Check if already updated today (02:00 JST only)
-        id: check_updated
-        if: github.event.schedule == '0 17 * * *'
+      - name: Check trading day window
+        id: check_trading
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
         run: |
-          TODAY=$(date -u +%Y-%m-%d)
+          echo "🔍 Checking if within trading day execution window..."
+          python scripts/check_trading_day.py
+          EXIT_CODE=$?
 
-          # manifest.jsonをダウンロードしてupdate_flagをチェック
-          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}manifest.json" ./manifest.json 2>/dev/null; then
-            UPDATE_FLAG=$(jq -r '.update_flag // ""' manifest.json)
-
-            if [ "$UPDATE_FLAG" = "$TODAY" ]; then
-              echo "already_updated=true" >> $GITHUB_OUTPUT
-              echo "✅ Already updated today (${TODAY}), skipping 02:00 JST run"
-              exit 0
-            fi
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Within execution window (16:00-02:00 JST on trading day)"
+          else
+            echo "❌ Outside execution window or non-trading day"
           fi
 
-          echo "already_updated=false" >> $GITHUB_OUTPUT
-          echo "⚠️ Not updated yet for ${TODAY}, proceeding with 02:00 JST run"
+          exit $EXIT_CODE
 
-      - name: Skip if already updated
+      - name: Skip if outside trading window
         if: |
-          github.event.schedule == '0 17 * * *' &&
           steps.check_updated.outputs.already_updated == 'true'
         run: |
           echo "::notice::Skipping pipeline execution - already updated today"
           exit 0
 
-      - name: Run Data Pipeline (02-06)
+      - name: Run Data Pipeline
         id: pipeline
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
         run: |
           echo "============================================================"
           echo "Data Pipeline Execution (GitHub Actions)"
@@ -95,12 +95,14 @@ jobs:
           echo "  S3_BUCKET=${{ env.S3_BUCKET }}"
           echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
           echo "  AWS_REGION=${{ env.AWS_REGION }}"
+          echo "  FORCE_META_UPDATE=$FORCE_META_UPDATE"
+          echo "  LATEST_TRADING_DAY=${{ steps.check_trading.outputs.latest_trading_day }}"
           echo ""
 
-          # Force update flag for meta_jquants (manual trigger only)
+          # Force update flag for meta_jquants (manual trigger override)
           if [ "${{ github.event.inputs.force_meta_jquants }}" = "true" ]; then
-            export FORCE_META_JQUANTS_UPDATE=1
-            echo "⚠️ Force update enabled for meta_jquants.parquet"
+            export FORCE_META_UPDATE=true
+            echo "⚠️ Manual force update enabled for meta_jquants.parquet"
           fi
 
           # Run the pipeline
