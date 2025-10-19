@@ -65,6 +65,12 @@ jobs:
             exit 1
           fi
 
+      - name: Re-authenticate AWS credentials before long-running task
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Generate scalping lists
         id: generate_scalping
         env:
