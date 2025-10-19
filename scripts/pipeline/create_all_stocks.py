@@ -158,11 +158,18 @@ def add_technical_columns_to_meta(df: pd.DataFrame) -> pd.DataFrame:
     meta.parquetにテクニカル指標カラムをnullで追加
 
     Args:
-        df: meta.parquet のDataFrame（9カラム）
+        df: meta.parquet のDataFrame（9カラム: categories, tags含む）
 
     Returns:
         18カラム構造のDataFrame
     """
+    # categoriesとtagsが存在しない場合は追加（後方互換性）
+    if 'categories' not in df.columns:
+        df["categories"] = df.apply(lambda x: [], axis=1)
+    if 'tags' not in df.columns:
+        df["tags"] = df.apply(lambda x: [], axis=1)
+
+    # テクニカル指標カラムを追加
     df["date"] = None
     df["Close"] = None
     df["change_pct"] = None
