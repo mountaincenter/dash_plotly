@@ -212,7 +212,13 @@ def main() -> int:
     # [STEP 6] エントリー向け銘柄リスト生成
     print("\n[STEP 6] Generating entry list...")
     try:
-        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=20)
+        df_entry = screener.generate_entry_list(
+            df_latest,
+            meta_df,
+            target_n=15,
+            min_score_threshold=75.0,
+            fallback_min_n=5
+        )
 
         if df_entry.empty:
             print("  ⚠ No entry stocks found (creating empty file)")
@@ -231,7 +237,14 @@ def main() -> int:
     print("\n[STEP 7] Generating active list...")
     try:
         entry_tickers = set(df_entry['ticker'].tolist()) if not df_entry.empty else set()
-        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=20)
+        df_active = screener.generate_active_list(
+            df_latest,
+            meta_df,
+            entry_tickers,
+            target_n=15,
+            min_score_threshold=85.0,
+            fallback_min_n=5
+        )
 
         if df_active.empty:
             print("  ⚠ No active stocks found (creating empty file)")

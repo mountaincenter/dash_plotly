@@ -134,15 +134,24 @@ class ScalpingScreener:
         self,
         df_latest: pd.DataFrame,
         meta_df: pd.DataFrame,
-        top_n: int = 20,
+        target_n: int = 15,
+        min_score_threshold: float = 75.0,
+        fallback_min_n: int = 5,
     ) -> pd.DataFrame:
         """
         エントリー向けスキャルピング銘柄リストを生成（初心者向け）
 
+        品質保証付き動的選定:
+        1. スコア >= min_score_threshold の銘柄を優先選定
+        2. target_n件に満たない場合、基準を緩和
+        3. 最低でも fallback_min_n 件を確保（0件回避）
+
         Args:
             df_latest: 最新日のテクニカル指標付き株価データ（overall_rating必須）
             meta_df: 銘柄メタ情報
-            top_n: 上位何件を取得するか
+            target_n: 目標件数（デフォルト15件）
+            min_score_threshold: 最低品質基準スコア（デフォルト75点）
+            fallback_min_n: 最低保証件数（デフォルト5件）
 
         Returns:
             エントリー向け銘柄リスト
@@ -213,10 +222,30 @@ class ScalpingScreener:
                 if 'topixnewindexseries' in df_entry.columns:
                     df_entry['topixnewindexseries'] = df_entry['topixnewindexseries'].replace('-', None)
 
-        # Sort by score and select top N
+        # Sort by score (descending)
         df_entry = df_entry.sort_values('score', ascending=False).drop_duplicates(
             subset=['ticker'], keep='first'
-        ).head(top_n)
+        )
+
+        # 品質保証付き動的選定
+        high_quality = df_entry[df_entry['score'] >= min_score_threshold]
+
+        if len(high_quality) >= target_n:
+            # 十分な高品質銘柄がある → target_n件選定
+            df_entry = high_quality.head(target_n)
+            print(f"[OK] Selected {len(df_entry)} high-quality stocks (score >= {min_score_threshold})")
+        elif len(high_quality) >= fallback_min_n:
+            # 高品質は少ないが最低保証以上 → 全て採用
+            df_entry = high_quality
+            print(f"[INFO] Only {len(df_entry)} stocks met quality threshold (>= {min_score_threshold})")
+        else:
+            # 高品質が少なすぎる → fallback_min_n 件確保（基準緩和）
+            df_entry = df_entry.head(fallback_min_n)
+            if len(df_entry) > 0:
+                min_actual = df_entry['score'].min()
+                print(f"[WARN] Quality threshold not met. Selected top {len(df_entry)} stocks (min score: {min_actual:.1f})")
+            else:
+                print(f"[WARN] No stocks available for entry")
 
         # Select columns
         entry_cols = [
@@ -234,16 +263,25 @@ class ScalpingScreener:
         df_latest: pd.DataFrame,
         meta_df: pd.DataFrame,
         entry_tickers: Set[str],
-        top_n: int = 20,
+        target_n: int = 15,
+        min_score_threshold: float = 85.0,
+        fallback_min_n: int = 5,
     ) -> pd.DataFrame:
         """
         アクティブ向けスキャルピング銘柄リストを生成（上級者向け）
+
+        品質保証付き動的選定:
+        1. スコア >= min_score_threshold の銘柄を優先選定
+        2. target_n件に満たない場合、基準を緩和
+        3. 最低でも fallback_min_n 件を確保（0件回避）
 
         Args:
             df_latest: 最新日のテクニカル指標付き株価データ（overall_rating必須）
             meta_df: 銘柄メタ情報
             entry_tickers: エントリーリストに含まれる銘柄（除外対象）
-            top_n: 上位何件を取得するか
+            target_n: 目標件数（デフォルト15件）
+            min_score_threshold: 最低品質基準スコア（デフォルト85点）
+            fallback_min_n: 最低保証件数（デフォルト5件）
 
         Returns:
             アクティブ向け銘柄リスト
@@ -313,10 +351,30 @@ class ScalpingScreener:
                 if 'topixnewindexseries' in df_active.columns:
                     df_active['topixnewindexseries'] = df_active['topixnewindexseries'].replace('-', None)
 
-        # Sort by score and select top N
+        # Sort by score (descending)
         df_active = df_active.sort_values('score', ascending=False).drop_duplicates(
             subset=['ticker'], keep='first'
-        ).head(top_n)
+        )
+
+        # 品質保証付き動的選定
+        high_quality = df_active[df_active['score'] >= min_score_threshold]
+
+        if len(high_quality) >= target_n:
+            # 十分な高品質銘柄がある → target_n件選定
+            df_active = high_quality.head(target_n)
+            print(f"[OK] Selected {len(df_active)} high-quality stocks (score >= {min_score_threshold})")
+        elif len(high_quality) >= fallback_min_n:
+            # 高品質は少ないが最低保証以上 → 全て採用
+            df_active = high_quality
+            print(f"[INFO] Only {len(df_active)} stocks met quality threshold (>= {min_score_threshold})")
+        else:
+            # 高品質が少なすぎる → fallback_min_n 件確保（基準緩和）
+            df_active = df_active.head(fallback_min_n)
+            if len(df_active) > 0:
+                min_actual = df_active['score'].min()
+                print(f"[WARN] Quality threshold not met. Selected top {len(df_active)} stocks (min score: {min_actual:.1f})")
+            else:
+                print(f"[WARN] No stocks available for active")
 
         # Select columns
         active_cols = [
