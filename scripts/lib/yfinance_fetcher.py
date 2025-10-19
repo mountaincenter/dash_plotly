@@ -46,6 +46,43 @@ def fetch_prices_for_tickers(
             threads=True,
             progress=False
         )
+
+        if df.empty:
+            return pd.DataFrame()
+
+        # MultiIndex列を正規化（縦持ち形式に変換）
+        if isinstance(df.columns, pd.MultiIndex):
+            # 複数銘柄の場合: (ticker, column)形式
+            # stack(level=0)でtickerをindexに移動
+            df_stacked = df.stack(level=0, future_stack=True).reset_index()
+            # カラム名を修正
+            if 'level_1' in df_stacked.columns:
+                df_stacked.rename(columns={'level_1': 'ticker'}, inplace=True)
+            elif 'Ticker' in df_stacked.columns:
+                df_stacked.rename(columns={'Ticker': 'ticker'}, inplace=True)
+
+            if 'Date' in df_stacked.columns:
+                df_stacked.rename(columns={'Date': 'date'}, inplace=True)
+            elif 'Datetime' in df_stacked.columns:
+                df_stacked.rename(columns={'Datetime': 'date'}, inplace=True)
+
+            df = df_stacked
+        else:
+            # 単一銘柄の場合
+            df = df.reset_index()
+            if 'Date' in df.columns:
+                df.rename(columns={'Date': 'date'}, inplace=True)
+            elif 'Datetime' in df.columns:
+                df.rename(columns={'Datetime': 'date'}, inplace=True)
+
+            if len(tickers) == 1:
+                df['ticker'] = tickers[0]
+
+        # 必要なカラムのみ保持
+        required_cols = ['date', 'Open', 'High', 'Low', 'Close', 'Volume', 'ticker']
+        available_cols = [c for c in required_cols if c in df.columns]
+        df = df[available_cols]
+
         return df
     except Exception as e:
         print(f"[ERROR] Failed to fetch prices for {period}_{interval}: {e}")
