@@ -1,19 +1,16 @@
-name: Smoke Test - Scalping Selection
+name: Generate Scalping Lists
 
 on:
   workflow_dispatch:
-    inputs:
-      num_stocks:
-        description: 'Number of random stocks to test'
-        type: number
-        default: 5
+  schedule:
+    - cron: '0 9 * * 1-5'  # 毎営業日 JST 18:00 (UTC 09:00)
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  smoke-test:
+  generate-scalping:
     runs-on: ubuntu-latest
     environment: AWS_OIDC
 
@@ -63,14 +60,13 @@ jobs:
             exit 1
           fi
 
-      - name: Run smoke test
-        id: smoke_test
+      - name: Generate scalping lists
+        id: generate_scalping
         env:
-          NUM_STOCKS: ${{ github.event.inputs.num_stocks || 5 }}
           TZ: Asia/Tokyo
         run: |
           echo "============================================================"
-          echo "Smoke Test Execution (GitHub Actions)"
+          echo "Generate Scalping Lists (All Stocks)"
           echo "Started at: $(date +"%Y-%m-%d %H:%M:%S JST")"
           echo "============================================================"
           echo ""
@@ -78,7 +74,6 @@ jobs:
           echo "  S3_BUCKET=${{ env.S3_BUCKET }}"
           echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
           echo "  AWS_REGION=${{ env.AWS_REGION }}"
-          echo "  NUM_STOCKS=${{ github.event.inputs.num_stocks || 5 }}"
           echo ""
 
           python smoke_test/test_scalping.py
@@ -86,7 +81,7 @@ jobs:
 
           echo ""
           echo "============================================================"
-          echo "Smoke test completed with exit code: $EXIT_CODE"
+          echo "Generation completed with exit code: $EXIT_CODE"
           echo "============================================================"
 
           exit $EXIT_CODE
@@ -97,21 +92,20 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           MESSAGE='{
-            "text": "✅ Smoke Test Succeeded",
+            "text": "✅ Scalping Lists Generated",
             "blocks": [
               {
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "✅ *Smoke Test Succeeded*\nScalping stock selection logic validated successfully."
+                  "text": "✅ *Scalping Lists Generated*\nAll stocks processed and uploaded to S3 successfully."
                 }
               },
               {
                 "type": "section",
                 "fields": [
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
-                  {"type": "mrkdwn", "text": "*Trigger:*\n`Manual`"},
-                  {"type": "mrkdwn", "text": "*Test Stocks:*\n`${{ github.event.inputs.num_stocks || 5 }}`"}
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"}
                 ]
               },
               {
@@ -134,20 +128,20 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           MESSAGE='{
-            "text": "❌ Smoke Test Failed",
+            "text": "❌ Scalping Generation Failed",
             "blocks": [
               {
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "❌ *Smoke Test Failed*\nScalping stock selection logic encountered an error."
+                  "text": "❌ *Scalping Generation Failed*\nFailed to generate or upload scalping lists."
                 }
               },
               {
                 "type": "section",
                 "fields": [
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
-                  {"type": "mrkdwn", "text": "*Trigger:*\n`Manual`"}
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"}
                 ]
               },
               {

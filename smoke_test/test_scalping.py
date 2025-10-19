@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Smoke Test for Scalping Stock Selection
-取引カレンダーAPIを使用して直近営業日を取得し、ランダム5銘柄でスキャルピングロジックをテスト
+Scalping Stock Selection (All Stocks)
+全銘柄を対象にスキャルピング銘柄を選定し、S3にアップロード
 """
 
 from __future__ import annotations
@@ -9,32 +9,32 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
+import os
 
 ROOT = Path(__file__).resolve().parents[1]  # smoke_test/ から1階層上 = プロジェクトルート
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
-import random
-from scripts.lib.jquants_client import JQuantsClient
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 from scripts.lib.screener import ScalpingScreener
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.s3io import upload_file
+from common_cfg.s3cfg import load_s3_config
 
 META_JQUANTS_PATH = PARQUET_DIR / "meta_jquants.parquet"
+SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
+SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
 
 
-def load_random_stocks(n: int = 5) -> pd.DataFrame:
+def load_all_stocks() -> pd.DataFrame:
     """
-    meta_jquants.parquetからランダムにN銘柄を選定
-
-    Args:
-        n: 選定する銘柄数
+    meta_jquants.parquetから全銘柄を読み込み
 
     Returns:
-        選定された銘柄のDataFrame
+        全銘柄のDataFrame
     """
-    print(f"[INFO] Loading {n} random stocks from meta_jquants.parquet...")
+    print("[INFO] Loading all stocks from meta_jquants.parquet...")
 
     if not META_JQUANTS_PATH.exists():
         raise FileNotFoundError(f"meta_jquants.parquet not found: {META_JQUANTS_PATH}")
@@ -42,18 +42,7 @@ def load_random_stocks(n: int = 5) -> pd.DataFrame:
     meta = pd.read_parquet(META_JQUANTS_PATH)
     print(f"[OK] Loaded {len(meta)} stocks")
 
-    # ランダムにN銘柄を選定
-    if len(meta) < n:
-        print(f"[WARN] Only {len(meta)} stocks available, using all")
-        selected = meta
-    else:
-        selected = meta.sample(n=n, random_state=42)
-
-    print(f"[OK] Selected {len(selected)} random stocks:")
-    for ticker in selected["ticker"].values:
-        print(f"  - {ticker}")
-
-    return selected
+    return meta
 
 
 def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, lookback_days: int = 60) -> pd.DataFrame:
@@ -97,22 +86,80 @@ def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, lookback_day
     return df
 
 
-def main() -> int:
-    """スキャルピング銘柄リストのスモークテスト（ランダムN銘柄）"""
-    import os
+def create_empty_scalping_files():
+    """空のscalping_*.parquetファイルを作成"""
+    empty_df = pd.DataFrame(columns=[
+        'ticker', 'stock_name', 'market', 'sectors', 'date',
+        'Close', 'change_pct', 'Volume', 'vol_ratio',
+        'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+    ])
 
-    # 環境変数から銘柄数を取得（デフォルト5）
-    num_stocks = int(os.getenv("NUM_STOCKS", "5"))
+    PARQUET_DIR.mkdir(parents=True, exist_ok=True)
+    empty_df.to_parquet(SCALPING_ENTRY_PATH, engine="pyarrow", index=False)
+    empty_df.to_parquet(SCALPING_ACTIVE_PATH, engine="pyarrow", index=False)
 
-    print("=" * 60)
-    print(f"Smoke Test: Scalping Stock Selection ({num_stocks} Random Stocks)")
-    print("=" * 60)
+    print(f"  ✓ Saved empty: {SCALPING_ENTRY_PATH}")
+    print(f"  ✓ Saved empty: {SCALPING_ACTIVE_PATH}")
 
-    # [STEP 1] ランダムN銘柄を選定
-    print(f"\n[STEP 1] Selecting {num_stocks} random stocks...")
+
+def upload_to_s3():
+    """scalping_*.parquetをS3にアップロード"""
     try:
-        meta_df = load_random_stocks(n=num_stocks)
-        print(f"  ✓ Selected {len(meta_df)} stocks")
+        cfg = load_s3_config()
+
+        # Entry list upload
+        print(f"[INFO] Uploading {SCALPING_ENTRY_PATH.name} to S3...")
+        success_entry = upload_file(cfg, SCALPING_ENTRY_PATH, "scalping_entry.parquet")
+        if success_entry:
+            print(f"  ✓ Uploaded: scalping_entry.parquet")
+        else:
+            print(f"  ✗ Failed to upload: scalping_entry.parquet")
+            return False
+
+        # Active list upload
+        print(f"[INFO] Uploading {SCALPING_ACTIVE_PATH.name} to S3...")
+        success_active = upload_file(cfg, SCALPING_ACTIVE_PATH, "scalping_active.parquet")
+        if success_active:
+            print(f"  ✓ Uploaded: scalping_active.parquet")
+        else:
+            print(f"  ✗ Failed to upload: scalping_active.parquet")
+            return False
+
+        return True
+
+    except Exception as e:
+        print(f"  ✗ S3 upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def main() -> int:
+    """スキャルピング銘柄リスト生成（全銘柄対象）"""
+    # テストモード: 環境変数 TEST_MODE=1 でランダムN銘柄のみ処理
+    test_mode = os.getenv("TEST_MODE", "0") == "1"
+    num_stocks = int(os.getenv("NUM_STOCKS", "5")) if test_mode else None
+
+    print("=" * 60)
+    if test_mode:
+        print(f"Test Mode: Scalping Stock Selection ({num_stocks} Random Stocks)")
+    else:
+        print("Scalping Stock Selection (All Stocks)")
+    print("=" * 60)
+
+    # [STEP 1] 全銘柄読み込み
+    print("\n[STEP 1] Loading all stocks...")
+    try:
+        meta_df = load_all_stocks()
+
+        # テストモードならランダムサンプリング
+        if test_mode and num_stocks and len(meta_df) > num_stocks:
+            print(f"[TEST MODE] Sampling {num_stocks} random stocks...")
+            meta_df = meta_df.sample(n=num_stocks, random_state=42)
+            print(f"  ✓ Selected {len(meta_df)} random stocks")
+        else:
+            print(f"  ✓ Loaded {len(meta_df)} stocks")
+
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
@@ -122,19 +169,42 @@ def main() -> int:
     try:
         fetcher = JQuantsFetcher()
 
-        # ランダム5銘柄の株価を取得（60日分）
+        # 全銘柄の株価を取得（60日分）
         tickers = meta_df["ticker"].tolist()
         df_prices = fetch_stock_prices(tickers, fetcher, lookback_days=60)
 
         if df_prices.empty:
             print("  ✗ No price data retrieved")
-            return 1
+            print("  ⚠ Creating empty scalping files...")
+            create_empty_scalping_files()
+
+            print("\n[STEP S3] Uploading to S3...")
+            if upload_to_s3():
+                print("  ✓ Empty files uploaded to S3")
+            else:
+                print("  ✗ S3 upload failed")
+                return 1
+
+            print("\n✅ Empty scalping lists created and uploaded")
+            return 0
 
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         import traceback
         traceback.print_exc()
-        return 1
+
+        print("  ⚠ Creating empty scalping files...")
+        create_empty_scalping_files()
+
+        print("\n[STEP S3] Uploading to S3...")
+        if upload_to_s3():
+            print("  ✓ Empty files uploaded to S3")
+        else:
+            print("  ✗ S3 upload failed")
+            return 1
+
+        print("\n✅ Empty scalping lists created and uploaded")
+        return 0
 
     # [STEP 3] テクニカル指標計算
     print("\n[STEP 3] Calculating technical indicators...")
@@ -164,81 +234,10 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # [STEP 5.5] スキャルピング判定根拠を出力
-    print("\n[STEP 5.5] Analyzing screening criteria...")
-    try:
-        # 各銘柄のoverall_ratingを表示
-        print("\n--- Overall Ratings (from evaluate_technical_ratings) ---")
-        for _, row in df_latest.iterrows():
-            print(f"  {row['ticker']}: {row.get('overall_rating', 'N/A')}")
-        print()
-
-        print("\n--- Entry Criteria ---")
-        print("Price: 100-1500円")
-        print("Liquidity: Volume × Close >= 100,000,000円")
-        print("Volatility (ATR14%): 1.0-3.5%")
-        print("Change%: -3.0% to +3.0%")
-        print("Overall Rating: 買い または 強い買い")
-        print()
-
-        # 各条件での合格銘柄数を表示
-        entry_criteria = {
-            "Price (100-1500)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 1500),
-            "Liquidity >= 100M": (df_latest['Volume'] * df_latest['Close'] >= 100_000_000),
-            "ATR14% (1.0-3.5)": (df_latest['atr14_pct'] >= 1.0) & (df_latest['atr14_pct'] <= 3.5),
-            "Change% (-3 to +3)": (df_latest['change_pct'] >= -3.0) & (df_latest['change_pct'] <= 3.0),
-            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
-        }
-
-        for criteria_name, condition in entry_criteria.items():
-            passed_count = condition.sum()
-            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed")
-
-        # 全条件合格
-        all_conditions = pd.Series([True] * len(df_latest), index=df_latest.index)
-        for condition in entry_criteria.values():
-            all_conditions &= condition
-        print(f"\n  All criteria met: {all_conditions.sum()}/{len(df_latest)} stocks")
-        print()
-
-        print("--- Active Criteria ---")
-        print("Price: 100-3000円")
-        print("Liquidity: (Volume × Close >= 50,000,000円) OR (vol_ratio >= 150%)")
-        print("Volatility (ATR14%): >= 2.5%")
-        print("Change% (abs): >= 2.0%")
-        print("Overall Rating: 買い または 強い買い")
-        print("Exclude: Entry stocks")
-        print()
-
-        # Active条件での合格銘柄数を表示
-        active_criteria = {
-            "Price (100-3000)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 3000),
-            "Liquidity": ((df_latest['Volume'] * df_latest['Close'] >= 50_000_000) | (df_latest['vol_ratio'] >= 150)),
-            "ATR14% >= 2.5": df_latest['atr14_pct'] >= 2.5,
-            "Change% abs >= 2.0": df_latest['change_pct'].abs() >= 2.0,
-            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
-        }
-
-        for criteria_name, condition in active_criteria.items():
-            passed_count = condition.sum()
-            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed")
-
-        # 全条件合格（Entry除外は後で）
-        all_conditions_active = pd.Series([True] * len(df_latest), index=df_latest.index)
-        for condition in active_criteria.values():
-            all_conditions_active &= condition
-        print(f"\n  All criteria met: {all_conditions_active.sum()}/{len(df_latest)} stocks")
-        print()
-
-    except Exception as e:
-        print(f"  ✗ Failed to analyze criteria: {e}")
-        import traceback
-        traceback.print_exc()
-
     # [STEP 6] エントリー向け銘柄リスト生成
     print("\n[STEP 6] Generating entry list...")
     try:
-        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=num_stocks)
+        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=20)
 
         if df_entry.empty:
             print("  ⚠ No entry stocks found (creating empty file)")
@@ -257,7 +256,7 @@ def main() -> int:
     print("\n[STEP 7] Generating active list...")
     try:
         entry_tickers = set(df_entry['ticker'].tolist()) if not df_entry.empty else set()
-        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=num_stocks)
+        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=20)
 
         if df_active.empty:
             print("  ⚠ No active stocks found (creating empty file)")
@@ -272,27 +271,38 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
+    # [STEP 8] ファイル保存
+    print("\n[STEP 8] Saving scalping lists...")
+    try:
+        PARQUET_DIR.mkdir(parents=True, exist_ok=True)
+
+        df_entry.to_parquet(SCALPING_ENTRY_PATH, engine="pyarrow", index=False)
+        df_active.to_parquet(SCALPING_ACTIVE_PATH, engine="pyarrow", index=False)
+
+        print(f"  ✓ Saved: {SCALPING_ENTRY_PATH}")
+        print(f"  ✓ Saved: {SCALPING_ACTIVE_PATH}")
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+        return 1
+
+    # [STEP 9] S3アップロード
+    print("\n[STEP 9] Uploading to S3...")
+    if upload_to_s3():
+        print("  ✓ Files uploaded to S3")
+    else:
+        print("  ✗ S3 upload failed")
+        return 1
+
     # サマリー
     print("\n" + "=" * 60)
     print("Summary")
     print("=" * 60)
-    print(f"Tested stocks: {len(meta_df)}")
+    print(f"Processed stocks: {len(meta_df)}")
     print(f"Entry candidates: {len(df_entry)}")
     print(f"Active candidates: {len(df_active)}")
-
-    if len(df_entry) > 0:
-        print("\nEntry stocks:")
-        for ticker in df_entry["ticker"].values:
-            print(f"  - {ticker}")
-
-    if len(df_active) > 0:
-        print("\nActive stocks:")
-        for ticker in df_active["ticker"].values:
-            print(f"  - {ticker}")
-
     print("=" * 60)
 
-    print("\n✅ Smoke test completed successfully!")
+    print("\n✅ Scalping lists generated and uploaded successfully!")
     return 0
 
 
