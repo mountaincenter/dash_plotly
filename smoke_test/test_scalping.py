@@ -9,17 +9,51 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
-import random
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]  # smoke_test/ から1階層上 = プロジェクトルート
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
+import random
 from scripts.lib.jquants_client import JQuantsClient
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 from scripts.lib.screener import ScalpingScreener
 from common_cfg.paths import PARQUET_DIR
+
+META_JQUANTS_PATH = PARQUET_DIR / "meta_jquants.parquet"
+
+
+def load_random_stocks(n: int = 5) -> pd.DataFrame:
+    """
+    meta_jquants.parquetからランダムにN銘柄を選定
+
+    Args:
+        n: 選定する銘柄数
+
+    Returns:
+        選定された銘柄のDataFrame
+    """
+    print(f"[INFO] Loading {n} random stocks from meta_jquants.parquet...")
+
+    if not META_JQUANTS_PATH.exists():
+        raise FileNotFoundError(f"meta_jquants.parquet not found: {META_JQUANTS_PATH}")
+
+    meta = pd.read_parquet(META_JQUANTS_PATH)
+    print(f"[OK] Loaded {len(meta)} stocks")
+
+    # ランダムにN銘柄を選定
+    if len(meta) < n:
+        print(f"[WARN] Only {len(meta)} stocks available, using all")
+        selected = meta
+    else:
+        selected = meta.sample(n=n, random_state=42)
+
+    print(f"[OK] Selected {len(selected)} random stocks:")
+    for ticker in selected["ticker"].values:
+        print(f"  - {ticker}")
+
+    return selected
 
 
 def get_latest_trading_day(client: JQuantsClient) -> str:
@@ -29,7 +63,7 @@ def get_latest_trading_day(client: JQuantsClient) -> str:
     Returns:
         YYYY-MM-DD形式の日付文字列
     """
-    print("[INFO] Fetching trading calendar from J-Quants API...")
+    print("[INFO] Fetching latest trading day from J-Quants API...")
 
     # 過去30日分の取引カレンダーを取得
     to_date = datetime.now().date()
@@ -64,69 +98,33 @@ def get_latest_trading_day(client: JQuantsClient) -> str:
     return latest_trading_day
 
 
-def load_random_stocks(meta_path: Path, n: int = 5) -> pd.DataFrame:
+def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, client: JQuantsClient, lookback_days: int = 60) -> pd.DataFrame:
     """
-    meta_jquants.parquetからランダムにN銘柄を選定
+    指定銘柄の株価データを取得（J-Quants API + 取引カレンダー）
 
     Args:
-        meta_path: meta_jquants.parquetのパス
-        n: 選定する銘柄数
-
-    Returns:
-        選定された銘柄のDataFrame
-    """
-    print(f"[INFO] Loading meta_jquants.parquet from {meta_path}...")
-
-    if not meta_path.exists():
-        raise FileNotFoundError(f"meta_jquants.parquet not found: {meta_path}")
-
-    meta = pd.read_parquet(meta_path)
-    print(f"[OK] Loaded {len(meta)} stocks")
-
-    # ランダムにN銘柄を選定
-    if len(meta) < n:
-        print(f"[WARN] Only {len(meta)} stocks available, using all")
-        selected = meta
-    else:
-        selected = meta.sample(n=n, random_state=42)
-
-    print(f"[OK] Selected {len(selected)} random stocks:")
-    for ticker in selected["ticker"].values:
-        print(f"  - {ticker}")
-
-    return selected
-
-
-def fetch_stock_prices_with_trading_day(
-    tickers: list[str],
-    fetcher: JQuantsFetcher,
-    to_date: str,
-    lookback_days: int = 60
-) -> pd.DataFrame:
-    """
-    指定銘柄の株価データを取得（取引カレンダーAPIの直近営業日を使用）
-
-    Args:
-        tickers: ティッカーリスト
+        tickers: ティッカーリスト（例: ["7203.T", "6758.T"]）
         fetcher: JQuantsFetcher インスタンス
-        to_date: 取得終了日（直近営業日）
+        client: JQuantsClient インスタンス（取引カレンダー取得用）
         lookback_days: 何日分のデータを取得するか
 
     Returns:
         株価データのDataFrame
     """
-    print(f"[INFO] Fetching stock prices for {len(tickers)} stocks...")
-    print(f"[INFO] Date range: last {lookback_days} days until {to_date}")
+    print(f"[INFO] Fetching stock prices for {len(tickers)} stocks (last {lookback_days} days)...")
 
-    # ティッカーを4桁コードに変換
+    # ティッカーを4桁コードに変換（例: "7203.T" -> "7203"）
     codes = [ticker.replace(".T", "") for ticker in tickers]
 
-    # 期間設定
-    to_date_obj = datetime.strptime(to_date, "%Y-%m-%d").date()
+    # 取引カレンダーAPIから直近営業日を取得
+    latest_trading_day = get_latest_trading_day(client)
+    to_date_obj = datetime.strptime(latest_trading_day, "%Y-%m-%d").date()
     from_date = to_date_obj - timedelta(days=lookback_days)
 
-    # 株価データ取得
-    df = fetcher.get_prices_daily_batch(codes, from_date=from_date, to_date=to_date, batch_delay=0.5)
+    print(f"[INFO] Date range: {from_date} to {to_date_obj}")
+
+    # 株価データ取得（バッチ処理）
+    df = fetcher.get_prices_daily_batch(codes, from_date=from_date, to_date=to_date_obj, batch_delay=0.5)
 
     if df.empty:
         print("[ERROR] No price data retrieved")
@@ -140,122 +138,124 @@ def fetch_stock_prices_with_trading_day(
 
 
 def main() -> int:
-    """スモークテスト実行"""
+    """スキャルピング銘柄リストのスモークテスト（ランダム5銘柄）"""
     print("=" * 60)
     print("Smoke Test: Scalping Stock Selection (5 Random Stocks)")
     print("=" * 60)
 
-    # [STEP 1] J-Quantsクライアント初期化
-    print("\n[STEP 1] Initializing J-Quants client...")
+    # [STEP 1] ランダム5銘柄を選定
+    print("\n[STEP 1] Selecting 5 random stocks...")
+    try:
+        meta_df = load_random_stocks(n=5)
+        print(f"  ✓ Selected {len(meta_df)} stocks")
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+        return 1
+
+    # [STEP 2] J-Quants APIで株価データ取得（取引カレンダー使用）
+    print("\n[STEP 2] Fetching stock prices from J-Quants API...")
     try:
         client = JQuantsClient()
-        print(f"  ✓ Plan: {client.plan}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
-
-    # [STEP 2] 直近営業日を取得
-    print("\n[STEP 2] Fetching latest trading day...")
-    try:
-        latest_trading_day = get_latest_trading_day(client)
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
-
-    # [STEP 3] ランダム5銘柄を選定
-    print("\n[STEP 3] Selecting 5 random stocks...")
-    try:
-        meta_path = PARQUET_DIR / "meta_jquants.parquet"
-        selected_stocks = load_random_stocks(meta_path, n=5)
-        tickers = selected_stocks["ticker"].tolist()
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
-
-    # [STEP 4] 株価データを取得
-    print("\n[STEP 4] Fetching stock prices...")
-    try:
         fetcher = JQuantsFetcher(client)
-        prices = fetch_stock_prices_with_trading_day(tickers, fetcher, latest_trading_day, lookback_days=60)
 
-        if prices.empty:
+        # ランダム5銘柄の株価を取得（60日分）
+        tickers = meta_df["ticker"].tolist()
+        df_prices = fetch_stock_prices(tickers, fetcher, client, lookback_days=60)
+
+        if df_prices.empty:
             print("  ✗ No price data retrieved")
             return 1
+
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         import traceback
         traceback.print_exc()
         return 1
 
-    # [STEP 5] テクニカル指標を計算
-    print("\n[STEP 5] Calculating technical indicators...")
+    # [STEP 3] テクニカル指標計算
+    print("\n[STEP 3] Calculating technical indicators...")
     try:
-        screener = ScalpingScreener()
-        prices_with_indicators = screener.add_technical_indicators(prices)
-        print(f"  ✓ Calculated indicators for {prices_with_indicators['ticker'].nunique()} stocks")
+        screener = ScalpingScreener(fetcher)
+        df_with_tech = screener.calculate_technical_indicators(df_prices)
+        print(f"  ✓ Calculated indicators for {df_with_tech['ticker'].nunique()} stocks")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
-        import traceback
-        traceback.print_exc()
         return 1
 
-    # [STEP 6] テクニカル評価
-    print("\n[STEP 6] Evaluating technical ratings...")
+    # [STEP 4] テクニカル評価（overall_rating）
+    print("\n[STEP 4] Evaluating technical ratings...")
     try:
-        evaluated = screener.evaluate_technicals(prices_with_indicators)
-        print(f"  ✓ Evaluated {len(evaluated)} stocks")
+        df_with_ratings = screener.evaluate_technical_ratings(df_with_tech)
+        print(f"  ✓ Evaluated ratings")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
-        import traceback
-        traceback.print_exc()
         return 1
 
-    # [STEP 7] 最新データを抽出
-    print("\n[STEP 7] Extracting latest data...")
+    # [STEP 5] 最新日のデータのみ抽出
+    print("\n[STEP 5] Extracting latest data...")
     try:
-        latest = screener.get_latest_by_ticker(evaluated)
-        print(f"  ✓ Latest data: {len(latest)} stocks")
+        df_latest = df_with_ratings.sort_values(['ticker', 'date']).groupby('ticker', as_index=False).last()
+        print(f"  ✓ Latest data: {len(df_latest)} stocks")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
-        import traceback
-        traceback.print_exc()
         return 1
 
-    # [STEP 8] エントリー・アクティブ銘柄を選定
-    print("\n[STEP 8] Screening for entry/active stocks...")
+    # [STEP 6] エントリー向け銘柄リスト生成
+    print("\n[STEP 6] Generating entry list...")
     try:
-        entry_stocks = screener.screen_entry_stocks(latest, selected_stocks)
-        active_stocks = screener.screen_active_stocks(latest, selected_stocks)
+        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=20)
 
-        print(f"  ✓ Entry stocks: {len(entry_stocks)}")
-        print(f"  ✓ Active stocks: {len(active_stocks)}")
+        if df_entry.empty:
+            print("  ⚠ No entry stocks found (creating empty file)")
+            df_entry = pd.DataFrame(columns=[
+                'ticker', 'stock_name', 'market', 'sectors', 'date',
+                'Close', 'change_pct', 'Volume', 'vol_ratio',
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+            ])
 
-        # 結果サマリー
-        print("\n" + "=" * 60)
-        print("Summary")
-        print("=" * 60)
-        print(f"Latest trading day: {latest_trading_day}")
-        print(f"Tested stocks: {len(tickers)}")
-        print(f"Entry candidates: {len(entry_stocks)}")
-        print(f"Active candidates: {len(active_stocks)}")
-
-        if len(entry_stocks) > 0:
-            print("\nEntry stocks:")
-            for ticker in entry_stocks["ticker"].values:
-                print(f"  - {ticker}")
-
-        if len(active_stocks) > 0:
-            print("\nActive stocks:")
-            for ticker in active_stocks["ticker"].values:
-                print(f"  - {ticker}")
-
-        print("=" * 60)
-
+        print(f"  ✓ Entry list: {len(df_entry)} stocks")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
-        import traceback
-        traceback.print_exc()
         return 1
+
+    # [STEP 7] アクティブ向け銘柄リスト生成
+    print("\n[STEP 7] Generating active list...")
+    try:
+        entry_tickers = set(df_entry['ticker'].tolist()) if not df_entry.empty else set()
+        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=20)
+
+        if df_active.empty:
+            print("  ⚠ No active stocks found (creating empty file)")
+            df_active = pd.DataFrame(columns=[
+                'ticker', 'stock_name', 'market', 'sectors', 'date',
+                'Close', 'change_pct', 'Volume', 'vol_ratio',
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+            ])
+
+        print(f"  ✓ Active list: {len(df_active)} stocks")
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+        return 1
+
+    # サマリー
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"Tested stocks: {len(meta_df)}")
+    print(f"Entry candidates: {len(df_entry)}")
+    print(f"Active candidates: {len(df_active)}")
+
+    if len(df_entry) > 0:
+        print("\nEntry stocks:")
+        for ticker in df_entry["ticker"].values:
+            print(f"  - {ticker}")
+
+    if len(df_active) > 0:
+        print("\nActive stocks:")
+        for ticker in df_active["ticker"].values:
+            print(f"  - {ticker}")
+
+    print("=" * 60)
 
     print("\n✅ Smoke test completed successfully!")
     return 0
