@@ -115,9 +115,9 @@ class JQuantsFetcher:
 
         for i, code in enumerate(codes, 1):
             try:
-                # 100銘柄ごとに進捗表示
-                if i % 100 == 0 or i == total:
-                    print(f"[PROGRESS] Processing stock {i}/{total} ({code})...")
+                # 10銘柄ごとに進捗表示
+                if i % 10 == 0 or i == total:
+                    print(f"[PROGRESS] Processing stock {i}/{total} ({code})...", flush=True)
 
                 df = self.get_prices_daily(code, from_date, to_date)
                 if not df.empty:

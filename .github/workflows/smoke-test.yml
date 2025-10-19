@@ -2,6 +2,11 @@ name: Generate Scalping Lists
 
 on:
   workflow_dispatch:
+    inputs:
+      num_stocks:
+        description: 'Number of stocks to process (leave empty for all stocks)'
+        required: false
+        type: string
   schedule:
     - cron: '0 9 * * 1-5'  # 毎営業日 JST 18:00 (UTC 09:00)
 
@@ -64,9 +69,15 @@ jobs:
         id: generate_scalping
         env:
           TZ: Asia/Tokyo
+          PYTHONUNBUFFERED: 1
+          NUM_STOCKS: ${{ github.event.inputs.num_stocks }}
         run: |
           echo "============================================================"
-          echo "Generate Scalping Lists (All Stocks)"
+          if [ -z "$NUM_STOCKS" ]; then
+            echo "Generate Scalping Lists (All Stocks)"
+          else
+            echo "Generate Scalping Lists ($NUM_STOCKS Random Stocks)"
+          fi
           echo "Started at: $(date +"%Y-%m-%d %H:%M:%S JST")"
           echo "============================================================"
           echo ""
@@ -74,6 +85,9 @@ jobs:
           echo "  S3_BUCKET=${{ env.S3_BUCKET }}"
           echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
           echo "  AWS_REGION=${{ env.AWS_REGION }}"
+          if [ -n "$NUM_STOCKS" ]; then
+            echo "  NUM_STOCKS=$NUM_STOCKS"
+          fi
           echo ""
 
           python smoke_test/test_scalping.py
@@ -105,7 +119,8 @@ jobs:
                 "type": "section",
                 "fields": [
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
-                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"}
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"},
+                  {"type": "mrkdwn", "text": "*Stocks:*\n`${{ github.event.inputs.num_stocks || 'All' }}`"}
                 ]
               },
               {
@@ -141,7 +156,8 @@ jobs:
                 "type": "section",
                 "fields": [
                   {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
-                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"}
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`${{ github.event_name }}`"},
+                  {"type": "mrkdwn", "text": "*Stocks:*\n`${{ github.event.inputs.num_stocks || 'All' }}`"}
                 ]
               },
               {

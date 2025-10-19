@@ -73,7 +73,7 @@ def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, lookback_day
     print(f"[INFO] Date range: {from_date} to {to_date_obj}")
 
     # 株価データ取得（バッチ処理）
-    df = fetcher.get_prices_daily_batch(codes, from_date=from_date, to_date=to_date_obj, batch_delay=0.5)
+    df = fetcher.get_prices_daily_batch(codes, from_date=from_date, to_date=to_date_obj, batch_delay=0.2)
 
     if df.empty:
         print("[ERROR] No price data retrieved")
@@ -136,13 +136,13 @@ def upload_to_s3():
 
 def main() -> int:
     """スキャルピング銘柄リスト生成（全銘柄対象）"""
-    # テストモード: 環境変数 TEST_MODE=1 でランダムN銘柄のみ処理
-    test_mode = os.getenv("TEST_MODE", "0") == "1"
-    num_stocks = int(os.getenv("NUM_STOCKS", "5")) if test_mode else None
+    # 環境変数 NUM_STOCKS で処理する銘柄数を指定（未指定=全件）
+    num_stocks_env = os.getenv("NUM_STOCKS", "")
+    num_stocks = int(num_stocks_env) if num_stocks_env else None
 
     print("=" * 60)
-    if test_mode:
-        print(f"Test Mode: Scalping Stock Selection ({num_stocks} Random Stocks)")
+    if num_stocks:
+        print(f"Scalping Stock Selection ({num_stocks} Random Stocks)")
     else:
         print("Scalping Stock Selection (All Stocks)")
     print("=" * 60)
@@ -152,9 +152,9 @@ def main() -> int:
     try:
         meta_df = load_all_stocks()
 
-        # テストモードならランダムサンプリング
-        if test_mode and num_stocks and len(meta_df) > num_stocks:
-            print(f"[TEST MODE] Sampling {num_stocks} random stocks...")
+        # NUM_STOCKS が指定されていればランダムサンプリング
+        if num_stocks and len(meta_df) > num_stocks:
+            print(f"[INFO] Sampling {num_stocks} random stocks...")
             meta_df = meta_df.sample(n=num_stocks, random_state=42)
             print(f"  ✓ Selected {len(meta_df)} random stocks")
         else:
@@ -271,38 +271,27 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # [STEP 8] ファイル保存
-    print("\n[STEP 8] Saving scalping lists...")
-    try:
-        PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-
-        df_entry.to_parquet(SCALPING_ENTRY_PATH, engine="pyarrow", index=False)
-        df_active.to_parquet(SCALPING_ACTIVE_PATH, engine="pyarrow", index=False)
-
-        print(f"  ✓ Saved: {SCALPING_ENTRY_PATH}")
-        print(f"  ✓ Saved: {SCALPING_ACTIVE_PATH}")
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
-
-    # [STEP 9] S3アップロード
-    print("\n[STEP 9] Uploading to S3...")
-    if upload_to_s3():
-        print("  ✓ Files uploaded to S3")
-    else:
-        print("  ✗ S3 upload failed")
-        return 1
-
     # サマリー
     print("\n" + "=" * 60)
     print("Summary")
     print("=" * 60)
-    print(f"Processed stocks: {len(meta_df)}")
+    print(f"Tested stocks: {len(meta_df)}")
     print(f"Entry candidates: {len(df_entry)}")
     print(f"Active candidates: {len(df_active)}")
+
+    if len(df_entry) > 0:
+        print("\nEntry stocks:")
+        for ticker in df_entry["ticker"].values:
+            print(f"  - {ticker}")
+
+    if len(df_active) > 0:
+        print("\nActive stocks:")
+        for ticker in df_active["ticker"].values:
+            print(f"  - {ticker}")
+
     print("=" * 60)
 
-    print("\n✅ Scalping lists generated and uploaded successfully!")
+    print("\n✅ Smoke test completed successfully!")
     return 0
 
 
