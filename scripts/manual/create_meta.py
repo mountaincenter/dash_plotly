@@ -18,6 +18,8 @@ if str(ROOT) not in sys.path:
 
 from common_cfg.env import load_dotenv_cascade
 from common_cfg.paths import PARQUET_DIR, MASTER_META_PARQUET
+from common_cfg.s3io import upload_file
+from common_cfg.s3cfg import load_s3_config
 from scripts.lib.jquants_client import JQuantsClient
 
 
@@ -209,6 +211,22 @@ def main() -> int:
     meta.to_parquet(MASTER_META_PARQUET, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {MASTER_META_PARQUET}")
 
+    # S3アップロード
+    print("\n[STEP 6] Uploading to S3...")
+    try:
+        cfg = load_s3_config()
+        success = upload_file(cfg, MASTER_META_PARQUET, "meta.parquet")
+        if success:
+            print(f"  ✓ Uploaded to S3: meta.parquet")
+        else:
+            print(f"  ✗ Failed to upload to S3")
+            return 1
+    except Exception as e:
+        print(f"  ✗ S3 upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
     # サマリー
     print("\n" + "=" * 60)
     print(f"Total stocks: {len(meta)}")
@@ -216,12 +234,13 @@ def main() -> int:
     print(f"Takaichi: {len(takaichi)}")
     print("=" * 60)
 
+    print("\n✅ meta.parquet generated and uploaded successfully!")
     return 0
 
 
 if __name__ == "__main__":
     """
-    01_create_meta.py: 静的銘柄マスター生成（手動実行専用）
+    create_meta.py: 静的銘柄マスター生成（手動実行専用）
 
     データソース:
     - data/csv/takaichi_stock_issue.csv（Git管理、手動更新）
@@ -234,7 +253,13 @@ if __name__ == "__main__":
     GitHub Actions: 実行しない（静的データのため）
 
     使用方法:
-    1. python scripts/01_create_meta.py  # meta.parquet生成
-    2. python scripts/06_update_manifest.py  # S3アップロード
+    python scripts/manual/create_meta.py  # meta.parquet生成 + S3アップロード
+
+    処理内容:
+    1. Core30銘柄をJ-Quants APIから取得
+    2. 高市銘柄をCSVから読み込み
+    3. 重複銘柄をマージ（categories, tagsを統合）
+    4. meta.parquetをローカルに保存
+    5. S3に自動アップロード
     """
     raise SystemExit(main())
