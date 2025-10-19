@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
-from analyze import fetch_prices as fp
+import yfinance as yf
 
 
 def fetch_prices_for_tickers(
@@ -34,7 +34,18 @@ def fetch_prices_for_tickers(
         価格データのDataFrame
     """
     try:
-        df = fp._fetch_prices(tickers, period, interval)
+        if not tickers:
+            return pd.DataFrame()
+
+        # yfinance.download()を使用
+        df = yf.download(
+            tickers=tickers,
+            period=period,
+            interval=interval,
+            group_by='ticker',
+            threads=True,
+            progress=False
+        )
         return df
     except Exception as e:
         print(f"[ERROR] Failed to fetch prices for {period}_{interval}: {e}")
