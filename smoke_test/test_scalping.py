@@ -234,6 +234,61 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
+    # [STEP 5.5] スクリーニング条件分析
+    print("\n[STEP 5.5] Screening criteria analysis...")
+    try:
+        # Overall ratingsの分布を表示
+        print("\n--- Overall Ratings Distribution ---")
+        rating_counts = df_latest['overall_rating'].value_counts()
+        for rating, count in rating_counts.items():
+            print(f"  {rating}: {count} stocks ({count/len(df_latest)*100:.1f}%)")
+
+        print("\n--- Entry Criteria Details ---")
+        print("Price: 100-1500円")
+        print("Liquidity: Volume × Close >= 100,000,000円")
+        print("Volatility (ATR14%): 1.0-3.5%")
+        print("Change%: -3.0% to +3.0%")
+        print("Overall Rating: 買い または 強い買い")
+
+        # 各条件での合格銘柄数を表示
+        entry_criteria = {
+            "Price (100-1500)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 1500),
+            "Liquidity >= 100M": (df_latest['Volume'] * df_latest['Close'] >= 100_000_000),
+            "ATR14% (1.0-3.5)": (df_latest['atr14_pct'] >= 1.0) & (df_latest['atr14_pct'] <= 3.5),
+            "Change% (-3 to +3)": (df_latest['change_pct'] >= -3.0) & (df_latest['change_pct'] <= 3.0),
+            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
+        }
+
+        for criteria_name, condition in entry_criteria.items():
+            passed_count = condition.sum()
+            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed ({passed_count/len(df_latest)*100:.1f}%)")
+
+        print("\n--- Active Criteria Details ---")
+        print("Price: 100-3000円")
+        print("Liquidity: Volume × Close >= 50,000,000円 OR vol_ratio >= 150%")
+        print("Volatility (ATR14%): >= 2.5%")
+        print("Change%: |change_pct| >= 2.0%")
+        print("Overall Rating: 買い または 強い買い")
+
+        # Active条件も同様に分析
+        active_criteria = {
+            "Price (100-3000)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 3000),
+            "Liquidity (50M or 150% vol)": ((df_latest['Volume'] * df_latest['Close'] >= 50_000_000) | (df_latest['vol_ratio'] >= 150)),
+            "ATR14% (>= 2.5)": (df_latest['atr14_pct'] >= 2.5),
+            "Change% (|x| >= 2.0)": (df_latest['change_pct'].abs() >= 2.0),
+            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
+        }
+
+        for criteria_name, condition in active_criteria.items():
+            passed_count = condition.sum()
+            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed ({passed_count/len(df_latest)*100:.1f}%)")
+
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # 分析失敗してもスクリーニングは続行
+
     # [STEP 6] エントリー向け銘柄リスト生成
     print("\n[STEP 6] Generating entry list...")
     try:
