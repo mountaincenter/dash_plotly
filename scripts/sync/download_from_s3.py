@@ -48,8 +48,8 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None) -
     # S3設定読み込み
     try:
         cfg = load_s3_config()
-        print(f"\nS3 Bucket: {cfg['bucket']}")
-        print(f"S3 Prefix: {cfg['prefix']}")
+        print(f"\nS3 Bucket: {cfg.bucket}")
+        print(f"S3 Prefix: {cfg.prefix}")
         print(f"Local Dir: {PARQUET_DIR}")
     except Exception as e:
         print(f"\n✗ Failed to load S3 config: {e}")
