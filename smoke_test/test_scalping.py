@@ -87,8 +87,17 @@ def get_latest_trading_day(client: JQuantsClient) -> str:
     if trading_days.empty:
         raise RuntimeError("No trading days found in the calendar")
 
-    # Date列をdatetimeに変換してソート
+    # Date列をdatetimeに変換
     trading_days["Date"] = pd.to_datetime(trading_days["Date"])
+
+    # 今日より前の営業日のみ（未来の日付を除外）
+    today = pd.Timestamp(datetime.now().date())
+    trading_days = trading_days[trading_days["Date"] < today]
+
+    if trading_days.empty:
+        raise RuntimeError("No past trading days found in the calendar")
+
+    # ソートして最新を取得
     trading_days = trading_days.sort_values("Date", ascending=False)
 
     # 最新の営業日を取得
