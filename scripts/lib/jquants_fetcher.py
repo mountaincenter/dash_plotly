@@ -143,7 +143,8 @@ class JQuantsFetcher:
             return pd.DataFrame()
 
         print(f"[PROGRESS] Concatenating data from {len(non_empty_frames)} stocks...")
-        result = pd.concat(non_empty_frames, ignore_index=True)
+        # FutureWarning回避: dtypeを明示的に保持
+        result = pd.concat(non_empty_frames, ignore_index=True, sort=False)
         print(f"[PROGRESS] Total rows: {len(result)}")
         return result
 
