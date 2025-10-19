@@ -79,15 +79,15 @@ def test_trading_calendar() -> int:
 
     # HolidayDivision の説明
     print("HolidayDivision values:")
-    print("  0: 営業日 (Trading day)")
-    print("  1: 土曜日・日曜日 (Weekend)")
-    print("  2: 祝日 (Holiday)")
-    print("  3: 年末年始休業 (Year-end/New Year holiday)")
+    print("  0: 非営業日 (Non-trading day)")
+    print("  1: 営業日 (Trading day)")
+    print("  2: 半日立会 (Half-day trading)")
+    print("  3: 祝日取引のある非営業日 (Holiday trading for derivatives)")
     print()
 
     # 営業日のみフィルタ
-    print("[STEP 4] Filtering trading days (HolidayDivision == 0)...")
-    trading_days = calendar[calendar["HolidayDivision"] == "0"].copy()
+    print("[STEP 4] Filtering trading days (HolidayDivision == 1)...")
+    trading_days = calendar[calendar["HolidayDivision"] == "1"].copy()
     print(f"  ✓ Found {len(trading_days)} trading days")
     print()
 

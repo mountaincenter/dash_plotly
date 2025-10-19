@@ -56,63 +56,13 @@ def load_random_stocks(n: int = 5) -> pd.DataFrame:
     return selected
 
 
-def get_latest_trading_day(client: JQuantsClient) -> str:
-    """
-    取引カレンダーAPIから直近の営業日を取得
-
-    Returns:
-        YYYY-MM-DD形式の日付文字列
-    """
-    print("[INFO] Fetching latest trading day from J-Quants API...")
-
-    # 過去30日分の取引カレンダーを取得
-    to_date = datetime.now().date()
-    from_date = to_date - timedelta(days=30)
-
-    params = {
-        "from": str(from_date),
-        "to": str(to_date)
-    }
-
-    response = client.request("/markets/trading_calendar", params=params)
-
-    if not response or "trading_calendar" not in response:
-        raise RuntimeError("Failed to fetch trading calendar from J-Quants")
-
-    calendar = pd.DataFrame(response["trading_calendar"])
-
-    # HolidayDivision が "0" (営業日) のレコードのみ
-    # 0: 営業日、1: 土日、2: 祝日、3: 年末年始
-    trading_days = calendar[calendar["HolidayDivision"] == "0"].copy()
-
-    if trading_days.empty:
-        raise RuntimeError("No trading days found in the calendar")
-
-    # 今日より前の営業日のみ（Date列は文字列なので直接比較）
-    today_str = str(to_date)
-    trading_days = trading_days[trading_days["Date"] < today_str].copy()
-
-    if trading_days.empty:
-        raise RuntimeError("No past trading days found in the calendar")
-
-    # ソートして最新を取得（Date列は文字列だが YYYY-MM-DD 形式なので文字列ソートで正しい）
-    trading_days = trading_days.sort_values("Date", ascending=False)
-
-    # 最新の営業日を取得
-    latest_trading_day = trading_days.iloc[0]["Date"]
-
-    print(f"[OK] Latest trading day: {latest_trading_day}")
-    return latest_trading_day
-
-
-def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, client: JQuantsClient, lookback_days: int = 60) -> pd.DataFrame:
+def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, lookback_days: int = 60) -> pd.DataFrame:
     """
     指定銘柄の株価データを取得（J-Quants API + 取引カレンダー）
 
     Args:
         tickers: ティッカーリスト（例: ["7203.T", "6758.T"]）
         fetcher: JQuantsFetcher インスタンス
-        client: JQuantsClient インスタンス（取引カレンダー取得用）
         lookback_days: 何日分のデータを取得するか
 
     Returns:
@@ -124,7 +74,10 @@ def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, client: JQua
     codes = [ticker.replace(".T", "") for ticker in tickers]
 
     # 取引カレンダーAPIから直近営業日を取得
-    latest_trading_day = get_latest_trading_day(client)
+    print("[INFO] Fetching latest trading day from J-Quants API...")
+    latest_trading_day = fetcher.get_latest_trading_day()
+    print(f"[OK] Latest trading day: {latest_trading_day}")
+
     to_date_obj = datetime.strptime(latest_trading_day, "%Y-%m-%d").date()
     from_date = to_date_obj - timedelta(days=lookback_days)
 
@@ -167,12 +120,11 @@ def main() -> int:
     # [STEP 2] J-Quants APIで株価データ取得（取引カレンダー使用）
     print("\n[STEP 2] Fetching stock prices from J-Quants API...")
     try:
-        client = JQuantsClient()
-        fetcher = JQuantsFetcher(client)
+        fetcher = JQuantsFetcher()
 
         # ランダム5銘柄の株価を取得（60日分）
         tickers = meta_df["ticker"].tolist()
-        df_prices = fetch_stock_prices(tickers, fetcher, client, lookback_days=60)
+        df_prices = fetch_stock_prices(tickers, fetcher, lookback_days=60)
 
         if df_prices.empty:
             print("  ✗ No price data retrieved")

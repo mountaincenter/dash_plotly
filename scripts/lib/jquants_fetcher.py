@@ -6,7 +6,7 @@ J-Quants Data Fetcher
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List
 import time
 
@@ -146,6 +146,57 @@ class JQuantsFetcher:
         result = pd.concat(non_empty_frames, ignore_index=True)
         print(f"[PROGRESS] Total rows: {len(result)}")
         return result
+
+    def get_latest_trading_day(self, lookback_days: int = 30) -> str:
+        """
+        取引カレンダーAPIから直近の営業日を取得
+
+        Args:
+            lookback_days: 過去何日分のカレンダーを取得するか（デフォルト: 30）
+
+        Returns:
+            YYYY-MM-DD形式の日付文字列
+
+        Raises:
+            RuntimeError: 取引カレンダーの取得に失敗した場合、または営業日が見つからない場合
+        """
+        # 過去lookback_days日分の取引カレンダーを取得
+        to_date = datetime.now().date()
+        from_date = to_date - timedelta(days=lookback_days)
+
+        params = {
+            "from": str(from_date),
+            "to": str(to_date)
+        }
+
+        response = self.client.request("/markets/trading_calendar", params=params)
+
+        if not response or "trading_calendar" not in response:
+            raise RuntimeError("Failed to fetch trading calendar from J-Quants")
+
+        calendar = pd.DataFrame(response["trading_calendar"])
+
+        # HolidayDivision が "1" (営業日) のレコードのみ
+        # 0: 非営業日、1: 営業日、2: 半日立会、3: 祝日取引のある非営業日
+        trading_days = calendar[calendar["HolidayDivision"] == "1"].copy()
+
+        if trading_days.empty:
+            raise RuntimeError("No trading days found in the calendar")
+
+        # 今日より前の営業日のみ（Date列は文字列なので直接比較）
+        today_str = str(to_date)
+        trading_days = trading_days[trading_days["Date"] < today_str].copy()
+
+        if trading_days.empty:
+            raise RuntimeError("No past trading days found in the calendar")
+
+        # ソートして最新を取得（Date列は文字列だが YYYY-MM-DD 形式なので文字列ソートで正しい）
+        trading_days = trading_days.sort_values("Date", ascending=False)
+
+        # 最新の営業日を取得
+        latest_trading_day = trading_days.iloc[0]["Date"]
+
+        return latest_trading_day
 
     def convert_to_yfinance_format(self, df: pd.DataFrame) -> pd.DataFrame:
         """
