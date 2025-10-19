@@ -208,6 +208,12 @@ def main() -> int:
     # [STEP 5.5] スキャルピング判定根拠を出力
     print("\n[STEP 5.5] Analyzing screening criteria...")
     try:
+        # 各銘柄のoverall_ratingを表示
+        print("\n--- Overall Ratings (from evaluate_technical_ratings) ---")
+        for _, row in df_latest.iterrows():
+            print(f"  {row['ticker']}: {row.get('overall_rating', 'N/A')}")
+        print()
+
         print("\n--- Entry Criteria ---")
         print("Price: 100-1500円")
         print("Liquidity: Volume × Close >= 100,000,000円")
@@ -237,12 +243,32 @@ def main() -> int:
         print()
 
         print("--- Active Criteria ---")
-        print("Price: 200-2000円")
-        print("Liquidity: Volume × Close >= 200,000,000円")
-        print("Volatility (ATR14%): 1.5-5.0%")
-        print("Change%: -4.0% to +4.0%")
+        print("Price: 100-3000円")
+        print("Liquidity: (Volume × Close >= 50,000,000円) OR (vol_ratio >= 150%)")
+        print("Volatility (ATR14%): >= 2.5%")
+        print("Change% (abs): >= 2.0%")
         print("Overall Rating: 買い または 強い買い")
         print("Exclude: Entry stocks")
+        print()
+
+        # Active条件での合格銘柄数を表示
+        active_criteria = {
+            "Price (100-3000)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 3000),
+            "Liquidity": ((df_latest['Volume'] * df_latest['Close'] >= 50_000_000) | (df_latest['vol_ratio'] >= 150)),
+            "ATR14% >= 2.5": df_latest['atr14_pct'] >= 2.5,
+            "Change% abs >= 2.0": df_latest['change_pct'].abs() >= 2.0,
+            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
+        }
+
+        for criteria_name, condition in active_criteria.items():
+            passed_count = condition.sum()
+            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed")
+
+        # 全条件合格（Entry除外は後で）
+        all_conditions_active = pd.Series([True] * len(df_latest), index=df_latest.index)
+        for condition in active_criteria.values():
+            all_conditions_active &= condition
+        print(f"\n  All criteria met: {all_conditions_active.sum()}/{len(df_latest)} stocks")
         print()
 
     except Exception as e:
