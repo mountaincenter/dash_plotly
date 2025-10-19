@@ -125,13 +125,13 @@ def main() -> int:
         epilog="""
 Examples:
   # Download all files
-  python scripts/sync/download_from_s3.py
+  python scripts/sync.py
 
   # Dry run (check only, no download)
-  python scripts/sync/download_from_s3.py --dry-run
+  python scripts/sync.py --dry-run
 
   # Download specific files only
-  python scripts/sync/download_from_s3.py --files meta_jquants.parquet prices_max_1d.parquet
+  python scripts/sync.py meta_jquants.parquet prices_max_1d.parquet
         """
     )
     parser.add_argument(
@@ -140,17 +140,17 @@ Examples:
         help='List files without downloading'
     )
     parser.add_argument(
-        '--files',
-        nargs='+',
+        'files',
+        nargs='*',
         metavar='FILE',
-        help='Specific file names to download (e.g., meta_jquants.parquet)'
+        help='Specific file names to download (default: all files)'
     )
 
     args = parser.parse_args()
 
     success_count, fail_count = download_all_from_s3(
         dry_run=args.dry_run,
-        file_filter=args.files
+        file_filter=args.files if args.files else None
     )
 
     # サマリー表示
