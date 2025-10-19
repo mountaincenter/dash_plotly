@@ -120,7 +120,7 @@ def generate_tech_snapshot(prices_1d_path: Path, output_path: Path) -> bool:
 
         if df.empty:
             print("  ⚠ Input data is empty, creating empty snapshot")
-            empty_df = pd.DataFrame(columns=["ticker", "overall_rating", "overall_score"])
+            empty_df = pd.DataFrame(columns=["ticker", "date", "values", "votes", "overall"])
             empty_df.to_parquet(output_path, engine="pyarrow", index=False)
             return True
 
@@ -136,22 +136,22 @@ def generate_tech_snapshot(prices_1d_path: Path, output_path: Path) -> bool:
 
             try:
                 snapshot = evaluate_latest_snapshot(grp_indexed)
-                snapshots.append({
-                    "ticker": ticker,
-                    "overall_rating": snapshot["overall"]["label"],
-                    "overall_score": snapshot["overall"]["score"],
-                })
+                # snapshotには ticker, date, values, votes, overall が含まれる
+                snapshots.append(snapshot)
             except Exception as e:
                 print(f"  [WARN] Failed to evaluate {ticker}: {e}")
+                # エラー時も同じ構造で空データを追加
                 snapshots.append({
                     "ticker": ticker,
-                    "overall_rating": "中立",
-                    "overall_score": 0,
+                    "date": None,
+                    "values": {},
+                    "votes": {},
+                    "overall": {"score": 0, "label": "中立"},
                 })
 
         if not snapshots:
             print("  ⚠ No snapshots generated, creating empty file")
-            snapshot_df = pd.DataFrame(columns=["ticker", "overall_rating", "overall_score"])
+            snapshot_df = pd.DataFrame(columns=["ticker", "date", "values", "votes", "overall"])
         else:
             snapshot_df = pd.DataFrame(snapshots)
 
@@ -163,7 +163,7 @@ def generate_tech_snapshot(prices_1d_path: Path, output_path: Path) -> bool:
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         # エラー時も空ファイルを作成
-        empty_df = pd.DataFrame(columns=["ticker", "overall_rating", "overall_score"])
+        empty_df = pd.DataFrame(columns=["ticker", "date", "values", "votes", "overall"])
         empty_df.to_parquet(output_path, engine="pyarrow", index=False)
         print(f"  ⚠ Created empty file due to error")
         return False
