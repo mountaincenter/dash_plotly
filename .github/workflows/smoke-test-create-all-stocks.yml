@@ -22,6 +22,11 @@ jobs:
     environment: AWS_OIDC
     timeout-minutes: 30
 
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      S3_BUCKET: ${{ vars.DATA_BUCKET || vars.S3_BUCKET }}
+      S3_PREFIX: ${{ vars.PARQUET_PREFIX || 'parquet/' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,26 +46,32 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ap-northeast-1
-
-      - name: Verify AWS credentials
-        run: |
-          aws sts get-caller-identity
-          echo "AWS credentials configured successfully"
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Download required files from S3
         run: |
-          echo "Downloading meta.parquet from S3..."
-          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/meta.parquet data/parquet/meta.parquet || echo "meta.parquet not found in S3"
+          echo "📥 Downloading meta.parquet from S3..."
+          aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}meta.parquet" data/parquet/meta.parquet
 
-          echo "Downloading scalping_entry.parquet from S3..."
-          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/scalping_entry.parquet data/parquet/scalping_entry.parquet || echo "scalping_entry.parquet not found in S3"
+          if [ -f "data/parquet/meta.parquet" ]; then
+            echo "✅ Downloaded meta.parquet"
+            ls -lh data/parquet/meta.parquet
+          else
+            echo "❌ Failed to download meta.parquet"
+            exit 1
+          fi
 
-          echo "Downloading scalping_active.parquet from S3..."
-          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/scalping_active.parquet data/parquet/scalping_active.parquet || echo "scalping_active.parquet not found in S3"
+          echo ""
+          echo "📥 Downloading scalping_entry.parquet from S3..."
+          aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}scalping_entry.parquet" data/parquet/scalping_entry.parquet || echo "⚠️ scalping_entry.parquet not found (will use empty)"
 
+          echo ""
+          echo "📥 Downloading scalping_active.parquet from S3..."
+          aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}scalping_active.parquet" data/parquet/scalping_active.parquet || echo "⚠️ scalping_active.parquet not found (will use empty)"
+
+          echo ""
           echo "Files in data/parquet/:"
-          ls -lh data/parquet/ || echo "Directory not found"
+          ls -lh data/parquet/
 
       - name: Run smoke test - Create All Stocks
         env:
