@@ -149,7 +149,7 @@ class ScalpingScreener:
         """
         print("[INFO] Generating entry list (J-Quants)...")
 
-        # テクニカル評価フィルタ: 「買い」「強い買い」のみ
+        # テクニカル評価フィルタ: 売り系を除外（60%合意の王道）
         if 'overall_rating' not in df_latest.columns:
             print("[ERROR] overall_rating column not found. Call evaluate_technical_ratings() first.")
             return pd.DataFrame()
@@ -162,7 +162,7 @@ class ScalpingScreener:
             (df_latest['atr14_pct'] <= 3.5) &
             (df_latest['change_pct'] >= -3.0) &
             (df_latest['change_pct'] <= 3.0) &
-            (df_latest['overall_rating'].isin(['買い', '強い買い']))  # テクニカルフィルタ追加
+            (~df_latest['overall_rating'].isin(['売り', '強い売り']))  # 売り系以外を許容（買い・強い買い・中立）
         ].copy()
 
         if df_entry.empty:
@@ -250,10 +250,10 @@ class ScalpingScreener:
         """
         print("[INFO] Generating active list (J-Quants)...")
 
-        # テクニカル評価フィルタ: 「買い」「強い買い」のみ
+        # overall_rating条件なし（機械的・ボラティリティ重視）
+        # 王道を外れない範囲でリスク許容 = 価格・流動性・ATRのみで選別
         if 'overall_rating' not in df_latest.columns:
-            print("[ERROR] overall_rating column not found. Call evaluate_technical_ratings() first.")
-            return pd.DataFrame()
+            print("[WARN] overall_rating column not found, but continuing without it for Active list")
 
         df_active = df_latest[
             ~df_latest['ticker'].isin(entry_tickers) &
@@ -261,8 +261,8 @@ class ScalpingScreener:
             (df_latest['Close'] <= 3000) &
             ((df_latest['Volume'] * df_latest['Close'] >= 50_000_000) | (df_latest['vol_ratio'] >= 150)) &
             (df_latest['atr14_pct'] >= 2.5) &
-            (df_latest['change_pct'].abs() >= 2.0) &
-            (df_latest['overall_rating'].isin(['買い', '強い買い']))  # テクニカルフィルタ追加
+            (df_latest['change_pct'].abs() >= 2.0)
+            # overall_rating条件削除: スキャルピングはボラティリティが利益源泉
         ].copy()
 
         if df_active.empty:
