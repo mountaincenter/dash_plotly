@@ -1,0 +1,125 @@
+name: Test Trading Calendar API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-calendar:
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Setup J-Quants authentication
+        run: |
+          cat > .env.jquants <<EOF
+          JQUANTS_REFRESH_TOKEN=${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          EOF
+          echo "✅ J-Quants authentication configured"
+
+      - name: Run trading calendar test
+        run: |
+          echo "============================================================"
+          echo "Trading Calendar API Test"
+          echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "============================================================"
+          echo ""
+
+          python smoke_test/test_trading_calendar.py
+          EXIT_CODE=$?
+
+          echo ""
+          echo "============================================================"
+          echo "Test completed with exit code: $EXIT_CODE"
+          echo "============================================================"
+
+          exit $EXIT_CODE
+
+      - name: Send Slack notification on success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "✅ Trading Calendar Test Succeeded",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Trading Calendar Test Succeeded*\nJ-Quants trading calendar API is working correctly."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`Manual`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
+
+      - name: Send Slack notification on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "❌ Trading Calendar Test Failed",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *Trading Calendar Test Failed*\nJ-Quants trading calendar API encountered an error."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`${{ github.ref_name }}`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`Manual`"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
