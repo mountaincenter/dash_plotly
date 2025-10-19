@@ -205,10 +205,55 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
+    # [STEP 5.5] スキャルピング判定根拠を出力
+    print("\n[STEP 5.5] Analyzing screening criteria...")
+    try:
+        print("\n--- Entry Criteria ---")
+        print("Price: 100-1500円")
+        print("Liquidity: Volume × Close >= 100,000,000円")
+        print("Volatility (ATR14%): 1.0-3.5%")
+        print("Change%: -3.0% to +3.0%")
+        print("Overall Rating: 買い または 強い買い")
+        print()
+
+        # 各条件での合格銘柄数を表示
+        entry_criteria = {
+            "Price (100-1500)": (df_latest['Close'] >= 100) & (df_latest['Close'] <= 1500),
+            "Liquidity >= 100M": (df_latest['Volume'] * df_latest['Close'] >= 100_000_000),
+            "ATR14% (1.0-3.5)": (df_latest['atr14_pct'] >= 1.0) & (df_latest['atr14_pct'] <= 3.5),
+            "Change% (-3 to +3)": (df_latest['change_pct'] >= -3.0) & (df_latest['change_pct'] <= 3.0),
+            "Rating (買い系)": df_latest['overall_rating'].isin(['買い', '強い買い'])
+        }
+
+        for criteria_name, condition in entry_criteria.items():
+            passed_count = condition.sum()
+            print(f"  {criteria_name}: {passed_count}/{len(df_latest)} stocks passed")
+
+        # 全条件合格
+        all_conditions = pd.Series([True] * len(df_latest), index=df_latest.index)
+        for condition in entry_criteria.values():
+            all_conditions &= condition
+        print(f"\n  All criteria met: {all_conditions.sum()}/{len(df_latest)} stocks")
+        print()
+
+        print("--- Active Criteria ---")
+        print("Price: 200-2000円")
+        print("Liquidity: Volume × Close >= 200,000,000円")
+        print("Volatility (ATR14%): 1.5-5.0%")
+        print("Change%: -4.0% to +4.0%")
+        print("Overall Rating: 買い または 強い買い")
+        print("Exclude: Entry stocks")
+        print()
+
+    except Exception as e:
+        print(f"  ✗ Failed to analyze criteria: {e}")
+        import traceback
+        traceback.print_exc()
+
     # [STEP 6] エントリー向け銘柄リスト生成
     print("\n[STEP 6] Generating entry list...")
     try:
-        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=20)
+        df_entry = screener.generate_entry_list(df_latest, meta_df, top_n=num_stocks)
 
         if df_entry.empty:
             print("  ⚠ No entry stocks found (creating empty file)")
@@ -227,7 +272,7 @@ def main() -> int:
     print("\n[STEP 7] Generating active list...")
     try:
         entry_tickers = set(df_entry['ticker'].tolist()) if not df_entry.empty else set()
-        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=20)
+        df_active = screener.generate_active_list(df_latest, meta_df, entry_tickers, top_n=num_stocks)
 
         if df_active.empty:
             print("  ⚠ No active stocks found (creating empty file)")

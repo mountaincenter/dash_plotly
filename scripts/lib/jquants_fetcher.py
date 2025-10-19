@@ -135,8 +135,15 @@ class JQuantsFetcher:
             print("[PROGRESS] No price data retrieved")
             return pd.DataFrame()
 
-        print(f"[PROGRESS] Concatenating data from {len(frames)} stocks...")
-        result = pd.concat(frames, ignore_index=True)
+        # 空のDataFrameを除外してから結合（FutureWarning対策）
+        non_empty_frames = [df for df in frames if not df.empty]
+
+        if not non_empty_frames:
+            print("[PROGRESS] No price data retrieved")
+            return pd.DataFrame()
+
+        print(f"[PROGRESS] Concatenating data from {len(non_empty_frames)} stocks...")
+        result = pd.concat(non_empty_frames, ignore_index=True)
         print(f"[PROGRESS] Total rows: {len(result)}")
         return result
 
