@@ -65,6 +65,8 @@ jobs:
 
       - name: Run smoke test
         id: smoke_test
+        env:
+          NUM_STOCKS: ${{ github.event.inputs.num_stocks || 5 }}
         run: |
           echo "============================================================"
           echo "Smoke Test Execution (GitHub Actions)"
@@ -75,6 +77,7 @@ jobs:
           echo "  S3_BUCKET=${{ env.S3_BUCKET }}"
           echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
           echo "  AWS_REGION=${{ env.AWS_REGION }}"
+          echo "  NUM_STOCKS=${{ github.event.inputs.num_stocks || 5 }}"
           echo ""
 
           python smoke_test/test_scalping.py

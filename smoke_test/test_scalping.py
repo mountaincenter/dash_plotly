@@ -138,15 +138,20 @@ def fetch_stock_prices(tickers: list[str], fetcher: JQuantsFetcher, client: JQua
 
 
 def main() -> int:
-    """スキャルピング銘柄リストのスモークテスト（ランダム5銘柄）"""
+    """スキャルピング銘柄リストのスモークテスト（ランダムN銘柄）"""
+    import os
+
+    # 環境変数から銘柄数を取得（デフォルト5）
+    num_stocks = int(os.getenv("NUM_STOCKS", "5"))
+
     print("=" * 60)
-    print("Smoke Test: Scalping Stock Selection (5 Random Stocks)")
+    print(f"Smoke Test: Scalping Stock Selection ({num_stocks} Random Stocks)")
     print("=" * 60)
 
-    # [STEP 1] ランダム5銘柄を選定
-    print("\n[STEP 1] Selecting 5 random stocks...")
+    # [STEP 1] ランダムN銘柄を選定
+    print(f"\n[STEP 1] Selecting {num_stocks} random stocks...")
     try:
-        meta_df = load_random_stocks(n=5)
+        meta_df = load_random_stocks(n=num_stocks)
         print(f"  ✓ Selected {len(meta_df)} stocks")
     except Exception as e:
         print(f"  ✗ Failed: {e}")
