@@ -185,6 +185,9 @@ def _resolve_tag(tag: Optional[str]) -> Optional[str]:
         "高市": "高市銘柄",
         "高市銘柄": "高市銘柄",
         "topix_core30_upper": "TOPIX_CORE30",
+        "scalping_entry": "SCALPING_ENTRY",
+        "scalping_active": "SCALPING_ACTIVE",
+        "scalping": "SCALPING_ENTRY",  # デフォルトはEntry
     }
     key = tag_norm.lower()
     return lut.get(key, tag_norm)
@@ -192,9 +195,17 @@ def _resolve_tag(tag: Optional[str]) -> Optional[str]:
 
 @cache
 def load_master_meta(tag: Optional[str] = None) -> List[Dict]:
-    df = _read_parquet_local(MASTER_META_PATH)
-    if (df is None or df.empty) and _S3_BUCKET and _S3_MASTER_META_KEY:
-        df = _read_parquet_s3(_S3_BUCKET, _S3_MASTER_META_KEY)
+    # all_stocks.parquet を優先（スキャルピング銘柄含む統合ファイル）
+    df = _read_parquet_local(ALL_STOCKS_PATH)
+    if (df is None or df.empty) and _S3_BUCKET and _S3_ALL_STOCKS_KEY:
+        df = _read_parquet_s3(_S3_BUCKET, _S3_ALL_STOCKS_KEY)
+
+    # フォールバック: meta.parquet（旧形式）
+    if df is None or df.empty:
+        df = _read_parquet_local(MASTER_META_PATH)
+        if (df is None or df.empty) and _S3_BUCKET and _S3_MASTER_META_KEY:
+            df = _read_parquet_s3(_S3_BUCKET, _S3_MASTER_META_KEY)
+
     if df is None or df.empty:
         return []
 
