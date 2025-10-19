@@ -73,6 +73,8 @@ def download_file(cfg: S3Config, filename: str, dest: Path) -> bool:
         return True
     except Exception as exc:
         print(f"[WARN] download failed: s3://{cfg.bucket}/{key} : {exc}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return False
 
 def list_s3_files(cfg: S3Config) -> list[str]:

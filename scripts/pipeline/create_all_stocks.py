@@ -46,14 +46,17 @@ def download_from_s3_if_exists(filename: str, local_path: Path) -> bool:
 def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """必要なparquetファイルを読み込み（S3優先）"""
 
-    # meta.parquet（S3優先）
+    # meta.parquet（S3優先、静的銘柄マスタ）
     print("[INFO] Loading meta.parquet...")
-    download_from_s3_if_exists("meta.parquet", META_PATH)
+    s3_success = download_from_s3_if_exists("meta.parquet", META_PATH)
 
     if not META_PATH.exists():
         raise FileNotFoundError(
-            f"meta.parquet not found. Please run 01_create_meta.py first."
+            f"meta.parquet not found in S3 or locally.\n"
+            f"Expected path: {META_PATH}\n"
+            f"Run scripts/manual/create_meta.py and 06_update_manifest.py first."
         )
+
     meta = pd.read_parquet(META_PATH)
     print(f"  ✓ Loaded meta.parquet: {len(meta)} stocks")
 
