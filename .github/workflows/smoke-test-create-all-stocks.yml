@@ -1,0 +1,108 @@
+name: Smoke Test - Create All Stocks
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Enable debug output'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-create-all-stocks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Verify AWS credentials
+        run: |
+          aws sts get-caller-identity
+          echo "AWS credentials configured successfully"
+
+      - name: Download required files from S3
+        run: |
+          echo "Downloading meta.parquet from S3..."
+          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/meta.parquet data/parquet/meta.parquet || echo "meta.parquet not found in S3"
+
+          echo "Downloading scalping_entry.parquet from S3..."
+          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/scalping_entry.parquet data/parquet/scalping_entry.parquet || echo "scalping_entry.parquet not found in S3"
+
+          echo "Downloading scalping_active.parquet from S3..."
+          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/scalping_active.parquet data/parquet/scalping_active.parquet || echo "scalping_active.parquet not found in S3"
+
+          echo "Files in data/parquet/:"
+          ls -lh data/parquet/ || echo "Directory not found"
+
+      - name: Run smoke test - Create All Stocks
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          DEBUG_MODE: ${{ github.event.inputs.debug_mode }}
+        run: |
+          echo "=========================================="
+          echo "Smoke Test: Create All Stocks"
+          echo "=========================================="
+          echo "Debug mode: $DEBUG_MODE"
+          echo ""
+
+          if [ "$DEBUG_MODE" = "true" ]; then
+            export PYTHONUNBUFFERED=1
+            python -u smoke_test/test_create_all_stocks.py
+          else
+            python smoke_test/test_create_all_stocks.py
+          fi
+
+      - name: Upload all_stocks.parquet as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-stocks-parquet
+          path: data/parquet/all_stocks.parquet
+          retention-days: 7
+
+      - name: Show all_stocks.parquet summary
+        if: always()
+        run: |
+          if [ -f data/parquet/all_stocks.parquet ]; then
+            echo "all_stocks.parquet created successfully"
+            ls -lh data/parquet/all_stocks.parquet
+            echo ""
+            echo "Quick analysis:"
+            python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/all_stocks.parquet'); print(f'Total stocks: {len(df)}'); print(f'Columns: {list(df.columns)}'); print('Categories:', df['categories'].explode().value_counts().to_dict() if 'categories' in df.columns else 'N/A')"
+          else
+            echo "all_stocks.parquet was not created"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Smoke test failed: Create All Stocks"
+          echo "Check the logs for details"
