@@ -81,27 +81,25 @@ def get_latest_trading_day(client: JQuantsClient) -> str:
 
     calendar = pd.DataFrame(response["trading_calendar"])
 
-    # holiday_division が "0" (営業日) のレコードのみ
+    # HolidayDivision が "0" (営業日) のレコードのみ
+    # 0: 営業日、1: 土日、2: 祝日、3: 年末年始
     trading_days = calendar[calendar["HolidayDivision"] == "0"].copy()
 
     if trading_days.empty:
         raise RuntimeError("No trading days found in the calendar")
 
-    # Date列をdatetimeに変換
-    trading_days["Date"] = pd.to_datetime(trading_days["Date"])
-
-    # 今日より前の営業日のみ（未来の日付を除外）
-    today = pd.Timestamp(datetime.now().date())
-    trading_days = trading_days[trading_days["Date"] < today]
+    # 今日より前の営業日のみ（Date列は文字列なので直接比較）
+    today_str = str(to_date)
+    trading_days = trading_days[trading_days["Date"] < today_str].copy()
 
     if trading_days.empty:
         raise RuntimeError("No past trading days found in the calendar")
 
-    # ソートして最新を取得
+    # ソートして最新を取得（Date列は文字列だが YYYY-MM-DD 形式なので文字列ソートで正しい）
     trading_days = trading_days.sort_values("Date", ascending=False)
 
     # 最新の営業日を取得
-    latest_trading_day = trading_days.iloc[0]["Date"].strftime("%Y-%m-%d")
+    latest_trading_day = trading_days.iloc[0]["Date"]
 
     print(f"[OK] Latest trading day: {latest_trading_day}")
     return latest_trading_day
