@@ -41,9 +41,12 @@ def _add_volatility_columns(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # --- %表記 ---
-    with pd.option_context("mode.use_inf_as_na", True):
-        g["tr_pct"] = (g["tr"] / g["prevClose"] * 100.0).where(g["prevClose"] > 0)
-        g["atr14_pct"] = (g["atr14"] / g["Close"] * 100.0).where(g["Close"] > 0)
+    g["tr_pct"] = (g["tr"] / g["prevClose"] * 100.0).where(g["prevClose"] > 0)
+    g["atr14_pct"] = (g["atr14"] / g["Close"] * 100.0).where(g["Close"] > 0)
+
+    # Convert inf to NaN (replace deprecated use_inf_as_na)
+    g["tr_pct"] = g["tr_pct"].replace([float('inf'), float('-inf')], pd.NA)
+    g["atr14_pct"] = g["atr14_pct"].replace([float('inf'), float('-inf')], pd.NA)
 
     return g
 
