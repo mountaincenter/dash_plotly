@@ -3,8 +3,10 @@ name: Data Pipeline
 on:
   schedule:
     # 毎日実行（営業日判定は check_trading_day.py で実施）
-    - cron: '0 7 * * *'   # 16:00 JST - メイン実行時刻
-    - cron: '0 17 * * *'  # 02:00 JST - フォールバック実行時刻
+    # GitHub Actions cron は常にUTC時刻で指定
+    # JST = UTC + 9時間 の変換を厳守
+    - cron: '0 7 * * *'   # UTC 07:00 = JST 16:00 (当日) - メイン実行時刻
+    - cron: '0 17 * * *'  # UTC 17:00 = JST 02:00 (翌日) - フォールバック実行時刻（26:00表記）
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
@@ -117,8 +119,9 @@ jobs:
             echo "⚠️ Manual force update enabled for meta_jquants.parquet"
           fi
 
-          # Run the pipeline
-          python scripts/run_pipeline.py
+          # Run the NEW pipeline (scalping skip + Grok)
+          # Old pipeline (with scalping): python scripts/run_pipeline.py
+          python scripts/run_pipeline_scalping_skip_add_grok.py
           EXIT_CODE=$?
 
           echo ""
@@ -139,7 +142,14 @@ jobs:
           fi
           echo "meta_jquants_count=$META_JQUANTS_COUNT" >> $GITHUB_OUTPUT
 
-          # scalping statistics
+          # grok_trending statistics (NEW)
+          GROK_COUNT=0
+          if [ -f "data/parquet/grok_trending.parquet" ]; then
+            GROK_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/grok_trending.parquet')))")
+          fi
+          echo "grok_trending_count=$GROK_COUNT" >> $GITHUB_OUTPUT
+
+          # scalping statistics (kept for compatibility, will be 0)
           ENTRY_COUNT=0
           ACTIVE_COUNT=0
           if [ -f "data/parquet/scalping_entry.parquet" ]; then
@@ -167,8 +177,9 @@ jobs:
 
           echo "📊 Statistics extracted:"
           echo "  - meta_jquants: $META_JQUANTS_COUNT stocks"
-          echo "  - scalping_entry: $ENTRY_COUNT stocks"
-          echo "  - scalping_active: $ACTIVE_COUNT stocks"
+          echo "  - grok_trending: $GROK_COUNT stocks (NEW)"
+          echo "  - scalping_entry: $ENTRY_COUNT stocks (skipped)"
+          echo "  - scalping_active: $ACTIVE_COUNT stocks (skipped)"
           echo "  - all_stocks: $ALL_STOCKS_COUNT stocks"
           echo "  - latest_price_date: $LATEST_DATE"
 
@@ -262,8 +273,8 @@ jobs:
                 "fields": [
                   {"type": "mrkdwn", "text": "*meta_jquants:*\n`${{ steps.stats.outputs.meta_jquants_count }}`銘柄"},
                   {"type": "mrkdwn", "text": "*all_stocks:*\n`${{ steps.stats.outputs.all_stocks_count }}`銘柄"},
-                  {"type": "mrkdwn", "text": "*scalping_entry:*\n`${{ steps.stats.outputs.scalping_entry_count }}`銘柄"},
-                  {"type": "mrkdwn", "text": "*scalping_active:*\n`${{ steps.stats.outputs.scalping_active_count }}`銘柄"}
+                  {"type": "mrkdwn", "text": "*grok_trending:*\n`${{ steps.stats.outputs.grok_trending_count }}`銘柄 (NEW)"},
+                  {"type": "mrkdwn", "text": "*scalping (skipped):*\n`${{ steps.stats.outputs.scalping_entry_count }}`/`${{ steps.stats.outputs.scalping_active_count }}`銘柄"}
                 ]
               },
               {
