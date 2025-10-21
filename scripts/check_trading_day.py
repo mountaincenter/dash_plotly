@@ -84,9 +84,20 @@ def check_trading_window() -> tuple[bool, bool, str]:
     print("Trading Day Check")
     print("=" * 60)
 
-    # 現在時刻
-    now = datetime.now()
-    print(f"Current time (JST): {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    # 現在時刻（GitHub ActionsはUTCなのでJSTに変換）
+    # IMPORTANT: GitHub Actions runners use UTC timezone
+    # We must explicitly get UTC time, not local time
+    from datetime import timezone
+
+    # Get current UTC time (timezone-aware)
+    now_utc_aware = datetime.now(timezone.utc)
+    # Convert to naive datetime for calculation
+    now_utc = now_utc_aware.replace(tzinfo=None)
+    # Convert UTC to JST (+9 hours)
+    now_jst = now_utc + timedelta(hours=9)
+
+    print(f"Current time (UTC): {now_utc.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Current time (JST): {now_jst.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # J-Quants クライアント初期化
     try:
@@ -107,14 +118,14 @@ def check_trading_window() -> tuple[bool, bool, str]:
         return False, False, ""
 
     # 実行ウィンドウの判定
-    # 営業日の16:00 ～ 翌2:00（26:00）
+    # 営業日の16:00 ～ 翌3:00（27:00）
     window_start = latest_trading_day.replace(hour=16, minute=0, second=0, microsecond=0)
-    window_end = window_start + timedelta(hours=10)  # 16:00 + 10h = 翌2:00
+    window_end = window_start + timedelta(hours=11)  # 16:00 + 11h = 翌3:00
 
     print(f"Execution window: {window_start.strftime('%Y-%m-%d %H:%M')} ~ {window_end.strftime('%Y-%m-%d %H:%M')}")
-    print(f"Current time:     {now.strftime('%Y-%m-%d %H:%M')}")
+    print(f"Current time:     {now_jst.strftime('%Y-%m-%d %H:%M')}")
 
-    in_window = window_start <= now <= window_end
+    in_window = window_start <= now_jst <= window_end
 
     if in_window:
         print("✅ Within execution window")
@@ -127,8 +138,8 @@ def check_trading_window() -> tuple[bool, bool, str]:
 
     try:
         # 今週+来週の営業日を取得（余裕を持って2週間分）
-        from_date = (now - timedelta(days=7)).date()
-        to_date = (now + timedelta(days=7)).date()
+        from_date = (now_jst - timedelta(days=7)).date()
+        to_date = (now_jst + timedelta(days=7)).date()
 
         trading_calendar = fetcher.get_trading_calendar(from_date=from_date, to_date=to_date)
 
