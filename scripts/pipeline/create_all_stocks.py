@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 create_all_stocks.py
-meta.parquet + scalping_*.parquet をマージして all_stocks.parquet を生成
+meta.parquet + scalping_*.parquet + grok_trending.parquet をマージして all_stocks.parquet を生成
 GitHub Actions対応: S3優先、全必要ファイルをロード
 """
 
@@ -23,6 +23,7 @@ from common_cfg.s3cfg import load_s3_config
 META_PATH = PARQUET_DIR / "meta.parquet"
 SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
 SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
+GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 
 
@@ -43,7 +44,7 @@ def download_from_s3_if_exists(filename: str, local_path: Path) -> bool:
         return False
 
 
-def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """必要なparquetファイルを読み込み（S3優先）"""
 
     # meta.parquet（S3優先、静的銘柄マスタ）
@@ -78,7 +79,16 @@ def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         print("  [WARN] scalping_active.parquet not found, using empty DataFrame")
         scalping_active = pd.DataFrame()
 
-    return meta, scalping_entry, scalping_active
+    # grok_trending.parquet（ローカルから読み込み、generate_grok_trending.pyが生成済み）
+    print("[INFO] Loading grok_trending.parquet...")
+    if GROK_TRENDING_PATH.exists():
+        grok_trending = pd.read_parquet(GROK_TRENDING_PATH)
+        print(f"  ✓ Loaded grok_trending.parquet: {len(grok_trending)} stocks")
+    else:
+        print("  [WARN] grok_trending.parquet not found, using empty DataFrame")
+        grok_trending = pd.DataFrame()
+
+    return meta, scalping_entry, scalping_active, grok_trending
 
 
 def add_missing_columns_to_scalping(df: pd.DataFrame, category_name: str, client: JQuantsClient) -> pd.DataFrame:
@@ -190,14 +200,102 @@ def add_technical_columns_to_meta(df: pd.DataFrame) -> pd.DataFrame:
     return df[cols].copy()
 
 
-def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_active: pd.DataFrame) -> pd.DataFrame:
+def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFrame:
     """
-    meta + scalping_entry + scalping_active をマージ
+    grok_trending.parquetを18カラム構造に変換し、J-Quantsメタデータと照合
 
-    重複するticker（静的銘柄がスキャルピング銘柄にも選定された場合）:
+    Args:
+        df: grok_trending.parquet のDataFrame
+        client: J-QuantsClient
+
+    Returns:
+        18カラム構造のDataFrame（J-Quantsメタデータを補完）
+    """
+    if df.empty:
+        print("  [INFO] Grok trending is empty")
+        empty_df = pd.DataFrame(columns=[
+            "ticker", "code", "stock_name", "market", "sectors", "series",
+            "topixnewindexseries", "categories", "tags",
+            "date", "Close", "change_pct", "Volume", "vol_ratio",
+            "atr14_pct", "rsi14", "score", "key_signal"
+        ])
+        return empty_df
+
+    print(f"  [INFO] Processing {len(df)} Grok trending stocks")
+
+    # 必須カラムを確認
+    required_cols = ["ticker", "code", "stock_name", "categories", "tags", "date"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Missing required column in grok_trending.parquet: {col}")
+
+    # tagsを配列に統一（文字列の場合は1要素の配列に変換）
+    df["tags"] = df["tags"].apply(lambda x: [x] if isinstance(x, str) else x if isinstance(x, list) else [])
+
+    # J-Quantsから全銘柄情報を取得してメタデータを補完
+    print("  [INFO] Fetching metadata from J-Quants...")
+    response = client.request("/listed/info")
+    if not response or "info" not in response:
+        raise RuntimeError("Failed to fetch listed info from J-Quants")
+
+    jq_df = pd.DataFrame(response["info"])
+
+    # Code列を正規化（5桁目の0を削除）
+    jq_df["code_normalized"] = jq_df["Code"].astype(str).str.replace(r'^(.{4})0$', r'\1', regex=True)
+    jq_df["ticker_normalized"] = jq_df["code_normalized"] + ".T"
+
+    # market の揺れを統一
+    jq_df["market_normalized"] = jq_df["MarketCodeName"].fillna("").astype(str).str.replace(r'（内国株式）$', '', regex=True)
+
+    # NaN対策: Sector17CodeNameとScaleCategoryをNoneに変換
+    jq_df["Sector17CodeName"] = jq_df["Sector17CodeName"].replace({pd.NA: None, "": None, "-": None})
+    jq_df["ScaleCategory"] = jq_df["ScaleCategory"].replace({pd.NA: None, "": None, "-": None})
+
+    # 重複を削除してマッピング
+    jq_df_unique = jq_df.drop_duplicates(subset=["ticker_normalized"], keep="first")
+    jq_map = jq_df_unique.set_index("ticker_normalized")[[
+        "code_normalized", "CompanyName", "Sector17CodeName", "ScaleCategory", "market_normalized"
+    ]].to_dict('index')
+
+    # メタデータを補完
+    def get_jq_value(ticker, key, default=None):
+        return jq_map.get(ticker, {}).get(key, default)
+
+    df["code"] = df["ticker"].apply(lambda t: get_jq_value(t, "code_normalized", t.replace(".T", "")))
+    df["stock_name"] = df["ticker"].apply(lambda t: get_jq_value(t, "CompanyName", df.loc[df["ticker"]==t, "stock_name"].iloc[0] if len(df[df["ticker"]==t]) > 0 else ""))
+    df["market"] = df["ticker"].apply(lambda t: get_jq_value(t, "market_normalized", None))
+    df["series"] = df["ticker"].apply(lambda t: get_jq_value(t, "Sector17CodeName", None))
+    df["topixnewindexseries"] = df["ticker"].apply(lambda t: get_jq_value(t, "ScaleCategory", None))
+
+    # sectorsは既存のままか、Noneの場合は空にする
+    if "sectors" not in df.columns:
+        df["sectors"] = None
+
+    # 18カラム構造に整形
+    cols = [
+        "ticker", "code", "stock_name", "market", "sectors", "series",
+        "topixnewindexseries", "categories", "tags",
+        "date", "Close", "change_pct", "Volume", "vol_ratio",
+        "atr14_pct", "rsi14", "score", "key_signal"
+    ]
+
+    # 欠落カラムを追加
+    for col in cols:
+        if col not in df.columns:
+            df[col] = None
+
+    print(f"  [OK] Metadata enriched for {len(df)} Grok stocks")
+    return df[cols].copy()
+
+
+def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_active: pd.DataFrame, grok_trending: pd.DataFrame) -> pd.DataFrame:
+    """
+    meta + scalping_entry + scalping_active + grok_trending をマージ
+
+    重複するticker（静的銘柄がスキャルピング/Grok銘柄にも選定された場合）:
     - categoriesを統合
-    - tagsは静的銘柄のtagsを維持
-    - テクニカル指標はスキャルピングのデータを使用
+    - tagsは静的銘柄のtagsを維持（Grokのtagsは別途保持）
+    - テクニカル指標はスキャルピング/Grokのデータを使用
     """
     print("[INFO] Merging stocks...")
 
@@ -205,16 +303,20 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     meta_tickers = set(meta["ticker"])
     entry_tickers = set(scalping_entry["ticker"]) if not scalping_entry.empty else set()
     active_tickers = set(scalping_active["ticker"]) if not scalping_active.empty else set()
+    grok_tickers = set(grok_trending["ticker"]) if not grok_trending.empty else set()
 
     overlap_entry = meta_tickers & entry_tickers
     overlap_active = meta_tickers & active_tickers
+    overlap_grok = meta_tickers & grok_tickers
 
     if overlap_entry:
         print(f"  [INFO] {len(overlap_entry)} stocks overlap between meta and scalping_entry")
     if overlap_active:
         print(f"  [INFO] {len(overlap_active)} stocks overlap between meta and scalping_active")
+    if overlap_grok:
+        print(f"  [INFO] {len(overlap_grok)} stocks overlap between meta and grok_trending")
 
-    # 重複処理: categoriesを統合、tagsとテクニカル指標はスキャルピングから取得
+    # 重複処理: categoriesを統合、tagsとテクニカル指標はスキャルピング/Grokから取得
     for ticker in overlap_entry:
         meta_row = meta[meta["ticker"] == ticker].iloc[0]
         entry_row = scalping_entry[scalping_entry["ticker"] == ticker].iloc[0]
@@ -229,19 +331,29 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
         scalping_active.loc[scalping_active["ticker"] == ticker, "categories"] = [combined_categories]
         scalping_active.loc[scalping_active["ticker"] == ticker, "tags"] = [meta_row["tags"]]
 
-    # 重複する静的銘柄を除外（スキャルピングに統合済み）
-    meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active)].copy()
+    for ticker in overlap_grok:
+        meta_row = meta[meta["ticker"] == ticker].iloc[0]
+        grok_row = grok_trending[grok_trending["ticker"] == ticker].iloc[0]
+        combined_categories = list(set(meta_row["categories"] + grok_row["categories"]))
+        # Grokの場合、tagsはGrok自身のcategoryを保持（上書きしない）
+        grok_trending.loc[grok_trending["ticker"] == ticker, "categories"] = [combined_categories]
+
+    # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
+    meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
 
     # マージ
-    all_stocks = pd.concat([meta_clean, scalping_entry, scalping_active], ignore_index=True)
+    all_stocks = pd.concat([meta_clean, scalping_entry, scalping_active, grok_trending], ignore_index=True)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Meta: {len(meta_clean)}, Entry: {len(scalping_entry)}, Active: {len(scalping_active)})")
+    # date カラムの型を統一（文字列に変換、Noneはそのまま）
+    all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
+
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Meta: {len(meta_clean)}, Entry: {len(scalping_entry)}, Active: {len(scalping_active)}, Grok: {len(grok_trending)})")
     return all_stocks
 
 
 def main() -> int:
     print("=" * 60)
-    print("Generate all_stocks.parquet (Meta + Scalping)")
+    print("Generate all_stocks.parquet (Meta + Scalping + Grok)")
     print("=" * 60)
 
     # [STEP 1] J-Quantsクライアント初期化
@@ -256,7 +368,7 @@ def main() -> int:
     # [STEP 2] 必要なファイルを読み込み（S3優先）
     print("\n[STEP 2] Loading required files (S3 priority)...")
     try:
-        meta, scalping_entry, scalping_active = load_required_files()
+        meta, scalping_entry, scalping_active, grok_trending = load_required_files()
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
@@ -274,12 +386,16 @@ def main() -> int:
     print("\n[STEP 5] Processing scalping_active...")
     scalping_active_18col = add_missing_columns_to_scalping(scalping_active, "SCALPING_ACTIVE", client)
 
-    # [STEP 6] マージ
-    print("\n[STEP 6] Merging all stocks...")
-    all_stocks = merge_stocks(meta_18col, scalping_entry_18col, scalping_active_18col)
+    # [STEP 6] grok_trending.parquetを処理
+    print("\n[STEP 6] Processing grok_trending...")
+    grok_trending_18col = process_grok_trending(grok_trending, client)
 
-    # [STEP 7] 保存
-    print("\n[STEP 7] Saving all_stocks.parquet...")
+    # [STEP 7] マージ
+    print("\n[STEP 7] Merging all stocks...")
+    all_stocks = merge_stocks(meta_18col, scalping_entry_18col, scalping_active_18col, grok_trending_18col)
+
+    # [STEP 8] 保存
+    print("\n[STEP 8] Saving all_stocks.parquet...")
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
     all_stocks.to_parquet(ALL_STOCKS_PATH, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {ALL_STOCKS_PATH}")
@@ -293,6 +409,7 @@ def main() -> int:
     print(f"  - Meta (static): {len(meta_18col)}")
     print(f"  - Scalping Entry: {len(scalping_entry_18col)}")
     print(f"  - Scalping Active: {len(scalping_active_18col)}")
+    print(f"  - Grok Trending: {len(grok_trending_18col)}")
     print("=" * 60)
 
     print("\n✅ all_stocks.parquet generated successfully!")

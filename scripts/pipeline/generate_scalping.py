@@ -121,7 +121,7 @@ def main() -> int:
             empty_df = pd.DataFrame(columns=[
                 'ticker', 'stock_name', 'market', 'sectors', 'date',
                 'Close', 'change_pct', 'Volume', 'vol_ratio',
-                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
             ])
 
             PARQUET_DIR.mkdir(parents=True, exist_ok=True)
@@ -155,7 +155,7 @@ def main() -> int:
             empty_df = pd.DataFrame(columns=[
                 'ticker', 'stock_name', 'market', 'sectors', 'date',
                 'Close', 'change_pct', 'Volume', 'vol_ratio',
-                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
             ])
 
             PARQUET_DIR.mkdir(parents=True, exist_ok=True)
@@ -275,9 +275,9 @@ def main() -> int:
         df_entry = screener.generate_entry_list(
             df_latest,
             meta_df,
-            target_n=15,
+            target_n=30,
             min_score_threshold=75.0,
-            fallback_min_n=5
+            fallback_min_n=10
         )
 
         if df_entry.empty:
@@ -285,7 +285,7 @@ def main() -> int:
             df_entry = pd.DataFrame(columns=[
                 'ticker', 'stock_name', 'market', 'sectors', 'date',
                 'Close', 'change_pct', 'Volume', 'vol_ratio',
-                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
             ])
 
         print(f"  ✓ Entry list: {len(df_entry)} stocks")
@@ -311,7 +311,7 @@ def main() -> int:
             df_active = pd.DataFrame(columns=[
                 'ticker', 'stock_name', 'market', 'sectors', 'date',
                 'Close', 'change_pct', 'Volume', 'vol_ratio',
-                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+                'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
             ])
 
         print(f"  ✓ Active list: {len(df_active)} stocks")

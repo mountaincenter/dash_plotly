@@ -24,6 +24,7 @@ router = APIRouter()
 PARQUET_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "parquet"
 SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
 SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
+GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 
 
 def _add_volatility_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -310,4 +311,40 @@ def get_scalping_active(
     """
     scalping_df = _read_scalping_list(SCALPING_ACTIVE_PATH)
     records = _merge_with_latest_data(scalping_df)
+    return records[:limit] if records else []
+
+
+@router.get("/grok", summary="Get Grok AI trending watchlist")
+def get_grok_trending(
+    limit: int = Query(default=25, ge=1, le=50, description="最大銘柄数")
+) -> List[Dict[str, Any]]:
+    """
+    Grok AI銘柄選定リスト
+    - xAI Grok APIで選定された「尖った銘柄」
+    - 株クラ（X）でバズっている銘柄
+    - IR発表・ニュース材料あり
+    - 翌営業日のデイスキャルピング狙い
+
+    事前生成されたparquetファイルから読み込み、最新のprice/perfデータとマージ
+    """
+    grok_df = _read_scalping_list(GROK_TRENDING_PATH)
+
+    # Grok特有のカラム（reason, selected_time）を含めて返す
+    if grok_df.empty:
+        return []
+
+    records = _merge_with_latest_data(grok_df)
+
+    # reasonカラムを追加（Grok銘柄の選定理由）
+    if not grok_df.empty and 'reason' in grok_df.columns:
+        reason_map = dict(zip(grok_df['ticker'], grok_df['reason']))
+        for record in records:
+            record['reason'] = reason_map.get(record['ticker'])
+
+    # selected_timeカラムを追加（16:00 or 26:00）
+    if not grok_df.empty and 'selected_time' in grok_df.columns:
+        selected_time_map = dict(zip(grok_df['ticker'], grok_df['selected_time']))
+        for record in records:
+            record['selected_time'] = selected_time_map.get(record['ticker'])
+
     return records[:limit] if records else []

@@ -178,18 +178,83 @@ class ScalpingScreener:
             print("[WARN] No stocks met entry criteria")
             return pd.DataFrame()
 
-        # Calculate score
-        df_entry['score'] = 50.0  # Base score
+        # Calculate score (100点満点: データ相関分析に基づく修正版)
+        df_entry['score'] = 0.0
 
-        # Price appropriateness (300-800 is ideal)
-        df_entry['score'] += df_entry['Close'].apply(
-            lambda p: 30 if 300 <= p <= 800 else 15
-        )
+        # 1. RSI（売られ過ぎからの回復を重視）: 30点 ← overall_rating 40点を再配分
+        # 相関分析: RSI高い→損失（-0.1003）→ 逆転が必要
+        def score_rsi(rsi):
+            if pd.isna(rsi):
+                return 10
+            # RSI低い（売られ過ぎから回復）を高評価
+            if 30 <= rsi <= 45:
+                return 30  # 最高点
+            elif 45 < rsi <= 55:
+                return 20  # 中立域
+            elif 25 <= rsi < 30:
+                return 25  # やや売られ過ぎ
+            elif 55 < rsi <= 65:
+                return 10  # やや買われ過ぎ
+            else:
+                return 5   # 極端な値は低評価
 
-        # Volume stability
-        df_entry['score'] += df_entry['vol_ratio'].apply(
-            lambda v: 25 if 90 <= v <= 130 else 10
-        )
+        df_entry['score'] += df_entry['rsi14'].apply(score_rsi)
+
+        # 2. ATR（適度なボラティリティ）: 30点 ← 10点から増強
+        # 相関分析: atr14_pct効果なし（-0.0336）だが、唯一正だった指標なので強化
+        def score_atr(atr_pct):
+            if pd.isna(atr_pct):
+                return 10
+            # 適度なボラティリティを評価
+            if 1.5 <= atr_pct <= 2.5:
+                return 30
+            elif 2.5 < atr_pct <= 3.0:
+                return 25
+            elif 1.0 <= atr_pct < 1.5:
+                return 20
+            elif 3.0 < atr_pct <= 3.5:
+                return 15
+            else:
+                return 10
+
+        df_entry['score'] += df_entry['atr14_pct'].apply(score_atr)
+
+        # 3. 変動率（小さめの変動を評価）: 20点
+        # 相関分析: change_pct高い→損失（-0.0730）→ 小さい方が良い
+        def score_change(change_pct):
+            abs_change = abs(change_pct)
+            # 小さめの変動を高評価
+            if 0.0 <= abs_change <= 0.5:
+                return 20
+            elif 0.5 < abs_change <= 1.0:
+                return 15
+            elif 1.0 < abs_change <= 1.5:
+                return 10
+            elif 1.5 < abs_change <= 2.0:
+                return 5
+            else:
+                return 0  # 大きな変動は減点
+
+        df_entry['score'] += df_entry['change_pct'].apply(score_change)
+
+        # 4. 出来高比率（安定した出来高を評価）: 20点
+        # 相関分析: vol_ratio効果なし（-0.0021）→ 安定域を評価
+        def score_vol_ratio(vol_ratio):
+            if pd.isna(vol_ratio):
+                return 8
+            # 安定した出来高（100-130%）を高評価
+            if 100 <= vol_ratio <= 130:
+                return 20
+            elif 80 <= vol_ratio < 100:
+                return 15
+            elif 130 < vol_ratio <= 150:
+                return 12
+            elif 150 < vol_ratio <= 180:
+                return 8
+            else:
+                return 5  # 極端な出来高は低評価
+
+        df_entry['score'] += df_entry['vol_ratio'].apply(score_vol_ratio)
 
         # Tags
         def get_tags_entry(row):
@@ -247,11 +312,15 @@ class ScalpingScreener:
             else:
                 print(f"[WARN] No stocks available for entry")
 
+        # Add selected_date (選定日: 実行日を記録)
+        from datetime import datetime
+        df_entry['selected_date'] = pd.Timestamp(datetime.now().date())
+
         # Select columns
         entry_cols = [
             'ticker', 'stock_name', 'market', 'sectors', 'date',
             'Close', 'change_pct', 'Volume', 'vol_ratio',
-            'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+            'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
         ]
         df_entry = df_entry[[c for c in entry_cols if c in df_entry.columns]]
 
@@ -307,18 +376,72 @@ class ScalpingScreener:
             print("[WARN] No stocks met active criteria")
             return pd.DataFrame()
 
-        # Calculate score
-        df_active['score'] = 50.0  # Base score
+        # Calculate score (100点満点: 前提に基づく正しいスコアリング)
+        df_active['score'] = 0.0
 
-        # Change score (bigger is better)
-        df_active['score'] += df_active['change_pct'].apply(
-            lambda c: min(35, abs(c) / 7.0 * 35)
-        )
+        # 1. ATR（高ボラティリティ重視）: 40点
+        def score_atr_active(atr_pct):
+            if pd.isna(atr_pct):
+                return 5
+            if atr_pct >= 5.0:
+                return 40
+            elif 4.0 <= atr_pct < 5.0:
+                return 35
+            elif 3.0 <= atr_pct < 4.0:
+                return 25
+            elif 2.5 <= atr_pct < 3.0:
+                return 15
+            else:
+                return 5
 
-        # Volume surge score
-        df_active['score'] += df_active['vol_ratio'].apply(
-            lambda v: 30 if v >= 200 else max(0, v / 150 * 30)
-        )
+        df_active['score'] += df_active['atr14_pct'].apply(score_atr_active)
+
+        # 2. 変動率（大きな動き）: 30点
+        def score_change_active(change_pct):
+            abs_change = abs(change_pct)
+            if abs_change >= 5.0:
+                return 30
+            elif 4.0 <= abs_change < 5.0:
+                return 25
+            elif 3.0 <= abs_change < 4.0:
+                return 20
+            elif 2.0 <= abs_change < 3.0:
+                return 15
+            else:
+                return 5
+
+        df_active['score'] += df_active['change_pct'].apply(score_change_active)
+
+        # 3. 出来高比率（急騰・急落の兆候）: 20点
+        def score_vol_ratio_active(vol_ratio):
+            if pd.isna(vol_ratio):
+                return 5
+            if vol_ratio >= 200:
+                return 20
+            elif 150 <= vol_ratio < 200:
+                return 15
+            elif 100 <= vol_ratio < 150:
+                return 10
+            else:
+                return 5
+
+        df_active['score'] += df_active['vol_ratio'].apply(score_vol_ratio_active)
+
+        # 4. RSI（極端な状態を許容）: 10点
+        def score_rsi_active(rsi):
+            if pd.isna(rsi):
+                return 4
+            # 反転期待（買われすぎ・売られすぎ）
+            if (20 <= rsi <= 30) or (70 <= rsi <= 80):
+                return 10
+            elif (30 < rsi <= 40) or (60 <= rsi < 70):
+                return 8
+            elif 40 < rsi < 60:  # 中立は低評価
+                return 6
+            else:
+                return 4
+
+        df_active['score'] += df_active['rsi14'].apply(score_rsi_active)
 
         # Tags
         def get_tags_active(row):
@@ -376,11 +499,15 @@ class ScalpingScreener:
             else:
                 print(f"[WARN] No stocks available for active")
 
+        # Add selected_date (選定日: 実行日を記録)
+        from datetime import datetime
+        df_active['selected_date'] = pd.Timestamp(datetime.now().date())
+
         # Select columns
         active_cols = [
             'ticker', 'stock_name', 'market', 'sectors', 'date',
             'Close', 'change_pct', 'Volume', 'vol_ratio',
-            'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal'
+            'atr14_pct', 'rsi14', 'score', 'tags', 'key_signal', 'selected_date'
         ]
         df_active = df_active[[c for c in active_cols if c in df_active.columns]]
 

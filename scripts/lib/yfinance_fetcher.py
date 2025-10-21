@@ -20,7 +20,8 @@ import yfinance as yf
 def fetch_prices_for_tickers(
     tickers: List[str],
     period: str,
-    interval: str
+    interval: str,
+    fallback_period: str = None
 ) -> pd.DataFrame:
     """
     指定された銘柄の価格データを取得
@@ -29,6 +30,7 @@ def fetch_prices_for_tickers(
         tickers: ティッカーリスト
         period: データ期間（例: "60d", "max"）
         interval: データ間隔（例: "1d", "1h"）
+        fallback_period: 個別銘柄の取得失敗時のフォールバック期間
 
     Returns:
         価格データのDataFrame
@@ -78,10 +80,59 @@ def fetch_prices_for_tickers(
             if len(tickers) == 1:
                 df['ticker'] = tickers[0]
 
+        # fallback_periodが指定されている場合、データが取得できなかった銘柄を個別にリトライ
+        if fallback_period and 'ticker' in df.columns:
+            # 有効なデータがある銘柄を特定（Close列がすべてNaNでない銘柄）
+            valid_tickers = set()
+            for ticker in tickers:
+                ticker_data = df[df['ticker'] == ticker]
+                if not ticker_data.empty and ticker_data['Close'].notna().any():
+                    valid_tickers.add(ticker)
+
+            missing_tickers = set(tickers) - valid_tickers
+
+            if missing_tickers:
+                print(f"  [INFO] {len(missing_tickers)} ticker(s) failed with period={period}, retrying with period={fallback_period}")
+                fallback_dfs = []
+
+                for ticker in missing_tickers:
+                    try:
+                        print(f"    - Retrying {ticker} with period={fallback_period}...")
+                        ticker_df = yf.download(
+                            tickers=[ticker],
+                            period=fallback_period,
+                            interval=interval,
+                            progress=False
+                        )
+
+                        if not ticker_df.empty:
+                            ticker_df = ticker_df.reset_index()
+                            if 'Date' in ticker_df.columns:
+                                ticker_df.rename(columns={'Date': 'date'}, inplace=True)
+                            elif 'Datetime' in ticker_df.columns:
+                                ticker_df.rename(columns={'Datetime': 'date'}, inplace=True)
+                            ticker_df['ticker'] = ticker
+                            fallback_dfs.append(ticker_df)
+                            print(f"      ✓ Success: {len(ticker_df)} rows")
+                        else:
+                            print(f"      ✗ Still no data available")
+                    except Exception as e:
+                        print(f"      ✗ Fallback failed: {e}")
+
+                # フォールバックデータを結合
+                if fallback_dfs:
+                    fallback_df = pd.concat(fallback_dfs, ignore_index=True)
+                    df = pd.concat([df, fallback_df], ignore_index=True)
+                    print(f"  [OK] Added {len(fallback_dfs)} ticker(s) via fallback")
+
         # 必要なカラムのみ保持
         required_cols = ['date', 'Open', 'High', 'Low', 'Close', 'Volume', 'ticker']
         available_cols = [c for c in required_cols if c in df.columns]
         df = df[available_cols]
+
+        # ticker列がNaNの行を除外
+        if 'ticker' in df.columns:
+            df = df[df['ticker'].notna()].copy()
 
         return df
     except Exception as e:

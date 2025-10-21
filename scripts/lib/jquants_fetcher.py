@@ -152,6 +152,10 @@ class JQuantsFetcher:
         """
         取引カレンダーAPIから直近の営業日を取得
 
+        重要: 16時基準のロジック
+        - JST 16:00未満: 前営業日を返す
+        - JST 16:00以降（26:00含む）: 当日が営業日なら当日、非営業日なら前営業日を返す
+
         Args:
             lookback_days: 過去何日分のカレンダーを取得するか（デフォルト: 30）
 
@@ -161,8 +165,16 @@ class JQuantsFetcher:
         Raises:
             RuntimeError: 取引カレンダーの取得に失敗した場合、または営業日が見つからない場合
         """
+        from datetime import timezone
+
+        # GitHub Actions対応: UTC時刻を取得してJSTに変換
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        now_jst = now_utc + timedelta(hours=9)
+        jst_hour = now_jst.hour
+        jst_date = now_jst.date()
+
         # 過去lookback_days日分の取引カレンダーを取得
-        to_date = datetime.now().date()
+        to_date = jst_date
         from_date = to_date - timedelta(days=lookback_days)
 
         params = {
@@ -184,9 +196,16 @@ class JQuantsFetcher:
         if trading_days.empty:
             raise RuntimeError("No trading days found in the calendar")
 
-        # 今日より前の営業日のみ（Date列は文字列なので直接比較）
-        today_str = str(to_date)
-        trading_days = trading_days[trading_days["Date"] < today_str].copy()
+        # 16時基準のロジック
+        if jst_hour < 16:
+            # 16時未満: 前営業日
+            cutoff_date = jst_date - timedelta(days=1)
+            cutoff_str = str(cutoff_date)
+            trading_days = trading_days[trading_days["Date"] <= cutoff_str].copy()
+        else:
+            # 16時以降（26:00含む）: 当日を含む
+            cutoff_str = str(jst_date)
+            trading_days = trading_days[trading_days["Date"] <= cutoff_str].copy()
 
         if trading_days.empty:
             raise RuntimeError("No past trading days found in the calendar")

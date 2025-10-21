@@ -64,7 +64,7 @@ def fetch_and_save_prices(tickers: List[str], period: str, interval: str, output
     print(f"[INFO] Fetching prices: period={period}, interval={interval}")
 
     try:
-        df = fetch_prices_for_tickers(tickers, period, interval)
+        df = fetch_prices_for_tickers(tickers, period, interval, fallback_period)
 
         if df.empty:
             print(f"  ⚠ No data retrieved, creating empty file")
@@ -79,11 +79,11 @@ def fetch_and_save_prices(tickers: List[str], period: str, interval: str, output
     except Exception as e:
         print(f"  ✗ Failed: {e}")
 
-        # fallback_periodがあればリトライ
+        # fallback_periodがあればリトライ（全体のフォールバック）
         if fallback_period:
-            print(f"  [INFO] Retrying with fallback period={fallback_period}")
+            print(f"  [INFO] Retrying entire batch with fallback period={fallback_period}")
             try:
-                df = fetch_prices_for_tickers(tickers, fallback_period, interval)
+                df = fetch_prices_for_tickers(tickers, fallback_period, interval, None)
                 PARQUET_DIR.mkdir(parents=True, exist_ok=True)
                 df.to_parquet(output_path, engine="pyarrow", index=False)
                 print(f"  ✓ Saved with fallback: {output_path} ({len(df)} rows)")

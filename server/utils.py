@@ -188,6 +188,8 @@ def _resolve_tag(tag: Optional[str]) -> Optional[str]:
         "scalping_entry": "SCALPING_ENTRY",
         "scalping_active": "SCALPING_ACTIVE",
         "scalping": "SCALPING_ENTRY",  # デフォルトはEntry
+        "grok": "GROK",
+        "grok_trending": "GROK",
     }
     key = tag_norm.lower()
     return lut.get(key, tag_norm)
