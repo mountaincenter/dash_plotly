@@ -98,8 +98,12 @@ jobs:
         id: pipeline
         env:
           JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
         run: |
+          # Create .env.xai for Grok API
+          echo "XAI_API_KEY=$XAI_API_KEY" > .env.xai
+
           echo "============================================================"
           echo "Data Pipeline Execution (GitHub Actions)"
           echo "Started at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
