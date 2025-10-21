@@ -232,44 +232,42 @@ def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFra
     # tagsを配列に統一（文字列の場合は1要素の配列に変換）
     df["tags"] = df["tags"].apply(lambda x: [x] if isinstance(x, str) else x if isinstance(x, list) else [])
 
-    # J-Quantsから全銘柄情報を取得してメタデータを補完
-    print("  [INFO] Fetching metadata from J-Quants...")
-    response = client.request("/listed/info")
-    if not response or "info" not in response:
-        raise RuntimeError("Failed to fetch listed info from J-Quants")
+    # tagsにreasonの内容を追加（reason列が存在する場合）
+    if "reason" in df.columns:
+        df["tags"] = df.apply(
+            lambda row: list(row["tags"]) + [row["reason"]] if pd.notna(row.get("reason")) else list(row["tags"]),
+            axis=1
+        )
 
-    jq_df = pd.DataFrame(response["info"])
+    # meta_jquants.parquet をロード（既に正規化済み）
+    print("  [INFO] Loading meta_jquants.parquet for sector info...")
+    from common_cfg.paths import PARQUET_DIR
+    META_JQUANTS_PATH = PARQUET_DIR / "meta_jquants.parquet"
 
-    # Code列を正規化（5桁目の0を削除）
-    jq_df["code_normalized"] = jq_df["Code"].astype(str).str.replace(r'^(.{4})0$', r'\1', regex=True)
-    jq_df["ticker_normalized"] = jq_df["code_normalized"] + ".T"
+    if not META_JQUANTS_PATH.exists():
+        raise FileNotFoundError(f"meta_jquants.parquet not found: {META_JQUANTS_PATH}")
 
-    # market の揺れを統一
-    jq_df["market_normalized"] = jq_df["MarketCodeName"].fillna("").astype(str).str.replace(r'（内国株式）$', '', regex=True)
+    meta_jq = pd.read_parquet(META_JQUANTS_PATH)
 
-    # NaN対策: Sector17CodeNameとScaleCategoryをNoneに変換
-    jq_df["Sector17CodeName"] = jq_df["Sector17CodeName"].replace({pd.NA: None, "": None, "-": None})
-    jq_df["ScaleCategory"] = jq_df["ScaleCategory"].replace({pd.NA: None, "": None, "-": None})
-
+    # meta_jquants.parquetは既に正規化済み（ticker, code, stock_name, market, sectors, series, topixnewindexseries）
     # 重複を削除してマッピング
-    jq_df_unique = jq_df.drop_duplicates(subset=["ticker_normalized"], keep="first")
-    jq_map = jq_df_unique.set_index("ticker_normalized")[[
-        "code_normalized", "CompanyName", "Sector17CodeName", "ScaleCategory", "market_normalized"
+    meta_jq_unique = meta_jq.drop_duplicates(subset=["ticker"], keep="first")
+    jq_map = meta_jq_unique.set_index("ticker")[[
+        "code", "stock_name", "market", "sectors", "series", "topixnewindexseries"
     ]].to_dict('index')
 
     # メタデータを補完
     def get_jq_value(ticker, key, default=None):
         return jq_map.get(ticker, {}).get(key, default)
 
-    df["code"] = df["ticker"].apply(lambda t: get_jq_value(t, "code_normalized", t.replace(".T", "")))
-    df["stock_name"] = df["ticker"].apply(lambda t: get_jq_value(t, "CompanyName", df.loc[df["ticker"]==t, "stock_name"].iloc[0] if len(df[df["ticker"]==t]) > 0 else ""))
-    df["market"] = df["ticker"].apply(lambda t: get_jq_value(t, "market_normalized", None))
-    df["series"] = df["ticker"].apply(lambda t: get_jq_value(t, "Sector17CodeName", None))
-    df["topixnewindexseries"] = df["ticker"].apply(lambda t: get_jq_value(t, "ScaleCategory", None))
+    df["code"] = df["ticker"].apply(lambda t: get_jq_value(t, "code", t.replace(".T", "")))
+    df["stock_name"] = df["ticker"].apply(lambda t: get_jq_value(t, "stock_name", df.loc[df["ticker"]==t, "stock_name"].iloc[0] if len(df[df["ticker"]==t]) > 0 else ""))
+    df["market"] = df["ticker"].apply(lambda t: get_jq_value(t, "market", None))
+    df["series"] = df["ticker"].apply(lambda t: get_jq_value(t, "series", None))
+    df["topixnewindexseries"] = df["ticker"].apply(lambda t: get_jq_value(t, "topixnewindexseries", None))
 
-    # sectorsは既存のままか、Noneの場合は空にする
-    if "sectors" not in df.columns:
-        df["sectors"] = None
+    # sectorsは meta_jquants から取得（series と同じ値）
+    df["sectors"] = df["ticker"].apply(lambda t: get_jq_value(t, "sectors", None))
 
     # 18カラム構造に整形
     cols = [
@@ -284,7 +282,7 @@ def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFra
         if col not in df.columns:
             df[col] = None
 
-    print(f"  [OK] Metadata enriched for {len(df)} Grok stocks")
+    print(f"  [OK] Metadata enriched for {len(df)} Grok stocks (with sector info from meta_jquants.parquet)")
     return df[cols].copy()
 
 
