@@ -9,3 +9,4 @@ boto3==1.40.40
 python-dotenv==1.1.1
 yfinance==0.2.66
 requests>=2.31.0
+openai>=1.0.0

@@ -31,45 +31,6 @@ from scripts.lib.jquants_client import JQuantsClient
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 
 
-def get_weekly_update_day(trading_days: list[datetime]) -> datetime:
-    """
-    今週の週次更新日を取得（金曜日または金曜が休みなら最終営業日）
-
-    Args:
-        trading_days: 今週の営業日リスト（datetime）
-
-    Returns:
-        週次更新を実施すべき営業日（datetime）
-    """
-    if not trading_days:
-        return None
-
-    # 今週の日付範囲（月曜～日曜）
-    today = datetime.now().date()
-    # 今週の月曜日を計算
-    monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
-
-    # 今週の営業日のみフィルタ
-    this_week_trading = [
-        td for td in trading_days
-        if monday <= td.date() <= sunday
-    ]
-
-    if not this_week_trading:
-        return None
-
-    # 金曜日（weekday=4）が営業日か確認
-    friday_trading = [td for td in this_week_trading if td.weekday() == 4]
-
-    if friday_trading:
-        # 金曜日が営業日ならそれを返す
-        return friday_trading[0]
-    else:
-        # 金曜日が非営業日なら、今週の最終営業日を返す
-        return max(this_week_trading)
-
-
 def check_trading_window() -> tuple[bool, bool, str]:
     """
     営業日の16:00～翌2:00の実行ウィンドウかチェック
@@ -134,45 +95,9 @@ def check_trading_window() -> tuple[bool, bool, str]:
         return False, False, latest_trading_day_str
 
     # 週次meta_jquants更新判定
+    # TODO: 週次更新ロジックは後で実装
     force_meta_update = False
-
-    try:
-        # 今週+来週の営業日を取得（余裕を持って2週間分）
-        from_date = (now_jst - timedelta(days=7)).date()
-        to_date = (now_jst + timedelta(days=7)).date()
-
-        trading_calendar = fetcher.get_trading_calendar(from_date=from_date, to_date=to_date)
-
-        if trading_calendar.empty:
-            print("WARN: Trading calendar is empty")
-        else:
-            # HolidayDivision == "1" (営業日) のみフィルタ
-            # 0: 非営業日、1: 営業日、2: 半日立会、3: 祝日取引のある非営業日
-            trading_calendar = trading_calendar[trading_calendar["HolidayDivision"] == "1"].copy()
-
-            # Date列をdatetimeに変換
-            trading_days = pd.to_datetime(trading_calendar['Date']).tolist()
-
-            # 今週の週次更新日を取得
-            weekly_update_day = get_weekly_update_day(trading_days)
-
-            if weekly_update_day:
-                update_day_str = weekly_update_day.strftime('%Y-%m-%d')
-                print(f"Weekly update day: {update_day_str} ({weekly_update_day.strftime('%A')})")
-
-                # 今日が週次更新日か判定
-                if latest_trading_day.date() == weekly_update_day.date():
-                    force_meta_update = True
-                    print("✅ Weekly meta_jquants update required (Friday or last trading day of week)")
-                else:
-                    print("ℹ️  Not a weekly update day")
-            else:
-                print("WARN: Could not determine weekly update day")
-
-    except Exception as e:
-        print(f"WARN: Weekly update check failed: {e}")
-        import traceback
-        traceback.print_exc()
+    print("ℹ️  Weekly meta_jquants update check: not implemented yet")
 
     return True, force_meta_update, latest_trading_day_str
 
@@ -204,5 +129,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    import pandas as pd  # get_weekly_update_day内で使用
     raise SystemExit(main())
