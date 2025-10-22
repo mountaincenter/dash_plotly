@@ -10,7 +10,7 @@ from ..utils import (
     read_prices_1d_df,
     read_prices_df,
     normalize_prices,
-    load_master_meta,
+    load_all_stocks,
 )
 
 router = APIRouter()
@@ -239,7 +239,7 @@ def perf_returns(
 
     allowed_tickers: Optional[set[str]] = None
     if tag:
-        meta = load_master_meta(tag=tag) or []
+        meta = load_all_stocks(tag=tag) or []
         allowed_tickers = {
             str(item.get("ticker")).strip()
             for item in meta
