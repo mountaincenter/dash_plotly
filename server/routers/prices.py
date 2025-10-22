@@ -239,19 +239,15 @@ def perf_returns(
 
     allowed_tickers: Optional[set[str]] = None
     if tag:
-        print(f"[perf_returns] Calling load_all_stocks with tag={tag}")
         meta = load_all_stocks(tag=tag) or []
-        print(f"[perf_returns] load_all_stocks returned {len(meta)} records")
         allowed_tickers = {
             str(item.get("ticker")).strip()
             for item in meta
             if item.get("ticker")
         }
-        print(f"[perf_returns] allowed_tickers: {allowed_tickers}")
         if allowed_tickers:
             out = out[out["ticker"].isin(allowed_tickers)].copy()
         else:
-            print(f"[perf_returns] No allowed_tickers, returning empty")
             return []
 
     wins = [w.strip() for w in (windows or "").split(",") if w.strip()]
