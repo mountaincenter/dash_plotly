@@ -10,14 +10,20 @@ on:
       - 'requirements.txt'
       - '.github/workflows/deploy-ecr.yml'
 
-env:
-  AWS_REGION: ap-northeast-1
-  ECR_REPOSITORY: dash-plotly
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'dash-plotly' }}
+      ECR_REPO: ${{ vars.ECR_REPO }}
 
     steps:
       - name: Checkout code
@@ -26,8 +32,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -37,22 +42,24 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          # Build Docker image with both tags
+          docker build -t ${{ env.ECR_REPO }}:$IMAGE_TAG .
+          docker build -t ${{ env.ECR_REPO }}:latest .
 
           # Push both tags to ECR
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push ${{ env.ECR_REPO }}:$IMAGE_TAG
+          docker push ${{ env.ECR_REPO }}:latest
 
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "✅ Pushed image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          echo "✅ Pushed image: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "image=${{ env.ECR_REPO }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✅ Pushed image: ${{ env.ECR_REPO }}:$IMAGE_TAG"
+          echo "✅ Pushed image: ${{ env.ECR_REPO }}:latest"
 
       - name: Trigger App Runner deployment
+        env:
+          APP_RUNNER_ARN: ${{ vars.APP_RUNNER_SERVICE_ARN }}
         run: |
-          echo "🚀 Image pushed to ECR. App Runner will automatically deploy the latest image."
-          echo "Check App Runner console for deployment status."
+          echo "🚀 Triggering App Runner deployment..."
+          aws apprunner start-deployment --service-arn $APP_RUNNER_ARN
+          echo "✅ Deployment triggered. Check App Runner console for status."
