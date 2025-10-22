@@ -4,12 +4,25 @@ generate_grok_trending.py
 xAI Grok APIを使って「翌営業日デイスキャルピング買い注文銘柄」を選定
 
 実行方法:
+    # パイプライン実行（時刻自動判定）
     python3 scripts/pipeline/generate_grok_trending.py
-    python3 scripts/pipeline/generate_grok_trending.py --time 16:00  # 16時更新
-    python3 scripts/pipeline/generate_grok_trending.py --time 26:00  # 26時（翌2時）更新
+
+    # 16時更新（古いデータをクリーンアップ）
+    python3 scripts/pipeline/generate_grok_trending.py --time 16:00
+
+    # 26時更新（16時データにマージ）
+    python3 scripts/pipeline/generate_grok_trending.py --time 26:00
+
+    # 手動実行（クリーンアップして新規作成）
+    python3 scripts/pipeline/generate_grok_trending.py --cleanup
 
 出力:
     data/parquet/grok_trending.parquet
+
+動作仕様:
+    - 16時更新: 古いデータを削除 → 10〜15銘柄を新規作成
+    - 26時更新: 16時データを保持 → 10〜15銘柄を追加（合計20〜30銘柄）
+    - --cleanup: 既存データを削除して新規作成（手動実行用）
 
 備考:
     - .env.xai に XAI_API_KEY が必要
@@ -17,7 +30,6 @@ xAI Grok APIを使って「翌営業日デイスキャルピング買い注文�
     - categories: ["GROK"]
     - tags: Grokが返したcategoryをそのまま格納
     - selected_time: "16:00" or "26:00" で更新タイミングを区別
-    - 16時と26時の2回実行で、合計20銘柄（重複除外）を選定
 """
 
 from __future__ import annotations
@@ -51,6 +63,11 @@ def parse_args():
         choices=["16:00", "26:00"],
         default=None,
         help="Update time (16:00 or 26:00). If not specified, defaults to current time-based logic."
+    )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Force cleanup of existing data before generating new stocks (for manual execution)"
     )
     return parser.parse_args()
 
@@ -329,53 +346,52 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     return df
 
 
-def save_grok_trending(df: pd.DataFrame, selected_time: str) -> None:
+def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool = False) -> None:
     """
     Save to grok_trending.parquet
 
-    既存データに追加（重複除外）
-    - 同じticker + selected_timeの組み合わせは上書き
-    - 異なるselected_timeは共存
+    Args:
+        df: 新規データ
+        selected_time: "16:00" or "26:00"
+        should_merge: True なら既存データとマージ（26時更新用）、False なら新規作成
     """
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 既存データを読み込み（存在する場合）
-    if GROK_TRENDING_PATH.exists():
+    if should_merge and GROK_TRENDING_PATH.exists():
+        # 既存データとマージ（26時更新時）
         try:
             existing_df = pd.read_parquet(GROK_TRENDING_PATH)
             print(f"[INFO] Loaded existing data: {len(existing_df)} stocks")
 
-            # selected_timeカラムが存在しない場合はスキップ（古い形式のファイル）
-            if "selected_time" not in existing_df.columns:
-                print("[WARN] Existing file does not have 'selected_time' column, replacing with new data")
-                df_merged = df
-            else:
-                # 同じselected_timeのデータを削除（上書き）
+            # 同じselected_timeのデータを削除（上書き）
+            if "selected_time" in existing_df.columns:
                 existing_df = existing_df[existing_df["selected_time"] != selected_time]
                 print(f"[INFO] Removed old {selected_time} data, remaining: {len(existing_df)} stocks")
 
-                # 新データと結合
-                df_merged = pd.concat([existing_df, df], ignore_index=True)
-                print(f"[INFO] Merged with new data: {len(df_merged)} stocks")
+            # 新データと結合
+            df_merged = pd.concat([existing_df, df], ignore_index=True)
+            print(f"[INFO] Merged with new data: {len(df_merged)} stocks")
+
+            # 保存
+            df_merged.to_parquet(GROK_TRENDING_PATH, index=False)
+            print(f"[OK] Saved: {GROK_TRENDING_PATH}")
+            print(f"     Total stocks: {len(df_merged)}")
+            print(f"     Breakdown by selected_time:")
+            for time, count in df_merged["selected_time"].value_counts().items():
+                print(f"       {time}: {count} stocks")
+
         except Exception as e:
-            print(f"[WARN] Failed to read existing file: {e}, creating new file")
-            df_merged = df
+            print(f"[WARN] Failed to merge with existing data: {e}, creating new file")
+            df.to_parquet(GROK_TRENDING_PATH, index=False)
+            print(f"[OK] Saved: {GROK_TRENDING_PATH}")
+            print(f"     Total stocks: {len(df)}")
+            print(f"     Selected time: {selected_time}")
     else:
-        df_merged = df
-        print(f"[INFO] No existing data, creating new file")
-
-    # 保存
-    df_merged.to_parquet(GROK_TRENDING_PATH, index=False)
-    print(f"[OK] Saved: {GROK_TRENDING_PATH}")
-    print(f"     Total stocks: {len(df_merged)}")
-
-    # selected_timeカラムが存在する場合のみ内訳を表示
-    if "selected_time" in df_merged.columns:
-        print(f"     Breakdown by selected_time:")
-        for time, count in df_merged["selected_time"].value_counts().items():
-            print(f"       {time}: {count} stocks")
-    else:
-        print(f"     (No selected_time breakdown available)")
+        # 新規作成（16時更新時またはクリーンアップ指定時）
+        df.to_parquet(GROK_TRENDING_PATH, index=False)
+        print(f"[OK] Saved: {GROK_TRENDING_PATH}")
+        print(f"     Total stocks: {len(df)}")
+        print(f"     Selected time: {selected_time}")
 
 
 def main() -> int:
@@ -384,11 +400,37 @@ def main() -> int:
     print("Generate Grok Trending Stocks (xAI API)")
     print("=" * 60)
 
-    # パイプライン実行時は引数なしで実行される想定
-    # 現在時刻から推測（16時以前 → 16:00、以降 → 26:00）
-    current_hour = datetime.now().hour
-    selected_time = "16:00" if current_hour < 18 else "26:00"
+    # コマンドライン引数をパース
+    args = parse_args()
+
+    # selected_time を決定
+    if args.time:
+        selected_time = args.time
+    else:
+        # パイプライン実行時は引数なしで実行される想定
+        # 現在時刻から推測
+        # - 07:00 UTC (JST 16:00) → "16:00"
+        # - 17:00 UTC (JST 26:00) → "26:00" (遅延を考慮して16時以降は26:00扱い)
+        current_hour = datetime.now().hour
+        selected_time = "16:00" if current_hour < 16 else "26:00"
+
     print(f"[INFO] Update time: {selected_time}")
+
+    # クリーンアップ判定
+    # 1. --cleanup フラグが指定されている
+    # 2. 16:00 更新（16時データは常にクリーン）
+    # 3. パイプライン実行で16時判定された場合
+    should_cleanup = args.cleanup or selected_time == "16:00"
+    should_merge = selected_time == "26:00" and not args.cleanup
+
+    if should_cleanup:
+        print("[INFO] Mode: CLEANUP (fresh data only)")
+        if GROK_TRENDING_PATH.exists():
+            GROK_TRENDING_PATH.unlink()
+            print("[INFO] Removed old grok_trending.parquet")
+    else:
+        print("[INFO] Mode: MERGE (append to existing 16:00 data)")
+
     print()
 
     try:
@@ -433,7 +475,7 @@ def main() -> int:
             print()
 
         # 8. Save
-        save_grok_trending(df, selected_time)
+        save_grok_trending(df, selected_time, should_merge=should_merge)
 
         print("\n" + "=" * 60)
         print(f"[OK] Generated {len(df)} Grok trending stocks")
