@@ -11,6 +11,7 @@ sync/download_from_s3.py
 実行方法:
   python scripts/sync/download_from_s3.py
   python scripts/sync/download_from_s3.py --dry-run  # ダウンロードせずに確認のみ
+  python scripts/sync/download_from_s3.py --clean  # manifest.json以外を削除してから同期
   python scripts/sync/download_from_s3.py --files meta_jquants.parquet prices_max_1d.parquet  # 特定ファイルのみ
 """
 
@@ -30,19 +31,63 @@ from common_cfg.s3io import download_file, list_s3_files
 from common_cfg.s3cfg import load_s3_config
 
 
-def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None) -> tuple[int, int]:
+def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
+    """
+    ローカルのparquetファイルを削除
+
+    Args:
+        exclude_manifest: Trueの場合、manifest.jsonは削除しない
+
+    Returns:
+        削除したファイル数
+    """
+    print("\n[CLEANUP] Removing local parquet files...")
+
+    if not PARQUET_DIR.exists():
+        print("  ℹ No parquet directory found, skipping cleanup")
+        return 0
+
+    deleted_count = 0
+    for file_path in PARQUET_DIR.glob("*.parquet"):
+        try:
+            file_path.unlink()
+            print(f"  ✓ Deleted: {file_path.name}")
+            deleted_count += 1
+        except Exception as e:
+            print(f"  ✗ Failed to delete {file_path.name}: {e}")
+
+    # manifest.jsonの扱い
+    manifest_path = PARQUET_DIR / "manifest.json"
+    if manifest_path.exists() and not exclude_manifest:
+        try:
+            manifest_path.unlink()
+            print(f"  ✓ Deleted: manifest.json")
+            deleted_count += 1
+        except Exception as e:
+            print(f"  ✗ Failed to delete manifest.json: {e}")
+    elif manifest_path.exists():
+        print(f"  ℹ Kept: manifest.json (excluded from cleanup)")
+
+    print(f"  → Deleted {deleted_count} file(s)")
+    return deleted_count
+
+
+def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, clean: bool = False) -> tuple[int, int]:
     """
     S3から全parquetファイルをダウンロード
 
     Args:
         dry_run: Trueの場合、ダウンロードせずに確認のみ
         file_filter: 特定のファイル名リスト（指定された場合はそれらのみダウンロード）
+        clean: Trueの場合、ダウンロード前にローカルファイルをクリーンアップ
 
     Returns:
         (成功数, 失敗数)
     """
     print("=" * 60)
     print("Download from S3 to Local")
+    if clean:
+        print("Mode: CLEAN SYNC (delete local files first)")
     print("=" * 60)
 
     # S3設定読み込み
@@ -57,6 +102,10 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None) -
 
     if dry_run:
         print("\n⚠️  DRY RUN MODE - No files will be downloaded\n")
+
+    # クリーンアップ実行（cleanフラグが指定されている場合）
+    if clean and not dry_run:
+        cleanup_local_parquet_files(exclude_manifest=True)
 
     # S3のファイル一覧を取得
     print("\n[STEP 1] Listing S3 files...")
@@ -125,19 +174,27 @@ def main() -> int:
         epilog="""
 Examples:
   # Download all files
-  python scripts/sync.py
+  python scripts/sync/download_from_s3.py
 
   # Dry run (check only, no download)
-  python scripts/sync.py --dry-run
+  python scripts/sync/download_from_s3.py --dry-run
+
+  # Clean sync (delete local parquet files first, then download)
+  python scripts/sync/download_from_s3.py --clean
 
   # Download specific files only
-  python scripts/sync.py meta_jquants.parquet prices_max_1d.parquet
+  python scripts/sync/download_from_s3.py meta_jquants.parquet prices_max_1d.parquet
         """
     )
     parser.add_argument(
         '--dry-run',
         action='store_true',
         help='List files without downloading'
+    )
+    parser.add_argument(
+        '--clean',
+        action='store_true',
+        help='Delete local parquet files before downloading (manifest.json is kept)'
     )
     parser.add_argument(
         'files',
@@ -150,7 +207,8 @@ Examples:
 
     success_count, fail_count = download_all_from_s3(
         dry_run=args.dry_run,
-        file_filter=args.files if args.files else None
+        file_filter=args.files if args.files else None,
+        clean=args.clean
     )
 
     # サマリー表示
