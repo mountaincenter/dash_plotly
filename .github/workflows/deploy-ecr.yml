@@ -9,6 +9,7 @@ on:
       - 'Dockerfile'
       - 'requirements.txt'
       - '.github/workflows/deploy-ecr.yml'
+  workflow_call:
 
 permissions:
   id-token: write
