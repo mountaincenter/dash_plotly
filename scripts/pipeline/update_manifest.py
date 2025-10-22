@@ -26,6 +26,7 @@ UPLOAD_FILES = [
     "meta.parquet",
     "meta_jquants.parquet",
     "all_stocks.parquet",
+    "grok_trending.parquet",
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_60d_15m.parquet",
