@@ -46,7 +46,8 @@ def fetch_prices_for_tickers(
             interval=interval,
             group_by='ticker',
             threads=True,
-            progress=False
+            progress=False,
+            auto_adjust=True
         )
 
         if df.empty:
@@ -102,7 +103,8 @@ def fetch_prices_for_tickers(
                             tickers=[ticker],
                             period=fallback_period,
                             interval=interval,
-                            progress=False
+                            progress=False,
+                            auto_adjust=True
                         )
 
                         if not ticker_df.empty:
