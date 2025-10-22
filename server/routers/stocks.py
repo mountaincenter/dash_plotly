@@ -62,11 +62,11 @@ def list_stocks_enriched(tag: Optional[str] = Query(default=None, description="F
 
 
 @router.get("")
-def list_stocks(tag: Optional[str] = Query(default=None, description="Filter by primary tag (e.g., takaichi, TOPIX_CORE30)")):
+def list_stocks(tag: Optional[str] = Query(default=None, description="Filter by primary tag (e.g., policy, TOPIX_CORE30)")):
     """全銘柄のメタデータを取得（all_stocks.parquetから）
 
     Args:
-        tag: categoriesでフィルタリング（例: "TOPIX_CORE30", "高市銘柄", "SCALPING_ENTRY", "SCALPING_ACTIVE"）
+        tag: categoriesでフィルタリング（例: "TOPIX_CORE30", "政策銘柄", "SCALPING_ENTRY", "SCALPING_ACTIVE"）
 
     Returns:
         銘柄のメタデータリスト

@@ -70,14 +70,14 @@ def fetch_core30_from_jquants(client: JQuantsClient) -> pd.DataFrame:
     return core30
 
 
-def load_takaichi_stocks() -> pd.DataFrame:
-    """高市銘柄をCSVから読み込み"""
-    print("[INFO] Loading Takaichi stocks from CSV...")
+def load_policy_stocks() -> pd.DataFrame:
+    """政策銘柄をCSVから読み込み"""
+    print("[INFO] Loading Policy stocks from CSV...")
 
-    csv_path = ROOT / "data" / "csv" / "takaichi_stock_issue.csv"
+    csv_path = ROOT / "data" / "csv" / "policy_stock_issue.csv"
 
     if not csv_path.exists():
-        raise FileNotFoundError(f"Takaichi CSV not found: {csv_path}")
+        raise FileNotFoundError(f"Policy CSV not found: {csv_path}")
 
     df = pd.read_csv(csv_path)
 
@@ -99,10 +99,10 @@ def load_takaichi_stocks() -> pd.DataFrame:
     # 2. market の揺れを統一
     df["market"] = df["market"].str.replace(r'（内国株式）$', '', regex=True)
 
-    # 4. categories: 高市銘柄
-    df["categories"] = df.apply(lambda x: ["高市銘柄"], axis=1)
+    # 4. categories: 政策銘柄
+    df["categories"] = df.apply(lambda x: ["政策銘柄"], axis=1)
 
-    # 5. tags: tag2~tag8 から7大分類政策カテゴリを配列で取得（tag1は「高市銘柄」なので除外）
+    # 5. tags: tag2~tag8 から7大分類政策カテゴリを配列で取得（tag1は「政策銘柄」なので除外）
     tag_cols = ["tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8"]
     df["tags"] = df.apply(
         lambda row: [row[col] for col in tag_cols if col in row.index and pd.notna(row[col]) and row[col] != ""],
@@ -116,43 +116,43 @@ def load_takaichi_stocks() -> pd.DataFrame:
     ]
     df = df[[c for c in cols if c in df.columns]].copy()
 
-    print(f"[OK] Loaded {len(df)} Takaichi stocks")
+    print(f"[OK] Loaded {len(df)} Policy stocks")
     return df
 
 
-def merge_and_deduplicate(core30: pd.DataFrame, takaichi: pd.DataFrame) -> pd.DataFrame:
-    """Core30と高市銘柄をマージして重複を処理"""
-    print("[INFO] Merging Core30 and Takaichi stocks...")
+def merge_and_deduplicate(core30: pd.DataFrame, policy: pd.DataFrame) -> pd.DataFrame:
+    """Core30と政策銘柄をマージして重複を処理"""
+    print("[INFO] Merging Core30 and Policy stocks...")
 
     # ticker で重複チェック
     core30_tickers = set(core30["ticker"])
-    takaichi_tickers = set(takaichi["ticker"])
-    overlap = core30_tickers & takaichi_tickers
+    policy_tickers = set(policy["ticker"])
+    overlap = core30_tickers & policy_tickers
 
     if overlap:
-        print(f"[INFO] {len(overlap)} stocks overlap between Core30 and Takaichi: {sorted(overlap)}")
+        print(f"[INFO] {len(overlap)} stocks overlap between Core30 and Policy: {sorted(overlap)}")
         print("[INFO] Merging categories and tags for overlapping stocks")
 
         # 重複する銘柄: categoriesとtagsをマージ
         for ticker in overlap:
             core30_row = core30[core30["ticker"] == ticker].iloc[0]
-            takaichi_row = takaichi[takaichi["ticker"] == ticker].iloc[0]
+            policy_row = policy[policy["ticker"] == ticker].iloc[0]
 
             # categories をマージ（重複なし）
-            combined_categories = list(set(core30_row["categories"] + takaichi_row["categories"]))
+            combined_categories = list(set(core30_row["categories"] + policy_row["categories"]))
 
-            # tags をマージ（高市銘柄のtagsを追加）
-            combined_tags = takaichi_row["tags"]  # 高市銘柄のtagsを使用
+            # tags をマージ（政策銘柄のtagsを追加）
+            combined_tags = policy_row["tags"]  # 政策銘柄のtagsを使用
 
             # core30のrowを更新
             core30.loc[core30["ticker"] == ticker, "categories"] = [combined_categories]
             core30.loc[core30["ticker"] == ticker, "tags"] = [combined_tags]
 
-        # 重複する高市銘柄を除外（既にcore30に統合済み）
-        takaichi = takaichi[~takaichi["ticker"].isin(overlap)].copy()
+        # 重複する政策銘柄を除外（既にcore30に統合済み）
+        policy = policy[~policy["ticker"].isin(overlap)].copy()
 
     # マージ
-    merged = pd.concat([core30, takaichi], ignore_index=True)
+    merged = pd.concat([core30, policy], ignore_index=True)
 
     # カラムの型を統一
     merged["ticker"] = merged["ticker"].astype(str)
@@ -165,7 +165,7 @@ def merge_and_deduplicate(core30: pd.DataFrame, takaichi: pd.DataFrame) -> pd.Da
             merged[col] = merged[col].fillna("").astype(str)
             merged[col] = merged[col].replace("", None)
 
-    print(f"[OK] Merged: {len(merged)} stocks (Core30: {len(core30)}, Takaichi: {len(takaichi)})")
+    print(f"[OK] Merged: {len(merged)} stocks (Core30: {len(core30)}, Policy: {len(policy)})")
     return merged
 
 
@@ -173,7 +173,7 @@ def main() -> int:
     load_dotenv_cascade()
 
     print("=" * 60)
-    print("Generate meta.parquet (Core30 + Takaichi)")
+    print("Generate meta.parquet (Core30 + Policy)")
     print("=" * 60)
 
     # J-Quantsクライアント初期化
@@ -193,22 +193,36 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # 高市銘柄取得
-    print("\n[STEP 3] Loading Takaichi stocks...")
+    # 政策銘柄取得
+    print("\n[STEP 3] Loading Policy stocks...")
     try:
-        takaichi = load_takaichi_stocks()
+        policy = load_policy_stocks()
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
 
     # マージ
     print("\n[STEP 4] Merging stocks...")
-    meta = merge_and_deduplicate(core30, takaichi)
+    meta = merge_and_deduplicate(core30, policy)
 
     # 保存
     print("\n[STEP 5] Saving meta.parquet...")
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-    meta.to_parquet(MASTER_META_PARQUET, engine="pyarrow", index=False)
+
+    # 既存のmeta.parquetを読み込んでカラム構造を保持
+    if MASTER_META_PARQUET.exists():
+        print("  [INFO] Loading existing meta.parquet to preserve column structure...")
+        existing = pd.read_parquet(MASTER_META_PARQUET)
+        # 中身を空にする（カラムのみ保持）
+        empty_df = pd.DataFrame(columns=existing.columns)
+        print(f"  [INFO] Cleared {len(existing)} existing records, preserving schema")
+        # 新しいデータを追加
+        final_df = pd.concat([empty_df, meta], ignore_index=True)
+    else:
+        print("  [INFO] No existing meta.parquet found, creating new file")
+        final_df = meta
+
+    final_df.to_parquet(MASTER_META_PARQUET, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {MASTER_META_PARQUET}")
 
     # S3アップロード
@@ -231,7 +245,7 @@ def main() -> int:
     print("\n" + "=" * 60)
     print(f"Total stocks: {len(meta)}")
     print(f"Core30: {len(core30)}")
-    print(f"Takaichi: {len(takaichi)}")
+    print(f"Policy: {len(policy)}")
     print("=" * 60)
 
     print("\n✅ meta.parquet generated and uploaded successfully!")
@@ -243,11 +257,11 @@ if __name__ == "__main__":
     create_meta.py: 静的銘柄マスター生成（手動実行専用）
 
     データソース:
-    - data/csv/takaichi_stock_issue.csv（Git管理、手動更新）
+    - data/csv/policy_stock_issue.csv（Git管理、手動更新）
     - J-Quants API（Core30のみ）
 
     実行タイミング:
-    - takaichi_stock_issue.csv更新時
+    - policy_stock_issue.csv更新時
     - Core30構成銘柄変更時
 
     GitHub Actions: 実行しない（静的データのため）
