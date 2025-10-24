@@ -314,7 +314,7 @@ jobs:
           GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
           if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
-            # Python で整形
+            # Python で整形（JSON文字列として出力）
             GROK_TEXT=$(python3 -c '
           import json
           import sys
@@ -351,14 +351,16 @@ jobs:
                   lines.append(f"   {reason}")
                   lines.append("")
 
-              print("\\n".join(lines))
+              # JSON文字列としてエスケープして出力
+              text = "\\n".join(lines)
+              print(json.dumps(text, ensure_ascii=False))
           except Exception as e:
               print(f"Error: {e}", file=sys.stderr)
               sys.exit(0)
           ' 2>/dev/null)
 
-            if [ -n "$GROK_TEXT" ]; then
-              GROK_SECTION=",{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"$GROK_TEXT\"}}"
+            if [ -n "$GROK_TEXT" ] && [ "$GROK_TEXT" != "null" ]; then
+              GROK_SECTION=",{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":$GROK_TEXT}}"
             fi
           fi
 
