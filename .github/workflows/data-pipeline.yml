@@ -375,61 +375,73 @@ jobs:
           GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
           if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
-            # Python で整形してJSON blockを直接生成
-            GROK_SECTION=$(python3 -c '
-          import json
-          import sys
+            # Python で整形してファイルに出力（コマンド置換のエスケープ問題を回避）
+            python3 -c '
+import json
+import sys
 
-          try:
-              data = json.loads("""'"$GROK_INFO"'""")
+TEMP_FILE = "/tmp/grok_section.txt"
 
-              if not data or data.get("total", 0) == 0:
-                  print("")
-                  sys.exit(0)
+try:
+    data = json.loads("""'"$GROK_INFO"'""")
 
-              # ヘッダー
-              lines = []
-              lines.append("📈 *GROK銘柄更新*")
-              lines.append("")
+    if not data or data.get("total", 0) == 0:
+        # 空ファイル作成
+        open(TEMP_FILE, "w").close()
+        sys.exit(0)
 
-              # 時刻別集計
-              time_counts = data.get("time_counts", {})
-              for time, count in sorted(time_counts.items()):
-                  lines.append(f"  {time}更新: {count}銘柄")
-              lines.append(f"  合計: {data[\"total\"]}銘柄")
-              lines.append("")
+    # ヘッダー
+    lines = []
+    lines.append("📈 *GROK銘柄更新*")
+    lines.append("")
 
-              # 銘柄リスト（全銘柄）
-              stocks = data.get("stocks", [])
-              for i, stock in enumerate(stocks, 1):
-                  ticker = stock.get("ticker", "")
-                  name = stock.get("stock_name", "")
-                  tags = stock.get("tags", "")
-                  reason = stock.get("reason", "")
-                  time = stock.get("selected_time", "")
+    # 時刻別集計
+    time_counts = data.get("time_counts", {})
+    for time, count in sorted(time_counts.items()):
+        lines.append(f"  {time}更新: {count}銘柄")
+    lines.append(f"  合計: {data[\"total\"]}銘柄")
+    lines.append("")
 
-                  lines.append(f"{i}. *{ticker}* {name} [{time}]")
-                  lines.append(f"   _{tags}_")
-                  lines.append(f"   {reason}")
-                  lines.append("")
+    # 銘柄リスト（全銘柄）
+    stocks = data.get("stocks", [])
+    for i, stock in enumerate(stocks, 1):
+        ticker = stock.get("ticker", "")
+        name = stock.get("stock_name", "")
+        tags = stock.get("tags", "")
+        reason = stock.get("reason", "")
+        time = stock.get("selected_time", "")
 
-              # JSON blockとして出力
-              text = "\\n".join(lines)
-              block = {
-                  "type": "section",
-                  "text": {
-                      "type": "mrkdwn",
-                      "text": text
-                  }
-              }
-              # 先頭にカンマを付けて出力
-              print("," + json.dumps(block, ensure_ascii=False))
-          except Exception as e:
-              # エラー時は空文字列を出力
-              print("", file=sys.stderr)
-              print("")
-              sys.exit(0)
-          ' 2>&1)
+        lines.append(f"{i}. *{ticker}* {name} [{time}]")
+        lines.append(f"   _{tags}_")
+        lines.append(f"   {reason}")
+        lines.append("")
+
+    # JSON blockとして出力
+    text = "\\n".join(lines)
+    block = {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": text
+        }
+    }
+
+    # ファイルに出力（先頭にカンマを付ける）
+    with open(TEMP_FILE, "w", encoding="utf-8") as f:
+        f.write("," + json.dumps(block, ensure_ascii=False))
+
+except Exception as e:
+    # エラー時は空ファイル作成
+    print(f"Error formatting GROK info: {e}", file=sys.stderr)
+    open(TEMP_FILE, "w").close()
+'
+
+            # ファイルから読み込み
+            if [ -f "/tmp/grok_section.txt" ] && [ -s "/tmp/grok_section.txt" ]; then
+              GROK_SECTION=$(cat /tmp/grok_section.txt)
+            else
+              GROK_SECTION=""
+            fi
           else
             GROK_SECTION=""
           fi
