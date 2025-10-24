@@ -10,6 +10,7 @@ on:
       - 'requirements.txt'
       - '.github/workflows/deploy-ecr.yml'
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   id-token: write
