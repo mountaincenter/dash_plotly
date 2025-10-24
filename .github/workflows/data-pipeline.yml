@@ -239,20 +239,28 @@ jobs:
 
       - name: Archive GROK trending for backtest
         id: archive-grok
-        if: |
-          success() &&
-          github.event.schedule == '0 17 * * *'
+        if: success()
         run: |
           if [ -f "data/parquet/grok_trending.parquet" ]; then
-            echo "📦 Archiving GROK trending for backtest (26:00 run)..."
+            # cron判定
+            if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
+              RUN_TIME="16:00"
+            elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+              RUN_TIME="26:00"
+            else
+              RUN_TIME="manual"
+            fi
+
+            echo "📦 Archiving GROK trending for backtest ($RUN_TIME run)..."
 
             # 日付取得（JST基準、YYYYMMDD形式）
             DATE=$(TZ=Asia/Tokyo date +%Y%m%d)
             BACKTEST_FILE="grok_trending_${DATE}.parquet"
             BACKTEST_DIR="data/parquet/backtest"
 
+            echo "[INFO] Run time: $RUN_TIME"
             echo "[INFO] JST Date: $DATE"
-            echo "[INFO] Backup file: $BACKTEST_FILE"
+            echo "[INFO] Backup file: $BACKTEST_FILE (will overwrite if exists)"
 
             # バックテストディレクトリ作成
             mkdir -p "$BACKTEST_DIR"
