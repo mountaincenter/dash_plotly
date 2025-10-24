@@ -355,7 +355,35 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
         selected_time: "16:00" or "26:00"
         should_merge: True なら既存データとマージ（26時更新用）、False なら新規作成
     """
+    import os
+    import boto3
+    from botocore.exceptions import ClientError
+
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 26時更新時: S3から既存ファイルをダウンロードしてマージ
+    if should_merge:
+        # ローカルにファイルがない場合、S3からダウンロード
+        if not GROK_TRENDING_PATH.exists():
+            print("[INFO] Local file not found, attempting to download from S3...")
+            try:
+                s3_client = boto3.client('s3')
+                bucket = os.getenv('S3_BUCKET', 'dash-plotly')
+                key = 'parquet/grok_trending.parquet'
+
+                # S3からダウンロード
+                s3_client.download_file(bucket, key, str(GROK_TRENDING_PATH))
+                print(f"[OK] Downloaded from S3: s3://{bucket}/{key}")
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    print(f"[WARN] File not found in S3: s3://{bucket}/{key}")
+                    print(f"[WARN] Will create new file instead of merging")
+                else:
+                    print(f"[WARN] Failed to download from S3: {e}")
+                    print(f"[WARN] Will create new file instead of merging")
+            except Exception as e:
+                print(f"[WARN] Failed to download from S3: {e}")
+                print(f"[WARN] Will create new file instead of merging")
 
     if should_merge and GROK_TRENDING_PATH.exists():
         # 既存データとマージ（26時更新時）
