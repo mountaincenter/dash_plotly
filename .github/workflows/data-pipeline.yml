@@ -375,66 +375,8 @@ jobs:
           GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
           if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
-            # Python で整形してファイルに出力（コマンド置換のエスケープ問題を回避）
-            python3 -c '
-import json
-import sys
-
-TEMP_FILE = "/tmp/grok_section.txt"
-
-try:
-    data = json.loads("""'"$GROK_INFO"'""")
-
-    if not data or data.get("total", 0) == 0:
-        # 空ファイル作成
-        open(TEMP_FILE, "w").close()
-        sys.exit(0)
-
-    # ヘッダー
-    lines = []
-    lines.append("📈 *GROK銘柄更新*")
-    lines.append("")
-
-    # 時刻別集計
-    time_counts = data.get("time_counts", {})
-    for time, count in sorted(time_counts.items()):
-        lines.append(f"  {time}更新: {count}銘柄")
-    lines.append(f"  合計: {data[\"total\"]}銘柄")
-    lines.append("")
-
-    # 銘柄リスト（全銘柄）
-    stocks = data.get("stocks", [])
-    for i, stock in enumerate(stocks, 1):
-        ticker = stock.get("ticker", "")
-        name = stock.get("stock_name", "")
-        tags = stock.get("tags", "")
-        reason = stock.get("reason", "")
-        time = stock.get("selected_time", "")
-
-        lines.append(f"{i}. *{ticker}* {name} [{time}]")
-        lines.append(f"   _{tags}_")
-        lines.append(f"   {reason}")
-        lines.append("")
-
-    # JSON blockとして出力
-    text = "\\n".join(lines)
-    block = {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": text
-        }
-    }
-
-    # ファイルに出力（先頭にカンマを付ける）
-    with open(TEMP_FILE, "w", encoding="utf-8") as f:
-        f.write("," + json.dumps(block, ensure_ascii=False))
-
-except Exception as e:
-    # エラー時は空ファイル作成
-    print(f"Error formatting GROK info: {e}", file=sys.stderr)
-    open(TEMP_FILE, "w").close()
-'
+            # 別ファイルのPythonスクリプトでフォーマット（YAMLエスケープ問題を回避）
+            python3 scripts/format_grok_slack.py "$GROK_INFO"
 
             # ファイルから読み込み
             if [ -f "/tmp/grok_section.txt" ] && [ -s "/tmp/grok_section.txt" ]; then
