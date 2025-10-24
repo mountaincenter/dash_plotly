@@ -243,47 +243,47 @@ jobs:
         run: |
           # GROK銘柄情報を抽出
           if [ -f "data/parquet/grok_trending.parquet" ]; then
-            GROK_INFO=$(python -c "
-import pandas as pd
-import json
+            GROK_INFO=$(python3 -c '
+          import pandas as pd
+          import json
 
-df = pd.read_parquet('data/parquet/grok_trending.parquet')
+          df = pd.read_parquet("data/parquet/grok_trending.parquet")
 
-if df.empty:
-    print('')
-    exit(0)
+          if df.empty:
+              print("")
+              exit(0)
 
-# selected_time別の集計
-time_counts = df['selected_time'].value_counts().to_dict() if 'selected_time' in df.columns else {}
+          # selected_time別の集計
+          time_counts = df["selected_time"].value_counts().to_dict() if "selected_time" in df.columns else {}
 
-# 銘柄リスト生成（全銘柄）
-stocks_list = []
-for _, row in df.iterrows():
-    ticker = row.get('ticker', '')
-    stock_name = row.get('stock_name', '')
-    reason = row.get('reason', '')
-    tags = row.get('tags', '')
-    selected_time = row.get('selected_time', '')
+          # 銘柄リスト生成（全銘柄）
+          stocks_list = []
+          for _, row in df.iterrows():
+              ticker = row.get("ticker", "")
+              stock_name = row.get("stock_name", "")
+              reason = row.get("reason", "")
+              tags = row.get("tags", "")
+              selected_time = row.get("selected_time", "")
 
-    # reasonを100文字に切り詰め
-    reason_short = reason[:100] + '...' if len(reason) > 100 else reason
+              # reasonを100文字に切り詰め
+              reason_short = reason[:100] + "..." if len(reason) > 100 else reason
 
-    stocks_list.append({
-        'ticker': ticker,
-        'stock_name': stock_name,
-        'reason': reason_short,
-        'tags': tags,
-        'selected_time': selected_time
-    })
+              stocks_list.append({
+                  "ticker": ticker,
+                  "stock_name": stock_name,
+                  "reason": reason_short,
+                  "tags": tags,
+                  "selected_time": selected_time
+              })
 
-result = {
-    'total': len(df),
-    'time_counts': time_counts,
-    'stocks': stocks_list
-}
+          result = {
+              "total": len(df),
+              "time_counts": time_counts,
+              "stocks": stocks_list
+          }
 
-print(json.dumps(result, ensure_ascii=False))
-" 2>/dev/null)
+          print(json.dumps(result, ensure_ascii=False))
+          ' 2>/dev/null)
           else
             GROK_INFO=""
           fi
@@ -315,47 +315,47 @@ print(json.dumps(result, ensure_ascii=False))
 
           if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
             # Python で整形
-            GROK_TEXT=$(python -c "
-import json
-import sys
+            GROK_TEXT=$(python3 -c '
+          import json
+          import sys
 
-try:
-    data = json.loads('''$GROK_INFO''')
+          try:
+              data = json.loads("""'"$GROK_INFO"'""")
 
-    if not data or data.get('total', 0) == 0:
-        sys.exit(0)
+              if not data or data.get("total", 0) == 0:
+                  sys.exit(0)
 
-    # ヘッダー
-    lines = []
-    lines.append('📈 *GROK銘柄更新*')
-    lines.append('')
+              # ヘッダー
+              lines = []
+              lines.append("📈 *GROK銘柄更新*")
+              lines.append("")
 
-    # 時刻別集計
-    time_counts = data.get('time_counts', {})
-    for time, count in sorted(time_counts.items()):
-        lines.append(f'  {time}更新: {count}銘柄')
-    lines.append(f'  合計: {data[\"total\"]}銘柄')
-    lines.append('')
+              # 時刻別集計
+              time_counts = data.get("time_counts", {})
+              for time, count in sorted(time_counts.items()):
+                  lines.append(f"  {time}更新: {count}銘柄")
+              lines.append(f"  合計: {data[\"total\"]}銘柄")
+              lines.append("")
 
-    # 銘柄リスト（全銘柄）
-    stocks = data.get('stocks', [])
-    for i, stock in enumerate(stocks, 1):
-        ticker = stock.get('ticker', '')
-        name = stock.get('stock_name', '')
-        tags = stock.get('tags', '')
-        reason = stock.get('reason', '')
-        time = stock.get('selected_time', '')
+              # 銘柄リスト（全銘柄）
+              stocks = data.get("stocks", [])
+              for i, stock in enumerate(stocks, 1):
+                  ticker = stock.get("ticker", "")
+                  name = stock.get("stock_name", "")
+                  tags = stock.get("tags", "")
+                  reason = stock.get("reason", "")
+                  time = stock.get("selected_time", "")
 
-        lines.append(f'{i}. *{ticker}* {name} [{time}]')
-        lines.append(f'   _{tags}_')
-        lines.append(f'   {reason}')
-        lines.append('')
+                  lines.append(f"{i}. *{ticker}* {name} [{time}]")
+                  lines.append(f"   _{tags}_")
+                  lines.append(f"   {reason}")
+                  lines.append("")
 
-    print('\\\\n'.join(lines))
-except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
-    sys.exit(0)
-" 2>/dev/null)
+              print("\\n".join(lines))
+          except Exception as e:
+              print(f"Error: {e}", file=sys.stderr)
+              sys.exit(0)
+          ' 2>/dev/null)
 
             if [ -n "$GROK_TEXT" ]; then
               GROK_SECTION=",{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"$GROK_TEXT\"}}"
