@@ -80,13 +80,74 @@ def get_file_stats(file_path: Path) -> Dict[str, any]:
         }
 
 
+def get_grok_metadata() -> Dict[str, any]:
+    """grok_trending.parquet からメタデータを取得"""
+    grok_file = PARQUET_DIR / "grok_trending.parquet"
+
+    if not grok_file.exists():
+        return {
+            "grok_update_flag": False,
+            "grok_last_update_date": None,
+            "grok_last_update_time": None,
+        }
+
+    try:
+        df = pd.read_parquet(grok_file)
+
+        if df.empty:
+            return {
+                "grok_update_flag": False,
+                "grok_last_update_date": None,
+                "grok_last_update_time": None,
+            }
+
+        # 最新の date と selected_time を取得
+        latest_date = df["date"].max() if "date" in df.columns else None
+
+        # selected_time が存在するか確認
+        if "selected_time" in df.columns:
+            # 最新の selected_time を取得（26:00 があれば26:00、なければ16:00）
+            times = df["selected_time"].unique()
+            if "26:00" in times:
+                latest_time = "26:00"
+            elif "16:00" in times:
+                latest_time = "16:00"
+            else:
+                latest_time = None
+        else:
+            latest_time = None
+
+        # フラグ: データが存在し、日付と時刻が取得できた場合は true
+        update_flag = bool(latest_date and latest_time)
+
+        return {
+            "grok_update_flag": update_flag,
+            "grok_last_update_date": latest_date,
+            "grok_last_update_time": latest_time,
+        }
+
+    except Exception as e:
+        print(f"  [WARN] Failed to read grok metadata: {e}")
+        return {
+            "grok_update_flag": False,
+            "grok_last_update_date": None,
+            "grok_last_update_time": None,
+        }
+
+
 def generate_manifest() -> Dict[str, any]:
     """manifest.jsonを生成"""
     print("[INFO] Generating manifest.json...")
 
+    # GROK メタデータを取得
+    grok_meta = get_grok_metadata()
+
     manifest = {
         "generated_at": datetime.now().isoformat(),
         "update_flag": datetime.now().strftime("%Y-%m-%d"),
+        "grok_update_flag": grok_meta["grok_update_flag"],
+        "grok_last_update_date": grok_meta["grok_last_update_date"],
+        "grok_last_update_time": grok_meta["grok_last_update_time"],
         "files": {},
     }
 

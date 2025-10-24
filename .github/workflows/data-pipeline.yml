@@ -239,15 +239,20 @@ jobs:
 
       - name: Archive GROK trending for backtest
         id: archive-grok
-        if: success()
+        if: |
+          success() &&
+          github.event.schedule == '0 17 * * *'
         run: |
           if [ -f "data/parquet/grok_trending.parquet" ]; then
-            echo "📦 Archiving GROK trending for backtest..."
+            echo "📦 Archiving GROK trending for backtest (26:00 run)..."
 
-            # 日付取得（YYYYMMDD形式）
-            DATE=$(date -u +%Y%m%d)
+            # 日付取得（JST基準、YYYYMMDD形式）
+            DATE=$(TZ=Asia/Tokyo date +%Y%m%d)
             BACKTEST_FILE="grok_trending_${DATE}.parquet"
             BACKTEST_DIR="data/parquet/backtest"
+
+            echo "[INFO] JST Date: $DATE"
+            echo "[INFO] Backup file: $BACKTEST_FILE"
 
             # バックテストディレクトリ作成
             mkdir -p "$BACKTEST_DIR"
@@ -256,15 +261,15 @@ jobs:
             cp "data/parquet/grok_trending.parquet" "$BACKTEST_DIR/$BACKTEST_FILE"
             echo "✅ Created: $BACKTEST_DIR/$BACKTEST_FILE"
 
-            # S3にアップロード
+            # S3にアップロード（上書き保存）
             aws s3 cp "$BACKTEST_DIR/$BACKTEST_FILE" \
               "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$BACKTEST_FILE" \
               --region ${{ env.AWS_REGION }}
             echo "✅ Uploaded to S3: s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$BACKTEST_FILE"
 
-            # 5営業日以前のファイルを削除（簡易版: 7日以前のファイルを削除）
+            # 7日以前のファイルを削除
             echo "🗑️  Cleaning old backtest files (keeping last 7 days)..."
-            CUTOFF_DATE=$(date -u -d '7 days ago' +%Y%m%d)
+            CUTOFF_DATE=$(TZ=Asia/Tokyo date -d '7 days ago' +%Y%m%d)
 
             # S3上のバックテストファイルをリストアップ
             aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/" \

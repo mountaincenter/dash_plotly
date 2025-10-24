@@ -346,6 +346,52 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     return df
 
 
+def get_jst_date() -> str:
+    """
+    JST基準の日付を取得（YYYY-MM-DD形式）
+    """
+    from datetime import timezone, timedelta
+    jst = timezone(timedelta(hours=9))
+    now_jst = datetime.now(jst)
+    return now_jst.strftime("%Y-%m-%d")
+
+
+def download_manifest_from_s3() -> dict:
+    """
+    S3から manifest.json をダウンロード
+
+    Returns:
+        manifest.json の内容（辞書）
+        ダウンロード失敗時は空の辞書
+    """
+    import os
+    import boto3
+    import json
+    from botocore.exceptions import ClientError
+
+    try:
+        bucket = os.getenv('S3_BUCKET', 'dash-plotly')
+        key = 'parquet/manifest.json'
+
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        manifest_data = response['Body'].read().decode('utf-8')
+        manifest = json.loads(manifest_data)
+
+        print(f"[OK] Downloaded manifest.json from S3: s3://{bucket}/{key}")
+        return manifest
+
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            print(f"[WARN] manifest.json not found in S3")
+        else:
+            print(f"[WARN] Failed to download manifest.json from S3: {e}")
+        return {}
+    except Exception as e:
+        print(f"[WARN] Failed to parse manifest.json: {e}")
+        return {}
+
+
 def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool = False) -> None:
     """
     Save to grok_trending.parquet
@@ -431,8 +477,17 @@ def main() -> int:
     # コマンドライン引数をパース
     args = parse_args()
 
+    # 手動実行判定（workflow_dispatch）
+    import os
+    event_name = os.getenv('GITHUB_EVENT_NAME', '')
+    is_manual_run = event_name == 'workflow_dispatch'
+
     # selected_time を決定
-    if args.time:
+    if is_manual_run:
+        # 手動実行時は常に16:00扱い
+        selected_time = "16:00"
+        print("[INFO] Manual execution detected (workflow_dispatch)")
+    elif args.time:
         selected_time = args.time
     else:
         # パイプライン実行時は引数なしで実行される想定
@@ -445,19 +500,50 @@ def main() -> int:
     print(f"[INFO] Update time: {selected_time}")
 
     # クリーンアップ判定
-    # 1. --cleanup フラグが指定されている
-    # 2. 16:00 更新（16時データは常にクリーン）
-    # 3. パイプライン実行で16時判定された場合
-    should_cleanup = args.cleanup or selected_time == "16:00"
-    should_merge = selected_time == "26:00" and not args.cleanup
+    should_cleanup = False
+    should_merge = False
 
+    if selected_time == "16:00" or is_manual_run:
+        # 16時実行 または 手動実行 → 常にクリーンアップ
+        should_cleanup = True
+        should_merge = False
+        print("[INFO] Mode: CLEANUP (16:00 run or manual execution)")
+    elif selected_time == "26:00":
+        # 26時実行 → manifest.json を確認
+        print("[INFO] 26:00 run detected, checking manifest.json...")
+        manifest = download_manifest_from_s3()
+
+        # 今日の日付（JST）
+        today_jst = get_jst_date()
+        print(f"[INFO] Today (JST): {today_jst}")
+
+        # フラグと日付を確認
+        grok_flag = manifest.get("grok_update_flag", False)
+        grok_date = manifest.get("grok_last_update_date", "")
+        grok_time = manifest.get("grok_last_update_time", "")
+
+        print(f"[INFO] Manifest: flag={grok_flag}, date={grok_date}, time={grok_time}")
+
+        if grok_flag and grok_date == today_jst:
+            # 16時成功済み → 追記処理
+            should_cleanup = False
+            should_merge = True
+            print("[INFO] Mode: MERGE (16:00 run succeeded today, appending 26:00 data)")
+        else:
+            # 16時失敗 または 日付が古い → 16時処理をやり直し
+            should_cleanup = True
+            should_merge = False
+            print("[INFO] Mode: CLEANUP (16:00 run failed or outdated, retrying as 16:00)")
+    else:
+        # 不明な時刻 → デフォルトはクリーンアップ
+        should_cleanup = True
+        should_merge = False
+
+    # クリーンアップ実行
     if should_cleanup:
-        print("[INFO] Mode: CLEANUP (fresh data only)")
         if GROK_TRENDING_PATH.exists():
             GROK_TRENDING_PATH.unlink()
             print("[INFO] Removed old grok_trending.parquet")
-    else:
-        print("[INFO] Mode: MERGE (append to existing 16:00 data)")
 
     print()
 
