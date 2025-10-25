@@ -109,7 +109,16 @@ def create_meta_jquants_forced() -> tuple[bool, pd.DataFrame]:
     # 重複削除
     output_df = output_df.drop_duplicates(subset=["ticker"]).reset_index(drop=True)
 
-    print(f"  ✓ Processed {len(output_df)} stocks")
+    print(f"  ✓ Processed {len(output_df)} stocks (before market filtering)")
+
+    # 市場フィルタリング: プライム/スタンダード/グロースのみ
+    target_markets = ["プライム", "スタンダード", "グロース"]
+    before_filter = len(output_df)
+    output_df = output_df[output_df["market"].str.contains("|".join(target_markets), na=False, regex=True)].copy()
+    after_filter = len(output_df)
+    removed = before_filter - after_filter
+
+    print(f"  ✓ Market filtering: {after_filter} stocks (removed {removed} from その他)")
     print(f"  ✓ Final columns: {', '.join(output_df.columns)}")
 
     # 保存
@@ -148,7 +157,7 @@ def upload_to_s3(file_path: Path) -> bool:
         success = upload_file(cfg, file_path, file_path.name)
 
         if success:
-            print(f"  ✓ Uploaded to S3: s3://{cfg['bucket']}/{cfg['prefix']}{file_path.name}")
+            print(f"  ✓ Uploaded to S3: s3://{cfg.bucket}/{cfg.prefix}{file_path.name}")
             return True
         else:
             print(f"  ✗ Failed to upload to S3")
