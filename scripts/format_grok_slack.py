@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-GROK銘柄情報をSlack Block形式にフォーマット
+GROK銘柄情報をSlack Block形式にフォーマット（改善版）
+全銘柄を個別セクションブロックで表示
 """
 import json
 import sys
@@ -21,19 +22,45 @@ def main():
             open(TEMP_FILE, "w").close()
             return 0
 
-        # ヘッダー
-        lines = []
-        lines.append("📈 *GROK銘柄更新*")
-        lines.append("")
+        # ブロックリストを作成
+        blocks = []
 
-        # 時刻別集計
+        # 1. ヘッダーブロック
+        blocks.append({
+            "type": "divider"
+        })
+        blocks.append({
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "📈 GROK銘柄更新"
+            }
+        })
+
+        # 2. 集計情報
         time_counts = data.get("time_counts", {})
-        for time, count in sorted(time_counts.items()):
-            lines.append(f"  {time}更新: {count}銘柄")
-        lines.append(f"  合計: {data['total']}銘柄")
-        lines.append("")
+        fields = []
+        for time in sorted(time_counts.keys()):
+            count = time_counts[time]
+            fields.append({
+                "type": "mrkdwn",
+                "text": f"*{time}更新:*\n{count}銘柄"
+            })
+        fields.append({
+            "type": "mrkdwn",
+            "text": f"*合計:*\n{data['total']}銘柄"
+        })
 
-        # 銘柄リスト（全銘柄）
+        blocks.append({
+            "type": "section",
+            "fields": fields
+        })
+
+        blocks.append({
+            "type": "divider"
+        })
+
+        # 3. 各銘柄を個別セクションで表示
         stocks = data.get("stocks", [])
         for i, stock in enumerate(stocks, 1):
             ticker = stock.get("ticker", "")
@@ -42,24 +69,43 @@ def main():
             reason = stock.get("reason", "")
             time = stock.get("selected_time", "")
 
-            lines.append(f"{i}. *{ticker}* {name} [{time}]")
-            lines.append(f"   _{tags}_")
-            lines.append(f"   {reason}")
-            lines.append("")
+            # タグをインラインコード形式に、理由を引用ブロック形式に
+            # タグの "+" を " + " に変換してスペースを追加
+            formatted_tags = tags.replace("+", " + ") if tags else ""
 
-        # JSON blockとして出力
-        text = "\\n".join(lines)
-        block = {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": text
-            }
-        }
+            text = f"*{i}. {ticker} {name}* `[{time}]`\n"
+            if formatted_tags:
+                text += f"`{formatted_tags}`\n"
+            if reason:
+                text += f"> {reason}"
 
-        # ファイルに出力（先頭にカンマを付ける）
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": text
+                }
+            })
+
+        # 4. フッター
+        blocks.append({
+            "type": "divider"
+        })
+        blocks.append({
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "💡 セクション分割で読みやすく表示"
+                }
+            ]
+        })
+
+        # JSON配列として出力（先頭にカンマを付ける）
         with open(TEMP_FILE, "w", encoding="utf-8") as f:
-            f.write("," + json.dumps(block, ensure_ascii=False))
+            # 各ブロックをカンマ区切りで連結
+            blocks_json = ",".join([json.dumps(block, ensure_ascii=False) for block in blocks])
+            f.write("," + blocks_json)
 
         return 0
 
