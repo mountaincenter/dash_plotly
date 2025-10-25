@@ -1,0 +1,188 @@
+name: Test Slack Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      notification_type:
+        description: "通知タイプを選択"
+        type: choice
+        options:
+          - grok_formatted
+          - grok_current
+          - pipeline_success
+        default: grok_formatted
+
+permissions:
+  contents: read
+
+jobs:
+  test-slack:
+    name: Send Test Slack Notification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send GROK formatted notification (improved)
+        if: github.event.inputs.notification_type == 'grok_formatted'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "📊 GROK銘柄更新テスト (改善版)",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "📈 GROK銘柄更新 (テスト - 改善版)"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*16:00更新:*\n12銘柄"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*合計:*\n12銘柄"
+                  }
+                ]
+              },
+              {
+                "type": "divider"
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*1. 4592.T サンバイオ* `[16:00]`\n`バイオ材料 + 株クラバズ`\n> 2025年10月24日引け後に再生医療関連の治験進展IRを発表。Xで「2025年10月27日寄付買い」の投稿が150件以上確認..."
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*2. 7779.T CYBERDYNE* `[16:00]`\n`IR好材料 + 株クラバズ`\n> 2025年10月24日引け後にロボットリハビリ機器の新製品発表IR。Xで「2025年10月27日仕込む」との投稿が急増（約120件）..."
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*3. 3914.T JIG-SAW* `[16:00]`\n`IR好材料 + 株クラバズ`\n> 2025年10月24日夜にIoT関連の業務提携IRを発表。Xでハッシュタグ#注目銘柄付きの投稿が80件以上..."
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*4. 7071.T アンビスHD* `[16:00]`\n`決算好材料 + 株クラバズ`\n> 2025年10月24日引け後に好決算発表。Xで「2025年10月27日ストップ高狙い」の声が100件以上..."
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*5. 6195.T ホープ* `[16:00]`\n`IR好材料 + 株クラバズ`\n> 2025年10月24日夜に自治体向けDXサービスの受注IR発表。Xで「2025年10月27日買い」の投稿が90件以上..."
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "📋 _他7銘柄: 6. 4393.T バンク・オブ・イノベーション, 7. 3674.T オークファン, 8. 7033.T マネジメントソリューションズ, 9. 4055.T ティアンドエス, 10. 6082.T ライドオンエクスプレスHD, 11. 4425.T Kudan, 12. 7359.T 東京通信グループ_"
+                  }
+                ]
+              },
+              {
+                "type": "divider"
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "💡 *改善点:* セクション分割、インラインコードでタグ表示、引用ブロックで理由を整理、残りの銘柄をコンパクトに表示"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL"
+
+      - name: Send GROK current notification (現在の形式)
+        if: github.event.inputs.notification_type == 'grok_current'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          # 現在のフォーマット（見づらい版）
+          MESSAGE='{
+            "text": "📊 GROK銘柄更新テスト (現在の形式)",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":上昇折れ線グラフ: *GROK銘柄更新*\n\n  16:00更新: 12銘柄\n  合計: 12銘柄\n\n1. 4592.T サンバイオ [16:00]\n   _バイオ材料+株クラバズ_\n   2025年10月24日引け後に再生医療関連の治験進展IRを発表。Xで「2025年10月27日寄付買い」の投稿が150件以上確認、有名投資家アカウント（フォロワー2万人）も言及。2025年10月24日出...\n\n2. 7779.T CYBERDYNE [16:00]\n   _IR好材料+株クラバズ_\n   2025年10月24日引け後にロボットリハビリ機器の新製品発表IR。Xで「2025年10月27日仕込む」との投稿が急増（約120件）。2025年10月24日出来高は平均の3.2倍、ATR 4.8%、時...\n\n3. 3914.T JIG-SAW [16:00]\n   _IR好材料+株クラバズ_\n   2025年10月24日夜にIoT関連の業務提携IRを発表。Xでハッシュタグ#注目銘柄付きの投稿が80件以上。2025年10月24日出来高は平均の2.5倍、ATR 5.2%、時価総額180億円で個人投資..."
+                }
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL"
+
+      - name: Send pipeline success notification
+        if: github.event.inputs.notification_type == 'pipeline_success'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          MESSAGE='{
+            "text": "✅ Data Pipeline Succeeded (Test)",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Data Pipeline Succeeded (Test)*\nWorkflow test notification."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*Branch:*\n`main`"},
+                  {"type": "mrkdwn", "text": "*Trigger:*\n`Manual Test`"},
+                  {"type": "mrkdwn", "text": "*J-Quants:*\n✅ 正常"},
+                  {"type": "mrkdwn", "text": "*Latest Price Date:*\n`2025-10-25`"}
+                ]
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {"type": "mrkdwn", "text": "*meta_jquants:*\n`3790`銘柄"},
+                  {"type": "mrkdwn", "text": "*all_stocks:*\n`3800`銘柄"},
+                  {"type": "mrkdwn", "text": "*grok_trending:*\n`12`銘柄 (NEW)"},
+                  {"type": "mrkdwn", "text": "*scalping (skipped):*\n`0`/`0`銘柄"}
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Workflow Run"},
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }'
+          curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL"
+
+      - name: Test completed
+        run: |
+          echo "✅ Slack notification test completed"
+          echo "Selected type: ${{ github.event.inputs.notification_type }}"
