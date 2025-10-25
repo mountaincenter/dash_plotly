@@ -201,16 +201,40 @@ def build_grok_prompt(context: dict[str, str]) -> str:
     "ticker_symbol": "3031",
     "company_name": "ラクーンHD",
     "reason": "{context['latest_trading_day']}引け後にEC新サービスのIR発表。その後の株クラで「{context['next_trading_day']}寄付買い」の投稿が急増（100件以上）。{context['latest_trading_day']}の出来高は平均の4.2倍、直近5日ATR 5.8%で値動き活発。小型株（時価総額350億円）で個人投資家主導の急騰期待",
-    "category": "IR好材料+株クラバズ"
+    "category": "IR好材料+株クラバズ",
+    "sentiment_score": 0.85,
+    "policy_link": "High",
+    "has_mention": true,
+    "mentioned_by": "@example_investor, @stock_guru"
   }},
   {{
     "ticker_symbol": "4563",
     "company_name": "アンジェス",
     "reason": "バイオベンチャー。{context['latest_trading_day']}以降に治験進展のニュースが報道され、Xで「{context['next_trading_day']}ストップ高狙い」の言及急増。出来高3.5倍、ATR 6.2%。時価総額200億円の典型的な仕手株",
-    "category": "バイオ材料+仕手株"
+    "category": "バイオ材料+仕手株",
+    "sentiment_score": 0.72,
+    "policy_link": "Med",
+    "has_mention": false,
+    "mentioned_by": ""
   }}
 ]
 ```
+
+**新規フィールドの説明:**
+- **sentiment_score**: センチメントスコア（0.0-1.0）。X（株クラ）での言及の熱量、材料の強さ、注目度を総合評価
+  - 0.9-1.0: 極めて強い（ストップ高級、IRサプライズ、大バズ）
+  - 0.7-0.9: 強い（好材料、株クラで話題）
+  - 0.5-0.7: 中程度（材料あり、一定の注目）
+  - 0.3-0.5: 弱い（材料薄い、バズ少ない）
+
+- **policy_link**: 政府政策・テーマとのリンク強度
+  - "High": 政府の重点政策（半導体、AI、防衛、GX）の中核銘柄
+  - "Med": 政策テーマに関連するが周辺銘柄
+  - "Low": 政策との直接的な関連なし
+
+- **has_mention**: プレミアムユーザー（フォロワー1万人以上）の言及有無（true/false）
+
+- **mentioned_by**: 言及したプレミアムユーザー名（カンマ区切り、最大3名まで）
 
 【注意事項】
 - 銘柄数: 必ず10〜15銘柄（それ以下・以上は不可）
@@ -293,6 +317,33 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
     return data
 
 
+def calculate_selection_score(item: dict[str, Any]) -> float:
+    """
+    選定時点でのスコアを計算
+
+    Args:
+        item: Grok APIレスポンスの1銘柄分のデータ
+
+    Returns:
+        float: 選定スコア (0-200点)
+    """
+    # sentiment_score があれば使用、なければ0.5をデフォルト
+    sentiment_score = item.get("sentiment_score", 0.5)
+    score = sentiment_score * 100  # ベーススコア (0-100)
+
+    # policy_link があれば加点
+    policy_link = item.get("policy_link", "Low")
+    policy_bonus = {"High": 30, "Med": 20, "Low": 10}
+    score += policy_bonus.get(policy_link, 10)
+
+    # has_mention (プレミアムユーザー言及) があれば加点
+    has_mention = item.get("has_mention", False)
+    if has_mention:
+        score += 50
+
+    return score
+
+
 def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, selected_time: str) -> pd.DataFrame:
     """
     Convert Grok data to all_stocks.parquet compatible schema
@@ -301,19 +352,30 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         ticker, code, stock_name, market, sectors, series, topixnewindexseries,
         categories, tags, date, Close, change_pct, Volume, vol_ratio,
         atr14_pct, rsi14, score, key_signal
+
+    + Grok拡張スキーマ:
+        reason, source, selected_time, updated_at, sentiment_score,
+        policy_link, has_mention, mentioned_by, selection_score
     """
     print("[INFO] Converting to all_stocks.parquet compatible schema...")
 
     rows = []
-    for item in grok_data:
+    for idx, item in enumerate(grok_data, 1):
         ticker_symbol = item.get("ticker_symbol", "")
         company_name = item.get("company_name", "")
         reason = item.get("reason", "")
         category = item.get("category", "")
+        sentiment_score = item.get("sentiment_score", 0.5)
+        policy_link = item.get("policy_link", "Low")
+        has_mention = item.get("has_mention", False)
+        mentioned_by = item.get("mentioned_by", "")
 
         # tickerは "1234.T" 形式、codeは "1234" 形式
         ticker = f"{ticker_symbol}.T" if not ticker_symbol.endswith(".T") else ticker_symbol
         code = ticker_symbol.replace(".T", "")
+
+        # 選定スコアを計算
+        selection_score = calculate_selection_score(item)
 
         row = {
             "ticker": ticker,
@@ -338,11 +400,28 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
             "source": "grok",  # 新規カラム: データソース
             "selected_time": selected_time,  # 新規カラム: 選定時刻（16:00 or 26:00）
             "updated_at": datetime.now().isoformat(),  # 新規カラム: 更新日時
+            "sentiment_score": sentiment_score,  # センチメントスコア
+            "policy_link": policy_link,  # 政策リンク強度
+            "has_mention": has_mention,  # プレミアムユーザー言及フラグ
+            "mentioned_by": mentioned_by,  # 言及者名
+            "selection_score": selection_score,  # 選定時点スコア
+            "grok_rank": idx,  # Grokの選定順位
         }
         rows.append(row)
 
     df = pd.DataFrame(rows)
+
+    # selection_scoreで降順ソート（Top5を上位に）
+    df = df.sort_values("selection_score", ascending=False).reset_index(drop=True)
+
+    # ランクを再計算（スコア順）
+    df["selection_rank"] = range(1, len(df) + 1)
+
     print(f"[OK] Converted {len(df)} stocks to DataFrame")
+    print(f"[INFO] Top 5 by selection_score:")
+    for i, row in df.head(5).iterrows():
+        print(f"  {row['selection_rank']}. {row['ticker']} - {row['stock_name']} (Score: {row['selection_score']:.1f})")
+
     return df
 
 
@@ -370,7 +449,7 @@ def download_manifest_from_s3() -> dict:
     from botocore.exceptions import ClientError
 
     try:
-        bucket = os.getenv('S3_BUCKET', 'dash-plotly')
+        bucket = os.getenv('S3_BUCKET', 'stock-api-data')
         key = 'parquet/manifest.json'
 
         s3_client = boto3.client('s3')
@@ -414,7 +493,7 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
             print("[INFO] Local file not found, attempting to download from S3...")
             try:
                 s3_client = boto3.client('s3')
-                bucket = os.getenv('S3_BUCKET', 'dash-plotly')
+                bucket = os.getenv('S3_BUCKET', 'stock-api-data')
                 key = 'parquet/grok_trending.parquet'
 
                 # S3からダウンロード

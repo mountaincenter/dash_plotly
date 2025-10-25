@@ -53,6 +53,11 @@ def fetch_prices_for_tickers(
         if df.empty:
             return pd.DataFrame()
 
+        # Intraday data: convert UTC to JST and remove timezone info
+        if interval in ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h']:
+            if hasattr(df.index, 'tz') and df.index.tz is not None:
+                df.index = df.index.tz_convert('Asia/Tokyo').tz_localize(None)
+
         # MultiIndex列を正規化（縦持ち形式に変換）
         if isinstance(df.columns, pd.MultiIndex):
             # 複数銘柄の場合: (ticker, column)形式
@@ -106,6 +111,11 @@ def fetch_prices_for_tickers(
                             progress=False,
                             auto_adjust=True
                         )
+
+                        # Intraday data: convert UTC to JST for fallback as well
+                        if not ticker_df.empty and interval in ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h']:
+                            if hasattr(ticker_df.index, 'tz') and ticker_df.index.tz is not None:
+                                ticker_df.index = ticker_df.index.tz_convert('Asia/Tokyo').tz_localize(None)
 
                         if not ticker_df.empty:
                             ticker_df = ticker_df.reset_index()

@@ -153,6 +153,13 @@ jobs:
           fi
           echo "grok_trending_count=$GROK_COUNT" >> $GITHUB_OUTPUT
 
+          # grok_backtest_meta statistics (NEW)
+          GROK_BACKTEST_EXISTS=false
+          if [ -f "data/parquet/grok_backtest_meta.parquet" ]; then
+            GROK_BACKTEST_EXISTS=true
+          fi
+          echo "grok_backtest_exists=$GROK_BACKTEST_EXISTS" >> $GITHUB_OUTPUT
+
           # scalping statistics (kept for compatibility, will be 0)
           ENTRY_COUNT=0
           ACTIVE_COUNT=0

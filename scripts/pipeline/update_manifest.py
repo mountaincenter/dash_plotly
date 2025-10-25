@@ -27,6 +27,7 @@ UPLOAD_FILES = [
     "meta_jquants.parquet",
     "all_stocks.parquet",
     "grok_trending.parquet",
+    "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_60d_15m.parquet",
@@ -234,7 +235,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
             endpoint_url=cfg.endpoint_url,
         )
 
-        bucket = cfg.bucket or "dash-plotly"
+        bucket = cfg.bucket or "stock-api-data"
         prefix = (cfg.prefix or "parquet/").rstrip("/") + "/"
 
         # S3上の全ファイルを取得

@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime
 
 SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
-SERVICE_URL = os.environ.get('SERVICE_URL', 'https://your-app-runner-url.awsapprunner.com')
+SERVICE_URL = os.environ.get('SERVICE_URL', 'https://saafdwsins.ap-northeast-1.awsapprunner.com')
 
 
 def lambda_handler(event, context):
@@ -21,12 +21,15 @@ def lambda_handler(event, context):
       "detail-type": "AppRunner Service Status Change",
       "detail": {
         "serviceArn": "arn:aws:apprunner:...",
-        "serviceName": "dash-plotly",
+        "serviceName": "stock-api",
         "status": "RUNNING",
         "operationStatus": "CREATE_SUCCEEDED"
       }
     }
     """
+
+    # デバッグ: イベント全体をログ出力
+    print(f"Received event: {json.dumps(event, indent=2)}")
 
     if not SLACK_WEBHOOK_URL:
         print("SLACK_WEBHOOK_URL not configured")
@@ -37,15 +40,16 @@ def lambda_handler(event, context):
 
     detail = event.get('detail', {})
     service_name = detail.get('serviceName', 'Unknown')
-    status = detail.get('status', 'Unknown')
     operation_status = detail.get('operationStatus', 'Unknown')
 
-    # デプロイ完了のイベントのみ通知
-    if status != 'RUNNING':
-        print(f"Skipping notification for status: {status}")
+    print(f"Service: {service_name}, Operation Status: {operation_status}")
+
+    # デプロイ完了のイベントのみ通知（複数パターンに対応）
+    if operation_status not in ['DeploymentCompletedSuccessfully', 'UpdateServiceCompletedSuccessfully']:
+        print(f"Skipping notification for operation status: {operation_status}")
         return {
             'statusCode': 200,
-            'body': json.dumps('Skipped: Not RUNNING status')
+            'body': json.dumps(f'Skipped: {operation_status}')
         }
 
     # Slack メッセージを構築
@@ -63,7 +67,6 @@ def lambda_handler(event, context):
                 "type": "section",
                 "fields": [
                     {"type": "mrkdwn", "text": f"*Service:*\n`{service_name}`"},
-                    {"type": "mrkdwn", "text": f"*Status:*\n`{status}`"},
                     {"type": "mrkdwn", "text": f"*Operation:*\n`{operation_status}`"},
                     {"type": "mrkdwn", "text": f"*Time:*\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}"}
                 ]

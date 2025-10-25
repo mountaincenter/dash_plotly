@@ -1,0 +1,243 @@
+<mxfile host="app.diagrams.net" modified="2025-10-25T00:00:00.000Z" agent="Claude" version="22.0.0" type="device">
+  <diagram name="Full Architecture" id="full-stack-architecture">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Full Stack Architecture: Stock Price Analysis System (Terraform Managed)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="30" width="800" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Background Sections -->
+        <mxCell id="github-section" value="GitHub (CI/CD Pipeline)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;fontSize=14;fontStyle=1;dashed=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="380" height="220" as="geometry" />
+        </mxCell>
+
+        <mxCell id="aws-section" value="AWS Cloud (Terraform Managed)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=14;fontStyle=1;dashed=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="1520" height="380" as="geometry" />
+        </mxCell>
+
+        <mxCell id="external-section" value="External Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=14;fontStyle=1;dashed=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="100" width="1100" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- GitHub Actions -->
+        <mxCell id="github-actions-data" value="GitHub Actions&#xa;Data Pipeline&#xa;(16:00/26:00 JST)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="70" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="github-actions-ecr" value="GitHub Actions&#xa;ECR Deploy&#xa;(Manual)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="250" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <!-- External Services -->
+        <mxCell id="jquants" value="J-Quants API&#xa;Meta Data&#xa;Daily Prices" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="490" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="xai-grok" value="xAI Grok&#xa;Trending&#xa;Analysis" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="660" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="yfinance" value="yFinance&#xa;Intraday&#xa;60d 5m" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="830" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="slack-notify" value="Slack&#xa;Webhook&#xa;Notifications" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="vercel-frontend" value="Vercel&#xa;Next.js&#xa;stock-frontend" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.traditional_server;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="150" width="50" height="87" as="geometry" />
+        </mxCell>
+
+        <mxCell id="users" value="End Users&#xa;Browser" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.users;" vertex="1" parent="1">
+          <mxGeometry x="1465" y="160" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- AWS Services -->
+        <mxCell id="s3" value="Amazon S3&#xa;stock-api-data&#xa;Parquet Files" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#60A337;gradientDirection=north;fillColor=#277116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="220" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ecr" value="Amazon ECR&#xa;stock-api&#xa;Image Lifecycle" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecr;" vertex="1" parent="1">
+          <mxGeometry x="480" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="apprunner" value="AWS App Runner&#xa;stock-api&#xa;Auto Deploy: ON" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.app_runner;" vertex="1" parent="1">
+          <mxGeometry x="740" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="route53" value="Route 53&#xa;stock.api.ymnk.jp&#xa;Custom Domain" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eventbridge" value="EventBridge&#xa;Deployment&#xa;Events" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#FF4F8B;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;" vertex="1" parent="1">
+          <mxGeometry x="740" y="570" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lambda" value="AWS Lambda&#xa;apprunner-&#xa;notification" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="995" y="570" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- IAM Roles Box -->
+        <mxCell id="iam-box" value="IAM Roles (Terraform)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="380" width="280" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="iam-details" value="• GitHubActions-DashPlotly (OIDC)&#xa;  - S3 sync, ECR push&#xa;&#xa;• AppRunnerECRAccessRole&#xa;  - ECR image pull&#xa;&#xa;• AppRunnerInstanceRole&#xa;  - S3 read-only&#xa;&#xa;• LambdaExecutionRole&#xa;  - CloudWatch Logs" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="405" width="260" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- Monitoring Box -->
+        <mxCell id="monitoring-box" value="Monitoring &amp; Observability" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="560" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="monitoring-details" value="• CloudWatch Logs&#xa;  - App Runner service logs&#xa;  - Lambda execution logs&#xa;&#xa;• EventBridge Events&#xa;  - App Runner deployment status&#xa;&#xa;• Slack Notifications&#xa;  - Pipeline success/failure&#xa;  - GROK trending (12 stocks)&#xa;  - Deployment completion" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="585" width="260" height="105" as="geometry" />
+        </mxCell>
+
+        <!-- Data Flow Arrows -->
+        <!-- GitHub Actions Data Pipeline -->
+        <mxCell id="arrow-data-jquants" value="Fetch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8C4FFF;strokeWidth=2;" edge="1" parent="1" source="github-actions-data" target="jquants">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-data-grok" value="Generate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8C4FFF;strokeWidth=2;" edge="1" parent="1" source="github-actions-data" target="xai-grok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-data-yfinance" value="Fetch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8C4FFF;strokeWidth=2;" edge="1" parent="1" source="github-actions-data" target="yfinance">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-data-s3" value="Upload&#xa;Parquet" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#277116;strokeWidth=3;" edge="1" parent="1" source="github-actions-data" target="s3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="95" y="280" />
+              <mxPoint x="250" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-data-slack" value="Notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BC1356;strokeWidth=2;dashed=1;" edge="1" parent="1" source="github-actions-data" target="slack-notify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- GitHub Actions ECR Deploy -->
+        <mxCell id="arrow-ecr-push" value="Docker&#xa;Push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D05C17;strokeWidth=3;" edge="1" parent="1" source="github-actions-ecr" target="ecr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="275" y="280" />
+              <mxPoint x="510" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ECR to App Runner -->
+        <mxCell id="arrow-ecr-apprunner" value="Auto Deploy&#xa;(latest tag)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D05C17;strokeWidth=3;" edge="1" parent="1" source="ecr" target="apprunner">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- App Runner to S3 -->
+        <mxCell id="arrow-apprunner-s3" value="Read&#xa;Data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#277116;strokeWidth=2;" edge="1" parent="1" source="apprunner" target="s3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="770" y="480" />
+              <mxPoint x="250" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- App Runner to Route53 -->
+        <mxCell id="arrow-apprunner-route53" value="Custom&#xa;Domain" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#5A30B5;strokeWidth=2;" edge="1" parent="1" source="apprunner" target="route53">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- App Runner to EventBridge -->
+        <mxCell id="arrow-apprunner-eventbridge" value="Deploy&#xa;Complete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BC1356;strokeWidth=2;" edge="1" parent="1" source="apprunner" target="eventbridge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EventBridge to Lambda -->
+        <mxCell id="arrow-eventbridge-lambda" value="Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BC1356;strokeWidth=2;" edge="1" parent="1" source="eventbridge" target="lambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Lambda to Slack -->
+        <mxCell id="arrow-lambda-slack" value="Webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BC1356;strokeWidth=2;" edge="1" parent="1" source="lambda" target="slack-notify">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1025" y="520" />
+              <mxPoint x="1025" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Route53 to Vercel -->
+        <mxCell id="arrow-route53-vercel" value="API&#xa;Calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="route53" target="vercel-frontend">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1030" y="280" />
+              <mxPoint x="1335" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Vercel to Users -->
+        <mxCell id="arrow-vercel-users" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0066CC;strokeWidth=3;" edge="1" parent="1" source="vercel-frontend" target="users">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend Box -->
+        <mxCell id="legend-box" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="1520" height="300" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-title" value="System Architecture Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="760" width="300" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Infrastructure Details -->
+        <mxCell id="legend-infra-title" value="Infrastructure Details" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="800" width="350" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-infra-details" value="• S3 Bucket: stock-api-data&#xa;  - Parquet data files (meta, prices, all_stocks, grok_trending)&#xa;  - Versioning enabled, AES256 encryption&#xa;&#xa;• ECR Repository: stock-api&#xa;  - Latest 10 tagged images retained&#xa;  - Auto scan on push&#xa;&#xa;• App Runner: stock-api&#xa;  - Auto deploy ON (ECR latest tag)&#xa;  - 1 vCPU, 2GB memory&#xa;  - Custom domain: stock.api.ymnk.jp&#xa;&#xa;• Route53: api.ymnk.jp hosted zone&#xa;  - ACM certificate auto-provisioned&#xa;&#xa;• EventBridge: apprunner-deployment-to-slack&#xa;  - Triggers on App Runner deployment completion&#xa;&#xa;• Lambda: apprunner-deployment-notification&#xa;  - Python 3.12, sends Slack webhook" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="70" y="830" width="340" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Data Pipeline Flow -->
+        <mxCell id="legend-pipeline-title" value="Data Pipeline Flow" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="800" width="350" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-pipeline-details" value="• Scheduled Runs: 16:00 JST, 26:00 JST (daily)&#xa;&#xa;• Data Sources:&#xa;  - J-Quants: meta_jquants (3,790 stocks)&#xa;    Markets: プライム, スタンダード, グロース only&#xa;  - xAI Grok: grok_trending (12 stocks)&#xa;    AI-generated trending analysis&#xa;  - yFinance: 60d 5m intraday data&#xa;&#xa;• Output Format: Parquet files to S3&#xa;  - meta.parquet, all_stocks.parquet&#xa;  - prices_max_1d.parquet, grok_trending.parquet&#xa;&#xa;• Notifications:&#xa;  - Success: Dataset counts, GROK stocks (改善版)&#xa;  - Failure: Error details to Slack" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="830" width="340" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Deployment Flow -->
+        <mxCell id="legend-deploy-title" value="Deployment Flow" style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="840" y="800" width="350" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-deploy-details" value="• Manual ECR Deployment:&#xa;  1. GitHub Actions builds Docker image&#xa;  2. Pushes to ECR with :latest tag&#xa;  3. ECR triggers App Runner auto-deployment&#xa;  4. App Runner pulls and deploys new image&#xa;  5. Deployment complete event → EventBridge&#xa;  6. EventBridge triggers Lambda function&#xa;  7. Lambda sends Slack notification&#xa;&#xa;• Auto-Deployment Configuration:&#xa;  - Enabled via Terraform (auto_deployments_enabled = true)&#xa;  - No manual approval required&#xa;  - Deployment time: ~5-10 minutes&#xa;&#xa;• Rollback:&#xa;  - Tag specific ECR image version&#xa;  - Update App Runner configuration via Terraform" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="850" y="830" width="340" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Terraform Management -->
+        <mxCell id="legend-terraform-title" value="Terraform Infrastructure as Code" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1230" y="800" width="310" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-terraform-details" value="• Managed Resources:&#xa;  - ECR Repository (stock-api)&#xa;  - App Runner Service (stock-api)&#xa;  - App Runner Custom Domain&#xa;  - S3 Bucket (stock-api-data)&#xa;  - Route53 Hosted Zone (api.ymnk.jp)&#xa;  - EventBridge Rule&#xa;  - Lambda Function&#xa;  - IAM Roles (4 total)&#xa;&#xa;• Not Managed by Terraform:&#xa;  - GitHub Actions OIDC Provider&#xa;  - GitHubActions-DashPlotly role (manual)&#xa;&#xa;• State: Local terraform.tfstate&#xa;• Region: ap-northeast-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="830" width="300" height="200" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

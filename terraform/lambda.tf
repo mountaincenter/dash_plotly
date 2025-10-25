@@ -18,7 +18,8 @@ resource "aws_lambda_function" "apprunner_notification" {
   environment {
     variables = {
       SLACK_WEBHOOK_URL = var.slack_webhook_url
-      SERVICE_URL       = var.apprunner_service_url
+      # 新しいstock-apiサービスのURLを動的に参照
+      SERVICE_URL       = "https://${aws_apprunner_service.stock_api.service_url}"
     }
   }
 
@@ -35,5 +36,5 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.apprunner_notification.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.apprunner_status_change.arn
+  source_arn    = aws_cloudwatch_event_rule.apprunner_deployment.arn
 }

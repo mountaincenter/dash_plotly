@@ -30,7 +30,7 @@ def upload_to_s3(files: List[Path]) -> bool:
     try:
         print(f"[PROGRESS] Preparing to upload {len(files)} files to S3...")
         cfg = load_s3_config()
-        bucket = cfg.bucket or "dash-plotly"
+        bucket = cfg.bucket or "stock-api-data"
         prefix = cfg.prefix or "parquet/"
 
         s3_cfg = S3Config(

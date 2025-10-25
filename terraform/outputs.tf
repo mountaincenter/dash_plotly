@@ -23,10 +23,10 @@ output "lambda_function_arn" {
 # EventBridge
 output "eventbridge_rule_name" {
   description = "EventBridge rule name"
-  value       = aws_cloudwatch_event_rule.apprunner_status_change.name
+  value       = aws_cloudwatch_event_rule.apprunner_deployment.name
 }
 
 output "eventbridge_rule_arn" {
   description = "EventBridge rule ARN"
-  value       = aws_cloudwatch_event_rule.apprunner_status_change.arn
+  value       = aws_cloudwatch_event_rule.apprunner_deployment.arn
 }

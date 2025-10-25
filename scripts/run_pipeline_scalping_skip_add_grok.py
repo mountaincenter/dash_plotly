@@ -36,6 +36,7 @@ class PipelineRunner:
         self.steps = [
             ("pipeline.create_meta_jquants", "Meta情報取得（J-Quants全銘柄）"),
             ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
+            ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
             ("pipeline.fetch_prices", "価格データ取得（yfinance）"),
             ("pipeline.update_manifest", "Manifest生成・S3アップロード"),

@@ -24,7 +24,7 @@ jobs:
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'dash-plotly' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'stock-api' }}
       ECR_REPO: ${{ vars.ECR_REPO }}
 
     steps:

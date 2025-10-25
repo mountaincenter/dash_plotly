@@ -2,6 +2,5 @@
 # cp terraform.tfvars.example terraform.tfvars
 
 aws_region              = "ap-northeast-1"
-apprunner_service_arn   = "arn:aws:apprunner:ap-northeast-1:980921748690:service/dash-plotly/4d8b5908dadd4971aafb4fae072d5ee6"
-apprunner_service_url   = "https://YOUR-APP-RUNNER-URL.awsapprunner.com"
+old_apprunner_service_arn = "arn:aws:apprunner:ap-northeast-1:980921748690:service/dash-plotly/4d8b5908dadd4971aafb4fae072d5ee6"
 slack_webhook_url       = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
