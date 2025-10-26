@@ -8,6 +8,7 @@ from server.routers.stocks import router as stocks_router
 from server.routers.prices import router as prices_router
 from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
+from server.routers.grok import router as grok_router
 
 import os
 
@@ -70,3 +71,4 @@ app.include_router(stocks_router, prefix="/stocks", tags=["stocks"])
 app.include_router(prices_router, tags=["prices"])
 app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
+app.include_router(grok_router, tags=["grok"])
