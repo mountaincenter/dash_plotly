@@ -375,16 +375,49 @@ def load_scalping_meta(category: str) -> List[Dict]:
     result = result.where(pd.notna(result), None)
     return result.to_dict(orient="records")
 
+GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
+
 @cache
 def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
-    """all_stocks.parquetから全銘柄を読み込む（meta + scalping統合版）
+    """all_stocks.parquetから全銘柄を読み込む（meta + scalping + grok統合版）
 
     Args:
-        tag: categoriesでフィルタリング（例: "TOPIX_CORE30", "高市銘柄", "SCALPING_ENTRY", "SCALPING_ACTIVE"）
+        tag: categoriesでフィルタリング（例: "TOPIX_CORE30", "高市銘柄", "SCALPING_ENTRY", "SCALPING_ACTIVE", "GROK"）
 
     Returns:
         全銘柄の辞書リスト（meta.parquet互換）
     """
+    # GROK銘柄の場合は、grok_trending.parquetから直接読み込む
+    resolved_tag = _resolve_tag(tag)
+    if resolved_tag == "GROK":
+        grok_df = _read_parquet_local(GROK_TRENDING_PATH)
+        if (grok_df is None or grok_df.empty) and _S3_BUCKET:
+            s3_key = _s3_key("grok_trending.parquet")
+            grok_df = _read_parquet_s3(_S3_BUCKET, s3_key)
+
+        if grok_df is not None and not grok_df.empty:
+            # 必要なカラムを確認
+            cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags", "selection_score"]
+            for col in cols:
+                if col not in grok_df.columns:
+                    grok_df[col] = pd.NA
+
+            # selection_scoreで降順ソート
+            if "selection_score" in grok_df.columns:
+                grok_df = grok_df.sort_values("selection_score", ascending=False)
+
+            # numpy.ndarray を list に変換（JSON serialization対応）
+            for col in ["categories", "tags"]:
+                if col in grok_df.columns:
+                    grok_df[col] = grok_df[col].apply(lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x)
+
+            # selection_scoreをfloatに変換してJSONシリアライズ可能にする
+            if "selection_score" in grok_df.columns:
+                grok_df["selection_score"] = grok_df["selection_score"].apply(lambda x: float(x) if pd.notna(x) else None)
+
+            grok_df = grok_df.where(pd.notna(grok_df), None)
+            return grok_df[cols].to_dict(orient="records")
+
     df = _read_parquet_local(ALL_STOCKS_PATH)
     if (df is None or df.empty) and _S3_BUCKET and _S3_ALL_STOCKS_KEY:
         df = _read_parquet_s3(_S3_BUCKET, _S3_ALL_STOCKS_KEY)
@@ -403,7 +436,6 @@ def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
 
         # tagフィルタリング
         if tag:
-            resolved_tag = _resolve_tag(tag)
             if resolved_tag:
                 all_stocks = [s for s in all_stocks if resolved_tag in (s.get("categories") or [])]
 
@@ -418,7 +450,6 @@ def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
     df = df[cols].copy()
 
     # tagフィルタリング: categoriesの配列に含まれるかチェック
-    resolved_tag = _resolve_tag(tag)
     if resolved_tag:
         def contains_tag(cats):
             if cats is None:
