@@ -19,6 +19,16 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 from common_cfg.paths import PARQUET_DIR
 
+def calculate_selection_score(row):
+    """選定時点でのスコアを計算"""
+    score = row.get('sentiment_score', 0.5) * 100
+    policy_bonus = {'High': 30, 'Med': 20, 'Low': 10}
+    score += policy_bonus.get(row.get('policy_link', 'Low'), 10)
+    if row.get('has_mention', False):
+        score += 50
+    return score
+
+
 def generate_grok_backtest_meta() -> pd.DataFrame:
     """
     バックテスト結果からメタ情報を生成
@@ -114,6 +124,74 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
     return df_meta
 
 
+def generate_top_stocks() -> pd.DataFrame:
+    """
+    最新のバックテスト結果からTop5/Top10銘柄リストを生成
+
+    Returns:
+        pd.DataFrame: Top5/Top10銘柄リスト
+    """
+    backtest_dir = ROOT / "data/parquet/backtest_results"
+
+    if not backtest_dir.exists():
+        print("[WARN] No backtest results found")
+        return pd.DataFrame()
+
+    latest_result = sorted(backtest_dir.glob("*/summary.csv"))
+    if not latest_result:
+        print("[WARN] No summary.csv found in backtest results")
+        return pd.DataFrame()
+
+    latest_result_dir = latest_result[-1].parent
+
+    # summary.csvを読み込み
+    df = pd.read_csv(latest_result_dir / "summary.csv")
+
+    # 各日付ごとにスコア計算してTop5/Top10を抽出
+    all_top_stocks = []
+
+    for date in df['target_date'].unique():
+        df_date = df[df['target_date'] == date].copy()
+
+        # スコア計算
+        df_date['selection_score'] = df_date.apply(calculate_selection_score, axis=1)
+
+        # スコアでソート
+        df_date = df_date.sort_values('selection_score', ascending=False)
+
+        # Top5
+        top5 = df_date.head(5).copy()
+        top5['rank'] = range(1, len(top5) + 1)
+        top5['category'] = 'top5'
+
+        # Top10
+        top10 = df_date.head(10).copy()
+        top10['rank'] = range(1, len(top10) + 1)
+        top10['category'] = 'top10'
+
+        all_top_stocks.extend(top5.to_dict('records'))
+        all_top_stocks.extend(top10.to_dict('records'))
+
+    if not all_top_stocks:
+        return pd.DataFrame()
+
+    df_top_stocks = pd.DataFrame(all_top_stocks)
+
+    # 必要なカラムのみ抽出
+    columns_to_keep = [
+        'target_date', 'ticker', 'company_name', 'selection_score',
+        'rank', 'category', 'sentiment_score', 'policy_link', 'has_mention',
+        'morning_change_pct', 'daily_change_pct'
+    ]
+
+    # 存在するカラムのみフィルター
+    columns_to_keep = [col for col in columns_to_keep if col in df_top_stocks.columns]
+    df_top_stocks = df_top_stocks[columns_to_keep]
+
+    print(f"[OK] Generated top stocks: {len(df_top_stocks)} entries")
+    return df_top_stocks
+
+
 def main():
     """メイン処理"""
     print("=" * 60)
@@ -136,6 +214,22 @@ def main():
     for _, row in df_meta.iterrows():
         print(f"{row['metric']:30} : {row['value']}")
     print("=" * 60)
+
+    # Top5/Top10銘柄リストを生成・保存
+    print("\n" + "=" * 60)
+    print("Generating Top Stocks List")
+    print("=" * 60)
+
+    df_top_stocks = generate_top_stocks()
+
+    if not df_top_stocks.empty:
+        top_stocks_file = PARQUET_DIR / "grok_top_stocks.parquet"
+        df_top_stocks.to_parquet(top_stocks_file, index=False)
+        print(f"\n[OK] Saved: {top_stocks_file}")
+        print(f"Total entries: {len(df_top_stocks)}")
+        print(f"Date range: {df_top_stocks['target_date'].min()} to {df_top_stocks['target_date'].max()}")
+    else:
+        print("[WARN] No top stocks generated")
 
     return 0
 

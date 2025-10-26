@@ -2,11 +2,12 @@ name: Data Pipeline
 
 on:
   schedule:
-    # 毎日実行（営業日判定は check_trading_day.py で実施）
+    # 毎日23時（JST）に実行（土日祝含む）
+    # Grok選定は材料の鮮度が重要なため、毎日実行
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
-    - cron: "0 7 * * *" # UTC 07:00 = JST 16:00 (当日) - メイン実行時刻
-    - cron: "0 17 * * *" # UTC 17:00 = JST 02:00 (翌日) - フォールバック実行時刻（26:00表記）
+    - cron: "0 7 * * *" # UTC 07:00 = JST 16:00 (当日) - 株価データ更新のみ
+    - cron: "0 14 * * *" # UTC 14:00 = JST 23:00 (当日) - Grok選定 + 株価データ更新
   workflow_dispatch:
     inputs:
       skip_trading_day_check:

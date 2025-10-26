@@ -28,6 +28,7 @@ UPLOAD_FILES = [
     "all_stocks.parquet",
     "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
+    "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_60d_15m.parquet",

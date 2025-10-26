@@ -78,3 +78,47 @@ async def get_grok_backtest_meta(response: Response) -> List[Dict[str, str]]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.get("/grok_top_stocks")
+async def get_grok_top_stocks(response: Response, category: str = "top5") -> List[Dict]:
+    """
+    GrokバックテストのTop5/Top10銘柄リストを取得
+
+    Args:
+        category: "top5" or "top10"
+
+    Returns:
+        List[Dict]: 銘柄リスト
+    """
+    try:
+        df = get_parquet_from_s3_or_local("grok_top_stocks.parquet")
+
+        if df.empty:
+            return []
+
+        # カテゴリーでフィルター
+        if category in ["top5", "top10"]:
+            df = df[df["category"] == category]
+
+        # 最新日付のデータのみ取得
+        if "target_date" in df.columns:
+            latest_date = df["target_date"].max()
+            df = df[df["target_date"] == latest_date]
+
+        # ランク順にソート
+        if "rank" in df.columns:
+            df = df.sort_values("rank")
+
+        # DataFrameをリストに変換
+        result = df.to_dict(orient="records")
+
+        # キャッシュヘッダーを設定（1時間）
+        response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=600"
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

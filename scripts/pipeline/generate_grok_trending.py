@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 """
 generate_grok_trending.py
-xAI Grok APIを使って「翌営業日デイスキャルピング買い注文銘柄」を選定
+xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
 
 実行方法:
-    # パイプライン実行（時刻自動判定）
+    # パイプライン実行（23時更新）
     python3 scripts/pipeline/generate_grok_trending.py
-
-    # 16時更新（古いデータをクリーンアップ）
-    python3 scripts/pipeline/generate_grok_trending.py --time 16:00
-
-    # 26時更新（16時データにマージ）
-    python3 scripts/pipeline/generate_grok_trending.py --time 26:00
 
     # 手動実行（クリーンアップして新規作成）
     python3 scripts/pipeline/generate_grok_trending.py --cleanup
@@ -20,16 +14,16 @@ xAI Grok APIを使って「翌営業日デイスキャルピング買い注文�
     data/parquet/grok_trending.parquet
 
 動作仕様:
-    - 16時更新: 古いデータを削除 → 10〜15銘柄を新規作成
-    - 26時更新: 16時データを保持 → 10〜15銘柄を追加（合計20〜30銘柄）
-    - --cleanup: 既存データを削除して新規作成（手動実行用）
+    - 毎日23時（JST）に実行（土日祝含む）
+    - 10銘柄を選定し、フロントエンドでTop5のみ表示
+    - 古いデータを削除して新規作成（1日1回更新）
 
 備考:
     - .env.xai に XAI_API_KEY が必要
     - all_stocks.parquet と統合できるスキーマ
     - categories: ["GROK"]
     - tags: Grokが返したcategoryをそのまま格納
-    - selected_time: "16:00" or "26:00" で更新タイミングを区別
+    - selected_time: "23:00" 固定
 """
 
 from __future__ import annotations
@@ -58,12 +52,6 @@ ENV_XAI_PATH = ROOT / ".env.xai"
 def parse_args():
     """コマンドライン引数をパース"""
     parser = argparse.ArgumentParser(description="Generate Grok trending stocks")
-    parser.add_argument(
-        "--time",
-        choices=["16:00", "26:00"],
-        default=None,
-        help="Update time (16:00 or 26:00). If not specified, defaults to current time-based logic."
-    )
     parser.add_argument(
         "--cleanup",
         action="store_true",
@@ -556,67 +544,14 @@ def main() -> int:
     # コマンドライン引数をパース
     args = parse_args()
 
-    # 手動実行判定（workflow_dispatch）
-    import os
-    event_name = os.getenv('GITHUB_EVENT_NAME', '')
-    is_manual_run = event_name == 'workflow_dispatch'
+    # 固定で23時更新（selected_time は23:00固定）
+    selected_time = "23:00"
+    print(f"[INFO] Update time: {selected_time} (fixed)")
 
-    # selected_time を決定
-    if is_manual_run:
-        # 手動実行時は常に16:00扱い
-        selected_time = "16:00"
-        print("[INFO] Manual execution detected (workflow_dispatch)")
-    elif args.time:
-        selected_time = args.time
-    else:
-        # パイプライン実行時は引数なしで実行される想定
-        # 現在時刻から推測
-        # - 07:00 UTC (JST 16:00) → "16:00"
-        # - 17:00 UTC (JST 26:00) → "26:00" (遅延を考慮して16時以降は26:00扱い)
-        current_hour = datetime.now().hour
-        selected_time = "16:00" if current_hour < 16 else "26:00"
-
-    print(f"[INFO] Update time: {selected_time}")
-
-    # クリーンアップ判定
-    should_cleanup = False
+    # 常にクリーンアップ（1日1回更新）
+    should_cleanup = True
     should_merge = False
-
-    if selected_time == "16:00" or is_manual_run:
-        # 16時実行 または 手動実行 → 常にクリーンアップ
-        should_cleanup = True
-        should_merge = False
-        print("[INFO] Mode: CLEANUP (16:00 run or manual execution)")
-    elif selected_time == "26:00":
-        # 26時実行 → manifest.json を確認
-        print("[INFO] 26:00 run detected, checking manifest.json...")
-        manifest = download_manifest_from_s3()
-
-        # 今日の日付（JST）
-        today_jst = get_jst_date()
-        print(f"[INFO] Today (JST): {today_jst}")
-
-        # フラグと日付を確認
-        grok_flag = manifest.get("grok_update_flag", False)
-        grok_date = manifest.get("grok_last_update_date", "")
-        grok_time = manifest.get("grok_last_update_time", "")
-
-        print(f"[INFO] Manifest: flag={grok_flag}, date={grok_date}, time={grok_time}")
-
-        if grok_flag and grok_date == today_jst:
-            # 16時成功済み → 追記処理
-            should_cleanup = False
-            should_merge = True
-            print("[INFO] Mode: MERGE (16:00 run succeeded today, appending 26:00 data)")
-        else:
-            # 16時失敗 または 日付が古い → 16時処理をやり直し
-            should_cleanup = True
-            should_merge = False
-            print("[INFO] Mode: CLEANUP (16:00 run failed or outdated, retrying as 16:00)")
-    else:
-        # 不明な時刻 → デフォルトはクリーンアップ
-        should_cleanup = True
-        should_merge = False
+    print("[INFO] Mode: CLEANUP (daily 23:00 update)")
 
     # クリーンアップ実行
     if should_cleanup:
