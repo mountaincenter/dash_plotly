@@ -70,9 +70,26 @@ jobs:
           echo "Trading day check has been bypassed via manual dispatch"
           echo "Pipeline will run regardless of schedule"
 
+      - name: Determine execution mode
+        id: exec_mode
+        run: |
+          CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
+          echo "Current hour (JST): $CURRENT_HOUR"
+
+          # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし）
+          if [ "$CURRENT_HOUR" = "23" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (23:00 JST) - No trading day check"
+          else
+            echo "mode=stock_data" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=false" >> $GITHUB_OUTPUT
+            echo "💹 Stock Data Mode (16:00 JST) - Trading day check enabled"
+          fi
+
       - name: Check trading day window
         id: check_trading
-        if: ${{ github.event.inputs.skip_trading_day_check != 'true' }}
+        if: ${{ github.event.inputs.skip_trading_day_check != 'true' && steps.exec_mode.outputs.skip_trading_check != 'true' }}
         env:
           JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
         run: |

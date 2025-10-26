@@ -405,6 +405,21 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     # ランクを再計算（スコア順）
     df["selection_rank"] = range(1, len(df) + 1)
 
+    # tagsを再構築（カテゴリ、スコア、Top5バッジ）
+    def build_tags(row):
+        tags_list = []
+        # [0] カテゴリ
+        if row.get("tags"):
+            tags_list.append(row["tags"])
+        # [1] スコア（数字のみの文字列）
+        tags_list.append(f"{row['selection_score']:.1f}")
+        # [2] Top5バッジ（該当時のみ）
+        if row["selection_rank"] <= 5:
+            tags_list.append("⭐Top5")
+        return ",".join(tags_list)  # カンマ区切りの文字列に変換
+
+    df["tags"] = df.apply(build_tags, axis=1)
+
     print(f"[OK] Converted {len(df)} stocks to DataFrame")
     print(f"[INFO] Top 5 by selection_score:")
     for i, row in df.head(5).iterrows():
