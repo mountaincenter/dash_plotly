@@ -33,14 +33,46 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
     """
     バックテスト結果からメタ情報を生成
 
+    優先順位:
+    1. backtest/ディレクトリのアーカイブファイル（16:00 JST実行で生成）
+    2. backtest_results/ディレクトリのCSVファイル（旧形式・互換性用）
+
     Returns:
         pd.DataFrame: バックテストメタ情報
     """
-    # 最新のバックテスト結果を読み込み
+    # 1. backtest/ディレクトリのアーカイブファイルを確認
+    backtest_archive_dir = PARQUET_DIR / "backtest"
+
+    if backtest_archive_dir.exists():
+        archive_files = sorted(backtest_archive_dir.glob("grok_trending_*.parquet"))
+
+        if len(archive_files) >= 5:
+            print(f"[INFO] Loading backtest data from archive: {len(archive_files)} files")
+
+            # 最新5日分のファイルを読み込み
+            recent_files = archive_files[-5:]
+            dfs = []
+
+            for file in recent_files:
+                try:
+                    df_day = pd.read_parquet(file)
+                    # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
+                    date_str = file.stem.split('_')[-1]  # YYYYMMDD
+                    df_day['archive_date'] = date_str
+                    dfs.append(df_day)
+                except Exception as e:
+                    print(f"[WARN] Failed to read {file}: {e}")
+
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                print(f"[OK] Loaded {len(df)} records from {len(dfs)} archive files")
+                return _calculate_backtest_stats(df, source="archive")
+
+    # 2. 旧形式のbacktest_results/ディレクトリを確認
     backtest_dir = ROOT / "data/parquet/backtest_results"
 
     if not backtest_dir.exists():
-        print("[WARN] No backtest results found")
+        print("[WARN] No backtest results or archives found")
         return pd.DataFrame()
 
     latest_result = sorted(backtest_dir.glob("*/summary.csv"))
@@ -54,37 +86,101 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
 
     # summary.csvを読み込み
     df = pd.read_csv(latest_result_dir / "summary.csv")
+    return _calculate_backtest_stats(df, source="csv", result_dir=latest_result_dir)
+
+
+def _calculate_backtest_stats(df: pd.DataFrame, source: str, result_dir=None) -> pd.DataFrame:
+    """
+    バックテストデータから統計を計算
+
+    Args:
+        df: バックテストデータ
+        source: データソース（"archive" or "csv"）
+        result_dir: CSV形式の場合の結果ディレクトリ
+
+    Returns:
+        pd.DataFrame: バックテストメタ情報
+    """
+    from datetime import datetime
 
     # 基本統計
     total_stocks = len(df)
     unique_stocks = df['ticker'].nunique()
-    date_range = f"{df['target_date'].min()} to {df['target_date'].max()}"
+
+    # 日付範囲の取得（ソースによって列名が異なる可能性）
+    if 'target_date' in df.columns:
+        date_range = f"{df['target_date'].min()} to {df['target_date'].max()}"
+    elif 'archive_date' in df.columns:
+        # YYYYMMDD形式をYYYY-MM-DDに変換
+        dates = df['archive_date'].unique()
+        dates_formatted = [f"{d[:4]}-{d[4:6]}-{d[6:]}" for d in sorted(dates)]
+        date_range = f"{dates_formatted[0]} to {dates_formatted[-1]}"
+    else:
+        date_range = "N/A"
 
     # デイリー戦略の統計
-    daily_win_rate = (df['daily_change_pct'] > 0).sum() / len(df) * 100
-    daily_avg_return = df['daily_change_pct'].mean()
+    if 'daily_change_pct' in df.columns:
+        daily_win_rate = (df['daily_change_pct'] > 0).sum() / len(df) * 100
+        daily_avg_return = df['daily_change_pct'].mean()
+    else:
+        daily_win_rate = 0
+        daily_avg_return = 0
 
     # 前場戦略の統計
-    morning_win_rate = (df['morning_change_pct'] > 0).sum() / len(df) * 100
-    morning_avg_return = df['morning_change_pct'].mean()
+    if 'morning_change_pct' in df.columns:
+        morning_win_rate = (df['morning_change_pct'] > 0).sum() / len(df) * 100
+        morning_avg_return = df['morning_change_pct'].mean()
+    else:
+        morning_win_rate = 0
+        morning_avg_return = 0
 
     # プレミアム言及効果
-    has_mention_df = df[df['has_mention'] == True]
-    no_mention_df = df[df['has_mention'] == False]
+    mention_win_rate = 0
+    no_mention_win_rate = 0
 
-    mention_win_rate = (has_mention_df['morning_change_pct'] > 0).sum() / len(has_mention_df) * 100 if len(has_mention_df) > 0 else 0
-    no_mention_win_rate = (no_mention_df['morning_change_pct'] > 0).sum() / len(no_mention_df) * 100 if len(no_mention_df) > 0 else 0
+    if 'has_mention' in df.columns and 'morning_change_pct' in df.columns:
+        has_mention_df = df[df['has_mention'] == True]
+        no_mention_df = df[df['has_mention'] == False]
 
-    # Top5戦略のシミュレーション結果（最新のCSVから読み込み）
-    top5_csv = latest_result_dir / "top5_selection_details.csv"
+        if len(has_mention_df) > 0:
+            mention_win_rate = (has_mention_df['morning_change_pct'] > 0).sum() / len(has_mention_df) * 100
+        if len(no_mention_df) > 0:
+            no_mention_win_rate = (no_mention_df['morning_change_pct'] > 0).sum() / len(no_mention_df) * 100
 
-    if top5_csv.exists():
-        df_top5 = pd.read_csv(top5_csv)
-        top5_morning_win_rate = (df_top5['morning_change_pct'] > 0).sum() / len(df_top5) * 100
-        top5_morning_avg_return = df_top5['morning_change_pct'].mean()
+    # Top5戦略の計算
+    top5_morning_win_rate = 0
+    top5_morning_avg_return = 0
+
+    if source == "csv" and result_dir:
+        # CSV形式の場合は別ファイルから読み込み
+        top5_csv = result_dir / "top5_selection_details.csv"
+        if top5_csv.exists():
+            df_top5 = pd.read_csv(top5_csv)
+            if 'morning_change_pct' in df_top5.columns:
+                top5_morning_win_rate = (df_top5['morning_change_pct'] > 0).sum() / len(df_top5) * 100
+                top5_morning_avg_return = df_top5['morning_change_pct'].mean()
+    elif source == "archive":
+        # アーカイブ形式の場合は選定スコアで上位5件を抽出
+        if 'selection_score' in df.columns and 'morning_change_pct' in df.columns:
+            # 各日付ごとにTop5を抽出
+            df_with_date = df.copy()
+            if 'archive_date' in df_with_date.columns:
+                top5_list = []
+                for date in df_with_date['archive_date'].unique():
+                    df_date = df_with_date[df_with_date['archive_date'] == date]
+                    top5_date = df_date.nlargest(5, 'selection_score')
+                    top5_list.append(top5_date)
+
+                if top5_list:
+                    df_top5 = pd.concat(top5_list, ignore_index=True)
+                    top5_morning_win_rate = (df_top5['morning_change_pct'] > 0).sum() / len(df_top5) * 100
+                    top5_morning_avg_return = df_top5['morning_change_pct'].mean()
+
+    # バックテスト日時
+    if source == "csv" and result_dir:
+        backtest_date = result_dir.name
     else:
-        top5_morning_win_rate = 0
-        top5_morning_avg_return = 0
+        backtest_date = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # メタ情報DataFrame
     meta_data = {
@@ -114,7 +210,7 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
             f"{top5_morning_avg_return:.2f}%",
             f"{mention_win_rate:.1f}%",
             f"{no_mention_win_rate:.1f}%",
-            latest_result_dir.name,
+            backtest_date,
         ]
     }
 
@@ -128,13 +224,48 @@ def generate_top_stocks() -> pd.DataFrame:
     """
     最新のバックテスト結果からTop5/Top10銘柄リストを生成
 
+    優先順位:
+    1. backtest/ディレクトリのアーカイブファイル
+    2. backtest_results/ディレクトリのCSVファイル
+
     Returns:
         pd.DataFrame: Top5/Top10銘柄リスト
     """
+    # 1. アーカイブファイルを確認
+    backtest_archive_dir = PARQUET_DIR / "backtest"
+
+    if backtest_archive_dir.exists():
+        archive_files = sorted(backtest_archive_dir.glob("grok_trending_*.parquet"))
+
+        if len(archive_files) >= 5:
+            print(f"[INFO] Loading top stocks from archive: {len(archive_files)} files")
+
+            # 最新5日分のファイルを読み込み
+            recent_files = archive_files[-5:]
+            dfs = []
+
+            for file in recent_files:
+                try:
+                    df_day = pd.read_parquet(file)
+                    # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
+                    date_str = file.stem.split('_')[-1]  # YYYYMMDD
+                    # YYYY-MM-DD形式に変換
+                    target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+                    df_day['target_date'] = target_date
+                    dfs.append(df_day)
+                except Exception as e:
+                    print(f"[WARN] Failed to read {file}: {e}")
+
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                print(f"[OK] Loaded {len(df)} records from {len(dfs)} archive files")
+                return _extract_top_stocks_from_df(df)
+
+    # 2. 旧形式のbacktest_results/ディレクトリを確認
     backtest_dir = ROOT / "data/parquet/backtest_results"
 
     if not backtest_dir.exists():
-        print("[WARN] No backtest results found")
+        print("[WARN] No backtest results or archives found")
         return pd.DataFrame()
 
     latest_result = sorted(backtest_dir.glob("*/summary.csv"))
@@ -146,15 +277,28 @@ def generate_top_stocks() -> pd.DataFrame:
 
     # summary.csvを読み込み
     df = pd.read_csv(latest_result_dir / "summary.csv")
+    return _extract_top_stocks_from_df(df)
 
+
+def _extract_top_stocks_from_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    データフレームからTop5/Top10銘柄を抽出
+
+    Args:
+        df: バックテストデータ
+
+    Returns:
+        pd.DataFrame: Top5/Top10銘柄リスト
+    """
     # 各日付ごとにスコア計算してTop5/Top10を抽出
     all_top_stocks = []
 
     for date in df['target_date'].unique():
         df_date = df[df['target_date'] == date].copy()
 
-        # スコア計算
-        df_date['selection_score'] = df_date.apply(calculate_selection_score, axis=1)
+        # selection_scoreが既に存在しない場合は計算
+        if 'selection_score' not in df_date.columns:
+            df_date['selection_score'] = df_date.apply(calculate_selection_score, axis=1)
 
         # スコアでソート
         df_date = df_date.sort_values('selection_score', ascending=False)

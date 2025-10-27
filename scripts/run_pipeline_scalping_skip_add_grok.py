@@ -42,19 +42,29 @@ class PipelineRunner:
             ("pipeline.create_meta_jquants", "Meta情報取得（J-Quants全銘柄）"),
         ]
 
-        # Grokステップ（スキップフラグがfalseの場合のみ追加）
+        # Grok選定ステップ（23:00 JST実行時のみ）
         if not skip_grok:
-            self.steps.extend([
-                ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
-                ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
-            ])
+            self.steps.append(
+                ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）")
+            )
 
         # 共通ステップ
         self.steps.extend([
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
             ("pipeline.fetch_prices", "価格データ取得（yfinance）"),
-            ("pipeline.update_manifest", "Manifest生成・S3アップロード"),
         ])
+
+        # バックテストメタ情報生成（常に実行）
+        # 16:00 JST: backtest/アーカイブから計算
+        # 23:00 JST: 新規選定直後に空のメタを生成（翌日16:00で上書きされる）
+        self.steps.append(
+            ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成")
+        )
+
+        # Manifest生成・S3アップロード
+        self.steps.append(
+            ("pipeline.update_manifest", "Manifest生成・S3アップロード")
+        )
 
         self.skip_grok = skip_grok
         self.results: List[Tuple[str, bool, float, str]] = []
@@ -115,9 +125,11 @@ class PipelineRunner:
         if self.skip_grok:
             print("[INFO] ⏭️  SKIP_GROK_GENERATION=true - Grok selection SKIPPED (16:00 JST mode)")
             print("[INFO] Using previous Grok trending data from yesterday's 23:00 selection")
+            print("[INFO] Backtest meta will be updated from backtest/ archives")
         else:
             print("[INFO] ✅ SKIP_GROK_GENERATION=false - Grok selection ENABLED (23:00 JST mode)")
             print("[INFO] Grok trending stocks will be freshly selected")
+            print("[INFO] Backtest meta will be generated (empty until tomorrow 16:00)")
 
         total_start = time.time()
 
