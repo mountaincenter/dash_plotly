@@ -33,7 +33,7 @@ from common_cfg.s3cfg import load_s3_config
 
 def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
     """
-    ローカルのparquetファイルを削除
+    ローカルのparquetファイルを削除（backtestディレクトリを含む）
 
     Args:
         exclude_manifest: Trueの場合、manifest.jsonは削除しない
@@ -48,6 +48,8 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
         return 0
 
     deleted_count = 0
+
+    # ルートディレクトリの.parquetファイル削除
     for file_path in PARQUET_DIR.glob("*.parquet"):
         try:
             file_path.unlink()
@@ -55,6 +57,17 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
             deleted_count += 1
         except Exception as e:
             print(f"  ✗ Failed to delete {file_path.name}: {e}")
+
+    # backtestディレクトリの.parquetファイル削除
+    backtest_dir = PARQUET_DIR / "backtest"
+    if backtest_dir.exists() and backtest_dir.is_dir():
+        for file_path in backtest_dir.glob("*.parquet"):
+            try:
+                file_path.unlink()
+                print(f"  ✓ Deleted: backtest/{file_path.name}")
+                deleted_count += 1
+            except Exception as e:
+                print(f"  ✗ Failed to delete backtest/{file_path.name}: {e}")
 
     # manifest.jsonの扱い
     manifest_path = PARQUET_DIR / "manifest.json"
@@ -116,13 +129,20 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
             return 0, 0
 
         # .parquetファイルのみフィルタ（manifest.jsonは除外）
+        # backtest/配下のファイルも含めてダウンロード
         parquet_files = [f for f in s3_files if f.endswith('.parquet')]
 
         # file_filterが指定されている場合は、さらにフィルタ
         if file_filter:
             parquet_files = [f for f in parquet_files if f in file_filter]
 
+        # ルートとbacktestに分類
+        root_files = [f for f in parquet_files if not f.startswith('backtest/')]
+        backtest_files = [f for f in parquet_files if f.startswith('backtest/')]
+
         print(f"  ✓ Found {len(parquet_files)} parquet file(s)")
+        print(f"    - Root: {len(root_files)} file(s)")
+        print(f"    - Backtest: {len(backtest_files)} file(s)")
 
         if not parquet_files:
             print("\n⚠️  No parquet files to download")
@@ -130,8 +150,14 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
 
         # ファイル一覧表示
         print("\nFiles to download:")
-        for f in sorted(parquet_files):
-            print(f"  - {f}")
+        if root_files:
+            print("  [Root]")
+            for f in sorted(root_files):
+                print(f"    - {f}")
+        if backtest_files:
+            print("  [Backtest]")
+            for f in sorted(backtest_files):
+                print(f"    - {f}")
 
     except Exception as e:
         print(f"  ✗ Failed to list S3 files: {e}")
@@ -145,10 +171,15 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
     print("\n[STEP 2] Downloading files...")
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
 
+    # backtestディレクトリも作成
+    backtest_dir = PARQUET_DIR / "backtest"
+    backtest_dir.mkdir(parents=True, exist_ok=True)
+
     success_count = 0
     fail_count = 0
 
     for i, filename in enumerate(sorted(parquet_files), 1):
+        # 相対パスを保持してダウンロード（backtest/xxx.parquet -> PARQUET_DIR/backtest/xxx.parquet）
         local_path = PARQUET_DIR / filename
         print(f"\n  [{i}/{len(parquet_files)}] {filename}")
 
