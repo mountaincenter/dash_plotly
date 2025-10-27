@@ -84,6 +84,7 @@ async def get_grok_backtest_meta(response: Response) -> List[Dict[str, str]]:
 async def get_grok_top_stocks(response: Response, category: str = "top5") -> List[Dict]:
     """
     GrokバックテストのTop5/Top10銘柄リストを取得
+    grok_trending.parquetから選定スコア順にTop5またはTop10を抽出
 
     Args:
         category: "top5" or "top10"
@@ -92,23 +93,33 @@ async def get_grok_top_stocks(response: Response, category: str = "top5") -> Lis
         List[Dict]: 銘柄リスト
     """
     try:
-        df = get_parquet_from_s3_or_local("grok_top_stocks.parquet")
+        # grok_trending.parquetから読み込み
+        df = get_parquet_from_s3_or_local("grok_trending.parquet")
 
         if df.empty:
             return []
 
-        # カテゴリーでフィルター
-        if category in ["top5", "top10"]:
-            df = df[df["category"] == category]
+        # selection_scoreで降順ソート
+        if "selection_score" in df.columns:
+            df = df.sort_values("selection_score", ascending=False)
 
-        # 最新日付のデータのみ取得
-        if "target_date" in df.columns:
-            latest_date = df["target_date"].max()
-            df = df[df["target_date"] == latest_date]
+        # Top5またはTop10を取得
+        limit = 5 if category == "top5" else 10
+        df = df.head(limit)
 
-        # ランク順にソート
-        if "rank" in df.columns:
-            df = df.sort_values("rank")
+        # ランクを追加（1始まり）
+        df["rank"] = range(1, len(df) + 1)
+        df["category"] = category
+
+        # 必要なカラムのみ選択
+        cols = ["ticker", "stock_name", "selection_score", "rank", "category"]
+        # company_nameがあればそれを使用、なければstock_nameをcompany_nameとして使用
+        if "company_name" not in df.columns:
+            df["company_name"] = df["stock_name"]
+            cols.append("company_name")
+
+        available_cols = [c for c in cols if c in df.columns]
+        df = df[available_cols]
 
         # DataFrameをリストに変換
         result = df.to_dict(orient="records")
