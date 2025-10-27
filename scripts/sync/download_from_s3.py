@@ -33,7 +33,9 @@ from common_cfg.s3cfg import load_s3_config
 
 def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
     """
-    ローカルのparquetファイルを削除（backtestディレクトリを含む）
+    ローカルのparquetファイルを削除
+
+    注意: backtest/ディレクトリは保護されます（ローカル蓄積データのため）
 
     Args:
         exclude_manifest: Trueの場合、manifest.jsonは削除しない
@@ -42,6 +44,7 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
         削除したファイル数
     """
     print("\n[CLEANUP] Removing local parquet files...")
+    print("  ℹ backtest/ directory is protected (local archive data)")
 
     if not PARQUET_DIR.exists():
         print("  ℹ No parquet directory found, skipping cleanup")
@@ -58,16 +61,11 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
         except Exception as e:
             print(f"  ✗ Failed to delete {file_path.name}: {e}")
 
-    # backtestディレクトリの.parquetファイル削除
+    # backtestディレクトリは保護（削除しない）
     backtest_dir = PARQUET_DIR / "backtest"
     if backtest_dir.exists() and backtest_dir.is_dir():
-        for file_path in backtest_dir.glob("*.parquet"):
-            try:
-                file_path.unlink()
-                print(f"  ✓ Deleted: backtest/{file_path.name}")
-                deleted_count += 1
-            except Exception as e:
-                print(f"  ✗ Failed to delete backtest/{file_path.name}: {e}")
+        backtest_count = len(list(backtest_dir.glob("*.parquet")))
+        print(f"  ℹ Protected: backtest/ ({backtest_count} archive files preserved)")
 
     # manifest.jsonの扱い
     manifest_path = PARQUET_DIR / "manifest.json"
