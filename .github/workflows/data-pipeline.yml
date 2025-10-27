@@ -76,15 +76,17 @@ jobs:
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
           echo "Current hour (JST): $CURRENT_HOUR"
 
-          # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし）
+          # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし、Grok選定実行）
           if [ "$CURRENT_HOUR" = "23" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
-            echo "📊 GROK Daily Mode (23:00 JST) - No trading day check"
+            echo "skip_grok=false" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (23:00 JST) - Grok selection enabled"
           else
             echo "mode=stock_data" >> $GITHUB_OUTPUT
             echo "skip_trading_check=false" >> $GITHUB_OUTPUT
-            echo "💹 Stock Data Mode (16:00 JST) - Trading day check enabled"
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "💹 Stock Data Mode (16:00 JST) - Grok selection skipped"
           fi
 
       - name: Check trading day window
@@ -118,6 +120,7 @@ jobs:
           JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
+          SKIP_GROK_GENERATION: ${{ steps.exec_mode.outputs.skip_grok }}
         run: |
           # Create .env.xai for Grok API
           echo "XAI_API_KEY=$XAI_API_KEY" > .env.xai
@@ -132,6 +135,7 @@ jobs:
           echo "  PARQUET_PREFIX=${{ env.S3_PREFIX }}"
           echo "  AWS_REGION=${{ env.AWS_REGION }}"
           echo "  FORCE_META_UPDATE=$FORCE_META_UPDATE"
+          echo "  SKIP_GROK_GENERATION=$SKIP_GROK_GENERATION"
           echo "  LATEST_TRADING_DAY=${{ steps.check_trading.outputs.latest_trading_day }}"
           echo ""
 
@@ -264,7 +268,7 @@ jobs:
 
       - name: Archive GROK trending for backtest
         id: archive-grok
-        if: success()
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
           if [ -f "data/parquet/grok_trending.parquet" ]; then
             # cron判定

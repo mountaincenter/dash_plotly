@@ -18,6 +18,7 @@ GitHub Actionsとローカル開発の両方で使用
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -33,14 +34,29 @@ class PipelineRunner:
     """パイプライン実行管理クラス"""
 
     def __init__(self):
+        # 環境変数でGrok生成をスキップするか判定
+        skip_grok = os.getenv("SKIP_GROK_GENERATION", "false").lower() == "true"
+
+        # 基本ステップ
         self.steps = [
             ("pipeline.create_meta_jquants", "Meta情報取得（J-Quants全銘柄）"),
-            ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
-            ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
+        ]
+
+        # Grokステップ（スキップフラグがfalseの場合のみ追加）
+        if not skip_grok:
+            self.steps.extend([
+                ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
+                ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
+            ])
+
+        # 共通ステップ
+        self.steps.extend([
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
             ("pipeline.fetch_prices", "価格データ取得（yfinance）"),
             ("pipeline.update_manifest", "Manifest生成・S3アップロード"),
-        ]
+        ])
+
+        self.skip_grok = skip_grok
         self.results: List[Tuple[str, bool, float, str]] = []
 
     def run_step(self, module_name: str, description: str) -> Tuple[bool, float, str]:
@@ -95,7 +111,13 @@ class PipelineRunner:
         print("=" * 60)
         print(f"[DEBUG] Total steps to run: {len(self.steps)}")
         print("[INFO] Scalping generation is SKIPPED in this pipeline")
-        print("[INFO] Grok trending stocks will be added instead")
+
+        if self.skip_grok:
+            print("[INFO] ⏭️  SKIP_GROK_GENERATION=true - Grok selection SKIPPED (16:00 JST mode)")
+            print("[INFO] Using previous Grok trending data from yesterday's 23:00 selection")
+        else:
+            print("[INFO] ✅ SKIP_GROK_GENERATION=false - Grok selection ENABLED (23:00 JST mode)")
+            print("[INFO] Grok trending stocks will be freshly selected")
 
         total_start = time.time()
 
