@@ -396,8 +396,8 @@ def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
             grok_df = _read_parquet_s3(_S3_BUCKET, s3_key)
 
         if grok_df is not None and not grok_df.empty:
-            # 必要なカラムを確認
-            cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags", "selection_score"]
+            # 必要なカラムを確認（reasonを含める）
+            cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags", "selection_score", "reason"]
             for col in cols:
                 if col not in grok_df.columns:
                     grok_df[col] = pd.NA
@@ -407,7 +407,8 @@ def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
                 grok_df = grok_df.sort_values("selection_score", ascending=False)
 
             # numpy.ndarray を list に変換（JSON serialization対応）
-            for col in ["categories", "tags"]:
+            # tagsは文字列のままにする（カンマ区切り形式を保持）
+            for col in ["categories"]:
                 if col in grok_df.columns:
                     grok_df[col] = grok_df[col].apply(lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x)
 
