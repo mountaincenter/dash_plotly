@@ -57,9 +57,10 @@ class PipelineRunner:
         # バックテストメタ情報生成（常に実行）
         # 16:00 JST: backtest/アーカイブから計算
         # 23:00 JST: 新規選定直後に空のメタを生成（翌日16:00で上書きされる）
-        self.steps.append(
-            ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成")
-        )
+        self.steps.extend([
+            ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
+            ("pipeline.extract_backtest_patterns", "バックテストパターン抽出（Grok学習用）"),
+        ])
 
         # Manifest生成・S3アップロード
         self.steps.append(

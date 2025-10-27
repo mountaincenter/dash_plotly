@@ -60,6 +60,97 @@ def parse_args():
     return parser.parse_args()
 
 
+def load_backtest_patterns() -> dict[str, Any]:
+    """
+    バックテストパターンを読み込み、Grokプロンプト用のコンテキストを生成
+
+    Returns:
+        dict: バックテストパターン情報
+    """
+    patterns_file = PARQUET_DIR / "grok_backtest_patterns.parquet"
+    top_performers_file = PARQUET_DIR / "grok_top_performers.parquet"
+    worst_performers_file = PARQUET_DIR / "grok_worst_performers.parquet"
+
+    backtest_context = {
+        'has_data': False,
+        'phase1_success_rate': 0,
+        'phase1_avg_return': 0,
+        'phase2_achievement_rate': 0,
+        'success_categories': [],
+        'failure_categories': [],
+        'top_performers': [],
+        'worst_performers': []
+    }
+
+    # パターンサマリーを読み込み
+    if patterns_file.exists():
+        try:
+            df_patterns = pd.read_parquet(patterns_file)
+
+            # Phase1成功パターン
+            phase1_success = df_patterns[df_patterns['pattern_type'] == 'phase1_success']
+            if len(phase1_success) > 0:
+                row = phase1_success.iloc[0]
+                backtest_context['has_data'] = True
+                backtest_context['phase1_success_rate'] = row['rate']
+                backtest_context['phase1_avg_return'] = row['avg_return']
+                backtest_context['phase1_avg_sentiment'] = row['avg_sentiment']
+                backtest_context['phase1_success_category'] = row['top_category']
+
+            # Phase1失敗パターン
+            phase1_failure = df_patterns[df_patterns['pattern_type'] == 'phase1_failure']
+            if len(phase1_failure) > 0:
+                row = phase1_failure.iloc[0]
+                backtest_context['phase1_failure_rate'] = row['rate']
+                backtest_context['phase1_avg_loss'] = row['avg_return']
+                backtest_context['phase1_failure_category'] = row['top_category']
+
+            # Phase2成功パターン
+            phase2_success = df_patterns[df_patterns['pattern_type'] == 'phase2_success']
+            if len(phase2_success) > 0:
+                row = phase2_success.iloc[0]
+                backtest_context['phase2_achievement_rate'] = row['rate']
+                backtest_context['phase2_avg_return'] = row['avg_return']
+                backtest_context['phase2_success_category'] = row['top_category']
+
+            print(f"[OK] Loaded backtest patterns: Phase1勝率 {backtest_context['phase1_success_rate']:.1f}%")
+
+        except Exception as e:
+            print(f"[WARN] Failed to load backtest patterns: {e}")
+
+    # Top成功銘柄を読み込み
+    if top_performers_file.exists():
+        try:
+            df_top = pd.read_parquet(top_performers_file)
+            # 最近3銘柄のみ抽出
+            for _, row in df_top.head(3).iterrows():
+                backtest_context['top_performers'].append({
+                    'ticker': row['ticker'],
+                    'name': row.get('company_name', 'N/A'),
+                    'category': row.get('category', 'N/A'),
+                    'return': row.get('morning_change_pct', 0)
+                })
+        except Exception as e:
+            print(f"[WARN] Failed to load top performers: {e}")
+
+    # Worst失敗銘柄を読み込み
+    if worst_performers_file.exists():
+        try:
+            df_worst = pd.read_parquet(worst_performers_file)
+            # 最近3銘柄のみ抽出
+            for _, row in df_worst.head(3).iterrows():
+                backtest_context['worst_performers'].append({
+                    'ticker': row['ticker'],
+                    'name': row.get('company_name', 'N/A'),
+                    'category': row.get('category', 'N/A'),
+                    'return': row.get('morning_change_pct', 0)
+                })
+        except Exception as e:
+            print(f"[WARN] Failed to load worst performers: {e}")
+
+    return backtest_context
+
+
 def get_trading_context() -> dict[str, str]:
     """
     営業日カレンダーを参照して取引コンテキストを生成
@@ -113,22 +204,64 @@ def get_trading_context() -> dict[str, str]:
     }
 
 
-def build_grok_prompt(context: dict[str, str]) -> str:
+def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
     """
-    動的にGrokプロンプトを生成
+    動的にGrokプロンプトを生成（バックテストフィードバック付き）
 
     Args:
         context: get_trading_context() で取得したコンテキスト
+        backtest: load_backtest_patterns() で取得したバックテストデータ
 
     Returns:
         str: Grok APIに送信するプロンプト
     """
+    # バックテストセクションを構築
+    backtest_section = ""
+    if backtest.get('has_data'):
+        backtest_section = f"""
+【バックテスト結果フィードバック（直近5日間）】
+**Phase1戦略（9:00寄付買い → 11:30前場引け売り）実績:**
+- 勝率: **{backtest['phase1_success_rate']:.1f}%**
+- 平均リターン: **{backtest['phase1_avg_return']:.2f}%**
+- 成功銘柄の特徴: **{backtest.get('phase1_success_category', 'N/A')}カテゴリが好成績**
+
+**Phase2戦略（9:00寄付買い → 3%到達で即売り）実績:**
+- 目標到達率: **{backtest.get('phase2_achievement_rate', 0):.1f}%**
+- 到達時平均リターン: **{backtest.get('phase2_avg_return', 0):.2f}%**
+
+**Top3成功銘柄（学ぶべき好例）:**
+"""
+        for i, stock in enumerate(backtest.get('top_performers', []), 1):
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **+{stock['return']:.2f}%**\n"
+
+        backtest_section += "\n**Top3失敗銘柄（避けるべき悪例）:**\n"
+        for i, stock in enumerate(backtest.get('worst_performers', []), 1):
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **{stock['return']:.2f}%**\n"
+
+        backtest_section += f"""
+**✅ 選定戦略への反映（重要）:**
+1. 過去5日間で**勝率{backtest['phase1_success_rate']:.1f}%**を記録 → この精度を維持・向上させる
+2. 成功銘柄は「**{backtest.get('phase1_success_category', 'N/A')}**」カテゴリに集中 → 同様の特徴を持つ銘柄を優先
+3. 失敗銘柄は「**{backtest.get('phase1_failure_category', 'N/A')}**」カテゴリに多い → このパターンは避ける
+4. Phase2では**{backtest.get('phase2_achievement_rate', 0):.1f}%**が3%到達 → ボラティリティを重視
+
+**今回の選定では、上記の成功パターンに沿った銘柄を優先し、失敗パターンに該当する銘柄は除外してください。**
+
+"""
+    else:
+        backtest_section = """
+【バックテスト結果】
+※データ蓄積中のため、バックテスト結果は未提供です。
+X（株クラ）の情報、IR材料、出来高急増、ATRを重視して選定してください。
+
+"""
+
     return f"""【タスク】
 本日は{context['execution_date']}です。
 最新営業日は{context['latest_trading_day']}、翌営業日は{context['next_trading_day']}です。
 
 **{context['next_trading_day']}の寄付〜前場でデイスキャルピング買い注文する銘柄**を10〜15銘柄選定し、JSON形式で出力してください。
-
+{backtest_section}
 【背景・目的】
 私は以下3つのカテゴリで銘柄を運用しており、**これらでは拾えない「尖った銘柄」**を探しています：
 
@@ -585,8 +718,17 @@ def main() -> int:
         print(f"[OK] Next trading day: {context['next_trading_day']}")
         print()
 
-        # 2. Build dynamic prompt
-        prompt = build_grok_prompt(context)
+        # 2. Load backtest patterns (バックテストフィードバック)
+        print("[INFO] Loading backtest patterns...")
+        backtest = load_backtest_patterns()
+        if backtest.get('has_data'):
+            print(f"[OK] Backtest data loaded (Phase1勝率: {backtest['phase1_success_rate']:.1f}%)")
+        else:
+            print("[INFO] No backtest data available yet")
+        print()
+
+        # 3. Build dynamic prompt (with backtest feedback)
+        prompt = build_grok_prompt(context, backtest)
         print(f"[INFO] Built dynamic prompt ({len(prompt)} chars)")
         print()
 
