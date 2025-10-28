@@ -196,6 +196,16 @@ def upload_files_to_s3() -> bool:
         else:
             print(f"  [WARN] {filename} not found, skipping")
 
+    # backtest/ ディレクトリの全ファイルを追加
+    backtest_dir = PARQUET_DIR / "backtest"
+    if backtest_dir.exists() and backtest_dir.is_dir():
+        backtest_files = list(backtest_dir.glob("grok_trending_*.parquet"))
+        if backtest_files:
+            print(f"  [INFO] Found {len(backtest_files)} backtest files")
+            upload_targets.extend(backtest_files)
+        else:
+            print(f"  [INFO] No backtest files found in {backtest_dir}")
+
     # manifest.jsonも追加
     if MANIFEST_PATH.exists():
         upload_targets.append(MANIFEST_PATH)

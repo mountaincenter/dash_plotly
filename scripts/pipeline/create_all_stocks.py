@@ -79,13 +79,18 @@ def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.
         print("  [WARN] scalping_active.parquet not found, using empty DataFrame")
         scalping_active = pd.DataFrame()
 
-    # grok_trending.parquet（ローカルから読み込み、generate_grok_trending.pyが生成済み）
+    # grok_trending.parquet（S3優先、generate_grok_trending.pyが生成済み）
     print("[INFO] Loading grok_trending.parquet...")
+
+    # S3からダウンロードを試行
+    if not GROK_TRENDING_PATH.exists():
+        s3_success = download_from_s3_if_exists("grok_trending.parquet", GROK_TRENDING_PATH)
+
     if GROK_TRENDING_PATH.exists():
         grok_trending = pd.read_parquet(GROK_TRENDING_PATH)
         print(f"  ✓ Loaded grok_trending.parquet: {len(grok_trending)} stocks")
     else:
-        print("  [WARN] grok_trending.parquet not found, using empty DataFrame")
+        print("  [WARN] grok_trending.parquet not found in S3 or locally, using empty DataFrame")
         grok_trending = pd.DataFrame()
 
     return meta, scalping_entry, scalping_active, grok_trending
