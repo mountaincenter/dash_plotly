@@ -371,8 +371,9 @@ def main():
     df = load_backtest_archives(days=5)
 
     if df.empty:
-        print("\n[ERROR] No backtest data found")
-        return 1
+        print("\n[WARN] No backtest data found - skipping pattern extraction")
+        print("This is expected on first run or when backtest directory is empty")
+        return 0
 
     # Phase2メトリクス計算（可能な場合）
     df = calculate_phase2_metrics(df)
