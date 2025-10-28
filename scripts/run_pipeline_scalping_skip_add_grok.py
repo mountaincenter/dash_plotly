@@ -54,6 +54,13 @@ class PipelineRunner:
             ("pipeline.fetch_prices", "価格データ取得（yfinance）"),
         ])
 
+        # バックテストアーカイブ保存（16:00 JST実行時のみ）
+        # 昨日23:00選定のGROK銘柄 + 今日の価格データ → Phase1バックテスト
+        if skip_grok:
+            self.steps.append(
+                ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
+            )
+
         # バックテストメタ情報生成（常に実行）
         # 16:00 JST: backtest/アーカイブから計算
         # 23:00 JST: 新規選定直後に空のメタを生成（翌日16:00で上書きされる）
