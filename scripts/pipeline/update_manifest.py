@@ -196,15 +196,15 @@ def upload_files_to_s3() -> bool:
         else:
             print(f"  [WARN] {filename} not found, skipping")
 
-    # backtest/ ディレクトリの全ファイルを追加
+    # backtest/ ディレクトリのアーカイブファイルを追加
     backtest_dir = PARQUET_DIR / "backtest"
-    if backtest_dir.exists() and backtest_dir.is_dir():
-        backtest_files = list(backtest_dir.glob("grok_trending_*.parquet"))
-        if backtest_files:
-            print(f"  [INFO] Found {len(backtest_files)} backtest files")
-            upload_targets.extend(backtest_files)
-        else:
-            print(f"  [INFO] No backtest files found in {backtest_dir}")
+    archive_file = backtest_dir / "grok_trending_archive.parquet"
+
+    if archive_file.exists():
+        upload_targets.append(archive_file)
+        print(f"  [INFO] Added backtest archive: grok_trending_archive.parquet")
+    else:
+        print(f"  [INFO] No backtest archive found (expected after first 16:00 run)")
 
     # manifest.jsonも追加
     if MANIFEST_PATH.exists():
@@ -258,11 +258,12 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         # 保持すべきファイルのキーを作成（manifest.json含む）
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
+        keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
 
         # 削除対象のファイルを抽出
         delete_targets = [
             obj for obj in response["Contents"]
-            if obj["Key"] not in keep_keys and obj["Key"] != prefix  # ディレクトリ自体は除外
+            if obj["Key"] not in keep_keys and obj["Key"] != prefix and not obj["Key"].endswith("/")  # ディレクトリ自体は除外
         ]
 
         if not delete_targets:

@@ -3,8 +3,9 @@
 GROK銘柄のバックテストアーカイブ保存
 
 昨日23:00に選定されたGROK銘柄について、今日の前場パフォーマンスを計算して保存
-- 9:00寄付買い → 11:30前引け売却 (Phase1戦略)
-- 結果をdata/parquet/backtest/grok_trending_YYYYMMDD.parquetに保存
+- 9:00寄付買い → 11:30以降の最初の有効価格で売却 (Phase1戦略)
+- 結果を data/parquet/backtest/grok_trending_archive.parquet に追記（append-only）
+- 同じ日付のデータは上書き（再実行時の重複防止）
 """
 
 import sys
@@ -33,34 +34,40 @@ def get_open_price(df_1d: pd.DataFrame, ticker: str, target_date: date) -> float
     return None
 
 
-def get_price_at_time(
+def get_sell_price_after_1130(
     df_5m: pd.DataFrame,
     ticker: str,
-    target_date: date,
-    target_time: time,
-    tolerance_minutes: int = 10
-) -> float | None:
-    """5分足データから指定時刻の価格を取得（前後tolerance_minutes分の範囲で最も近い時刻）"""
+    target_date: date
+) -> tuple[float | None, str | None]:
+    """
+    5分足データから11:30以降の最初の有効な終値を取得
+
+    Returns:
+        (売却価格, 売却時刻) のタプル
+    """
     df_ticker = df_5m[
         (df_5m['ticker'] == ticker) &
         (df_5m['date'].dt.date == target_date)
     ].copy()
 
     if len(df_ticker) == 0:
-        return None
+        return None, None
 
-    # 目標時刻との差分を計算（分単位）
-    target_minutes = target_time.hour * 60 + target_time.minute
-    df_ticker['time_diff'] = df_ticker['date'].apply(
-        lambda x: abs((x.hour * 60 + x.minute) - target_minutes)
-    )
+    # 時刻を分単位に変換
+    df_ticker['time_minutes'] = df_ticker['date'].dt.hour * 60 + df_ticker['date'].dt.minute
 
-    # tolerance_minutes以内の最も近い時刻のデータを取得
-    closest = df_ticker[df_ticker['time_diff'] <= tolerance_minutes].nsmallest(1, 'time_diff')
+    # 11:30以降のデータに絞り込み（690分 = 11:30）
+    df_after_1130 = df_ticker[df_ticker['time_minutes'] >= 690].sort_values('time_minutes')
 
-    if len(closest) > 0 and pd.notna(closest['Close'].iloc[0]):
-        return float(closest['Close'].iloc[0])
-    return None
+    # NaNでない最初のClose価格を探す
+    valid_closes = df_after_1130[df_after_1130['Close'].notna()]
+
+    if len(valid_closes) > 0:
+        sell_price = float(valid_closes['Close'].iloc[0])
+        sell_time = valid_closes['date'].iloc[0].strftime('%H:%M')
+        return sell_price, sell_time
+
+    return None, None
 
 
 def calculate_phase1_backtest(
@@ -70,7 +77,7 @@ def calculate_phase1_backtest(
     target_date: date
 ) -> pd.DataFrame:
     """
-    Phase1バックテスト計算: 9:00寄付買い → 11:30前引け売却
+    Phase1バックテスト計算: 9:00寄付買い → 11:30以降の最初の有効価格で売却
 
     Args:
         df_grok: GROK選定銘柄データ（前日23:00選定）
@@ -89,15 +96,17 @@ def calculate_phase1_backtest(
         # 寄付価格（買値）を取得
         buy_price = get_open_price(df_prices_1d, ticker, target_date)
 
-        # 11:30の売却価格を取得
-        sell_price = get_price_at_time(
-            df_prices_5m, ticker, target_date, time(11, 30), tolerance_minutes=10
+        # 11:30以降の最初の有効な売却価格を取得
+        sell_price, sell_time = get_sell_price_after_1130(
+            df_prices_5m, ticker, target_date
         )
 
         # リターン計算
         phase1_return = None
+        phase1_win = None
         if buy_price is not None and sell_price is not None and buy_price > 0:
-            phase1_return = (sell_price - buy_price) / buy_price * 100
+            phase1_return = (sell_price - buy_price) / buy_price
+            phase1_win = phase1_return > 0
 
         result = {
             'ticker': ticker,
@@ -110,7 +119,7 @@ def calculate_phase1_backtest(
             'buy_price': buy_price,
             'sell_price': sell_price,
             'phase1_return': phase1_return,
-            'phase1_win': phase1_return > 0 if phase1_return is not None else None,
+            'phase1_win': phase1_win,
         }
 
         results.append(result)
@@ -171,7 +180,7 @@ def main():
     print(f"✅ バックテスト完了: {valid_results}/{total_stocks}銘柄で計算成功")
 
     if valid_results > 0:
-        avg_return = df_backtest['phase1_return'].mean()
+        avg_return = df_backtest['phase1_return'].mean() * 100
         win_rate = (df_backtest['phase1_win'] == True).sum() / valid_results * 100
 
         print(f"\n📊 Phase1結果サマリー:")
@@ -183,19 +192,38 @@ def main():
         if len(df_top5) > 0:
             top5_valid = df_top5['phase1_return'].notna().sum()
             if top5_valid > 0:
-                top5_avg = df_top5['phase1_return'].mean()
+                top5_avg = df_top5['phase1_return'].mean() * 100
                 top5_win_rate = (df_top5['phase1_win'] == True).sum() / top5_valid * 100
                 print(f"\n   Top5平均リターン: {top5_avg:+.2f}%")
                 print(f"   Top5勝率: {top5_win_rate:.1f}%")
 
-    # 6. アーカイブディレクトリに保存
+    # 6. アーカイブに追記
     archive_dir = PARQUET_DIR / "backtest"
     archive_dir.mkdir(parents=True, exist_ok=True)
 
-    output_file = archive_dir / f"grok_trending_{target_date.strftime('%Y%m%d')}.parquet"
-    df_backtest.to_parquet(output_file, index=False)
+    archive_file = archive_dir / "grok_trending_archive.parquet"
 
-    print(f"\n✅ バックテストアーカイブを保存: {output_file}")
+    # 既存アーカイブを読み込み
+    if archive_file.exists():
+        df_archive = pd.read_parquet(archive_file)
+        print(f"\n📂 既存アーカイブを読み込み: {len(df_archive)}件")
+
+        # 同じ日付のデータを除外（再実行時の重複防止）
+        df_archive = df_archive[df_archive['backtest_date'] != target_date]
+        print(f"   {target_date}のデータを除外: {len(df_archive)}件")
+
+        # 新データを追加
+        df_combined = pd.concat([df_archive, df_backtest], ignore_index=True)
+        print(f"   新データを追加: {len(df_combined)}件")
+    else:
+        print(f"\n📂 新規アーカイブを作成")
+        df_combined = df_backtest
+
+    # アーカイブを保存
+    df_combined.to_parquet(archive_file, index=False)
+    print(f"✅ アーカイブを保存: {archive_file}")
+    print(f"   総レコード数: {len(df_combined)}件")
+
     print("=" * 80)
 
     return 0

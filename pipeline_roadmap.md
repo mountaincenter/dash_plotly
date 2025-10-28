@@ -39,8 +39,8 @@ python3 scripts/pipeline/update_manifest.py
 3. **save_backtest_to_archive.py**: GROK銘柄のPhase1バックテスト実行
 
    - 前日23:00選定のGROK銘柄を読み込み
-   - 9:00始値（日足データ）→ 11:30価格（5分足データ）でリターン計算
-   - バックテスト結果をローカル保存（`data/parquet/backtest/grok_trending_YYYYMMDD.parquet`）
+   - 9:00始値（日足データ）→ 11:30以降の最初の有効価格（5分足データ）でリターン計算
+   - バックテスト結果をアーカイブに追記（`data/parquet/backtest/grok_trending_archive.parquet`）
 
 4. **update_manifest.py**: S3 マニフェスト更新
 
@@ -60,8 +60,8 @@ python3 scripts/pipeline/update_manifest.py
 - `data/parquet/prices_60d_15m.parquet` (更新)
 - `data/parquet/all_stocks.parquet` (更新)
 - `data/parquet/tech_snapshot_1d.parquet` (更新)
-- `data/parquet/backtest/grok_trending_YYYYMMDD.parquet` (新規作成)
-- S3 バケット全体
+- `data/parquet/backtest/grok_trending_archive.parquet` (追記)
+- S3 バケット全体（アーカイブ含む）
 
 ---
 
@@ -155,18 +155,16 @@ data/parquet/
 │   │
 │   ├── grok_backtest_meta.parquet     # GROK バックテストメタデータ
 │   │
-│   └── backtest/                      # 🚨 ローカル専用（S3 非同期）
-│       ├── grok_trending_20251027.parquet
-│       ├── grok_trending_20251028.parquet
-│       └── ...
-│           # 各ファイルの構造:
+│   └── backtest/                      # ✅ S3同期（Dashboard表示用）
+│       └── grok_trending_archive.parquet  # append-only アーカイブ
+│           # 構造:
 │           # ├─ ticker, stock_name
 │           # ├─ selection_score, grok_rank
 │           # ├─ reason, selected_time
 │           # ├─ backtest_date
 │           # ├─ buy_price (9:00 寄付)
-│           # ├─ sell_price (11:30 前引け)
-│           # ├─ phase1_return (%)
+│           # ├─ sell_price (11:30以降の最初の有効価格)
+│           # ├─ phase1_return (小数、例: 0.0523 = 5.23%)
 │           # └─ phase1_win (boolean)
 │
 └── 🔄 マニフェスト
@@ -174,7 +172,7 @@ data/parquet/
 ```
 
 **重要**: S3 には `parquet/` 以下のディレクトリ構造がそのまま同期されます。
-`backtest/` サブディレクトリも S3 に同期され、`s3://stock-api-data/parquet/backtest/` に配置されます。
+`backtest/grok_trending_archive.parquet` は S3 の `s3://stock-api-data/parquet/backtest/` に配置されます。
 
 ---
 
@@ -198,7 +196,7 @@ graph TB
     C -->|16:00| M[save_backtest_to_archive.py]
     D --> M
     N[grok_trending.parquet 前日23:00生成] --> M
-    M --> O[backtest/grok_trending_YYYYMMDD.parquet ローカル専用]
+    M --> O[backtest/grok_trending_archive.parquet append]
 
     K -->|23:00| P[generate_grok_trending.py]
     H -->|営業日カレンダー| P
@@ -206,7 +204,7 @@ graph TB
     P --> N
     P --> R[grok_backtest_meta.parquet]
 
-    O --> S[FastAPI /api/dev/backtest]
+    O -->|S3同期| S[FastAPI /api/dev/backtest]
     S --> T[Dashboard /dev]
 
     N --> U[FastAPI /stocks?tag=GROK]
@@ -290,9 +288,9 @@ manifest.json                            # 更新（約 5KB）
 - フロントエンドでの銘柄一覧表示に使用
 - リアルタイムタブでの最新価格表示
 - テクニカル分析データの提供
-- バックテスト結果もS3にアップロード（Dashboard表示用）
+- バックテストアーカイブもS3にアップロード（Dashboard表示用）
 
-**データサイズ目安**: 約 23MB + バックテストファイル
+**データサイズ目安**: 約 23MB + アーカイブファイル（日々増加、Parquet圧縮で効率的）
 
 ---
 
@@ -334,12 +332,13 @@ manifest.json                            # 更新（約 5KB）
 ❌ grok_prompt_final.txt
 ❌ grok_prompt_refined.txt
 ❌ meta.parquet.backup_*（バックアップファイル）
+❌ backtest/grok_trending_YYYYMMDD.parquet（旧形式の日次ファイル、削除可能）
 ```
 
 **バックテスト結果の管理**:
 
-- **ローカル**: `data/parquet/backtest/` に全履歴を保持
-- **S3**: `data/parquet/backtest/` ディレクトリも同期（Dashboard表示用）
+- **ローカル**: `data/parquet/backtest/grok_trending_archive.parquet` に全履歴を保持（append-only）
+- **S3**: アーカイブファイルを同期（`s3://stock-api-data/parquet/backtest/grok_trending_archive.parquet`）
 - **Dashboard**: `https://ymnk.jp/dev` でS3データを参照
 
 ---
@@ -411,9 +410,9 @@ manifest.json                            # 更新（約 5KB）
 ### **コスト最適化**
 
 - 16:00 と 23:00 の両方で価格データ取得（GROK銘柄がall_stocks.parquetに反映されるため必要）
-- S3 ストレージコスト監視
+- S3 ストレージコスト監視（アーカイブはParquet圧縮で効率的）
 - ECS タスク実行時間の最小化
-- バックテスト結果もS3に同期（Dashboard表示用）
+- バックテストアーカイブをS3に同期（append-only、日次ファイルは不要）
 
 ---
 
