@@ -274,8 +274,8 @@ jobs:
             # cron判定
             if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
               RUN_TIME="16:00"
-            elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
-              RUN_TIME="26:00"
+            elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+              RUN_TIME="23:00"
             else
               RUN_TIME="manual"
             fi
