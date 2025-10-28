@@ -18,6 +18,10 @@ on:
         description: "Force update meta_jquants.parquet (ignore 7-day freshness)"
         type: boolean
         default: false
+      force_grok:
+        description: "Force GROK selection (run generate_grok_trending.py)"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -76,8 +80,14 @@ jobs:
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
           echo "Current hour (JST): $CURRENT_HOUR"
 
+          # force_grok が true の場合、強制的にGROKモード
+          if [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
+            echo "mode=grok_forced" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=false" >> $GITHUB_OUTPUT
+            echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
           # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし、Grok選定実行）
-          if [ "$CURRENT_HOUR" = "23" ]; then
+          elif [ "$CURRENT_HOUR" = "23" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
