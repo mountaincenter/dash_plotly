@@ -43,6 +43,19 @@ def load_backtest_data(file_path: Path) -> pd.DataFrame:
 
 def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
     """日別統計を計算"""
+    # phase1_returnカラムが存在するかチェック
+    if 'phase1_return' not in df.columns:
+        return {
+            "total_stocks": len(df),
+            "valid_results": 0,
+            "avg_return": None,
+            "win_rate": None,
+            "max_return": None,
+            "min_return": None,
+            "top5_avg_return": None,
+            "top5_win_rate": None,
+        }
+
     valid_results = df['phase1_return'].notna()
     df_valid = df[valid_results]
 
@@ -66,8 +79,11 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
     min_return = float(df_valid['phase1_return'].min())
 
     # Top5統計
-    df_top5 = df[df['grok_rank'] <= 5]
-    df_top5_valid = df_top5[df_top5['phase1_return'].notna()]
+    if 'grok_rank' in df.columns:
+        df_top5 = df[df['grok_rank'] <= 5]
+        df_top5_valid = df_top5[df_top5['phase1_return'].notna()]
+    else:
+        df_top5_valid = pd.DataFrame()
 
     top5_avg_return = None
     top5_win_rate = None
@@ -114,9 +130,10 @@ async def get_backtest_summary():
         stats["date"] = backtest_date.isoformat()
         daily_stats.append(stats)
 
-        # 有効なリターンを収集
-        valid_returns = df[df['phase1_return'].notna()]['phase1_return'].tolist()
-        all_returns.extend(valid_returns)
+        # 有効なリターンを収集（カラムが存在する場合のみ）
+        if 'phase1_return' in df.columns:
+            valid_returns = df[df['phase1_return'].notna()]['phase1_return'].tolist()
+            all_returns.extend(valid_returns)
 
     # 全期間統計
     total_trades = sum(s["valid_results"] for s in daily_stats)
@@ -160,10 +177,10 @@ async def get_daily_backtest(date: str):
             "grok_rank": int(row["grok_rank"]) if pd.notna(row.get("grok_rank")) else None,
             "reason": row.get("reason"),
             "selected_time": row.get("selected_time"),
-            "buy_price": float(row["buy_price"]) if pd.notna(row.get("buy_price")) else None,
-            "sell_price": float(row["sell_price"]) if pd.notna(row.get("sell_price")) else None,
-            "phase1_return": float(row["phase1_return"]) if pd.notna(row.get("phase1_return")) else None,
-            "phase1_win": bool(row["phase1_win"]) if pd.notna(row.get("phase1_win")) else None,
+            "buy_price": float(row["buy_price"]) if "buy_price" in df.columns and pd.notna(row.get("buy_price")) else None,
+            "sell_price": float(row["sell_price"]) if "sell_price" in df.columns and pd.notna(row.get("sell_price")) else None,
+            "phase1_return": float(row["phase1_return"]) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None,
+            "phase1_win": bool(row["phase1_win"]) if "phase1_win" in df.columns and pd.notna(row.get("phase1_win")) else None,
         }
         records.append(record)
 
