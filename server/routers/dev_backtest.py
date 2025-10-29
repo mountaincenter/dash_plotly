@@ -19,20 +19,15 @@ from common_cfg.paths import PARQUET_DIR
 router = APIRouter()
 
 BACKTEST_DIR = PARQUET_DIR / "backtest"
+ARCHIVE_FILE = BACKTEST_DIR / "grok_trending_archive.parquet"
 
 
-def load_backtest_files() -> List[Path]:
-    """バックテストファイル一覧を取得（日付降順）"""
-    if not BACKTEST_DIR.exists():
-        return []
+def load_archive_data() -> pd.DataFrame:
+    """アーカイブファイルを読み込み"""
+    if not ARCHIVE_FILE.exists():
+        return pd.DataFrame()
 
-    files = list(BACKTEST_DIR.glob("grok_trending_*.parquet"))
-    return sorted(files, reverse=True)
-
-
-def load_backtest_data(file_path: Path) -> pd.DataFrame:
-    """バックテストファイルを読み込み"""
-    df = pd.read_parquet(file_path)
+    df = pd.read_parquet(ARCHIVE_FILE)
 
     # backtest_dateをdatetime型に変換
     if 'backtest_date' in df.columns:
@@ -108,39 +103,47 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
 @router.get("/api/dev/backtest/summary")
 async def get_backtest_summary():
     """バックテスト全体サマリー"""
-    files = load_backtest_files()
+    df_all = load_archive_data()
 
-    if not files:
+    if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
+
+    # 日付でグループ化
+    daily_groups = df_all.groupby(df_all['backtest_date'].dt.date)
 
     daily_stats = []
     all_returns = []
 
-    for file in files:
-        df = load_backtest_data(file)
-        stats = calculate_daily_stats(df)
-
-        # 日付を抽出
-        date_str = file.stem.replace("grok_trending_", "")
-        try:
-            backtest_date = datetime.strptime(date_str, "%Y%m%d").date()
-        except:
-            continue
-
+    for backtest_date, df_day in daily_groups:
+        stats = calculate_daily_stats(df_day)
         stats["date"] = backtest_date.isoformat()
         daily_stats.append(stats)
 
-        # 有効なリターンを収集（カラムが存在する場合のみ）
-        if 'phase1_return' in df.columns:
-            valid_returns = df[df['phase1_return'].notna()]['phase1_return'].tolist()
+        # 有効なリターンを収集
+        if 'phase1_return' in df_day.columns:
+            valid_returns = df_day[df_day['phase1_return'].notna()]['phase1_return'].tolist()
             all_returns.extend(valid_returns)
 
-    # 全期間統計
+    # 日付降順でソート
+    daily_stats = sorted(daily_stats, key=lambda x: x["date"], reverse=True)
+
+    # 全期間統計（リターンは小数形式なので100倍してパーセント表示）
     total_trades = sum(s["valid_results"] for s in daily_stats)
-    overall_avg_return = sum(all_returns) / len(all_returns) if all_returns else None
+    overall_avg_return = (sum(all_returns) / len(all_returns) * 100) if all_returns else None
     overall_win_rate = (sum(1 for r in all_returns if r > 0) / len(all_returns) * 100) if all_returns else None
-    overall_max_return = max(all_returns) if all_returns else None
-    overall_min_return = min(all_returns) if all_returns else None
+    overall_max_return = (max(all_returns) * 100) if all_returns else None
+    overall_min_return = (min(all_returns) * 100) if all_returns else None
+
+    # 日次統計もパーセント表示に変換
+    for stats in daily_stats:
+        if stats["avg_return"] is not None:
+            stats["avg_return"] *= 100
+        if stats["max_return"] is not None:
+            stats["max_return"] *= 100
+        if stats["min_return"] is not None:
+            stats["min_return"] *= 100
+        if stats["top5_avg_return"] is not None:
+            stats["top5_avg_return"] *= 100
 
     return {
         "overall": {
@@ -158,14 +161,28 @@ async def get_backtest_summary():
 @router.get("/api/dev/backtest/daily/{date}")
 async def get_daily_backtest(date: str):
     """特定日のバックテスト詳細"""
-    backtest_dir = PARQUET_DIR / "backtest"
-    file_path = backtest_dir / f"grok_trending_{date.replace('-', '')}.parquet"
+    df_all = load_archive_data()
 
-    if not file_path.exists():
+    if df_all.empty:
+        raise HTTPException(status_code=404, detail="No backtest data found")
+
+    # 指定日付のデータを抽出
+    df = df_all[df_all['backtest_date'].dt.date == pd.to_datetime(date).date()]
+
+    if df.empty:
         raise HTTPException(status_code=404, detail=f"No backtest data for {date}")
 
-    df = load_backtest_data(file_path)
     stats = calculate_daily_stats(df)
+
+    # 統計をパーセント表示に変換
+    if stats["avg_return"] is not None:
+        stats["avg_return"] *= 100
+    if stats["max_return"] is not None:
+        stats["max_return"] *= 100
+    if stats["min_return"] is not None:
+        stats["min_return"] *= 100
+    if stats["top5_avg_return"] is not None:
+        stats["top5_avg_return"] *= 100
 
     # データをJSON形式に変換
     records = []
@@ -179,7 +196,7 @@ async def get_daily_backtest(date: str):
             "selected_time": row.get("selected_time"),
             "buy_price": float(row["buy_price"]) if "buy_price" in df.columns and pd.notna(row.get("buy_price")) else None,
             "sell_price": float(row["sell_price"]) if "sell_price" in df.columns and pd.notna(row.get("sell_price")) else None,
-            "phase1_return": float(row["phase1_return"]) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None,
+            "phase1_return": float(row["phase1_return"] * 100) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None,
             "phase1_win": bool(row["phase1_win"]) if "phase1_win" in df.columns and pd.notna(row.get("phase1_win")) else None,
         }
         records.append(record)
@@ -194,33 +211,26 @@ async def get_daily_backtest(date: str):
 @router.get("/api/dev/backtest/latest")
 async def get_latest_backtest():
     """最新のバックテスト結果"""
-    files = load_backtest_files()
+    df_all = load_archive_data()
 
-    if not files:
+    if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
 
-    latest_file = files[0]
-    date_str = latest_file.stem.replace("grok_trending_", "")
-
-    try:
-        backtest_date = datetime.strptime(date_str, "%Y%m%d").date()
-        return await get_daily_backtest(backtest_date.isoformat())
-    except:
-        raise HTTPException(status_code=500, detail="Failed to parse date")
+    # 最新日付を取得
+    latest_date = df_all['backtest_date'].max().date()
+    return await get_daily_backtest(latest_date.isoformat())
 
 
 @router.get("/api/dev/backtest/dates")
 async def get_available_dates():
     """利用可能な日付一覧"""
-    files = load_backtest_files()
+    df_all = load_archive_data()
 
-    dates = []
-    for file in files:
-        date_str = file.stem.replace("grok_trending_", "")
-        try:
-            backtest_date = datetime.strptime(date_str, "%Y%m%d").date()
-            dates.append(backtest_date.isoformat())
-        except:
-            continue
+    if df_all.empty:
+        return {"dates": []}
 
-    return {"dates": dates}
+    # ユニークな日付を取得してソート
+    dates = sorted(df_all['backtest_date'].dt.date.unique(), reverse=True)
+    dates_str = [d.isoformat() for d in dates]
+
+    return {"dates": dates_str}
