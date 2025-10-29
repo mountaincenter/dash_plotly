@@ -163,8 +163,11 @@ def main():
     print(f"✅ 日足データ読み込み: {len(df_prices_1d):,}件")
     print(f"✅ 5分足データ読み込み: {len(df_prices_5m):,}件")
 
-    # 3. バックテスト対象日（今日）
-    target_date = date.today()
+    # 3. バックテスト対象日（引数 or 今日）
+    if len(sys.argv) > 1:
+        target_date = datetime.strptime(sys.argv[1], '%Y-%m-%d').date()
+    else:
+        target_date = date.today()
     print(f"\n📅 バックテスト対象日: {target_date}")
 
     # 4. Phase1バックテスト実行

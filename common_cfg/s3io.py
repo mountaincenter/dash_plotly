@@ -36,7 +36,15 @@ def _init_s3_client(cfg: S3Config):
         print(f"[WARN] boto3 client init failed: {exc}", file=sys.stderr)
         return None
 
-def upload_files(cfg: S3Config, files: list[Path]) -> None:
+def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None) -> None:
+    """
+    Upload files to S3, preserving subdirectory structure if base_dir is provided.
+
+    Args:
+        cfg: S3 configuration
+        files: List of file paths to upload
+        base_dir: Base directory to calculate relative paths from (preserves subdirectories)
+    """
     if not cfg.bucket:
         print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
         return
@@ -45,7 +53,13 @@ def upload_files(cfg: S3Config, files: list[Path]) -> None:
         return
 
     for p in files:
-        key = f"{cfg.prefix}{p.name}"
+        # If base_dir provided, preserve subdirectory structure
+        if base_dir and p.is_relative_to(base_dir):
+            relative_path = p.relative_to(base_dir)
+            key = f"{cfg.prefix}{relative_path}"
+        else:
+            key = f"{cfg.prefix}{p.name}"
+
         extra = {
             "ContentType": "application/octet-stream",
             "CacheControl": "max-age=60",

@@ -187,6 +187,15 @@ async def get_daily_backtest(date: str):
     # データをJSON形式に変換
     records = []
     for _, row in df.iterrows():
+        buy_price = float(row["buy_price"]) if "buy_price" in df.columns and pd.notna(row.get("buy_price")) else None
+        sell_price = float(row["sell_price"]) if "sell_price" in df.columns and pd.notna(row.get("sell_price")) else None
+        phase1_return = float(row["phase1_return"] * 100) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None
+
+        # 100株あたりの利益額を計算
+        profit_per_100 = None
+        if buy_price is not None and sell_price is not None:
+            profit_per_100 = (sell_price - buy_price) * 100
+
         record = {
             "ticker": row.get("ticker"),
             "stock_name": row.get("stock_name"),
@@ -194,10 +203,11 @@ async def get_daily_backtest(date: str):
             "grok_rank": int(row["grok_rank"]) if pd.notna(row.get("grok_rank")) else None,
             "reason": row.get("reason"),
             "selected_time": row.get("selected_time"),
-            "buy_price": float(row["buy_price"]) if "buy_price" in df.columns and pd.notna(row.get("buy_price")) else None,
-            "sell_price": float(row["sell_price"]) if "sell_price" in df.columns and pd.notna(row.get("sell_price")) else None,
-            "phase1_return": float(row["phase1_return"] * 100) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None,
+            "buy_price": buy_price,
+            "sell_price": sell_price,
+            "phase1_return": phase1_return,
             "phase1_win": bool(row["phase1_win"]) if "phase1_win" in df.columns and pd.notna(row.get("phase1_win")) else None,
+            "profit_per_100": profit_per_100,
         }
         records.append(record)
 

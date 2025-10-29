@@ -17,12 +17,13 @@ from common_cfg.s3cfg import S3Config, load_s3_config
 from common_cfg.s3io import upload_files
 
 
-def upload_to_s3(files: List[Path]) -> bool:
+def upload_to_s3(files: List[Path], base_dir: Path | None = None) -> bool:
     """
     ファイルをS3にアップロード
 
     Args:
         files: アップロードするファイルのリスト
+        base_dir: サブディレクトリ構造を保持する基準ディレクトリ
 
     Returns:
         成功時True、失敗時False
@@ -46,7 +47,7 @@ def upload_to_s3(files: List[Path]) -> bool:
             return False
 
         print(f"[PROGRESS] Uploading to s3://{bucket}/{prefix}...")
-        upload_files(s3_cfg, files)
+        upload_files(s3_cfg, files, base_dir=base_dir)
         print(f"[OK] Uploaded {len(files)} files to S3")
         return True
 

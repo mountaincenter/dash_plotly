@@ -214,9 +214,9 @@ def upload_files_to_s3() -> bool:
         print("  [WARN] No files to upload")
         return False
 
-    # S3にアップロード
+    # S3にアップロード（PARQUET_DIRを基準にサブディレクトリ構造を保持）
     print(f"  [INFO] Uploading {len(upload_targets)} files...")
-    success = upload_to_s3(upload_targets)
+    success = upload_to_s3(upload_targets, base_dir=PARQUET_DIR)
 
     if success:
         print(f"  ✓ Successfully uploaded {len(upload_targets)} files to S3")
