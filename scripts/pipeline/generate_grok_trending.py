@@ -526,7 +526,6 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
             "has_mention": has_mention,  # プレミアムユーザー言及フラグ
             "mentioned_by": mentioned_by,  # 言及者名
             "selection_score": selection_score,  # 選定時点スコア
-            "grok_rank": idx,  # Grokの選定順位
         }
         rows.append(row)
 
@@ -536,6 +535,7 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     df = df.sort_values("selection_score", ascending=False).reset_index(drop=True)
 
     # ランクを再計算（スコア順）
+    df["grok_rank"] = range(1, len(df) + 1)  # スコア順のランク
     df["selection_rank"] = range(1, len(df) + 1)
 
     # tagsを再構築（カテゴリ、スコア、Top5バッジ）
