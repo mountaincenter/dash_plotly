@@ -11,11 +11,12 @@ router = APIRouter()
 def get_parquet_from_s3_or_local(filename: str) -> pd.DataFrame:
     """
     S3またはローカルからparquetファイルを取得
+    filename can include subdirectories like "backtest/grok_trending_archive.parquet"
     """
     import boto3
     from botocore.exceptions import ClientError
 
-    # ローカルパス
+    # ローカルパス（filenameにサブディレクトリが含まれる場合も対応）
     local_path = Path(__file__).resolve().parents[2] / "data" / "parquet" / filename
 
     # ローカルファイルが存在すればそれを使用
@@ -126,6 +127,35 @@ async def get_grok_top_stocks(response: Response, category: str = "top5") -> Lis
 
         # キャッシュヘッダーを設定（1時間）
         response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=600"
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@router.get("/grok_backtest_archive")
+async def get_grok_backtest_archive(response: Response) -> List[Dict]:
+    """
+    Grokバックテストアーカイブデータを取得
+
+    Returns:
+        List[Dict]: バックテスト結果の全履歴
+    """
+    try:
+        # backtest/grok_trending_archive.parquetから読み込み
+        df = get_parquet_from_s3_or_local("backtest/grok_trending_archive.parquet")
+
+        if df.empty:
+            return []
+
+        # DataFrameをリストに変換
+        result = df.to_dict(orient="records")
+
+        # キャッシュヘッダーを設定（5分）
+        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
 
         return result
 
