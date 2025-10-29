@@ -167,6 +167,29 @@ jobs:
 
           exit $EXIT_CODE
 
+      - name: Run backtest and archive
+        if: success()
+        run: |
+          echo "============================================================"
+          echo "Running backtest and archiving results"
+          echo "============================================================"
+
+          # バックテストを実行（当日のGROK選定結果を使用）
+          if [ -f "data/parquet/grok_trending.parquet" ]; then
+            echo "✅ Found grok_trending.parquet, running backtest..."
+            python scripts/pipeline/save_backtest_to_archive.py
+
+            if [ $? -eq 0 ]; then
+              echo "✅ Backtest completed and archived"
+            else
+              echo "⚠️ Backtest failed (non-critical)"
+            fi
+          else
+            echo "⚠️ No grok_trending.parquet found, skipping backtest"
+          fi
+
+          echo "============================================================"
+
       - name: Extract data statistics
         id: stats
         if: success()
@@ -191,6 +214,16 @@ jobs:
             GROK_BACKTEST_EXISTS=true
           fi
           echo "grok_backtest_exists=$GROK_BACKTEST_EXISTS" >> $GITHUB_OUTPUT
+
+          # grok_trending_archive statistics (NEW)
+          ARCHIVE_TOTAL=0
+          ARCHIVE_DATES=0
+          if [ -f "data/parquet/backtest/grok_trending_archive.parquet" ]; then
+            ARCHIVE_TOTAL=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/backtest/grok_trending_archive.parquet')))")
+            ARCHIVE_DATES=$(python -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/grok_trending_archive.parquet'); print(df['backtest_date'].nunique())")
+          fi
+          echo "archive_total=$ARCHIVE_TOTAL" >> $GITHUB_OUTPUT
+          echo "archive_dates=$ARCHIVE_DATES" >> $GITHUB_OUTPUT
 
           # scalping statistics (kept for compatibility, will be 0)
           ENTRY_COUNT=0
@@ -221,6 +254,7 @@ jobs:
           echo "📊 Statistics extracted:"
           echo "  - meta_jquants: $META_JQUANTS_COUNT stocks"
           echo "  - grok_trending: $GROK_COUNT stocks (NEW)"
+          echo "  - grok_archive: $ARCHIVE_TOTAL records across $ARCHIVE_DATES days (NEW)"
           echo "  - scalping_entry: $ENTRY_COUNT stocks (skipped)"
           echo "  - scalping_active: $ACTIVE_COUNT stocks (skipped)"
           echo "  - all_stocks: $ALL_STOCKS_COUNT stocks"
