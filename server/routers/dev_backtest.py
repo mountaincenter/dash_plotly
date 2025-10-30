@@ -103,6 +103,12 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
     max_return = float(df_valid['phase1_return'].max())
     min_return = float(df_valid['phase1_return'].min())
 
+    # 累計損益（100株あたり）
+    total_profit_per_100 = 0.0
+    if 'buy_price' in df_valid.columns and 'sell_price' in df_valid.columns:
+        profits = (df_valid['sell_price'] - df_valid['buy_price']) * 100
+        total_profit_per_100 = float(profits.sum())
+
     # Top5統計
     if 'grok_rank' in df.columns:
         df_top5 = df[df['grok_rank'] <= 5]
@@ -112,11 +118,17 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
 
     top5_avg_return = None
     top5_win_rate = None
+    top5_total_profit_per_100 = None
 
     if len(df_top5_valid) > 0:
         top5_avg_return = float(df_top5_valid['phase1_return'].mean())
         top5_win_count = (df_top5_valid['phase1_win'] == True).sum()
         top5_win_rate = float(top5_win_count / len(df_top5_valid) * 100)
+
+        # Top5累計損益
+        if 'buy_price' in df_top5_valid.columns and 'sell_price' in df_top5_valid.columns:
+            top5_profits = (df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100
+            top5_total_profit_per_100 = float(top5_profits.sum())
 
     return {
         "total_stocks": len(df),
@@ -125,18 +137,41 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
         "win_rate": win_rate,
         "max_return": max_return,
         "min_return": min_return,
+        "total_profit_per_100": total_profit_per_100,
         "top5_avg_return": top5_avg_return,
         "top5_win_rate": top5_win_rate,
+        "top5_total_profit_per_100": top5_total_profit_per_100,
     }
 
 
 @router.get("/api/dev/backtest/summary")
-async def get_backtest_summary():
-    """バックテスト全体サマリー（ダッシュボード用の完全なデータ）"""
+async def get_backtest_summary(prompt_version: str | None = None):
+    """
+    バックテスト全体サマリー（ダッシュボード用の完全なデータ）
+
+    Args:
+        prompt_version: フィルタするプロンプトバージョン (例: "v1_0_baseline")
+                       指定しない場合は全バージョンのデータを表示
+    """
     df_all = load_archive_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
+
+    # 利用可能なバージョン一覧を取得
+    available_versions = []
+    if 'prompt_version' in df_all.columns:
+        available_versions = sorted(df_all['prompt_version'].unique().tolist())
+
+    # バージョンフィルタを適用
+    current_version = prompt_version if prompt_version else "all"
+    if prompt_version and 'prompt_version' in df_all.columns:
+        df_all = df_all[df_all['prompt_version'] == prompt_version].copy()
+        if df_all.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No data found for version: {prompt_version}"
+            )
 
     # 全体の有効なレコード
     df_valid = df_all[df_all['phase1_return'].notna()].copy()
@@ -221,21 +256,41 @@ async def get_backtest_summary():
 
         if len(df_day_valid) > 0:
             win_count = (df_day_valid['phase1_win'] == True).sum()
+            day_profits = ((df_day_valid['sell_price'] - df_day_valid['buy_price']) * 100).tolist()
+
+            # Top5のデータを計算
+            df_day_top5 = df_day_valid.nsmallest(5, 'grok_rank') if len(df_day_valid) >= 5 else df_day_valid
+            top5_profits = ((df_day_top5['sell_price'] - df_day_top5['buy_price']) * 100).tolist()
+            top5_win_count = (df_day_top5['phase1_win'] == True).sum()
+
             daily_stats_list.append({
                 "date": backtest_date.isoformat(),
                 "win_rate": float(win_count / len(df_day_valid) * 100),
                 "avg_return": float(df_day_valid['phase1_return'].mean() * 100),
                 "count": len(df_day_valid),
+                "total_profit_per_100": float(sum(day_profits)),
+                "top5_total_profit_per_100": float(sum(top5_profits)),
+                "top5_avg_return": float(df_day_top5['phase1_return'].mean() * 100),
+                "top5_win_rate": float(top5_win_count / len(df_day_top5) * 100),
             })
 
     # 日付でソート
     daily_stats_list.sort(key=lambda x: x["date"])
 
+    # 累積損益を計算
+    cumulative_profit = 0.0
+    cumulative_top5_profit = 0.0
+    for stat in daily_stats_list:
+        cumulative_profit += stat["total_profit_per_100"]
+        cumulative_top5_profit += stat["top5_total_profit_per_100"]
+        stat["cumulative_profit_per_100"] = float(cumulative_profit)
+        stat["cumulative_top5_profit_per_100"] = float(cumulative_top5_profit)
+
     # === トレンド分析 ===
     if len(daily_stats_list) > 0:
         recent_days = daily_stats_list[-5:]
-        recent_avg = sum(d["avg_return"] for d in recent_days) / len(recent_days)
-        overall_avg = sum(d["avg_return"] for d in daily_stats_list) / len(daily_stats_list)
+        recent_avg = sum(d["win_rate"] for d in recent_days) / len(recent_days)
+        overall_avg = sum(d["win_rate"] for d in daily_stats_list) / len(daily_stats_list)
         change = ((recent_avg - overall_avg) / abs(overall_avg) * 100) if overall_avg != 0 else 0
 
         if change > 10:
@@ -323,6 +378,8 @@ async def get_backtest_summary():
         "recent_records": recent_records,
         "trend_analysis": trend_analysis,
         "alerts": alerts,
+        "available_versions": available_versions,
+        "current_version": current_version,
     }
 
 
@@ -376,6 +433,11 @@ async def get_daily_backtest(date: str):
             "phase1_return": phase1_return,
             "phase1_win": bool(row["phase1_win"]) if "phase1_win" in df.columns and pd.notna(row.get("phase1_win")) else None,
             "profit_per_100": profit_per_100,
+            "morning_high": float(row["morning_high"]) if "morning_high" in df.columns and pd.notna(row.get("morning_high")) else None,
+            "morning_low": float(row["morning_low"]) if "morning_low" in df.columns and pd.notna(row.get("morning_low")) else None,
+            "morning_volume": int(row["morning_volume"]) if "morning_volume" in df.columns and pd.notna(row.get("morning_volume")) else None,
+            "max_gain_pct": float(row["max_gain_pct"] * 100) if "max_gain_pct" in df.columns and pd.notna(row.get("max_gain_pct")) else None,
+            "max_drawdown_pct": float(row["max_drawdown_pct"] * 100) if "max_drawdown_pct" in df.columns and pd.notna(row.get("max_drawdown_pct")) else None,
         }
         records.append(record)
 

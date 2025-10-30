@@ -1,8 +1,8 @@
 {
-  "generated_at": "2025-10-29T16:59:55.531067",
-  "update_flag": "2025-10-29",
+  "generated_at": "2025-10-31T03:23:09.926862",
+  "update_flag": "2025-10-31",
   "grok_update_flag": false,
-  "grok_last_update_date": "2025-10-28",
+  "grok_last_update_date": "2025-10-31",
   "grok_last_update_time": null,
   "files": {
     "meta.parquet": {
@@ -20,7 +20,7 @@
         "categories",
         "tags"
       ],
-      "updated_at": "2025-10-29T16:46:57.143117"
+      "updated_at": "2025-10-31T02:43:06.690927"
     },
     "meta_jquants.parquet": {
       "exists": true,
@@ -35,11 +35,11 @@
         "series",
         "topixnewindexseries"
       ],
-      "updated_at": "2025-10-29T16:46:58.603315"
+      "updated_at": "2025-10-31T02:43:06.919762"
     },
     "all_stocks.parquet": {
       "exists": true,
-      "size_bytes": 14755,
+      "size_bytes": 14721,
       "row_count": 68,
       "columns": [
         "ticker",
@@ -61,11 +61,11 @@
         "score",
         "key_signal"
       ],
-      "updated_at": "2025-10-29T16:46:55.207775"
+      "updated_at": "2025-10-31T02:43:05.664931"
     },
     "grok_trending.parquet": {
       "exists": true,
-      "size_bytes": 18964,
+      "size_bytes": 19202,
       "row_count": 12,
       "columns": [
         "ticker",
@@ -96,9 +96,10 @@
         "mentioned_by",
         "selection_score",
         "grok_rank",
-        "selection_rank"
+        "selection_rank",
+        "prompt_version"
       ],
-      "updated_at": "2025-10-29T16:46:56.630500"
+      "updated_at": "2025-10-31T02:46:40.177631"
     },
     "grok_backtest_meta.parquet": {
       "exists": true,
@@ -108,7 +109,7 @@
         "metric",
         "value"
       ],
-      "updated_at": "2025-10-29T16:46:56.086662"
+      "updated_at": "2025-10-31T02:43:06.371210"
     },
     "grok_top_stocks.parquet": {
       "exists": false,
@@ -133,8 +134,8 @@
     },
     "prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 1214985,
-      "row_count": 93704,
+      "size_bytes": 1213853,
+      "row_count": 93840,
       "columns": [
         "date",
         "Open",
@@ -144,12 +145,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-29T16:47:16.395656"
+      "updated_at": "2025-10-31T02:43:07.224128"
     },
     "prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 2897922,
-      "row_count": 272476,
+      "size_bytes": 2896170,
+      "row_count": 272680,
       "columns": [
         "date",
         "Open",
@@ -159,11 +160,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-29T16:48:01.657639"
+      "updated_at": "2025-10-31T02:43:07.604890"
     },
     "prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 4407067,
+      "size_bytes": 4391399,
       "row_count": 346664,
       "columns": [
         "date",
@@ -174,12 +175,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-29T16:48:45.658062"
+      "updated_at": "2025-10-31T02:43:08.222102"
     },
     "prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 13217298,
-      "row_count": 450296,
+      "size_bytes": 13287374,
+      "row_count": 450364,
       "columns": [
         "date",
         "Open",
@@ -189,11 +190,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-29T16:50:38.522281"
+      "updated_at": "2025-10-31T02:43:09.254253"
     },
     "prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 808301,
+      "size_bytes": 811342,
       "row_count": 21624,
       "columns": [
         "date",
@@ -204,11 +205,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-29T16:50:48.344306"
+      "updated_at": "2025-10-31T02:43:09.546244"
     },
     "tech_snapshot_1d.parquet": {
       "exists": true,
-      "size_bytes": 22062,
+      "size_bytes": 22096,
       "row_count": 68,
       "columns": [
         "ticker",
@@ -217,7 +218,7 @@
         "votes",
         "overall"
       ],
-      "updated_at": "2025-10-29T16:50:49.975322"
+      "updated_at": "2025-10-31T02:43:09.717118"
     }
   }
 }

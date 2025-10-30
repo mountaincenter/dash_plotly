@@ -34,6 +34,81 @@ def get_open_price(df_1d: pd.DataFrame, ticker: str, target_date: date) -> float
     return None
 
 
+def get_morning_session_details(
+    df_5m: pd.DataFrame,
+    ticker: str,
+    target_date: date
+) -> dict:
+    """
+    5分足データから前場（9:00-11:30）の詳細情報を取得
+
+    Returns:
+        dict: {
+            'morning_high': 前場の最高値,
+            'morning_low': 前場の最安値,
+            'morning_volume': 前場の出来高,
+            'max_gain_pct': 始値からの最大上昇率 (morning_high/open - 1),
+            'max_drawdown_pct': 始値からの最大下落率 (morning_low/open - 1)
+        }
+    """
+    result = {
+        'morning_high': None,
+        'morning_low': None,
+        'morning_volume': None,
+        'max_gain_pct': None,
+        'max_drawdown_pct': None,
+    }
+
+    if 'date' not in df_5m.columns:
+        return result
+
+    if not pd.api.types.is_datetime64_any_dtype(df_5m['date']):
+        return result
+
+    # 対象銘柄・日付でフィルタ
+    df_ticker = df_5m[
+        (df_5m['ticker'] == ticker) &
+        (df_5m['date'].dt.date == target_date)
+    ].copy()
+
+    if len(df_ticker) == 0:
+        return result
+
+    # 時刻を分単位に変換
+    df_ticker['time_minutes'] = df_ticker['date'].dt.hour * 60 + df_ticker['date'].dt.minute
+
+    # 前場（9:00-11:30 = 540-690分）のデータに絞り込み
+    df_morning = df_ticker[
+        (df_ticker['time_minutes'] >= 540) &
+        (df_ticker['time_minutes'] <= 690)
+    ]
+
+    if len(df_morning) == 0:
+        return result
+
+    # 前場の最高値・最安値・出来高
+    result['morning_high'] = float(df_morning['High'].max()) if df_morning['High'].notna().any() else None
+    result['morning_low'] = float(df_morning['Low'].min()) if df_morning['Low'].notna().any() else None
+    result['morning_volume'] = int(df_morning['Volume'].sum()) if df_morning['Volume'].notna().any() else None
+
+    # 始値（9:00の最初のOpen）を取得
+    df_morning_sorted = df_morning.sort_values('time_minutes')
+    open_price = None
+    for _, row in df_morning_sorted.iterrows():
+        if pd.notna(row['Open']):
+            open_price = float(row['Open'])
+            break
+
+    # 始値からの最大上昇率・最大下落率を計算
+    if open_price and open_price > 0:
+        if result['morning_high']:
+            result['max_gain_pct'] = (result['morning_high'] / open_price) - 1.0
+        if result['morning_low']:
+            result['max_drawdown_pct'] = (result['morning_low'] / open_price) - 1.0
+
+    return result
+
+
 def get_sell_price_after_1130(
     df_5m: pd.DataFrame,
     ticker: str,
@@ -111,12 +186,19 @@ def calculate_phase1_backtest(
             df_prices_5m, ticker, target_date
         )
 
+        # 前場の詳細データを取得
+        morning_details = get_morning_session_details(
+            df_prices_5m, ticker, target_date
+        )
+
         # リターン計算
         phase1_return = None
         phase1_win = None
+        profit_per_100_shares = None
         if buy_price is not None and sell_price is not None and buy_price > 0:
             phase1_return = (sell_price - buy_price) / buy_price
             phase1_win = phase1_return > 0
+            profit_per_100_shares = (sell_price - buy_price) * 100
 
         result = {
             'ticker': ticker,
@@ -130,6 +212,13 @@ def calculate_phase1_backtest(
             'sell_price': sell_price,
             'phase1_return': phase1_return,
             'phase1_win': phase1_win,
+            'profit_per_100_shares': profit_per_100_shares,
+            'morning_high': morning_details['morning_high'],
+            'morning_low': morning_details['morning_low'],
+            'morning_volume': morning_details['morning_volume'],
+            'max_gain_pct': morning_details['max_gain_pct'],
+            'max_drawdown_pct': morning_details['max_drawdown_pct'],
+            'prompt_version': row.get('prompt_version', 'v1_0_baseline'),  # プロンプトバージョン
         }
 
         results.append(result)
