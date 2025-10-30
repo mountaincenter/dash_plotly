@@ -52,7 +52,7 @@ def load_archive_data() -> pd.DataFrame:
 
         # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
         df = pd.read_parquet(s3_url, storage_options={
-            "region_name": AWS_REGION
+            "client_kwargs": {"region_name": AWS_REGION}
         })
 
         if 'backtest_date' in df.columns:
