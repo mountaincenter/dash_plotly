@@ -9,6 +9,9 @@ import pandas as pd
 from datetime import datetime, date
 from typing import List, Dict, Any
 import sys
+import os
+import boto3
+from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -21,19 +24,46 @@ router = APIRouter()
 BACKTEST_DIR = PARQUET_DIR / "backtest"
 ARCHIVE_FILE = BACKTEST_DIR / "grok_trending_archive.parquet"
 
+# S3設定（環境変数から取得）
+S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
+S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+
 
 def load_archive_data() -> pd.DataFrame:
-    """アーカイブファイルを読み込み"""
-    if not ARCHIVE_FILE.exists():
+    """
+    アーカイブファイルを読み込み
+    - ローカルにファイルがあればそれを使用
+    - なければS3から直接読み込み
+    """
+    # ローカルファイルが存在する場合
+    if ARCHIVE_FILE.exists():
+        df = pd.read_parquet(ARCHIVE_FILE)
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        return df
+
+    # S3から読み込み
+    try:
+        s3_key = f"{S3_PREFIX}backtest/grok_trending_archive.parquet"
+        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+
+        print(f"[INFO] Loading backtest archive from S3: {s3_url}")
+
+        # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
+        df = pd.read_parquet(s3_url, storage_options={
+            "region_name": AWS_REGION
+        })
+
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+
+        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        return df
+
+    except (ClientError, FileNotFoundError) as e:
+        print(f"[WARNING] Could not load backtest archive from S3: {e}")
         return pd.DataFrame()
-
-    df = pd.read_parquet(ARCHIVE_FILE)
-
-    # backtest_dateをdatetime型に変換
-    if 'backtest_date' in df.columns:
-        df['backtest_date'] = pd.to_datetime(df['backtest_date'])
-
-    return df
 
 
 def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:

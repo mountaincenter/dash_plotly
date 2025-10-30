@@ -10,3 +10,4 @@ python-dotenv==1.1.1
 yfinance==0.2.66
 requests>=2.31.0
 openai>=1.0.0
+s3fs==2024.12.0
