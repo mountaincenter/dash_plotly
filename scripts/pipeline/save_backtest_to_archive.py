@@ -235,23 +235,33 @@ def main():
     # 既存アーカイブを読み込み
     if archive_file.exists():
         df_archive = pd.read_parquet(archive_file)
-        print(f"\n📂 既存アーカイブを読み込み: {len(df_archive)}件")
+        original_count = len(df_archive)
+        print(f"\n📂 既存アーカイブを読み込み: {original_count}件")
 
         # 同じ日付のデータを除外（再実行時の重複防止）
-        df_archive = df_archive[df_archive['backtest_date'] != target_date]
-        print(f"   {target_date}のデータを除外: {len(df_archive)}件")
+        df_archive_filtered = df_archive[df_archive['backtest_date'] != target_date]
+        excluded_count = original_count - len(df_archive_filtered)
+        print(f"   {target_date}のデータを除外: {excluded_count}件 (残り: {len(df_archive_filtered)}件)")
 
         # 新データを追加
-        df_combined = pd.concat([df_archive, df_backtest], ignore_index=True)
-        print(f"   新データを追加: {len(df_combined)}件")
+        df_combined = pd.concat([df_archive_filtered, df_backtest], ignore_index=True)
+        print(f"   新データを追加: {len(df_backtest)}件")
     else:
         print(f"\n📂 新規アーカイブを作成")
         df_combined = df_backtest
 
     # アーカイブを保存
     df_combined.to_parquet(archive_file, index=False)
-    print(f"✅ アーカイブを保存: {archive_file}")
-    print(f"   総レコード数: {len(df_combined)}件")
+
+    # 日付ごとの内訳を表示
+    date_counts = df_combined.groupby('backtest_date').size().sort_index()
+    unique_dates = len(date_counts)
+
+    print(f"\n✅ アーカイブを保存: {archive_file}")
+    print(f"   総レコード数: {len(df_combined)}件 ({unique_dates}日分)")
+    print(f"   日付別内訳:")
+    for date_val, count in date_counts.items():
+        print(f"      {date_val}: {count}銘柄")
 
     print("=" * 80)
 
