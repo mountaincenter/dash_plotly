@@ -45,6 +45,16 @@ def get_sell_price_after_1130(
     Returns:
         (売却価格, 売却時刻) のタプル
     """
+    # dateカラムの存在確認
+    if 'date' not in df_5m.columns:
+        print(f"⚠️  Warning: 'date' column not found in df_5m. Columns: {df_5m.columns.tolist()}")
+        return None, None
+
+    # フィルタリング前に date カラムが datetime 型であることを確認
+    if not pd.api.types.is_datetime64_any_dtype(df_5m['date']):
+        print(f"⚠️  Warning: 'date' column is not datetime type. Type: {df_5m['date'].dtype}")
+        return None, None
+
     df_ticker = df_5m[
         (df_5m['ticker'] == ticker) &
         (df_5m['date'].dt.date == target_date)
@@ -159,6 +169,22 @@ def main():
 
     df_prices_1d = pd.read_parquet(prices_1d_file)
     df_prices_5m = pd.read_parquet(prices_5m_file)
+
+    # インデックスに date がある場合はリセット
+    if df_prices_1d.index.name == 'date' or 'date' in df_prices_1d.index.names:
+        df_prices_1d = df_prices_1d.reset_index()
+
+    if df_prices_5m.index.name == 'date' or 'date' in df_prices_5m.index.names:
+        df_prices_5m = df_prices_5m.reset_index()
+
+    # date カラムが存在することを確認
+    if 'date' not in df_prices_1d.columns:
+        print(f"⚠️  エラー: 日足データに 'date' カラムがありません。カラム: {df_prices_1d.columns.tolist()}")
+        sys.exit(1)
+
+    if 'date' not in df_prices_5m.columns:
+        print(f"⚠️  エラー: 5分足データに 'date' カラムがありません。カラム: {df_prices_5m.columns.tolist()}")
+        sys.exit(1)
 
     print(f"✅ 日足データ読み込み: {len(df_prices_1d):,}件")
     print(f"✅ 5分足データ読み込み: {len(df_prices_5m):,}件")
