@@ -61,8 +61,8 @@ def load_archive_data() -> pd.DataFrame:
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
         return df
 
-    except (ClientError, FileNotFoundError) as e:
-        print(f"[WARNING] Could not load backtest archive from S3: {e}")
+    except Exception as e:
+        print(f"[WARNING] Could not load backtest archive from S3: {type(e).__name__}: {e}")
         return pd.DataFrame()
 
 
