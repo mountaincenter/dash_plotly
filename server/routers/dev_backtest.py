@@ -132,59 +132,197 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
 
 @router.get("/api/dev/backtest/summary")
 async def get_backtest_summary():
-    """バックテスト全体サマリー"""
+    """バックテスト全体サマリー（ダッシュボード用の完全なデータ）"""
     df_all = load_archive_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
 
-    # 日付でグループ化
-    daily_groups = df_all.groupby(df_all['backtest_date'].dt.date)
+    # 全体の有効なレコード
+    df_valid = df_all[df_all['phase1_return'].notna()].copy()
 
-    daily_stats = []
-    all_returns = []
+    if len(df_valid) == 0:
+        raise HTTPException(status_code=404, detail="No valid backtest results found")
+
+    # === 全体統計 ===
+    all_returns = df_valid['phase1_return'].tolist()
+    all_profits = ((df_valid['sell_price'] - df_valid['buy_price']) * 100).tolist()
+
+    overall_stats = {
+        "total_count": len(df_all),
+        "valid_count": len(df_valid),
+        "win_count": int((df_valid['phase1_win'] == True).sum()),
+        "lose_count": int((df_valid['phase1_win'] == False).sum()),
+        "win_rate": float((df_valid['phase1_win'] == True).sum() / len(df_valid) * 100),
+        "avg_return": float(sum(all_returns) / len(all_returns) * 100),
+        "median_return": float(df_valid['phase1_return'].median() * 100),
+        "std_return": float(df_valid['phase1_return'].std() * 100),
+        "best_return": float(max(all_returns) * 100),
+        "worst_return": float(min(all_returns) * 100),
+        "avg_profit_per_100_shares": float(sum(all_profits) / len(all_profits)),
+        "total_profit_per_100_shares": float(sum(all_profits)),
+        "best_profit_per_100_shares": float(max(all_profits)),
+        "worst_profit_per_100_shares": float(min(all_profits)),
+        "total_days": int(df_all['backtest_date'].nunique()),
+    }
+
+    # === Top5統計 ===
+    df_top5 = df_all[df_all['grok_rank'] <= 5]
+    df_top5_valid = df_top5[df_top5['phase1_return'].notna()].copy()
+
+    if len(df_top5_valid) > 0:
+        top5_returns = df_top5_valid['phase1_return'].tolist()
+        top5_profits = ((df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100).tolist()
+
+        top5_stats = {
+            "total_count": len(df_top5),
+            "valid_count": len(df_top5_valid),
+            "win_count": int((df_top5_valid['phase1_win'] == True).sum()),
+            "lose_count": int((df_top5_valid['phase1_win'] == False).sum()),
+            "win_rate": float((df_top5_valid['phase1_win'] == True).sum() / len(df_top5_valid) * 100),
+            "avg_return": float(sum(top5_returns) / len(top5_returns) * 100),
+            "median_return": float(df_top5_valid['phase1_return'].median() * 100),
+            "std_return": float(df_top5_valid['phase1_return'].std() * 100),
+            "best_return": float(max(top5_returns) * 100),
+            "worst_return": float(min(top5_returns) * 100),
+            "avg_profit_per_100_shares": float(sum(top5_profits) / len(top5_profits)),
+            "total_profit_per_100_shares": float(sum(top5_profits)),
+            "best_profit_per_100_shares": float(max(top5_profits)),
+            "worst_profit_per_100_shares": float(min(top5_profits)),
+            "outperformance": float((sum(top5_returns) / len(top5_returns) - sum(all_returns) / len(all_returns)) * 100),
+            "outperformance_profit_per_100_shares": float(sum(top5_profits) / len(top5_profits) - sum(all_profits) / len(all_profits)),
+        }
+    else:
+        top5_stats = {
+            "total_count": 0,
+            "valid_count": 0,
+            "win_count": 0,
+            "lose_count": 0,
+            "win_rate": 0,
+            "avg_return": 0,
+            "median_return": 0,
+            "std_return": 0,
+            "best_return": 0,
+            "worst_return": 0,
+            "avg_profit_per_100_shares": 0,
+            "total_profit_per_100_shares": 0,
+            "best_profit_per_100_shares": 0,
+            "worst_profit_per_100_shares": 0,
+            "outperformance": 0,
+            "outperformance_profit_per_100_shares": 0,
+        }
+
+    # === 日次統計 ===
+    daily_groups = df_all.groupby(df_all['backtest_date'].dt.date)
+    daily_stats_list = []
 
     for backtest_date, df_day in daily_groups:
-        stats = calculate_daily_stats(df_day)
-        stats["date"] = backtest_date.isoformat()
-        daily_stats.append(stats)
+        df_day_valid = df_day[df_day['phase1_return'].notna()]
 
-        # 有効なリターンを収集
-        if 'phase1_return' in df_day.columns:
-            valid_returns = df_day[df_day['phase1_return'].notna()]['phase1_return'].tolist()
-            all_returns.extend(valid_returns)
+        if len(df_day_valid) > 0:
+            win_count = (df_day_valid['phase1_win'] == True).sum()
+            daily_stats_list.append({
+                "date": backtest_date.isoformat(),
+                "win_rate": float(win_count / len(df_day_valid) * 100),
+                "avg_return": float(df_day_valid['phase1_return'].mean() * 100),
+                "count": len(df_day_valid),
+            })
 
-    # 日付降順でソート
-    daily_stats = sorted(daily_stats, key=lambda x: x["date"], reverse=True)
+    # 日付でソート
+    daily_stats_list.sort(key=lambda x: x["date"])
 
-    # 全期間統計（リターンは小数形式なので100倍してパーセント表示）
-    total_trades = sum(s["valid_results"] for s in daily_stats)
-    overall_avg_return = (sum(all_returns) / len(all_returns) * 100) if all_returns else None
-    overall_win_rate = (sum(1 for r in all_returns if r > 0) / len(all_returns) * 100) if all_returns else None
-    overall_max_return = (max(all_returns) * 100) if all_returns else None
-    overall_min_return = (min(all_returns) * 100) if all_returns else None
+    # === トレンド分析 ===
+    if len(daily_stats_list) > 0:
+        recent_days = daily_stats_list[-5:]
+        recent_avg = sum(d["avg_return"] for d in recent_days) / len(recent_days)
+        overall_avg = sum(d["avg_return"] for d in daily_stats_list) / len(daily_stats_list)
+        change = ((recent_avg - overall_avg) / abs(overall_avg) * 100) if overall_avg != 0 else 0
 
-    # 日次統計もパーセント表示に変換
-    for stats in daily_stats:
-        if stats["avg_return"] is not None:
-            stats["avg_return"] *= 100
-        if stats["max_return"] is not None:
-            stats["max_return"] *= 100
-        if stats["min_return"] is not None:
-            stats["min_return"] *= 100
-        if stats["top5_avg_return"] is not None:
-            stats["top5_avg_return"] *= 100
+        if change > 10:
+            trend = "improving"
+        elif change < -10:
+            trend = "declining"
+        else:
+            trend = "stable"
+
+        trend_analysis = {
+            "trend": trend,
+            "recent_avg": recent_avg,
+            "overall_avg": overall_avg,
+            "change": change,
+        }
+    else:
+        trend_analysis = {
+            "trend": "stable",
+            "recent_avg": 0,
+            "overall_avg": 0,
+            "change": 0,
+        }
+
+    # === アラート生成 ===
+    alerts = []
+
+    if overall_stats["win_rate"] < 40:
+        alerts.append({
+            "type": "danger",
+            "title": "⚠️ 勝率が低下しています",
+            "message": f"現在の勝率: {overall_stats['win_rate']:.1f}%。戦略の見直しを検討してください。",
+            "action": "戦略を見直す",
+        })
+    elif overall_stats["win_rate"] >= 60:
+        alerts.append({
+            "type": "success",
+            "title": "✅ 高い勝率を維持",
+            "message": f"現在の勝率: {overall_stats['win_rate']:.1f}%。戦略は順調です。",
+        })
+
+    if trend_analysis["trend"] == "declining":
+        alerts.append({
+            "type": "warning",
+            "title": "📉 パフォーマンスが低下傾向",
+            "message": f"直近5日の平均リターン: {trend_analysis['recent_avg']:.2f}%（全期間: {trend_analysis['overall_avg']:.2f}%）",
+            "action": "様子見を推奨",
+        })
+    elif trend_analysis["trend"] == "improving":
+        alerts.append({
+            "type": "success",
+            "title": "📈 パフォーマンスが改善中",
+            "message": f"直近5日の平均リターン: {trend_analysis['recent_avg']:.2f}%（全期間: {trend_analysis['overall_avg']:.2f}%）",
+        })
+
+    if top5_stats["outperformance"] > 0.5:
+        alerts.append({
+            "type": "success",
+            "title": "⭐ Top5銘柄への絞り込みを推奨",
+            "message": f"Top5は全体より平均{top5_stats['outperformance']:.2f}%高いリターンを記録しています。",
+            "action": "Top5のみにトレード",
+        })
+
+    if overall_stats["valid_count"] < 10:
+        alerts.append({
+            "type": "warning",
+            "title": "📊 データが不足しています",
+            "message": f"有効なバックテスト結果: {overall_stats['valid_count']}件。統計的な信頼性を高めるため、より多くのデータが必要です。",
+        })
+
+    # === 直近レコード ===
+    recent_records = df_all.sort_values('backtest_date', ascending=False).head(10).to_dict(orient='records')
+
+    # NaN, NaT, Timestamp を JSON シリアライズ可能な形式に変換
+    for record in recent_records:
+        for key, value in record.items():
+            if pd.isna(value):
+                record[key] = None
+            elif isinstance(value, pd.Timestamp):
+                record[key] = value.isoformat()
 
     return {
-        "overall": {
-            "total_trades": total_trades,
-            "avg_return": overall_avg_return,
-            "win_rate": overall_win_rate,
-            "max_return": overall_max_return,
-            "min_return": overall_min_return,
-            "total_days": len(daily_stats),
-        },
-        "daily_stats": daily_stats,
+        "overall_stats": overall_stats,
+        "top5_stats": top5_stats,
+        "daily_stats": daily_stats_list,
+        "recent_records": recent_records,
+        "trend_analysis": trend_analysis,
+        "alerts": alerts,
     }
 
 
