@@ -260,6 +260,15 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
 
+        # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
+        # これらは data-pipeline.yml の "Archive GROK trending for backtest" ステップで管理される
+        import re
+        for obj in response.get("Contents", []):
+            key = obj["Key"]
+            # backtest/grok_trending_YYYYMMDD.parquet パターンにマッチするファイルは保持
+            if re.match(rf"{prefix}backtest/grok_trending_\d{{8}}\.parquet$", key):
+                keep_keys.add(key)
+
         # 削除対象のファイルを抽出
         delete_targets = [
             obj for obj in response["Contents"]
