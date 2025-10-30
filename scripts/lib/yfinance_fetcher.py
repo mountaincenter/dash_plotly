@@ -69,7 +69,10 @@ def fetch_prices_for_tickers(
             elif 'Ticker' in df_stacked.columns:
                 df_stacked.rename(columns={'Ticker': 'ticker'}, inplace=True)
 
-            if 'Date' in df_stacked.columns:
+            # インデックスから変換された日付カラムをリネーム
+            if 'level_0' in df_stacked.columns:
+                df_stacked.rename(columns={'level_0': 'date'}, inplace=True)
+            elif 'Date' in df_stacked.columns:
                 df_stacked.rename(columns={'Date': 'date'}, inplace=True)
             elif 'Datetime' in df_stacked.columns:
                 df_stacked.rename(columns={'Datetime': 'date'}, inplace=True)
