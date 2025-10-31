@@ -5,11 +5,13 @@ run_pipeline_scalping_skip_add_grok.py
 GitHub Actionsとローカル開発の両方で使用
 
 実行順序:
-  1. create_meta_jquants  - J-Quants APIから全銘柄メタ情報取得
-  2. generate_grok_trending - xAI Grok APIでトレンド銘柄選定
-  3. create_all_stocks    - meta + grok統合
-  4. fetch_prices         - yfinanceでall_stocks.parquetの価格データ取得
-  5. update_manifest      - manifest.json生成・S3一括アップロード
+  1. create_meta_jquants     - J-Quants APIから全銘柄メタ情報取得
+  2. generate_grok_trending  - xAI Grok APIでトレンド銘柄選定
+  3. create_all_stocks       - meta + grok統合
+  4. fetch_prices            - yfinanceでall_stocks.parquetの価格データ取得
+  5. fetch_index_prices      - yfinanceで指数・ETF・先物の価格データ取得
+  6. fetch_currency_prices   - yfinanceで為替レートデータ取得
+  7. update_manifest         - manifest.json生成・S3一括アップロード
 
 注意:
   - generate_scalpingは実行されません（スキップ）
@@ -51,7 +53,9 @@ class PipelineRunner:
         # 共通ステップ
         self.steps.extend([
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
-            ("pipeline.fetch_prices", "価格データ取得（yfinance）"),
+            ("pipeline.fetch_prices", "価格データ取得（yfinance - 株価）"),
+            ("pipeline.fetch_index_prices", "マーケット指標取得（yfinance - 指数/ETF/先物）"),
+            ("pipeline.fetch_currency_prices", "為替レート取得（yfinance - FX）"),
         ])
 
         # バックテストアーカイブ保存（16:00 JST実行時のみ）
