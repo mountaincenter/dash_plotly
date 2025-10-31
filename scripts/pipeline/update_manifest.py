@@ -37,6 +37,22 @@ UPLOAD_FILES = [
     "prices_max_1d.parquet",
     "prices_max_1mo.parquet",
     "tech_snapshot_1d.parquet",
+    # 指数・ETF
+    "index_prices_60d_15m.parquet",
+    "index_prices_60d_5m.parquet",
+    "index_prices_730d_1h.parquet",
+    "index_prices_max_1d.parquet",
+    "index_prices_max_1mo.parquet",
+    # 先物
+    "futures_prices_60d_15m.parquet",
+    "futures_prices_60d_5m.parquet",
+    "futures_prices_730d_1h.parquet",
+    "futures_prices_max_1d.parquet",
+    "futures_prices_max_1mo.parquet",
+    # 為替
+    "currency_prices_730d_1h.parquet",
+    "currency_prices_max_1d.parquet",
+    "currency_prices_max_1mo.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
