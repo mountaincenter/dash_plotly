@@ -184,7 +184,7 @@ def query_grok(api_key: str, prompt: str) -> str:
     )
 
     response = client.chat.completions.create(
-        model="grok-3",
+        model="grok-4-fast-reasoning",
         messages=[
             {
                 "role": "system",

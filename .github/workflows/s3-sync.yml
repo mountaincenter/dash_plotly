@@ -106,8 +106,24 @@ jobs:
             WANTED_S3KEYS+=("${{ env.S3_PREFIX }}${filename}")
           done
 
-          # Always protect manifest.json
+          # Always protect manifest.json and special directories
           PROTECT=("${{ env.S3_PREFIX }}manifest.json")
+
+          # Protect all market_summary files (not in manifest.json)
+          mapfile -t MARKET_SUMMARY_FILES < <(aws s3api list-objects-v2 \
+            --bucket "${{ env.S3_BUCKET }}" \
+            --prefix "${{ env.S3_PREFIX }}market_summary/" \
+            --query 'Contents[].Key' \
+            --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
+          PROTECT+=("${MARKET_SUMMARY_FILES[@]}")
+
+          # Protect all backtest files (not in manifest.json)
+          mapfile -t BACKTEST_FILES < <(aws s3api list-objects-v2 \
+            --bucket "${{ env.S3_BUCKET }}" \
+            --prefix "${{ env.S3_PREFIX }}backtest/" \
+            --query 'Contents[].Key' \
+            --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d')
+          PROTECT+=("${BACKTEST_FILES[@]}")
 
           # Find objects to delete
           to_delete=()

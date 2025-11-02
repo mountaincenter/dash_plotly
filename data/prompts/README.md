@@ -6,20 +6,39 @@ GROKプロンプトのバージョン管理システム
 
 プロンプトを改善するたびに新しいバージョンとして保存し、過去のバージョンのバックテストデータと比較できるようにします。
 
+## プロンプトの種類
+
+このディレクトリでは2種類のプロンプトを管理しています:
+
+1. **銘柄選定用（Grok Trending）** - `v1_0_baseline.py`, `v1_1_xxx.py` など
+   - 目的: TOPIX500銘柄から注目銘柄を選定
+   - 使用モデル: grok-beta
+   - バックテスト: 過去データで精度検証
+
+2. **市場サマリー用（Market Summary）** - `v1_2_market_summary.py` など
+   - 目的: 東証大引け後に市場サマリーレポート生成
+   - 使用モデル: grok-4-fast
+   - データソース: J-Quants API + web_search()
+   - 詳細: [MARKET_SUMMARY_SPEC.md](./MARKET_SUMMARY_SPEC.md) 参照
+
 ## ディレクトリ構造
 
 ```
 data/prompts/
-├── README.md                    # このファイル
+├── README.md                       # このファイル（プロンプト管理全般）
+├── MARKET_SUMMARY_SPEC.md          # 市場サマリー仕様書
 ├── __init__.py
-├── v1_0_baseline.py             # v1.0: 初期バージョン
-├── v1_1_xxx.py                  # v1.1: 次のバージョン
-└── v2_0_xxx.py                  # v2.0: メジャーアップデート
+├── v1_0_baseline.py                # 銘柄選定: v1.0初期バージョン
+├── v1_1_xxx.py                     # 銘柄選定: v1.1次のバージョン
+├── v1_2_market_summary.py          # 市場サマリー: v1.2最新版
+└── v2_0_xxx.py                     # メジャーアップデート
 ```
 
 ## 使い方
 
 ### 1. 新しいプロンプトバージョンの作成
+
+#### 銘柄選定用（Grok Trending）
 
 既存のバージョンをコピーして、新しいファイルを作成します：
 
@@ -32,7 +51,21 @@ cp v1_0_baseline.py v1_1_enhanced_volatility.py
 - ファイル冒頭のdocstringを更新（バージョン、説明、変更内容）
 - `build_grok_prompt()` 関数内のプロンプトを修正
 
+#### 市場サマリー用（Market Summary）
+
+詳細は [MARKET_SUMMARY_SPEC.md](./MARKET_SUMMARY_SPEC.md) を参照してください。
+
+```bash
+# テスト実行
+python3 scripts/pipeline/test_market_summary_v1_2.py
+
+# 本番実行（実装予定）
+python3 scripts/pipeline/generate_market_summary.py
+```
+
 ### 2. バージョンを指定して実行
+
+#### 銘柄選定用（Grok Trending）
 
 環境変数 `PROMPT_VERSION` でバージョンを指定します：
 
@@ -45,6 +78,15 @@ PROMPT_VERSION=v1_1_enhanced_volatility python3 scripts/pipeline/generate_grok_t
 
 # v2.0を使用
 PROMPT_VERSION=v2_0_sentiment_focus python3 scripts/pipeline/generate_grok_trending.py
+```
+
+#### 市場サマリー用（Market Summary）
+
+バージョン管理は `v1_2_market_summary.py` 内の `get_prompt_metadata()` で行います。
+
+```bash
+# v1.2を使用（現在の最新版）
+python3 scripts/pipeline/test_market_summary_v1_2.py
 ```
 
 ### 3. バージョン別にデータを蓄積
@@ -114,21 +156,31 @@ def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
 
 ## バージョン履歴
 
-### v1.0 - baseline (2025-10-31)
+### 銘柄選定用（Grok Trending）
+
+#### v1.0 - baseline (2025-10-31)
 - 初期バージョン
 - 時価総額50億円〜500億円
 - ATR ≧ 3%
 - バックテストフィードバック統合
 
-### v1.1 - enhanced_volatility (未実装)
+#### v1.1 - enhanced_volatility (未実装)
 - ボラティリティ重視
 - ATR基準を5%に引き上げ
 - 出来高急増の閾値を3倍に
 
-### v2.0 - sentiment_focus (未実装)
+#### v2.0 - sentiment_focus (未実装)
 - センチメント重視
 - 株クラバズの閾値を200件に
 - プレミアムユーザー言及を必須に
+
+### 市場サマリー用（Market Summary）
+
+#### v1.2 - market_summary (2025-11-02)
+- xAI SDK 1.3.1対応（web_search()使用）
+- J-Quants API統合設計（v1.3で実装予定）
+- 検索回数最適化（5-7回）
+- 詳細: [MARKET_SUMMARY_SPEC.md](./MARKET_SUMMARY_SPEC.md)
 
 ## トラブルシューティング
 
@@ -151,7 +203,20 @@ PYTHONPATH=. python3 scripts/pipeline/generate_grok_trending.py
 
 ## 今後の拡張
 
+### 銘柄選定用
 - [ ] バックテストデータをバージョン別に保存
 - [ ] バージョン比較ダッシュボード
 - [ ] versions.json によるメタデータ管理
 - [ ] API経由でバージョン切り替え
+
+### 市場サマリー用
+- [ ] J-Quants API統合実装（v1.3）
+- [ ] GitHub Actions自動実行（毎営業日16:30）
+- [ ] S3保存機能
+- [ ] x_search()統合（v2.0）
+- [ ] グラフ生成機能（v2.0）
+
+## 関連ドキュメント
+
+- [MARKET_SUMMARY_SPEC.md](./MARKET_SUMMARY_SPEC.md) - 市場サマリー仕様書（詳細）
+- [v1_2_market_summary.py](./v1_2_market_summary.py) - 市場サマリープロンプト実装

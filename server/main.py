@@ -10,6 +10,7 @@ from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
 from server.routers.grok import router as grok_router
 from server.routers.dev_backtest import router as dev_backtest_router
+from server.routers.market_summary import router as market_summary_router
 
 import os
 
@@ -74,3 +75,4 @@ app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
 app.include_router(grok_router, tags=["grok"])
 app.include_router(dev_backtest_router, tags=["dev"])
+app.include_router(market_summary_router, tags=["market-summary"])

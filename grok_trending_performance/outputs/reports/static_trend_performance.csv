@@ -1,0 +1,6 @@
+,return_1d,return_1d,return_1d,return_3d,return_3d,return_5d,return_5d
+,mean,std,count,mean,std,mean,std
+trend,,,,,,,
+上昇,0.43,39.0,197859,1.26,67.91,2.05,87.09
+下降,-0.31,3.02,147842,-0.91,5.84,-1.46,7.56
+横ばい,0.04,2.1,19808,0.13,3.74,0.2,4.9

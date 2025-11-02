@@ -1,6 +1,6 @@
 {
-  "generated_at": "2025-10-31T03:23:09.926862",
-  "update_flag": "2025-10-31",
+  "generated_at": "2025-11-01T10:23:31.786909",
+  "update_flag": "2025-11-01",
   "grok_update_flag": false,
   "grok_last_update_date": "2025-10-31",
   "grok_last_update_time": null,
@@ -20,12 +20,12 @@
         "categories",
         "tags"
       ],
-      "updated_at": "2025-10-31T02:43:06.690927"
+      "updated_at": "2025-10-31T14:28:37.779683"
     },
     "meta_jquants.parquet": {
       "exists": true,
-      "size_bytes": 113681,
-      "row_count": 3790,
+      "size_bytes": 113599,
+      "row_count": 3788,
       "columns": [
         "ticker",
         "code",
@@ -35,7 +35,7 @@
         "series",
         "topixnewindexseries"
       ],
-      "updated_at": "2025-10-31T02:43:06.919762"
+      "updated_at": "2025-10-31T14:28:37.387749"
     },
     "all_stocks.parquet": {
       "exists": true,
@@ -61,7 +61,7 @@
         "score",
         "key_signal"
       ],
-      "updated_at": "2025-10-31T02:43:05.664931"
+      "updated_at": "2025-10-31T14:28:37.845897"
     },
     "grok_trending.parquet": {
       "exists": true,
@@ -134,8 +134,8 @@
     },
     "prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 1213853,
-      "row_count": 93840,
+      "size_bytes": 1212661,
+      "row_count": 93364,
       "columns": [
         "date",
         "Open",
@@ -145,12 +145,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T02:43:07.224128"
+      "updated_at": "2025-10-31T14:28:40.947027"
     },
     "prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 2896170,
-      "row_count": 272680,
+      "size_bytes": 2887273,
+      "row_count": 271456,
       "columns": [
         "date",
         "Open",
@@ -160,12 +160,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T02:43:07.604890"
+      "updated_at": "2025-10-31T14:28:44.686060"
     },
     "prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 4391399,
-      "row_count": 346664,
+      "size_bytes": 4398099,
+      "row_count": 346596,
       "columns": [
         "date",
         "Open",
@@ -175,12 +175,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T02:43:08.222102"
+      "updated_at": "2025-10-31T14:28:49.791361"
     },
     "prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 13287374,
-      "row_count": 450364,
+      "size_bytes": 13297801,
+      "row_count": 450432,
       "columns": [
         "date",
         "Open",
@@ -190,11 +190,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T02:43:09.254253"
+      "updated_at": "2025-10-31T14:28:53.961457"
     },
     "prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 811342,
+      "size_bytes": 810939,
       "row_count": 21624,
       "columns": [
         "date",
@@ -205,11 +205,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T02:43:09.546244"
+      "updated_at": "2025-10-31T14:28:55.922809"
     },
     "tech_snapshot_1d.parquet": {
       "exists": true,
-      "size_bytes": 22096,
+      "size_bytes": 22056,
       "row_count": 68,
       "columns": [
         "ticker",
@@ -218,7 +218,283 @@
         "votes",
         "overall"
       ],
-      "updated_at": "2025-10-31T02:43:09.717118"
+      "updated_at": "2025-10-31T14:28:56.839090"
+    },
+    "index_prices_60d_15m.parquet": {
+      "exists": true,
+      "size_bytes": 273495,
+      "row_count": 13730,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:28:57.355460"
+    },
+    "index_prices_60d_5m.parquet": {
+      "exists": true,
+      "size_bytes": 610537,
+      "row_count": 40580,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:28:58.084703"
+    },
+    "index_prices_730d_1h.parquet": {
+      "exists": true,
+      "size_bytes": 1003450,
+      "row_count": 50970,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:28:59.077619"
+    },
+    "index_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 1637499,
+      "row_count": 149770,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:00.035671"
+    },
+    "index_prices_max_1mo.parquet": {
+      "exists": true,
+      "size_bytes": 81896,
+      "row_count": 4900,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:00.391390"
+    },
+    "futures_prices_60d_15m.parquet": {
+      "exists": true,
+      "size_bytes": 100665,
+      "row_count": 4279,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:00.716694"
+    },
+    "futures_prices_60d_5m.parquet": {
+      "exists": true,
+      "size_bytes": 222645,
+      "row_count": 11891,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:01.035768"
+    },
+    "futures_prices_730d_1h.parquet": {
+      "exists": true,
+      "size_bytes": 286869,
+      "row_count": 13547,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:01.543055"
+    },
+    "futures_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 173738,
+      "row_count": 5465,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:01.887271"
+    },
+    "futures_prices_max_1mo.parquet": {
+      "exists": true,
+      "size_bytes": 12856,
+      "row_count": 223,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:01.999221"
+    },
+    "currency_prices_730d_1h.parquet": {
+      "exists": true,
+      "size_bytes": 904226,
+      "row_count": 34592,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:02.561767"
+    },
+    "currency_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 413855,
+      "row_count": 15052,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:03.112373"
+    },
+    "currency_prices_max_1mo.parquet": {
+      "exists": true,
+      "size_bytes": 25520,
+      "row_count": 698,
+      "columns": [
+        "date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "ticker"
+      ],
+      "updated_at": "2025-10-31T14:29:03.252569"
+    },
+    "topix_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 4938,
+      "row_count": 4,
+      "columns": [
+        "date",
+        "ticker",
+        "name",
+        "code",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "updated_at": "2025-10-31T21:02:00.000000",
+      "description": "TOPIX系指数データ (TOPIX, TOPIX-Prime, TOPIX-Standard, TOPIX-Growth)",
+      "source": "J-Quants Standard API"
+    },
+    "sectors_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 6586,
+      "row_count": 33,
+      "columns": [
+        "date",
+        "ticker",
+        "name",
+        "code",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "updated_at": "2025-11-02T08:57:00.000000",
+      "description": "東証33業種別指数データ (水産・農林業〜サービス業)",
+      "source": "J-Quants Standard API"
+    },
+    "series_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 5782,
+      "row_count": 17,
+      "columns": [
+        "date",
+        "ticker",
+        "name",
+        "code",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "updated_at": "2025-11-02T08:57:00.000000",
+      "description": "TOPIX-17シリーズ指数データ (食品〜不動産)",
+      "source": "J-Quants Standard API"
+    },
+    "option_prices_max_1d.parquet": {
+      "exists": true,
+      "size_bytes": 155365,
+      "row_count": 4830,
+      "columns": [
+        "date",
+        "code",
+        "contractmonth",
+        "strikeprice",
+        "putcalldivision",
+        "wholedayopen",
+        "wholedayhigh",
+        "wholedaylow",
+        "wholedayclose",
+        "volume",
+        "openinterest",
+        "turnovervalue",
+        "settlementprice",
+        "theoreticalprice",
+        "underlyingprice",
+        "impliedvolatility",
+        "basevolatility"
+      ],
+      "updated_at": "2025-11-02T08:57:00.000000",
+      "description": "日経225指数オプション四本値データ (Weeklyオプション及びフレックスオプションを除く)",
+      "source": "J-Quants Standard API"
     }
   }
 }

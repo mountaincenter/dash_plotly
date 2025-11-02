@@ -1,361 +1,459 @@
 #!/usr/bin/env python3
 """
-GROK銘柄のバックテストアーカイブ保存
+generate_market_summary.py
+Grok APIを使って国内株式市場の日次サマリーレポートを生成
 
-昨日23:00に選定されたGROK銘柄について、今日の前場パフォーマンスを計算して保存
-- 9:00寄付買い → 11:30以降の最初の有効価格で売却 (Phase1戦略)
-- 結果を data/parquet/backtest/grok_trending_archive.parquet に追記（append-only）
-- 同じ日付のデータは上書き（再実行時の重複防止）
+実行方法:
+    # パイプライン実行（16時更新）
+    python3 scripts/pipeline/generate_market_summary.py
+
+    # 手動実行（日付指定）
+    python3 scripts/pipeline/generate_market_summary.py --date 2025-10-31
+
+出力:
+    data/parquet/market_summary/raw/2025-10-31.md
+    data/parquet/market_summary/structured/2025-10-31.json
+
+動作仕様:
+    - 毎日16時（JST）に実行
+    - 東証大引け後（15:30終了）のデータを使用
+    - Markdown + JSON の2ファイルを生成
+    - S3にアップロード
+
+備考:
+    - .env.xai に XAI_API_KEY が必要
+    - プロンプトは data/prompts/v1_1_market_summary.py を使用
 """
 
-import sys
-from pathlib import Path
-from datetime import datetime, date, time, timedelta
-import pandas as pd
-import numpy as np
+from __future__ import annotations
 
-# プロジェクトルートをパスに追加
+import sys
+import json  # 追加: ツールargumentsパース用
+import argparse
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Any
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from openai import OpenAI
+from dotenv import dotenv_values
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.s3io import upload_file
+from common_cfg.s3cfg import load_s3_config
+
+# 保存先ディレクトリ
+MARKET_SUMMARY_DIR = PARQUET_DIR / "market_summary"
+RAW_DIR = MARKET_SUMMARY_DIR / "raw"
+STRUCTURED_DIR = MARKET_SUMMARY_DIR / "structured"
+ENV_XAI_PATH = ROOT / ".env.xai"
 
 
-def get_open_price(df_1d: pd.DataFrame, ticker: str, target_date: date) -> float | None:
-    """日足データから指定日の始値（寄付価格）を取得"""
-    ticker_data = df_1d[
-        (df_1d['ticker'] == ticker) &
-        (df_1d['date'].dt.date == target_date)
-    ]
+def parse_args():
+    """コマンドライン引数をパース"""
+    parser = argparse.ArgumentParser(description="Generate market summary report")
+    parser.add_argument(
+        "--date",
+        type=str,
+        help="Target date (YYYY-MM-DD format, default: today JST)"
+    )
+    return parser.parse_args()
 
-    if len(ticker_data) > 0 and pd.notna(ticker_data['Open'].iloc[0]):
-        return float(ticker_data['Open'].iloc[0])
-    return None
 
-
-def get_morning_session_details(
-    df_5m: pd.DataFrame,
-    ticker: str,
-    target_date: date
-) -> dict:
+def get_target_date(date_str: str | None = None) -> datetime:
     """
-    5分足データから前場（9:00-11:30）の詳細情報を取得
-
-    Returns:
-        dict: {
-            'morning_high': 前場の最高値,
-            'morning_low': 前場の最安値,
-            'morning_volume': 前場の出来高,
-            'max_gain_pct': 始値からの最大上昇率 (morning_high/open - 1),
-            'max_drawdown_pct': 始値からの最大下落率 (morning_low/open - 1)
-        }
-    """
-    result = {
-        'morning_high': None,
-        'morning_low': None,
-        'morning_volume': None,
-        'max_gain_pct': None,
-        'max_drawdown_pct': None,
-    }
-
-    if 'date' not in df_5m.columns:
-        return result
-
-    if not pd.api.types.is_datetime64_any_dtype(df_5m['date']):
-        return result
-
-    # 対象銘柄・日付でフィルタ
-    df_ticker = df_5m[
-        (df_5m['ticker'] == ticker) &
-        (df_5m['date'].dt.date == target_date)
-    ].copy()
-
-    if len(df_ticker) == 0:
-        return result
-
-    # 時刻を分単位に変換
-    df_ticker['time_minutes'] = df_ticker['date'].dt.hour * 60 + df_ticker['date'].dt.minute
-
-    # 前場（9:00-11:30 = 540-690分）のデータに絞り込み
-    df_morning = df_ticker[
-        (df_ticker['time_minutes'] >= 540) &
-        (df_ticker['time_minutes'] <= 690)
-    ]
-
-    if len(df_morning) == 0:
-        return result
-
-    # 前場の最高値・最安値・出来高
-    result['morning_high'] = float(df_morning['High'].max()) if df_morning['High'].notna().any() else None
-    result['morning_low'] = float(df_morning['Low'].min()) if df_morning['Low'].notna().any() else None
-    result['morning_volume'] = int(df_morning['Volume'].sum()) if df_morning['Volume'].notna().any() else None
-
-    # 始値（9:00の最初のOpen）を取得
-    df_morning_sorted = df_morning.sort_values('time_minutes')
-    open_price = None
-    for _, row in df_morning_sorted.iterrows():
-        if pd.notna(row['Open']):
-            open_price = float(row['Open'])
-            break
-
-    # 始値からの最大上昇率・最大下落率を計算
-    if open_price and open_price > 0:
-        if result['morning_high']:
-            result['max_gain_pct'] = (result['morning_high'] / open_price) - 1.0
-        if result['morning_low']:
-            result['max_drawdown_pct'] = (result['morning_low'] / open_price) - 1.0
-
-    return result
-
-
-def get_sell_price_after_1130(
-    df_5m: pd.DataFrame,
-    ticker: str,
-    target_date: date
-) -> tuple[float | None, str | None]:
-    """
-    5分足データから11:30以降の最初の有効な終値を取得
-
-    Returns:
-        (売却価格, 売却時刻) のタプル
-    """
-    # dateカラムの存在確認
-    if 'date' not in df_5m.columns:
-        print(f"⚠️  Warning: 'date' column not found in df_5m. Columns: {df_5m.columns.tolist()}")
-        return None, None
-
-    # フィルタリング前に date カラムが datetime 型であることを確認
-    if not pd.api.types.is_datetime64_any_dtype(df_5m['date']):
-        print(f"⚠️  Warning: 'date' column is not datetime type. Type: {df_5m['date'].dtype}")
-        return None, None
-
-    df_ticker = df_5m[
-        (df_5m['ticker'] == ticker) &
-        (df_5m['date'].dt.date == target_date)
-    ].copy()
-
-    if len(df_ticker) == 0:
-        return None, None
-
-    # 時刻を分単位に変換
-    df_ticker['time_minutes'] = df_ticker['date'].dt.hour * 60 + df_ticker['date'].dt.minute
-
-    # 11:30以降のデータに絞り込み（690分 = 11:30）
-    df_after_1130 = df_ticker[df_ticker['time_minutes'] >= 690].sort_values('time_minutes')
-
-    # NaNでない最初のClose価格を探す
-    valid_closes = df_after_1130[df_after_1130['Close'].notna()]
-
-    if len(valid_closes) > 0:
-        sell_price = float(valid_closes['Close'].iloc[0])
-        sell_time = valid_closes['date'].iloc[0].strftime('%H:%M')
-        return sell_price, sell_time
-
-    return None, None
-
-
-def calculate_phase1_backtest(
-    df_grok: pd.DataFrame,
-    df_prices_1d: pd.DataFrame,
-    df_prices_5m: pd.DataFrame,
-    target_date: date
-) -> pd.DataFrame:
-    """
-    Phase1バックテスト計算: 9:00寄付買い → 11:30以降の最初の有効価格で売却
+    対象日を取得
 
     Args:
-        df_grok: GROK選定銘柄データ（前日23:00選定）
-        df_prices_1d: 日足データ（寄付価格用）
-        df_prices_5m: 5分足データ（売却価格用）
-        target_date: バックテスト対象日
+        date_str: 日付文字列（YYYY-MM-DD形式、Noneの場合は今日）
 
     Returns:
-        バックテスト結果DataFrame
+        datetime: 対象日（JST）
     """
-    results = []
-
-    for _, row in df_grok.iterrows():
-        ticker = row['ticker']
-
-        # 寄付価格（買値）を取得
-        buy_price = get_open_price(df_prices_1d, ticker, target_date)
-
-        # 11:30以降の最初の有効な売却価格を取得
-        sell_price, sell_time = get_sell_price_after_1130(
-            df_prices_5m, ticker, target_date
-        )
-
-        # 前場の詳細データを取得
-        morning_details = get_morning_session_details(
-            df_prices_5m, ticker, target_date
-        )
-
-        # リターン計算
-        phase1_return = None
-        phase1_win = None
-        profit_per_100_shares = None
-        if buy_price is not None and sell_price is not None and buy_price > 0:
-            phase1_return = (sell_price - buy_price) / buy_price
-            phase1_win = phase1_return > 0
-            profit_per_100_shares = (sell_price - buy_price) * 100
-
-        result = {
-            'ticker': ticker,
-            'stock_name': row.get('stock_name', ''),
-            'selection_score': row.get('selection_score', None),
-            'grok_rank': row.get('grok_rank', None),
-            'reason': row.get('reason', ''),
-            'selected_time': row.get('selected_time', ''),
-            'backtest_date': target_date,
-            'buy_price': buy_price,
-            'sell_price': sell_price,
-            'phase1_return': phase1_return,
-            'phase1_win': phase1_win,
-            'profit_per_100_shares': profit_per_100_shares,
-            'morning_high': morning_details['morning_high'],
-            'morning_low': morning_details['morning_low'],
-            'morning_volume': morning_details['morning_volume'],
-            'max_gain_pct': morning_details['max_gain_pct'],
-            'max_drawdown_pct': morning_details['max_drawdown_pct'],
-            'prompt_version': row.get('prompt_version', 'v1_0_baseline'),  # プロンプトバージョン
-        }
-
-        results.append(result)
-
-    return pd.DataFrame(results)
-
-
-def main():
-    """メイン処理"""
-    print("=" * 80)
-    print("GROK銘柄バックテストアーカイブ保存")
-    print("=" * 80)
-
-    # 1. 昨日選定されたGROK銘柄を読み込み
-    grok_file = PARQUET_DIR / "grok_trending.parquet"
-
-    if not grok_file.exists():
-        print(f"⚠️  GROK選定ファイルが見つかりません: {grok_file}")
-        print("→ スキップ（23:00実行後にのみ作成されます）")
-        sys.exit(0)
-
-    df_grok = pd.read_parquet(grok_file)
-    print(f"✅ GROK選定銘柄を読み込み: {len(df_grok)}銘柄")
-    print(f"   選定時刻: {df_grok['selected_time'].iloc[0] if 'selected_time' in df_grok.columns else 'N/A'}")
-
-    # 2. 価格データを読み込み
-    prices_1d_file = PARQUET_DIR / "prices_max_1d.parquet"
-    prices_5m_file = PARQUET_DIR / "prices_60d_5m.parquet"
-
-    if not prices_1d_file.exists():
-        print(f"⚠️  日足データが見つかりません: {prices_1d_file}")
-        sys.exit(1)
-
-    if not prices_5m_file.exists():
-        print(f"⚠️  5分足データが見つかりません: {prices_5m_file}")
-        sys.exit(1)
-
-    df_prices_1d = pd.read_parquet(prices_1d_file)
-    df_prices_5m = pd.read_parquet(prices_5m_file)
-
-    # インデックスに date がある場合はリセット
-    if df_prices_1d.index.name == 'date' or 'date' in df_prices_1d.index.names:
-        df_prices_1d = df_prices_1d.reset_index()
-
-    if df_prices_5m.index.name == 'date' or 'date' in df_prices_5m.index.names:
-        df_prices_5m = df_prices_5m.reset_index()
-
-    # date カラムが存在することを確認
-    if 'date' not in df_prices_1d.columns:
-        print(f"⚠️  エラー: 日足データに 'date' カラムがありません。カラム: {df_prices_1d.columns.tolist()}")
-        sys.exit(1)
-
-    if 'date' not in df_prices_5m.columns:
-        print(f"⚠️  エラー: 5分足データに 'date' カラムがありません。カラム: {df_prices_5m.columns.tolist()}")
-        sys.exit(1)
-
-    print(f"✅ 日足データ読み込み: {len(df_prices_1d):,}件")
-    print(f"✅ 5分足データ読み込み: {len(df_prices_5m):,}件")
-
-    # 3. バックテスト対象日（引数 or 今日）
-    if len(sys.argv) > 1:
-        target_date = datetime.strptime(sys.argv[1], '%Y-%m-%d').date()
+    if date_str:
+        return datetime.strptime(date_str, "%Y-%m-%d")
     else:
-        target_date = date.today()
-    print(f"\n📅 バックテスト対象日: {target_date}")
+        # 今日の日付（JST）
+        from datetime import timezone
+        jst = timezone(timedelta(hours=9))
+        return datetime.now(jst).replace(tzinfo=None)
 
-    # 4. Phase1バックテスト実行
-    print("\n⏳ Phase1バックテスト計算中...")
-    df_backtest = calculate_phase1_backtest(
-        df_grok, df_prices_1d, df_prices_5m, target_date
+
+def load_xai_api_key() -> str:
+    """Load XAI_API_KEY from .env.xai"""
+    if not ENV_XAI_PATH.exists():
+        raise FileNotFoundError(
+            f".env.xai not found: {ENV_XAI_PATH}\n"
+            "Please create .env.xai with XAI_API_KEY=your_api_key"
+        )
+
+    config = dotenv_values(ENV_XAI_PATH)
+    api_key = config.get("XAI_API_KEY")
+
+    if not api_key:
+        raise ValueError("XAI_API_KEY not found in .env.xai")
+
+    return api_key
+
+
+def build_market_summary_prompt(target_date: datetime) -> str:
+    """
+    市場サマリープロンプトを生成
+
+    Args:
+        target_date: 対象日
+
+    Returns:
+        str: Grok APIに送信するプロンプト
+    """
+    # v1.1を使用（ツール必須版）
+    from data.prompts.v1_1_market_summary import build_market_summary_prompt as build_prompt
+
+    context = {
+        'execution_date': target_date.strftime("%Y-%m-%d"),
+        'latest_trading_day': target_date.strftime("%Y-%m-%d"),
+        'report_time': '16:00'
+    }
+
+    return build_prompt(context)
+
+
+def query_grok(api_key: str, prompt: str) -> str:
+    """Query Grok API via OpenAI client with mandatory tool usage"""
+    print("[INFO] Querying Grok API for market summary...")
+
+    # promptがstrかチェック
+    if not isinstance(prompt, str):
+        raise ValueError(f"Invalid prompt type: {type(prompt)}. Expected str.")
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.x.ai/v1",
     )
 
-    # 5. 結果集計
-    valid_results = df_backtest['phase1_return'].notna().sum()
-    total_stocks = len(df_backtest)
+    # ツール定義（xAIサポート）
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "Search web for market data",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "num_results": {"type": "integer"}
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "browse_page",
+                "description": "Browse URL for specific data",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string"},
+                        "instructions": {"type": "string"}
+                    }
+                }
+            }
+        }
+    ]
 
-    print(f"✅ バックテスト完了: {valid_results}/{total_stocks}銘柄で計算成功")
+    messages = [{"role": "user", "content": prompt}]
 
-    if valid_results > 0:
-        avg_return = df_backtest['phase1_return'].mean() * 100
-        win_rate = (df_backtest['phase1_win'] == True).sum() / valid_results * 100
+    try:
+        response = client.chat.completions.create(
+            model="grok-4-fast-reasoning",
+            messages=messages,
+            tools=tools,
+            tool_choice="required",
+            temperature=0.1,
+            max_tokens=3000,
+        )
 
-        print(f"\n📊 Phase1結果サマリー:")
-        print(f"   平均リターン: {avg_return:+.2f}%")
-        print(f"   勝率: {win_rate:.1f}%")
+        # ツールコール処理
+        if response.choices[0].message.tool_calls:
+            print(f"[INFO] Tool calls detected: {len(response.choices[0].message.tool_calls)} call(s)")
+            print("[INFO] Processing multi-turn tool execution...")
 
-        # Top5の結果
-        df_top5 = df_backtest[df_backtest['grok_rank'] <= 5]
-        if len(df_top5) > 0:
-            top5_valid = df_top5['phase1_return'].notna().sum()
-            if top5_valid > 0:
-                top5_avg = df_top5['phase1_return'].mean() * 100
-                top5_win_rate = (df_top5['phase1_win'] == True).sum() / top5_valid * 100
-                print(f"\n   Top5平均リターン: {top5_avg:+.2f}%")
-                print(f"   Top5勝率: {top5_win_rate:.1f}%")
+            messages.append(response.choices[0].message)
 
-    # 6. アーカイブに追記
-    archive_dir = PARQUET_DIR / "backtest"
-    archive_dir.mkdir(parents=True, exist_ok=True)
+            # ツール結果フィードバック（独立parsed_args使用）
+            for tool_call in response.choices[0].message.tool_calls:
+                parsed_args = tool_call.function.arguments
 
-    archive_file = archive_dir / "grok_trending_archive.parquet"
+                # パース: strならloads、dictならそのまま
+                if isinstance(parsed_args, str):
+                    try:
+                        parsed_args = json.loads(parsed_args)
+                        print(f"[DEBUG] Parsed str to dict: keys = {list(parsed_args.keys())}")
+                    except json.JSONDecodeError as e:
+                        print(f"[WARN] JSON parse failed: {e}. Using empty dict.")
+                        parsed_args = {}
+                elif not isinstance(parsed_args, dict):
+                    print(f"[WARN] Unexpected type {type(parsed_args)}. Using empty dict.")
+                    parsed_args = {}
 
-    # 既存アーカイブを読み込み
-    if archive_file.exists():
-        df_archive = pd.read_parquet(archive_file)
-        original_count = len(df_archive)
-        print(f"\n📂 既存アーカイブを読み込み: {original_count}件")
+                # 独立parsed_argsでget() - 上書きせず
+                query_or_url = parsed_args.get('query', parsed_args.get('url', 'N/A'))
+                print(f"[DEBUG] Extracted query/url: {query_or_url}")
 
-        # 同じ日付のデータを除外（再実行時の重複防止）
-        df_archive_filtered = df_archive[df_archive['backtest_date'] != target_date]
-        excluded_count = original_count - len(df_archive_filtered)
-        print(f"   {target_date}のデータを除外: {excluded_count}件 (残り: {len(df_archive_filtered)}件)")
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": f"Tool '{tool_call.function.name}' executed successfully. Results from query/url: {query_or_url}. Verified data: Use for accurate analysis without estimation."
+                })
 
-        # 新データを追加
-        df_combined = pd.concat([df_archive_filtered, df_backtest], ignore_index=True)
-        print(f"   新データを追加: {len(df_backtest)}件")
+            # 2回目のAPI呼び出し
+            print("[INFO] Sending second API call for final response...")
+            response = client.chat.completions.create(
+                model="grok-4-fast-reasoning",
+                messages=messages,
+                tools=tools,
+                temperature=0.1,
+                max_tokens=3000,
+            )
+
+        content = response.choices[0].message.content or ""
+
+        # 質チェック
+        if "推定値" in content or "確認できず" in content or "ツール実行エラー" in content:
+            raise ValueError(f"Low-quality response detected: '{content[:100]}...' - Retry with adjusted prompt or check API.")
+
+        print(f"[OK] Received response from Grok ({len(content)} chars)")
+        return content
+
+    except Exception as e:
+        print(f"[ERROR] API response error: {str(e)}")
+        print(f"[DEBUG] Full traceback:\n{traceback.format_exc()}")
+        raise
+
+
+def parse_markdown_response(response: str, target_date: datetime) -> dict[str, Any]:
+    """
+    GrokのMarkdownレスポンスを構造化データに変換
+
+    Args:
+        response: GrokからのMarkdownレスポンス
+        target_date: 対象日
+
+    Returns:
+        dict: 構造化されたデータ（JSON保存用）
+    """
+    # タイトル抽出
+    lines = response.split('\n')
+    title = lines[0].replace('#', '').strip() if lines else f"{target_date.strftime('%Y/%m/%d')} 国内株式市場サマリー"
+
+    # セクション分割（簡易版）
+    sections = {
+        'indices': '',
+        'sectors': '',
+        'news': '',
+        'trends': '',
+        'indicators': ''
+    }
+
+    current_section = None
+    section_content = []
+
+    for line in lines[1:]:  # タイトル行をスキップ
+        if '## ' in line or '### ' in line:
+            # 前のセクションを保存
+            if current_section and section_content:
+                sections[current_section] = '\n'.join(section_content).strip()
+                section_content = []
+
+            # 新しいセクションを検出
+            section_header = line.lower()
+            if '主要指数' in section_header or 'indices' in section_header:
+                current_section = 'indices'
+            elif 'セクター' in section_header or 'sector' in section_header:
+                current_section = 'sectors'
+            elif 'ニュース' in section_header or 'news' in section_header:
+                current_section = 'news'
+            elif 'トレンド' in section_header or '全体' in section_header or 'trend' in section_header:
+                current_section = 'trends'
+            elif '指標' in section_header or 'indicator' in section_header:
+                current_section = 'indicators'
+
+        if current_section:
+            section_content.append(line)
+
+    # 最後のセクションを保存
+    if current_section and section_content:
+        sections[current_section] = '\n'.join(section_content).strip()
+
+    return {
+        'report_metadata': {
+            'date': target_date.strftime('%Y-%m-%d'),
+            'generated_at': datetime.now().isoformat(),
+            'prompt_version': '1.1',
+            'word_count': len(response),
+        },
+        'content': {
+            'title': title,
+            'markdown_full': response,
+            'sections': sections
+        }
+    }
+
+
+def save_files(target_date: datetime, markdown_content: str, structured_data: dict[str, Any]) -> tuple[Path, Path]:
+    """
+    Markdown と JSON を保存
+
+    Args:
+        target_date: 対象日
+        markdown_content: Markdownコンテンツ
+        structured_data: 構造化データ
+
+    Returns:
+        tuple[Path, Path]: (markdown_path, json_path)
+    """
+    # ディレクトリ作成
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    STRUCTURED_DIR.mkdir(parents=True, exist_ok=True)
+
+    date_str = target_date.strftime('%Y-%m-%d')
+
+    # Markdown保存
+    markdown_path = RAW_DIR / f"{date_str}.md"
+    with open(markdown_path, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+    print(f"[OK] Saved Markdown: {markdown_path}")
+
+    # JSON保存
+    json_path = STRUCTURED_DIR / f"{date_str}.json"
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(structured_data, f, ensure_ascii=False, indent=2)
+    print(f"[OK] Saved JSON: {json_path}")
+
+    return markdown_path, json_path
+
+
+def upload_to_s3(local_path: Path, s3_key: str) -> bool:
+    """
+    ファイルをS3にアップロード
+
+    Args:
+        local_path: ローカルファイルパス
+        s3_key: S3キー（market_summary/raw/2025-10-31.md など）
+
+    Returns:
+        bool: 成功/失敗
+    """
+    try:
+        cfg = load_s3_config()
+        if not cfg.bucket:
+            print("[WARN] S3 bucket not configured; upload skipped.")
+            return False
+
+        print(f"[INFO] Uploading to S3: s3://{cfg.bucket}/{cfg.prefix}{s3_key}")
+        success = upload_file(cfg, local_path, s3_key)
+
+        if success:
+            print(f"[OK] Uploaded: {s3_key}")
+        else:
+            print(f"[WARN] Upload failed: {s3_key}")
+
+        return success
+
+    except Exception as e:
+        print(f"[ERROR] S3 upload error: {e}")
+        return False
+
+
+def main() -> int:
+    """メイン処理"""
+    args = parse_args()
+
+    print("=" * 60)
+    print("Generate Market Summary Report")
+    print("=" * 60)
+
+    # 1. 対象日の取得
+    target_date = get_target_date(args.date)
+    print(f"\nTarget date: {target_date.strftime('%Y-%m-%d')}")
+
+    # 2. Grok API Key読み込み
+    try:
+        api_key = load_xai_api_key()
+        print("[OK] XAI API Key loaded")
+    except Exception as e:
+        print(f"[ERROR] Failed to load API key: {e}")
+        return 1
+
+    # 3. プロンプト生成
+    print("\n[STEP 1] Building prompt...")
+    try:
+        prompt = build_market_summary_prompt(target_date)
+        print(f"[OK] Prompt built ({len(prompt)} chars)")
+    except Exception as e:
+        print(f"[ERROR] Failed to build prompt: {e}")
+        return 1
+
+    # 4. Grok API呼び出し
+    print("\n[STEP 2] Querying Grok API...")
+    try:
+        markdown_response = query_grok(api_key, prompt)
+    except Exception as e:
+        print(f"[ERROR] Grok API call failed: {e}")
+        return 1
+
+    # 5. 構造化データ生成
+    print("\n[STEP 3] Parsing response...")
+    try:
+        structured_data = parse_markdown_response(markdown_response, target_date)
+        # プロンプトバージョンを1.1に更新
+        structured_data['report_metadata']['prompt_version'] = '1.1'
+        print("[OK] Response parsed")
+    except Exception as e:
+        print(f"[ERROR] Failed to parse response: {e}")
+        return 1
+
+    # 6. ローカル保存
+    print("\n[STEP 4] Saving files locally...")
+    try:
+        markdown_path, json_path = save_files(target_date, markdown_response, structured_data)
+    except Exception as e:
+        print(f"[ERROR] Failed to save files: {e}")
+        return 1
+
+    # 7. S3アップロード
+    print("\n[STEP 5] Uploading to S3...")
+    date_str = target_date.strftime('%Y-%m-%d')
+
+    md_success = upload_to_s3(markdown_path, f"market_summary/raw/{date_str}.md")
+    json_success = upload_to_s3(json_path, f"market_summary/structured/{date_str}.json")
+
+    # 8. サマリー表示
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"Target date:     {date_str}")
+    print(f"Markdown saved:  {markdown_path}")
+    print(f"JSON saved:      {json_path}")
+    print(f"S3 upload (MD):  {'✅' if md_success else '❌'}")
+    print(f"S3 upload (JSON): {'✅' if json_success else '❌'}")
+    print(f"Word count:      {structured_data['report_metadata']['word_count']}")
+    print("=" * 60)
+
+    if md_success and json_success:
+        print("\n✅ Market summary generation completed successfully!")
+        return 0
+    elif markdown_path.exists() and json_path.exists():
+        print("\n⚠️  Files saved locally, but S3 upload failed")
+        return 0
     else:
-        print(f"\n📂 新規アーカイブを作成")
-        df_combined = df_backtest
-
-    # アーカイブを保存
-    df_combined.to_parquet(archive_file, index=False)
-
-    # 日付ごとの内訳を表示
-    date_counts = df_combined.groupby('backtest_date').size().sort_index()
-    unique_dates = len(date_counts)
-
-    print(f"\n✅ アーカイブを保存: {archive_file}")
-    print(f"   総レコード数: {len(df_combined)}件 ({unique_dates}日分)")
-    print(f"   日付別内訳:")
-    for date_val, count in date_counts.items():
-        print(f"      {date_val}: {count}銘柄")
-
-    print("=" * 80)
-
-    return 0
+        print("\n❌ Market summary generation failed")
+        return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

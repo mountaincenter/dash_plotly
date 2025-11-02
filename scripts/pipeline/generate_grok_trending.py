@@ -272,7 +272,7 @@ def query_grok(api_key: str, prompt: str) -> str:
     )
 
     response = client.chat.completions.create(
-        model="grok-3",
+        model="grok-4-fast-reasoning",
         messages=[
             {"role": "system", "content": "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"},
             {"role": "user", "content": prompt}

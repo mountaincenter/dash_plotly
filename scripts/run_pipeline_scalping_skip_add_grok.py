@@ -56,6 +56,9 @@ class PipelineRunner:
             ("pipeline.fetch_prices", "価格データ取得（yfinance - 株価）"),
             ("pipeline.fetch_index_prices", "マーケット指標取得（yfinance - 指数/ETF/先物）"),
             ("pipeline.fetch_currency_prices", "為替レート取得（yfinance - FX）"),
+            ("pipeline.update_topix_prices", "TOPIX系指数データ取得（J-Quants Standard）"),
+            ("pipeline.update_sectors_prices", "33業種別指数データ取得（J-Quants Standard）"),
+            ("pipeline.update_series_prices", "17業種別指数データ取得（J-Quants Standard）"),
         ])
 
         # バックテストアーカイブ保存（16:00 JST実行時のみ）
@@ -72,6 +75,12 @@ class PipelineRunner:
             ("pipeline.save_grok_backtest_meta", "Grokバックテストメタ情報生成"),
             ("pipeline.extract_backtest_patterns", "バックテストパターン抽出（Grok学習用）"),
         ])
+
+        # 市場サマリー生成（16:00 JST実行時のみ）
+        if skip_grok:
+            self.steps.append(
+                ("pipeline.generate_market_summary", "市場サマリー生成（Grok API v1.3）")
+            )
 
         # Manifest生成・S3アップロード
         self.steps.append(

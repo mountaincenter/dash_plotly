@@ -1,0 +1,6 @@
+,return_1d,return_1d,return_1d,return_3d,return_3d,return_5d,return_5d
+,mean,std,count,mean,std,mean,std
+vol_category,,,,,,,
+低ボラ,0.23,49.75,121374,0.71,86.69,1.2,111.2
+中ボラ,0.0,2.53,113408,0.09,4.55,0.22,6.07
+高ボラ,0.09,3.41,112919,0.17,5.89,0.18,7.53

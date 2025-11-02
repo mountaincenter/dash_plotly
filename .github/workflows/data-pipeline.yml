@@ -386,6 +386,52 @@ jobs:
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
           fi
 
+      - name: Generate market summary
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          # cron判定
+          if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
+            RUN_TIME="16:00"
+          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+            RUN_TIME="23:00"
+          else
+            RUN_TIME="manual"
+          fi
+
+          echo "📰 Generating market summary ($RUN_TIME run)..."
+
+          # 16時のみ市場サマリーを生成（大引け後）
+          if [ "$RUN_TIME" = "16:00" ]; then
+            python3 scripts/pipeline/generate_market_summary.py
+
+            if [ $? -eq 0 ]; then
+              echo "✅ Market summary generated successfully"
+
+              # 生成されたファイルを確認
+              DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+              RAW_FILE="data/parquet/market_summary/raw/${DATE}.md"
+              JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
+
+              if [ -f "$RAW_FILE" ] && [ -f "$JSON_FILE" ]; then
+                echo "✅ Files created:"
+                echo "   - $RAW_FILE"
+                echo "   - $JSON_FILE"
+
+                # 文字数確認
+                WORD_COUNT=$(wc -m < "$RAW_FILE")
+                echo "   Word count: $WORD_COUNT characters"
+              else
+                echo "⚠️  Warning: Expected files not found"
+              fi
+            else
+              echo "❌ Market summary generation failed (non-critical, continuing)"
+            fi
+          else
+            echo "ℹ️  Skipping market summary (only runs at 16:00 JST)"
+          fi
+
       - name: Extract GROK stocks info
         id: grok-info
         if: success()
@@ -448,7 +494,9 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           TRIGGER_TIME="16:00 JST"
-          if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+          if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+            TRIGGER_TIME="23:00 JST"
+          elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
             TRIGGER_TIME="02:00 JST"
           fi
 
@@ -458,22 +506,104 @@ jobs:
             JQUANTS_STATUS="⚠️ 障害発生（静的銘柄のみで更新）"
           fi
 
-          # GROK銘柄情報をフォーマット
+          # GROK銘柄情報をフォーマット（23:00のみ）
           GROK_SECTION=""
-          GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
+          MARKET_SUMMARY_SECTION=""
 
-          if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
-            # 別ファイルのPythonスクリプトでフォーマット（YAMLエスケープ問題を回避）
-            python3 scripts/format_grok_slack.py "$GROK_INFO"
+          if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+            # 23:00 - GROK銘柄を表示
+            GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
-            # ファイルから読み込み
-            if [ -f "/tmp/grok_section.txt" ] && [ -s "/tmp/grok_section.txt" ]; then
-              GROK_SECTION=$(cat /tmp/grok_section.txt)
-            else
-              GROK_SECTION=""
+            if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
+              # 別ファイルのPythonスクリプトでフォーマット（YAMLエスケープ問題を回避）
+              python3 scripts/format_grok_slack.py "$GROK_INFO"
+
+              # ファイルから読み込み
+              if [ -f "/tmp/grok_section.txt" ] && [ -s "/tmp/grok_section.txt" ]; then
+                GROK_SECTION=$(cat /tmp/grok_section.txt)
+              fi
             fi
-          else
-            GROK_SECTION=""
+          elif [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
+            # 16:00 - 市場サマリーを表示
+            DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+            JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
+
+            if [ -f "$JSON_FILE" ]; then
+              # JSONから主要指数と注目ニュースを抽出してSlack用に整形
+              SUMMARY_TEXT=$(python3 -c "
+import json
+import sys
+import re
+
+try:
+    with open('${JSON_FILE}', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    content = data.get('content', {})
+    metadata = data.get('report_metadata', {})
+
+    # タイトル
+    date = metadata.get('date', 'N/A')
+    word_count = metadata.get('word_count', 0)
+
+    # 全体トレンドを抽出（簡潔に）
+    trends = content.get('sections', {}).get('trends', '')
+    # 最初の段落のみ抽出（箇条書き部分）
+    trend_lines = []
+    for line in trends.split('\n'):
+        if line.startswith('- '):
+            # URLを削除して簡潔に
+            clean_line = re.sub(r'\[.*?\]\(.*?\)', '', line)
+            clean_line = re.sub(r'http[s]?://\S+', '', clean_line)
+            trend_lines.append(clean_line.strip())
+        if len(trend_lines) >= 3:  # 最大3行
+            break
+
+    trends_summary = '\n'.join(trend_lines) if trend_lines else '（データ取得中）'
+
+    # 注目ニュースのタイトルのみ抽出
+    news = content.get('sections', {}).get('news', '')
+    news_titles = []
+    for line in news.split('\n'):
+        if line.startswith('- **') and '**:' in line:
+            # タイトル部分のみ抽出
+            title_match = re.search(r'\*\*(.*?)\*\*:', line)
+            if title_match:
+                news_titles.append(f'• {title_match.group(1)}')
+        if len(news_titles) >= 3:  # 最大3つ
+            break
+
+    news_summary = '\n'.join(news_titles) if news_titles else '（データ取得中）'
+
+    # Slack用テキスト作成（簡潔版）
+    summary = f'''*📊 国内株式市場サマリー* ({date})
+
+*市場動向:*
+{trends_summary}
+
+*注目ニュース:*
+{news_summary}
+
+_全{word_count}文字のレポート → \`GET /market-summary/latest\`_
+'''
+    print(summary)
+except Exception as e:
+    print(f'Error: {e}', file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null)
+
+              if [ $? -eq 0 ] && [ -n "$SUMMARY_TEXT" ]; then
+                # エスケープ処理
+                SUMMARY_TEXT_ESCAPED=$(echo "$SUMMARY_TEXT" | jq -Rs .)
+                MARKET_SUMMARY_SECTION=',{
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": '"$SUMMARY_TEXT_ESCAPED"'
+                  }
+                }'
+              fi
+            fi
           fi
 
           MESSAGE='{
@@ -513,7 +643,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$GROK_SECTION"'
+              }'"$GROK_SECTION$MARKET_SUMMARY_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true

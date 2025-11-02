@@ -25,6 +25,30 @@ class JQuantsFetcher:
         """
         self.client = client or JQuantsClient()
 
+    @staticmethod
+    def _format_date_param(date_value: str | date | None, endpoint: str) -> str | None:
+        """
+        エンドポイントに応じて日付パラメータをフォーマット
+
+        Args:
+            date_value: 日付値（YYYY-MM-DD or YYYYMMDD or date object）
+            endpoint: エンドポイント名（例: "/indices", "/prices/daily_quotes"）
+
+        Returns:
+            フォーマットされた日付文字列、またはNone
+        """
+        if date_value is None:
+            return None
+
+        date_str = str(date_value)
+
+        # /indices エンドポイントは YYYYMMDD 形式が必要
+        if endpoint == "/indices":
+            return date_str.replace("-", "")
+
+        # その他のエンドポイント（/prices/daily_quotes等）は YYYY-MM-DD 形式
+        return date_str
+
     def get_listed_info(self) -> pd.DataFrame:
         """
         上場銘柄一覧を取得
@@ -217,6 +241,185 @@ class JQuantsFetcher:
         latest_trading_day = trading_days.iloc[0]["Date"]
 
         return latest_trading_day
+
+    def get_indices(
+        self,
+        code: str | None = None,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        指数データを取得（TOPIX, Prime, Standard, Growth, 33業種別など）
+
+        Args:
+            code: 指数コード（例: "0000"=TOPIX）。Noneの場合は全指数
+            from_date: 取得開始日（YYYY-MM-DD）
+            to_date: 取得終了日（YYYY-MM-DD）
+
+        Returns:
+            指数データのDataFrame
+        """
+        params = {}
+        if code:
+            params["code"] = code
+        if from_date:
+            params["from"] = str(from_date)
+        if to_date:
+            params["to"] = str(to_date)
+
+        data = self.client.request("/indices", params=params)
+        indices = data.get("indices", [])
+
+        if not indices:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(indices)
+
+        # 日付列を変換
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+
+        # 数値列を変換
+        numeric_cols = ["Open", "High", "Low", "Close"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
+
+    def get_indices(
+        self,
+        code: str | None = None,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        指数データを取得（TOPIX, Prime, Standard, Growth, 33業種別など）
+
+        Args:
+            code: 指数コード（例: "0000"=TOPIX）。Noneの場合は全指数
+            from_date: 取得開始日（YYYY-MM-DD）
+            to_date: 取得終了日（YYYY-MM-DD）
+
+        Returns:
+            指数データのDataFrame
+        """
+        params = {}
+        if code:
+            params["code"] = code
+        if from_date:
+            # YYYY-MM-DD → YYYYMMDD
+            params["from"] = str(from_date).replace("-", "")
+        if to_date:
+            # YYYY-MM-DD → YYYYMMDD
+            params["to"] = str(to_date).replace("-", "")
+
+        data = self.client.request("/indices", params=params)
+        indices = data.get("indices", [])
+
+        if not indices:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(indices)
+
+        # 日付列を変換
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+
+        # 数値列を変換
+        numeric_cols = ["Open", "High", "Low", "Close"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
+
+    def get_indices_topix(
+        self,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        TOPIX指数データを取得（互換性のため残す）
+
+        Args:
+            from_date: 取得開始日（YYYY-MM-DD）
+            to_date: 取得終了日（YYYY-MM-DD）
+
+        Returns:
+            TOPIX指数データのDataFrame
+        """
+        # /indices/topix を使用（Lightプランでも動作）
+        params = {}
+        if from_date:
+            params["from"] = str(from_date)
+        if to_date:
+            params["to"] = str(to_date)
+
+        data = self.client.request("/indices/topix", params=params)
+        topix = data.get("topix", [])
+
+        if not topix:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(topix)
+
+        # 日付列を変換
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+
+        # 数値列を変換
+        numeric_cols = ["Open", "High", "Low", "Close"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
+
+    def get_index_options(
+        self,
+        date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        日経225オプション四本値データを取得
+
+        Args:
+            date: 取得日（YYYY-MM-DD or YYYYMMDD）
+
+        Returns:
+            オプションデータのDataFrame
+        """
+        params = {}
+        if date:
+            # YYYY-MM-DD → YYYYMMDD (options endpoint accepts both formats)
+            params["date"] = str(date).replace("-", "")
+
+        data = self.client.request("/option/index_option", params=params)
+        options = data.get("index_option", [])
+
+        if not options:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(options)
+
+        # 日付列を変換
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+
+        # 数値列を変換
+        numeric_cols = [
+            "WholeDayOpen", "WholeDayHigh", "WholeDayLow", "WholeDayClose",
+            "NightSessionOpen", "NightSessionHigh", "NightSessionLow", "NightSessionClose",
+            "DaySessionOpen", "DaySessionHigh", "DaySessionLow", "DaySessionClose",
+            "Volume", "OpenInterest", "TurnoverValue",
+            "StrikePrice", "SettlementPrice", "TheoreticalPrice",
+            "UnderlyingPrice", "ImpliedVolatility", "BaseVolatility", "InterestRate"
+        ]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
 
     def convert_to_yfinance_format(self, df: pd.DataFrame) -> pd.DataFrame:
         """

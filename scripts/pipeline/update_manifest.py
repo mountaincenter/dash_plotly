@@ -53,6 +53,10 @@ UPLOAD_FILES = [
     "currency_prices_730d_1h.parquet",
     "currency_prices_max_1d.parquet",
     "currency_prices_max_1mo.parquet",
+    # J-Quants指数データ (Standard plan)
+    "topix_prices_max_1d.parquet",
+    "sectors_prices_max_1d.parquet",
+    "series_prices_max_1d.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
@@ -222,6 +226,26 @@ def upload_files_to_s3() -> bool:
     else:
         print(f"  [INFO] No backtest archive found (expected after first 16:00 run)")
 
+    # market_summary/ ディレクトリのファイルを追加
+    market_summary_dir = PARQUET_DIR / "market_summary"
+    if market_summary_dir.exists():
+        # raw/*.md ファイル
+        raw_dir = market_summary_dir / "raw"
+        if raw_dir.exists():
+            for md_file in raw_dir.glob("*.md"):
+                upload_targets.append(md_file)
+
+        # structured/*.json ファイル
+        structured_dir = market_summary_dir / "structured"
+        if structured_dir.exists():
+            for json_file in structured_dir.glob("*.json"):
+                upload_targets.append(json_file)
+
+        md_count = len(list(raw_dir.glob("*.md"))) if raw_dir.exists() else 0
+        json_count = len(list(structured_dir.glob("*.json"))) if structured_dir.exists() else 0
+        if md_count > 0 or json_count > 0:
+            print(f"  [INFO] Added market_summary: {md_count} markdown, {json_count} json files")
+
     # manifest.jsonも追加
     if MANIFEST_PATH.exists():
         upload_targets.append(MANIFEST_PATH)
@@ -277,12 +301,19 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
-        # これらは data-pipeline.yml の "Archive GROK trending for backtest" ステップで管理される
+        # market_summary/ 配下のファイルも保護
+        # これらは data-pipeline.yml の "Archive GROK trending for backtest" および "Generate market summary" ステップで管理される
         import re
         for obj in response.get("Contents", []):
             key = obj["Key"]
             # backtest/grok_trending_YYYYMMDD.parquet パターンにマッチするファイルは保持
             if re.match(rf"{prefix}backtest/grok_trending_\d{{8}}\.parquet$", key):
+                keep_keys.add(key)
+            # market_summary/raw/YYYY-MM-DD.md パターンにマッチするファイルは保持
+            if re.match(rf"{prefix}market_summary/raw/\d{{4}}-\d{{2}}-\d{{2}}\.md$", key):
+                keep_keys.add(key)
+            # market_summary/structured/YYYY-MM-DD.json パターンにマッチするファイルは保持
+            if re.match(rf"{prefix}market_summary/structured/\d{{4}}-\d{{2}}-\d{{2}}\.json$", key):
                 keep_keys.add(key)
 
         # 削除対象のファイルを抽出

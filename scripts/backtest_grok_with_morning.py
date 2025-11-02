@@ -143,7 +143,7 @@ def call_grok_api(prompt: str, api_key: str) -> dict[str, Any]:
 
     try:
         completion = client.chat.completions.create(
-            model="grok-2-1212",
+            model="grok-4-fast-reasoning",
             messages=[
                 {"role": "system", "content": "あなたは優秀な株式アナリストです。指示に従ってJSON形式で銘柄を選定してください。"},
                 {"role": "user", "content": prompt}
