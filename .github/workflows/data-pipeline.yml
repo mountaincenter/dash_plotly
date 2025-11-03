@@ -117,6 +117,25 @@ jobs:
 
           exit $EXIT_CODE
 
+      - name: Check next day is trading day (for 23:00 run)
+        id: check_next_trading
+        if: steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced'
+        env:
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+        run: |
+          echo "🔍 Checking if next day is a trading day..."
+          python scripts/check_next_day_trading.py
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Next day is a TRADING day - will execute Grok selection"
+          else
+            echo "❌ Next day is NOT a trading day - skipping Grok selection"
+            echo "::notice::Skipping Grok selection - next day is not a trading day"
+          fi
+
+          exit $EXIT_CODE
+
       - name: Skip if outside trading window
         if: |
           steps.check_updated.outputs.already_updated == 'true'
@@ -124,13 +143,60 @@ jobs:
           echo "::notice::Skipping pipeline execution - already updated today"
           exit 0
 
+      - name: Verify S3 backups before Grok selection
+        id: verify_backup
+        if: success() && (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced')
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "🔍 Verifying S3 backups before Grok selection..."
+          echo "============================================================"
+
+          # verify_grok_backup.py は --date を省略すると
+          # 自動的に grok_trending.parquet から日付を読み取る
+          python3 scripts/verify_grok_backup.py --bucket "$S3_BUCKET"
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ S3 backups verified successfully"
+            echo "backup_verified=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ S3 backup verification failed"
+            echo "⚠️  Aborting Grok selection to prevent data loss"
+            exit 1
+          fi
+
+      - name: Cleanup grok_trending before selection
+        if: success() && (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced')
+        run: |
+          echo "🧹 Cleaning up grok_trending.parquet..."
+          echo "============================================================"
+
+          if [ -f "data/parquet/grok_trending.parquet" ]; then
+            python3 scripts/cleanup_grok_trending.py
+            if [ $? -eq 0 ]; then
+              echo "✅ Cleanup completed successfully"
+            else
+              echo "❌ Cleanup failed"
+              exit 1
+            fi
+          else
+            echo "ℹ️  No grok_trending.parquet found - nothing to clean"
+          fi
+
       - name: Run Data Pipeline
         id: pipeline
+        if: |
+          success() && (
+            steps.exec_mode.outputs.mode == 'stock_data' ||
+            steps.check_next_trading.conclusion == 'success'
+          )
         env:
           JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
           SKIP_GROK_GENERATION: ${{ steps.exec_mode.outputs.skip_grok }}
+          PROMPT_VERSION: v1_1_web_search
         run: |
           # Create .env.xai for Grok API
           echo "XAI_API_KEY=$XAI_API_KEY" > .env.xai
@@ -168,10 +234,10 @@ jobs:
           exit $EXIT_CODE
 
       - name: Run backtest and archive
-        if: success()
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
           echo "============================================================"
-          echo "Running backtest and archiving results"
+          echo "Running backtest and archiving results (16:00 only)"
           echo "============================================================"
 
           # S3から既存のアーカイブファイルをダウンロード
@@ -530,67 +596,7 @@ jobs:
 
             if [ -f "$JSON_FILE" ]; then
               # JSONから主要指数と注目ニュースを抽出してSlack用に整形
-              SUMMARY_TEXT=$(python3 -c "
-import json
-import sys
-import re
-
-try:
-    with open('${JSON_FILE}', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    content = data.get('content', {})
-    metadata = data.get('report_metadata', {})
-
-    # タイトル
-    date = metadata.get('date', 'N/A')
-    word_count = metadata.get('word_count', 0)
-
-    # 全体トレンドを抽出（簡潔に）
-    trends = content.get('sections', {}).get('trends', '')
-    # 最初の段落のみ抽出（箇条書き部分）
-    trend_lines = []
-    for line in trends.split('\n'):
-        if line.startswith('- '):
-            # URLを削除して簡潔に
-            clean_line = re.sub(r'\[.*?\]\(.*?\)', '', line)
-            clean_line = re.sub(r'http[s]?://\S+', '', clean_line)
-            trend_lines.append(clean_line.strip())
-        if len(trend_lines) >= 3:  # 最大3行
-            break
-
-    trends_summary = '\n'.join(trend_lines) if trend_lines else '（データ取得中）'
-
-    # 注目ニュースのタイトルのみ抽出
-    news = content.get('sections', {}).get('news', '')
-    news_titles = []
-    for line in news.split('\n'):
-        if line.startswith('- **') and '**:' in line:
-            # タイトル部分のみ抽出
-            title_match = re.search(r'\*\*(.*?)\*\*:', line)
-            if title_match:
-                news_titles.append(f'• {title_match.group(1)}')
-        if len(news_titles) >= 3:  # 最大3つ
-            break
-
-    news_summary = '\n'.join(news_titles) if news_titles else '（データ取得中）'
-
-    # Slack用テキスト作成（簡潔版）
-    summary = f'''*📊 国内株式市場サマリー* ({date})
-
-*市場動向:*
-{trends_summary}
-
-*注目ニュース:*
-{news_summary}
-
-_全{word_count}文字のレポート → \`GET /market-summary/latest\`_
-'''
-    print(summary)
-except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
-    sys.exit(1)
-" 2>/dev/null)
+              SUMMARY_TEXT=$(python3 scripts/format_market_summary_slack.py "$JSON_FILE" 2>/dev/null)
 
               if [ $? -eq 0 ] && [ -n "$SUMMARY_TEXT" ]; then
                 # エスケープ処理

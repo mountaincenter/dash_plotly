@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月02日",
+    "latest_trading_day": "2025年10月29日",
+    "next_trading_day": "2025年10月30日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "16:00",
+    "tool_usage": {
+      "web_search_calls": 24,
+      "total_tool_calls": 24,
+      "usage": {
+        "completion_tokens": 2520,
+        "prompt_tokens": 177650,
+        "total_tokens": 182868
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "3655",
+      "company_name": "ブレインパッド",
+      "reason": "[web_search: kabutan.jp]2025年10月29日、富士通TOB報道でストップ高。[web_search: finance.yahoo.co.jp]時価総額374億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高急増確認、直近ストップ高でボラティリティ高。",
+      "category": "TOB材料+ストップ高",
+      "sentiment_score": 0.85,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3195",
+      "company_name": "ジェネレーションパス",
+      "reason": "[web_search: kabutan.jp]2025年10月29日連続ストップ高、伊藤忠商事との共同開発材料。[web_search: finance.yahoo.co.jp]時価総額58億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高20日平均超え、ATR高値更新。",
+      "category": "提携材料+連続ストップ高",
+      "sentiment_score": 0.82,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6648",
+      "company_name": "かわでん",
+      "reason": "[web_search: kabutan.jp]2025年10月29日大引け後、26年3月期経常利益40億円に上方修正でストップ高。[web_search: finance.yahoo.co.jp]時価総額378億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]配当100円増配、出来高急増。",
+      "category": "業績上方修正+ストップ高",
+      "sentiment_score": 0.8,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6276",
+      "company_name": "シリウスビジョン",
+      "reason": "[web_search: kabutan.jp]2025年10月29日、電子基板検査AI機器「S-Comet」販売開始発表でストップ高。[web_search: finance.yahoo.co.jp]時価総額22億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高急増、ボラティリティ高。",
+      "category": "AI新製品+ストップ高",
+      "sentiment_score": 0.78,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6042",
+      "company_name": "ニッキ",
+      "reason": "[web_search: kabutan.jp]2025年10月29日、26年3月期営業利益上方修正発表。[web_search: finance.yahoo.co.jp]時価総額65億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]値動き活発、出来高増加。",
+      "category": "業績上方修正",
+      "sentiment_score": 0.75,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2114",
+      "company_name": "フジ日本",
+      "reason": "[web_search: kabutan.jp]2025年10月29日、アライアンス契約締結IR発表。[web_search: finance.yahoo.co.jp]時価総額270億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]精糖事業強化、出来高確認。",
+      "category": "業務提携IR",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3647",
+      "company_name": "ジー・スリーホールディングス",
+      "reason": "[web_search: kabutan.jp]2025年10月29日大引け後、第三者割当増資発表。[web_search: finance.yahoo.co.jp]時価総額26億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]グリーンエナジー投資、ボラティリティ高。",
+      "category": "増資+グリーン投資",
+      "sentiment_score": 0.65,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3189",
+      "company_name": "ANAPホールディングス",
+      "reason": "[web_search: kabutan.jp]2025年10月29日大引け後、8億円CB発行発表。[web_search: finance.yahoo.co.jp]時価総額190億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]転換価格533円、流動性確保。",
+      "category": "CB発行",
+      "sentiment_score": 0.6,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"3655\",\n    \"company_name\": \"ブレインパッド\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日、富士通TOB報道でストップ高。[web_search: finance.yahoo.co.jp]時価総額374億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高急増確認、直近ストップ高でボラティリティ高。\",\n    \"category\": \"TOB材料+ストップ高\",\n    \"sentiment_score\": 0.85,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3195\",\n    \"company_name\": \"ジェネレーションパス\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日連続ストップ高、伊藤忠商事との共同開発材料。[web_search: finance.yahoo.co.jp]時価総額58億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高20日平均超え、ATR高値更新。\",\n    \"category\": \"提携材料+連続ストップ高\",\n    \"sentiment_score\": 0.82,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6648\",\n    \"company_name\": \"かわでん\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日大引け後、26年3月期経常利益40億円に上方修正でストップ高。[web_search: finance.yahoo.co.jp]時価総額378億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]配当100円増配、出来高急増。\",\n    \"category\": \"業績上方修正+ストップ高\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6276\",\n    \"company_name\": \"シリウスビジョン\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日、電子基板検査AI機器「S-Comet」販売開始発表でストップ高。[web_search: finance.yahoo.co.jp]時価総額22億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]出来高急増、ボラティリティ高。\",\n    \"category\": \"AI新製品+ストップ高\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6042\",\n    \"company_name\": \"ニッキ\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日、26年3月期営業利益上方修正発表。[web_search: finance.yahoo.co.jp]時価総額65億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]値動き活発、出来高増加。\",\n    \"category\": \"業績上方修正\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2114\",\n    \"company_name\": \"フジ日本\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日、アライアンス契約締結IR発表。[web_search: finance.yahoo.co.jp]時価総額270億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]精糖事業強化、出来高確認。\",\n    \"category\": \"業務提携IR\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3647\",\n    \"company_name\": \"ジー・スリーホールディングス\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日大引け後、第三者割当増資発表。[web_search: finance.yahoo.co.jp]時価総額26億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]グリーンエナジー投資、ボラティリティ高。\",\n    \"category\": \"増資+グリーン投資\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3189\",\n    \"company_name\": \"ANAPホールディングス\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月29日大引け後、8億円CB発行発表。[web_search: finance.yahoo.co.jp]時価総額190億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]転換価格533円、流動性確保。\",\n    \"category\": \"CB発行\",\n    \"sentiment_score\": 0.60,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 8,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"200億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"100%\",\n    \"policy_linked_stocks\": 2,\n    \"avg_sentiment_score\": 0.74\n  }\n}"
+}

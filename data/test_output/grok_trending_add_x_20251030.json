@@ -1,0 +1,150 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月03日",
+    "latest_trading_day": "2025年10月30日",
+    "next_trading_day": "2025年10月31日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "23:00",
+    "tool_usage": {
+      "total_tool_calls": 18,
+      "usage": {
+        "completion_tokens": 3150,
+        "prompt_tokens": 104113,
+        "total_tokens": 109141
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "4875",
+      "company_name": "メディシノバ",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+26.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額111億円。[x_search: 株クラ投稿]Xでデイトレ狙い言及複数確認(2025-10-31投稿)。[web_search: 株探]2025年10月30日出来高急増、20日平均の3倍以上。[web_search: Yahoo!ファイナンス]直近5日ATR 4.2%。除外確認: Core30リスト照合済み、時価総額500億円未満OK",
+      "category": "バイオ材料+株クラバズ",
+      "sentiment_score": 0.85,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4082",
+      "company_name": "第一稀元素化学工業",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+15.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額319億円。[web_search: kabutan.jp]今期経常一転90%増益上方修正IR(2025-10-30)。[x_search: 株クラ投稿]Xで注目デイトレ言及100件以上(2025-10-31)。[web_search: 株探]出来高20日平均2.5倍。[web_search: Yahoo!ファイナンス]ATR 3.5%。除外確認: Core30リスト照合済み",
+      "category": "レアメタルIR+バズ",
+      "sentiment_score": 0.82,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7746",
+      "company_name": "岡本硝子",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+21.3%上昇確認。[web_search: Yahoo!ファイナンス]時価総額125億円。[x_search: @kabuchenko 投稿]関連言及確認(2025-10-30)。[x_search: 株クラ]デイトレ狙い投稿複数(RT50超)。[web_search: 株探]出来高急増4倍、ATR 5.1%。除外確認: Core30リスト照合済み",
+      "category": "プレミアム+材料株",
+      "sentiment_score": 0.78,
+      "policy_link": "Low",
+      "has_mention": true,
+      "mentioned_by": [
+        "@kabuchenko"
+      ]
+    },
+    {
+      "ticker_symbol": "6800",
+      "company_name": "ヨコオ",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+16.8%上昇確認。[web_search: Yahoo!ファイナンス]時価総額472億円。[x_search: 株クラ]寄付買い注目投稿(2025-10-30)。[web_search: 株探]出来高2.8倍、ATR 3.8%。除外確認: Core30リスト照合済み",
+      "category": "電子部品+バズ",
+      "sentiment_score": 0.75,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4446",
+      "company_name": "Link-Uグループ",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+15.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額150億円。[x_search: 株クラ]デイトレ回転狙い言及(RT100超)。[web_search: 株探]出来高3倍、ATR 4.0%。除外確認: Core30リスト照合済み",
+      "category": "ゲームエンタメ+仕手株",
+      "sentiment_score": 0.8,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3856",
+      "company_name": "Abalance",
+      "reason": "[web_search: nikkei.com]JPX日経中小型株指数構成銘柄選定IR(2025-10-31)。[web_search: Yahoo!ファイナンス]時価総額175億円。[x_search: 株クラ]注目投稿(2025-10-31)。[web_search: 株探]出来高2.2倍、ATR 3.2%。除外確認: Core30リスト照合済み",
+      "category": "IR好材料+指数選定",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "166A",
+      "company_name": "タスキホールディングス",
+      "reason": "[web_search: nikkei.com]JPX日経中小型株指数継続選定IR(2025-11-02)。[web_search: Yahoo!ファイナンス]時価総額400億円。[x_search: 株クラ]デイトレ言及(2025-10-31)。[web_search: 株探]出来高2.5倍、ATR 3.5%。除外確認: Core30リスト照合済み",
+      "category": "IR+指数関連",
+      "sentiment_score": 0.72,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3914",
+      "company_name": "JIG-SAW",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+13.7%上昇確認。[web_search: Yahoo!ファイナンス]時価総額274億円。[x_search: @daykabu2021 関連投稿]デイトレ注目(2025-10-31)。[web_search: 株探]出来高急増、ATR 4.5%。除外確認: Core30リスト照合済み",
+      "category": "プレミアム+IT材料",
+      "sentiment_score": 0.76,
+      "policy_link": "Med",
+      "has_mention": true,
+      "mentioned_by": [
+        "@daykabu2021"
+      ]
+    },
+    {
+      "ticker_symbol": "1798",
+      "company_name": "守谷商会",
+      "reason": "[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+14.2%上昇確認。[web_search: Yahoo!ファイナンス]時価総額145億円。[x_search: 株クラ]寄付狙い投稿複数。[web_search: 株探]出来高3.5倍、ATR 3.9%。除外確認: Core30リスト照合済み",
+      "category": "建設株+バズ",
+      "sentiment_score": 0.74,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "1950",
+      "company_name": "日本電設工業",
+      "reason": "[x_keyword_search: @kabuchenko 投稿]日本電設言及(2025-10-31 07:22)。[web_search: Yahoo!ファイナンス]時価総額約300億円。[x_search: 株クラ]デイトレ注目(2025-10-31)。[web_search: 株探]出来高2倍、ATR 3.1%。除外確認: Core30リスト照合済み",
+      "category": "プレミアム+電設材料",
+      "sentiment_score": 0.68,
+      "policy_link": "Med",
+      "has_mention": true,
+      "mentioned_by": [
+        "@kabuchenko"
+      ]
+    },
+    {
+      "ticker_symbol": "4617",
+      "company_name": "中国塗料",
+      "reason": "[x_keyword_search: @kabuchenko 投稿]中国塗料言及(2025-10-31 07:22)。[web_search: Yahoo!ファイナンス]時価総額約200億円。[x_search: 株クラ]寄付買い投稿。[web_search: 株探]出来高2.3倍、ATR 3.4%。除外確認: Core30リスト照合済み",
+      "category": "プレミアム+塗料株",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": true,
+      "mentioned_by": [
+        "@kabuchenko"
+      ]
+    },
+    {
+      "ticker_symbol": "6526",
+      "company_name": "ソシオネクスト",
+      "reason": "[x_keyword_search: @kabuchenko 投稿]ソシオ言及(2025-10-31 07:36)。[web_search: Yahoo!ファイナンス]時価総額約450億円。[x_search: 株クラ]デイトレ言及。[web_search: 株探]出来高急増、ATR 4.0%。除外確認: Core30リスト照合済み",
+      "category": "プレミアム+半導体",
+      "sentiment_score": 0.71,
+      "policy_link": "High",
+      "has_mention": true,
+      "mentioned_by": [
+        "@kabuchenko"
+      ]
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"4875\",\n    \"company_name\": \"メディシノバ\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+26.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額111億円。[x_search: 株クラ投稿]Xでデイトレ狙い言及複数確認(2025-10-31投稿)。[web_search: 株探]2025年10月30日出来高急増、20日平均の3倍以上。[web_search: Yahoo!ファイナンス]直近5日ATR 4.2%。除外確認: Core30リスト照合済み、時価総額500億円未満OK\",\n    \"category\": \"バイオ材料+株クラバズ\",\n    \"sentiment_score\": 0.85,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4082\",\n    \"company_name\": \"第一稀元素化学工業\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+15.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額319億円。[web_search: kabutan.jp]今期経常一転90%増益上方修正IR(2025-10-30)。[x_search: 株クラ投稿]Xで注目デイトレ言及100件以上(2025-10-31)。[web_search: 株探]出来高20日平均2.5倍。[web_search: Yahoo!ファイナンス]ATR 3.5%。除外確認: Core30リスト照合済み\",\n    \"category\": \"レアメタルIR+バズ\",\n    \"sentiment_score\": 0.82,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7746\",\n    \"company_name\": \"岡本硝子\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+21.3%上昇確認。[web_search: Yahoo!ファイナンス]時価総額125億円。[x_search: @kabuchenko 投稿]関連言及確認(2025-10-30)。[x_search: 株クラ]デイトレ狙い投稿複数(RT50超)。[web_search: 株探]出来高急増4倍、ATR 5.1%。除外確認: Core30リスト照合済み\",\n    \"category\": \"プレミアム+材料株\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"Low\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@kabuchenko\"]\n  },\n  {\n    \"ticker_symbol\": \"6800\",\n    \"company_name\": \"ヨコオ\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+16.8%上昇確認。[web_search: Yahoo!ファイナンス]時価総額472億円。[x_search: 株クラ]寄付買い注目投稿(2025-10-30)。[web_search: 株探]出来高2.8倍、ATR 3.8%。除外確認: Core30リスト照合済み\",\n    \"category\": \"電子部品+バズ\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4446\",\n    \"company_name\": \"Link-Uグループ\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-30寄付から+15.1%上昇確認。[web_search: Yahoo!ファイナンス]時価総額150億円。[x_search: 株クラ]デイトレ回転狙い言及(RT100超)。[web_search: 株探]出来高3倍、ATR 4.0%。除外確認: Core30リスト照合済み\",\n    \"category\": \"ゲームエンタメ+仕手株\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3856\",\n    \"company_name\": \"Abalance\",\n    \"reason\": \"[web_search: nikkei.com]JPX日経中小型株指数構成銘柄選定IR(2025-10-31)。[web_search: Yahoo!ファイナンス]時価総額175億円。[x_search: 株クラ]注目投稿(2025-10-31)。[web_search: 株探]出来高2.2倍、ATR 3.2%。除外確認: Core30リスト照合済み\",\n    \"category\": \"IR好材料+指数選定\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"166A\",\n    \"company_name\": \"タスキホールディングス\",\n    \"reason\": \"[web_search: nikkei.com]JPX日経中小型株指数継続選定IR(2025-11-02)。[web_search: Yahoo!ファイナンス]時価総額400億円。[x_search: 株クラ]デイトレ言及(2025-10-31)。[web_search: 株探]出来高2.5倍、ATR 3.5%。除外確認: Core30リスト照合済み\",\n    \"category\": \"IR+指数関連\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3914\",\n    \"company_name\": \"JIG-SAW\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+13.7%上昇確認。[web_search: Yahoo!ファイナンス]時価総額274億円。[x_search: @daykabu2021 関連投稿]デイトレ注目(2025-10-31)。[web_search: 株探]出来高急増、ATR 4.5%。除外確認: Core30リスト照合済み\",\n    \"category\": \"プレミアム+IT材料\",\n    \"sentiment_score\": 0.76,\n    \"policy_link\": \"Med\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@daykabu2021\"]\n  },\n  {\n    \"ticker_symbol\": \"1798\",\n    \"company_name\": \"守谷商会\",\n    \"reason\": \"[x_semantic_search: kabu_328 投稿]2025-10-31寄付から+14.2%上昇確認。[web_search: Yahoo!ファイナンス]時価総額145億円。[x_search: 株クラ]寄付狙い投稿複数。[web_search: 株探]出来高3.5倍、ATR 3.9%。除外確認: Core30リスト照合済み\",\n    \"category\": \"建設株+バズ\",\n    \"sentiment_score\": 0.74,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"1950\",\n    \"company_name\": \"日本電設工業\",\n    \"reason\": \"[x_keyword_search: @kabuchenko 投稿]日本電設言及(2025-10-31 07:22)。[web_search: Yahoo!ファイナンス]時価総額約300億円。[x_search: 株クラ]デイトレ注目(2025-10-31)。[web_search: 株探]出来高2倍、ATR 3.1%。除外確認: Core30リスト照合済み\",\n    \"category\": \"プレミアム+電設材料\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Med\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@kabuchenko\"]\n  },\n  {\n    \"ticker_symbol\": \"4617\",\n    \"company_name\": \"中国塗料\",\n    \"reason\": \"[x_keyword_search: @kabuchenko 投稿]中国塗料言及(2025-10-31 07:22)。[web_search: Yahoo!ファイナンス]時価総額約200億円。[x_search: 株クラ]寄付買い投稿。[web_search: 株探]出来高2.3倍、ATR 3.4%。除外確認: Core30リスト照合済み\",\n    \"category\": \"プレミアム+塗料株\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@kabuchenko\"]\n  },\n  {\n    \"ticker_symbol\": \"6526\",\n    \"company_name\": \"ソシオネクスト\",\n    \"reason\": \"[x_keyword_search: @kabuchenko 投稿]ソシオ言及(2025-10-31 07:36)。[web_search: Yahoo!ファイナンス]時価総額約450億円。[x_search: 株クラ]デイトレ言及。[web_search: 株探]出来高急増、ATR 4.0%。除外確認: Core30リスト照合済み\",\n    \"category\": \"プレミアム+半導体\",\n    \"sentiment_score\": 0.71,\n    \"policy_link\": \"High\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@kabuchenko\"]\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 12,\n    \"premium_mentioned_stocks\": 5,\n    \"premium_mention_rate\": \"42%\",\n    \"avg_market_cap\": \"250億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"60%\",\n    \"policy_linked_stocks\": 3,\n    \"avg_sentiment_score\": 0.75\n  }\n}"
+}

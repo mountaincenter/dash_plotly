@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月02日",
+    "latest_trading_day": "2025年10月31日",
+    "next_trading_day": "2025年11月04日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "23:00",
+    "tool_usage": {
+      "web_search_calls": 18,
+      "total_tool_calls": 18,
+      "usage": {
+        "completion_tokens": 3116,
+        "prompt_tokens": 39368,
+        "total_tokens": 44386
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "4418",
+      "company_name": "JDSC",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額21,549百万円確認。[web_search: kabutan.jp]AI＆デジタルコンサル業績期待継続、2025年11月02日注目株として言及。[x_search相当 web_search site:x.com]バズ確認なし、言及数未達。[web_search: kabutan.jp]直近出来高情報なし、ATR未確認だが小型AI株としてボラ推定。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "AI材料",
+      "sentiment_score": 0.75,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6998",
+      "company_name": "日本タングステン",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額7,692百万円確認。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日レールガン開発と中間決算注目、寄付から空売り仕掛け言及。[web_search: kabutan.jp]半導体関連再注目、2025年11月01日ニュース。[web_search: Yahoo!ファイナンス]出来高情報未達、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "半導体材料+防衛",
+      "sentiment_score": 0.7,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3236",
+      "company_name": "プロパスト",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額10,298百万円確認。[web_search: IR BANK]2025年10月31日 株式会社小川建設の株式取得(子会社化)に関するお知らせIR発表。[web_search: marr.jp]2025年10月 M&A速報 子会社化買収。[web_search: Yahoo!ファイナンス掲示板]子会社化で時価総額100億以下注目、2025年11月02日投稿。[web_search: kabutan.jp]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "IR好材料+M&A",
+      "sentiment_score": 0.8,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4651",
+      "company_name": "サニックスホールディングス",
+      "reason": "[web_search: Investing.com]時価総額11.33 B確認。[web_search: tokyoipo.com]2025年10月31日 取締役辞任に関するお知らせIR。[web_search: Yahoo!ファイナンス掲示板]2025年10月31日業績次第で株価軽い小型サービス業注目。[web_search: Yahoo!ファイナンス]出来高少なく、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "IR材料+小型サービス",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4176",
+      "company_name": "ココナラ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額8,801百万円確認。[web_search: coconala.co.jp]2025年10月31日 執行役員 VP of Data & AI に古田 周平が就任 IR発表。[web_search: minkabu.jp]2025年10月31日 執行役員の就任に関するお知らせ適時開示。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日 AI銘柄注目。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "IR好材料+AI",
+      "sentiment_score": 0.78,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "5588",
+      "company_name": "ファーストアカウンティング",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額13,931百万円確認。[web_search: irbank.net]2025年10月30日 Remota for SAP Ariba がSAP Storeに掲載 IR。[web_search: Yahoo!ファイナンス]2025年12月期中間決算売上高11.16億円（42.1％増）IR。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日 AI銘柄注目、ダラダラ下げ相場言及。[web_search: Yahoo!ファイナンス]出来高5,800株、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "IR好材料+AI経理",
+      "sentiment_score": 0.72,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3856",
+      "company_name": "Abalance",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額17,511百万円確認。[web_search: kabutan.jp]半導体関連再注目、2025年11月01日ニュース関連。[web_search: Yahoo!ファイナンス]小型株として業績好調言及。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "半導体材料",
+      "sentiment_score": 0.68,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2721",
+      "company_name": "ジェイホールディングス",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額1,783百万円確認。[web_search: kabutan.jp]小型株注目、2025年11月01日関連ニュース。[web_search: Yahoo!ファイナンス]発行済株式数8,828,500株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "小型株",
+      "sentiment_score": 0.6,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "5137",
+      "company_name": "スマートドライブ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額16,488百万円確認。[web_search: kabutan.jp]AI関連、2025年11月01日ニュース。[web_search: Yahoo!ファイナンス]発行済株式数37,816,740株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "AI材料",
+      "sentiment_score": 0.7,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4416",
+      "company_name": "True Data",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額3,854百万円確認。[web_search: kabutan.jp]デジタル関連、2025年11月01日注目。[web_search: Yahoo!ファイナンス]発行済株式数4,841,200株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。",
+      "category": "デジタル材料",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"4418\",\n    \"company_name\": \"JDSC\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額21,549百万円確認。[web_search: kabutan.jp]AI＆デジタルコンサル業績期待継続、2025年11月02日注目株として言及。[x_search相当 web_search site:x.com]バズ確認なし、言及数未達。[web_search: kabutan.jp]直近出来高情報なし、ATR未確認だが小型AI株としてボラ推定。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"AI材料\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6998\",\n    \"company_name\": \"日本タングステン\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額7,692百万円確認。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日レールガン開発と中間決算注目、寄付から空売り仕掛け言及。[web_search: kabutan.jp]半導体関連再注目、2025年11月01日ニュース。[web_search: Yahoo!ファイナンス]出来高情報未達、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"半導体材料+防衛\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3236\",\n    \"company_name\": \"プロパスト\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額10,298百万円確認。[web_search: IR BANK]2025年10月31日 株式会社小川建設の株式取得(子会社化)に関するお知らせIR発表。[web_search: marr.jp]2025年10月 M&A速報 子会社化買収。[web_search: Yahoo!ファイナンス掲示板]子会社化で時価総額100億以下注目、2025年11月02日投稿。[web_search: kabutan.jp]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"IR好材料+M&A\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4651\",\n    \"company_name\": \"サニックスホールディングス\",\n    \"reason\": \"[web_search: Investing.com]時価総額11.33 B確認。[web_search: tokyoipo.com]2025年10月31日 取締役辞任に関するお知らせIR。[web_search: Yahoo!ファイナンス掲示板]2025年10月31日業績次第で株価軽い小型サービス業注目。[web_search: Yahoo!ファイナンス]出来高少なく、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"IR材料+小型サービス\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4176\",\n    \"company_name\": \"ココナラ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額8,801百万円確認。[web_search: coconala.co.jp]2025年10月31日 執行役員 VP of Data & AI に古田 周平が就任 IR発表。[web_search: minkabu.jp]2025年10月31日 執行役員の就任に関するお知らせ適時開示。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日 AI銘柄注目。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"IR好材料+AI\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"5588\",\n    \"company_name\": \"ファーストアカウンティング\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額13,931百万円確認。[web_search: irbank.net]2025年10月30日 Remota for SAP Ariba がSAP Storeに掲載 IR。[web_search: Yahoo!ファイナンス]2025年12月期中間決算売上高11.16億円（42.1％増）IR。[web_search: Yahoo!ファイナンス掲示板]2025年11月02日 AI銘柄注目、ダラダラ下げ相場言及。[web_search: Yahoo!ファイナンス]出来高5,800株、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"IR好材料+AI経理\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3856\",\n    \"company_name\": \"Abalance\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額17,511百万円確認。[web_search: kabutan.jp]半導体関連再注目、2025年11月01日ニュース関連。[web_search: Yahoo!ファイナンス]小型株として業績好調言及。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"半導体材料\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2721\",\n    \"company_name\": \"ジェイホールディングス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額1,783百万円確認。[web_search: kabutan.jp]小型株注目、2025年11月01日関連ニュース。[web_search: Yahoo!ファイナンス]発行済株式数8,828,500株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"小型株\",\n    \"sentiment_score\": 0.60,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"5137\",\n    \"company_name\": \"スマートドライブ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額16,488百万円確認。[web_search: kabutan.jp]AI関連、2025年11月01日ニュース。[web_search: Yahoo!ファイナンス]発行済株式数37,816,740株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"AI材料\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4416\",\n    \"company_name\": \"True Data\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額3,854百万円確認。[web_search: kabutan.jp]デジタル関連、2025年11月01日注目。[web_search: Yahoo!ファイナンス]発行済株式数4,841,200株。[web_search: Yahoo!ファイナンス]出来高未確認、ATR未確認。[web_search: Yahoo!ファイナンス]除外確認: Core30リスト非該当、時価総額500億円未満OK。プレミアムユーザー言及なし。\",\n    \"category\": \"デジタル材料\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 10,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"約100億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"60%\",\n    \"policy_linked_stocks\": 4,\n    \"avg_sentiment_score\": 0.70\n  }\n}"
+}

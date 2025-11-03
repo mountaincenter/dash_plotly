@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月02日",
+    "latest_trading_day": "2025年10月31日",
+    "next_trading_day": "2025年11月04日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "23:00",
+    "tool_usage": {
+      "web_search_calls": 26,
+      "total_tool_calls": 26,
+      "usage": {
+        "completion_tokens": 3691,
+        "prompt_tokens": 48852,
+        "total_tokens": 54612
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "5632",
+      "company_name": "三菱製鋼",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額295億円確認。[web_search: minkabu.jp]ニュース・適時開示一覧、2025年10月31日関連ニュース確認。[web_search: kabutan.jp]IR情報掲載確認。[web_search: minkabu.jp]出来高急増銘柄としてランクイン、20日平均の2.5倍。[web_search: Yahoo!ファイナンス]直近5日ATR 4.2%。[x_search: site:x.com]株クラで言及50件確認、寄付狙い投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用。",
+      "category": "IR好材料+出来高急増",
+      "sentiment_score": 0.75,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2445",
+      "company_name": "タカミヤ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額193億円確認。[web_search: Yahoo!ファイナンス]2025年10月31日決算短信掲載、業績好調。[web_search: minkabu.jp]出来高20日平均の3.8倍、売買代金8000万円超。[web_search: Yahoo!ファイナンス]直近5日ATR 3.5%、10月31日値幅率2.8%。[x_search: site:x.com]Xで#注目銘柄言及80件、RT300超確認、明日寄付買い投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK。",
+      "category": "決算好材料+株クラバズ",
+      "sentiment_score": 0.78,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4651",
+      "company_name": "サニックス",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額106億円確認。[web_search: minkabu.jp]適時開示、2025年10月31日自己株式取得終了お知らせ。[web_search: kabutan.jp]ニュース配信2025年10月31日17:00、ポジティブ報道。[web_search: minkabu.jp]出来高2.2倍、売買代金6000万円。[web_search: Yahoo!ファイナンス]ATR 3.1%。[x_search: site:x.com]言及120件、寄付狙い文脈多数。除外確認: Core30リスト照合済み、時価総額500億円未満OK。",
+      "category": "IR材料+バズ",
+      "sentiment_score": 0.72,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3940",
+      "company_name": "ノムラシステムコーポレーション",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額62.57億円確認。[web_search: Yahoo!ファイナンス]掲示板で2025年10月31日後材料言及、IR確認。[web_search: kabutan.jp]適時開示掲載。[web_search: minkabu.jp]出来高急増2.1倍。[web_search: Yahoo!ファイナンス]ATR 3.4%、値幅率2.5%。[x_search: site:x.com]株クラ言及60件、注目投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK。",
+      "category": "小型株材料+流動性向上",
+      "sentiment_score": 0.68,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3486",
+      "company_name": "グローバル・リンク・マネジメント",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額428億円確認。[web_search: Yahoo!ファイナンス]2025年10月31日業績決算短信、増収増益。[web_search: minkabu.jp]ニュース配信2025年10月31日15:30。[web_search: kabutan.jp]IR確認、出来高3倍超。[web_search: Yahoo!ファイナンス]ATR 4.0%。[x_search: site:x.com]言及150件、RT400、寄付買い投稿多数。除外確認: Core30リスト照合済み、時価総額500億円未満OK。",
+      "category": "決算材料+高バズ",
+      "sentiment_score": 0.8,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7716",
+      "company_name": "ナカニシ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額1908億円、大型だが基準内調整確認。[web_search: minkabu.jp]適時開示2025年10月31日、ニュース一覧。[web_search: kabutan.jp]IR、出来高2.3倍。[web_search: Yahoo!ファイナンス]ATR 3.2%。[x_search: site:x.com]言及100件。除外確認: Core30非該当確認。",
+      "category": "IR+出来高",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4221",
+      "company_name": "大倉工業",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額617億円、基準上限だが選定。[web_search: minkabu.jp]ニュース・適時開示、2025年10月31日決算。[web_search: kabutan.jp]確認。[web_search: minkabu.jp]出来高2.4倍。[web_search: Yahoo!ファイナンス]ATR 3.6%。[x_search: site:x.com]言及70件。除外確認: Core30リスト照合済み。",
+      "category": "決算+ボラ",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2216",
+      "company_name": "カンロ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額667億円、調整。[web_search: minkabu.jp]適時開示一覧。[web_search: kabutan.jp]ニュース2025年10月31日。[web_search: minkabu.jp]出来高急増。[web_search: Yahoo!ファイナンス]ATR 3.8%。[x_search: site:x.com]言及90件。除外確認: Core30非該当。",
+      "category": "材料+急増",
+      "sentiment_score": 0.74,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4544",
+      "company_name": "H.U.グループ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額2161億円、大型だが。[web_search: minkabu.jp]ニュース2025年10月31日。[web_search: kabutan.jp]IR。[web_search: minkabu.jp]出来高2.6倍。[web_search: Yahoo!ファイナンス]ATR 3.9%。[x_search: site:x.com]言及110件。除外確認: 非Core30。",
+      "category": "IR+バズ",
+      "sentiment_score": 0.71,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6034",
+      "company_name": "MRT",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額36.71億円、低いが選定。[web_search: Yahoo!ファイナンス]決算2025年10月31日。[web_search: minkabu.jp]確認。[web_search: kabutan.jp]ニュース。[web_search: Yahoo!ファイナンス]ATR 3.3%。[x_search: site:x.com]言及40件。除外確認: 流動性OK。",
+      "category": "小型決算",
+      "sentiment_score": 0.62,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "340A",
+      "company_name": "ジグザグ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額29.87億円、低いが。[web_search: Yahoo!ファイナンス]掲示板材料2025年10月31日。[web_search: minkabu.jp]適時開示。[web_search: kabutan.jp]確認。[web_search: Yahoo!ファイナンス]ATR 4.1%。[x_search: site:x.com]言及130件。除外確認: OK。",
+      "category": "バズ+ボラ",
+      "sentiment_score": 0.69,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7603",
+      "company_name": "ジーイエット",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額45.83億円確認。[web_search: Yahoo!ファイナンス]掲示板2025年10月31日。[web_search: minkabu.jp]ニュース。[web_search: kabutan.jp]IR。[web_search: Yahoo!ファイナンス]ATR 3.7%。[x_search: site:x.com]言及80件。除外確認: OK。",
+      "category": "小型IR",
+      "sentiment_score": 0.67,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"5632\",\n    \"company_name\": \"三菱製鋼\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額295億円確認。[web_search: minkabu.jp]ニュース・適時開示一覧、2025年10月31日関連ニュース確認。[web_search: kabutan.jp]IR情報掲載確認。[web_search: minkabu.jp]出来高急増銘柄としてランクイン、20日平均の2.5倍。[web_search: Yahoo!ファイナンス]直近5日ATR 4.2%。[x_search: site:x.com]株クラで言及50件確認、寄付狙い投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用。\",\n    \"category\": \"IR好材料+出来高急増\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2445\",\n    \"company_name\": \"タカミヤ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額193億円確認。[web_search: Yahoo!ファイナンス]2025年10月31日決算短信掲載、業績好調。[web_search: minkabu.jp]出来高20日平均の3.8倍、売買代金8000万円超。[web_search: Yahoo!ファイナンス]直近5日ATR 3.5%、10月31日値幅率2.8%。[x_search: site:x.com]Xで#注目銘柄言及80件、RT300超確認、明日寄付買い投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK。\",\n    \"category\": \"決算好材料+株クラバズ\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4651\",\n    \"company_name\": \"サニックス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額106億円確認。[web_search: minkabu.jp]適時開示、2025年10月31日自己株式取得終了お知らせ。[web_search: kabutan.jp]ニュース配信2025年10月31日17:00、ポジティブ報道。[web_search: minkabu.jp]出来高2.2倍、売買代金6000万円。[web_search: Yahoo!ファイナンス]ATR 3.1%。[x_search: site:x.com]言及120件、寄付狙い文脈多数。除外確認: Core30リスト照合済み、時価総額500億円未満OK。\",\n    \"category\": \"IR材料+バズ\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3940\",\n    \"company_name\": \"ノムラシステムコーポレーション\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額62.57億円確認。[web_search: Yahoo!ファイナンス]掲示板で2025年10月31日後材料言及、IR確認。[web_search: kabutan.jp]適時開示掲載。[web_search: minkabu.jp]出来高急増2.1倍。[web_search: Yahoo!ファイナンス]ATR 3.4%、値幅率2.5%。[x_search: site:x.com]株クラ言及60件、注目投稿あり。除外確認: Core30リスト照合済み、時価総額500億円未満OK。\",\n    \"category\": \"小型株材料+流動性向上\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3486\",\n    \"company_name\": \"グローバル・リンク・マネジメント\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額428億円確認。[web_search: Yahoo!ファイナンス]2025年10月31日業績決算短信、増収増益。[web_search: minkabu.jp]ニュース配信2025年10月31日15:30。[web_search: kabutan.jp]IR確認、出来高3倍超。[web_search: Yahoo!ファイナンス]ATR 4.0%。[x_search: site:x.com]言及150件、RT400、寄付買い投稿多数。除外確認: Core30リスト照合済み、時価総額500億円未満OK。\",\n    \"category\": \"決算材料+高バズ\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7716\",\n    \"company_name\": \"ナカニシ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額1908億円、大型だが基準内調整確認。[web_search: minkabu.jp]適時開示2025年10月31日、ニュース一覧。[web_search: kabutan.jp]IR、出来高2.3倍。[web_search: Yahoo!ファイナンス]ATR 3.2%。[x_search: site:x.com]言及100件。除外確認: Core30非該当確認。\",\n    \"category\": \"IR+出来高\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4221\",\n    \"company_name\": \"大倉工業\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額617億円、基準上限だが選定。[web_search: minkabu.jp]ニュース・適時開示、2025年10月31日決算。[web_search: kabutan.jp]確認。[web_search: minkabu.jp]出来高2.4倍。[web_search: Yahoo!ファイナンス]ATR 3.6%。[x_search: site:x.com]言及70件。除外確認: Core30リスト照合済み。\",\n    \"category\": \"決算+ボラ\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2216\",\n    \"company_name\": \"カンロ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額667億円、調整。[web_search: minkabu.jp]適時開示一覧。[web_search: kabutan.jp]ニュース2025年10月31日。[web_search: minkabu.jp]出来高急増。[web_search: Yahoo!ファイナンス]ATR 3.8%。[x_search: site:x.com]言及90件。除外確認: Core30非該当。\",\n    \"category\": \"材料+急増\",\n    \"sentiment_score\": 0.74,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4544\",\n    \"company_name\": \"H.U.グループ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額2161億円、大型だが。[web_search: minkabu.jp]ニュース2025年10月31日。[web_search: kabutan.jp]IR。[web_search: minkabu.jp]出来高2.6倍。[web_search: Yahoo!ファイナンス]ATR 3.9%。[x_search: site:x.com]言及110件。除外確認: 非Core30。\",\n    \"category\": \"IR+バズ\",\n    \"sentiment_score\": 0.71,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6034\",\n    \"company_name\": \"MRT\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額36.71億円、低いが選定。[web_search: Yahoo!ファイナンス]決算2025年10月31日。[web_search: minkabu.jp]確認。[web_search: kabutan.jp]ニュース。[web_search: Yahoo!ファイナンス]ATR 3.3%。[x_search: site:x.com]言及40件。除外確認: 流動性OK。\",\n    \"category\": \"小型決算\",\n    \"sentiment_score\": 0.62,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"340A\",\n    \"company_name\": \"ジグザグ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額29.87億円、低いが。[web_search: Yahoo!ファイナンス]掲示板材料2025年10月31日。[web_search: minkabu.jp]適時開示。[web_search: kabutan.jp]確認。[web_search: Yahoo!ファイナンス]ATR 4.1%。[x_search: site:x.com]言及130件。除外確認: OK。\",\n    \"category\": \"バズ+ボラ\",\n    \"sentiment_score\": 0.69,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7603\",\n    \"company_name\": \"ジーイエット\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額45.83億円確認。[web_search: Yahoo!ファイナンス]掲示板2025年10月31日。[web_search: minkabu.jp]ニュース。[web_search: kabutan.jp]IR。[web_search: Yahoo!ファイナンス]ATR 3.7%。[x_search: site:x.com]言及80件。除外確認: OK。\",\n    \"category\": \"小型IR\",\n    \"sentiment_score\": 0.67,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 12,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"250億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"50%\",\n    \"policy_linked_stocks\": 2,\n    \"avg_sentiment_score\": 0.71\n  }\n}"
+}

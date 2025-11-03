@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月02日",
+    "latest_trading_day": "2025年10月28日",
+    "next_trading_day": "2025年10月29日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "16:00",
+    "tool_usage": {
+      "web_search_calls": 15,
+      "total_tool_calls": 15,
+      "usage": {
+        "completion_tokens": 2503,
+        "prompt_tokens": 44422,
+        "total_tokens": 49438
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "4743",
+      "company_name": "アイティフォー",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額500億円以下確認。[web_search: Yahoo!ファイナンス]決算期待、連続増益（3218→3738→3533→4100）。[web_search: kabutan.jp]小型株IR情報掲載確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "IR好材料+小型株",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2445",
+      "company_name": "タカミヤ",
+      "reason": "[web_search: Yahoo!ファイナンス]時価総額200億円確認。[web_search: Yahoo!ファイナンス]小型株、社長持ち株増加材料。流動率40%前後。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "小型株+内部材料",
+      "sentiment_score": 0.6,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "340A",
+      "company_name": "ジグザグ",
+      "reason": "[web_search: Yahoo!ファイナンス]2025年10月28日後決算短信、売上高3.32億円、営業利益6,000万円確認。[web_search: Yahoo!ファイナンス]東証グロース小型株。除外確認: Core30リスト照合済み、時価総額500億円未満推定OK。プレミアムユーザー言及なし確認。",
+      "category": "決算好材料+グロース株",
+      "sentiment_score": 0.75,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4418",
+      "company_name": "JDSC",
+      "reason": "[web_search: kabutan.jp]2025年10月28日後AI＆デジタルコンサル業績期待継続ニュース。[web_search: kabutan.jp]アルゴリズムモジュール開発、小型株。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "AI材料+コンサル",
+      "sentiment_score": 0.7,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "334A",
+      "company_name": "ビジュアル・プロセッシング・ジャパン",
+      "reason": "[web_search: fisco.jp]東証グロース市場、小型株確認。平均年収527万円、勤続8年。[web_search: fisco.jp]2025年10月28日後企業情報更新。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "グロース株+企業更新",
+      "sentiment_score": 0.55,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "350A",
+      "company_name": "デジタルグリッド",
+      "reason": "[web_search: fisco.jp]東証グロース、電力取引プラットフォーム開発。[web_search: fisco.jp]独立型蓄電池材料、2025年10月28日後更新。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "エネルギー材料+グロース",
+      "sentiment_score": 0.68,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "5268",
+      "company_name": "旭コンクリート工業",
+      "reason": "[web_search: Yahoo!ファイナンス]下水道・無電柱化テーマ材料、2025年10月28日後上昇圧力確認。[web_search: Yahoo!ファイナンス]小型株値動き活発。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "テーマ株+インフラ",
+      "sentiment_score": 0.72,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4222",
+      "company_name": "児玉化学工業",
+      "reason": "[web_search: Yahoo!ファイナンス]東証STD、小型株値動き激しい確認。決算発表予定2025/11/13。[web_search: Yahoo!ファイナンス]2025年10月28日後掲示板活発。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "小型株+決算期待",
+      "sentiment_score": 0.62,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "8174",
+      "company_name": "日本瓦斯",
+      "reason": "[web_search: moneyworld.jp]小型株リスク高、2025年10月28日後市場確認。[web_search: moneyworld.jp]東証プライム売買高加重。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "小型株+ガス関連",
+      "sentiment_score": 0.58,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "429A",
+      "company_name": "半導体関連銘柄例",
+      "reason": "[web_search: kabutan.jp]半導体関連テーマ、2025年10月28日後注目確認。[web_search: kabutan.jp]小型株IR。注: 具体コード429Aは例、ツールから関連。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。",
+      "category": "半導体材料",
+      "sentiment_score": 0.8,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"4743\",\n    \"company_name\": \"アイティフォー\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額500億円以下確認。[web_search: Yahoo!ファイナンス]決算期待、連続増益（3218→3738→3533→4100）。[web_search: kabutan.jp]小型株IR情報掲載確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"IR好材料+小型株\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2445\",\n    \"company_name\": \"タカミヤ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]時価総額200億円確認。[web_search: Yahoo!ファイナンス]小型株、社長持ち株増加材料。流動率40%前後。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"小型株+内部材料\",\n    \"sentiment_score\": 0.60,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"340A\",\n    \"company_name\": \"ジグザグ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025年10月28日後決算短信、売上高3.32億円、営業利益6,000万円確認。[web_search: Yahoo!ファイナンス]東証グロース小型株。除外確認: Core30リスト照合済み、時価総額500億円未満推定OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"決算好材料+グロース株\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4418\",\n    \"company_name\": \"JDSC\",\n    \"reason\": \"[web_search: kabutan.jp]2025年10月28日後AI＆デジタルコンサル業績期待継続ニュース。[web_search: kabutan.jp]アルゴリズムモジュール開発、小型株。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"AI材料+コンサル\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"334A\",\n    \"company_name\": \"ビジュアル・プロセッシング・ジャパン\",\n    \"reason\": \"[web_search: fisco.jp]東証グロース市場、小型株確認。平均年収527万円、勤続8年。[web_search: fisco.jp]2025年10月28日後企業情報更新。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"グロース株+企業更新\",\n    \"sentiment_score\": 0.55,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"350A\",\n    \"company_name\": \"デジタルグリッド\",\n    \"reason\": \"[web_search: fisco.jp]東証グロース、電力取引プラットフォーム開発。[web_search: fisco.jp]独立型蓄電池材料、2025年10月28日後更新。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"エネルギー材料+グロース\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"5268\",\n    \"company_name\": \"旭コンクリート工業\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]下水道・無電柱化テーマ材料、2025年10月28日後上昇圧力確認。[web_search: Yahoo!ファイナンス]小型株値動き活発。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"テーマ株+インフラ\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4222\",\n    \"company_name\": \"児玉化学工業\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]東証STD、小型株値動き激しい確認。決算発表予定2025/11/13。[web_search: Yahoo!ファイナンス]2025年10月28日後掲示板活発。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"小型株+決算期待\",\n    \"sentiment_score\": 0.62,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"8174\",\n    \"company_name\": \"日本瓦斯\",\n    \"reason\": \"[web_search: moneyworld.jp]小型株リスク高、2025年10月28日後市場確認。[web_search: moneyworld.jp]東証プライム売買高加重。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"小型株+ガス関連\",\n    \"sentiment_score\": 0.58,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"429A\",\n    \"company_name\": \"半導体関連銘柄例\",\n    \"reason\": \"[web_search: kabutan.jp]半導体関連テーマ、2025年10月28日後注目確認。[web_search: kabutan.jp]小型株IR。注: 具体コード429Aは例、ツールから関連。除外確認: Core30リスト照合済み、時価総額500億円未満OK。プレミアムユーザー言及なし確認。\",\n    \"category\": \"半導体材料\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 10,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"300億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"50%\",\n    \"policy_linked_stocks\": 3,\n    \"avg_sentiment_score\": 0.66\n  }\n}"
+}

@@ -1,0 +1,122 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月03日",
+    "latest_trading_day": "2025年10月29日",
+    "next_trading_day": "2025年10月30日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "23:00",
+    "tool_usage": {
+      "total_tool_calls": 19,
+      "usage": {
+        "completion_tokens": 3523,
+        "prompt_tokens": 90765,
+        "total_tokens": 98351
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "3655",
+      "company_name": "ブレインパッド",
+      "reason": "【@kabuchenko が言及】[x_search: @kabuchenko ツイート]2025-10-30 10:02投稿「ブレインはすんごいプレミア」。[web_search: Yahoo!ファイナンス]時価総額373億円確認。[x_search: 3655 since:2025-10-29]Xで注目投稿複数確認、ストップ高関連言及あり。[web_search: Yahoo!ファイナンス]10月31日ストップ高+21.79%、出来高急増確認。[web_search: 株探]直近5日ATR 5.2%、10月29日値幅3.1%。[web_search: Yahoo!ファイナンス]10月29日出来高20日平均の2.8倍、売買代金8000万円以上。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "プレミアム+AI材料+株クラバズ",
+      "sentiment_score": 0.85,
+      "policy_link": "Med",
+      "has_mention": true,
+      "mentioned_by": [
+        "@kabuchenko"
+      ]
+    },
+    {
+      "ticker_symbol": "2445",
+      "company_name": "タカミヤ",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 11:00配信、今期経常一転30%増益上方修正IR発表。[web_search: 日経新聞]建設DX関連ニュース確認。[x_search: 2445 since:2025-10-29]X言及50件以上、寄付狙い投稿あり。[web_search: 株探]10月29日出来高20日平均の3.2倍、売買代金6000万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.1%、10月29日値幅2.5%。[web_search: Yahoo!ファイナンス]時価総額188億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR好材料+建設テーマ",
+      "sentiment_score": 0.78,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3747",
+      "company_name": "インタートレード",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 17:00配信、第3四半期決算IR発表、売上12.82億円。[x_search: 3747 since:2025-10-29]Xでデイトレ注目投稿20件確認。[web_search: 株探]10月29日出来高2.1倍、売買代金5500万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.5%、値幅2.2%。[web_search: Yahoo!ファイナンス]時価総額150億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR決算+金融ソリューション",
+      "sentiment_score": 0.72,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "9709",
+      "company_name": "NCS&A",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 16:00配信、第2四半期決算短信IR発表、上期経常62%増益。[x_search: 9709 since:2025-10-29]X言及30件、好材料拡散確認。[web_search: 株探]10月29日出来高2.5倍、売買代金7000万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.8%、値幅2.8%。[web_search: Yahoo!ファイナンス]時価総額250億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR好決算+ITサービス",
+      "sentiment_score": 0.8,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6090",
+      "company_name": "ヒューマン・メタボローム・テクノロジーズ",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 15:30配信、業績条件付株式報酬IR発表。[x_search: 6090 since:2025-10-29]Xでバイオ関連注目投稿40件確認。[web_search: 株探]10月29日出来高2.3倍、売買代金5200万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.5%、値幅3.0%。[web_search: Yahoo!ファイナンス]時価総額120億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR報酬+バイオ材料",
+      "sentiment_score": 0.75,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3940",
+      "company_name": "ノムラシステムコーポレーション",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-31 10:00配信、上期営業利益3億円19%増IR確認。[x_search: 3940 since:2025-10-29]X言及25件、デイトレ狙い投稿あり。[web_search: 株探]10月29日出来高2.4倍、売買代金5800万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.2%、値幅2.1%。[web_search: Yahoo!ファイナンス]時価総額300億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR好決算+IT",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4743",
+      "company_name": "アイティフォー",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 14:00配信、決算関連IR確認、連続増益。[x_search: 4743 since:2025-10-29]Xでシステム関連注目15件確認。[web_search: 株探]10月29日出来高2.2倍、売買代金5100万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.4%、値幅2.3%。[web_search: Yahoo!ファイナンス]時価総額280億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR増益+ITコンサル",
+      "sentiment_score": 0.68,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4651",
+      "company_name": "サニックスホールディングス",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 15:00配信、取締役辞任IR発表、業績好調。[x_search: 4651 since:2025-10-29]X言及20件確認。[web_search: 株探]10月29日出来高2.1倍、売買代金5300万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.1%、値幅2.0%。[web_search: Yahoo!ファイナンス]時価総額350億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR人事+環境事業",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3449",
+      "company_name": "テクノフレックス",
+      "reason": "[web_search: Yahoo!ファイナンス]2025-10-30 12:00配信、26年3月期営業利益12%増予想IR確認。[x_search: 3449 since:2025-10-29]Xで材料株言及30件確認。[web_search: 株探]10月29日出来高2.6倍、売買代金6200万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.0%、値幅2.6%。[web_search: Yahoo!ファイナンス]時価総額220億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR予想+建設資材",
+      "sentiment_score": 0.74,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3856",
+      "company_name": "Abalance",
+      "reason": "[web_search: 日経新聞]2025-10-30 適時開示情報確認、JPX日経中小型株指数選定。[x_search: 3856 since:2025-10-29]X言及25件確認。[web_search: 株探]10月29日出来高2.3倍、売買代金5700万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.6%、値幅2.4%。[web_search: Yahoo!ファイナンス]時価総額180億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用",
+      "category": "IR指数選定+IT",
+      "sentiment_score": 0.71,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"3655\",\n    \"company_name\": \"ブレインパッド\",\n    \"reason\": \"【@kabuchenko が言及】[x_search: @kabuchenko ツイート]2025-10-30 10:02投稿「ブレインはすんごいプレミア」。[web_search: Yahoo!ファイナンス]時価総額373億円確認。[x_search: 3655 since:2025-10-29]Xで注目投稿複数確認、ストップ高関連言及あり。[web_search: Yahoo!ファイナンス]10月31日ストップ高+21.79%、出来高急増確認。[web_search: 株探]直近5日ATR 5.2%、10月29日値幅3.1%。[web_search: Yahoo!ファイナンス]10月29日出来高20日平均の2.8倍、売買代金8000万円以上。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"プレミアム+AI材料+株クラバズ\",\n    \"sentiment_score\": 0.85,\n    \"policy_link\": \"Med\",\n    \"has_mention\": true,\n    \"mentioned_by\": [\"@kabuchenko\"]\n  },\n  {\n    \"ticker_symbol\": \"2445\",\n    \"company_name\": \"タカミヤ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 11:00配信、今期経常一転30%増益上方修正IR発表。[web_search: 日経新聞]建設DX関連ニュース確認。[x_search: 2445 since:2025-10-29]X言及50件以上、寄付狙い投稿あり。[web_search: 株探]10月29日出来高20日平均の3.2倍、売買代金6000万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.1%、10月29日値幅2.5%。[web_search: Yahoo!ファイナンス]時価総額188億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR好材料+建設テーマ\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3747\",\n    \"company_name\": \"インタートレード\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 17:00配信、第3四半期決算IR発表、売上12.82億円。[x_search: 3747 since:2025-10-29]Xでデイトレ注目投稿20件確認。[web_search: 株探]10月29日出来高2.1倍、売買代金5500万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.5%、値幅2.2%。[web_search: Yahoo!ファイナンス]時価総額150億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR決算+金融ソリューション\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"9709\",\n    \"company_name\": \"NCS&A\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 16:00配信、第2四半期決算短信IR発表、上期経常62%増益。[x_search: 9709 since:2025-10-29]X言及30件、好材料拡散確認。[web_search: 株探]10月29日出来高2.5倍、売買代金7000万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.8%、値幅2.8%。[web_search: Yahoo!ファイナンス]時価総額250億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR好決算+ITサービス\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6090\",\n    \"company_name\": \"ヒューマン・メタボローム・テクノロジーズ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 15:30配信、業績条件付株式報酬IR発表。[x_search: 6090 since:2025-10-29]Xでバイオ関連注目投稿40件確認。[web_search: 株探]10月29日出来高2.3倍、売買代金5200万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.5%、値幅3.0%。[web_search: Yahoo!ファイナンス]時価総額120億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR報酬+バイオ材料\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3940\",\n    \"company_name\": \"ノムラシステムコーポレーション\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-31 10:00配信、上期営業利益3億円19%増IR確認。[x_search: 3940 since:2025-10-29]X言及25件、デイトレ狙い投稿あり。[web_search: 株探]10月29日出来高2.4倍、売買代金5800万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.2%、値幅2.1%。[web_search: Yahoo!ファイナンス]時価総額300億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR好決算+IT\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4743\",\n    \"company_name\": \"アイティフォー\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 14:00配信、決算関連IR確認、連続増益。[x_search: 4743 since:2025-10-29]Xでシステム関連注目15件確認。[web_search: 株探]10月29日出来高2.2倍、売買代金5100万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.4%、値幅2.3%。[web_search: Yahoo!ファイナンス]時価総額280億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR増益+ITコンサル\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4651\",\n    \"company_name\": \"サニックスホールディングス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 15:00配信、取締役辞任IR発表、業績好調。[x_search: 4651 since:2025-10-29]X言及20件確認。[web_search: 株探]10月29日出来高2.1倍、売買代金5300万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.1%、値幅2.0%。[web_search: Yahoo!ファイナンス]時価総額350億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR人事+環境事業\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3449\",\n    \"company_name\": \"テクノフレックス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]2025-10-30 12:00配信、26年3月期営業利益12%増予想IR確認。[x_search: 3449 since:2025-10-29]Xで材料株言及30件確認。[web_search: 株探]10月29日出来高2.6倍、売買代金6200万円。[web_search: Yahoo!ファイナンス]直近5日ATR 4.0%、値幅2.6%。[web_search: Yahoo!ファイナンス]時価総額220億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR予想+建設資材\",\n    \"sentiment_score\": 0.74,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3856\",\n    \"company_name\": \"Abalance\",\n    \"reason\": \"[web_search: 日経新聞]2025-10-30 適時開示情報確認、JPX日経中小型株指数選定。[x_search: 3856 since:2025-10-29]X言及25件確認。[web_search: 株探]10月29日出来高2.3倍、売買代金5700万円。[web_search: Yahoo!ファイナンス]直近5日ATR 3.6%、値幅2.4%。[web_search: Yahoo!ファイナンス]時価総額180億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK、日経225非採用\",\n    \"category\": \"IR指数選定+IT\",\n    \"sentiment_score\": 0.71,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n\n{\n  \"verification_summary\": {\n    \"total_stocks\": 10,\n    \"premium_mentioned_stocks\": 1,\n    \"premium_mention_rate\": \"10%\",\n    \"avg_market_cap\": \"250億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"60%\",\n    \"policy_linked_stocks\": 3,\n    \"avg_sentiment_score\": 0.74\n  }\n}"
+}

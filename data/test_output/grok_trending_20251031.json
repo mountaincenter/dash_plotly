@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月02日",
+    "latest_trading_day": "2025年10月30日",
+    "next_trading_day": "2025年10月31日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "16:00",
+    "tool_usage": {
+      "web_search_calls": 19,
+      "total_tool_calls": 19,
+      "usage": {
+        "completion_tokens": 3011,
+        "prompt_tokens": 58160,
+        "total_tokens": 63338
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "3655",
+      "company_name": "ブレインパッド",
+      "reason": "[web_search: nikkei.com]2025年10月30日、富士通による公開買付け開始のお知らせ。[web_search: kabutan.jp]株価+21.79%、1,677円。[web_search: Yahoo!ファイナンス]時価総額37,398百万円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[x_search: site:x.com]言及確認なし。[web_search: kabutan.jp]出来高情報なし、直近急騰によりボラティリティ高。[web_search: kabutan.jp]注目銘柄としてリストアップ。",
+      "category": "IR好材料+急騰株",
+      "sentiment_score": 0.85,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "202A",
+      "company_name": "豆蔵",
+      "reason": "[web_search: Yahoo!ファイナンス]生成AI関連需要拡大、売上高28.88億円(前年比6.3%増)。[web_search: Yahoo!ファイナンス]時価総額37,236百万円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: finance.matsui.co.jp]AIロボ社会実装関連。[x_search: site:x.com]言及確認なし。[web_search: kabutan.jp]株価+4.88%。[web_search: kabutan.jp]出来高情報なし、AIテーマで注目。",
+      "category": "AI材料+テーマ株",
+      "sentiment_score": 0.75,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2445",
+      "company_name": "タカミヤ",
+      "reason": "[web_search: finance.matsui.co.jp]今期経常10%上方修正、最高益予想上乗せ、配当1円増。[web_search: kabutan.jp]株価+17.85%。[web_search: Yahoo!ファイナンス]建設DX関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み。[web_search: kabutan.jp]時価総額確認なし、小型株としてリストアップ。[web_search: kabutan.jp]注目ニュースに掲載。",
+      "category": "上方修正+建設テーマ",
+      "sentiment_score": 0.8,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2317",
+      "company_name": "システナ",
+      "reason": "[web_search: finance.matsui.co.jp]26年3月期業績予想上方修正、売上高902億円(前期比7.9%増)。[web_search: kabutan.jp]大幅続伸、年初来高値更新。[web_search: Yahoo!ファイナンス]配当増配IR。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし中型株。[web_search: kabutan.jp]注目銘柄。",
+      "category": "上方修正+IT材料",
+      "sentiment_score": 0.82,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2321",
+      "company_name": "ソフトフロントホールディングス",
+      "reason": "[web_search: Yahoo!ファイナンス]データセンターテーマ株、小型株として資金流入可能性。[web_search: kabutan.jp]グロース株関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板で小型株議論。",
+      "category": "テーマ株+小型株",
+      "sentiment_score": 0.65,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7095",
+      "company_name": "Macbee Planet",
+      "reason": "[web_search: Yahoo!ファイナンス]小型株として資金流入気配。[web_search: kabutan.jp]注目。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板で小型株議論。",
+      "category": "小型株+バズ可能性",
+      "sentiment_score": 0.6,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3070",
+      "company_name": "ジェリービーンズグループ",
+      "reason": "[web_search: Yahoo!ファイナンス]小型株関連議論。[web_search: kabutan.jp]テーマ株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板活発。",
+      "category": "小型株",
+      "sentiment_score": 0.55,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "5491",
+      "company_name": "日本金属",
+      "reason": "[web_search: Yahoo!ファイナンス]自己株式取得IR。[web_search: kabutan.jp]適時開示確認。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし中型。[web_search: Yahoo!ファイナンス]掲示板でIR議論。",
+      "category": "IR材料+自己株式",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6574",
+      "company_name": "コンヴァノ",
+      "reason": "[web_search: Yahoo!ファイナンス]小型＆テーマ株資金流入気配、ビットコイン関連。[web_search: Yahoo!ファイナンス]時価総額77,392百万円確認(773億円、基準超だが参考)。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額やや超。[web_search: Yahoo!ファイナンス]掲示板でIR連発議論。",
+      "category": "テーマ株+IR",
+      "sentiment_score": 0.68,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3856",
+      "company_name": "Abalance",
+      "reason": "[web_search: Yahoo!ファイナンス]IR財務報告内部統制不備開示(ネガティブだが注目)。[web_search: kabutan.jp]小型株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。",
+      "category": "IR+小型株",
+      "sentiment_score": 0.5,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4586",
+      "company_name": "メドレックス",
+      "reason": "[web_search: Yahoo!ファイナンス]バイオ小型株、出来高議論。[web_search: kabutan.jp]適時開示関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。",
+      "category": "バイオ+小型株",
+      "sentiment_score": 0.62,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4436",
+      "company_name": "ミンカブ・ジ・インフォノイド",
+      "reason": "[web_search: Yahoo!ファイナンス]IT投資関連、IR軽薄だが注目。[web_search: kabutan.jp]小型株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。",
+      "category": "IT材料",
+      "sentiment_score": 0.58,
+      "policy_link": "High",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"3655\",\n    \"company_name\": \"ブレインパッド\",\n    \"reason\": \"[web_search: nikkei.com]2025年10月30日、富士通による公開買付け開始のお知らせ。[web_search: kabutan.jp]株価+21.79%、1,677円。[web_search: Yahoo!ファイナンス]時価総額37,398百万円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[x_search: site:x.com]言及確認なし。[web_search: kabutan.jp]出来高情報なし、直近急騰によりボラティリティ高。[web_search: kabutan.jp]注目銘柄としてリストアップ。\",\n    \"category\": \"IR好材料+急騰株\",\n    \"sentiment_score\": 0.85,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"202A\",\n    \"company_name\": \"豆蔵\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]生成AI関連需要拡大、売上高28.88億円(前年比6.3%増)。[web_search: Yahoo!ファイナンス]時価総額37,236百万円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: finance.matsui.co.jp]AIロボ社会実装関連。[x_search: site:x.com]言及確認なし。[web_search: kabutan.jp]株価+4.88%。[web_search: kabutan.jp]出来高情報なし、AIテーマで注目。\",\n    \"category\": \"AI材料+テーマ株\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2445\",\n    \"company_name\": \"タカミヤ\",\n    \"reason\": \"[web_search: finance.matsui.co.jp]今期経常10%上方修正、最高益予想上乗せ、配当1円増。[web_search: kabutan.jp]株価+17.85%。[web_search: Yahoo!ファイナンス]建設DX関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み。[web_search: kabutan.jp]時価総額確認なし、小型株としてリストアップ。[web_search: kabutan.jp]注目ニュースに掲載。\",\n    \"category\": \"上方修正+建設テーマ\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2317\",\n    \"company_name\": \"システナ\",\n    \"reason\": \"[web_search: finance.matsui.co.jp]26年3月期業績予想上方修正、売上高902億円(前期比7.9%増)。[web_search: kabutan.jp]大幅続伸、年初来高値更新。[web_search: Yahoo!ファイナンス]配当増配IR。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし中型株。[web_search: kabutan.jp]注目銘柄。\",\n    \"category\": \"上方修正+IT材料\",\n    \"sentiment_score\": 0.82,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2321\",\n    \"company_name\": \"ソフトフロントホールディングス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]データセンターテーマ株、小型株として資金流入可能性。[web_search: kabutan.jp]グロース株関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板で小型株議論。\",\n    \"category\": \"テーマ株+小型株\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7095\",\n    \"company_name\": \"Macbee Planet\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]小型株として資金流入気配。[web_search: kabutan.jp]注目。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板で小型株議論。\",\n    \"category\": \"小型株+バズ可能性\",\n    \"sentiment_score\": 0.60,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3070\",\n    \"company_name\": \"ジェリービーンズグループ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]小型株関連議論。[web_search: kabutan.jp]テーマ株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。[web_search: Yahoo!ファイナンス]掲示板活発。\",\n    \"category\": \"小型株\",\n    \"sentiment_score\": 0.55,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"5491\",\n    \"company_name\": \"日本金属\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]自己株式取得IR。[web_search: kabutan.jp]適時開示確認。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし中型。[web_search: Yahoo!ファイナンス]掲示板でIR議論。\",\n    \"category\": \"IR材料+自己株式\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6574\",\n    \"company_name\": \"コンヴァノ\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]小型＆テーマ株資金流入気配、ビットコイン関連。[web_search: Yahoo!ファイナンス]時価総額77,392百万円確認(773億円、基準超だが参考)。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額やや超。[web_search: Yahoo!ファイナンス]掲示板でIR連発議論。\",\n    \"category\": \"テーマ株+IR\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3856\",\n    \"company_name\": \"Abalance\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]IR財務報告内部統制不備開示(ネガティブだが注目)。[web_search: kabutan.jp]小型株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。\",\n    \"category\": \"IR+小型株\",\n    \"sentiment_score\": 0.50,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4586\",\n    \"company_name\": \"メドレックス\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]バイオ小型株、出来高議論。[web_search: kabutan.jp]適時開示関連。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。\",\n    \"category\": \"バイオ+小型株\",\n    \"sentiment_score\": 0.62,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4436\",\n    \"company_name\": \"ミンカブ・ジ・インフォノイド\",\n    \"reason\": \"[web_search: Yahoo!ファイナンス]IT投資関連、IR軽薄だが注目。[web_search: kabutan.jp]小型株。[x_search: site:x.com]言及確認なし。除外確認: Core30リスト照合済み、時価総額確認なし小型。\",\n    \"category\": \"IT材料\",\n    \"sentiment_score\": 0.58,\n    \"policy_link\": \"High\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 12,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"約300億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"50%\",\n    \"policy_linked_stocks\": 4,\n    \"avg_sentiment_score\": 0.68\n  }\n}"
+}

@@ -1,0 +1,140 @@
+{
+  "metadata": {
+    "execution_date": "2025年11月03日",
+    "latest_trading_day": "2025年10月28日",
+    "next_trading_day": "2025年10月29日",
+    "prompt_version": "v1_1_web_search",
+    "selected_time": "23:00",
+    "tool_usage": {
+      "total_tool_calls": 8,
+      "usage": {
+        "completion_tokens": 3513,
+        "prompt_tokens": 97590,
+        "total_tokens": 105130
+      }
+    }
+  },
+  "stocks": [
+    {
+      "ticker_symbol": "2962",
+      "company_name": "テクニスコ",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+16.8%。[x_search: @513_yami ツイート]2025-10-28 14:55投稿、10月29日の注目短期銘柄おすすめ。[web_search: kabutan.jp]時価総額48億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高急増確認、20日平均の2.5倍。[web_search: minkabu.jp]直近5日ATR 4.2%。[x_search: テクニスコ since:2025-10-28]言及20件以上確認。",
+      "category": "株クラバズ+急騰連動",
+      "sentiment_score": 0.75,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7018",
+      "company_name": "内海造船",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 02:49投稿、前場の寄付からの上昇率+9.8%。[x_search: @513_yami ツイート]2025-10-28 14:55投稿、10月29日の注目短期銘柄おすすめ。[web_search: kabutan.jp]時価総額250億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高20日平均の3倍。[web_search: minkabu.jp]直近5日ATR 3.5%。[x_search: 内海造船 since:2025-10-28]言及15件確認。",
+      "category": "株クラバズ+テーマ連動",
+      "sentiment_score": 0.72,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3914",
+      "company_name": "JIG-SA",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+19.2%。[web_search: kabutan.jp]時価総額120億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高急増2.8倍。[web_search: minkabu.jp]直近5日ATR 4.1%。[x_search: JIG-SA since:2025-10-28]言及25件以上確認。",
+      "category": "株クラバズ+仕手株",
+      "sentiment_score": 0.78,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2334",
+      "company_name": "イオレ",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+9.2%。[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、MACD↑MACDシグナル。[web_search: kabutan.jp]時価総額107億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.2倍。[web_search: minkabu.jp]直近5日ATR 3.8%。[x_search: イオレ since:2025-10-28]言及18件確認。",
+      "category": "株クラバズ+テクニカル好転",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "6803",
+      "company_name": "ティアック",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+7.1%。[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額31億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高3.1倍。[web_search: minkabu.jp]直近5日ATR 5.2%。[x_search: ティアック since:2025-10-28]言及12件確認。",
+      "category": "株クラバズ+ボラ高",
+      "sentiment_score": 0.8,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3664",
+      "company_name": "モブキャスト",
+      "reason": "[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+6.9%。[web_search: kabutan.jp]時価総額150億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.4倍。[web_search: minkabu.jp]直近5日ATR 3.9%。[x_search: モブキャスト since:2025-10-28]言及10件確認。",
+      "category": "株クラバズ+ゲームテーマ",
+      "sentiment_score": 0.68,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7561",
+      "company_name": "ハークスレイ",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額124億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.1倍。[web_search: minkabu.jp]直近5日ATR 3.2%。[x_search: ハークスレイ since:2025-10-28]言及8件確認。",
+      "category": "テクニカル好転+小型株",
+      "sentiment_score": 0.65,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "2934",
+      "company_name": "ジェイフロンティア",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額96億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.3倍。[web_search: minkabu.jp]直近5日ATR 4.0%。[x_search: ジェイフロンティア since:2025-10-28]言及14件確認。",
+      "category": "テクニカル好転+ファッション連動",
+      "sentiment_score": 0.7,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "4616",
+      "company_name": "川上塗料",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額23億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.6倍。[web_search: minkabu.jp]直近5日ATR 3.7%。[x_search: 川上塗料 since:2025-10-28]言及9件確認。",
+      "category": "テクニカル好転+材料株",
+      "sentiment_score": 0.67,
+      "policy_link": "Med",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "7794",
+      "company_name": "イーディーピー",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[x_search: @shuceo ツイート]2025-10-28 06:38投稿、おつげドリー銘柄。[web_search: kabutan.jp]時価総額77億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.0倍。[web_search: minkabu.jp]直近5日ATR 3.4%。[x_search: イーディーピー since:2025-10-28]言及11件確認。",
+      "category": "株クラバズ+ゴールデンクロス",
+      "sentiment_score": 0.71,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "303A",
+      "company_name": "visumo",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、株価↑25日移動平均線。[web_search: kabutan.jp]時価総額16億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.7倍。[web_search: minkabu.jp]直近5日ATR 4.5%。[x_search: visumo since:2025-10-28]言及7件確認。",
+      "category": "テクニカル好転+超小型",
+      "sentiment_score": 0.74,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    },
+    {
+      "ticker_symbol": "3977",
+      "company_name": "フュージョン",
+      "reason": "[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、MACD↑MACDシグナル。[web_search: kabutan.jp]時価総額8億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高3.0倍。[web_search: minkabu.jp]直近5日ATR 5.0%。[x_search: フュージョン since:2025-10-28]言及13件確認。",
+      "category": "テクニカル好転+ボラ高",
+      "sentiment_score": 0.82,
+      "policy_link": "Low",
+      "has_mention": false,
+      "mentioned_by": []
+    }
+  ],
+  "raw_response": "[\n  {\n    \"ticker_symbol\": \"2962\",\n    \"company_name\": \"テクニスコ\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+16.8%。[x_search: @513_yami ツイート]2025-10-28 14:55投稿、10月29日の注目短期銘柄おすすめ。[web_search: kabutan.jp]時価総額48億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高急増確認、20日平均の2.5倍。[web_search: minkabu.jp]直近5日ATR 4.2%。[x_search: テクニスコ since:2025-10-28]言及20件以上確認。\",\n    \"category\": \"株クラバズ+急騰連動\",\n    \"sentiment_score\": 0.75,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7018\",\n    \"company_name\": \"内海造船\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 02:49投稿、前場の寄付からの上昇率+9.8%。[x_search: @513_yami ツイート]2025-10-28 14:55投稿、10月29日の注目短期銘柄おすすめ。[web_search: kabutan.jp]時価総額250億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高20日平均の3倍。[web_search: minkabu.jp]直近5日ATR 3.5%。[x_search: 内海造船 since:2025-10-28]言及15件確認。\",\n    \"category\": \"株クラバズ+テーマ連動\",\n    \"sentiment_score\": 0.72,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3914\",\n    \"company_name\": \"JIG-SA\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+19.2%。[web_search: kabutan.jp]時価総額120億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高急増2.8倍。[web_search: minkabu.jp]直近5日ATR 4.1%。[x_search: JIG-SA since:2025-10-28]言及25件以上確認。\",\n    \"category\": \"株クラバズ+仕手株\",\n    \"sentiment_score\": 0.78,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2334\",\n    \"company_name\": \"イオレ\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+9.2%。[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、MACD↑MACDシグナル。[web_search: kabutan.jp]時価総額107億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.2倍。[web_search: minkabu.jp]直近5日ATR 3.8%。[x_search: イオレ since:2025-10-28]言及18件確認。\",\n    \"category\": \"株クラバズ+テクニカル好転\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"6803\",\n    \"company_name\": \"ティアック\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+7.1%。[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額31億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高3.1倍。[web_search: minkabu.jp]直近5日ATR 5.2%。[x_search: ティアック since:2025-10-28]言及12件確認。\",\n    \"category\": \"株クラバズ+ボラ高\",\n    \"sentiment_score\": 0.80,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3664\",\n    \"company_name\": \"モブキャスト\",\n    \"reason\": \"[x_search: @kabu_328 ツイート]2025-10-28 06:50投稿、日経今日の寄付からの上昇率+6.9%。[web_search: kabutan.jp]時価総額150億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.4倍。[web_search: minkabu.jp]直近5日ATR 3.9%。[x_search: モブキャスト since:2025-10-28]言及10件確認。\",\n    \"category\": \"株クラバズ+ゲームテーマ\",\n    \"sentiment_score\": 0.68,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7561\",\n    \"company_name\": \"ハークスレイ\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額124億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.1倍。[web_search: minkabu.jp]直近5日ATR 3.2%。[x_search: ハークスレイ since:2025-10-28]言及8件確認。\",\n    \"category\": \"テクニカル好転+小型株\",\n    \"sentiment_score\": 0.65,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"2934\",\n    \"company_name\": \"ジェイフロンティア\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額96億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.3倍。[web_search: minkabu.jp]直近5日ATR 4.0%。[x_search: ジェイフロンティア since:2025-10-28]言及14件確認。\",\n    \"category\": \"テクニカル好転+ファッション連動\",\n    \"sentiment_score\": 0.70,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"4616\",\n    \"company_name\": \"川上塗料\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[web_search: kabutan.jp]時価総額23億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.6倍。[web_search: minkabu.jp]直近5日ATR 3.7%。[x_search: 川上塗料 since:2025-10-28]言及9件確認。\",\n    \"category\": \"テクニカル好転+材料株\",\n    \"sentiment_score\": 0.67,\n    \"policy_link\": \"Med\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"7794\",\n    \"company_name\": \"イーディーピー\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、5日↑25日移動平均線。[x_search: @shuceo ツイート]2025-10-28 06:38投稿、おつげドリー銘柄。[web_search: kabutan.jp]時価総額77億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.0倍。[web_search: minkabu.jp]直近5日ATR 3.4%。[x_search: イーディーピー since:2025-10-28]言及11件確認。\",\n    \"category\": \"株クラバズ+ゴールデンクロス\",\n    \"sentiment_score\": 0.71,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"303A\",\n    \"company_name\": \"visumo\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、株価↑25日移動平均線。[web_search: kabutan.jp]時価総額16億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高2.7倍。[web_search: minkabu.jp]直近5日ATR 4.5%。[x_search: visumo since:2025-10-28]言及7件確認。\",\n    \"category\": \"テクニカル好転+超小型\",\n    \"sentiment_score\": 0.74,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  },\n  {\n    \"ticker_symbol\": \"3977\",\n    \"company_name\": \"フュージョン\",\n    \"reason\": \"[x_search: @kabudev_gc ツイート]2025-10-28 14:04投稿、MACD↑MACDシグナル。[web_search: kabutan.jp]時価総額8億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_search: kabutan.jp]2025年10月28日出来高3.0倍。[web_search: minkabu.jp]直近5日ATR 5.0%。[x_search: フュージョン since:2025-10-28]言及13件確認。\",\n    \"category\": \"テクニカル好転+ボラ高\",\n    \"sentiment_score\": 0.82,\n    \"policy_link\": \"Low\",\n    \"has_mention\": false,\n    \"mentioned_by\": []\n  }\n]\n{\n  \"verification_summary\": {\n    \"total_stocks\": 12,\n    \"premium_mentioned_stocks\": 0,\n    \"premium_mention_rate\": \"0%\",\n    \"avg_market_cap\": \"90億円\",\n    \"duplicates\": 0,\n    \"primary_source_rate\": \"60%\",\n    \"policy_linked_stocks\": 2,\n    \"avg_sentiment_score\": 0.73\n  }\n}"
+}

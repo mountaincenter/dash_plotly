@@ -3,9 +3,14 @@
 generate_grok_trending.py
 xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
 
+✨ x_search + web_search ツール有効版（v1.1）
+
 実行方法:
-    # パイプライン実行（23時更新）
+    # パイプライン実行（23時更新、デフォルトで v1_1_web_search プロンプト使用）
     python3 scripts/pipeline/generate_grok_trending.py
+
+    # プロンプトバージョン指定実行
+    PROMPT_VERSION=v1_0_baseline python3 scripts/pipeline/generate_grok_trending.py
 
     # 手動実行（クリーンアップして新規作成）
     python3 scripts/pipeline/generate_grok_trending.py --cleanup
@@ -15,8 +20,10 @@ xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
 
 動作仕様:
     - 毎日23時（JST）に実行（土日祝含む）
-    - 10銘柄を選定し、フロントエンドでTop5のみ表示
+    - 10〜15銘柄を選定し、フロントエンドでTop5のみ表示
     - 古いデータを削除して新規作成（1日1回更新）
+    - x_search() ツールで X(Twitter) からリアルタイム情報取得
+    - web_search() ツールで IR・ニュースを検証
 
 備考:
     - .env.xai に XAI_API_KEY が必要
@@ -24,6 +31,7 @@ xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
     - categories: ["GROK"]
     - tags: Grokが返したcategoryをそのまま格納
     - selected_time: "23:00" 固定
+    - デフォルトプロンプト: v1_1_web_search (環境変数で変更可能)
 """
 
 from __future__ import annotations
@@ -262,8 +270,18 @@ def load_xai_api_key() -> str:
     return api_key
 
 
-def query_grok(api_key: str, prompt: str) -> str:
-    """Query Grok API via OpenAI client"""
+def query_grok(api_key: str, prompt: str, enable_tools: bool = True) -> str:
+    """
+    Query Grok API via OpenAI client
+
+    Args:
+        api_key: XAI API key
+        prompt: Prompt to send to Grok
+        enable_tools: Enable x_search and web_search tools (default: True)
+
+    Returns:
+        str: Grok's response content
+    """
     print("[INFO] Querying Grok API...")
 
     client = OpenAI(
@@ -271,18 +289,76 @@ def query_grok(api_key: str, prompt: str) -> str:
         base_url="https://api.x.ai/v1",
     )
 
-    response = client.chat.completions.create(
-        model="grok-4-fast-reasoning",
-        messages=[
-            {"role": "system", "content": "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"},
+    # ツール有効化時のパラメータ
+    # xAI Grok APIでは x_search と web_search が利用可能
+    tools_param = None
+    if enable_tools:
+        tools_param = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "x_search",
+                    "description": "Search X (Twitter) for real-time posts, mentions, and trending topics",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query (supports operators: from:, since:, OR, AND)"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "web_search",
+                    "description": "Search the web for news, IR announcements, and official information",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query (supports operators: site:, after:, intitle:)"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            }
+        ]
+        print("[INFO] Tools enabled: x_search, web_search")
+
+    # APIリクエストパラメータ
+    request_params = {
+        "model": "grok-4-fast-reasoning",
+        "messages": [
+            {"role": "system", "content": "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に活用して一次情報を取得してください。"},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.7,
-        max_tokens=4000,
-    )
+        "temperature": 0.7,
+        "max_tokens": 8000,  # ツール使用時は長めに設定
+    }
+
+    # ツール有効化
+    if tools_param:
+        request_params["tools"] = tools_param
+        request_params["tool_choice"] = "auto"  # 自動判定でツールを使用
+
+    response = client.chat.completions.create(**request_params)
 
     content = response.choices[0].message.content
     print(f"[OK] Received response from Grok ({len(content)} chars)")
+
+    # ツール使用状況をログ出力
+    if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls:
+        tool_calls = response.choices[0].message.tool_calls
+        print(f"[INFO] Grok used {len(tool_calls)} tool calls")
+        for tool_call in tool_calls:
+            print(f"  - {tool_call.function.name}")
+
     return content
 
 
@@ -572,7 +648,8 @@ def main() -> int:
     args = parse_args()
 
     # プロンプトバージョンを取得（環境変数から）
-    prompt_version = os.getenv("PROMPT_VERSION", "v1_0_baseline")
+    # デフォルトは v1_1_web_search（x_search + web_search ツール使用版）
+    prompt_version = os.getenv("PROMPT_VERSION", "v1_1_web_search")
     print(f"[INFO] Prompt version: {prompt_version}")
 
     # 固定で23時更新（selected_time は23:00固定）
