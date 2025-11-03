@@ -2,7 +2,7 @@
 """
 cleanup_grok_trending.py
 
-grok_trending.parquet のデータをクリーンアップ
+S3上のgrok_trending.parquet のデータをクリーンアップ
 カラム構造は維持したまま、全レコードを削除
 
 ⚠️ 重要: このスクリプトは必ずバックアップ確認後に実行すること
@@ -14,32 +14,50 @@ from pathlib import Path
 
 import pandas as pd
 
+# プロジェクトルートをパスに追加
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-def cleanup_grok_trending(parquet_path: str, dry_run: bool = False) -> bool:
+from common_cfg.s3io import upload_file, download_file
+from common_cfg.s3cfg import load_s3_config
+
+
+def cleanup_grok_trending(s3_key: str = "grok_trending.parquet", dry_run: bool = False) -> bool:
     """
-    grok_trending.parquet をクリーンアップ
+    S3上のgrok_trending.parquet をクリーンアップ
 
     Args:
-        parquet_path: grok_trending.parquet のパス
+        s3_key: S3キー（デフォルト: grok_trending.parquet）
         dry_run: True の場合は実際には書き込まない
 
     Returns:
         bool: 成功した場合 True
     """
-    parquet_file = Path(parquet_path)
-
-    if not parquet_file.exists():
-        print(f"❌ File not found: {parquet_path}")
+    # S3設定を読み込み
+    cfg = load_s3_config()
+    if not cfg:
+        print("❌ S3 not configured")
         return False
 
     print("=" * 60)
-    print("Cleanup grok_trending.parquet")
+    print("Cleanup grok_trending.parquet on S3")
     print("=" * 60)
-    print(f"Target file: {parquet_path}")
+    print(f"S3 Key: s3://{cfg.bucket}/{s3_key}")
 
-    # 現在のファイルを読み込み
+    # 一時ファイルパス
+    temp_dir = Path("data/parquet/temp")
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_file = temp_dir / "grok_trending_temp.parquet"
+
+    # S3から現在のファイルをダウンロード
     try:
-        df_current = pd.read_parquet(parquet_path)
+        print(f"\n📥 Downloading from S3...")
+        if not download_file(cfg, s3_key, temp_file):
+            print(f"❌ Failed to download from S3: {s3_key}")
+            return False
+
+        df_current = pd.read_parquet(temp_file)
         print(f"\nCurrent data:")
         print(f"  Rows: {len(df_current)}")
         print(f"  Columns: {len(df_current.columns)}")
@@ -79,21 +97,32 @@ def cleanup_grok_trending(parquet_path: str, dry_run: bool = False) -> bool:
         print(f"❌ Error creating empty DataFrame: {e}")
         return False
 
-    # ファイルに書き込み
+    # S3にアップロード
     if dry_run:
-        print("\n⚠️ DRY RUN mode - not writing to file")
+        print("\n⚠️ DRY RUN mode - not uploading to S3")
         print("✅ Cleanup would succeed")
+        # クリーンアップ
+        temp_file.unlink(missing_ok=True)
         return True
 
     try:
-        df_empty.to_parquet(parquet_path, index=False, engine='pyarrow')
-        print(f"\n✅ Successfully cleaned up: {parquet_path}")
+        # 空のDataFrameをローカルファイルに保存
+        df_empty.to_parquet(temp_file, index=False, engine='pyarrow')
+        print(f"\n✅ Created empty file locally: {temp_file}")
+
+        # S3にアップロード
+        print(f"📤 Uploading to S3...")
+        upload_file(cfg, temp_file, s3_key)
+        print(f"✅ Successfully uploaded to S3: s3://{cfg.bucket}/{s3_key}")
 
         # 確認のため読み込み
-        df_verify = pd.read_parquet(parquet_path)
-        print(f"Verification:")
+        df_verify = pd.read_parquet(temp_file)
+        print(f"\nVerification:")
         print(f"  Rows: {len(df_verify)}")
         print(f"  Columns: {len(df_verify.columns)}")
+
+        # クリーンアップ
+        temp_file.unlink(missing_ok=True)
 
         if len(df_verify) == 0 and len(df_verify.columns) == len(df_current.columns):
             print("✅ Cleanup verified successfully")
@@ -103,25 +132,27 @@ def cleanup_grok_trending(parquet_path: str, dry_run: bool = False) -> bool:
             return False
 
     except Exception as e:
-        print(f"❌ Error writing cleaned file: {e}")
+        print(f"❌ Error uploading cleaned file: {e}")
         import traceback
         traceback.print_exc()
+        # クリーンアップ
+        temp_file.unlink(missing_ok=True)
         return False
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="grok_trending.parquet をクリーンアップ（カラム構造維持、全レコード削除）"
+        description="S3上のgrok_trending.parquet をクリーンアップ（カラム構造維持、全レコード削除）"
     )
     parser.add_argument(
-        '--parquet-path',
-        default='data/parquet/grok_trending.parquet',
-        help='grok_trending.parquet のパス（デフォルト: data/parquet/grok_trending.parquet）'
+        '--s3-key',
+        default='grok_trending.parquet',
+        help='S3キー（デフォルト: grok_trending.parquet）'
     )
     parser.add_argument(
         '--dry-run',
         action='store_true',
-        help='DRY RUN モード（実際には書き込まない）'
+        help='DRY RUN モード（実際にはS3にアップロードしない）'
     )
 
     args = parser.parse_args()
@@ -129,7 +160,7 @@ def main() -> int:
     print("\n⚠️ IMPORTANT: This script should only run AFTER backup verification")
     print("   Make sure verify_grok_backup.py has completed successfully\n")
 
-    success = cleanup_grok_trending(args.parquet_path, args.dry_run)
+    success = cleanup_grok_trending(args.s3_key, args.dry_run)
 
     if success:
         print("\n" + "=" * 60)
