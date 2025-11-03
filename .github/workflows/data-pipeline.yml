@@ -169,19 +169,16 @@ jobs:
       - name: Cleanup grok_trending before selection
         if: success() && (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced')
         run: |
-          echo "🧹 Cleaning up grok_trending.parquet..."
+          echo "🧹 Cleaning up grok_trending.parquet on S3..."
           echo "============================================================"
 
-          if [ -f "data/parquet/grok_trending.parquet" ]; then
-            python3 scripts/cleanup_grok_trending.py
-            if [ $? -eq 0 ]; then
-              echo "✅ Cleanup completed successfully"
-            else
-              echo "❌ Cleanup failed"
-              exit 1
-            fi
+          # cleanup_grok_trending.py がS3から読み込み・アップロードするので、無条件に実行
+          python3 scripts/cleanup_grok_trending.py
+          if [ $? -eq 0 ]; then
+            echo "✅ Cleanup completed successfully"
           else
-            echo "ℹ️  No grok_trending.parquet found - nothing to clean"
+            echo "❌ Cleanup failed"
+            exit 1
           fi
 
       - name: Run Data Pipeline
@@ -255,18 +252,14 @@ jobs:
             echo "ℹ️  No existing archive found in S3, will create new one"
           fi
 
-          # バックテストを実行（当日のGROK選定結果を使用）
-          if [ -f "data/parquet/grok_trending.parquet" ]; then
-            echo "✅ Found grok_trending.parquet, running backtest..."
-            python scripts/pipeline/save_backtest_to_archive.py
+          # バックテストを実行（S3のGROK選定結果を使用）
+          echo "Running backtest from S3 grok_trending.parquet..."
+          python scripts/pipeline/save_backtest_to_archive.py
 
-            if [ $? -eq 0 ]; then
-              echo "✅ Backtest completed and archived"
-            else
-              echo "⚠️ Backtest failed (non-critical)"
-            fi
+          if [ $? -eq 0 ]; then
+            echo "✅ Backtest completed and archived"
           else
-            echo "⚠️ No grok_trending.parquet found, skipping backtest"
+            echo "⚠️ Backtest failed (non-critical)"
           fi
 
           echo "============================================================"
@@ -282,10 +275,13 @@ jobs:
           fi
           echo "meta_jquants_count=$META_JQUANTS_COUNT" >> $GITHUB_OUTPUT
 
-          # grok_trending statistics (NEW)
+          # grok_trending statistics (from S3)
           GROK_COUNT=0
-          if [ -f "data/parquet/grok_trending.parquet" ]; then
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" > /dev/null 2>&1; then
+            mkdir -p data/parquet
+            aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" data/parquet/grok_trending.parquet --only-show-errors
             GROK_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/grok_trending.parquet')))")
+            rm -f data/parquet/grok_trending.parquet
           fi
           echo "grok_trending_count=$GROK_COUNT" >> $GITHUB_OUTPUT
 
@@ -395,7 +391,11 @@ jobs:
         id: archive-grok
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          if [ -f "data/parquet/grok_trending.parquet" ]; then
+          # save_backtest_to_archive.py が grok_trending_{DATE}.parquet を生成するため、
+          # ここでのアーカイブは不要になりました。このステップはスキップします。
+          echo "ℹ️  Archiving is handled by save_backtest_to_archive.py"
+
+          if false; then
             # cron判定
             if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
               RUN_TIME="16:00"
@@ -502,8 +502,11 @@ jobs:
         id: grok-info
         if: success()
         run: |
-          # GROK銘柄情報を抽出
-          if [ -f "data/parquet/grok_trending.parquet" ]; then
+          # GROK銘柄情報を抽出（S3からダウンロード）
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" > /dev/null 2>&1; then
+            mkdir -p data/parquet
+            aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" data/parquet/grok_trending.parquet --only-show-errors
+
             GROK_INFO=$(python3 -c '
           import pandas as pd
           import json
@@ -545,6 +548,9 @@ jobs:
 
           print(json.dumps(result, ensure_ascii=False))
           ' 2>/dev/null)
+
+            # クリーンアップ
+            rm -f data/parquet/grok_trending.parquet
           else
             GROK_INFO=""
           fi
