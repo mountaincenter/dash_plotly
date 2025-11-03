@@ -147,7 +147,7 @@ def fetch_price_data(ticker: str, target_date: str) -> dict[str, Any]:
                 low = float(morning_session["Low"].min())
                 volume = int(morning_session["Volume"].sum())
 
-                # Phase3用: 全日5分足データ（9:00-15:00）
+                # Phase3用: 全日5分足データ（9:00-15:30）
                 intraday_5m = target_day_data[
                     (target_day_data.index.time >= time(9, 0)) &
                     (target_day_data.index.time <= time(15, 0))
@@ -188,7 +188,7 @@ def simulate_profit_loss_exit(buy_price: float, intraday_5m: pd.DataFrame, daily
 
     Args:
         buy_price: 買値
-        intraday_5m: 5分足データ（9:00-15:00）
+        intraday_5m: 5分足データ（9:00-15:30）
         daily_close: 大引け価格
         profit_target_pct: 利確目標（%）例: 1.0, 2.0, 3.0
         loss_limit_pct: 損切りライン（%）デフォルト: 3.0

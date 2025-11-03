@@ -157,7 +157,7 @@ async def get_backtest_summary(
                        指定しない場合は全バージョンのデータを表示
         phase: 表示するPhase (phase1, phase2, phase3)
                - phase1: 前場引け売り（11:30売却）
-               - phase2: 大引け売り（15:00売却）
+               - phase2: 大引け売り（15:30売却）
                - phase3: +3%利確/-3%損切り
     """
     df_all = load_archive_data()
@@ -177,7 +177,7 @@ async def get_backtest_summary(
             "return_col": "phase2_return",
             "win_col": "phase2_win",
             "profit_col": "profit_per_100_shares_phase2",
-            "description": "大引け売り（15:00売却）"
+            "description": "大引け売り（15:30売却）"
         },
         "phase3": {
             "return_col": "phase3_3pct_return",
