@@ -3,7 +3,7 @@
 generate_grok_trending.py
 xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
 
-✨ x_search + web_search ツール有効版（v1.1）
+✨ xAI SDK + x_search() + web_search() ツール有効版（v1.1）
 
 実行方法:
     # パイプライン実行（23時更新、デフォルトで v1_1_web_search プロンプト使用）
@@ -22,11 +22,14 @@ xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
     - 毎日23時（JST）に実行（土日祝含む）
     - 10〜15銘柄を選定し、フロントエンドでTop5のみ表示
     - 古いデータを削除して新規作成（1日1回更新）
+    - xAI SDK の Client を使用
     - x_search() ツールで X(Twitter) からリアルタイム情報取得
     - web_search() ツールで IR・ニュースを検証
+    - ストリーミング処理でツール呼び出しをカウント
 
 備考:
     - .env.xai に XAI_API_KEY が必要
+    - xAI SDK (xai_sdk) が必要: pip install xai-sdk
     - all_stocks.parquet と統合できるスキーマ
     - categories: ["GROK"]
     - tags: Grokが返したcategoryをそのまま格納
@@ -48,8 +51,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
-from openai import OpenAI
 from dotenv import dotenv_values
+from xai_sdk import Client
+from xai_sdk.chat import user, system
+from xai_sdk.tools import web_search, x_search
+
 from common_cfg.paths import PARQUET_DIR
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 
@@ -270,103 +276,67 @@ def load_xai_api_key() -> str:
     return api_key
 
 
-def query_grok(api_key: str, prompt: str, enable_tools: bool = True) -> str:
+def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     """
-    Query Grok API via OpenAI client
+    Query Grok API via xAI SDK with web_search + x_search tools
 
     Args:
-        api_key: XAI API key
-        prompt: Prompt to send to Grok
-        enable_tools: Enable x_search and web_search tools (default: True)
+        api_key: xAI API key
+        prompt: User prompt
 
     Returns:
-        str: Grok's response content
+        tuple: (response_content, tool_usage_stats)
     """
-    print("[INFO] Querying Grok API...")
+    print("[INFO] Querying Grok API with xAI SDK + web_search + x_search tools...")
 
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.x.ai/v1",
+    client = Client(api_key=api_key)
+
+    # chat.create()でセッション作成
+    chat = client.chat.create(
+        model="grok-4-fast-reasoning",
+        tools=[web_search(), x_search()],
     )
 
-    # ツール有効化時のパラメータ
-    # xAI Grok APIでは x_search と web_search が利用可能
-    tools_param = None
-    if enable_tools:
-        tools_param = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "x_search",
-                    "description": "Search X (Twitter) for real-time posts, mentions, and trending topics",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Search query (supports operators: from:, since:, OR, AND)"
-                            }
-                        },
-                        "required": ["query"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "web_search",
-                    "description": "Search the web for news, IR announcements, and official information",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Search query (supports operators: site:, after:, intitle:)"
-                            }
-                        },
-                        "required": ["query"]
-                    }
-                }
-            }
-        ]
-        print("[INFO] Tools enabled: x_search, web_search")
+    # システムメッセージとユーザープロンプトを追加
+    chat.append(system("あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に使用して、一次情報に基づいた事実のみを出力してください。"))
+    chat.append(user(prompt))
 
-    # APIリクエストパラメータ
-    request_params = {
-        "model": "grok-4-fast-reasoning",
-        "messages": [
-            {"role": "system", "content": "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に活用して一次情報を取得してください。"},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 8000,  # ツール使用時は長めに設定
+    # ストリーミング処理
+    full_response = ""
+    tool_calls_count = 0
+
+    for response, chunk in chat.stream():
+        # ツール呼び出しをカウント
+        if chunk.tool_calls:
+            tool_calls_count += len(chunk.tool_calls)
+
+        # レスポンスを蓄積
+        if chunk.content:
+            full_response += chunk.content
+
+    print(f"[OK] Received response from Grok ({len(full_response)} chars)")
+
+    # ツール使用統計を取得
+    tool_stats = {
+        "total_tool_calls": tool_calls_count,
+        "usage": {
+            "completion_tokens": response.usage.completion_tokens if hasattr(response.usage, 'completion_tokens') else 0,
+            "prompt_tokens": response.usage.prompt_tokens if hasattr(response.usage, 'prompt_tokens') else 0,
+            "total_tokens": response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else 0,
+        }
     }
 
-    # ツール有効化
-    if tools_param:
-        request_params["tools"] = tools_param
-        request_params["tool_choice"] = "auto"  # 自動判定でツールを使用
+    print(f"[INFO] Tool usage: {tool_calls_count} tool calls (web_search + x_search)")
+    print(f"[INFO] Token usage: {tool_stats['usage']['total_tokens']} tokens (prompt: {tool_stats['usage']['prompt_tokens']}, completion: {tool_stats['usage']['completion_tokens']})")
 
-    response = client.chat.completions.create(**request_params)
-
-    content = response.choices[0].message.content
-    print(f"[OK] Received response from Grok ({len(content)} chars)")
-
-    # ツール使用状況をログ出力
-    if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls:
-        tool_calls = response.choices[0].message.tool_calls
-        print(f"[INFO] Grok used {len(tool_calls)} tool calls")
-        for tool_call in tool_calls:
-            print(f"  - {tool_call.function.name}")
-
-    return content
+    return full_response, tool_stats
 
 
 def parse_grok_response(response: str) -> list[dict[str, Any]]:
-    """Parse Grok's JSON response"""
+    """Parse Grok's JSON response (extract first JSON array)"""
     print("[INFO] Parsing Grok response...")
 
-    # JSONブロックを抽出（```json ... ``` や ``` ... ``` で囲まれている場合）
+    # JSONブロックを抽出
     if "```json" in response:
         json_str = response.split("```json")[1].split("```")[0].strip()
     elif "```" in response:
@@ -374,19 +344,39 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
     else:
         json_str = response.strip()
 
-    # JSON配列のパース
+    # 複数のJSONオブジェクトが含まれている場合、最初のJSON配列のみを抽出
+    # 例: [...]  {verification_summary} の場合、[...]部分のみ取得
+
+    # 最後の"]"を探す（配列の終端）
+    last_array_end = json_str.rfind("]")
+
+    # その後に"{" があるか確認（verification_summaryが続く場合）
+    remaining = json_str[last_array_end + 1:].strip()
+    if remaining and remaining.startswith("{"):
+        # verification_summaryがある場合、配列の終端を再設定
+        # "}\n]"のパターンを探す
+        pattern = "}\n]"
+        array_end = json_str.find(pattern)
+        if array_end != -1:
+            first_json = json_str[:array_end + 3]  # "}\n]"を含める
+        else:
+            # パターンが見つからない場合は最後の"]"まで
+            first_json = json_str[:last_array_end + 1]
+    else:
+        # verification_summaryがない場合
+        first_json = json_str[:last_array_end + 1]
+
     try:
-        data = json.loads(json_str)
+        data = json.loads(first_json)
+        if isinstance(data, list):
+            print(f"[OK] Parsed {len(data)} stocks from Grok response")
+            return data
+        else:
+            raise ValueError(f"Expected JSON array, got {type(data)}")
     except json.JSONDecodeError as e:
         print(f"[ERROR] Failed to parse JSON: {e}")
-        print(f"[DEBUG] Response content:\n{response}")
+        print(f"[DEBUG] Attempted to parse:\n{first_json[:500]}...")
         raise
-
-    if not isinstance(data, list):
-        raise ValueError(f"Expected JSON array, got {type(data)}")
-
-    print(f"[OK] Parsed {len(data)} stocks from Grok response")
-    return data
 
 
 def calculate_selection_score(item: dict[str, Any]) -> float:
@@ -697,8 +687,8 @@ def main() -> int:
         print(f"[OK] Loaded XAI_API_KEY from {ENV_XAI_PATH}")
         print()
 
-        # 4. Query Grok
-        response = query_grok(api_key, prompt)
+        # 4. Query Grok with xAI SDK + web_search + x_search
+        response, tool_stats = query_grok(api_key, prompt)
         print()
 
         # 5. Parse response
