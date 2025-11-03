@@ -20,8 +20,6 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 from scripts.lib.s3_manager import upload_to_s3
 from common_cfg.paths import PARQUET_DIR
-from common_cfg.s3io import download_file
-from common_cfg.s3cfg import load_s3_config
 
 # S3にアップロードするファイル
 UPLOAD_FILES = [
@@ -105,24 +103,10 @@ def get_file_stats(file_path: Path) -> Dict[str, any]:
 
 
 def get_grok_metadata() -> Dict[str, any]:
-    """S3上のgrok_trending.parquet からメタデータを取得"""
-    # S3設定を読み込み
-    cfg = load_s3_config()
-    if not cfg:
-        return {
-            "grok_update_flag": False,
-            "grok_last_update_date": None,
-            "grok_last_update_time": None,
-        }
+    """ローカルのgrok_trending.parquet からメタデータを取得"""
+    grok_file = PARQUET_DIR / "grok_trending.parquet"
 
-    # 一時ファイルパス
-    temp_dir = PARQUET_DIR / "temp"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_file = temp_dir / "grok_trending_temp.parquet"
-
-    # S3からダウンロード
-    s3_key = "grok_trending.parquet"
-    if not download_file(cfg, s3_key, temp_file):
+    if not grok_file.exists():
         return {
             "grok_update_flag": False,
             "grok_last_update_date": None,
@@ -130,10 +114,9 @@ def get_grok_metadata() -> Dict[str, any]:
         }
 
     try:
-        df = pd.read_parquet(temp_file)
+        df = pd.read_parquet(grok_file)
 
         if df.empty:
-            temp_file.unlink(missing_ok=True)
             return {
                 "grok_update_flag": False,
                 "grok_last_update_date": None,
@@ -159,9 +142,6 @@ def get_grok_metadata() -> Dict[str, any]:
         # フラグ: データが存在し、日付と時刻が取得できた場合は true
         update_flag = bool(latest_date and latest_time)
 
-        # クリーンアップ
-        temp_file.unlink(missing_ok=True)
-
         return {
             "grok_update_flag": update_flag,
             "grok_last_update_date": latest_date,
@@ -170,7 +150,6 @@ def get_grok_metadata() -> Dict[str, any]:
 
     except Exception as e:
         print(f"  [WARN] Failed to read grok metadata: {e}")
-        temp_file.unlink(missing_ok=True)
         return {
             "grok_update_flag": False,
             "grok_last_update_date": None,
