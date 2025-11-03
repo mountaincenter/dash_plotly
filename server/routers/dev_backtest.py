@@ -475,6 +475,8 @@ async def get_daily_backtest(date: str):
             "profit_per_100": profit_per_100,
             "morning_high": float(row["morning_high"]) if "morning_high" in df.columns and pd.notna(row.get("morning_high")) else None,
             "morning_low": float(row["morning_low"]) if "morning_low" in df.columns and pd.notna(row.get("morning_low")) else None,
+            "high": float(row["high"]) if "high" in df.columns and pd.notna(row.get("high")) else None,
+            "low": float(row["low"]) if "low" in df.columns and pd.notna(row.get("low")) else None,
             "morning_volume": int(row["morning_volume"]) if "morning_volume" in df.columns and pd.notna(row.get("morning_volume")) else None,
             "max_gain_pct": float(row["max_gain_pct"] * 100) if "max_gain_pct" in df.columns and pd.notna(row.get("max_gain_pct")) else None,
             "max_drawdown_pct": float(row["max_drawdown_pct"] * 100) if "max_drawdown_pct" in df.columns and pd.notna(row.get("max_drawdown_pct")) else None,
