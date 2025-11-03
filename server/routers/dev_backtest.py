@@ -145,18 +145,56 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
 
 
 @router.get("/api/dev/backtest/summary")
-async def get_backtest_summary(prompt_version: str | None = None):
+async def get_backtest_summary(
+    prompt_version: str | None = None,
+    phase: str = "phase1"
+):
     """
     バックテスト全体サマリー（ダッシュボード用の完全なデータ）
 
     Args:
         prompt_version: フィルタするプロンプトバージョン (例: "v1_0_baseline")
                        指定しない場合は全バージョンのデータを表示
+        phase: 表示するPhase (phase1, phase2, phase3)
+               - phase1: 前場引け売り（11:30売却）
+               - phase2: 大引け売り（15:00売却）
+               - phase3: +3%利確/-3%損切り
     """
     df_all = load_archive_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
+
+    # Phaseに応じたカラムマッピング
+    phase_config = {
+        "phase1": {
+            "return_col": "phase1_return",
+            "win_col": "phase1_win",
+            "profit_col": "profit_per_100_shares_phase1",
+            "description": "前場引け売り（11:30売却）"
+        },
+        "phase2": {
+            "return_col": "phase2_return",
+            "win_col": "phase2_win",
+            "profit_col": "profit_per_100_shares_phase2",
+            "description": "大引け売り（15:00売却）"
+        },
+        "phase3": {
+            "return_col": "phase3_3pct_return",
+            "win_col": "phase3_3pct_win",
+            "profit_col": "profit_per_100_shares_phase3_3pct",
+            "description": "+3%利確/-3%損切り"
+        }
+    }
+
+    # Phase検証
+    if phase not in phase_config:
+        raise HTTPException(status_code=400, detail=f"Invalid phase: {phase}. Must be one of: {list(phase_config.keys())}")
+
+    config = phase_config[phase]
+    return_col = config["return_col"]
+    win_col = config["win_col"]
+    profit_col = config["profit_col"]
 
     # 利用可能なバージョン一覧を取得
     available_versions = []
@@ -173,25 +211,25 @@ async def get_backtest_summary(prompt_version: str | None = None):
                 detail=f"No data found for version: {prompt_version}"
             )
 
-    # 全体の有効なレコード
-    df_valid = df_all[df_all['phase1_return'].notna()].copy()
+    # 全体の有効なレコード（選択されたPhaseのデータがあるもの）
+    df_valid = df_all[df_all[return_col].notna()].copy()
 
     if len(df_valid) == 0:
-        raise HTTPException(status_code=404, detail="No valid backtest results found")
+        raise HTTPException(status_code=404, detail=f"No valid backtest results found for {phase}")
 
     # === 全体統計 ===
-    all_returns = df_valid['phase1_return'].tolist()
-    all_profits = ((df_valid['sell_price'] - df_valid['buy_price']) * 100).tolist()
+    all_returns = df_valid[return_col].tolist()
+    all_profits = df_valid[profit_col].tolist() if profit_col in df_valid.columns else ((df_valid['sell_price'] - df_valid['buy_price']) * 100).tolist()
 
     overall_stats = {
         "total_count": len(df_all),
         "valid_count": len(df_valid),
-        "win_count": int((df_valid['phase1_win'] == True).sum()),
-        "lose_count": int((df_valid['phase1_win'] == False).sum()),
-        "win_rate": float((df_valid['phase1_win'] == True).sum() / len(df_valid) * 100),
+        "win_count": int((df_valid[win_col] == True).sum()),
+        "lose_count": int((df_valid[win_col] == False).sum()),
+        "win_rate": float((df_valid[win_col] == True).sum() / len(df_valid) * 100),
         "avg_return": float(sum(all_returns) / len(all_returns) * 100),
-        "median_return": float(df_valid['phase1_return'].median() * 100),
-        "std_return": float(df_valid['phase1_return'].std() * 100),
+        "median_return": float(df_valid[return_col].median() * 100),
+        "std_return": float(df_valid[return_col].std() * 100),
         "best_return": float(max(all_returns) * 100),
         "worst_return": float(min(all_returns) * 100),
         "avg_profit_per_100_shares": float(sum(all_profits) / len(all_profits)),
@@ -199,25 +237,27 @@ async def get_backtest_summary(prompt_version: str | None = None):
         "best_profit_per_100_shares": float(max(all_profits)),
         "worst_profit_per_100_shares": float(min(all_profits)),
         "total_days": int(df_all['backtest_date'].nunique()),
+        "phase": phase,
+        "phase_description": config["description"],
     }
 
     # === Top5統計 ===
     df_top5 = df_all[df_all['grok_rank'] <= 5]
-    df_top5_valid = df_top5[df_top5['phase1_return'].notna()].copy()
+    df_top5_valid = df_top5[df_top5[return_col].notna()].copy()
 
     if len(df_top5_valid) > 0:
-        top5_returns = df_top5_valid['phase1_return'].tolist()
-        top5_profits = ((df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100).tolist()
+        top5_returns = df_top5_valid[return_col].tolist()
+        top5_profits = df_top5_valid[profit_col].tolist() if profit_col in df_top5_valid.columns else ((df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100).tolist()
 
         top5_stats = {
             "total_count": len(df_top5),
             "valid_count": len(df_top5_valid),
-            "win_count": int((df_top5_valid['phase1_win'] == True).sum()),
-            "lose_count": int((df_top5_valid['phase1_win'] == False).sum()),
-            "win_rate": float((df_top5_valid['phase1_win'] == True).sum() / len(df_top5_valid) * 100),
+            "win_count": int((df_top5_valid[win_col] == True).sum()),
+            "lose_count": int((df_top5_valid[win_col] == False).sum()),
+            "win_rate": float((df_top5_valid[win_col] == True).sum() / len(df_top5_valid) * 100),
             "avg_return": float(sum(top5_returns) / len(top5_returns) * 100),
-            "median_return": float(df_top5_valid['phase1_return'].median() * 100),
-            "std_return": float(df_top5_valid['phase1_return'].std() * 100),
+            "median_return": float(df_top5_valid[return_col].median() * 100),
+            "std_return": float(df_top5_valid[return_col].std() * 100),
             "best_return": float(max(top5_returns) * 100),
             "worst_return": float(min(top5_returns) * 100),
             "avg_profit_per_100_shares": float(sum(top5_profits) / len(top5_profits)),
@@ -252,25 +292,25 @@ async def get_backtest_summary(prompt_version: str | None = None):
     daily_stats_list = []
 
     for backtest_date, df_day in daily_groups:
-        df_day_valid = df_day[df_day['phase1_return'].notna()]
+        df_day_valid = df_day[df_day[return_col].notna()]
 
         if len(df_day_valid) > 0:
-            win_count = (df_day_valid['phase1_win'] == True).sum()
-            day_profits = ((df_day_valid['sell_price'] - df_day_valid['buy_price']) * 100).tolist()
+            win_count = (df_day_valid[win_col] == True).sum()
+            day_profits = df_day_valid[profit_col].tolist() if profit_col in df_day_valid.columns else ((df_day_valid['sell_price'] - df_day_valid['buy_price']) * 100).tolist()
 
             # Top5のデータを計算
             df_day_top5 = df_day_valid.nsmallest(5, 'grok_rank') if len(df_day_valid) >= 5 else df_day_valid
-            top5_profits = ((df_day_top5['sell_price'] - df_day_top5['buy_price']) * 100).tolist()
-            top5_win_count = (df_day_top5['phase1_win'] == True).sum()
+            top5_profits = df_day_top5[profit_col].tolist() if profit_col in df_day_top5.columns else ((df_day_top5['sell_price'] - df_day_top5['buy_price']) * 100).tolist()
+            top5_win_count = (df_day_top5[win_col] == True).sum()
 
             daily_stats_list.append({
                 "date": backtest_date.isoformat(),
                 "win_rate": float(win_count / len(df_day_valid) * 100),
-                "avg_return": float(df_day_valid['phase1_return'].mean() * 100),
+                "avg_return": float(df_day_valid[return_col].mean() * 100),
                 "count": len(df_day_valid),
                 "total_profit_per_100": float(sum(day_profits)),
                 "top5_total_profit_per_100": float(sum(top5_profits)),
-                "top5_avg_return": float(df_day_top5['phase1_return'].mean() * 100),
+                "top5_avg_return": float(df_day_top5[return_col].mean() * 100),
                 "top5_win_rate": float(top5_win_count / len(df_day_top5) * 100),
             })
 
