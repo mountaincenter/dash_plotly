@@ -36,12 +36,13 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 import yfinance as yf
 from common_cfg.paths import PARQUET_DIR
-from common_cfg.s3io import upload_file
+from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
 
 # パス定義
-GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 BACKTEST_DIR = PARQUET_DIR / "backtest"
+BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
+GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
 
 
@@ -343,9 +344,16 @@ def run_backtest() -> pd.DataFrame:
     print("Grok Trending Backtest")
     print("=" * 80)
 
-    # 1. grok_trending.parquetを読み込み
-    if not GROK_TRENDING_PATH.exists():
-        print(f"[ERROR] grok_trending.parquet not found: {GROK_TRENDING_PATH}")
+    # 1. S3からgrok_trending.parquetをダウンロード
+    cfg = load_s3_config()
+    if not cfg:
+        print("[ERROR] S3 not configured")
+        return pd.DataFrame()
+
+    s3_key = "grok_trending.parquet"
+    print(f"[INFO] Downloading from S3: {s3_key}")
+    if not download_file(cfg, s3_key, GROK_TRENDING_PATH):
+        print(f"[ERROR] Failed to download grok_trending.parquet from S3")
         return pd.DataFrame()
 
     df_grok = pd.read_parquet(GROK_TRENDING_PATH)
@@ -434,8 +442,11 @@ def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
         df: バックテスト結果
         backtest_date: バックテスト日 (YYYY-MM-DD)
     """
-    # ディレクトリ作成
-    BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
+    # S3設定を読み込み
+    cfg = load_s3_config()
+    if not cfg:
+        print("[WARN] S3 not configured, skipping archive")
+        return
 
     # 1. 日付ごとのファイルとして保存
     date_str = backtest_date.replace("-", "")
@@ -443,8 +454,12 @@ def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
     df.to_parquet(dated_file, index=False)
     print(f"[OK] Saved dated file: {dated_file}")
 
-    # 2. アーカイブファイルに追加
-    if BACKTEST_ARCHIVE_PATH.exists():
+    # 2. S3から既存のアーカイブをダウンロード
+    s3_archive_key = "backtest/grok_trending_archive.parquet"
+    print(f"[INFO] Downloading existing archive from S3: {s3_archive_key}")
+    archive_exists = download_file(cfg, s3_archive_key, BACKTEST_ARCHIVE_PATH)
+
+    if archive_exists:
         df_archive = pd.read_parquet(BACKTEST_ARCHIVE_PATH)
         # 同じbacktest_dateのデータを削除（上書き）
         df_archive = df_archive[df_archive['backtest_date'] != backtest_date]
@@ -461,19 +476,15 @@ def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
 
     # 3. S3にアップロード
     try:
-        cfg = load_s3_config()
-        if cfg.bucket:
-            # 日付ごとのファイルをアップロード
-            s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
-            upload_file(cfg, dated_file, s3_key_dated)
-            print(f"[OK] Uploaded to S3: {s3_key_dated}")
+        # 日付ごとのファイルをアップロード
+        s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
+        upload_file(cfg, dated_file, s3_key_dated)
+        print(f"[OK] Uploaded to S3: {s3_key_dated}")
 
-            # アーカイブファイルをアップロード
-            s3_key_archive = "backtest/grok_trending_archive.parquet"
-            upload_file(cfg, BACKTEST_ARCHIVE_PATH, s3_key_archive)
-            print(f"[OK] Uploaded to S3: {s3_key_archive}")
-        else:
-            print("[WARN] S3 not configured, skipping upload")
+        # アーカイブファイルをアップロード
+        s3_key_archive = "backtest/grok_trending_archive.parquet"
+        upload_file(cfg, BACKTEST_ARCHIVE_PATH, s3_key_archive)
+        print(f"[OK] Uploaded to S3: {s3_key_archive}")
     except Exception as e:
         print(f"[ERROR] Failed to upload to S3: {e}")
 
