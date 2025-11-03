@@ -11,7 +11,6 @@ Exit codes:
 
 import argparse
 import sys
-import os
 from datetime import datetime
 from io import BytesIO
 
@@ -109,22 +108,23 @@ def verify_s3_backup(bucket: str, date: str) -> bool:
         raise
 
 
-def get_target_date_from_parquet(parquet_path: str) -> str | None:
+def get_target_date_from_s3(bucket: str, key: str = "parquet/grok_trending.parquet") -> str | None:
     """
-    grok_trending.parquet から対象日付を取得
+    S3上のgrok_trending.parquet から対象日付を取得
 
     Args:
-        parquet_path: grok_trending.parquet のパス
+        bucket: S3バケット名
+        key: S3キー（デフォルト: parquet/grok_trending.parquet）
 
     Returns:
         YYYYMMDD形式の日付、取得できない場合はNone
     """
-    try:
-        if not os.path.exists(parquet_path):
-            print(f"⚠️ Local file not found: {parquet_path}")
-            return None
+    s3_client = boto3.client('s3')
 
-        df = pd.read_parquet(parquet_path)
+    try:
+        print(f"📥 Downloading grok_trending.parquet from S3: s3://{bucket}/{key}")
+        obj_response = s3_client.get_object(Bucket=bucket, Key=key)
+        df = pd.read_parquet(BytesIO(obj_response['Body'].read()))
 
         if df.empty:
             print(f"⚠️ grok_trending.parquet is empty")
@@ -142,8 +142,14 @@ def get_target_date_from_parquet(parquet_path: str) -> str | None:
 
         return date_yyyymmdd
 
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print(f"❌ S3 file not found: s3://{bucket}/{key}")
+        else:
+            print(f"❌ S3 error: {e}")
+        return None
     except Exception as e:
-        print(f"❌ Error reading grok_trending.parquet: {e}")
+        print(f"❌ Error reading grok_trending.parquet from S3: {e}")
         return None
 
 
@@ -158,12 +164,7 @@ def main():
     )
     parser.add_argument(
         '--date',
-        help='確認する日付（YYYYMMDD形式）。指定しない場合はgrok_trending.parquetから取得'
-    )
-    parser.add_argument(
-        '--parquet-path',
-        default='data/parquet/grok_trending.parquet',
-        help='grok_trending.parquetのパス（デフォルト: data/parquet/grok_trending.parquet）'
+        help='確認する日付（YYYYMMDD形式）。指定しない場合はS3のgrok_trending.parquetから取得'
     )
 
     args = parser.parse_args()
@@ -173,8 +174,8 @@ def main():
         target_date = args.date
         print(f"📅 Using specified date: {target_date}")
     else:
-        print(f"📅 Reading date from: {args.parquet_path}")
-        target_date = get_target_date_from_parquet(args.parquet_path)
+        print(f"📅 Reading date from S3: s3://{args.bucket}/parquet/grok_trending.parquet")
+        target_date = get_target_date_from_s3(args.bucket)
 
         if not target_date:
             print("❌ Could not determine target date")
