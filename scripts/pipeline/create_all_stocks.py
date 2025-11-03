@@ -23,7 +23,6 @@ from common_cfg.s3cfg import load_s3_config
 META_PATH = PARQUET_DIR / "meta.parquet"
 SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
 SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
-GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 
 
@@ -79,18 +78,24 @@ def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.
         print("  [WARN] scalping_active.parquet not found, using empty DataFrame")
         scalping_active = pd.DataFrame()
 
-    # grok_trending.parquet（S3優先、generate_grok_trending.pyが生成済み）
+    # grok_trending.parquet（S3から取得）
     print("[INFO] Loading grok_trending.parquet...")
 
-    # S3からダウンロードを試行
-    if not GROK_TRENDING_PATH.exists():
-        s3_success = download_from_s3_if_exists("grok_trending.parquet", GROK_TRENDING_PATH)
+    # 一時ファイルパスを作成
+    temp_dir = PARQUET_DIR / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_grok_path = temp_dir / "grok_trending_temp.parquet"
 
-    if GROK_TRENDING_PATH.exists():
-        grok_trending = pd.read_parquet(GROK_TRENDING_PATH)
+    # S3からダウンロード
+    s3_success = download_from_s3_if_exists("grok_trending.parquet", temp_grok_path)
+
+    if s3_success and temp_grok_path.exists():
+        grok_trending = pd.read_parquet(temp_grok_path)
         print(f"  ✓ Loaded grok_trending.parquet: {len(grok_trending)} stocks")
+        # クリーンアップ
+        temp_grok_path.unlink(missing_ok=True)
     else:
-        print("  [WARN] grok_trending.parquet not found in S3 or locally, using empty DataFrame")
+        print("  [WARN] grok_trending.parquet not found in S3, using empty DataFrame")
         grok_trending = pd.DataFrame()
 
     return meta, scalping_entry, scalping_active, grok_trending
