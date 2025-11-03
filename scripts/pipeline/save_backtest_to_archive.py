@@ -1,457 +1,506 @@
 #!/usr/bin/env python3
 """
-generate_market_summary.py
-Grok APIを使って国内株式市場の日次サマリーレポートを生成
+save_backtest_to_archive.py
+Grok trending銘柄のバックテスト結果をアーカイブに保存
 
 実行方法:
-    # パイプライン実行（16時更新）
-    python3 scripts/pipeline/generate_market_summary.py
+    # パイプライン実行（16時更新 - GitHub Actions）
+    python3 scripts/pipeline/save_backtest_to_archive.py
 
-    # 手動実行（日付指定）
-    python3 scripts/pipeline/generate_market_summary.py --date 2025-10-31
-
-出力:
-    data/parquet/market_summary/raw/2025-10-31.md
-    data/parquet/market_summary/structured/2025-10-31.json
-
-動作仕様:
-    - 毎日16時（JST）に実行
-    - 東証大引け後（15:30終了）のデータを使用
-    - Markdown + JSON の2ファイルを生成
+機能:
+    - grok_trending.parquet を読み込み
+    - 翌営業日の株価データを取得（yfinance）
+    - バックテスト結果を計算（Phase1, Phase2, Phase3）
+    - 前場・全日の高値・安値・最大上昇率・最大下落率を計算
+    - grok_trending_YYYYMMDD.parquet として保存
+    - grok_trending_archive.parquet に追加
     - S3にアップロード
 
-備考:
-    - .env.xai に XAI_API_KEY が必要
-    - プロンプトは data/prompts/v1_1_market_summary.py を使用
+出力:
+    - data/parquet/backtest/grok_trending_YYYYMMDD.parquet
+    - data/parquet/backtest/grok_trending_archive.parquet
 """
 
 from __future__ import annotations
 
 import sys
-import json  # 追加: ツールargumentsパース用
-import argparse
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime, timedelta, time
+from typing import Optional, Tuple, Any
+import traceback
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from openai import OpenAI
-from dotenv import dotenv_values
+import pandas as pd
+import yfinance as yf
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file
 from common_cfg.s3cfg import load_s3_config
 
-# 保存先ディレクトリ
-MARKET_SUMMARY_DIR = PARQUET_DIR / "market_summary"
-RAW_DIR = MARKET_SUMMARY_DIR / "raw"
-STRUCTURED_DIR = MARKET_SUMMARY_DIR / "structured"
-ENV_XAI_PATH = ROOT / ".env.xai"
+# パス定義
+GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
+BACKTEST_DIR = PARQUET_DIR / "backtest"
+BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
 
 
-def parse_args():
-    """コマンドライン引数をパース"""
-    parser = argparse.ArgumentParser(description="Generate market summary report")
-    parser.add_argument(
-        "--date",
-        type=str,
-        help="Target date (YYYY-MM-DD format, default: today JST)"
-    )
-    return parser.parse_args()
-
-
-def get_target_date(date_str: str | None = None) -> datetime:
+def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
     """
-    対象日を取得
+    yfinanceを使用して5分足の株価データを取得
 
     Args:
-        date_str: 日付文字列（YYYY-MM-DD形式、Noneの場合は今日）
+        ticker: 銘柄コード (例: "9984.T")
+        date: 取得する日付
 
     Returns:
-        datetime: 対象日（JST）
+        5分足データのDataFrame、または取得失敗時はNone
     """
-    if date_str:
-        return datetime.strptime(date_str, "%Y-%m-%d")
-    else:
-        # 今日の日付（JST）
-        from datetime import timezone
-        jst = timezone(timedelta(hours=9))
-        return datetime.now(jst).replace(tzinfo=None)
-
-
-def load_xai_api_key() -> str:
-    """Load XAI_API_KEY from .env.xai"""
-    if not ENV_XAI_PATH.exists():
-        raise FileNotFoundError(
-            f".env.xai not found: {ENV_XAI_PATH}\n"
-            "Please create .env.xai with XAI_API_KEY=your_api_key"
-        )
-
-    config = dotenv_values(ENV_XAI_PATH)
-    api_key = config.get("XAI_API_KEY")
-
-    if not api_key:
-        raise ValueError("XAI_API_KEY not found in .env.xai")
-
-    return api_key
-
-
-def build_market_summary_prompt(target_date: datetime) -> str:
-    """
-    市場サマリープロンプトを生成
-
-    Args:
-        target_date: 対象日
-
-    Returns:
-        str: Grok APIに送信するプロンプト
-    """
-    # v1.1を使用（ツール必須版）
-    from data.prompts.v1_1_market_summary import build_market_summary_prompt as build_prompt
-
-    context = {
-        'execution_date': target_date.strftime("%Y-%m-%d"),
-        'latest_trading_day': target_date.strftime("%Y-%m-%d"),
-        'report_time': '16:00'
-    }
-
-    return build_prompt(context)
-
-
-def query_grok(api_key: str, prompt: str) -> str:
-    """Query Grok API via OpenAI client with mandatory tool usage"""
-    print("[INFO] Querying Grok API for market summary...")
-
-    # promptがstrかチェック
-    if not isinstance(prompt, str):
-        raise ValueError(f"Invalid prompt type: {type(prompt)}. Expected str.")
-
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.x.ai/v1",
-    )
-
-    # ツール定義（xAIサポート）
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "web_search",
-                "description": "Search web for market data",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string"},
-                        "num_results": {"type": "integer"}
-                    }
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "browse_page",
-                "description": "Browse URL for specific data",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "url": {"type": "string"},
-                        "instructions": {"type": "string"}
-                    }
-                }
-            }
-        }
-    ]
-
-    messages = [{"role": "user", "content": prompt}]
-
     try:
-        response = client.chat.completions.create(
-            model="grok-4-fast-reasoning",
-            messages=messages,
-            tools=tools,
-            tool_choice="required",
-            temperature=0.1,
-            max_tokens=3000,
+        # 日付の前後2日分のデータを取得（余裕を持たせる）
+        start_date = date - timedelta(days=2)
+        end_date = date + timedelta(days=2)
+
+        stock = yf.Ticker(ticker)
+        df = stock.history(
+            start=start_date.strftime("%Y-%m-%d"),
+            end=end_date.strftime("%Y-%m-%d"),
+            interval="5m"
         )
 
-        # ツールコール処理
-        if response.choices[0].message.tool_calls:
-            print(f"[INFO] Tool calls detected: {len(response.choices[0].message.tool_calls)} call(s)")
-            print("[INFO] Processing multi-turn tool execution...")
+        if df.empty:
+            return None
 
-            messages.append(response.choices[0].message)
+        # タイムゾーンを除去（JST前提）
+        if df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
 
-            # ツール結果フィードバック（独立parsed_args使用）
-            for tool_call in response.choices[0].message.tool_calls:
-                parsed_args = tool_call.function.arguments
+        # 指定日のデータのみを抽出
+        target_date = pd.Timestamp(date.date())
+        df_target = df[df.index.date == target_date.date()]
 
-                # パース: strならloads、dictならそのまま
-                if isinstance(parsed_args, str):
-                    try:
-                        parsed_args = json.loads(parsed_args)
-                        print(f"[DEBUG] Parsed str to dict: keys = {list(parsed_args.keys())}")
-                    except json.JSONDecodeError as e:
-                        print(f"[WARN] JSON parse failed: {e}. Using empty dict.")
-                        parsed_args = {}
-                elif not isinstance(parsed_args, dict):
-                    print(f"[WARN] Unexpected type {type(parsed_args)}. Using empty dict.")
-                    parsed_args = {}
-
-                # 独立parsed_argsでget() - 上書きせず
-                query_or_url = parsed_args.get('query', parsed_args.get('url', 'N/A'))
-                print(f"[DEBUG] Extracted query/url: {query_or_url}")
-
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": f"Tool '{tool_call.function.name}' executed successfully. Results from query/url: {query_or_url}. Verified data: Use for accurate analysis without estimation."
-                })
-
-            # 2回目のAPI呼び出し
-            print("[INFO] Sending second API call for final response...")
-            response = client.chat.completions.create(
-                model="grok-4-fast-reasoning",
-                messages=messages,
-                tools=tools,
-                temperature=0.1,
-                max_tokens=3000,
-            )
-
-        content = response.choices[0].message.content or ""
-
-        # 質チェック
-        if "推定値" in content or "確認できず" in content or "ツール実行エラー" in content:
-            raise ValueError(f"Low-quality response detected: '{content[:100]}...' - Retry with adjusted prompt or check API.")
-
-        print(f"[OK] Received response from Grok ({len(content)} chars)")
-        return content
+        return df_target if not df_target.empty else None
 
     except Exception as e:
-        print(f"[ERROR] API response error: {str(e)}")
-        print(f"[DEBUG] Full traceback:\n{traceback.format_exc()}")
-        raise
+        print(f"[WARN] Failed to fetch intraday data for {ticker} on {date.date()}: {e}")
+        return None
 
 
-def parse_markdown_response(response: str, target_date: datetime) -> dict[str, Any]:
+def calculate_morning_metrics(
+    df: pd.DataFrame,
+    open_price: float
+) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
     """
-    GrokのMarkdownレスポンスを構造化データに変換
+    前場（9:00-11:30）のメトリクスを計算
 
     Args:
-        response: GrokからのMarkdownレスポンス
-        target_date: 対象日
+        df: 5分足データ
+        open_price: 始値
 
     Returns:
-        dict: 構造化されたデータ（JSON保存用）
+        Tuple of (morning_high, morning_low, morning_max_gain_pct, morning_max_drawdown_pct)
     """
-    # タイトル抽出
-    lines = response.split('\n')
-    title = lines[0].replace('#', '').strip() if lines else f"{target_date.strftime('%Y/%m/%d')} 国内株式市場サマリー"
+    if df.empty or open_price is None or open_price == 0:
+        return None, None, None, None
 
-    # セクション分割（簡易版）
-    sections = {
-        'indices': '',
-        'sectors': '',
-        'news': '',
-        'trends': '',
-        'indicators': ''
-    }
+    try:
+        # 前場の時間帯でフィルタ (9:00-11:30)
+        morning_data = df.between_time("09:00", "11:30")
 
-    current_section = None
-    section_content = []
+        if morning_data.empty:
+            return None, None, None, None
 
-    for line in lines[1:]:  # タイトル行をスキップ
-        if '## ' in line or '### ' in line:
-            # 前のセクションを保存
-            if current_section and section_content:
-                sections[current_section] = '\n'.join(section_content).strip()
-                section_content = []
+        morning_high = morning_data['High'].max()
+        morning_low = morning_data['Low'].min()
 
-            # 新しいセクションを検出
-            section_header = line.lower()
-            if '主要指数' in section_header or 'indices' in section_header:
-                current_section = 'indices'
-            elif 'セクター' in section_header or 'sector' in section_header:
-                current_section = 'sectors'
-            elif 'ニュース' in section_header or 'news' in section_header:
-                current_section = 'news'
-            elif 'トレンド' in section_header or '全体' in section_header or 'trend' in section_header:
-                current_section = 'trends'
-            elif '指標' in section_header or 'indicator' in section_header:
-                current_section = 'indicators'
+        morning_max_gain_pct = ((morning_high - open_price) / open_price * 100)
+        morning_max_drawdown_pct = ((morning_low - open_price) / open_price * 100)
 
-        if current_section:
-            section_content.append(line)
+        return morning_high, morning_low, morning_max_gain_pct, morning_max_drawdown_pct
 
-    # 最後のセクションを保存
-    if current_section and section_content:
-        sections[current_section] = '\n'.join(section_content).strip()
+    except Exception as e:
+        print(f"[WARN] Failed to calculate morning metrics: {e}")
+        return None, None, None, None
 
-    return {
-        'report_metadata': {
-            'date': target_date.strftime('%Y-%m-%d'),
-            'generated_at': datetime.now().isoformat(),
-            'prompt_version': '1.1',
-            'word_count': len(response),
-        },
-        'content': {
-            'title': title,
-            'markdown_full': response,
-            'sections': sections
+
+def calculate_daily_metrics(
+    df: pd.DataFrame,
+    open_price: float
+) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
+    """
+    全日（9:00-15:30）のメトリクスを計算
+
+    Args:
+        df: 5分足データ
+        open_price: 始値
+
+    Returns:
+        Tuple of (high, low, daily_max_gain_pct, daily_max_drawdown_pct)
+    """
+    if df.empty or open_price is None or open_price == 0:
+        return None, None, None, None
+
+    try:
+        high = df['High'].max()
+        low = df['Low'].min()
+
+        daily_max_gain_pct = ((high - open_price) / open_price * 100)
+        daily_max_drawdown_pct = ((low - open_price) / open_price * 100)
+
+        return high, low, daily_max_gain_pct, daily_max_drawdown_pct
+
+    except Exception as e:
+        print(f"[WARN] Failed to calculate daily metrics: {e}")
+        return None, None, None, None
+
+
+def calculate_phase3_return(
+    df_5min: pd.DataFrame,
+    open_price: float,
+    profit_threshold: float,
+    loss_threshold: float
+) -> Tuple[Optional[float], Optional[bool], Optional[str]]:
+    """
+    Phase3（利確損切戦略）のリターンを計算
+
+    Args:
+        df_5min: 5分足データ
+        open_price: 始値
+        profit_threshold: 利確閾値（例: 0.03 = 3%）
+        loss_threshold: 損切閾値（例: -0.03 = -3%）
+
+    Returns:
+        Tuple of (return, win, exit_reason)
+    """
+    if df_5min.empty or open_price is None or open_price == 0:
+        return None, None, None
+
+    try:
+        # 時系列順にソート
+        df_sorted = df_5min.sort_index()
+
+        for idx, row in df_sorted.iterrows():
+            high_price = row['High']
+            low_price = row['Low']
+
+            # 利確判定（高値で判定）
+            if (high_price - open_price) / open_price >= profit_threshold:
+                phase_return = profit_threshold
+                win = True
+                exit_reason = f"profit_take_{profit_threshold*100}%"
+                return phase_return, win, exit_reason
+
+            # 損切判定（安値で判定）
+            if (low_price - open_price) / open_price <= loss_threshold:
+                phase_return = loss_threshold
+                win = False
+                exit_reason = f"stop_loss_{loss_threshold*100}%"
+                return phase_return, win, exit_reason
+
+        # 閾値に到達せず大引けまで保持
+        close_price = df_sorted.iloc[-1]['Close']
+        phase_return = (close_price - open_price) / open_price
+        win = phase_return > 0
+        exit_reason = "hold_until_close"
+        return phase_return, win, exit_reason
+
+    except Exception as e:
+        print(f"[WARN] Failed to calculate Phase3 return: {e}")
+        return None, None, None
+
+
+def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
+    """
+    バックテスト用の株価データを取得
+
+    Args:
+        ticker: 銘柄コード (例: "6526.T")
+        backtest_date: バックテスト日（翌営業日）
+
+    Returns:
+        dict: バックテストデータ
+    """
+    try:
+        # 日次データを取得
+        stock = yf.Ticker(ticker)
+        start_date = (backtest_date - timedelta(days=1)).strftime("%Y-%m-%d")
+        end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
+
+        hist_daily = stock.history(start=start_date, end=end_date, interval="1d")
+
+        if hist_daily.empty:
+            return None
+
+        # インデックスをdate型に変換
+        hist_daily.index = pd.to_datetime(hist_daily.index).date
+        backtest_date_obj = backtest_date.date()
+
+        if backtest_date_obj not in hist_daily.index:
+            return None
+
+        daily_row = hist_daily.loc[backtest_date_obj]
+
+        buy_price = float(daily_row['Open'])
+        sell_price = float(daily_row['Close'])  # Phase1用（前場引け値として近似）
+        daily_close = float(daily_row['Close'])
+        high = float(daily_row['High'])
+        low = float(daily_row['Low'])
+        volume = int(daily_row['Volume'])
+
+        # 5分足データを取得
+        df_5min = fetch_intraday_data(ticker, backtest_date)
+
+        # 前場メトリクス計算
+        morning_high, morning_low, morning_max_gain_pct, morning_max_drawdown_pct = calculate_morning_metrics(
+            df_5min, buy_price
+        ) if df_5min is not None else (None, None, None, None)
+
+        # 全日メトリクス計算
+        high_calc, low_calc, daily_max_gain_pct, daily_max_drawdown_pct = calculate_daily_metrics(
+            df_5min, buy_price
+        ) if df_5min is not None else (None, None, None, None)
+
+        # Phase1: 前場引け売り（11:30売却）
+        if df_5min is not None:
+            morning_data = df_5min.between_time("09:00", "11:30")
+            if not morning_data.empty:
+                sell_price = float(morning_data.iloc[-1]['Close'])  # 11:30の終値
+        phase1_return = (sell_price - buy_price) / buy_price
+        phase1_win = phase1_return > 0
+        profit_per_100_shares_phase1 = (sell_price - buy_price) * 100
+
+        # Phase2: 大引け売り（15:30売却）
+        phase2_return = (daily_close - buy_price) / buy_price
+        phase2_win = phase2_return > 0
+        profit_per_100_shares_phase2 = (daily_close - buy_price) * 100
+
+        # Phase3: ±1%/2%/3% 利確損切戦略
+        phase3_results = {}
+        for threshold_pct in [1, 2, 3]:
+            threshold = threshold_pct / 100
+            if df_5min is not None:
+                phase_return, phase_win, exit_reason = calculate_phase3_return(
+                    df_5min, buy_price, threshold, -threshold
+                )
+            else:
+                phase_return, phase_win, exit_reason = None, None, None
+
+            phase3_results[f"phase3_{threshold_pct}pct"] = {
+                "return": phase_return,
+                "win": phase_win,
+                "exit_reason": exit_reason,
+                "profit_per_100_shares": (phase_return * buy_price * 100) if phase_return is not None else None
+            }
+
+        return {
+            "buy_price": buy_price,
+            "sell_price": sell_price,
+            "daily_close": daily_close,
+            "high": high,
+            "low": low,
+            "volume": volume,
+            "phase1_return": phase1_return,
+            "phase1_win": phase1_win,
+            "profit_per_100_shares_phase1": profit_per_100_shares_phase1,
+            "phase2_return": phase2_return,
+            "phase2_win": phase2_win,
+            "profit_per_100_shares_phase2": profit_per_100_shares_phase2,
+            "phase3_1pct_return": phase3_results["phase3_1pct"]["return"],
+            "phase3_1pct_win": phase3_results["phase3_1pct"]["win"],
+            "phase3_1pct_exit_reason": phase3_results["phase3_1pct"]["exit_reason"],
+            "profit_per_100_shares_phase3_1pct": phase3_results["phase3_1pct"]["profit_per_100_shares"],
+            "phase3_2pct_return": phase3_results["phase3_2pct"]["return"],
+            "phase3_2pct_win": phase3_results["phase3_2pct"]["win"],
+            "phase3_2pct_exit_reason": phase3_results["phase3_2pct"]["exit_reason"],
+            "profit_per_100_shares_phase3_2pct": phase3_results["phase3_2pct"]["profit_per_100_shares"],
+            "phase3_3pct_return": phase3_results["phase3_3pct"]["return"],
+            "phase3_3pct_win": phase3_results["phase3_3pct"]["win"],
+            "phase3_3pct_exit_reason": phase3_results["phase3_3pct"]["exit_reason"],
+            "profit_per_100_shares_phase3_3pct": phase3_results["phase3_3pct"]["profit_per_100_shares"],
+            "morning_high": morning_high,
+            "morning_low": morning_low,
+            "morning_max_gain_pct": morning_max_gain_pct,
+            "morning_max_drawdown_pct": morning_max_drawdown_pct,
+            "daily_max_gain_pct": daily_max_gain_pct,
+            "daily_max_drawdown_pct": daily_max_drawdown_pct,
+            "data_source": "5min" if df_5min is not None else "1d"
         }
-    }
+
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch backtest data for {ticker}: {e}")
+        traceback.print_exc()
+        return None
 
 
-def save_files(target_date: datetime, markdown_content: str, structured_data: dict[str, Any]) -> tuple[Path, Path]:
+def run_backtest() -> pd.DataFrame:
     """
-    Markdown と JSON を保存
-
-    Args:
-        target_date: 対象日
-        markdown_content: Markdownコンテンツ
-        structured_data: 構造化データ
+    grok_trending.parquetのバックテストを実行
 
     Returns:
-        tuple[Path, Path]: (markdown_path, json_path)
+        pd.DataFrame: バックテスト結果
+    """
+    print("=" * 80)
+    print("Grok Trending Backtest")
+    print("=" * 80)
+
+    # 1. grok_trending.parquetを読み込み
+    if not GROK_TRENDING_PATH.exists():
+        print(f"[ERROR] grok_trending.parquet not found: {GROK_TRENDING_PATH}")
+        return pd.DataFrame()
+
+    df_grok = pd.read_parquet(GROK_TRENDING_PATH)
+    print(f"[OK] Loaded {len(df_grok)} stocks from grok_trending.parquet")
+
+    if df_grok.empty:
+        print("[WARN] No stocks in grok_trending.parquet")
+        return pd.DataFrame()
+
+    # 2. 選定日と翌営業日を取得
+    selection_date_str = df_grok['date'].iloc[0] if 'date' in df_grok.columns else None
+
+    if not selection_date_str:
+        print("[ERROR] 'date' column not found in grok_trending.parquet")
+        return pd.DataFrame()
+
+    selection_date = datetime.strptime(selection_date_str, "%Y-%m-%d")
+    print(f"[INFO] Selection date: {selection_date.date()}")
+
+    # 翌営業日を取得（簡易版: selection_date + 1日）
+    # 実際の営業日判定はJ-Quantsを使用することを推奨
+    backtest_date = selection_date + timedelta(days=1)
+    print(f"[INFO] Backtest date (next trading day): {backtest_date.date()}")
+
+    # 3. 各銘柄のバックテストを実行
+    results = []
+
+    for idx, row in df_grok.iterrows():
+        ticker = row['ticker']
+        print(f"[{idx+1}/{len(df_grok)}] Processing {ticker}...", end=" ", flush=True)
+
+        backtest_data = fetch_backtest_data(ticker, backtest_date)
+
+        if backtest_data is None:
+            print("SKIP (no data)")
+            continue
+
+        result = {
+            "selection_date": selection_date.strftime("%Y-%m-%d"),
+            "backtest_date": backtest_date.strftime("%Y-%m-%d"),
+            "ticker": ticker,
+            "company_name": row.get("stock_name", ""),
+            "category": row.get("tags", "").split(",")[0] if row.get("tags") else "",
+            "reason": row.get("reason", ""),
+            "grok_rank": row.get("grok_rank", idx + 1),
+            "selection_score": row.get("selection_score", 0),
+            **backtest_data,
+            "prompt_version": row.get("prompt_version", "v1_1_web_search")
+        }
+
+        results.append(result)
+        print(f"OK (Phase1: {backtest_data['phase1_return']*100:+.2f}%, Phase2: {backtest_data['phase2_return']*100:+.2f}%)")
+
+    if not results:
+        print("[WARN] No backtest results generated")
+        return pd.DataFrame()
+
+    df_results = pd.DataFrame(results)
+    print(f"\n[OK] Generated backtest results for {len(df_results)} stocks")
+
+    # 4. 統計を表示
+    print("\n" + "=" * 80)
+    print("Backtest Summary")
+    print("=" * 80)
+    print(f"Phase1 (前場引け売り):")
+    print(f"  Win rate: {df_results['phase1_win'].mean()*100:.1f}%")
+    print(f"  Avg return: {df_results['phase1_return'].mean()*100:+.2f}%")
+    print(f"Phase2 (大引け売り):")
+    print(f"  Win rate: {df_results['phase2_win'].mean()*100:.1f}%")
+    print(f"  Avg return: {df_results['phase2_return'].mean()*100:+.2f}%")
+    print(f"Phase3-3% (±3%利確損切):")
+    phase3_3pct_win_rate = df_results['phase3_3pct_win'].mean() * 100 if df_results['phase3_3pct_win'].notna().any() else 0
+    phase3_3pct_avg_return = df_results['phase3_3pct_return'].mean() * 100 if df_results['phase3_3pct_return'].notna().any() else 0
+    print(f"  Win rate: {phase3_3pct_win_rate:.1f}%")
+    print(f"  Avg return: {phase3_3pct_avg_return:+.2f}%")
+    print("=" * 80)
+
+    return df_results
+
+
+def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
+    """
+    バックテスト結果をアーカイブに保存
+
+    Args:
+        df: バックテスト結果
+        backtest_date: バックテスト日 (YYYY-MM-DD)
     """
     # ディレクトリ作成
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    STRUCTURED_DIR.mkdir(parents=True, exist_ok=True)
+    BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 
-    date_str = target_date.strftime('%Y-%m-%d')
+    # 1. 日付ごとのファイルとして保存
+    date_str = backtest_date.replace("-", "")
+    dated_file = BACKTEST_DIR / f"grok_trending_{date_str}.parquet"
+    df.to_parquet(dated_file, index=False)
+    print(f"[OK] Saved dated file: {dated_file}")
 
-    # Markdown保存
-    markdown_path = RAW_DIR / f"{date_str}.md"
-    with open(markdown_path, 'w', encoding='utf-8') as f:
-        f.write(markdown_content)
-    print(f"[OK] Saved Markdown: {markdown_path}")
+    # 2. アーカイブファイルに追加
+    if BACKTEST_ARCHIVE_PATH.exists():
+        df_archive = pd.read_parquet(BACKTEST_ARCHIVE_PATH)
+        # 同じbacktest_dateのデータを削除（上書き）
+        df_archive = df_archive[df_archive['backtest_date'] != backtest_date]
+        df_merged = pd.concat([df_archive, df], ignore_index=True)
+        print(f"[INFO] Merged with existing archive: {len(df_archive)} + {len(df)} = {len(df_merged)} records")
+    else:
+        df_merged = df
+        print("[INFO] Creating new archive file")
 
-    # JSON保存
-    json_path = STRUCTURED_DIR / f"{date_str}.json"
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(structured_data, f, ensure_ascii=False, indent=2)
-    print(f"[OK] Saved JSON: {json_path}")
+    df_merged.to_parquet(BACKTEST_ARCHIVE_PATH, index=False)
+    print(f"[OK] Saved archive: {BACKTEST_ARCHIVE_PATH}")
+    print(f"     Total records: {len(df_merged)}")
+    print(f"     Date range: {df_merged['backtest_date'].min()} to {df_merged['backtest_date'].max()}")
 
-    return markdown_path, json_path
-
-
-def upload_to_s3(local_path: Path, s3_key: str) -> bool:
-    """
-    ファイルをS3にアップロード
-
-    Args:
-        local_path: ローカルファイルパス
-        s3_key: S3キー（market_summary/raw/2025-10-31.md など）
-
-    Returns:
-        bool: 成功/失敗
-    """
+    # 3. S3にアップロード
     try:
         cfg = load_s3_config()
-        if not cfg.bucket:
-            print("[WARN] S3 bucket not configured; upload skipped.")
-            return False
+        if cfg.bucket:
+            # 日付ごとのファイルをアップロード
+            s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
+            upload_file(cfg, dated_file, s3_key_dated)
+            print(f"[OK] Uploaded to S3: {s3_key_dated}")
 
-        print(f"[INFO] Uploading to S3: s3://{cfg.bucket}/{cfg.prefix}{s3_key}")
-        success = upload_file(cfg, local_path, s3_key)
-
-        if success:
-            print(f"[OK] Uploaded: {s3_key}")
+            # アーカイブファイルをアップロード
+            s3_key_archive = "backtest/grok_trending_archive.parquet"
+            upload_file(cfg, BACKTEST_ARCHIVE_PATH, s3_key_archive)
+            print(f"[OK] Uploaded to S3: {s3_key_archive}")
         else:
-            print(f"[WARN] Upload failed: {s3_key}")
-
-        return success
-
+            print("[WARN] S3 not configured, skipping upload")
     except Exception as e:
-        print(f"[ERROR] S3 upload error: {e}")
-        return False
+        print(f"[ERROR] Failed to upload to S3: {e}")
 
 
 def main() -> int:
     """メイン処理"""
-    args = parse_args()
-
-    print("=" * 60)
-    print("Generate Market Summary Report")
-    print("=" * 60)
-
-    # 1. 対象日の取得
-    target_date = get_target_date(args.date)
-    print(f"\nTarget date: {target_date.strftime('%Y-%m-%d')}")
-
-    # 2. Grok API Key読み込み
     try:
-        api_key = load_xai_api_key()
-        print("[OK] XAI API Key loaded")
-    except Exception as e:
-        print(f"[ERROR] Failed to load API key: {e}")
-        return 1
+        # 1. バックテスト実行
+        df_results = run_backtest()
 
-    # 3. プロンプト生成
-    print("\n[STEP 1] Building prompt...")
-    try:
-        prompt = build_market_summary_prompt(target_date)
-        print(f"[OK] Prompt built ({len(prompt)} chars)")
-    except Exception as e:
-        print(f"[ERROR] Failed to build prompt: {e}")
-        return 1
+        if df_results.empty:
+            print("[ERROR] No backtest results to save")
+            return 1
 
-    # 4. Grok API呼び出し
-    print("\n[STEP 2] Querying Grok API...")
-    try:
-        markdown_response = query_grok(api_key, prompt)
-    except Exception as e:
-        print(f"[ERROR] Grok API call failed: {e}")
-        return 1
+        # 2. アーカイブに保存
+        backtest_date = df_results['backtest_date'].iloc[0]
+        save_to_archive(df_results, backtest_date)
 
-    # 5. 構造化データ生成
-    print("\n[STEP 3] Parsing response...")
-    try:
-        structured_data = parse_markdown_response(markdown_response, target_date)
-        # プロンプトバージョンを1.1に更新
-        structured_data['report_metadata']['prompt_version'] = '1.1'
-        print("[OK] Response parsed")
-    except Exception as e:
-        print(f"[ERROR] Failed to parse response: {e}")
-        return 1
+        print("\n" + "=" * 80)
+        print("✅ Backtest completed and archived successfully!")
+        print("=" * 80)
 
-    # 6. ローカル保存
-    print("\n[STEP 4] Saving files locally...")
-    try:
-        markdown_path, json_path = save_files(target_date, markdown_response, structured_data)
-    except Exception as e:
-        print(f"[ERROR] Failed to save files: {e}")
-        return 1
-
-    # 7. S3アップロード
-    print("\n[STEP 5] Uploading to S3...")
-    date_str = target_date.strftime('%Y-%m-%d')
-
-    md_success = upload_to_s3(markdown_path, f"market_summary/raw/{date_str}.md")
-    json_success = upload_to_s3(json_path, f"market_summary/structured/{date_str}.json")
-
-    # 8. サマリー表示
-    print("\n" + "=" * 60)
-    print("Summary")
-    print("=" * 60)
-    print(f"Target date:     {date_str}")
-    print(f"Markdown saved:  {markdown_path}")
-    print(f"JSON saved:      {json_path}")
-    print(f"S3 upload (MD):  {'✅' if md_success else '❌'}")
-    print(f"S3 upload (JSON): {'✅' if json_success else '❌'}")
-    print(f"Word count:      {structured_data['report_metadata']['word_count']}")
-    print("=" * 60)
-
-    if md_success and json_success:
-        print("\n✅ Market summary generation completed successfully!")
         return 0
-    elif markdown_path.exists() and json_path.exists():
-        print("\n⚠️  Files saved locally, but S3 upload failed")
-        return 0
-    else:
-        print("\n❌ Market summary generation failed")
+
+    except Exception as e:
+        print(f"\n[ERROR] Backtest failed: {e}")
+        traceback.print_exc()
         return 1
 
 
