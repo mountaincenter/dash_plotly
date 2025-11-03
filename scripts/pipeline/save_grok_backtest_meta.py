@@ -18,6 +18,9 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.s3io import download_file
+from common_cfg.s3cfg import load_s3_config
+import boto3
 
 def calculate_selection_score(row):
     """選定時点でのスコアを計算"""
@@ -34,39 +37,74 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
     バックテスト結果からメタ情報を生成
 
     優先順位:
-    1. backtest/ディレクトリのアーカイブファイル（16:00 JST実行で生成）
+    1. S3のbacktest/ディレクトリのアーカイブファイル（16:00 JST実行で生成）
     2. backtest_results/ディレクトリのCSVファイル（旧形式・互換性用）
 
     Returns:
         pd.DataFrame: バックテストメタ情報
     """
-    # 1. backtest/ディレクトリのアーカイブファイルを確認
-    backtest_archive_dir = PARQUET_DIR / "backtest"
+    # 1. S3からbacktest/ディレクトリのアーカイブファイルを取得
+    cfg = load_s3_config()
+    if cfg:
+        try:
+            s3_client = boto3.client('s3')
 
-    if backtest_archive_dir.exists():
-        archive_files = sorted(backtest_archive_dir.glob("grok_trending_*.parquet"))
+            # S3のbacktest/ディレクトリをリスト
+            prefix = "backtest/grok_trending_"
+            response = s3_client.list_objects_v2(
+                Bucket=cfg.bucket,
+                Prefix=prefix
+            )
 
-        if len(archive_files) >= 5:
-            print(f"[INFO] Loading backtest data from archive: {len(archive_files)} files")
+            if 'Contents' in response:
+                # grok_trending_YYYYMMDD.parquet ファイルのみ抽出
+                archive_files = [
+                    obj['Key'] for obj in response['Contents']
+                    if obj['Key'].endswith('.parquet') and 'grok_trending_2' in obj['Key']
+                ]
+                archive_files = sorted(archive_files)
 
-            # 最新5日分のファイルを読み込み
-            recent_files = archive_files[-5:]
-            dfs = []
+                if len(archive_files) >= 5:
+                    print(f"[INFO] Loading backtest data from S3: {len(archive_files)} files")
 
-            for file in recent_files:
-                try:
-                    df_day = pd.read_parquet(file)
-                    # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
-                    date_str = file.stem.split('_')[-1]  # YYYYMMDD
-                    df_day['archive_date'] = date_str
-                    dfs.append(df_day)
-                except Exception as e:
-                    print(f"[WARN] Failed to read {file}: {e}")
+                    # 最新5日分のファイルをダウンロード
+                    recent_files = archive_files[-5:]
+                    dfs = []
 
-            if dfs:
-                df = pd.concat(dfs, ignore_index=True)
-                print(f"[OK] Loaded {len(df)} records from {len(dfs)} archive files")
-                return _calculate_backtest_stats(df, source="archive")
+                    # 一時ディレクトリ作成
+                    temp_dir = PARQUET_DIR / "temp" / "backtest"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+
+                    for s3_key in recent_files:
+                        try:
+                            # ファイル名から日付を抽出
+                            filename = s3_key.split('/')[-1]
+                            date_str = filename.replace('grok_trending_', '').replace('.parquet', '')
+
+                            # S3からダウンロード
+                            temp_file = temp_dir / filename
+                            download_file(cfg, s3_key, temp_file)
+
+                            # 読み込み
+                            df_day = pd.read_parquet(temp_file)
+                            df_day['archive_date'] = date_str
+                            dfs.append(df_day)
+
+                            # クリーンアップ
+                            temp_file.unlink(missing_ok=True)
+
+                            print(f"[OK] Loaded {s3_key}: {len(df_day)} records")
+                        except Exception as e:
+                            print(f"[WARN] Failed to read {s3_key}: {e}")
+
+                    if dfs:
+                        df = pd.concat(dfs, ignore_index=True)
+                        print(f"[OK] Loaded {len(df)} records from {len(dfs)} S3 archive files")
+                        return _calculate_backtest_stats(df, source="archive")
+                else:
+                    print(f"[INFO] Not enough archive files in S3 ({len(archive_files)}/5)")
+        except Exception as e:
+            print(f"[WARN] Failed to load from S3: {e}")
 
     # 2. 旧形式のbacktest_results/ディレクトリを確認
     backtest_dir = ROOT / "data/parquet/backtest_results"
@@ -225,41 +263,76 @@ def generate_top_stocks() -> pd.DataFrame:
     最新のバックテスト結果からTop5/Top10銘柄リストを生成
 
     優先順位:
-    1. backtest/ディレクトリのアーカイブファイル
+    1. S3のbacktest/ディレクトリのアーカイブファイル
     2. backtest_results/ディレクトリのCSVファイル
 
     Returns:
         pd.DataFrame: Top5/Top10銘柄リスト
     """
-    # 1. アーカイブファイルを確認
-    backtest_archive_dir = PARQUET_DIR / "backtest"
+    # 1. S3からアーカイブファイルを取得
+    cfg = load_s3_config()
+    if cfg:
+        try:
+            s3_client = boto3.client('s3')
 
-    if backtest_archive_dir.exists():
-        archive_files = sorted(backtest_archive_dir.glob("grok_trending_*.parquet"))
+            # S3のbacktest/ディレクトリをリスト
+            prefix = "backtest/grok_trending_"
+            response = s3_client.list_objects_v2(
+                Bucket=cfg.bucket,
+                Prefix=prefix
+            )
 
-        if len(archive_files) >= 5:
-            print(f"[INFO] Loading top stocks from archive: {len(archive_files)} files")
+            if 'Contents' in response:
+                # grok_trending_YYYYMMDD.parquet ファイルのみ抽出
+                archive_files = [
+                    obj['Key'] for obj in response['Contents']
+                    if obj['Key'].endswith('.parquet') and 'grok_trending_2' in obj['Key']
+                ]
+                archive_files = sorted(archive_files)
 
-            # 最新5日分のファイルを読み込み
-            recent_files = archive_files[-5:]
-            dfs = []
+                if len(archive_files) >= 5:
+                    print(f"[INFO] Loading top stocks from S3: {len(archive_files)} files")
 
-            for file in recent_files:
-                try:
-                    df_day = pd.read_parquet(file)
-                    # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
-                    date_str = file.stem.split('_')[-1]  # YYYYMMDD
-                    # YYYY-MM-DD形式に変換
-                    target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-                    df_day['target_date'] = target_date
-                    dfs.append(df_day)
-                except Exception as e:
-                    print(f"[WARN] Failed to read {file}: {e}")
+                    # 最新5日分のファイルをダウンロード
+                    recent_files = archive_files[-5:]
+                    dfs = []
 
-            if dfs:
-                df = pd.concat(dfs, ignore_index=True)
-                print(f"[OK] Loaded {len(df)} records from {len(dfs)} archive files")
-                return _extract_top_stocks_from_df(df)
+                    # 一時ディレクトリ作成
+                    temp_dir = PARQUET_DIR / "temp" / "backtest"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+
+                    for s3_key in recent_files:
+                        try:
+                            # ファイル名から日付を抽出
+                            filename = s3_key.split('/')[-1]
+                            date_str = filename.replace('grok_trending_', '').replace('.parquet', '')
+                            # YYYY-MM-DD形式に変換
+                            target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+
+                            # S3からダウンロード
+                            temp_file = temp_dir / filename
+                            download_file(cfg, s3_key, temp_file)
+
+                            # 読み込み
+                            df_day = pd.read_parquet(temp_file)
+                            df_day['target_date'] = target_date
+                            dfs.append(df_day)
+
+                            # クリーンアップ
+                            temp_file.unlink(missing_ok=True)
+
+                            print(f"[OK] Loaded {s3_key}: {len(df_day)} records")
+                        except Exception as e:
+                            print(f"[WARN] Failed to read {s3_key}: {e}")
+
+                    if dfs:
+                        df = pd.concat(dfs, ignore_index=True)
+                        print(f"[OK] Loaded {len(df)} records from {len(dfs)} S3 archive files")
+                        return _extract_top_stocks_from_df(df)
+                else:
+                    print(f"[INFO] Not enough archive files in S3 ({len(archive_files)}/5)")
+        except Exception as e:
+            print(f"[WARN] Failed to load from S3: {e}")
 
     # 2. 旧形式のbacktest_results/ディレクトリを確認
     backtest_dir = ROOT / "data/parquet/backtest_results"

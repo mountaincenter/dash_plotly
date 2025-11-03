@@ -19,12 +19,15 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 import numpy as np
+import boto3
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.s3io import download_file
+from common_cfg.s3cfg import load_s3_config
 
 
 def load_backtest_archives(days: int = 5) -> pd.DataFrame:
     """
-    バックテストアーカイブから最近N日分のデータを読み込み
+    バックテストアーカイブから最近N日分のデータを読み込み（S3から取得）
 
     Args:
         days: 読み込む日数（デフォルト5日）
@@ -32,41 +35,88 @@ def load_backtest_archives(days: int = 5) -> pd.DataFrame:
     Returns:
         pd.DataFrame: 統合されたバックテストデータ
     """
-    backtest_dir = PARQUET_DIR / "backtest"
-
-    if not backtest_dir.exists():
-        print(f"[WARN] Backtest directory not found: {backtest_dir}")
+    # S3設定を取得
+    cfg = load_s3_config()
+    if not cfg:
+        print("[WARN] S3 not configured - cannot load backtest archives")
         return pd.DataFrame()
 
-    archive_files = sorted(backtest_dir.glob("grok_trending_*.parquet"))
+    try:
+        s3_client = boto3.client(
+            's3',
+            region_name=cfg.region,
+            endpoint_url=cfg.endpoint_url
+        )
 
-    if len(archive_files) < days:
-        print(f"[WARN] Only {len(archive_files)} archive files found (requested {days} days)")
-        if len(archive_files) == 0:
+        # S3上のbacktest/grok_trending_*.parquetファイルをリスト
+        bucket = cfg.bucket or "stock-api-data"
+        prefix = (cfg.prefix or "parquet/").rstrip("/") + "/backtest/grok_trending_"
+
+        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+
+        if 'Contents' not in response:
+            print(f"[WARN] No backtest files found in S3: s3://{bucket}/{prefix}*")
             return pd.DataFrame()
 
-    # 最新N日分を読み込み
-    recent_files = archive_files[-days:]
-    dfs = []
+        # grok_trending_YYYYMMDD.parquetパターンのファイルのみ抽出
+        archive_files = [
+            obj['Key'] for obj in response['Contents']
+            if obj['Key'].endswith('.parquet') and 'grok_trending_2' in obj['Key']
+        ]
+        archive_files = sorted(archive_files)
 
-    for file in recent_files:
-        try:
-            df_day = pd.read_parquet(file)
-            # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
-            date_str = file.stem.split('_')[-1]  # YYYYMMDD
-            target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-            df_day['target_date'] = target_date
-            dfs.append(df_day)
-            print(f"[OK] Loaded: {file.name} ({len(df_day)} records)")
-        except Exception as e:
-            print(f"[WARN] Failed to read {file}: {e}")
+        if len(archive_files) < days:
+            print(f"[WARN] Only {len(archive_files)} archive files found (requested {days} days)")
+            if len(archive_files) == 0:
+                return pd.DataFrame()
 
-    if not dfs:
+        # 最新N日分を読み込み
+        recent_files = archive_files[-days:]
+        dfs = []
+
+        # 一時ディレクトリを作成
+        temp_dir = PARQUET_DIR / "temp" / "backtest"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+
+        for s3_key in recent_files:
+            try:
+                # S3からダウンロード
+                filename = s3_key.split('/')[-1]
+                temp_file = temp_dir / filename
+
+                if not download_file(cfg, s3_key, temp_file):
+                    print(f"[WARN] Failed to download from S3: {s3_key}")
+                    continue
+
+                # Parquetファイルを読み込み
+                df_day = pd.read_parquet(temp_file)
+
+                # ファイル名から日付を抽出（grok_trending_YYYYMMDD.parquet）
+                date_str = filename.split('_')[-1].replace('.parquet', '')  # YYYYMMDD
+                target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+                df_day['target_date'] = target_date
+
+                dfs.append(df_day)
+                print(f"[OK] Loaded from S3: {filename} ({len(df_day)} records)")
+
+                # 一時ファイルを削除
+                temp_file.unlink(missing_ok=True)
+
+            except Exception as e:
+                print(f"[WARN] Failed to process {s3_key}: {e}")
+
+        if not dfs:
+            return pd.DataFrame()
+
+        df = pd.concat(dfs, ignore_index=True)
+        print(f"\n[OK] Total loaded: {len(df)} records from {len(dfs)} days")
+        return df
+
+    except Exception as e:
+        print(f"[ERROR] Failed to load backtest archives from S3: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
-
-    df = pd.concat(dfs, ignore_index=True)
-    print(f"\n[OK] Total loaded: {len(df)} records from {len(dfs)} days")
-    return df
 
 
 def calculate_phase2_metrics(df: pd.DataFrame) -> pd.DataFrame:
