@@ -66,10 +66,21 @@ def load_archive_data() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
-    """日別統計を計算"""
-    # phase1_returnカラムが存在するかチェック
-    if 'phase1_return' not in df.columns:
+def calculate_daily_stats(df: pd.DataFrame, phase: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    日別統計を計算
+
+    Args:
+        df: データフレーム
+        phase: phase1, phase2, phase3
+        config: phase_configの設定
+    """
+    return_col = config["return_col"]
+    win_col = config["win_col"]
+    profit_col = config["profit_col"]
+
+    # 指定されたphaseのreturnカラムが存在するかチェック
+    if return_col not in df.columns:
         return {
             "total_stocks": len(df),
             "valid_results": 0,
@@ -81,7 +92,7 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
             "top5_win_rate": None,
         }
 
-    valid_results = df['phase1_return'].notna()
+    valid_results = df[return_col].notna()
     df_valid = df[valid_results]
 
     if len(df_valid) == 0:
@@ -97,22 +108,21 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
         }
 
     # 全体統計
-    avg_return = float(df_valid['phase1_return'].mean())
-    win_count = (df_valid['phase1_win'] == True).sum()
+    avg_return = float(df_valid[return_col].mean())
+    win_count = (df_valid[win_col] == True).sum()
     win_rate = float(win_count / len(df_valid) * 100)
-    max_return = float(df_valid['phase1_return'].max())
-    min_return = float(df_valid['phase1_return'].min())
+    max_return = float(df_valid[return_col].max())
+    min_return = float(df_valid[return_col].min())
 
     # 累計損益（100株あたり）
     total_profit_per_100 = 0.0
-    if 'buy_price' in df_valid.columns and 'sell_price' in df_valid.columns:
-        profits = (df_valid['sell_price'] - df_valid['buy_price']) * 100
-        total_profit_per_100 = float(profits.sum())
+    if profit_col in df_valid.columns:
+        total_profit_per_100 = float(df_valid[profit_col].sum())
 
     # Top5統計
     if 'grok_rank' in df.columns:
         df_top5 = df[df['grok_rank'] <= 5]
-        df_top5_valid = df_top5[df_top5['phase1_return'].notna()]
+        df_top5_valid = df_top5[df_top5[return_col].notna()]
     else:
         df_top5_valid = pd.DataFrame()
 
@@ -121,14 +131,13 @@ def calculate_daily_stats(df: pd.DataFrame) -> Dict[str, Any]:
     top5_total_profit_per_100 = None
 
     if len(df_top5_valid) > 0:
-        top5_avg_return = float(df_top5_valid['phase1_return'].mean())
-        top5_win_count = (df_top5_valid['phase1_win'] == True).sum()
+        top5_avg_return = float(df_top5_valid[return_col].mean())
+        top5_win_count = (df_top5_valid[win_col] == True).sum()
         top5_win_rate = float(top5_win_count / len(df_top5_valid) * 100)
 
         # Top5累計損益
-        if 'buy_price' in df_top5_valid.columns and 'sell_price' in df_top5_valid.columns:
-            top5_profits = (df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100
-            top5_total_profit_per_100 = float(top5_profits.sum())
+        if profit_col in df_top5_valid.columns:
+            top5_total_profit_per_100 = float(df_top5_valid[profit_col].sum())
 
     return {
         "total_stocks": len(df),
@@ -424,8 +433,20 @@ async def get_backtest_summary(
 
 
 @router.get("/api/dev/backtest/daily/{date}")
-async def get_daily_backtest(date: str):
-    """特定日のバックテスト詳細"""
+async def get_daily_backtest(
+    date: str,
+    phase: str = "phase2"
+):
+    """
+    特定日のバックテスト詳細
+
+    Args:
+        date: バックテスト日付 (YYYY-MM-DD)
+        phase: 表示するPhase (phase1, phase2, phase3)
+               - phase1: 前場引け売り（11:30売却）
+               - phase2: 大引け売り（15:30売却）
+               - phase3: +3%利確/-3%損切り
+    """
     df_all = load_archive_data()
 
     if df_all.empty:
@@ -437,7 +458,38 @@ async def get_daily_backtest(date: str):
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No backtest data for {date}")
 
-    stats = calculate_daily_stats(df)
+    # Phaseに応じたカラムマッピング
+    phase_config = {
+        "phase1": {
+            "return_col": "phase1_return",
+            "win_col": "phase1_win",
+            "profit_col": "profit_per_100_shares_phase1",
+            "sell_col": "sell_price",  # 前場引け値
+            "description": "前場引け売り（11:30売却）"
+        },
+        "phase2": {
+            "return_col": "phase2_return",
+            "win_col": "phase2_win",
+            "profit_col": "profit_per_100_shares_phase2",
+            "sell_col": "daily_close",  # 大引け値
+            "description": "大引け売り（15:30売却）"
+        },
+        "phase3": {
+            "return_col": "phase3_3pct_return",
+            "win_col": "phase3_3pct_win",
+            "profit_col": "profit_per_100_shares_phase3_3pct",
+            "sell_col": None,  # Phase3は動的に決まるため個別計算
+            "description": "+3%利確/-3%損切り"
+        }
+    }
+
+    # Phase検証
+    if phase not in phase_config:
+        raise HTTPException(status_code=400, detail=f"Invalid phase: {phase}. Must be one of: {list(phase_config.keys())}")
+
+    config = phase_config[phase]
+
+    stats = calculate_daily_stats(df, phase, config)
 
     # 統計をパーセント表示に変換
     if stats["avg_return"] is not None:
@@ -450,36 +502,57 @@ async def get_daily_backtest(date: str):
         stats["top5_avg_return"] *= 100
 
     # データをJSON形式に変換
+    return_col = config["return_col"]
+    win_col = config["win_col"]
+    profit_col = config["profit_col"]
+    sell_col = config["sell_col"]
+
     records = []
     for _, row in df.iterrows():
         buy_price = float(row["buy_price"]) if "buy_price" in df.columns and pd.notna(row.get("buy_price")) else None
-        sell_price = float(row["sell_price"]) if "sell_price" in df.columns and pd.notna(row.get("sell_price")) else None
-        phase1_return = float(row["phase1_return"] * 100) if "phase1_return" in df.columns and pd.notna(row.get("phase1_return")) else None
+
+        # Phaseに応じた売値を取得
+        if sell_col:
+            sell_price = float(row[sell_col]) if sell_col in df.columns and pd.notna(row.get(sell_col)) else None
+        else:
+            # Phase3の場合は、利確/損切/EODのいずれかなので、buy_price + returnから計算
+            if buy_price and return_col in df.columns and pd.notna(row.get(return_col)):
+                sell_price = buy_price * (1 + row[return_col])
+            else:
+                sell_price = None
+
+        # Phaseに応じたリターンと勝敗
+        phase_return = float(row[return_col] * 100) if return_col in df.columns and pd.notna(row.get(return_col)) else None
+        phase_win = bool(row[win_col]) if win_col in df.columns and pd.notna(row.get(win_col)) else None
 
         # 100株あたりの利益額を計算
         profit_per_100 = None
-        if buy_price is not None and sell_price is not None:
+        if profit_col in df.columns and pd.notna(row.get(profit_col)):
+            profit_per_100 = float(row[profit_col])
+        elif buy_price is not None and sell_price is not None:
             profit_per_100 = (sell_price - buy_price) * 100
 
         record = {
             "ticker": row.get("ticker"),
-            "stock_name": row.get("stock_name"),
+            "stock_name": row.get("company_name"),  # company_nameをstock_nameとして返す
             "selection_score": float(row["selection_score"]) if pd.notna(row.get("selection_score")) else None,
             "grok_rank": int(row["grok_rank"]) if pd.notna(row.get("grok_rank")) else None,
             "reason": row.get("reason"),
             "selected_time": row.get("selected_time"),
             "buy_price": buy_price,
             "sell_price": sell_price,
-            "phase1_return": phase1_return,
-            "phase1_win": bool(row["phase1_win"]) if "phase1_win" in df.columns and pd.notna(row.get("phase1_win")) else None,
+            "phase_return": phase_return,
+            "phase_win": phase_win,
             "profit_per_100": profit_per_100,
             "morning_high": float(row["morning_high"]) if "morning_high" in df.columns and pd.notna(row.get("morning_high")) else None,
             "morning_low": float(row["morning_low"]) if "morning_low" in df.columns and pd.notna(row.get("morning_low")) else None,
+            "morning_max_gain_pct": float(row["morning_max_gain_pct"]) if "morning_max_gain_pct" in df.columns and pd.notna(row.get("morning_max_gain_pct")) else None,
+            "morning_max_drawdown_pct": float(row["morning_max_drawdown_pct"]) if "morning_max_drawdown_pct" in df.columns and pd.notna(row.get("morning_max_drawdown_pct")) else None,
             "high": float(row["high"]) if "high" in df.columns and pd.notna(row.get("high")) else None,
             "low": float(row["low"]) if "low" in df.columns and pd.notna(row.get("low")) else None,
+            "daily_max_gain_pct": float(row["daily_max_gain_pct"]) if "daily_max_gain_pct" in df.columns and pd.notna(row.get("daily_max_gain_pct")) else None,
+            "daily_max_drawdown_pct": float(row["daily_max_drawdown_pct"]) if "daily_max_drawdown_pct" in df.columns and pd.notna(row.get("daily_max_drawdown_pct")) else None,
             "morning_volume": int(row["morning_volume"]) if "morning_volume" in df.columns and pd.notna(row.get("morning_volume")) else None,
-            "max_gain_pct": float(row["max_gain_pct"] * 100) if "max_gain_pct" in df.columns and pd.notna(row.get("max_gain_pct")) else None,
-            "max_drawdown_pct": float(row["max_drawdown_pct"] * 100) if "max_drawdown_pct" in df.columns and pd.notna(row.get("max_drawdown_pct")) else None,
         }
         records.append(record)
 
