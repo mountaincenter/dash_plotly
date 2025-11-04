@@ -45,13 +45,13 @@ def main():
 
     print(f"\n[2] Fetching 33 sector indices...")
     print(f"Target sectors: {len(SECTOR_CODES)}")
-    print(f"Fetching data from 2015-01-01 to {latest_trading_day}")
+    print(f"Fetching latest trading day data")
 
     all_frames = []
     for code, name in SECTOR_CODES.items():
         try:
             print(f"  Fetching {name} ({code})...", end=" ", flush=True)
-            df = fetcher.get_indices(code=code, from_date="2015-01-01", to_date=str(latest_trading_day))
+            df = fetcher.get_indices(code=code, from_date=latest_trading_day, to_date=latest_trading_day)
 
             if df.empty:
                 print(f"[WARN] No data")
@@ -89,7 +89,15 @@ def main():
     output_file = ROOT / "data" / "parquet" / "sectors_prices_max_1d.parquet"
     print(f"\n[5] Saving to {output_file.name}...")
 
-    # 全期間取得なので上書き
+    # 既存ファイルがあれば読み込んで追記
+    if output_file.exists():
+        existing = pd.read_parquet(output_file)
+        print(f"  Existing rows: {len(existing)}")
+        # 同じ日付のデータは削除
+        existing = existing[existing["date"] < result["date"].min()]
+        result = pd.concat([existing, result], ignore_index=True)
+        print(f"  After merge: {len(result)} rows")
+
     result.to_parquet(output_file, index=False)
 
     file_size = output_file.stat().st_size
