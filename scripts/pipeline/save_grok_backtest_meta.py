@@ -81,9 +81,10 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
                             filename = s3_key.split('/')[-1]
                             date_str = filename.replace('grok_trending_', '').replace('.parquet', '')
 
-                            # S3からダウンロード
+                            # S3からダウンロード（prefixを除去してから渡す）
                             temp_file = temp_dir / filename
-                            download_file(cfg, s3_key, temp_file)
+                            relative_key = s3_key.replace(cfg.prefix, "", 1)
+                            download_file(cfg, relative_key, temp_file)
 
                             # 読み込み
                             df_day = pd.read_parquet(temp_file)
@@ -309,9 +310,10 @@ def generate_top_stocks() -> pd.DataFrame:
                             # YYYY-MM-DD形式に変換
                             target_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
 
-                            # S3からダウンロード
+                            # S3からダウンロード（prefixを除去してから渡す）
                             temp_file = temp_dir / filename
-                            download_file(cfg, s3_key, temp_file)
+                            relative_key = s3_key.replace(cfg.prefix, "", 1)
+                            download_file(cfg, relative_key, temp_file)
 
                             # 読み込み
                             df_day = pd.read_parquet(temp_file)
