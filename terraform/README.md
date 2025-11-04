@@ -274,10 +274,6 @@ aws apprunner describe-service --service-arn <service-arn>
 
 ## 📝 Notes
 
-- **GitHub Actions IAM**: Terraform管理外（手動作成）
-  - `GitHubActions-DashPlotly` ロール
-  - OIDC Provider設定
-
 - **削除されたリソース**:
   - `test-apprunner-all-events` EventBridgeルール（重複通知の原因で削除済み）
 

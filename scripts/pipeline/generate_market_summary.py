@@ -374,6 +374,66 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
     }
 
 
+def cleanup_citations(markdown_content: str) -> str:
+    """
+    出典表記をクリーンアップ
+
+    1. （出典: URL, URL）形式から全URLを抽出
+    2. URLの末尾から不要な文字（）。, 等）を削除
+    3. 同じURLを [出典#,#,#] URL 形式にまとめる
+
+    Args:
+        markdown_content: 元のMarkdownコンテンツ
+
+    Returns:
+        str: クリーンアップ済みコンテンツ
+    """
+    import re
+
+    # （出典: URL, URL）のパターンを抽出
+    citation_pattern = r'（出典:\s*([^）]+)）'
+    matches = re.findall(citation_pattern, markdown_content)
+
+    if not matches:
+        return markdown_content
+
+    # 全URLを収集
+    all_urls = []
+    for match in matches:
+        # カンマやスペースで分割してURL抽出
+        urls = [url.strip() for url in re.split(r'[,\s]+', match) if url.strip().startswith('http')]
+        all_urls.extend(urls)
+
+    # URLをクリーンアップして番号を付与
+    url_to_numbers = {}
+    citation_number = 1
+
+    for url in all_urls:
+        # URLから末尾の不要な文字を削除
+        clean_url = re.sub(r'[)。,、]+$', '', url)
+
+        if clean_url not in url_to_numbers:
+            url_to_numbers[clean_url] = []
+        url_to_numbers[clean_url].append(str(citation_number))
+        citation_number += 1
+
+    # 元の出典表記を削除
+    result = re.sub(citation_pattern, '', markdown_content)
+
+    # まとめた出典を末尾に追加
+    if url_to_numbers:
+        result += "\n\n---\n\n## 出典\n\n"
+        # 最初の出現順でソート
+        for url, numbers in sorted(url_to_numbers.items(), key=lambda x: int(x[1][0])):
+            if len(numbers) == 1:
+                result += f"[出典{numbers[0]}] {url}\n"
+            else:
+                numbers_str = ','.join(numbers)
+                result += f"[出典{numbers_str}] {url}\n"
+
+    return result
+
+
 def save_files(target_date: datetime, markdown_content: str, structured_data: dict[str, Any]) -> tuple[Path, Path]:
     """
     Markdown と JSON を保存
@@ -392,10 +452,13 @@ def save_files(target_date: datetime, markdown_content: str, structured_data: di
 
     date_str = target_date.strftime('%Y-%m-%d')
 
+    # 出典をクリーンアップ
+    cleaned_markdown = cleanup_citations(markdown_content)
+
     # Markdown保存
     markdown_path = RAW_DIR / f"{date_str}.md"
     with open(markdown_path, 'w', encoding='utf-8') as f:
-        f.write(markdown_content)
+        f.write(cleaned_markdown)
     print(f"  [OK] Saved Markdown: {markdown_path}")
 
     # JSON保存
