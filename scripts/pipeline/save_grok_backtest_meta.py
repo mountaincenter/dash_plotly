@@ -50,7 +50,7 @@ def generate_grok_backtest_meta() -> pd.DataFrame:
             s3_client = boto3.client('s3')
 
             # S3のbacktest/ディレクトリをリスト
-            prefix = "backtest/grok_trending_"
+            prefix = f"{cfg.prefix}backtest/grok_trending_"
             response = s3_client.list_objects_v2(
                 Bucket=cfg.bucket,
                 Prefix=prefix
@@ -277,7 +277,7 @@ def generate_top_stocks() -> pd.DataFrame:
             s3_client = boto3.client('s3')
 
             # S3のbacktest/ディレクトリをリスト
-            prefix = "backtest/grok_trending_"
+            prefix = f"{cfg.prefix}backtest/grok_trending_"
             response = s3_client.list_objects_v2(
                 Bucket=cfg.bucket,
                 Prefix=prefix
