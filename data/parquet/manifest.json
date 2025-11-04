@@ -1,8 +1,8 @@
 {
-  "generated_at": "2025-11-01T10:23:31.786909",
-  "update_flag": "2025-11-01",
+  "generated_at": "2025-11-04T20:30:21.844499",
+  "update_flag": "2025-11-04",
   "grok_update_flag": false,
-  "grok_last_update_date": "2025-10-31",
+  "grok_last_update_date": "2025-11-04",
   "grok_last_update_time": null,
   "files": {
     "meta.parquet": {
@@ -20,7 +20,7 @@
         "categories",
         "tags"
       ],
-      "updated_at": "2025-10-31T14:28:37.779683"
+      "updated_at": "2025-11-04T00:14:01.145495"
     },
     "meta_jquants.parquet": {
       "exists": true,
@@ -39,7 +39,7 @@
     },
     "all_stocks.parquet": {
       "exists": true,
-      "size_bytes": 14721,
+      "size_bytes": 15025,
       "row_count": 68,
       "columns": [
         "ticker",
@@ -61,12 +61,12 @@
         "score",
         "key_signal"
       ],
-      "updated_at": "2025-10-31T14:28:37.845897"
+      "updated_at": "2025-11-04T00:14:01.423606"
     },
     "grok_trending.parquet": {
       "exists": true,
-      "size_bytes": 19202,
-      "row_count": 12,
+      "size_bytes": 19577,
+      "row_count": 13,
       "columns": [
         "ticker",
         "code",
@@ -95,11 +95,11 @@
         "has_mention",
         "mentioned_by",
         "selection_score",
+        "prompt_version",
         "grok_rank",
-        "selection_rank",
-        "prompt_version"
+        "selection_rank"
       ],
-      "updated_at": "2025-10-31T02:46:40.177631"
+      "updated_at": "2025-11-04T00:13:51.651014"
     },
     "grok_backtest_meta.parquet": {
       "exists": true,
@@ -109,14 +109,26 @@
         "metric",
         "value"
       ],
-      "updated_at": "2025-10-31T02:43:06.371210"
+      "updated_at": "2025-11-04T19:25:39.389228"
     },
     "grok_top_stocks.parquet": {
-      "exists": false,
-      "size_bytes": 0,
-      "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "exists": true,
+      "size_bytes": 8760,
+      "row_count": 75,
+      "columns": [
+        "target_date",
+        "ticker",
+        "company_name",
+        "selection_score",
+        "rank",
+        "category",
+        "sentiment_score",
+        "policy_link",
+        "has_mention",
+        "morning_change_pct",
+        "daily_change_pct"
+      ],
+      "updated_at": "2025-11-04T19:25:39.506630"
     },
     "scalping_entry.parquet": {
       "exists": false,
@@ -417,8 +429,8 @@
     },
     "topix_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 4938,
-      "row_count": 4,
+      "size_bytes": 147736,
+      "row_count": 4908,
       "columns": [
         "date",
         "ticker",
@@ -429,14 +441,12 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-10-31T21:02:00.000000",
-      "description": "TOPIX系指数データ (TOPIX, TOPIX-Prime, TOPIX-Standard, TOPIX-Growth)",
-      "source": "J-Quants Standard API"
+      "updated_at": "2025-11-02T09:16:08.446601"
     },
     "sectors_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 6586,
-      "row_count": 33,
+      "size_bytes": 2033517,
+      "row_count": 80619,
       "columns": [
         "date",
         "ticker",
@@ -447,14 +457,12 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-11-02T08:57:00.000000",
-      "description": "東証33業種別指数データ (水産・農林業〜サービス業)",
-      "source": "J-Quants Standard API"
+      "updated_at": "2025-11-04T19:37:02.453070"
     },
     "series_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 5782,
-      "row_count": 17,
+      "size_bytes": 786858,
+      "row_count": 41531,
       "columns": [
         "date",
         "ticker",
@@ -465,36 +473,7 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-11-02T08:57:00.000000",
-      "description": "TOPIX-17シリーズ指数データ (食品〜不動産)",
-      "source": "J-Quants Standard API"
-    },
-    "option_prices_max_1d.parquet": {
-      "exists": true,
-      "size_bytes": 155365,
-      "row_count": 4830,
-      "columns": [
-        "date",
-        "code",
-        "contractmonth",
-        "strikeprice",
-        "putcalldivision",
-        "wholedayopen",
-        "wholedayhigh",
-        "wholedaylow",
-        "wholedayclose",
-        "volume",
-        "openinterest",
-        "turnovervalue",
-        "settlementprice",
-        "theoreticalprice",
-        "underlyingprice",
-        "impliedvolatility",
-        "basevolatility"
-      ],
-      "updated_at": "2025-11-02T08:57:00.000000",
-      "description": "日経225指数オプション四本値データ (Weeklyオプション及びフレックスオプションを除く)",
-      "source": "J-Quants Standard API"
+      "updated_at": "2025-11-04T19:37:16.547536"
     }
   }
 }

@@ -5,7 +5,7 @@
 このプロジェクトは、株式データの自動収集・処理・配信を行うフルマネージドなサーバーレスアーキテクチャです。
 
 - **データソース**: J-Quants API, yFinance
-- **AI分析**: Grok (xAI) によるトレンド銘柄選定
+- **AI 分析**: Grok (xAI) によるトレンド銘柄選定
 - **インフラ**: AWS (S3, ECR, App Runner, EventBridge, Lambda, Route53)
 - **CI/CD**: GitHub Actions
 - **IaC**: Terraform
@@ -203,6 +203,7 @@ s3://stock-api-data/
 ### Data Schema
 
 #### meta_jquants.parquet
+
 ```python
 {
     "ticker": str,           # 例: "7203.T"
@@ -216,6 +217,7 @@ s3://stock-api-data/
 ```
 
 #### grok_trending.parquet
+
 ```python
 {
     "ticker": str,           # 例: "4592.T"
@@ -298,14 +300,14 @@ terraform/
 
 ### Key Resources
 
-| Resource Type | Name | Purpose |
-|--------------|------|---------|
-| S3 Bucket | `stock-api-data` | データストレージ |
-| ECR Repository | `stock-api` | Dockerイメージ |
-| App Runner Service | `stock-api` | APIサーバー |
-| Route53 Zone | `api.ymnk.jp` | DNS管理 |
-| Lambda Function | `apprunner-deployment-notification` | デプロイ通知 |
-| EventBridge Rule | `apprunner-deployment-to-slack` | イベント検知 |
+| Resource Type      | Name                                | Purpose          |
+| ------------------ | ----------------------------------- | ---------------- |
+| S3 Bucket          | `stock-api-data`                    | データストレージ |
+| ECR Repository     | `stock-api`                         | Docker イメージ  |
+| App Runner Service | `stock-api`                         | API サーバー     |
+| Route53 Zone       | `api.ymnk.jp`                       | DNS 管理         |
+| Lambda Function    | `apprunner-deployment-notification` | デプロイ通知     |
+| EventBridge Rule   | `apprunner-deployment-to-slack`     | イベント検知     |
 
 ### Terraform State
 
@@ -385,12 +387,13 @@ SLACK_INCOMING_WEBHOOK_URL=<url>
 ### Slack Notifications
 
 1. **Data Pipeline Success**
+
    - データ統計 (銘柄数、最終更新日)
-   - GROK銘柄リスト (改善版フォーマット)
+   - GROK 銘柄リスト (改善版フォーマット)
 
 2. **App Runner Deployment**
    - デプロイ完了通知
-   - サービスURL
+   - サービス URL
 
 ---
 
@@ -400,7 +403,7 @@ SLACK_INCOMING_WEBHOOK_URL=<url>
 
 - **Primary**: 16:00 JST (UTC 07:00) - メイン実行
 - **Fallback**: 26:00 JST (UTC 17:00) - フォールバック
-- **Condition**: 営業日の16:00-02:00ウィンドウ内
+- **Condition**: 営業日の 16:00-02:00 ウィンドウ内
 
 ### Manual Trigger
 
@@ -454,15 +457,18 @@ Expire untagged images after 7 days
 ## 🔒 Security Best Practices
 
 1. **IAM Least Privilege**
-   - GitHub Actions: S3/ECR最小権限
-   - App Runner: S3読み取り専用
+
+   - GitHub Actions: S3/ECR 最小権限
+   - App Runner: S3 読み取り専用
 
 2. **Secrets Management**
+
    - GitHub Secrets: API keys, tokens
    - 環境変数: 非機密情報のみ
 
 3. **Network Security**
-   - App Runner: Public access (API用)
+
+   - App Runner: Public access (API 用)
    - S3: Bucket policy + Public access block
 
 4. **Encryption**
@@ -485,40 +491,46 @@ Expire untagged images after 7 days
 ### Common Issues
 
 1. **S3 Access Denied (403)**
-   - IAMポリシーのバケット名を確認
+
+   - IAM ポリシーのバケット名を確認
    - `stock-api-data` が正しいか確認
 
 2. **ECR Push Failed**
-   - IAMポリシーのリポジトリ名を確認
+
+   - IAM ポリシーのリポジトリ名を確認
    - `stock-api` が正しいか確認
 
 3. **App Runner Deployment Failed**
+
    - `auto_deployments_enabled = true` を確認
-   - ECRイメージが正しくpushされているか確認
+   - ECR イメージが正しく push されているか確認
 
 4. **Slack Notification Duplicate**
-   - EventBridgeルールが重複していないか確認
+
+   - EventBridge ルールが重複していないか確認
    - `test-apprunner-all-events` が削除されているか確認
 
 5. **GROK API Error**
    - `XAI_API_KEY` が正しく設定されているか確認
-   - API制限に達していないか確認
+   - API 制限に達していないか確認
 
 ---
 
 ## 📝 Changelog
 
 ### 2025-10-25
-- ✅ App Runner自動デプロイ有効化
-- ✅ GROK Slack通知フォーマット改善（全銘柄表示）
-- ✅ EventBridge重複ルール削除
-- ✅ IAMポリシー修正（S3/ECR バケット名・リポジトリ名）
-- ✅ 市場フィルタリング追加（3市場のみ）
+
+- ✅ App Runner 自動デプロイ有効化
+- ✅ GROK Slack 通知フォーマット改善（全銘柄表示）
+- ✅ EventBridge 重複ルール削除
+- ✅ IAM ポリシー修正（S3/ECR バケット名・リポジトリ名）
+- ✅ 市場フィルタリング追加（3 市場のみ）
 
 ### 2025-10-24
-- ✅ Terraform全リソース作成
-- ✅ Route53カスタムドメイン設定
-- ✅ EventBridge + Lambda通知システム構築
+
+- ✅ Terraform 全リソース作成
+- ✅ Route53 カスタムドメイン設定
+- ✅ EventBridge + Lambda 通知システム構築
 
 ---
 

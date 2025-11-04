@@ -462,6 +462,17 @@ def save_files(target_date: datetime, markdown_content: str, structured_data: di
         f.write(cleaned_markdown)
     print(f"  [OK] Saved Markdown: {markdown_path}")
 
+    # structured_data の content にも cleanup_citations を適用
+    if 'content' in structured_data:
+        if 'markdown_full' in structured_data['content']:
+            structured_data['content']['markdown_full'] = cleanup_citations(
+                structured_data['content']['markdown_full']
+            )
+        if 'sections' in structured_data['content']:
+            for section_key, section_content in structured_data['content']['sections'].items():
+                if section_content:
+                    structured_data['content']['sections'][section_key] = cleanup_citations(section_content)
+
     # JSON保存
     json_path = STRUCTURED_DIR / f"{date_str}.json"
     with open(json_path, 'w', encoding='utf-8') as f:
