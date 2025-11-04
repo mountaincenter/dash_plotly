@@ -373,10 +373,9 @@ def run_backtest() -> pd.DataFrame:
     selection_date = datetime.strptime(selection_date_str, "%Y-%m-%d")
     print(f"[INFO] Selection date: {selection_date.date()}")
 
-    # 翌営業日を取得（簡易版: selection_date + 1日）
-    # 実際の営業日判定はJ-Quantsを使用することを推奨
-    backtest_date = selection_date + timedelta(days=1)
-    print(f"[INFO] Backtest date (next trading day): {backtest_date.date()}")
+    # grok_trending.parquetのdate列は既に翌営業日（next_trading_day）なのでそのまま使用
+    backtest_date = selection_date
+    print(f"[INFO] Backtest date: {backtest_date.date()}")
 
     # 3. 各銘柄のバックテストを実行
     results = []
