@@ -165,7 +165,6 @@ def build_market_summary_prompt(context: dict[str, Any]) -> str:
    - 提供済みのTOPIX系指数テーブルをそのまま使用
    - 日経平均: 上記3つのクエリから取得した終値・前日比を表形式で追加（TOPIX系指数の上に配置）
    - 各指数の特徴を2-3文で説明（例: 「日経平均は輸出関連大型株の影響が強く、TOPIXを上回る上昇率となった。TOPIX-Primeは時価総額上位の大型株で構成され、市場全体の約80%を占める。TOPIX-Standardは中型株中心で本日は小幅上昇にとどまり、TOPIX-Growthは新興成長株を対象とし堅調に推移した。」）
-   - **重要**: TOPIX系指数テーブルの末尾に「※TOPIX系指数はJ-Quants Standard APIより取得」と明記すること
 
 2. **全体トレンド**:
    - 以下の項目を段落形式で記述（箇条書きではなく、流れのある文章として構成）：
@@ -184,7 +183,6 @@ def build_market_summary_prompt(context: dict[str, Any]) -> str:
      c) 複数業種に共通する要因がある場合はまとめて記述（例: 「電気ガス・食料品・非鉄金属の3業種は円安進行による輸出メリットが共通要因となった」）
    - プライム/スタンダード/グロース市場の比較: 2-3文で市場間の動きの違いを分析
    - **出典URLは各業種または共通要因の記述末尾に記載**
-   - **重要**: 各業種テーブルの末尾に「※33業種別指数はJ-Quants Standard APIより取得」と明記すること
 
 4. **注目ニュース**:
    - 3-4件のニュースを記載（各ニュースは見出し・内容・市場への影響の3要素を含む）
@@ -223,8 +221,6 @@ def build_market_summary_prompt(context: dict[str, Any]) -> str:
 | TOPIX-Standard | [数値] | [±X.XX%] |
 | TOPIX-Growth | [数値] | [±X.XX%] |
 
-※TOPIX系指数はJ-Quants Standard APIより取得
-
 [各指数の特徴を2-3文で説明。市場間の関係性や本日の特徴的な動きを含む。]
 
 ## 全体トレンド
@@ -253,8 +249,6 @@ def build_market_summary_prompt(context: dict[str, Any]) -> str:
 | [業種名4] | [終値] | [+X.XX%] |
 | [業種名5] | [終値] | [+X.XX%] |
 
-※33業種別指数はJ-Quants Standard APIより取得
-
 [各業種の騰落要因を段落形式で記述。共通要因がある場合はまとめて記述。具体的な材料・ニュース・市場環境を含む。]（出典: [URL1], [URL2], [URL3]）
 
 ### 下落上位5業種
@@ -266,8 +260,6 @@ def build_market_summary_prompt(context: dict[str, Any]) -> str:
 | [業種名3] | [終値] | [-X.XX%] |
 | [業種名4] | [終値] | [-X.XX%] |
 | [業種名5] | [終値] | [-X.XX%] |
-
-※33業種別指数はJ-Quants Standard APIより取得
 
 [各業種の騰落要因を段落形式で記述。共通要因がある場合はまとめて記述。具体的な材料・ニュース・市場環境を含む。]（出典: [URL4], [URL5], [URL6]）
 
