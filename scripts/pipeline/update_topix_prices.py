@@ -47,13 +47,14 @@ def main():
 
     print(f"\n[2] Fetching TOPIX indices...")
     print(f"Target codes: {list(TOPIX_CODES.keys())}")
+    print(f"Fetching from 2015-01-01 to {latest_trading_day}")
 
-    # 全データを取得
+    # 全データを取得（全期間）
     all_frames = []
     for code, name in TOPIX_CODES.items():
         try:
             print(f"  Fetching {name} ({code})...", end=" ", flush=True)
-            df = fetcher.get_indices(code=code, from_date=latest_trading_day, to_date=latest_trading_day)
+            df = fetcher.get_indices(code=code, from_date="2015-01-01", to_date=latest_trading_day)
 
             if df.empty:
                 print(f"[WARN] No data")
@@ -92,19 +93,9 @@ def main():
     print("\n[4] Latest data:")
     print(result[["date", "ticker", "name", "close"]])
 
-    # Parquet保存
+    # Parquet保存（全期間取得なので上書き）
     output_file = ROOT / "data" / "parquet" / "topix_prices_max_1d.parquet"
     print(f"\n[5] Saving to {output_file.name}...")
-
-    # 既存ファイルがあれば読み込んで追記
-    if output_file.exists():
-        existing = pd.read_parquet(output_file)
-        print(f"  Existing rows: {len(existing)}")
-
-        # 同じ日付のデータは上書き
-        existing = existing[existing["date"] < result["date"].min()]
-        result = pd.concat([existing, result], ignore_index=True)
-        print(f"  After merge: {len(result)} rows")
 
     result.to_parquet(output_file, index=False)
 

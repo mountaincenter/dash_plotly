@@ -11,15 +11,19 @@ on:
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
-        description: "Skip trading day check (force execution regardless of schedule)"
+        description: "営業日チェックをスキップ（スケジュールに関係なく強制実行）"
         type: boolean
         default: false
       force_meta_jquants:
-        description: "Force update meta_jquants.parquet (ignore 7-day freshness)"
+        description: "meta_jquants.parquetを強制更新（7日間の鮮度チェックを無視）"
         type: boolean
         default: false
       force_grok:
-        description: "Force GROK selection (run generate_grok_trending.py)"
+        description: "Grok銘柄選定を強制実行（generate_grok_trending.pyを実行）"
+        type: boolean
+        default: false
+      force_market_summary:
+        description: "市場サマリー生成を強制実行（generate_market_summary.pyを実行）"
         type: boolean
         default: false
 
@@ -453,7 +457,7 @@ jobs:
           fi
 
       - name: Generate market summary
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true' && (github.event_name == 'schedule' || github.event.inputs.force_market_summary == 'true')
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
