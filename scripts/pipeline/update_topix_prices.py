@@ -47,14 +47,14 @@ def main():
 
     print(f"\n[2] Fetching TOPIX indices...")
     print(f"Target codes: {list(TOPIX_CODES.keys())}")
-    print(f"Fetching from 2015-01-01 to {latest_trading_day}")
+    print(f"Fetching all available data (from/to parameters omitted)")
 
-    # 全データを取得（全期間）
+    # 全データを取得（from/to省略で全期間）
     all_frames = []
     for code, name in TOPIX_CODES.items():
         try:
             print(f"  Fetching {name} ({code})...", end=" ", flush=True)
-            df = fetcher.get_indices(code=code, from_date="2015-01-01", to_date=latest_trading_day)
+            df = fetcher.get_indices(code=code, from_date=None, to_date=None)
 
             if df.empty:
                 print(f"[WARN] No data")
