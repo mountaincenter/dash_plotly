@@ -331,7 +331,11 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
         if line.startswith('## '):
             # 前のセクションを保存
             if current_section and section_content:
-                sections[current_section] = '\n'.join(section_content).strip()
+                # 出典セクション（---以降）を除去
+                content_text = '\n'.join(section_content).strip()
+                if '---' in content_text:
+                    content_text = content_text.split('---')[0].strip()
+                sections[current_section] = content_text
                 section_content = []
 
             # 新しいセクションを検出
@@ -347,12 +351,19 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
             elif '指標' in section_header or 'indicator' in section_header:
                 current_section = 'indicators'
 
+            # セクションヘッダー自体は追加しない（二重表示を防ぐ）
+            continue
+
         if current_section:
             section_content.append(line)
 
     # 最後のセクションを保存
     if current_section and section_content:
-        sections[current_section] = '\n'.join(section_content).strip()
+        # 出典セクション（---以降）を除去
+        content_text = '\n'.join(section_content).strip()
+        if '---' in content_text:
+            content_text = content_text.split('---')[0].strip()
+        sections[current_section] = content_text
 
     return {
         'report_metadata': {
@@ -380,7 +391,8 @@ def cleanup_citations(markdown_content: str) -> str:
 
     1. （出典: URL, URL）形式から全URLを抽出
     2. URLの末尾から不要な文字（）。, 等）を削除
-    3. 同じURLを [出典#,#,#] URL 形式にまとめる
+    3. 本文中の（出典: URL）を [出典N] に置き換え
+    4. 末尾に同じURLを [出典#,#,#] URL 形式にまとめた一覧を追加
 
     Args:
         markdown_content: 元のMarkdownコンテンツ
@@ -392,34 +404,47 @@ def cleanup_citations(markdown_content: str) -> str:
 
     # （出典: URL, URL）のパターンを抽出
     citation_pattern = r'（出典:\s*([^）]+)）'
-    matches = re.findall(citation_pattern, markdown_content)
+    matches = list(re.finditer(citation_pattern, markdown_content))
 
     if not matches:
         return markdown_content
 
-    # 全URLを収集
-    all_urls = []
-    for match in matches:
-        # カンマやスペースで分割してURL抽出
-        urls = [url.strip() for url in re.split(r'[,\s]+', match) if url.strip().startswith('http')]
-        all_urls.extend(urls)
-
     # URLをクリーンアップして番号を付与
     url_to_numbers = {}
-    citation_number = 1
+    citation_counter = 0
+    replacements = []
 
-    for url in all_urls:
-        # URLから末尾の不要な文字を削除（複数パターン対応）
-        # 例: /,  ） → 。, 、 などを削除
-        clean_url = re.sub(r'[/,)。、\s→]+$', '', url)
+    for match in matches:
+        urls_text = match.group(1)
+        # カンマやスペースで分割してURL抽出
+        urls = [url.strip() for url in re.split(r'[,\s]+', urls_text) if url.strip().startswith('http')]
 
-        if clean_url not in url_to_numbers:
-            url_to_numbers[clean_url] = []
-        url_to_numbers[clean_url].append(str(citation_number))
-        citation_number += 1
+        # この出典グループの番号を収集
+        citation_numbers = []
 
-    # 元の出典表記を削除
-    result = re.sub(citation_pattern, '', markdown_content)
+        for url in urls:
+            # URLから末尾の不要な文字を削除
+            clean_url = re.sub(r'[/,)。、\s→]+$', '', url)
+
+            citation_counter += 1
+            citation_numbers.append(str(citation_counter))
+
+            if clean_url not in url_to_numbers:
+                url_to_numbers[clean_url] = []
+            url_to_numbers[clean_url].append(str(citation_counter))
+
+        # 置き換え文字列を生成
+        if len(citation_numbers) == 1:
+            replacement = f"[出典{citation_numbers[0]}]"
+        else:
+            replacement = f"[出典{','.join(citation_numbers)}]"
+
+        replacements.append((match.group(0), replacement))
+
+    # 元の出典表記を [出典N] に置き換え
+    result = markdown_content
+    for original, replacement in replacements:
+        result = result.replace(original, replacement, 1)
 
     # まとめた出典を末尾に追加
     if url_to_numbers:
