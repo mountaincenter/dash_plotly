@@ -51,8 +51,9 @@ def cleanup_citations(markdown_content: str) -> str:
     citation_number = 1
 
     for url in all_urls:
-        # URLから末尾の不要な文字を削除
-        clean_url = re.sub(r'[)。,、]+$', '', url)
+        # URLから末尾の不要な文字を削除（複数パターン対応）
+        # 例: /,  ） → 。, 、 などを削除
+        clean_url = re.sub(r'[/,)。、\s→]+$', '', url)
 
         if clean_url not in url_to_numbers:
             url_to_numbers[clean_url] = []
