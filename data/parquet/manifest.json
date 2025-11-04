@@ -1,8 +1,8 @@
 {
-  "generated_at": "2025-11-04T20:30:21.844499",
+  "generated_at": "2025-11-04T23:29:10.962765",
   "update_flag": "2025-11-04",
   "grok_update_flag": false,
-  "grok_last_update_date": "2025-11-04",
+  "grok_last_update_date": "2025-11-05",
   "grok_last_update_time": null,
   "files": {
     "meta.parquet": {
@@ -20,7 +20,7 @@
         "categories",
         "tags"
       ],
-      "updated_at": "2025-11-04T00:14:01.145495"
+      "updated_at": "2025-11-04T23:22:23.089189"
     },
     "meta_jquants.parquet": {
       "exists": true,
@@ -35,12 +35,12 @@
         "series",
         "topixnewindexseries"
       ],
-      "updated_at": "2025-10-31T14:28:37.387749"
+      "updated_at": "2025-11-04T23:22:23.335464"
     },
     "all_stocks.parquet": {
       "exists": true,
-      "size_bytes": 15025,
-      "row_count": 68,
+      "size_bytes": 12271,
+      "row_count": 56,
       "columns": [
         "ticker",
         "code",
@@ -61,12 +61,12 @@
         "score",
         "key_signal"
       ],
-      "updated_at": "2025-11-04T00:14:01.423606"
+      "updated_at": "2025-11-04T23:22:16.676135"
     },
     "grok_trending.parquet": {
       "exists": true,
-      "size_bytes": 19577,
-      "row_count": 13,
+      "size_bytes": 19681,
+      "row_count": 10,
       "columns": [
         "ticker",
         "code",
@@ -99,7 +99,7 @@
         "grok_rank",
         "selection_rank"
       ],
-      "updated_at": "2025-11-04T00:13:51.651014"
+      "updated_at": "2025-11-04T23:22:20.900644"
     },
     "grok_backtest_meta.parquet": {
       "exists": true,
@@ -109,7 +109,7 @@
         "metric",
         "value"
       ],
-      "updated_at": "2025-11-04T19:25:39.389228"
+      "updated_at": "2025-11-04T23:22:20.449808"
     },
     "grok_top_stocks.parquet": {
       "exists": true,
@@ -128,7 +128,7 @@
         "morning_change_pct",
         "daily_change_pct"
       ],
-      "updated_at": "2025-11-04T19:25:39.506630"
+      "updated_at": "2025-11-04T23:22:20.659305"
     },
     "scalping_entry.parquet": {
       "exists": false,
@@ -146,8 +146,8 @@
     },
     "prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 1212661,
-      "row_count": 93364,
+      "size_bytes": 1038842,
+      "row_count": 77168,
       "columns": [
         "date",
         "Open",
@@ -157,12 +157,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:40.947027"
+      "updated_at": "2025-11-04T23:22:23.712151"
     },
     "prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 2887273,
-      "row_count": 271456,
+      "size_bytes": 2489561,
+      "row_count": 224280,
       "columns": [
         "date",
         "Open",
@@ -172,12 +172,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:44.686060"
+      "updated_at": "2025-11-04T23:22:24.239206"
     },
     "prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 4398099,
-      "row_count": 346596,
+      "size_bytes": 3793207,
+      "row_count": 285488,
       "columns": [
         "date",
         "Open",
@@ -187,12 +187,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:49.791361"
+      "updated_at": "2025-11-04T23:22:24.977851"
     },
     "prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 13297801,
-      "row_count": 450432,
+      "size_bytes": 12381477,
+      "row_count": 371000,
       "columns": [
         "date",
         "Open",
@@ -202,12 +202,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:53.961457"
+      "updated_at": "2025-11-04T23:22:27.288989"
     },
     "prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 810939,
-      "row_count": 21624,
+      "size_bytes": 732536,
+      "row_count": 17864,
       "columns": [
         "date",
         "Open",
@@ -217,12 +217,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:55.922809"
+      "updated_at": "2025-11-04T23:22:27.639190"
     },
     "tech_snapshot_1d.parquet": {
       "exists": true,
-      "size_bytes": 22056,
-      "row_count": 68,
+      "size_bytes": 20313,
+      "row_count": 56,
       "columns": [
         "ticker",
         "date",
@@ -230,12 +230,12 @@
         "votes",
         "overall"
       ],
-      "updated_at": "2025-10-31T14:28:56.839090"
+      "updated_at": "2025-11-04T23:22:28.230225"
     },
     "index_prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 273495,
-      "row_count": 13730,
+      "size_bytes": 275511,
+      "row_count": 13780,
       "columns": [
         "date",
         "Open",
@@ -245,12 +245,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:57.355460"
+      "updated_at": "2025-11-04T23:22:21.178424"
     },
     "index_prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 610537,
-      "row_count": 40580,
+      "size_bytes": 615127,
+      "row_count": 40730,
       "columns": [
         "date",
         "Open",
@@ -260,12 +260,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:58.084703"
+      "updated_at": "2025-11-04T23:22:21.505369"
     },
     "index_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 1003450,
-      "row_count": 50970,
+      "size_bytes": 1006173,
+      "row_count": 50980,
       "columns": [
         "date",
         "Open",
@@ -275,12 +275,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:28:59.077619"
+      "updated_at": "2025-11-04T23:22:21.887262"
     },
     "index_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 1637499,
-      "row_count": 149770,
+      "size_bytes": 1640355,
+      "row_count": 149780,
       "columns": [
         "date",
         "Open",
@@ -290,12 +290,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:00.035671"
+      "updated_at": "2025-11-04T23:22:22.536626"
     },
     "index_prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 81896,
-      "row_count": 4900,
+      "size_bytes": 82185,
+      "row_count": 4910,
       "columns": [
         "date",
         "Open",
@@ -305,12 +305,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:00.391390"
+      "updated_at": "2025-11-04T23:22:22.856985"
     },
     "futures_prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 100665,
-      "row_count": 4279,
+      "size_bytes": 102700,
+      "row_count": 4313,
       "columns": [
         "date",
         "Open",
@@ -320,12 +320,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:00.716694"
+      "updated_at": "2025-11-04T23:22:19.101827"
     },
     "futures_prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 222645,
-      "row_count": 11891,
+      "size_bytes": 226274,
+      "row_count": 12018,
       "columns": [
         "date",
         "Open",
@@ -335,12 +335,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:01.035768"
+      "updated_at": "2025-11-04T23:22:19.421694"
     },
     "futures_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 286869,
-      "row_count": 13547,
+      "size_bytes": 287312,
+      "row_count": 13531,
       "columns": [
         "date",
         "Open",
@@ -350,12 +350,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:01.543055"
+      "updated_at": "2025-11-04T23:22:19.704355"
     },
     "futures_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 173738,
-      "row_count": 5465,
+      "size_bytes": 173802,
+      "row_count": 5467,
       "columns": [
         "date",
         "Open",
@@ -365,12 +365,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:01.887271"
+      "updated_at": "2025-11-04T23:22:20.012471"
     },
     "futures_prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 12856,
-      "row_count": 223,
+      "size_bytes": 12891,
+      "row_count": 224,
       "columns": [
         "date",
         "Open",
@@ -380,12 +380,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:01.999221"
+      "updated_at": "2025-11-04T23:22:20.233993"
     },
     "currency_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 904226,
-      "row_count": 34592,
+      "size_bytes": 904513,
+      "row_count": 34606,
       "columns": [
         "date",
         "Open",
@@ -395,12 +395,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:02.561767"
+      "updated_at": "2025-11-04T23:22:18.317032"
     },
     "currency_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 413855,
-      "row_count": 15052,
+      "size_bytes": 413958,
+      "row_count": 15056,
       "columns": [
         "date",
         "Open",
@@ -410,12 +410,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:03.112373"
+      "updated_at": "2025-11-04T23:22:18.622079"
     },
     "currency_prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 25520,
-      "row_count": 698,
+      "size_bytes": 25616,
+      "row_count": 700,
       "columns": [
         "date",
         "Open",
@@ -425,12 +425,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2025-10-31T14:29:03.252569"
+      "updated_at": "2025-11-04T23:22:18.835923"
     },
     "topix_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 147736,
-      "row_count": 4908,
+      "size_bytes": 147889,
+      "row_count": 4913,
       "columns": [
         "date",
         "ticker",
@@ -441,7 +441,7 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-11-02T09:16:08.446601"
+      "updated_at": "2025-11-04T23:22:28.482242"
     },
     "sectors_prices_max_1d.parquet": {
       "exists": true,
@@ -457,7 +457,7 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-11-04T19:37:02.453070"
+      "updated_at": "2025-11-04T23:28:26.792171"
     },
     "series_prices_max_1d.parquet": {
       "exists": true,
@@ -473,7 +473,7 @@
         "low",
         "close"
       ],
-      "updated_at": "2025-11-04T19:37:16.547536"
+      "updated_at": "2025-11-04T23:28:32.233790"
     }
   }
 }

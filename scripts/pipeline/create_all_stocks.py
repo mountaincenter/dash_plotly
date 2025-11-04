@@ -78,25 +78,32 @@ def load_required_files() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.
         print("  [WARN] scalping_active.parquet not found, using empty DataFrame")
         scalping_active = pd.DataFrame()
 
-    # grok_trending.parquet（S3から取得）
+    # grok_trending.parquet（ローカル優先、なければS3から取得）
     print("[INFO] Loading grok_trending.parquet...")
 
-    # 一時ファイルパスを作成
-    temp_dir = PARQUET_DIR / "temp"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_grok_path = temp_dir / "grok_trending_temp.parquet"
+    # ローカルパスをチェック
+    local_grok_path = PARQUET_DIR / "grok_trending.parquet"
 
-    # S3からダウンロード
-    s3_success = download_from_s3_if_exists("grok_trending.parquet", temp_grok_path)
-
-    if s3_success and temp_grok_path.exists():
-        grok_trending = pd.read_parquet(temp_grok_path)
-        print(f"  ✓ Loaded grok_trending.parquet: {len(grok_trending)} stocks")
-        # クリーンアップ
-        temp_grok_path.unlink(missing_ok=True)
+    if local_grok_path.exists():
+        # ローカルファイルが存在する場合はそれを使用
+        grok_trending = pd.read_parquet(local_grok_path)
+        print(f"  ✓ Loaded grok_trending.parquet from local: {len(grok_trending)} stocks")
     else:
-        print("  [WARN] grok_trending.parquet not found in S3, using empty DataFrame")
-        grok_trending = pd.DataFrame()
+        # ローカルにない場合のみS3からダウンロード
+        print("  [INFO] Local file not found, trying S3...")
+        temp_dir = PARQUET_DIR / "temp"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_grok_path = temp_dir / "grok_trending_temp.parquet"
+
+        s3_success = download_from_s3_if_exists("grok_trending.parquet", temp_grok_path)
+
+        if s3_success and temp_grok_path.exists():
+            grok_trending = pd.read_parquet(temp_grok_path)
+            print(f"  ✓ Loaded grok_trending.parquet from S3: {len(grok_trending)} stocks")
+            temp_grok_path.unlink(missing_ok=True)
+        else:
+            print("  [WARN] grok_trending.parquet not found in S3 or locally, using empty DataFrame")
+            grok_trending = pd.DataFrame()
 
     return meta, scalping_entry, scalping_active, grok_trending
 

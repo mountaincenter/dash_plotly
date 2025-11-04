@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 from scripts.lib.jquants_fetcher import JQuantsFetcher
+from common_cfg.s3io import download_file
+from common_cfg.s3cfg import load_s3_config
 
 
 def main():
@@ -26,6 +28,21 @@ def main():
     print("=" * 60)
 
     fetcher = JQuantsFetcher()
+
+    # S3から既存ファイルをダウンロード（GitHub Actions対応）
+    output_file = ROOT / "data" / "parquet" / "sectors_prices_max_1d.parquet"
+    print("\n[0] Downloading existing file from S3 (if exists)...")
+    try:
+        cfg = load_s3_config()
+        success = download_file(cfg, "sectors_prices_max_1d.parquet", output_file)
+        if success:
+            df_existing = pd.read_parquet(output_file)
+            print(f"  ✓ Downloaded from S3: {len(df_existing)} rows")
+        else:
+            print("  [INFO] No existing file in S3, will create new")
+    except Exception as e:
+        print(f"  [WARN] S3 download failed: {e}")
+        print("  [INFO] Will create new file")
 
     print("\n[1] Getting latest trading day...")
     latest_trading_day = fetcher.get_latest_trading_day()
@@ -86,7 +103,6 @@ def main():
     print("\nLast 5 sectors:")
     print(result[["date", "ticker", "name", "close"]].tail(5))
 
-    output_file = ROOT / "data" / "parquet" / "sectors_prices_max_1d.parquet"
     print(f"\n[5] Saving to {output_file.name}...")
 
     # 既存ファイルがあれば読み込んで追記
