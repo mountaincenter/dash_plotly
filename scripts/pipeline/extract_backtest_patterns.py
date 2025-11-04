@@ -80,11 +80,12 @@ def load_backtest_archives(days: int = 5) -> pd.DataFrame:
 
         for s3_key in recent_files:
             try:
-                # S3からダウンロード
+                # S3からダウンロード（prefixを除去してから渡す）
                 filename = s3_key.split('/')[-1]
                 temp_file = temp_dir / filename
 
-                if not download_file(cfg, s3_key, temp_file):
+                relative_key = s3_key.replace(cfg.prefix, "", 1)
+                if not download_file(cfg, relative_key, temp_file):
                     print(f"[WARN] Failed to download from S3: {s3_key}")
                     continue
 
