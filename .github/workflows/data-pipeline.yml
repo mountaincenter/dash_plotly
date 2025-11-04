@@ -6,7 +6,7 @@ on:
     # Grok選定は材料の鮮度が重要なため、毎日実行
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
-    - cron: "0 7 * * *" # UTC 07:00 = JST 16:00 (当日) - 株価データ更新のみ
+    - cron: "45 7 * * *" # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
     - cron: "0 14 * * *" # UTC 14:00 = JST 23:00 (当日) - Grok選定 + 株価データ更新
   workflow_dispatch:
     inputs:
@@ -96,7 +96,7 @@ jobs:
             echo "mode=stock_data" >> $GITHUB_OUTPUT
             echo "skip_trading_check=false" >> $GITHUB_OUTPUT
             echo "skip_grok=true" >> $GITHUB_OUTPUT
-            echo "💹 Stock Data Mode (16:00 JST) - Grok selection skipped"
+            echo "💹 Stock Data Mode (16:45 JST) - Grok selection skipped"
           fi
 
       - name: Check trading day window
@@ -110,7 +110,7 @@ jobs:
           EXIT_CODE=$?
 
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ Within execution window (16:00-02:00 JST on trading day)"
+            echo "✅ Within execution window (16:45-02:00 JST on trading day)"
           else
             echo "❌ Outside execution window or non-trading day"
           fi
@@ -234,7 +234,7 @@ jobs:
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
           echo "============================================================"
-          echo "Running backtest and archiving results (16:00 only)"
+          echo "Running backtest and archiving results (16:45 only)"
           echo "============================================================"
 
           # S3から既存のアーカイブファイルをダウンロード
@@ -397,8 +397,8 @@ jobs:
 
           if false; then
             # cron判定
-            if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
-              RUN_TIME="16:00"
+            if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
+              RUN_TIME="16:45"
             elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
               RUN_TIME="23:00"
             else
@@ -458,8 +458,8 @@ jobs:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           # cron判定
-          if [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
-            RUN_TIME="16:00"
+          if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
+            RUN_TIME="16:45"
           elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
             RUN_TIME="23:00"
           else
@@ -468,8 +468,8 @@ jobs:
 
           echo "📰 Generating market summary ($RUN_TIME run)..."
 
-          # 16時のみ市場サマリーを生成（大引け後）
-          if [ "$RUN_TIME" = "16:00" ]; then
+          # 16:45のみ市場サマリーを生成（大引け後）
+          if [ "$RUN_TIME" = "16:45" ]; then
             python3 scripts/pipeline/generate_market_summary.py
 
             if [ $? -eq 0 ]; then
@@ -495,7 +495,7 @@ jobs:
               echo "❌ Market summary generation failed (non-critical, continuing)"
             fi
           else
-            echo "ℹ️  Skipping market summary (only runs at 16:00 JST)"
+            echo "ℹ️  Skipping market summary (only runs at 16:45 JST)"
           fi
 
       - name: Extract GROK stocks info
@@ -565,7 +565,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          TRIGGER_TIME="16:00 JST"
+          TRIGGER_TIME="16:45 JST"
           if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
             TRIGGER_TIME="23:00 JST"
           elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
@@ -595,8 +595,8 @@ jobs:
                 GROK_SECTION=$(cat /tmp/grok_section.txt)
               fi
             fi
-          elif [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
-            # 16:00 - 市場サマリーを表示
+          elif [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
+            # 16:45 - 市場サマリーを表示
             DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
             JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
 
@@ -665,7 +665,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          TRIGGER_TIME="16:00 JST"
+          TRIGGER_TIME="16:45 JST"
           if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
             TRIGGER_TIME="02:00 JST"
           fi
