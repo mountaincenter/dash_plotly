@@ -810,12 +810,19 @@ or
 
 ### 技術的対策の必要性
 
-CLAUDE.mdへの記載だけでは不十分。以下の技術的制約も必須：
-1. **Hooks による実行前ブロック**（`.claude/hooks/pre-tool-use`）
-2. **環境変数による実行許可制御**（`ALLOW_GROK_API=1`）
-3. **スクリプトレベルでの確認プロンプト**
+CLAUDE.mdへの記載だけでは不十分。以下の技術的制約が有効：
 
-これらの対策も併せて実装する。
+**実装済み（有効）:**
+1. **環境変数による実行許可制御**（`ALLOW_GROK_API=1`）
+   - generate_market_summary.py: 環境変数なしでは実行不可
+   - GitHub Actions: ALLOW_GROK_API="1" を設定済み
+
+2. **スクリプトレベルでの確認プロンプト**
+   - 実行時に警告メッセージを表示
+   - exit 1 で強制終了
+
+**検証済み（無効）:**
+- ~~Hooks (.claude/hooks/pre-tool-use)~~ → Claude Codeで動作せず、削除済み
 
 ---
 
