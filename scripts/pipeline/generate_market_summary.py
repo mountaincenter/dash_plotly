@@ -331,18 +331,17 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
         if line.startswith('## '):
             # 前のセクションを保存
             if current_section and section_content:
-                # 出典セクション（---以降）を除去
-                # 注意: テーブルの区切り行（| --- |）と混同しないよう、行全体が --- の場合のみ分割
                 content_text = '\n'.join(section_content).strip()
-                if '\n---\n' in content_text:
-                    content_text = content_text.split('\n---\n')[0].strip()
-                elif content_text.endswith('\n---'):
-                    content_text = content_text.rsplit('\n---', 1)[0].strip()
                 sections[current_section] = content_text
                 section_content = []
 
             # 新しいセクションを検出
             section_header = line.lower()
+
+            # 出典セクションに到達したら終了（既にクリーンアップ済みのため）
+            if '出典' in section_header:
+                break
+
             if '主要指数' in section_header or 'indices' in section_header:
                 current_section = 'indices'
             elif 'セクター' in section_header or 'sector' in section_header:
@@ -362,13 +361,7 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
 
     # 最後のセクションを保存
     if current_section and section_content:
-        # 出典セクション（---以降）を除去
-        # 注意: テーブルの区切り行（| --- |）と混同しないよう、行全体が --- の場合のみ分割
         content_text = '\n'.join(section_content).strip()
-        if '\n---\n' in content_text:
-            content_text = content_text.split('\n---\n')[0].strip()
-        elif content_text.endswith('\n---'):
-            content_text = content_text.rsplit('\n---', 1)[0].strip()
         sections[current_section] = content_text
 
     return {
@@ -396,9 +389,11 @@ def cleanup_citations(markdown_content: str) -> str:
     出典表記をクリーンアップ
 
     1. （出典: URL, URL）形式から全URLを抽出
-    2. URLの末尾から不要な文字（）。, 等）を削除
-    3. 本文中の（出典: URL）を [出典N] に置き換え
-    4. 末尾に同じURLを [出典#,#,#] URL 形式にまとめた一覧を追加
+    2. 表内の生URLを抽出（Markdownテーブルの | URL | 形式）
+    3. URLの末尾から不要な文字（）。, 等）を削除
+    4. 本文中の（出典: URL）を [出典N] に置き換え
+    5. 表内の生URLを [出典N] に置き換え
+    6. 末尾に同じURLを [出典#,#,#] URL 形式にまとめた一覧を追加
 
     Args:
         markdown_content: 元のMarkdownコンテンツ
@@ -408,17 +403,14 @@ def cleanup_citations(markdown_content: str) -> str:
     """
     import re
 
-    # （出典: URL, URL）のパターンを抽出
-    citation_pattern = r'（出典:\s*([^）]+)）'
-    matches = list(re.finditer(citation_pattern, markdown_content))
-
-    if not matches:
-        return markdown_content
-
     # URLをクリーンアップして番号を付与
     url_to_numbers = {}
     citation_counter = 0
     replacements = []
+
+    # 1. （出典: URL, URL）のパターンを抽出
+    citation_pattern = r'（出典:\s*([^）]+)）'
+    matches = list(re.finditer(citation_pattern, markdown_content))
 
     for match in matches:
         urls_text = match.group(1)
@@ -447,7 +439,26 @@ def cleanup_citations(markdown_content: str) -> str:
 
         replacements.append((match.group(0), replacement))
 
-    # 元の出典表記を [出典N] に置き換え
+    # 2. 表内の生URLを抽出（| URL | 形式）
+    # Markdownテーブルのセル内にあるURLを検出
+    table_url_pattern = r'\|\s*(https?://[^\s|]+)\s*\|'
+    table_url_matches = list(re.finditer(table_url_pattern, markdown_content))
+
+    for match in table_url_matches:
+        url = match.group(1).strip()
+        # URLから末尾の不要な文字を削除
+        clean_url = re.sub(r'[/,)。、\s→]+$', '', url)
+
+        citation_counter += 1
+        if clean_url not in url_to_numbers:
+            url_to_numbers[clean_url] = []
+        url_to_numbers[clean_url].append(str(citation_counter))
+
+        # 置き換え文字列を生成
+        replacement = f"| [出典{citation_counter}] |"
+        replacements.append((match.group(0), replacement))
+
+    # 置き換え実行
     result = markdown_content
     for original, replacement in replacements:
         result = result.replace(original, replacement, 1)
@@ -484,25 +495,11 @@ def save_files(target_date: datetime, markdown_content: str, structured_data: di
 
     date_str = target_date.strftime('%Y-%m-%d')
 
-    # 出典をクリーンアップ
-    cleaned_markdown = cleanup_citations(markdown_content)
-
-    # Markdown保存
+    # Markdown保存（既にクリーンアップ済み）
     markdown_path = RAW_DIR / f"{date_str}.md"
     with open(markdown_path, 'w', encoding='utf-8') as f:
-        f.write(cleaned_markdown)
+        f.write(markdown_content)
     print(f"  [OK] Saved Markdown: {markdown_path}")
-
-    # structured_data の content にも cleanup_citations を適用
-    if 'content' in structured_data:
-        if 'markdown_full' in structured_data['content']:
-            structured_data['content']['markdown_full'] = cleanup_citations(
-                structured_data['content']['markdown_full']
-            )
-        if 'sections' in structured_data['content']:
-            for section_key, section_content in structured_data['content']['sections'].items():
-                if section_content:
-                    structured_data['content']['sections'][section_key] = cleanup_citations(section_content)
 
     # JSON保存
     json_path = STRUCTURED_DIR / f"{date_str}.json"
@@ -580,6 +577,15 @@ def main() -> int:
         markdown_response, metadata = query_grok(api_key, prompt)
     except Exception as e:
         print(f"  [ERROR] Grok API call failed: {e}")
+        return 1
+
+    # 4.5. 出典のクリーンアップ（セクション分割前に実行）
+    print("\n[STEP 2.5] Cleaning citations...")
+    try:
+        markdown_response = cleanup_citations(markdown_response)
+        print(f"  [OK] Citations cleaned")
+    except Exception as e:
+        print(f"  [ERROR] Failed to clean citations: {e}")
         return 1
 
     # 5. 構造化データ生成
