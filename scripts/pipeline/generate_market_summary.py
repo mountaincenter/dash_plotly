@@ -332,9 +332,12 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
             # 前のセクションを保存
             if current_section and section_content:
                 # 出典セクション（---以降）を除去
+                # 注意: テーブルの区切り行（| --- |）と混同しないよう、行全体が --- の場合のみ分割
                 content_text = '\n'.join(section_content).strip()
-                if '---' in content_text:
-                    content_text = content_text.split('---')[0].strip()
+                if '\n---\n' in content_text:
+                    content_text = content_text.split('\n---\n')[0].strip()
+                elif content_text.endswith('\n---'):
+                    content_text = content_text.rsplit('\n---', 1)[0].strip()
                 sections[current_section] = content_text
                 section_content = []
 
@@ -360,9 +363,12 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
     # 最後のセクションを保存
     if current_section and section_content:
         # 出典セクション（---以降）を除去
+        # 注意: テーブルの区切り行（| --- |）と混同しないよう、行全体が --- の場合のみ分割
         content_text = '\n'.join(section_content).strip()
-        if '---' in content_text:
-            content_text = content_text.split('---')[0].strip()
+        if '\n---\n' in content_text:
+            content_text = content_text.split('\n---\n')[0].strip()
+        elif content_text.endswith('\n---'):
+            content_text = content_text.rsplit('\n---', 1)[0].strip()
         sections[current_section] = content_text
 
     return {
