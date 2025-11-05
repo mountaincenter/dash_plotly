@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
 sync/download_from_s3.py
-ローカル開発環境用: S3から全データファイルをダウンロードして同期
+ローカル開発環境用: S3から全データファイル（.parquet, .md, .json）をダウンロードして同期
 
 使用場面:
 - ローカル開発環境でGitHub Actionsが更新した最新データを取得したい場合
 - S3をシングルソースとして、ローカルデータを最新に同期したい場合
 - 新しい開発環境をセットアップする際の初期データ取得
+
+ダウンロード対象:
+- ルートディレクトリの .parquet ファイル
+- backtest/ ディレクトリの .parquet ファイル
+- market_summary/raw/ ディレクトリの .md ファイル
+- market_summary/structured/ ディレクトリの .json ファイル
 
 実行方法:
   python scripts/sync/download_from_s3.py
@@ -92,7 +98,7 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
 
 def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, clean: bool = False) -> tuple[int, int]:
     """
-    S3から全parquetファイルをダウンロード
+    S3から全データファイル（.parquet, .md, .json）をダウンロード
 
     Args:
         dry_run: Trueの場合、ダウンロードせずに確認のみ
@@ -133,24 +139,26 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
             print("  ⚠ No files found in S3")
             return 0, 0
 
-        # .parquetファイルのみフィルタ（manifest.jsonは除外）
-        # backtest/配下のファイルも含めてダウンロード
-        parquet_files = [f for f in s3_files if f.endswith('.parquet')]
+        # .parquet, .md, .jsonファイルをフィルタ（manifest.jsonは除外）
+        # backtest/配下およびmarket_summary/配下のファイルも含めてダウンロード
+        download_files = [f for f in s3_files if (f.endswith('.parquet') or f.endswith('.md') or f.endswith('.json')) and f != 'manifest.json']
 
         # file_filterが指定されている場合は、さらにフィルタ
         if file_filter:
-            parquet_files = [f for f in parquet_files if f in file_filter]
+            download_files = [f for f in download_files if f in file_filter]
 
-        # ルートとbacktestに分類
-        root_files = [f for f in parquet_files if not f.startswith('backtest/')]
-        backtest_files = [f for f in parquet_files if f.startswith('backtest/')]
+        # ルート、backtest、market_summaryに分類
+        root_files = [f for f in download_files if not f.startswith('backtest/') and not f.startswith('market_summary/')]
+        backtest_files = [f for f in download_files if f.startswith('backtest/')]
+        market_summary_files = [f for f in download_files if f.startswith('market_summary/')]
 
-        print(f"  ✓ Found {len(parquet_files)} parquet file(s)")
+        print(f"  ✓ Found {len(download_files)} file(s)")
         print(f"    - Root: {len(root_files)} file(s)")
         print(f"    - Backtest: {len(backtest_files)} file(s)")
+        print(f"    - Market Summary: {len(market_summary_files)} file(s)")
 
-        if not parquet_files:
-            print("\n⚠️  No parquet files to download")
+        if not download_files:
+            print("\n⚠️  No files to download")
             return 0, 0
 
         # ファイル一覧表示
@@ -163,14 +171,18 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
             print("  [Backtest]")
             for f in sorted(backtest_files):
                 print(f"    - {f}")
+        if market_summary_files:
+            print("  [Market Summary]")
+            for f in sorted(market_summary_files):
+                print(f"    - {f}")
 
     except Exception as e:
         print(f"  ✗ Failed to list S3 files: {e}")
         return 0, 0
 
     if dry_run:
-        print(f"\n✅ Dry run completed - {len(parquet_files)} file(s) would be downloaded")
-        return len(parquet_files), 0
+        print(f"\n✅ Dry run completed - {len(download_files)} file(s) would be downloaded")
+        return len(download_files), 0
 
     # ダウンロード実行
     print("\n[STEP 2] Downloading files...")
@@ -180,13 +192,23 @@ def download_all_from_s3(dry_run: bool = False, file_filter: List[str] = None, c
     backtest_dir = PARQUET_DIR / "backtest"
     backtest_dir.mkdir(parents=True, exist_ok=True)
 
+    # market_summaryディレクトリも作成
+    market_summary_dir = PARQUET_DIR / "market_summary"
+    market_summary_dir.mkdir(parents=True, exist_ok=True)
+    (market_summary_dir / "raw").mkdir(parents=True, exist_ok=True)
+    (market_summary_dir / "structured").mkdir(parents=True, exist_ok=True)
+
     success_count = 0
     fail_count = 0
 
-    for i, filename in enumerate(sorted(parquet_files), 1):
-        # 相対パスを保持してダウンロード（backtest/xxx.parquet -> PARQUET_DIR/backtest/xxx.parquet）
+    for i, filename in enumerate(sorted(download_files), 1):
+        # 相対パスを保持してダウンロード
+        # 例: backtest/xxx.parquet -> PARQUET_DIR/backtest/xxx.parquet
+        #     market_summary/raw/xxx.md -> PARQUET_DIR/market_summary/raw/xxx.md
         local_path = PARQUET_DIR / filename
-        print(f"\n  [{i}/{len(parquet_files)}] {filename}")
+        # 親ディレクトリが存在しない場合は作成
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"\n  [{i}/{len(download_files)}] {filename}")
 
         try:
             if download_file(cfg, filename, local_path):
