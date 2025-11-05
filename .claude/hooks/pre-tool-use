@@ -1,0 +1,30 @@
+#!/bin/bash
+# pre-tool-use hook
+# 課金が発生する操作を実行前にブロック
+
+TOOL_NAME="$1"
+COMMAND="$2"
+
+# Grok API呼び出し（generate_market_summary.py）をブロック
+if [[ "$TOOL_NAME" == "Bash" ]] && [[ "$COMMAND" =~ generate_market_summary ]]; then
+    echo "⚠️  このコマンドはGrok APIを呼び出します（課金発生）"
+    echo "ユーザーの明示的指示がない限り実行できません"
+    exit 1
+fi
+
+# GitHub Actions workflow_dispatch をブロック
+if [[ "$TOOL_NAME" == "Bash" ]] && [[ "$COMMAND" =~ "gh workflow run" ]]; then
+    echo "⚠️  このコマンドはGitHub Actionsを手動実行します（課金発生）"
+    echo "ユーザーの明示的指示がない限り実行できません"
+    exit 1
+fi
+
+# OpenAI API呼び出しをブロック
+if [[ "$TOOL_NAME" == "Bash" ]] && [[ "$COMMAND" =~ "openai" ]]; then
+    echo "⚠️  このコマンドはOpenAI APIを呼び出します（課金発生）"
+    echo "ユーザーの明示的指示がない限り実行できません"
+    exit 1
+fi
+
+# 正常終了
+exit 0

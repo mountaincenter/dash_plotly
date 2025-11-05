@@ -460,6 +460,7 @@ jobs:
         if: success() && steps.exec_mode.outputs.skip_grok == 'true' && (github.event_name == 'schedule' || github.event.inputs.force_market_summary == 'true')
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          ALLOW_GROK_API: "1"
         run: |
           # cron判定
           if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then

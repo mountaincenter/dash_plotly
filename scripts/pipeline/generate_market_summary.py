@@ -550,6 +550,21 @@ def main() -> int:
     print("Generate Market Summary Report (v1.3)")
     print("=" * 60)
 
+    # 0. 環境変数チェック（課金API呼び出し防止）
+    import os
+    if not os.getenv("ALLOW_GROK_API"):
+        print("\n" + "=" * 60)
+        print("⚠️  WARNING: Grok API呼び出しには課金が発生します")
+        print("=" * 60)
+        print("\nこのスクリプトはGrok APIを呼び出します（課金対象）")
+        print("実行するには環境変数を設定してください:\n")
+        print("  export ALLOW_GROK_API=1")
+        print("  python3 scripts/pipeline/generate_market_summary.py\n")
+        print("ユーザーの明示的指示なしに実行することは禁止されています")
+        print("詳細: .claude/CLAUDE.md セクション15を参照")
+        print("=" * 60)
+        return 1
+
     # 1. 対象日の取得
     target_date = get_target_date(args.date)
     print(f"\nTarget date: {target_date.strftime('%Y-%m-%d')}")
