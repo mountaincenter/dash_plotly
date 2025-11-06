@@ -478,8 +478,19 @@ jobs:
 
           echo "📰 Generating market summary ($RUN_TIME run)..."
 
-          # 16:45のみ市場サマリーを生成（大引け後）
+          # 16:45は必ず生成、手動実行はforce_market_summary=trueで生成
+          SHOULD_GENERATE_SUMMARY=false
           if [ "$RUN_TIME" = "16:45" ]; then
+            SHOULD_GENERATE_SUMMARY=true
+            echo "ℹ️  16:45 run - Market summary generation enabled"
+          elif [ "${{ github.event.inputs.force_market_summary }}" = "true" ]; then
+            SHOULD_GENERATE_SUMMARY=true
+            echo "ℹ️  Manual run with force_market_summary=true - Market summary generation enabled"
+          else
+            echo "ℹ️  Market summary generation skipped (not 16:45 and force_market_summary=false)"
+          fi
+
+          if [ "$SHOULD_GENERATE_SUMMARY" = "true" ]; then
             python3 scripts/pipeline/generate_market_summary.py
 
             if [ $? -eq 0 ]; then
