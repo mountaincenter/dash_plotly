@@ -26,6 +26,10 @@ on:
         description: "市場サマリー生成を強制実行（generate_market_summary.pyを実行）"
         type: boolean
         default: false
+      show_market_summary_in_slack:
+        description: "Slack通知に市場サマリーを表示（手動実行時のみ有効）"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -592,8 +596,8 @@ jobs:
           GROK_SECTION=""
           MARKET_SUMMARY_SECTION=""
 
-          if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-            # 23:00 - GROK銘柄を表示
+          # 23:00 または force_grok=true → GROK銘柄を表示
+          if [ "${{ github.event.schedule }}" = "0 14 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
             if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
@@ -605,8 +609,10 @@ jobs:
                 GROK_SECTION=$(cat /tmp/grok_section.txt)
               fi
             fi
-          elif [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
-            # 16:45 - 市場サマリーを表示
+          fi
+
+          # 16:45 または show_market_summary_in_slack=true → 市場サマリーを表示
+          if [ "${{ github.event.schedule }}" = "45 7 * * *" ] || [ "${{ github.event.inputs.show_market_summary_in_slack }}" = "true" ]; then
             DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
             JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
 
