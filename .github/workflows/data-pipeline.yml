@@ -567,15 +567,19 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Slack notification on success
-        if: success() && steps.pipeline.conclusion == 'success'
+        if: success()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          TRIGGER_TIME="16:45 JST"
-          if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-            TRIGGER_TIME="23:00 JST"
-          elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
-            TRIGGER_TIME="02:00 JST"
+          TRIGGER_TIME="Manual Run"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+              TRIGGER_TIME="23:00 JST"
+            elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+              TRIGGER_TIME="02:00 JST"
+            else
+              TRIGGER_TIME="16:45 JST"
+            fi
           fi
 
           # J-Quants障害検知（空ファイルかどうか）
@@ -671,9 +675,15 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
-          TRIGGER_TIME="16:45 JST"
-          if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
-            TRIGGER_TIME="02:00 JST"
+          TRIGGER_TIME="Manual Run"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+              TRIGGER_TIME="23:00 JST"
+            elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+              TRIGGER_TIME="02:00 JST"
+            else
+              TRIGGER_TIME="16:45 JST"
+            fi
           fi
 
           MESSAGE='{
