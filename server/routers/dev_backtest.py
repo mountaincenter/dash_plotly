@@ -33,16 +33,9 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 def load_archive_data() -> pd.DataFrame:
     """
     アーカイブファイルを読み込み
-    - ローカルにファイルがあればそれを使用
-    - なければS3から直接読み込み
+    - S3から読み込み（本番環境、常に最新）
+    - S3が失敗したらローカルファイルを使用（開発環境）
     """
-    # ローカルファイルが存在する場合
-    if ARCHIVE_FILE.exists():
-        df = pd.read_parquet(ARCHIVE_FILE)
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
-        return df
-
     # S3から読み込み
     try:
         s3_key = f"{S3_PREFIX}backtest/grok_trending_archive.parquet"
@@ -63,7 +56,18 @@ def load_archive_data() -> pd.DataFrame:
 
     except Exception as e:
         print(f"[WARNING] Could not load backtest archive from S3: {type(e).__name__}: {e}")
-        return pd.DataFrame()
+
+    # ローカルファイルにフォールバック
+    if ARCHIVE_FILE.exists():
+        print(f"[INFO] Loading backtest archive from local file: {ARCHIVE_FILE}")
+        df = pd.read_parquet(ARCHIVE_FILE)
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        return df
+
+    # どちらも失敗
+    print(f"[WARNING] Backtest archive not found in S3 or local file")
+    return pd.DataFrame()
 
 
 def calculate_daily_stats(df: pd.DataFrame, phase: str, config: Dict[str, Any]) -> Dict[str, Any]:

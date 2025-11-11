@@ -29,21 +29,16 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 def load_recommendation_data() -> dict:
     """
     推奨データを読み込み
-    - ローカルにファイルがあればそれを使用（開発環境）
-    - なければS3から直接読み込み（本番環境）
+    - S3から読み込み（本番環境、常に最新）
+    - S3が失敗したらローカルファイルを使用（開発環境）
     """
-    # ローカルファイルが存在する場合
-    if JSON_FILE.exists():
-        with open(JSON_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-
     # S3から読み込み
     try:
         s3_key = f"{S3_PREFIX}backtest/trading_recommendation.json"
+        s3_client = boto3.client('s3', region_name=AWS_REGION)
 
         print(f"[INFO] Loading recommendation data from S3: s3://{S3_BUCKET}/{s3_key}")
 
-        s3_client = boto3.client('s3', region_name=AWS_REGION)
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
         data = json.loads(response['Body'].read().decode('utf-8'))
 
@@ -53,24 +48,29 @@ def load_recommendation_data() -> dict:
     except ClientError as e:
         error_code = e.response.get('Error', {}).get('Code', 'Unknown')
         if error_code == 'NoSuchKey':
-            print(f"[ERROR] Recommendation data not found in S3: {s3_key}")
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error": {
-                        "code": "NOT_FOUND",
-                        "message": "推奨データが見つかりません",
-                        "details": f"S3にファイルが存在しません: {s3_key}"
-                    }
-                }
-            )
+            print(f"[WARNING] Recommendation data not found in S3: {s3_key}")
         else:
-            print(f"[ERROR] S3 error: {error_code}: {e}")
-            raise
-
+            print(f"[WARNING] S3 error: {error_code}: {e}")
     except Exception as e:
-        print(f"[ERROR] Could not load recommendation data: {type(e).__name__}: {e}")
-        raise
+        print(f"[WARNING] Could not load from S3: {type(e).__name__}: {e}")
+
+    # ローカルファイルにフォールバック
+    if JSON_FILE.exists():
+        print(f"[INFO] Loading recommendation data from local file: {JSON_FILE}")
+        with open(JSON_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    # どちらも失敗
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "error": {
+                "code": "NOT_FOUND",
+                "message": "推奨データが見つかりません",
+                "details": "S3・ローカル共に存在しません"
+            }
+        }
+    )
 
 
 @router.get("/api/trading-recommendations")

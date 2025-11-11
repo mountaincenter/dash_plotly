@@ -29,18 +29,9 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 def load_analysis_data() -> pd.DataFrame:
     """
     分析データを読み込み
-    - ローカルにファイルがあればそれを使用（開発環境）
-    - なければS3から直接読み込み（本番環境）
+    - S3から読み込み（本番環境、常に最新）
+    - S3が失敗したらローカルファイルを使用（開発環境）
     """
-    # ローカルファイルが存在する場合
-    if DATA_PATH.exists():
-        df = pd.read_parquet(DATA_PATH)
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
-        if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'])
-        return df
-
     # S3から読み込み
     try:
         s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
@@ -62,8 +53,21 @@ def load_analysis_data() -> pd.DataFrame:
         return df
 
     except Exception as e:
-        print(f"[ERROR] Could not load analysis data from S3: {type(e).__name__}: {e}")
-        raise
+        print(f"[WARNING] Could not load analysis data from S3: {type(e).__name__}: {e}")
+
+    # ローカルファイルにフォールバック
+    if DATA_PATH.exists():
+        print(f"[INFO] Loading analysis data from local file: {DATA_PATH}")
+        df = pd.read_parquet(DATA_PATH)
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        if 'selection_date' in df.columns:
+            df['selection_date'] = pd.to_datetime(df['selection_date'])
+        return df
+
+    # どちらも失敗
+    print(f"[ERROR] Analysis data not found in S3 or local file")
+    raise
 
 
 def safe_float(value: Any) -> float | None:
