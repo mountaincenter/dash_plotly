@@ -80,11 +80,11 @@ def safe_float(value: Any) -> float | None:
 def calculate_phase_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """Phase別統計を計算"""
     phases = {
-        'Phase1 (前場終了時)': ('phase1_return_pct', 'phase1_win'),
-        'Phase2 (当日終値)': ('phase2_return_pct', 'phase2_win'),
-        'Phase3-1% (損切-1%)': ('phase3_1pct_return_pct', 'phase3_1pct_win'),
-        'Phase3-2% (損切-2%)': ('phase3_2pct_return_pct', 'phase3_2pct_win'),
-        'Phase3-3% (損切-3%)': ('phase3_3pct_return_pct', 'phase3_3pct_win'),
+        'Phase1 (前場終了時)': ('phase1_return', 'phase1_win'),
+        'Phase2 (当日終値)': ('phase2_return', 'phase2_win'),
+        'Phase3-1% (損切-1%)': ('phase3_1pct_return', 'phase3_1pct_win'),
+        'Phase3-2% (損切-2%)': ('phase3_2pct_return', 'phase3_2pct_win'),
+        'Phase3-3% (損切-3%)': ('phase3_3pct_return', 'phase3_3pct_win'),
     }
 
     results = []
@@ -92,8 +92,8 @@ def calculate_phase_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
         win_count = int(df[win_col].sum())
         total = len(df)
         win_rate = safe_float(win_count / total * 100)
-        avg_return = safe_float(df[return_col].mean())
-        median_return = safe_float(df[return_col].median())
+        avg_return = safe_float(df[return_col].mean() * 100)  # パーセント表示
+        median_return = safe_float(df[return_col].median() * 100)  # パーセント表示
 
         results.append({
             'phase': phase_name,
@@ -111,10 +111,10 @@ def calculate_category_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """カテゴリー別統計を計算"""
     cat_stats = df.groupby('category').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
-        'phase2_return_pct': ['mean', 'median', 'std'],
+        'phase2_return': ['mean', 'median', 'std'],
         'daily_max_gain_pct': 'mean',
         'daily_max_drawdown_pct': 'mean'
-    }).round(2)
+    }).round(4)
 
     cat_stats.columns = ['winCount', 'total', 'winRate', 'avgReturn', 'medianReturn',
                          'stdDev', 'avgMaxGain', 'avgMaxLoss']
@@ -126,9 +126,9 @@ def calculate_category_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
             'total': int(row['total']),
             'winCount': int(row['winCount']),
             'winRate': safe_float(row['winRate']),
-            'avgReturn': safe_float(row['avgReturn']),
-            'medianReturn': safe_float(row['medianReturn']),
-            'stdDev': safe_float(row['stdDev']),
+            'avgReturn': safe_float(row['avgReturn'] * 100),  # パーセント表示
+            'medianReturn': safe_float(row['medianReturn'] * 100),  # パーセント表示
+            'stdDev': safe_float(row['stdDev'] * 100),  # パーセント表示
             'avgMaxGain': safe_float(row['avgMaxGain']),
             'avgMaxLoss': safe_float(row['avgMaxLoss']),
         })
@@ -140,8 +140,8 @@ def calculate_grok_rank_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """Grokランク別統計を計算"""
     rank_stats = df.groupby('grok_rank').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
-        'phase2_return_pct': 'mean'
-    }).round(2)
+        'phase2_return': 'mean'
+    }).round(4)
 
     rank_stats.columns = ['winCount', 'total', 'winRate', 'avgReturn']
     rank_stats = rank_stats[rank_stats['total'] >= 2]  # 2件以上
@@ -153,7 +153,7 @@ def calculate_grok_rank_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
             'total': int(row['total']),
             'winCount': int(row['winCount']),
             'winRate': safe_float(row['winRate']),
-            'avgReturn': safe_float(row['avgReturn']),
+            'avgReturn': safe_float(row['avgReturn'] * 100),  # パーセント表示
         })
 
     return sorted(results, key=lambda x: x['rank'])
@@ -164,11 +164,11 @@ def calculate_risk_reward_stats(df: pd.DataFrame) -> Dict[str, Any]:
     winners = df[df['phase2_win'] == True]
     losers = df[df['phase2_win'] == False]
 
-    avg_win = safe_float(winners['phase2_return_pct'].mean()) if len(winners) > 0 else 0.0
-    avg_loss = safe_float(losers['phase2_return_pct'].mean()) if len(losers) > 0 else 0.0
+    avg_win = safe_float(winners['phase2_return'].mean() * 100) if len(winners) > 0 else 0.0
+    avg_loss = safe_float(losers['phase2_return'].mean() * 100) if len(losers) > 0 else 0.0
     risk_reward_ratio = safe_float(avg_win / abs(avg_loss)) if avg_loss and avg_loss != 0 else 0.0
 
-    returns = df['phase2_return_pct']
+    returns = df['phase2_return']
     sharpe_ratio = safe_float(returns.mean() / returns.std()) if returns.std() > 0 else 0.0
 
     return {
@@ -183,8 +183,8 @@ def calculate_risk_reward_stats(df: pd.DataFrame) -> Dict[str, Any]:
         'avgMaxLoss': safe_float(df['daily_max_drawdown_pct'].mean()),
         'riskRewardRatio': risk_reward_ratio,
         'sharpeRatio': sharpe_ratio,
-        'avgReturn': safe_float(returns.mean()),
-        'stdDev': safe_float(returns.std()),
+        'avgReturn': safe_float(returns.mean() * 100),
+        'stdDev': safe_float(returns.std() * 100),
     }
 
 
@@ -203,11 +203,11 @@ def calculate_volatility_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
 
     vol_stats = df_copy.groupby('volatility_group').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
-        'phase2_return_pct': 'mean',
+        'phase2_return': 'mean',
         'daily_volatility': 'mean',
         'daily_max_gain_pct': 'mean',
         'daily_max_drawdown_pct': 'mean'
-    }).round(2)
+    }).round(4)
 
     vol_stats.columns = ['winCount', 'total', 'winRate', 'avgReturn', 'avgVolatility',
                          'avgMaxGain', 'avgMaxLoss']
@@ -219,14 +219,14 @@ def calculate_volatility_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
             'total': int(row['total']),
             'winCount': int(row['winCount']),
             'winRate': safe_float(row['winRate']),
-            'avgReturn': safe_float(row['avgReturn']),
+            'avgReturn': safe_float(row['avgReturn'] * 100),  # パーセント表示
             'avgVolatility': safe_float(row['avgVolatility']),
             'avgMaxGain': safe_float(row['avgMaxGain']),
             'avgMaxLoss': safe_float(row['avgMaxLoss']),
         })
 
     # 相関係数
-    corr_vol_return = safe_float(df_copy['daily_volatility'].corr(df_copy['phase2_return_pct']))
+    corr_vol_return = safe_float(df_copy['daily_volatility'].corr(df_copy['phase2_return']))
     corr_vol_win = safe_float(df_copy['daily_volatility'].corr(df_copy['phase2_win'].astype(int)))
 
     return {
@@ -238,6 +238,10 @@ def calculate_volatility_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
 
 def calculate_prev_day_stats(df: pd.DataFrame) -> Dict[str, Any]:
     """前日動向別統計を計算"""
+    # prev_day_change_pctカラムが存在しない場合はNoneを返す
+    if 'prev_day_change_pct' not in df.columns:
+        return None
+
     df_valid = df[df['prev_day_change_pct'].notna()].copy()
 
     if len(df_valid) == 0:
@@ -252,9 +256,9 @@ def calculate_prev_day_stats(df: pd.DataFrame) -> Dict[str, Any]:
         'ticker': 'count',
         'phase1_win': lambda x: x.sum() / len(x) * 100,
         'phase2_win': lambda x: x.sum() / len(x) * 100,
-        'phase1_return_pct': 'mean',
-        'phase2_return_pct': 'mean',
-    }).round(2)
+        'phase1_return': 'mean',
+        'phase2_return': 'mean',
+    }).round(4)
 
     summary.columns = ['count', 'phase1WinRate', 'phase2WinRate', 'phase1AvgReturn', 'phase2AvgReturn']
 
@@ -265,8 +269,8 @@ def calculate_prev_day_stats(df: pd.DataFrame) -> Dict[str, Any]:
             'count': int(row['count']),
             'phase1WinRate': safe_float(row['phase1WinRate']),
             'phase2WinRate': safe_float(row['phase2WinRate']),
-            'phase1AvgReturn': safe_float(row['phase1AvgReturn']),
-            'phase2AvgReturn': safe_float(row['phase2AvgReturn']),
+            'phase1AvgReturn': safe_float(row['phase1AvgReturn'] * 100),  # パーセント表示
+            'phase2AvgReturn': safe_float(row['phase2AvgReturn'] * 100),  # パーセント表示
         })
 
     return results
@@ -275,11 +279,11 @@ def calculate_prev_day_stats(df: pd.DataFrame) -> Dict[str, Any]:
 def calculate_daily_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """日別統計を計算"""
     daily_stats = df.groupby('backtest_date').agg({
-        'phase1_return_pct': 'mean',
-        'phase2_return_pct': 'mean',
-        'phase3_2pct_return_pct': 'mean',
+        'phase1_return': 'mean',
+        'phase2_return': 'mean',
+        'phase3_2pct_return': 'mean',
         'ticker': 'count'
-    }).round(2)
+    }).round(4)
 
     daily_stats.columns = ['phase1AvgReturn', 'phase2AvgReturn', 'phase3AvgReturn', 'count']
 
@@ -287,9 +291,9 @@ def calculate_daily_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     for date, row in daily_stats.iterrows():
         results.append({
             'date': date.strftime('%Y-%m-%d'),
-            'phase1AvgReturn': safe_float(row['phase1AvgReturn']),
-            'phase2AvgReturn': safe_float(row['phase2AvgReturn']),
-            'phase3AvgReturn': safe_float(row['phase3AvgReturn']),
+            'phase1AvgReturn': safe_float(row['phase1AvgReturn'] * 100),  # パーセント表示
+            'phase2AvgReturn': safe_float(row['phase2AvgReturn'] * 100),  # パーセント表示
+            'phase3AvgReturn': safe_float(row['phase3AvgReturn'] * 100),  # パーセント表示
             'count': int(row['count']),
         })
 
@@ -328,12 +332,12 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
         # 売り推奨の場合は勝敗を反転（下がったら勝ち）
         if action == 'sell':
             win_count = int((~action_df['phase2_win']).sum())  # phase2_win == False が勝ち
-            avg_return = safe_float(-action_df['phase2_return_pct'].mean())  # リターンも反転
-            median_return = safe_float(-action_df['phase2_return_pct'].median())  # リターンも反転
+            avg_return = safe_float(-action_df['phase2_return'].mean() * 100)  # リターンも反転、パーセント表示
+            median_return = safe_float(-action_df['phase2_return'].median() * 100)  # リターンも反転、パーセント表示
         else:
             win_count = int(action_df['phase2_win'].sum())
-            avg_return = safe_float(action_df['phase2_return_pct'].mean())
-            median_return = safe_float(action_df['phase2_return_pct'].median())
+            avg_return = safe_float(action_df['phase2_return'].mean() * 100)  # パーセント表示
+            median_return = safe_float(action_df['phase2_return'].median() * 100)  # パーセント表示
 
         win_rate = safe_float(win_count / total * 100)
 
@@ -364,10 +368,10 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
             # 売り推奨の場合は勝敗を反転（下がったら勝ち）
             if action == 'sell':
                 win_count = int((~action_df['phase2_win']).sum())
-                avg_return = safe_float(-action_df['phase2_return_pct'].mean())
+                avg_return = safe_float(-action_df['phase2_return'].mean() * 100)  # パーセント表示
             else:
                 win_count = int(action_df['phase2_win'].sum())
-                avg_return = safe_float(action_df['phase2_return_pct'].mean())
+                avg_return = safe_float(action_df['phase2_return'].mean() * 100)  # パーセント表示
 
             win_rate = safe_float(win_count / total * 100)
 
@@ -384,7 +388,7 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
         for _, row in latest_df.iterrows():
             action = row['recommendation_action']
             is_win = row['phase2_win']
-            return_pct = row['phase2_return_pct']
+            return_pct = row['phase2_return']
             profit_per_100 = row['profit_per_100_shares_phase2']
 
             # 売り推奨の場合は勝敗とリターンを反転
@@ -399,7 +403,7 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
                 'action': action,
                 'grokRank': int(row['grok_rank']),
                 'isWin': bool(is_win),
-                'returnPct': safe_float(return_pct),
+                'returnPct': safe_float(return_pct * 100),  # パーセント表示
                 'profitPer100': safe_float(profit_per_100),
                 'buyPrice': safe_float(row['buy_price']),
                 'sellPrice': safe_float(row['sell_price']),

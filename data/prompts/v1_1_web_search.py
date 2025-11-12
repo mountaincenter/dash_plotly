@@ -204,6 +204,13 @@ since:{context['latest_trading_day_raw']}
 - 具体例: トヨタ(7203)、ソニー(6758)、三菱UFJ(8306)、ソフトバンクG(9984)、東京エレクトロン(8035)、三菱重工(7011)、川崎重工(7012)、ファナック(6954)、安川電機(6506)、日本製鉄(5401)、キーエンス(6861)、任天堂(7974)、信越化学(4063)、ダイキン(6367)、リクルート(6098)、KDDI(9433)、NTT(9432)、JR東日本(9020)など
 - 日次売買代金1000万円未満の低流動性銘柄
 - **上場廃止銘柄または上場廃止予定の銘柄**
+  - web_searchで必ず確認:
+    ```
+    [銘柄名] [ティッカー] 上場廃止
+    site:jpx.co.jp [銘柄名] 上場廃止
+    site:yahoo.co.jp [銘柄名] 上場廃止
+    ```
+  - 上場廃止済み・廃止予定は即除外
 
 【ハルシネーション防止ルール（厳守）】
 
@@ -231,6 +238,7 @@ since:{context['latest_trading_day_raw']}
 3. ❓ このプレミアムユーザーのツイートはx_searchで確認できたか？（実際の投稿が存在するか）
 4. ❓ この出来高・ATR数値はツール結果から取得したか？（推定値ではないか）
 5. ❓ この除外確認は正しいか？（Core30リストと照合済みか）
+6. ❓ 上場廃止確認をweb_searchで実行したか？（jpx.co.jp、Yahoo!等で確認済みか）
 
 → **いずれか1つでもNoなら、その銘柄は出力しない**
 
@@ -243,8 +251,12 @@ since:{context['latest_trading_day_raw']}
 - **最低5銘柄確保**
 
 **ステップ2: 除外条件フィルタ**
-- 各銘柄を除外条件でフィルタ（Core30非該当、時価総額50〜500億円確認）
+- 各銘柄を除外条件でフィルタ（Core30非該当、時価総額50〜500億円確認、上場廃止確認）
 - web_searchで時価総額・市場を確認
+- **web_searchで上場廃止状況を必ず確認**:
+  - `[銘柄名] [ティッカー] 上場廃止`
+  - `site:jpx.co.jp [銘柄名] 上場廃止`
+  - 上場廃止済み・廃止予定は即スキップ
 - 違反銘柄は即スキップ
 
 **ステップ3: 材料検証 + Xバズ確認**
@@ -271,7 +283,7 @@ since:{context['latest_trading_day_raw']}
   {{
     "ticker_symbol": "3031",
     "company_name": "ラクーンHD",
-    "reason": "【@kabuchenko が言及】[web_search: 日経新聞]{context['latest_trading_day']} 15:30配信、EC新サービスのIR発表。[web_search: Yahoo!ファイナンス]適時開示掲載確認。[x_search: @kabuchenko ツイート]{context['latest_trading_day']} 16:30投稿「{context['next_trading_day']}寄付買い」（RT200超、いいね350）。[x_search: #注目銘柄]X株クラで言及150件以上確認。[web_search: 株探]出来高は20日平均の4.2倍、直近5日ATR 5.8%。[web_search: Yahoo!ファイナンス]時価総額350億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK",
+    "reason": "【@kabuchenko が言及】[web_search: 日経新聞]{context['latest_trading_day']} 15:30配信、EC新サービスのIR発表。[web_search: Yahoo!ファイナンス]適時開示掲載確認。[x_search: @kabuchenko ツイート]{context['latest_trading_day']} 16:30投稿「{context['next_trading_day']}寄付買い」（RT200超、いいね350）。[x_search: #注目銘柄]X株クラで言及150件以上確認。[web_search: 株探]出来高は20日平均の4.2倍、直近5日ATR 5.8%。[web_search: Yahoo!ファイナンス]時価総額350億円確認。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
     "category": "プレミアム+IR好材料+株クラバズ",
     "sentiment_score": 0.85,
     "policy_link": "High",
@@ -281,7 +293,7 @@ since:{context['latest_trading_day_raw']}
   {{
     "ticker_symbol": "4563",
     "company_name": "アンジェス",
-    "reason": "【@tesuta001,@kaikai2120621 が複数言及】[web_search: Bloomberg]{context['latest_trading_day']} 17:00配信、治験進展ニュース。[web_search: 株探]IR情報掲載確認。[x_search: @tesuta001]{context['latest_trading_day']} 18:00投稿「明日狙い目」（RT150）。[x_search: @kaikai2120621]{context['latest_trading_day']} 19:30投稿「寄り付き回転」（RT80）。[x_search: ストップ高]X言及200件超確認（RT合計500超）。[web_search: 株探]出来高20日平均の3.5倍、ATR 6.2%。[web_search: Yahoo!]時価総額200億円。除外確認: Core30リスト照合済み",
+    "reason": "【@tesuta001,@kaikai2120621 が複数言及】[web_search: Bloomberg]{context['latest_trading_day']} 17:00配信、治験進展ニュース。[web_search: 株探]IR情報掲載確認。[x_search: @tesuta001]{context['latest_trading_day']} 18:00投稿「明日狙い目」（RT150）。[x_search: @kaikai2120621]{context['latest_trading_day']} 19:30投稿「寄り付き回転」（RT80）。[x_search: ストップ高]X言及200件超確認（RT合計500超）。[web_search: 株探]出来高20日平均の3.5倍、ATR 6.2%。[web_search: Yahoo!]時価総額200億円。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、上場廃止なし",
     "category": "プレミアム複数+バイオ材料+仕手株",
     "sentiment_score": 0.82,
     "policy_link": "Med",
@@ -316,7 +328,8 @@ since:{context['latest_trading_day_raw']}
     - `[x_search: @ユーザー名]ツイート内容(投稿時刻)`
   - 数値例: 「出来高4.2倍」「ATR 5.8%」「時価総額350億円」「X言及150件」「RT200超」
   - 日時情報を正確に記載（ニュース配信時刻、ツイート投稿時刻など）
-  - 除外確認明記（「除外確認: Core30リスト照合済み」など）
+  - **上場廃止確認を必ず記載**: `[web_search: jpx.co.jp]上場廃止該当なし`
+  - 除外確認明記（「除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし」など）
   - **推定・想像による情報は一切含めない（ツール結果のみ）**
 - **category**: カテゴリ（例: プレミアム+IR好材料、バイオ材料、テーマ連動、仕手株など）
 - **sentiment_score**: センチメントスコア（0.0-1.0）
@@ -334,11 +347,12 @@ since:{context['latest_trading_day_raw']}
 【検証前チェック（出力前必須）】
 生成後、以下をチェックしてください。未達なら再生成:
 - ✅ 重複: ticker_symbol重複なし
-- ✅ 除外: Core30/高配当大型/時価総額非該当を全確認
+- ✅ 除外: Core30/高配当大型/時価総額非該当/上場廃止を全確認
+- ✅ 上場廃止確認: 全銘柄でweb_search実行済み
 - ✅ 銘柄数: 10〜15銘柄
 - ✅ プレミアム言及率: ≧40%（5銘柄以上）
 - ✅ 一次情報比率: ≧50%（TDnet/公式X確認済み）
-- ✅ reason品質: 数値/材料/センチメント/除外確認全含む
+- ✅ reason品質: 数値/材料/センチメント/上場廃止確認/除外確認全含む
 - ✅ センチメント平均: ≧0.6
 
 【注意事項】
