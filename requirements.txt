@@ -1,4 +1,5 @@
 fastapi==0.118.0
+fastapi-cache2==0.2.2
 uvicorn[standard]==0.37.0
 pydantic==2.11.9
 orjson==3.11.3

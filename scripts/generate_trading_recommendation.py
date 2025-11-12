@@ -24,16 +24,14 @@ OUTPUT_HTML_PATH = BASE_DIR / 'test_output' / 'trading_recommendation.html'
 # 新パイプライン: S3同期対象
 OUTPUT_JSON_PATH = BASE_DIR / 'data' / 'parquet' / 'backtest' / 'trading_recommendation.json'
 
-# 過去分析から得られた知見
-ANALYSIS_RULES = {
-    # Grokランク別勝率（最新バックテストデータから動的に計算される）
-    'rank_win_rate': {
-        1: 0.0, 2: 0.0, 3: 40.0, 4: 20.0, 5: 40.0,
-        6: 60.0, 7: 40.0, 8: 60.0, 9: 60.0, 10: 20.0,
-        11: 33.3, 12: 0.0, 13: 0.0
-    },
-    # カテゴリー別平均勝率（バックテストデータから計算）
-    'category_patterns': {},  # 動的に計算
+# 動的スコアリングのための閾値
+SCORING_THRESHOLDS = {
+    'excellent': {'min_win_rate': 0.70, 'score': 50},  # 70%以上
+    'good': {'min_win_rate': 0.60, 'score': 30},       # 60-70%
+    'neutral': {'min_win_rate': 0.40, 'score': 10},    # 40-60%
+    'poor': {'min_win_rate': 0.25, 'score': -10},      # 25-40%
+    'bad': {'min_win_rate': 0.10, 'score': -30},       # 10-25%
+    'terrible': {'min_win_rate': 0.0, 'score': -50}    # 10%未満
 }
 
 
@@ -68,28 +66,100 @@ def fetch_previous_day_data(ticker):
         return None, None, None, None
 
 
+def calculate_score_from_win_rate(win_rate):
+    """勝率からスコアを計算（動的スコアリング）"""
+    for level, config in sorted(SCORING_THRESHOLDS.items(),
+                                 key=lambda x: x[1]['min_win_rate'],
+                                 reverse=True):
+        if win_rate >= config['min_win_rate']:
+            return config['score']
+    return -50  # デフォルト（最低スコア）
+
+
 def load_backtest_stats():
-    """バックテストデータから統計情報を読み込み"""
+    """バックテストデータから統計情報を読み込み（動的計算）"""
     try:
         df = pd.read_parquet(BACKTEST_DATA_PATH)
 
+        # ランク別統計（Phase2基準）
+        rank_stats = df.groupby('grok_rank').agg({
+            'phase2_win': ['sum', 'count', 'mean'],
+            'phase2_return': 'mean'
+        }).round(3)
+
+        # ランク別の勝率とスコア
+        rank_win_rates = {}
+        rank_scores = {}
+        rank_avg_returns = {}
+
+        for rank in rank_stats.index:
+            win_rate = rank_stats.loc[rank, ('phase2_win', 'mean')]
+            avg_return = rank_stats.loc[rank, ('phase2_return', 'mean')]
+            count = rank_stats.loc[rank, ('phase2_win', 'count')]
+
+            rank_win_rates[rank] = win_rate * 100  # パーセント表示
+            rank_avg_returns[rank] = avg_return * 100  # パーセント表示
+
+            # 勝率ベースのスコア計算
+            base_score = calculate_score_from_win_rate(win_rate)
+
+            # 平均リターンでスコアを微調整（±10点）
+            if avg_return > 0.03:  # 3%以上
+                adjusted_score = base_score + 10
+            elif avg_return < -0.02:  # -2%以下
+                adjusted_score = base_score - 10
+            else:
+                adjusted_score = base_score
+
+            # データ数が少ない場合はスコアを抑制（信頼性低下）
+            if count < 5:
+                adjusted_score = int(adjusted_score * 0.7)
+
+            rank_scores[rank] = adjusted_score
+
         # カテゴリー別勝率
         cat_stats = df.groupby('category').agg({
-            'phase2_win': lambda x: x.sum() / len(x) * 100
+            'phase2_win': lambda x: x.sum() / len(x) * 100,
+            'phase2_return': 'mean'
         }).round(1)
 
-        return cat_stats['phase2_win'].to_dict()
+        print(f"\n=== バックテスト統計（動的計算） ===")
+        print(f"総データ数: {len(df)}件")
+        print(f"\nランク別勝率とスコア:")
+        for rank in sorted(rank_win_rates.keys()):
+            print(f"  ランク{rank}: 勝率{rank_win_rates[rank]:.1f}%, "
+                  f"平均リターン{rank_avg_returns[rank]:+.2f}%, "
+                  f"スコア{rank_scores[rank]:+d}")
+
+        return {
+            'rank_win_rates': rank_win_rates,
+            'rank_scores': rank_scores,
+            'rank_avg_returns': rank_avg_returns,
+            'category_win_rates': cat_stats['phase2_win'].to_dict()
+        }
     except Exception as e:
         print(f"Warning: バックテストデータ読み込み失敗: {e}")
-        return {}
+        import traceback
+        traceback.print_exc()
+        return {
+            'rank_win_rates': {},
+            'rank_scores': {},
+            'rank_avg_returns': {},
+            'category_win_rates': {}
+        }
 
 
-def determine_action_comprehensive(row, prev_change, atr_pct, category_win_rates):
-    """複合的な判断基準で売買を決定（深掘り分析版）"""
+def determine_action_comprehensive(row, prev_change, atr_pct, backtest_stats):
+    """複合的な判断基準で売買を決定（動的スコアリング版）"""
 
     ticker = row['ticker']
     grok_rank = row['grok_rank']
-    rank_win_rate = ANALYSIS_RULES['rank_win_rate'].get(grok_rank, 50.0)
+
+    # バックテスト統計から動的にスコアを取得
+    rank_win_rate = backtest_stats['rank_win_rates'].get(grok_rank, 50.0)
+    rank_score = backtest_stats['rank_scores'].get(grok_rank, -10)
+    rank_avg_return = backtest_stats['rank_avg_returns'].get(grok_rank, 0.0)
+    category_win_rates = backtest_stats['category_win_rates']
 
     # 深掘り分析の特記事項
     deep_analysis_notes = {
@@ -192,45 +262,17 @@ def determine_action_comprehensive(row, prev_change, atr_pct, category_win_rates
     confidence = '中'
     score = 0  # スコアリング（-100 ~ +100）
 
-    # === ルール1: Grokランク基本スコア（深掘り分析で改善） ===
-    if grok_rank in [1, 2, 12, 13]:
-        score -= 50
-        reason_text = f'Grokランク{grok_rank}は勝率0%'
-        reasons.append(reason_text)
-        reasons_structured.append({
-            'type': 'grok_rank',
-            'description': reason_text,
-            'impact': -50
-        })
-    elif grok_rank == 10:
-        # 深掘り分析結果: ランク10は勝率25%, 平均-4.95%
-        score -= 40
-        reason_text = f'Grokランク{grok_rank}は勝率25%（平均-4.95%）'
-        reasons.append(reason_text)
-        reasons_structured.append({
-            'type': 'grok_rank',
-            'description': reason_text,
-            'impact': -40
-        })
-    elif grok_rank in [6, 8, 9, 11]:
-        score += 30
-        reason_text = f'Grokランク{grok_rank}は勝率50%'
-        reasons.append(reason_text)
-        reasons_structured.append({
-            'type': 'grok_rank',
-            'description': reason_text,
-            'impact': 30
-        })
-    else:
-        # ランク3,4,5,7: 中程度の勝率
-        score -= 10
-        reason_text = f'Grokランク{grok_rank}は勝率{rank_win_rate:.1f}%'
-        reasons.append(reason_text)
-        reasons_structured.append({
-            'type': 'grok_rank',
-            'description': reason_text,
-            'impact': -10
-        })
+    # === ルール1: Grokランク基本スコア（動的計算） ===
+    score += rank_score
+    reason_text = f'Grokランク{grok_rank}は勝率{rank_win_rate:.1f}%'
+    if rank_avg_return != 0:
+        reason_text += f'（平均{rank_avg_return:+.2f}%）'
+    reasons.append(reason_text)
+    reasons_structured.append({
+        'type': 'grok_rank',
+        'description': reason_text,
+        'impact': rank_score
+    })
 
     # === ルール2: 前日動向との複合パターン ===
     if prev_direction == 'プラス' and grok_rank in [1, 2]:
@@ -375,9 +417,9 @@ def determine_action_comprehensive(row, prev_change, atr_pct, category_win_rates
 def generate_recommendation_report():
     """売買判断レポート生成"""
 
-    # バックテストデータから統計読み込み
+    # バックテストデータから統計読み込み（動的計算）
     print("バックテストデータから統計情報を読み込み中...")
-    category_win_rates = load_backtest_stats()
+    backtest_stats = load_backtest_stats()
 
     # バックテスト期間の取得
     try:
@@ -406,7 +448,7 @@ def generate_recommendation_report():
 
         prev_change, atr_pct, prev_volume, prev_close = fetch_previous_day_data(ticker)
         result = determine_action_comprehensive(
-            row, prev_change, atr_pct, category_win_rates
+            row, prev_change, atr_pct, backtest_stats
         )
 
         # カテゴリー情報の取得
@@ -715,9 +757,12 @@ def generate_recommendation_report():
         <h2>📋 判断基準（複合スコアリング）</h2>
 
         <div class="info-box">
-            <h3>スコア計算ルール</h3>
+            <h3>スコア計算ルール（バックテスト結果から動的計算）</h3>
             <ul>
-                <li><strong>Grokランク:</strong> 1,2,12,13 = -50点、6,8,9,11 = +30点</li>
+                <li><strong>Grokランク:</strong>
+                    {'、'.join([f"ランク{rank}={backtest_stats['rank_scores'].get(rank, 0):+d}点（勝率{backtest_stats['rank_win_rates'].get(rank, 0):.1f}%）"
+                               for rank in sorted(backtest_stats['rank_win_rates'].keys())])}
+                </li>
                 <li><strong>前日動向:</strong> ランク1,2 × 前日プラス = -30点、前日マイナス = +20点</li>
                 <li><strong>ボラティリティ:</strong> 低ボラ = +10点、高ボラ = -10点</li>
                 <li><strong>カテゴリー:</strong> 勝率50%以上 = +15点、25%以下 = -15点</li>
@@ -776,27 +821,12 @@ def generate_recommendation_report():
         'stocks': json_stocks,
         'scoringRules': {
             'grokRank': {
-                'high': {
-                    'ranks': [1, 2, 12, 13],
-                    'score': -50,
-                    'winRate': 0
-                },
-                'medium': {
-                    'ranks': [6, 8, 9, 11],
-                    'score': 30,
-                    'winRate': 50
-                },
-                'low': {
-                    'ranks': [3, 4, 5, 7],
-                    'score': -10,
-                    'winRate': 25
-                },
-                'veryLow': {
-                    'ranks': [10],
-                    'score': -40,
-                    'winRate': 25,
-                    'avgReturn': -4.95
+                rank: {
+                    'score': backtest_stats['rank_scores'].get(rank, -10),
+                    'winRate': backtest_stats['rank_win_rates'].get(rank, 50.0),
+                    'avgReturn': backtest_stats['rank_avg_returns'].get(rank, 0.0)
                 }
+                for rank in sorted(backtest_stats['rank_win_rates'].keys())
             },
             'prevDayChange': {
                 'negative': {

@@ -10,7 +10,10 @@ from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
 from server.routers.grok import router as grok_router
 from server.routers.dev_backtest import router as dev_backtest_router
+from server.routers.dev_analyze import router as dev_analyze_router
 from server.routers.market_summary import router as market_summary_router
+from server.routers.dev_trading_recommendation import router as dev_trading_recommendation_router
+from server.routers.dev_grok_analysis import router as dev_grok_analysis_router
 
 import os
 
@@ -35,9 +38,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === 起動時の軽量ウォームアップ（S3接続の確立を早め、初回TTFBスパイクを抑制） ===
+# === レスポンスキャッシュの初期化 ===
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+
 @app.on_event("startup")
-async def _warmup():
+async def _startup():
+    # レスポンスキャッシュの初期化（インメモリバックエンド）
+    FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+
+    # S3ウォームアップ
     try:
         import boto3  # 依存は既存前提
         region = os.getenv("AWS_REGION") or "ap-northeast-1"
@@ -75,4 +85,7 @@ app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
 app.include_router(grok_router, tags=["grok"])
 app.include_router(dev_backtest_router, tags=["dev"])
+app.include_router(dev_analyze_router, tags=["dev"])
 app.include_router(market_summary_router, tags=["market-summary"])
+app.include_router(dev_trading_recommendation_router, tags=["trading-recommendations"])
+app.include_router(dev_grok_analysis_router, tags=["grok-analysis"])
