@@ -917,8 +917,8 @@ async def get_grok_analysis():
                 lambda x: pd.to_datetime(x).strftime('%Y-%m-%d') if pd.notnull(x) else None
             )
 
-        # 辞書のリストに変換（fillnaでNaN/NaTを先にNoneに変換）
-        records = df.fillna(value=None).to_dict('records')
+        # 辞書のリストに変換（NaN/NaTをNoneに変換）
+        records = df.where(pd.notnull(df), None).to_dict('records')
 
         return {
             'success': True,
