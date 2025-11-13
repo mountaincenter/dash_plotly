@@ -554,6 +554,25 @@ jobs:
             echo "  ⚠️  trading_recommendation_history.parquet not found in S3 (will use local if available)"
           fi
 
+          # === Step 1.5: Enrich trading_recommendation_history.parquet ===
+          echo ""
+          echo "🔧 Enriching trading recommendation data..."
+
+          if [ -f "test_output/trading_recommendation_history.parquet" ]; then
+            python3 scripts/enrich_trading_recommendation.py \
+              test_output/trading_recommendation_history.parquet \
+              data/parquet/all_stocks.parquet \
+              data/parquet/prices_max_1d.parquet
+
+            if [ $? -eq 0 ]; then
+              echo "  ✅ Enrichment completed (stock names, prev_close, ATR%)"
+            else
+              echo "  ⚠️  Enrichment failed, proceeding with original data"
+            fi
+          else
+            echo "  ⚠️  No trading_recommendation_history.parquet to enrich"
+          fi
+
           # === Step 2: create_grok_analysis_base_latest.py を実行 ===
           echo ""
           echo "📊 Step 1: Creating grok analysis base data..."
