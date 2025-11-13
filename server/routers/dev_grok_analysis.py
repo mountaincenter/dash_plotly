@@ -336,7 +336,7 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
 
         # 売り推奨の場合は勝敗を反転（下がったら勝ち）
         if action == 'sell':
-            win_count = int((~action_df['phase2_win']).sum())  # phase2_win == False が勝ち
+            win_count = int((action_df['phase2_win'] == False).sum())  # phase2_win == False が勝ち
             avg_return = safe_float(-action_df['phase2_return'].mean() * 100)  # リターンも反転、パーセント表示
             median_return = safe_float(-action_df['phase2_return'].median() * 100)  # リターンも反転、パーセント表示
         else:
@@ -372,7 +372,7 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
 
             # 売り推奨の場合は勝敗を反転（下がったら勝ち）
             if action == 'sell':
-                win_count = int((~action_df['phase2_win']).sum())
+                win_count = int((action_df['phase2_win'] == False).sum())
                 avg_return = safe_float(-action_df['phase2_return'].mean() * 100)  # パーセント表示
             else:
                 win_count = int(action_df['phase2_win'].sum())
@@ -398,9 +398,9 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
 
             # 売り推奨の場合は勝敗とリターンを反転
             if action == 'sell':
-                is_win = not is_win
-                return_pct = -return_pct
-                profit_per_100 = -profit_per_100
+                is_win = False if is_win is True else (True if is_win is False else None)
+                return_pct = -return_pct if return_pct is not None else None
+                profit_per_100 = -profit_per_100 if profit_per_100 is not None else None
 
             stocks_detail.append({
                 'ticker': row['ticker'],
