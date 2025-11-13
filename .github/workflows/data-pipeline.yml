@@ -611,11 +611,54 @@ jobs:
             echo "  ⚠️  trading_recommendation_history.parquet not found, skipping merge"
           fi
 
-          # === Step 4: grok_analysis_merged.parquet として保存 ===
+          # === Step 4: grok_analysis_merged.parquet として保存（既存データとマージ） ===
           echo ""
-          echo "📦 Step 3: Saving final data..."
+          echo "📦 Step 3: Merging with existing data..."
 
-          cp test_output/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
+          # S3から既存のgrok_analysis_merged.parquetをダウンロード（存在する場合）
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" > /dev/null 2>&1; then
+            aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
+              data/parquet/backtest/grok_analysis_merged_existing.parquet \
+              --only-show-errors
+            echo "  ✅ Downloaded existing grok_analysis_merged.parquet"
+
+            # Pythonで既存データと新データをマージ
+            python3 -c "
+import pandas as pd
+from pathlib import Path
+
+# 既存データと新データを読み込み
+existing = pd.read_parquet('data/parquet/backtest/grok_analysis_merged_existing.parquet')
+new_data = pd.read_parquet('test_output/grok_analysis_base_latest.parquet')
+
+existing['backtest_date'] = pd.to_datetime(existing['backtest_date'])
+new_data['backtest_date'] = pd.to_datetime(new_data['backtest_date'])
+
+print(f'Existing data: {len(existing)} records ({existing[\"backtest_date\"].min().date()} to {existing[\"backtest_date\"].max().date()})')
+print(f'New data: {len(new_data)} records ({new_data[\"backtest_date\"].min().date()} to {new_data[\"backtest_date\"].max().date()})')
+
+# 既存データから新データの日付を削除（重複回避）
+new_dates = new_data['backtest_date'].unique()
+existing_filtered = existing[~existing['backtest_date'].isin(new_dates)]
+
+print(f'Existing data after filtering: {len(existing_filtered)} records')
+
+# マージ
+merged = pd.concat([existing_filtered, new_data], ignore_index=True)
+merged = merged.sort_values('backtest_date').reset_index(drop=True)
+
+print(f'Merged data: {len(merged)} records ({merged[\"backtest_date\"].min().date()} to {merged[\"backtest_date\"].max().date()})')
+
+# 保存
+merged.to_parquet('data/parquet/backtest/grok_analysis_merged.parquet', index=False)
+print('✅ Saved merged data')
+"
+          else
+            echo "  ⚠️  No existing grok_analysis_merged.parquet in S3, using new data only"
+            cp test_output/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
+          fi
+
           echo "  ✅ Saved to data/parquet/backtest/grok_analysis_merged.parquet"
 
           # === Step 5: S3にアップロード ===
