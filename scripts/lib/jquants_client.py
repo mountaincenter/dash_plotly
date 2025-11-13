@@ -38,20 +38,54 @@ class JQuantsClient:
         self.base_url = os.getenv("JQUANTS_API_BASE_URL", "https://api.jquants.com/v1")
 
         self._id_token: str | None = None
+        self._refresh_token_cache: str | None = None
 
-        if not self.refresh_token:
+        # メールアドレス+パスワードまたはrefresh tokenのいずれかが必要
+        if not self.refresh_token and not (self.mail_address and self.password):
             raise ValueError(
-                "JQUANTS_REFRESH_TOKEN not found. "
-                "Please set it in .env.jquants"
+                "Either JQUANTS_REFRESH_TOKEN or (JQUANTS_MAIL_ADDRESS + JQUANTS_PASSWORD) required. "
+                "Please set them in .env.jquants"
             )
+
+    def _get_refresh_token(self) -> str:
+        """Refresh tokenを取得（メールアドレス+パスワード認証）"""
+        if self._refresh_token_cache:
+            return self._refresh_token_cache
+
+        # 環境変数にrefresh tokenがある場合はそれを使用
+        if self.refresh_token:
+            self._refresh_token_cache = self.refresh_token
+            return self.refresh_token
+
+        # メールアドレス+パスワードでrefresh tokenを取得
+        url = f"{self.base_url}/token/auth_user"
+        data = {
+            "mailaddress": self.mail_address,
+            "password": self.password
+        }
+
+        # JSON形式で送信（form-dataではない）
+        response = requests.post(url, json=data, timeout=30)
+        response.raise_for_status()
+
+        result = response.json()
+        self._refresh_token_cache = result.get("refreshToken")
+
+        if not self._refresh_token_cache:
+            raise RuntimeError("Failed to retrieve refresh token from J-Quants API")
+
+        return self._refresh_token_cache
 
     def _get_id_token(self) -> str:
         """IDトークンを取得（キャッシュあり）"""
         if self._id_token:
             return self._id_token
 
+        # refresh tokenを取得（メールアドレス+パスワード or 環境変数から）
+        refresh_token = self._get_refresh_token()
+
         url = f"{self.base_url}/token/auth_refresh"
-        params = {"refreshtoken": self.refresh_token}
+        params = {"refreshtoken": refresh_token}
 
         response = requests.post(url, params=params, timeout=30)
         response.raise_for_status()
