@@ -519,6 +519,104 @@ jobs:
             echo "ℹ️  Skipping market summary (only runs at 16:45 JST)"
           fi
 
+      - name: Generate Grok Analysis Data
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "📊 Generating Grok Analysis Data..."
+
+          # 出力ディレクトリ作成
+          mkdir -p test_output
+          mkdir -p data/parquet/backtest
+
+          # === Step 1: S3から必要なファイルをダウンロード ===
+          echo "📥 Downloading files from S3..."
+
+          # grok_trending_*.parquet ファイルをダウンロード
+          echo "  - Downloading grok_trending_*.parquet files..."
+          aws s3 sync \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/" \
+            data/parquet/backtest/ \
+            --exclude "*" \
+            --include "grok_trending_202*.parquet" \
+            --only-show-errors
+
+          GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
+          echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
+
+          # trading_recommendation_history.parquet をダウンロード
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation_history.parquet" > /dev/null 2>&1; then
+            aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation_history.parquet" \
+              test_output/trading_recommendation_history.parquet \
+              --only-show-errors
+            echo "  ✅ Downloaded trading_recommendation_history.parquet"
+          else
+            echo "  ⚠️  trading_recommendation_history.parquet not found in S3 (will use local if available)"
+          fi
+
+          # === Step 2: create_grok_analysis_base_latest.py を実行 ===
+          echo ""
+          echo "📊 Step 1: Creating grok analysis base data..."
+
+          if [ "$GROK_FILES_COUNT" -gt 0 ]; then
+            python3 scripts/create_grok_analysis_base_latest.py
+
+            if [ $? -eq 0 ] && [ -f "test_output/grok_analysis_base_latest.parquet" ]; then
+              RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('test_output/grok_analysis_base_latest.parquet')))")
+              echo "  ✅ Created grok_analysis_base_latest.parquet ($RECORDS records)"
+            else
+              echo "  ❌ Failed to create grok_analysis_base_latest.parquet"
+              exit 1
+            fi
+          else
+            echo "  ⚠️  No grok_trending files found, skipping grok analysis generation"
+            exit 0
+          fi
+
+          # === Step 3: merge_grok_recommendation_results.py を実行 ===
+          echo ""
+          echo "📊 Step 2: Merging recommendation results..."
+
+          if [ -f "test_output/trading_recommendation_history.parquet" ]; then
+            python3 scripts/merge_grok_recommendation_results.py
+
+            if [ $? -eq 0 ]; then
+              RECORDS=$(python3 -c "import pandas as pd; df=pd.read_parquet('test_output/grok_analysis_base_latest.parquet'); print(len(df))")
+              HAS_REC=$(python3 -c "import pandas as pd; df=pd.read_parquet('test_output/grok_analysis_base_latest.parquet'); print(df['recommendation_action'].notna().sum())")
+              echo "  ✅ Merged recommendation data ($RECORDS total records, $HAS_REC with recommendations)"
+            else
+              echo "  ❌ Failed to merge recommendation data"
+              exit 1
+            fi
+          else
+            echo "  ⚠️  trading_recommendation_history.parquet not found, skipping merge"
+          fi
+
+          # === Step 4: grok_analysis_merged.parquet として保存 ===
+          echo ""
+          echo "📦 Step 3: Saving final data..."
+
+          cp test_output/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
+          echo "  ✅ Saved to data/parquet/backtest/grok_analysis_merged.parquet"
+
+          # === Step 5: S3にアップロード ===
+          echo ""
+          echo "📤 Step 4: Uploading to S3..."
+
+          aws s3 cp \
+            data/parquet/backtest/grok_analysis_merged.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
+            --region ${{ env.AWS_REGION }} \
+            --only-show-errors
+
+          echo "  ✅ Uploaded to S3"
+
+          # ファイルサイズ確認
+          FILE_SIZE=$(du -h data/parquet/backtest/grok_analysis_merged.parquet | cut -f1)
+          echo ""
+          echo "✅ Grok Analysis Data generation completed"
+          echo "   File size: $FILE_SIZE"
+
       - name: Extract GROK stocks info
         id: grok-info
         if: success()
