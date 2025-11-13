@@ -623,37 +623,11 @@ jobs:
               --only-show-errors
             echo "  ✅ Downloaded existing grok_analysis_merged.parquet"
 
-            # Pythonで既存データと新データをマージ
-            python3 -c "
-import pandas as pd
-from pathlib import Path
-
-# 既存データと新データを読み込み
-existing = pd.read_parquet('data/parquet/backtest/grok_analysis_merged_existing.parquet')
-new_data = pd.read_parquet('test_output/grok_analysis_base_latest.parquet')
-
-existing['backtest_date'] = pd.to_datetime(existing['backtest_date'])
-new_data['backtest_date'] = pd.to_datetime(new_data['backtest_date'])
-
-print(f'Existing data: {len(existing)} records ({existing[\"backtest_date\"].min().date()} to {existing[\"backtest_date\"].max().date()})')
-print(f'New data: {len(new_data)} records ({new_data[\"backtest_date\"].min().date()} to {new_data[\"backtest_date\"].max().date()})')
-
-# 既存データから新データの日付を削除（重複回避）
-new_dates = new_data['backtest_date'].unique()
-existing_filtered = existing[~existing['backtest_date'].isin(new_dates)]
-
-print(f'Existing data after filtering: {len(existing_filtered)} records')
-
-# マージ
-merged = pd.concat([existing_filtered, new_data], ignore_index=True)
-merged = merged.sort_values('backtest_date').reset_index(drop=True)
-
-print(f'Merged data: {len(merged)} records ({merged[\"backtest_date\"].min().date()} to {merged[\"backtest_date\"].max().date()})')
-
-# 保存
-merged.to_parquet('data/parquet/backtest/grok_analysis_merged.parquet', index=False)
-print('✅ Saved merged data')
-"
+            # Pythonスクリプトで既存データと新データをマージ
+            python3 scripts/pipeline/merge_grok_analysis_data.py \
+              data/parquet/backtest/grok_analysis_merged_existing.parquet \
+              test_output/grok_analysis_base_latest.parquet \
+              data/parquet/backtest/grok_analysis_merged.parquet
           else
             echo "  ⚠️  No existing grok_analysis_merged.parquet in S3, using new data only"
             cp test_output/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
@@ -903,11 +877,47 @@ print('✅ Saved merged data')
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
 
   deploy:
-    name: Trigger ECR Deployment
+    name: Build and Push to ECR
     needs: pipeline
     if: success()
-    uses: ./.github/workflows/deploy-ecr.yml
-    secrets: inherit
-    permissions:
-      id-token: write
-      contents: read
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'stock-api' }}
+      ECR_REPO: ${{ vars.ECR_REPO }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build Docker image with both tags
+          docker build -t ${{ env.ECR_REPO }}:$IMAGE_TAG .
+          docker build -t ${{ env.ECR_REPO }}:latest .
+
+          # Push both tags to ECR
+          docker push ${{ env.ECR_REPO }}:$IMAGE_TAG
+          docker push ${{ env.ECR_REPO }}:latest
+
+          echo "image=${{ env.ECR_REPO }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✅ Pushed image: ${{ env.ECR_REPO }}:$IMAGE_TAG"
+          echo "✅ Pushed image: ${{ env.ECR_REPO }}:latest"
+          echo ""
+          echo "🚀 App Runner will automatically deploy the new image."
+          echo "📢 Deployment completion notification will be sent via EventBridge → Lambda → Slack"

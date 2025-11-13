@@ -32,6 +32,12 @@ def load_analysis_data() -> pd.DataFrame:
     - S3から読み込み（本番環境、常に最新）
     - S3が失敗したらローカルファイルを使用（開発環境）
     - バックテストデータのみ（recommendation_action がないデータ）を返す
+
+    注意:
+    2025-11-13にgenerate_trading_recommendation_v2.pyを無許可実行した結果、
+    grok_analysis_merged.parquetに不正なrecommendation_actionデータが混入。
+    このAPIはバックテスト分析専用のため、recommendation_actionがないデータのみ返す。
+    詳細: data/parquet/backtest/README_DATA_CORRUPTION_20251113.md
     """
     # S3から読み込み
     try:
