@@ -917,8 +917,9 @@ async def get_grok_analysis():
                 lambda x: pd.to_datetime(x).strftime('%Y-%m-%d') if pd.notnull(x) else None
             )
 
-        # 辞書のリストに変換（NaN/NaTをNoneに変換）
-        records = df.where(pd.notnull(df), None).to_dict('records')
+        # pandasのto_json経由でJSON-safe辞書リストに変換（NaN/NaTを適切に処理）
+        import json as json_lib
+        records = json_lib.loads(df.to_json(orient='records', date_format='iso'))
 
         return {
             'success': True,
