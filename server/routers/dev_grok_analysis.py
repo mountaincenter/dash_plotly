@@ -225,9 +225,14 @@ def calculate_volatility_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
             'avgMaxLoss': safe_float(row['avgMaxLoss']),
         })
 
-    # 相関係数
-    corr_vol_return = safe_float(df_copy['daily_volatility'].corr(df_copy['phase2_return']))
-    corr_vol_win = safe_float(df_copy['daily_volatility'].corr(df_copy['phase2_win'].astype(int)))
+    # 相関係数（None/NaNを除外）
+    df_valid = df_copy.dropna(subset=['daily_volatility', 'phase2_return', 'phase2_win'])
+    if len(df_valid) > 0:
+        corr_vol_return = safe_float(df_valid['daily_volatility'].corr(df_valid['phase2_return']))
+        corr_vol_win = safe_float(df_valid['daily_volatility'].corr(df_valid['phase2_win'].astype(int)))
+    else:
+        corr_vol_return = None
+        corr_vol_win = None
 
     return {
         'groups': results,
