@@ -38,12 +38,85 @@ import yfinance as yf
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
+from scripts.lib.jquants_client import JQuantsClient
 
 # パス定義
 BACKTEST_DIR = PARQUET_DIR / "backtest"
 BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
+
+# J-Quants クライアント（グローバル）
+_jquants_client: Optional[JQuantsClient] = None
+
+
+def get_jquants_client() -> JQuantsClient:
+    """J-Quantsクライアントを取得（シングルトン）"""
+    global _jquants_client
+    if _jquants_client is None:
+        _jquants_client = JQuantsClient()
+    return _jquants_client
+
+
+def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optional[float]:
+    """
+    J-Quants APIを使用して時価総額を取得
+
+    Args:
+        ticker: 銘柄コード (例: "7203.T")
+        close_price: 終値
+        date: 取得日
+
+    Returns:
+        時価総額（円）、または取得失敗時はNone
+    """
+    try:
+        # ティッカーからコードを抽出（"7203.T" → "72030"）
+        code = ticker.replace('.T', '').ljust(5, '0')
+
+        client = get_jquants_client()
+
+        # 1. 発行済株式数を取得（最新の決算データ）
+        statements_response = client.request('/fins/statements', params={'code': code})
+
+        if 'statements' not in statements_response or not statements_response['statements']:
+            return None
+
+        # 最新のデータを取得（日付順でソート）
+        statements = sorted(
+            statements_response['statements'],
+            key=lambda x: x.get('DisclosedDate', ''),
+            reverse=True
+        )
+
+        issued_shares = None
+        for statement in statements:
+            issued_shares = statement.get('NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
+            if issued_shares:
+                issued_shares = float(issued_shares)  # 文字列からfloatに変換
+                break
+
+        if not issued_shares:
+            return None
+
+        # 2. 調整係数を取得
+        date_str = date.strftime('%Y-%m-%d')
+        quotes_response = client.request('/prices/daily_quotes', params={'code': code, 'date': date_str})
+
+        if 'daily_quotes' not in quotes_response or not quotes_response['daily_quotes']:
+            return None
+
+        adjustment_factor = float(quotes_response['daily_quotes'][0].get('AdjustmentFactor', 1.0))
+
+        # 3. 時価総額を計算
+        # 時価総額 = 終値 × (発行済株式数 / 調整係数)
+        market_cap = close_price * (issued_shares / adjustment_factor)
+
+        return market_cap
+
+    except Exception as e:
+        print(f"[WARN] Failed to fetch market cap for {ticker}: {e}")
+        return None
 
 
 def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
@@ -261,6 +334,9 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
             df_5min, buy_price
         ) if df_5min is not None else (None, None, None, None)
 
+        # 時価総額を取得
+        market_cap = fetch_market_cap(ticker, daily_close, backtest_date)
+
         # Phase1: 前場引け売り（11:30売却）
         if df_5min is not None:
             morning_data = df_5min.between_time("09:00", "11:30")
@@ -324,6 +400,7 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
             "morning_max_drawdown_pct": morning_max_drawdown_pct,
             "daily_max_gain_pct": daily_max_gain_pct,
             "daily_max_drawdown_pct": daily_max_drawdown_pct,
+            "market_cap": market_cap,
             "data_source": "5min" if df_5min is not None else "1d"
         }
 

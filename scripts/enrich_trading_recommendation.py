@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """
-trading_recommendation_history.parquet のデータを補完
+[DEPRECATED] このスクリプトは不要になりました
+grok_analysis_merged.parquet に統合されたため、このエンリッチメント処理は不要です
+
+旧機能:
+- trading_recommendation_history.parquet のデータを補完
 - all_stocks.parquet から正しい銘柄名を取得
 - prices_max_1d.parquet から前日終値を取得
 - ATR% を正しく計算 (ATR絶対値 / 前日終値 × 100)
-
-Usage:
-  python3 enrich_trading_recommendation.py [history_file] [all_stocks_file] [prices_file]
-
-  デフォルト:
-    history_file: data/parquet/backtest/trading_recommendation_history.parquet
-    all_stocks_file: data/parquet/all_stocks.parquet
-    prices_file: data/parquet/prices_max_1d.parquet
 """
 import sys
 from pathlib import Path
@@ -28,11 +24,11 @@ def enrich_trading_recommendation(
     prices_file: Path = None
 ):
     """
-    trading_recommendation_history.parquet を補完
+    [DEPRECATED] grok_analysis_merged.parquet に統合されたため不要
     """
     # デフォルト値設定
     if history_file is None:
-        history_file = DATA_DIR / "backtest" / "trading_recommendation_history.parquet"
+        history_file = DATA_DIR / "backtest" / "grok_analysis_merged.parquet"
     if all_stocks_file is None:
         all_stocks_file = DATA_DIR / "all_stocks.parquet"
     if prices_file is None:

@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """
 test_generate_grok_trending.py
-xAI SDK + web_search() + x_search() を使った「翌営業日デイトレ銘柄」選定テスト
+v1.3 Zero Labelプロンプトを使ってテスト実行するためのスクリプト
 
 実行方法:
-    # v1_1_web_searchプロンプトでテスト実行
-    PROMPT_VERSION=v1_1_web_search python3 scripts/pipeline/test_generate_grok_trending.py
+    # 2025-11-06の銘柄を選定（2025-11-05 23時選定想定）
+    python3 scripts/pipeline/test_generate_grok_trending.py --target-date 2025-11-06
+
+    # 2025-11-05の銘柄を選定（2025-11-04 23時選定想定）
+    python3 scripts/pipeline/test_generate_grok_trending.py --target-date 2025-11-05
 
 出力:
-    data/test_output/grok_trending_YYYYMMDD.parquet
-    data/test_output/grok_trending_YYYYMMDD.json (デバッグ用)
+    test_output/v1.3_grok_trending_20251106.parquet
+    test_output/v1.3_grok_trending_20251105.parquet
 
 備考:
     - .env.xai に XAI_API_KEY が必要
-    - xAI SDK (xai_sdk) を使用
+    - v1.3_zero_label プロンプトを使用（固定）
     - web_search() + x_search() tools 有効化
-    - プロンプトバージョンは環境変数 PROMPT_VERSION で指定
 """
 
 from __future__ import annotations
@@ -42,30 +44,18 @@ from common_cfg.paths import PARQUET_DIR
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 
 # 出力先ディレクトリ
-TEST_OUTPUT_DIR = ROOT / "data" / "test_output"
+TEST_OUTPUT_DIR = ROOT / "test_output"
 ENV_XAI_PATH = ROOT / ".env.xai"
 
 
 def parse_args():
     """コマンドライン引数をパース"""
-    parser = argparse.ArgumentParser(description="Test Grok trending stocks with xAI SDK")
+    parser = argparse.ArgumentParser(description="Test Grok trending stocks with v1.3 Zero Label")
     parser.add_argument(
-        "--prompt-version",
+        "--target-date",
         type=str,
-        default=None,
-        help="Prompt version (default: from PROMPT_VERSION env var or v1_1_web_search)"
-    )
-    parser.add_argument(
-        "--date",
-        type=str,
-        default=None,
-        help="Target date in YYYY-MM-DD format (default: today)"
-    )
-    parser.add_argument(
-        "--time",
-        type=str,
-        default="16:00",
-        help="Target time in HH:MM format (default: 16:00 for workflow simulation)"
+        required=True,
+        help="Target date for stock selection (YYYY-MM-DD format). This is the trading day for which to select stocks."
     )
     return parser.parse_args()
 
@@ -160,70 +150,59 @@ def load_backtest_patterns() -> dict[str, Any]:
     return backtest_context
 
 
-def get_trading_context(target_date: str | None = None) -> dict[str, str]:
+def get_trading_context(target_date_str: str) -> dict[str, str]:
     """
-    営業日カレンダーを参照して取引コンテキストを生成
-    （generate_grok_trending.py から流用）
+    指定された日付を基準に取引コンテキストを生成
+
+    target_date = 翌営業日（銘柄選定対象日）
+    latest_trading_day = target_dateの前営業日（選定日の前営業日）
+    execution_date = latest_trading_day（23時選定を想定）
 
     Args:
-        target_date: 対象日（YYYY-MM-DD形式、Noneの場合は今日）
+        target_date_str: 取引対象日（YYYY-MM-DD形式）
 
     Returns:
         dict: 実行日、最新営業日、翌営業日などの情報
     """
     fetcher = JQuantsFetcher()
 
-    # 対象日を設定
-    if target_date:
-        today = datetime.strptime(target_date, "%Y-%m-%d").date()
-    else:
-        today = datetime.now().date()
+    # target_dateをdatetimeに変換
+    target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
 
-    # 最新営業日を取得（target_date以前の最新営業日）
-    params = {
-        "from": str(today - timedelta(days=10)),
-        "to": str(today)
-    }
-    response = fetcher.client.request("/markets/trading_calendar", params=params)
-    calendar = pd.DataFrame(response["trading_calendar"])
-
-    # HolidayDivisionカラムで営業日をフィルタ（"1"が営業日）
-    trading_days = calendar[calendar["HolidayDivision"] == "1"]["Date"].tolist()
-
-    if trading_days:
-        latest_trading_day_str = max([d for d in trading_days if d <= str(today)])
-        latest_trading_day = datetime.strptime(latest_trading_day_str, "%Y-%m-%d").date()
-    else:
-        # フォールバック
-        latest_trading_day_str = fetcher.get_latest_trading_day()
-        latest_trading_day = datetime.strptime(latest_trading_day_str, "%Y-%m-%d").date()
-
-    # 営業日カレンダーから今後の営業日を取得
-    future_end = today + timedelta(days=10)
+    # target_dateの前営業日を取得
+    # target_dateから過去10日間の営業日カレンダーを取得
+    past_start = target_date - timedelta(days=10)
 
     params = {
-        "from": str(today),
-        "to": str(future_end)
+        "from": str(past_start),
+        "to": str(target_date)
     }
 
     response = fetcher.client.request("/markets/trading_calendar", params=params)
     calendar = pd.DataFrame(response["trading_calendar"])
 
-    # 営業日のみフィルタ
+    # 営業日のみフィルタ（HolidayDivision == "1"）
     trading_days = calendar[calendar["HolidayDivision"] == "1"].copy()
     trading_days["Date"] = pd.to_datetime(trading_days["Date"]).dt.date
     trading_days = trading_days.sort_values("Date")
 
-    # 翌営業日
-    future_trading_days = trading_days[trading_days["Date"] > latest_trading_day]
+    # target_dateより前の営業日 = 最新営業日（選定日の前営業日）
+    past_trading_days = trading_days[trading_days["Date"] < target_date]
 
-    if future_trading_days.empty:
-        raise RuntimeError("No future trading days found in calendar")
+    if past_trading_days.empty:
+        raise RuntimeError(f"No trading days found before {target_date_str}")
 
-    next_trading_day = future_trading_days.iloc[0]["Date"]
+    latest_trading_day = past_trading_days.iloc[-1]["Date"]
+
+    # target_dateが翌営業日
+    next_trading_day = target_date
+
+    # 実行日時は「latest_trading_day の 23時選定」を想定
+    # 例: 2025-11-06の銘柄を選定 → 2025-11-05 23:00に実行
+    execution_date = latest_trading_day
 
     return {
-        "execution_date": datetime.now().strftime("%Y年%m月%d日"),
+        "execution_date": execution_date.strftime("%Y年%m月%d日"),
         "latest_trading_day": latest_trading_day.strftime("%Y年%m月%d日"),
         "next_trading_day": next_trading_day.strftime("%Y年%m月%d日"),
         "latest_trading_day_raw": str(latest_trading_day),
@@ -231,33 +210,22 @@ def get_trading_context(target_date: str | None = None) -> dict[str, str]:
     }
 
 
-def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any], prompt_version: str) -> str:
+def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
     """
-    Grokプロンプトを生成（バージョン管理対応）
+    v1.3 Zero Labelプロンプトを生成（固定）
 
     Args:
         context: get_trading_context() で取得したコンテキスト
         backtest: load_backtest_patterns() で取得したバックテストデータ
-        prompt_version: プロンプトバージョン
 
     Returns:
         str: Grok APIに送信するプロンプト
     """
-    import importlib
+    # v1.3 Zero Labelプロンプトを使用（固定）
+    from data.prompts.v1_3_zero_label import build_grok_prompt as build_v13_prompt
 
-    try:
-        # data.prompts モジュールから指定バージョンをインポート
-        module_name = f"data.prompts.{prompt_version}"
-        prompt_module = importlib.import_module(module_name)
-        build_prompt_func = prompt_module.build_grok_prompt
-
-        print(f"[INFO] Using prompt version: {prompt_version}")
-        return build_prompt_func(context, backtest)
-
-    except ImportError as e:
-        print(f"[ERROR] Failed to import prompt module: {module_name}")
-        print(f"[ERROR] {e}")
-        raise
+    print(f"[INFO] Using prompt version: v1.3_zero_label (fixed)")
+    return build_v13_prompt(context, backtest)
 
 
 def load_xai_api_key() -> str:
@@ -294,12 +262,13 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
 
     # chat.create()でセッション作成
     chat = client.chat.create(
-        model="grok-4-fast-reasoning",
+        model="grok-4-fast-reasoning",  # grok-4ファミリー（server-side tools対応）
         tools=[web_search(), x_search()],
     )
 
     # システムメッセージとユーザープロンプトを追加
-    chat.append(system("あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に使用して、一次情報に基づいた事実のみを出力してください。"))
+    # v1.3ではカテゴリ・ラベル付けを厳しく禁止
+    chat.append(system("あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に使用して、一次情報に基づいた事実のみを出力してください。カテゴリやラベルは一切使用せず、事実のみを記述してください。"))
     chat.append(user(prompt))
 
     # ストリーミング処理
@@ -400,7 +369,7 @@ def calculate_selection_score(item: dict[str, Any]) -> float:
 def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, selected_time: str, prompt_version: str) -> pd.DataFrame:
     """
     Convert Grok data to all_stocks.parquet compatible schema
-    （generate_grok_trending.py から流用）
+    v1.3版: previous_day_change_pct, twitter_mentionsフィールドを追加
     """
     print("[INFO] Converting to all_stocks.parquet compatible schema...")
     print(f"[INFO] Using prompt version: {prompt_version}")
@@ -410,11 +379,13 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         ticker_symbol = item.get("ticker_symbol", "")
         company_name = item.get("company_name", "")
         reason = item.get("reason", "")
-        category = item.get("category", "")
+        category = item.get("category", "")  # v1.3ではcategoryフィールドがないはず
         sentiment_score = item.get("sentiment_score", 0.5)
         policy_link = item.get("policy_link", "Low")
         has_mention = item.get("has_mention", False)
         mentioned_by = item.get("mentioned_by", "")
+        previous_day_change_pct = item.get("previous_day_change_pct", None)  # v1.3新規フィールド
+        twitter_mentions = item.get("twitter_mentions", None)  # v1.3新規フィールド
 
         # tickerは "1234.T" 形式、codeは "1234" 形式
         ticker = f"{ticker_symbol}.T" if not ticker_symbol.endswith(".T") else ticker_symbol
@@ -452,6 +423,8 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
             "mentioned_by": mentioned_by,
             "selection_score": selection_score,
             "prompt_version": prompt_version,
+            "previous_day_change_pct": previous_day_change_pct,  # v1.3新規フィールド
+            "twitter_mentions": twitter_mentions,  # v1.3新規フィールド
         }
         rows.append(row)
 
@@ -485,24 +458,23 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
 
 
 def main() -> int:
-    """メイン処理"""
+    """メイン処理（v1.3テスト実行版）"""
     print("=" * 60)
-    print("Test Grok Trending Stocks (xAI SDK + web_search + x_search)")
+    print("Test Grok Trending Stocks with v1.3 Zero Label")
     print("=" * 60)
 
     # コマンドライン引数をパース
     args = parse_args()
 
-    # プロンプトバージョンを取得
-    prompt_version = args.prompt_version or os.getenv("PROMPT_VERSION", "v1_1_web_search")
-    print(f"[INFO] Prompt version: {prompt_version}")
+    # プロンプトバージョンは v1.3_zero_label 固定
+    prompt_version = "v1.3_zero_label"
+    print(f"[INFO] Prompt version: {prompt_version} (fixed)")
 
     # 対象日と選定時刻
-    target_date = args.date
-    selected_time = args.time
-    if target_date:
-        print(f"[INFO] Target date: {target_date}")
-    print(f"[INFO] Selected time: {selected_time}")
+    target_date = args.target_date
+    selected_time = "23:00"  # 23時選定固定
+    print(f"[INFO] Target date: {target_date}")
+    print(f"[INFO] Selected time: {selected_time} (fixed)")
 
     # 出力ディレクトリ作成
     TEST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -525,9 +497,9 @@ def main() -> int:
             print("[INFO] No backtest data available yet")
         print()
 
-        # 3. Build dynamic prompt
-        prompt = build_grok_prompt(context, backtest, prompt_version)
-        print(f"[INFO] Built dynamic prompt ({len(prompt)} chars)")
+        # 3. Build v1.3 prompt
+        prompt = build_grok_prompt(context, backtest)
+        print(f"[INFO] Built v1.3 Zero Label prompt ({len(prompt)} chars)")
         print()
 
         # 4. Load API key
@@ -553,17 +525,17 @@ def main() -> int:
         print("-" * 80)
         for i, row in df.head(5).iterrows():
             print(f"{i+1}. {row['ticker']} - {row['stock_name']}")
-            print(f"   Category: {row['tags']}")
-            print(f"   Reason: {row['reason'][:100]}..." if len(row['reason']) > 100 else f"   Reason: {row['reason']}")
+            if row.get('tags'):
+                print(f"   Tags: {row['tags']}")
+            print(f"   前日騰落率: {row.get('previous_day_change_pct', 'N/A')}%")
+            print(f"   Twitter言及: {row.get('twitter_mentions', 'N/A')}件")
+            print(f"   Reason: {row['reason'][:80]}..." if len(row['reason']) > 80 else f"   Reason: {row['reason']}")
             print()
 
         # 9. Save to test_output
-        # YYYYMMDDHH形式のファイル名（target_dateが指定されている場合はそれを使用）
-        file_date = target_date if target_date else selected_date
-        date_str = file_date.replace("-", "")
-        time_str = selected_time.replace(":", "")
-        output_parquet = TEST_OUTPUT_DIR / f"grok_trending_{date_str}{time_str}.parquet"
-        output_json = TEST_OUTPUT_DIR / f"grok_trending_{date_str}{time_str}.json"
+        # v1.3_grok_trending_YYYYMMDD.parquet 形式
+        date_str = target_date.replace("-", "")
+        output_parquet = TEST_OUTPUT_DIR / f"v1.3_grok_trending_{date_str}.parquet"
 
         # Parquet保存
         df.to_parquet(output_parquet, index=False)
@@ -571,28 +543,9 @@ def main() -> int:
         print(f"     Total stocks: {len(df)}")
         print(f"     Prompt version: {prompt_version}")
 
-        # デバッグ用JSON保存
-        debug_data = {
-            "metadata": {
-                "execution_date": context['execution_date'],
-                "latest_trading_day": context['latest_trading_day'],
-                "next_trading_day": context['next_trading_day'],
-                "prompt_version": prompt_version,
-                "selected_time": selected_time,
-                "tool_usage": tool_stats
-            },
-            "stocks": grok_data,
-            "raw_response": response
-        }
-
-        with open(output_json, 'w', encoding='utf-8') as f:
-            json.dump(debug_data, f, ensure_ascii=False, indent=2)
-        print(f"[OK] Saved debug JSON: {output_json}")
-
         print("\n" + "=" * 60)
-        print(f"[OK] Generated {len(df)} Grok trending stocks (TEST)")
+        print(f"[OK] Generated {len(df)} Grok trending stocks (v1.3)")
         print(f"[OK] Output: {output_parquet}")
-        print(f"[OK] Debug JSON: {output_json}")
         print(f"[INFO] Tool usage: {tool_stats}")
         print("=" * 60)
 

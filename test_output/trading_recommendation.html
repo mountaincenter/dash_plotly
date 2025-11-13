@@ -1,0 +1,359 @@
+
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Grok推奨銘柄 総合売買判断レポート</title>
+        <style>
+            body {
+                font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'YuGothic', sans-serif;
+                max-width: 1600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            h1 {
+                color: #333;
+                border-bottom: 3px solid #2196F3;
+                padding-bottom: 10px;
+            }
+            h2 {
+                color: #555;
+                margin-top: 40px;
+                border-left: 5px solid #FF9800;
+                padding-left: 10px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                background-color: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            th, td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+                font-size: 13px;
+            }
+            td.num {
+                text-align: right;
+            }
+            th {
+                background-color: #2196F3;
+                color: white;
+                font-weight: bold;
+            }
+            tr:hover {
+                background-color: #f5f5f5;
+            }
+            .buy {
+                background-color: #E8F5E9;
+            }
+            .sell {
+                background-color: #FFEBEE;
+            }
+            .hold {
+                background-color: #FFF3E0;
+            }
+            .info-box {
+                background-color: #E3F2FD;
+                border-left: 4px solid #2196F3;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .warning-box {
+                background-color: #FFF3E0;
+                border-left: 4px solid #FF9800;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .summary {
+                display: flex;
+                justify-content: space-around;
+                margin: 30px 0;
+            }
+            .summary-item {
+                text-align: center;
+                padding: 20px;
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                flex: 1;
+                margin: 0 10px;
+            }
+            .summary-item h3 {
+                margin: 0;
+                font-size: 24px;
+            }
+            .summary-item p {
+                margin: 5px 0 0 0;
+                color: #777;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>📊 Grok推奨銘柄 総合売買判断レポート</h1>
+
+        <div class="info-box">
+            <strong>生成日時:</strong> 2025-11-12 23:58:02<br>
+            <strong>対象銘柄数:</strong> 11銘柄<br>
+            <strong>分析基準:</strong> 過去76件のバックテスト（2025-11-04～2025-11-12） + 前日テクニカルデータ + カテゴリー分析
+        </div>
+
+        <div class="summary">
+            <div class="summary-item" style="border-top: 4px solid #4CAF50;">
+                <h3 style="color: #4CAF50;">4</h3>
+                <p>買い候補</p>
+            </div>
+            <div class="summary-item" style="border-top: 4px solid #F44336;">
+                <h3 style="color: #F44336;">1</h3>
+                <p>売り候補</p>
+            </div>
+            <div class="summary-item" style="border-top: 4px solid #FF9800;">
+                <h3 style="color: #FF9800;">6</h3>
+                <p>静観</p>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ 重要な注意事項</strong><br>
+            - 現状のバックテストデータは76件、統計的信頼性は限定的<br>
+            - 必ず推奨損切りラインを設定すること<br>
+            - スコアは複合判断の参考値（高いほど買い推奨、低いほど売り推奨）<br>
+            - より多くのデータ（100件以上）で再検証が必要
+        </div>
+
+        <h2>🟢 買い候補（4銘柄）</h2>
+        <p>複合判断でスコアがプラスのパターン。優先的に検討してください。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th>ランク</th>
+                    <th>前日変化率</th>
+                    <th>ATR(%)</th>
+                    <th>スコア</th>
+                    <th>信頼度</th>
+                    <th>推奨損切り</th>
+                    <th>判断理由</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr class="buy">
+                    <td>7294.T</td>
+                    <td>ヨロズ</td>
+                    <td class="num">6</td>
+                    <td class="num">-1.7057569296375266</td>
+                    <td class="num">2.321041214750542</td>
+                    <td class="num" style="font-weight: bold; color: green;">+80</td>
+                    <td>高</td>
+                    <td class="num">2.0%</td>
+                    <td style="font-size: 12px;">Grokランク6は勝率71.4%（平均+0.40%） / 前日マイナス（リバウンド効果） / 低ボラ（安定）</td>
+                </tr>
+                
+                <tr class="buy">
+                    <td>5255.T</td>
+                    <td>モンスターラボ</td>
+                    <td class="num">8</td>
+                    <td class="num">-0.6134969325153374</td>
+                    <td class="num">4.6913580246913575</td>
+                    <td class="num" style="font-weight: bold; color: green;">+50</td>
+                    <td>高</td>
+                    <td class="num">3.8%</td>
+                    <td style="font-size: 12px;">Grokランク8は勝率66.7%（平均+0.10%） / 前日マイナス（リバウンド効果）</td>
+                </tr>
+                
+                <tr class="buy">
+                    <td>5029.T</td>
+                    <td>サークレイス</td>
+                    <td class="num">9</td>
+                    <td class="num">-1.5902712815715623</td>
+                    <td class="num">3.11787072243346</td>
+                    <td class="num" style="font-weight: bold; color: green;">+50</td>
+                    <td>高</td>
+                    <td class="num">2.5%</td>
+                    <td style="font-size: 12px;">Grokランク9は勝率66.7%（平均+1.00%） / 前日マイナス（リバウンド効果）</td>
+                </tr>
+                
+                <tr class="buy">
+                    <td>4251.T</td>
+                    <td>JSP</td>
+                    <td class="num">7</td>
+                    <td class="num">-0.2572898799313894</td>
+                    <td class="num">2.115219260533104</td>
+                    <td class="num" style="font-weight: bold; color: green;">+40</td>
+                    <td>中</td>
+                    <td class="num">2.0%</td>
+                    <td style="font-size: 12px;">Grokランク7は勝率42.9%（平均-1.40%） / 前日マイナス（リバウンド効果） / 低ボラ（安定）</td>
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <h2>🔴 売り候補（1銘柄）</h2>
+        <p>複合判断でスコアがマイナスのパターン。信用売り、または見送りを推奨。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th>ランク</th>
+                    <th>前日変化率</th>
+                    <th>ATR(%)</th>
+                    <th>スコア</th>
+                    <th>信頼度</th>
+                    <th>推奨損切り</th>
+                    <th>判断理由</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr class="sell">
+                    <td>325A.T</td>
+                    <td>TENTIAL</td>
+                    <td class="num">2</td>
+                    <td class="num">-1.1029411764705883</td>
+                    <td class="num">3.3457249070631967</td>
+                    <td class="num" style="font-weight: bold; color: red;">-30</td>
+                    <td>中</td>
+                    <td class="num">5.0%</td>
+                    <td style="font-size: 12px;">Grokランク2は勝率0.0%（平均-1.30%） / 前日マイナス（リバウンド効果）</td>
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <h2>⚪ 静観（6銘柄）</h2>
+        <p>複合判断で中立的なスコア。様子見を推奨。</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th>ランク</th>
+                    <th>前日変化率</th>
+                    <th>ATR(%)</th>
+                    <th>スコア</th>
+                    <th>信頼度</th>
+                    <th>推奨損切り</th>
+                    <th>判断理由</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr class="hold">
+                    <td>4499.T</td>
+                    <td>SPEEE</td>
+                    <td class="num">1</td>
+                    <td class="num">-9.423704240666908</td>
+                    <td class="num">8.619447779111646</td>
+                    <td class="num">0</td>
+                    <td>中</td>
+                    <td class="num">5.0%</td>
+                    <td style="font-size: 12px;">Grokランク1は勝率28.6%（平均+0.60%） / 前日マイナス（リバウンド効果） / 高ボラ（リスク大）</td>
+                </tr>
+                
+                <tr class="hold">
+                    <td>4598.T</td>
+                    <td>WELBY</td>
+                    <td class="num">3</td>
+                    <td class="num">-0.21008403361344538</td>
+                    <td class="num">6.105263157894736</td>
+                    <td class="num">20</td>
+                    <td>中</td>
+                    <td class="num">4.9%</td>
+                    <td style="font-size: 12px;">Grokランク3は勝率42.9%（平均-1.00%） / 前日マイナス（リバウンド効果） / 高ボラ（リスク大） / 【ハイリスク】ストップ高頻発</td>
+                </tr>
+                
+                <tr class="hold">
+                    <td>2378.T</td>
+                    <td>セントケア・ホールディング</td>
+                    <td class="num">4</td>
+                    <td class="num">0.9737098344693282</td>
+                    <td class="num">1.774349083895853</td>
+                    <td class="num">-10</td>
+                    <td>中</td>
+                    <td class="num">2.0%</td>
+                    <td style="font-size: 12px;">Grokランク4は勝率28.6%（平均-2.20%） / 低ボラ（安定）</td>
+                </tr>
+                
+                <tr class="hold">
+                    <td>4165.T</td>
+                    <td>プレイド</td>
+                    <td class="num">5</td>
+                    <td class="num">0.39447731755424065</td>
+                    <td class="num">2.5736738703339883</td>
+                    <td class="num">20</td>
+                    <td>中</td>
+                    <td class="num">2.1%</td>
+                    <td style="font-size: 12px;">Grokランク5は勝率42.9%（平均+1.60%） / 低ボラ（安定）</td>
+                </tr>
+                
+                <tr class="hold">
+                    <td>241A.T</td>
+                    <td>ROXX</td>
+                    <td class="num">11</td>
+                    <td class="num">1.9736842105263157</td>
+                    <td class="num">6.012903225806452</td>
+                    <td class="num">-17</td>
+                    <td>中</td>
+                    <td class="num">4.8%</td>
+                    <td style="font-size: 12px;">Grokランク11は勝率25.0%（平均-0.20%） / 高ボラ（リスク大）</td>
+                </tr>
+                
+                <tr class="hold">
+                    <td>5071.T</td>
+                    <td>ヴィス</td>
+                    <td class="num">12</td>
+                    <td class="num">-0.7272727272727273</td>
+                    <td class="num">0.7619047619047619</td>
+                    <td class="num">-5</td>
+                    <td>中</td>
+                    <td class="num">2.0%</td>
+                    <td style="font-size: 12px;">Grokランク12は勝率0.0%（平均-1.70%） / 前日マイナス（リバウンド効果） / 低ボラ（安定）</td>
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <h2>📋 判断基準（複合スコアリング）</h2>
+
+        <div class="info-box">
+            <h3>スコア計算ルール（バックテスト結果から動的計算）</h3>
+            <ul>
+                <li><strong>Grokランク:</strong>
+                    ランク1=-10点（勝率28.6%）、ランク2=-50点（勝率0.0%）、ランク3=+10点（勝率42.9%）、ランク4=-20点（勝率28.6%）、ランク5=+10点（勝率42.9%）、ランク6=+50点（勝率71.4%）、ランク7=+10点（勝率42.9%）、ランク8=+30点（勝率66.7%）、ランク9=+30点（勝率66.7%）、ランク10=-40点（勝率16.7%）、ランク11=-7点（勝率25.0%）、ランク12=-35点（勝率0.0%）、ランク13=-35点（勝率0.0%）
+                </li>
+                <li><strong>前日動向:</strong> ランク1,2 × 前日プラス = -30点、前日マイナス = +20点</li>
+                <li><strong>ボラティリティ:</strong> 低ボラ = +10点、高ボラ = -10点</li>
+                <li><strong>カテゴリー:</strong> 勝率50%以上 = +15点、25%以下 = -15点</li>
+            </ul>
+
+            <h3>行動判定</h3>
+            <ul>
+                <li><strong>スコア +30以上:</strong> 買い候補</li>
+                <li><strong>スコア -30以下:</strong> 売り候補</li>
+                <li><strong>スコア -29 ~ +29:</strong> 静観</li>
+            </ul>
+
+            <h3>推奨損切りライン</h3>
+            <ul>
+                <li>ATRの80%、最小2%、最大5%で設定</li>
+                <li>ボラティリティに応じて柔軟に調整</li>
+            </ul>
+        </div>
+
+        <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #777;">
+            <p>生成日時: 2025-11-12 23:58:02</p>
+            <p style="color: #F44336; font-weight: bold;">投資は自己責任で行ってください。このレポートは投資助言ではありません。</p>
+        </footer>
+    </body>
+    </html>
+    

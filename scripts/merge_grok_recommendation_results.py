@@ -1,8 +1,10 @@
 """
-Grok分析データと売買判断レポートをマージ
+[DEPRECATED] このスクリプトは不要になりました
+grok_analysis_merged.parquet に統合されたため、別途マージ処理は不要です
 
-grok_analysis_base_latest.parquet に trading_recommendation_history.parquet の
-判断結果（買い/売り/静観）を追加し、振り返り分析用データを作成する。
+旧機能:
+- grok_analysis_base_latest.parquet に trading_recommendation_history.parquet の
+  判断結果（買い/売り/静観）を追加し、振り返り分析用データを作成
 """
 
 import pandas as pd
@@ -15,9 +17,9 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_DIR = BASE_DIR / 'test_output'
 
-# 入力ファイル
+# 入力ファイル (DEPRECATED)
 GROK_ANALYSIS_PATH = OUTPUT_DIR / 'grok_analysis_base_latest.parquet'
-TRADING_REC_HISTORY_PATH = OUTPUT_DIR / 'trading_recommendation_history.parquet'
+TRADING_REC_HISTORY_PATH = OUTPUT_DIR / 'grok_analysis_merged.parquet'  # 旧: trading_recommendation_history.parquet
 
 # 出力ファイル
 OUTPUT_PATH = OUTPUT_DIR / 'grok_analysis_base_latest.parquet'

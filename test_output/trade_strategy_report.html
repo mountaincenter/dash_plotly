@@ -1,0 +1,317 @@
+
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>信用売買戦略レポート</title>
+        <style>
+            body {
+                font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'YuGothic', sans-serif;
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            h1 {
+                color: #333;
+                border-bottom: 3px solid #F44336;
+                padding-bottom: 10px;
+            }
+            h2 {
+                color: #555;
+                margin-top: 40px;
+                border-left: 5px solid #FF5722;
+                padding-left: 10px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                background-color: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            th, td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+            td.num {
+                text-align: right;
+            }
+            th {
+                background-color: #F44336;
+                color: white;
+                font-weight: bold;
+            }
+            tr:hover {
+                background-color: #f5f5f5;
+            }
+            .warning-box {
+                background-color: #FFF3E0;
+                border-left: 4px solid #FF9800;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .danger-box {
+                background-color: #FFEBEE;
+                border-left: 4px solid #F44336;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .success-box {
+                background-color: #E8F5E9;
+                border-left: 4px solid #4CAF50;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .info-box {
+                background-color: #E3F2FD;
+                border-left: 4px solid #2196F3;
+                padding: 15px;
+                margin: 20px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>📊 信用売買戦略レポート</h1>
+
+        <div class="info-box">
+            <strong>データ期間:</strong> 2025-11-04 ~ 2025-11-07<br>
+            <strong>分析銘柄数:</strong> 46銘柄<br>
+            <strong>目的:</strong> 勝率0%/100%のパターンを特定し、信用売買の戦略を立てる
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ 重要な注意事項</strong><br>
+            - 現状のデータ数は46件と少なく、統計的信頼性は限定的<br>
+            - 各パターンは2-3件のみのサンプル<br>
+            - 必ず損切りライン（例: ±3%）を設定すること<br>
+            - より多くのデータ（100件以上）で検証が必要
+        </div>
+
+        <h2>🔴 勝率0%パターン（信用売り候補）</h2>
+
+        <div class="danger-box"><strong>勝率0%のパターンが見つかりました！</strong><br>以下のパターンは全て下落しています。信用売りのチャンスです。</div>
+
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>カテゴリー</th>
+                    <th>前日動向</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>平均リターン</th>
+                    <th>戦略</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr style="background-color: #FFEBEE;">
+                    <td>IR好材料+株クラバズ</td>
+                    <td>プラス</td>
+                    <td class="num">3</td>
+                    <td class="num" style="font-weight: bold; color: red;">0%</td>
+                    <td class="num">-2.52%</td>
+                    <td>✓ 信用売り</td>
+                </tr>
+            
+                <tr style="background-color: #FFEBEE;">
+                    <td>テーマ連動+株クラバズ</td>
+                    <td>プラス</td>
+                    <td class="num">3</td>
+                    <td class="num" style="font-weight: bold; color: red;">0%</td>
+                    <td class="num">-7.46%</td>
+                    <td>✓ 信用売り</td>
+                </tr>
+            
+                <tr style="background-color: #FFEBEE;">
+                    <td>バイオ材料+株クラバズ</td>
+                    <td>マイナス</td>
+                    <td class="num">2</td>
+                    <td class="num" style="font-weight: bold; color: red;">0%</td>
+                    <td class="num">-4.34%</td>
+                    <td>✓ 信用売り</td>
+                </tr>
+            
+            </tbody>
+        </table>
+        
+
+        <h2>🟢 勝率100%パターン（信用買い候補）</h2>
+
+        <p>勝率100%のパターンは見つかりませんでした。</p>
+
+        
+
+        <h2>📉 低勝率パターン（30%以下）</h2>
+        <p>勝率0%ではないが、低勝率のパターン（信用売り検討）</p>
+
+        <p>該当パターンなし</p>
+
+        <h2>📋 勝率0%パターンの詳細（個別銘柄）</h2>
+
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th>カテゴリー</th>
+                    <th>前日動向</th>
+                    <th>日付</th>
+                    <th>前日変化率</th>
+                    <th>買付価格</th>
+                    <th>Phase2リターン</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                    <tr>
+                        <td>7069.T</td>
+                        <td>(株)サイバー・バズ</td>
+                        <td>IR好材料+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-06</td>
+                        <td class="num">19.63%</td>
+                        <td class="num">914円</td>
+                        <td class="num" style="color: red; font-weight: bold;">0.00%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>7729.T</td>
+                        <td>(株)東京精密</td>
+                        <td>IR好材料+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-06</td>
+                        <td class="num">2.69%</td>
+                        <td class="num">11275円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-3.68%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>7826.T</td>
+                        <td>フルヤ金属</td>
+                        <td>IR好材料+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-07</td>
+                        <td class="num">16.76%</td>
+                        <td class="num">3225円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-3.88%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>7746.T</td>
+                        <td>岡本硝子</td>
+                        <td>テーマ連動+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-04</td>
+                        <td class="num">0.70%</td>
+                        <td class="num">433円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-10.62%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>6993.T</td>
+                        <td>大黒屋ホールディングス(株)</td>
+                        <td>テーマ連動+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-06</td>
+                        <td class="num">6.25%</td>
+                        <td class="num">51円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-11.76%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>3082.T</td>
+                        <td>(株)きちりホールディングス</td>
+                        <td>テーマ連動+株クラバズ</td>
+                        <td>プラス</td>
+                        <td class="num">2025-11-06</td>
+                        <td class="num">0.00%</td>
+                        <td class="num">920円</td>
+                        <td class="num" style="color: red; font-weight: bold;">0.00%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>4875.T</td>
+                        <td>メディシノバ</td>
+                        <td>バイオ材料+株クラバズ</td>
+                        <td>マイナス</td>
+                        <td class="num">2025-11-04</td>
+                        <td class="num">-7.93%</td>
+                        <td class="num">209円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-4.31%</td>
+                    </tr>
+                
+                    <tr>
+                        <td>219A.T</td>
+                        <td>Heartseed(株)</td>
+                        <td>バイオ材料+株クラバズ</td>
+                        <td>マイナス</td>
+                        <td class="num">2025-11-06</td>
+                        <td class="num">-1.81%</td>
+                        <td class="num">1900円</td>
+                        <td class="num" style="color: red; font-weight: bold;">-4.37%</td>
+                    </tr>
+                
+            </tbody>
+        </table>
+        
+
+        <h2>📖 使い方</h2>
+
+        <div class="info-box">
+            <h3>信用売りの手順</h3>
+            <ol>
+                <li><strong>朝の確認:</strong> 対象銘柄のカテゴリーと前日終値を確認</li>
+                <li><strong>パターンマッチ:</strong> 勝率0%パターンに該当するか判定</li>
+                <li><strong>前場で売り:</strong> 9:00-11:30の前場で信用売り仕掛け</li>
+                <li><strong>終値でクローズ:</strong> 15:00の終値で買い戻し</li>
+                <li><strong>損切り設定:</strong> +3%上昇したら損切り</li>
+            </ol>
+
+            <h3>具体例</h3>
+            <p>「テーマ連動+株クラバズ」の銘柄が前日プラスで終えた場合：</p>
+            <ul>
+                <li>勝率0%（3件中0勝）のため、信用売りチャンス</li>
+                <li>前場（9:00-11:30）で売り仕掛け</li>
+                <li>当日終値（15:00）で買い戻し</li>
+                <li>損切りライン: 寄り付き価格から+3%上昇で損切り</li>
+            </ul>
+        </div>
+
+        <h2>⚠️ リスク管理</h2>
+
+        <div class="danger-box">
+            <strong>必ず守るべきルール:</strong>
+            <ul>
+                <li>損切りラインを必ず設定（推奨: ±3%）</li>
+                <li>1銘柄への投資は資金の10%以内</li>
+                <li>データ数が少ないため過信しない</li>
+                <li>継続的にデータを蓄積し、パターンの再現性を検証</li>
+                <li>市場環境の変化に注意（相場全体の暴落時は機能しない）</li>
+            </ul>
+        </div>
+
+        <h2>📈 次のステップ</h2>
+
+        <div class="info-box">
+            <h3>推奨する改善策</h3>
+            <ol>
+                <li><strong>データ蓄積:</strong> 11/08以降も毎日データを追加（目標: 100件以上）</li>
+                <li><strong>カテゴリー統合:</strong> 細かいカテゴリーを大分類にまとめる</li>
+                <li><strong>ボラティリティ追加:</strong> 前場の値動きが大きい銘柄は後場で反落しやすい</li>
+                <li><strong>Phase3分析:</strong> 損切りライン別のパフォーマンスを分析</li>
+                <li><strong>バックテスト:</strong> 過去データでパターンの再現性を検証</li>
+            </ol>
+        </div>
+
+        <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #777;">
+            <p>生成日時: 2025-11-09 20:55:39</p>
+            <p style="color: #F44336; font-weight: bold;">投資は自己責任で行ってください。このレポートは投資助言ではありません。</p>
+        </footer>
+    </body>
+    </html>
+    

@@ -28,6 +28,8 @@ PRICES_DIR = BASE_DIR / 'data' / 'parquet'
 OUTPUT_HTML_PATH = BASE_DIR / 'test_output' / 'trading_recommendation_v2.html'
 OUTPUT_JSON_PATH = BASE_DIR / 'data' / 'parquet' / 'backtest' / 'trading_recommendation.json'
 
+# 注: JSONはarchive_trading_recommendation.pyがgrok_analysis_merged.parquetにマージします
+
 # J-Quantsクライアント
 jquants_client = None
 

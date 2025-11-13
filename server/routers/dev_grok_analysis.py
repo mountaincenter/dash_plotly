@@ -57,12 +57,6 @@ def load_analysis_data() -> pd.DataFrame:
             df['selection_date'] = pd.to_datetime(df['selection_date'])
 
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
-
-        # バックテストデータのみ（recommendation_action がないデータ）
-        if 'recommendation_action' in df.columns:
-            df = df[df['recommendation_action'].isna()].copy()
-            print(f"[INFO] Filtered to backtest-only data: {len(df)} records")
-
         return df
 
     except Exception as e:
@@ -76,12 +70,6 @@ def load_analysis_data() -> pd.DataFrame:
             df['backtest_date'] = pd.to_datetime(df['backtest_date'])
         if 'selection_date' in df.columns:
             df['selection_date'] = pd.to_datetime(df['selection_date'])
-
-        # バックテストデータのみ（recommendation_action がないデータ）
-        if 'recommendation_action' in df.columns:
-            df = df[df['recommendation_action'].isna()].copy()
-            print(f"[INFO] Filtered to backtest-only data: {len(df)} records")
-
         return df
 
     # どちらも失敗

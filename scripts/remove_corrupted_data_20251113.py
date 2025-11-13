@@ -3,9 +3,9 @@
 2025-11-13の改竄データを削除
 
 問題:
-- trading_recommendation_history.parquet には 2025-11-13 のデータが存在しない
 - grok_analysis_merged.parquet の 2025-11-13 データは無許可実行時の不正データ
 - この日のrecommendation_action/scoreは信頼できない
+- 注: trading_recommendation_history.parquetは廃止され、grok_analysis_merged.parquetに統合されました
 
 対応:
 - 2025-11-13 のデータを完全に削除

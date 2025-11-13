@@ -543,36 +543,6 @@ jobs:
           GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
           echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
 
-          # trading_recommendation_history.parquet をダウンロード
-          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation_history.parquet" > /dev/null 2>&1; then
-            aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation_history.parquet" \
-              test_output/trading_recommendation_history.parquet \
-              --only-show-errors
-            echo "  ✅ Downloaded trading_recommendation_history.parquet"
-          else
-            echo "  ⚠️  trading_recommendation_history.parquet not found in S3 (will use local if available)"
-          fi
-
-          # === Step 1.5: Enrich trading_recommendation_history.parquet ===
-          echo ""
-          echo "🔧 Enriching trading recommendation data..."
-
-          if [ -f "test_output/trading_recommendation_history.parquet" ]; then
-            python3 scripts/enrich_trading_recommendation.py \
-              test_output/trading_recommendation_history.parquet \
-              data/parquet/all_stocks.parquet \
-              data/parquet/prices_max_1d.parquet
-
-            if [ $? -eq 0 ]; then
-              echo "  ✅ Enrichment completed (stock names, prev_close, ATR%)"
-            else
-              echo "  ⚠️  Enrichment failed, proceeding with original data"
-            fi
-          else
-            echo "  ⚠️  No trading_recommendation_history.parquet to enrich"
-          fi
-
           # === Step 2: create_grok_analysis_base_latest.py を実行 ===
           echo ""
           echo "📊 Step 1: Creating grok analysis base data..."
@@ -592,26 +562,7 @@ jobs:
             exit 0
           fi
 
-          # === Step 3: merge_grok_recommendation_results.py を実行 ===
-          echo ""
-          echo "📊 Step 2: Merging recommendation results..."
-
-          if [ -f "test_output/trading_recommendation_history.parquet" ]; then
-            python3 scripts/merge_grok_recommendation_results.py
-
-            if [ $? -eq 0 ]; then
-              RECORDS=$(python3 -c "import pandas as pd; df=pd.read_parquet('test_output/grok_analysis_base_latest.parquet'); print(len(df))")
-              HAS_REC=$(python3 -c "import pandas as pd; df=pd.read_parquet('test_output/grok_analysis_base_latest.parquet'); print(df['recommendation_action'].notna().sum())")
-              echo "  ✅ Merged recommendation data ($RECORDS total records, $HAS_REC with recommendations)"
-            else
-              echo "  ❌ Failed to merge recommendation data"
-              exit 1
-            fi
-          else
-            echo "  ⚠️  trading_recommendation_history.parquet not found, skipping merge"
-          fi
-
-          # === Step 4: grok_analysis_merged.parquet として保存（既存データとマージ） ===
+          # === Step 3: grok_analysis_merged.parquet として保存（既存データとマージ） ===
           echo ""
           echo "📦 Step 3: Merging with existing data..."
 

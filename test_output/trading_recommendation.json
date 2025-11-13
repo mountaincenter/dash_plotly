@@ -1,0 +1,596 @@
+{
+  "version": "1.0",
+  "generatedAt": "2025-11-13T23:00:00.000000",
+  "dataSource": {
+    "backtestCount": 76,
+    "backtestPeriod": {
+      "start": "2025-11-04",
+      "end": "2025-11-12"
+    },
+    "technicalDataDate": "2025-11-12"
+  },
+  "summary": {
+    "total": 11,
+    "buy": 4,
+    "sell": 1,
+    "hold": 6
+  },
+  "warnings": [
+    "現状のバックテストデータは76件、統計的信頼性は限定的",
+    "必ず推奨損切りラインを設定すること",
+    "より多くのデータ（100件以上）で再検証が必要"
+  ],
+  "stocks": [
+    {
+      "ticker": "4499.T",
+      "stockName": "SPEEE",
+      "grokRank": 1,
+      "technicalData": {
+        "prevClose": 2499.0,
+        "prevDayChangePct": -9.423704240666908,
+        "atr": {
+          "value": 8.619447779111646,
+          "level": "high"
+        },
+        "volume": 605400,
+        "volatilityLevel": "高ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": 0,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 5.0,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク1は勝率28.6%（平均+0.60%）",
+            "impact": -10
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          },
+          {
+            "type": "volatility",
+            "description": "高ボラ（リスク大）",
+            "impact": -10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "325A.T",
+      "stockName": "TENTIAL",
+      "grokRank": 2,
+      "technicalData": {
+        "prevClose": 4035.0,
+        "prevDayChangePct": -1.1029411764705883,
+        "atr": {
+          "value": 3.3457249070631967,
+          "level": "medium"
+        },
+        "volume": 102300,
+        "volatilityLevel": "中ボラ"
+      },
+      "recommendation": {
+        "action": "sell",
+        "score": -30,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 5.0,
+          "calculation": "ATR × 1.2"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク2は勝率0.0%（平均-1.30%）",
+            "impact": -50
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "4598.T",
+      "stockName": "WELBY",
+      "grokRank": 3,
+      "technicalData": {
+        "prevClose": 475.0,
+        "prevDayChangePct": -0.21008403361344538,
+        "atr": {
+          "value": 6.105263157894736,
+          "level": "high"
+        },
+        "volume": 890600,
+        "volatilityLevel": "高ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": 20,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 4.9,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク3は勝率42.9%（平均-1.00%）",
+            "impact": 10
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          },
+          {
+            "type": "volatility",
+            "description": "高ボラ（リスク大）",
+            "impact": -10
+          },
+          {
+            "type": "deep_analysis",
+            "description": "【ハイリスク】ストップ高頻発",
+            "impact": 0
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ],
+      "deepAnalysis": {
+        "riskFactors": [
+          "ストップ高頻発",
+          "極端なボラティリティ"
+        ]
+      }
+    },
+    {
+      "ticker": "2378.T",
+      "stockName": "セントケア・ホールディング",
+      "grokRank": 4,
+      "technicalData": {
+        "prevClose": 1037.0,
+        "prevDayChangePct": 0.9737098344693282,
+        "atr": {
+          "value": 1.774349083895853,
+          "level": "low"
+        },
+        "volume": 37200,
+        "volatilityLevel": "低ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": -10,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 2.0,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク4は勝率28.6%（平均-2.20%）",
+            "impact": -20
+          },
+          {
+            "type": "volatility",
+            "description": "低ボラ（安定）",
+            "impact": 10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "4165.T",
+      "stockName": "プレイド",
+      "grokRank": 5,
+      "technicalData": {
+        "prevClose": 1018.0,
+        "prevDayChangePct": 0.39447731755424065,
+        "atr": {
+          "value": 2.5736738703339883,
+          "level": "low"
+        },
+        "volume": 416900,
+        "volatilityLevel": "低ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": 20,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 2.1,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク5は勝率42.9%（平均+1.60%）",
+            "impact": 10
+          },
+          {
+            "type": "volatility",
+            "description": "低ボラ（安定）",
+            "impact": 10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "7294.T",
+      "stockName": "ヨロズ",
+      "grokRank": 6,
+      "technicalData": {
+        "prevClose": 922.0,
+        "prevDayChangePct": -1.7057569296375266,
+        "atr": {
+          "value": 2.321041214750542,
+          "level": "low"
+        },
+        "volume": 43800,
+        "volatilityLevel": "低ボラ"
+      },
+      "recommendation": {
+        "action": "buy",
+        "score": 80,
+        "confidence": "high",
+        "stopLoss": {
+          "percent": 2.0,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク6は勝率71.4%（平均+0.40%）",
+            "impact": 50
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          },
+          {
+            "type": "volatility",
+            "description": "低ボラ（安定）",
+            "impact": 10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "4251.T",
+      "stockName": "JSP",
+      "grokRank": 7,
+      "technicalData": {
+        "prevClose": 1163.0,
+        "prevDayChangePct": -0.2572898799313894,
+        "atr": {
+          "value": 2.115219260533104,
+          "level": "low"
+        },
+        "volume": 43100,
+        "volatilityLevel": "低ボラ"
+      },
+      "recommendation": {
+        "action": "buy",
+        "score": 40,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 2.0,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク7は勝率42.9%（平均-1.40%）",
+            "impact": 10
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          },
+          {
+            "type": "volatility",
+            "description": "低ボラ（安定）",
+            "impact": 10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "5255.T",
+      "stockName": "モンスターラボ",
+      "grokRank": 8,
+      "technicalData": {
+        "prevClose": 162.0,
+        "prevDayChangePct": -0.6134969325153374,
+        "atr": {
+          "value": 4.6913580246913575,
+          "level": "medium"
+        },
+        "volume": 221300,
+        "volatilityLevel": "中ボラ"
+      },
+      "recommendation": {
+        "action": "buy",
+        "score": 50,
+        "confidence": "high",
+        "stopLoss": {
+          "percent": 3.8,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク8は勝率66.7%（平均+0.10%）",
+            "impact": 30
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "5029.T",
+      "stockName": "サークレイス",
+      "grokRank": 9,
+      "technicalData": {
+        "prevClose": 1052.0,
+        "prevDayChangePct": -1.5902712815715623,
+        "atr": {
+          "value": 3.11787072243346,
+          "level": "medium"
+        },
+        "volume": 10400,
+        "volatilityLevel": "中ボラ"
+      },
+      "recommendation": {
+        "action": "buy",
+        "score": 50,
+        "confidence": "high",
+        "stopLoss": {
+          "percent": 2.5,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク9は勝率66.7%（平均+1.00%）",
+            "impact": 30
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "241A.T",
+      "stockName": "ROXX",
+      "grokRank": 11,
+      "technicalData": {
+        "prevClose": 775.0,
+        "prevDayChangePct": 1.9736842105263157,
+        "atr": {
+          "value": 6.012903225806452,
+          "level": "high"
+        },
+        "volume": 289000,
+        "volatilityLevel": "高ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": -17,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 4.8,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク11は勝率25.0%（平均-0.20%）",
+            "impact": -7
+          },
+          {
+            "type": "volatility",
+            "description": "高ボラ（リスク大）",
+            "impact": -10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    },
+    {
+      "ticker": "5071.T",
+      "stockName": "ヴィス",
+      "grokRank": 12,
+      "technicalData": {
+        "prevClose": 1365.0,
+        "prevDayChangePct": -0.7272727272727273,
+        "atr": {
+          "value": 0.7619047619047619,
+          "level": "low"
+        },
+        "volume": 700,
+        "volatilityLevel": "低ボラ"
+      },
+      "recommendation": {
+        "action": "hold",
+        "score": -5,
+        "confidence": "medium",
+        "stopLoss": {
+          "percent": 2.0,
+          "calculation": "ATR × 0.8"
+        },
+        "reasons": [
+          {
+            "type": "grok_rank",
+            "description": "Grokランク12は勝率0.0%（平均-1.70%）",
+            "impact": -35
+          },
+          {
+            "type": "prev_day_change",
+            "description": "前日マイナス（リバウンド効果）",
+            "impact": 20
+          },
+          {
+            "type": "volatility",
+            "description": "低ボラ（安定）",
+            "impact": 10
+          }
+        ]
+      },
+      "categories": [
+        "GROK"
+      ]
+    }
+  ],
+  "scoringRules": {
+    "grokRank": {
+      "1": {
+        "score": -10,
+        "winRate": 28.599999999999998,
+        "avgReturn": 0.6
+      },
+      "2": {
+        "score": -50,
+        "winRate": 0.0,
+        "avgReturn": -1.3
+      },
+      "3": {
+        "score": 10,
+        "winRate": 42.9,
+        "avgReturn": -1.0
+      },
+      "4": {
+        "score": -20,
+        "winRate": 28.599999999999998,
+        "avgReturn": -2.1999999999999997
+      },
+      "5": {
+        "score": 10,
+        "winRate": 42.9,
+        "avgReturn": 1.6
+      },
+      "6": {
+        "score": 50,
+        "winRate": 71.39999999999999,
+        "avgReturn": 0.4
+      },
+      "7": {
+        "score": 10,
+        "winRate": 42.9,
+        "avgReturn": -1.4000000000000001
+      },
+      "8": {
+        "score": 30,
+        "winRate": 66.7,
+        "avgReturn": 0.1
+      },
+      "9": {
+        "score": 30,
+        "winRate": 66.7,
+        "avgReturn": 1.0
+      },
+      "10": {
+        "score": -40,
+        "winRate": 16.7,
+        "avgReturn": -3.5999999999999996
+      },
+      "11": {
+        "score": -7,
+        "winRate": 25.0,
+        "avgReturn": -0.2
+      },
+      "12": {
+        "score": -35,
+        "winRate": 0.0,
+        "avgReturn": -1.7000000000000002
+      },
+      "13": {
+        "score": -35,
+        "winRate": 0.0,
+        "avgReturn": -1.6
+      }
+    },
+    "prevDayChange": {
+      "negative": {
+        "score": 20,
+        "reason": "リバウンド効果"
+      },
+      "positiveWithLowRank": {
+        "score": -30,
+        "reason": "勝率0%パターン",
+        "condition": "ランク1,2 × 前日プラス"
+      }
+    },
+    "volatility": {
+      "low": {
+        "score": 10,
+        "threshold": 3.0
+      },
+      "high": {
+        "score": -10,
+        "threshold": 6.0
+      }
+    },
+    "actionThresholds": {
+      "buy": 30,
+      "sell": -30
+    },
+    "stopLoss": {
+      "buy": {
+        "formula": "ATR × 0.8",
+        "min": 2.0,
+        "max": 5.0
+      },
+      "sell": {
+        "formula": "ATR × 1.2",
+        "min": 5.0,
+        "max": 10.0
+      }
+    }
+  }
+}

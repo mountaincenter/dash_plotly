@@ -10,7 +10,9 @@ grok_analysis_merged.parquet のデータ改竄を修正
 処理:
 1. 現在の grok_analysis_merged.parquet をバックアップ（改竄データとして保存）
 2. 元のgrok_trendingファイルから正しいデータを再構築
-3. trading_recommendation_history.parquet とマージして正しい grok_analysis_merged.parquet を生成
+3. 正しい grok_analysis_merged.parquet を生成
+
+注: trading_recommendation_history.parquetは廃止され、grok_analysis_merged.parquetに統合されました
 """
 import sys
 from pathlib import Path
