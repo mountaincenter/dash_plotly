@@ -907,17 +907,18 @@ async def get_grok_analysis():
         # S3またはローカルから読み込み
         df = load_grok_analysis_from_s3()
 
-        # 日付カラムを文字列に変換
+        # 日付カラムを文字列に変換（NaT/NaNを先に処理）
         if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date']).dt.strftime('%Y-%m-%d')
+            df['selection_date'] = df['selection_date'].apply(
+                lambda x: pd.to_datetime(x).strftime('%Y-%m-%d') if pd.notnull(x) else None
+            )
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date']).dt.strftime('%Y-%m-%d')
+            df['backtest_date'] = df['backtest_date'].apply(
+                lambda x: pd.to_datetime(x).strftime('%Y-%m-%d') if pd.notnull(x) else None
+            )
 
-        # NaN値をNoneに変換
-        df = df.where(pd.notnull(df), None)
-
-        # 辞書のリストに変換
-        records = df.to_dict('records')
+        # 辞書のリストに変換（fillnaでNaN/NaTを先にNoneに変換）
+        records = df.fillna(value=None).to_dict('records')
 
         return {
             'success': True,
