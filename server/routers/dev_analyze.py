@@ -18,6 +18,7 @@ import time
 import os
 import boto3
 from botocore.exceptions import ClientError
+from io import BytesIO
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -856,7 +857,7 @@ GROK_ANALYSIS_FILE = BACKTEST_DIR / "grok_analysis_merged.parquet"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
-S3_PREFIX = os.getenv("S3_PREFIX", "data/parquet/")
+S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 
@@ -870,7 +871,9 @@ def load_grok_analysis_from_s3() -> pd.DataFrame:
         print(f"[INFO] Loading grok analysis from S3: s3://{S3_BUCKET}/{s3_key}")
 
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
-        df = pd.read_parquet(response['Body'])
+        # StreamingBodyをBytesIOに変換（parquetのseek操作のため）
+        bytes_buffer = BytesIO(response['Body'].read())
+        df = pd.read_parquet(bytes_buffer)
 
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
         return df
