@@ -15,6 +15,9 @@ import yfinance as yf
 import json
 from functools import lru_cache
 import time
+import os
+import boto3
+from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -851,17 +854,55 @@ async def political_analysis():
 
 GROK_ANALYSIS_FILE = BACKTEST_DIR / "grok_analysis_merged.parquet"
 
+# S3設定
+S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
+S3_PREFIX = os.getenv("S3_PREFIX", "data/parquet/")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+
+
+def load_grok_analysis_from_s3() -> pd.DataFrame:
+    """S3からGrok分析データを読み込み（ローカルファイルにフォールバック）"""
+    # S3から読み込み
+    try:
+        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
+        s3_client = boto3.client('s3', region_name=AWS_REGION)
+
+        print(f"[INFO] Loading grok analysis from S3: s3://{S3_BUCKET}/{s3_key}")
+
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        df = pd.read_parquet(response['Body'])
+
+        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        return df
+
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        if error_code == 'NoSuchKey':
+            print(f"[WARNING] Grok analysis not found in S3: {s3_key}")
+        else:
+            print(f"[WARNING] S3 error: {error_code}: {e}")
+    except Exception as e:
+        print(f"[WARNING] Could not load from S3: {type(e).__name__}: {e}")
+
+    # ローカルファイルにフォールバック
+    if GROK_ANALYSIS_FILE.exists():
+        print(f"[INFO] Loading grok analysis from local file: {GROK_ANALYSIS_FILE}")
+        return pd.read_parquet(GROK_ANALYSIS_FILE)
+
+    # どちらも失敗
+    raise HTTPException(
+        status_code=404,
+        detail="Grok分析データが見つかりません（S3・ローカル共に存在しません）"
+    )
+
 
 @router.get("/api/dev/grok-analysis")
 @cache(expire=300)  # 5分間キャッシュ
 async def get_grok_analysis():
     """Grok分析データを取得"""
     try:
-        if not GROK_ANALYSIS_FILE.exists():
-            raise HTTPException(status_code=404, detail="Grok分析データが見つかりません")
-
-        # Parquetファイルを読み込み
-        df = pd.read_parquet(GROK_ANALYSIS_FILE)
+        # S3またはローカルから読み込み
+        df = load_grok_analysis_from_s3()
 
         # 日付カラムを文字列に変換
         if 'selection_date' in df.columns:
