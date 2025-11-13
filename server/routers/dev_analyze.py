@@ -843,3 +843,45 @@ async def political_analysis():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"政策銘柄分析エラー: {str(e)}")
+
+
+# ========================================
+# Grok Analysis API
+# ========================================
+
+GROK_ANALYSIS_FILE = BACKTEST_DIR / "grok_analysis_merged.parquet"
+
+
+@router.get("/api/dev/grok-analysis")
+@cache(expire=300)  # 5分間キャッシュ
+async def get_grok_analysis():
+    """Grok分析データを取得"""
+    try:
+        if not GROK_ANALYSIS_FILE.exists():
+            raise HTTPException(status_code=404, detail="Grok分析データが見つかりません")
+
+        # Parquetファイルを読み込み
+        df = pd.read_parquet(GROK_ANALYSIS_FILE)
+
+        # 日付カラムを文字列に変換
+        if 'selection_date' in df.columns:
+            df['selection_date'] = pd.to_datetime(df['selection_date']).dt.strftime('%Y-%m-%d')
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date']).dt.strftime('%Y-%m-%d')
+
+        # NaN値をNoneに変換
+        df = df.where(pd.notnull(df), None)
+
+        # 辞書のリストに変換
+        records = df.to_dict('records')
+
+        return {
+            'success': True,
+            'data': records,
+            'count': len(records)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Grok分析データ取得エラー: {str(e)}")
