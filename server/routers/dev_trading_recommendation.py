@@ -103,6 +103,14 @@ def load_recommendation_data() -> dict:
     # レスポンス構築
     response = {
         'generatedAt': latest_date.isoformat(),
+        'dataSource': {
+            'backtestCount': len(df),
+            'backtestPeriod': {
+                'start': df['recommendation_date'].min().strftime('%Y-%m-%d'),
+                'end': df['recommendation_date'].max().strftime('%Y-%m-%d')
+            },
+            'technicalDataDate': latest_date.strftime('%Y-%m-%d')
+        },
         'totalStocks': len(stocks),
         'summary': {
             'buy': int(buy_count),
