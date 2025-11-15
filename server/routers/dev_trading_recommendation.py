@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 router = APIRouter()
 
 # Parquetファイルのパス
-HISTORY_FILE = ROOT / "data" / "parquet" / "backtest" / "grok_analysis_merged.parquet"
+HISTORY_FILE = ROOT / "data" / "parquet" / "backtest" / "trading_recommendation_history.parquet"
 
 # S3設定（環境変数から取得）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
@@ -30,7 +30,7 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 def load_recommendation_data() -> dict:
     """
     推奨データを読み込み（最新日付のみ）
-    - grok_analysis_merged.parquet から recommendation_action があるデータを取得
+    - trading_recommendation_history.parquet から最新日付のデータを取得
     - S3から読み込み（本番環境、常に最新）
     - S3が失敗したらローカルファイルを使用（開発環境）
     """
@@ -38,7 +38,7 @@ def load_recommendation_data() -> dict:
 
     # S3から読み込み
     try:
-        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
+        s3_key = f"{S3_PREFIX}backtest/trading_recommendation_history.parquet"
         s3_url = f"s3://{S3_BUCKET}/{s3_key}"
 
         print(f"[INFO] Loading recommendation history from S3: {s3_url}")
@@ -68,25 +68,10 @@ def load_recommendation_data() -> dict:
                 }
             )
 
-    # recommendation_actionがあるデータのみ抽出
-    df['backtest_date'] = pd.to_datetime(df['backtest_date'])
-    rec_df = df[df['recommendation_action'].notna()].copy()
-
-    if len(rec_df) == 0:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": "推奨データが見つかりません",
-                    "details": "recommendation_actionを持つデータが存在しません"
-                }
-            }
-        )
-
     # 最新日付のデータのみ抽出
-    latest_date = rec_df['backtest_date'].max()
-    latest_df = rec_df[rec_df['backtest_date'] == latest_date].copy()
+    df['recommendation_date'] = pd.to_datetime(df['recommendation_date'])
+    latest_date = df['recommendation_date'].max()
+    latest_df = df[df['recommendation_date'] == latest_date].copy()
 
     print(f"[INFO] Latest recommendation date: {latest_date.date()}, {len(latest_df)} stocks")
 
@@ -101,29 +86,12 @@ def load_recommendation_data() -> dict:
 
         stock = {
             'ticker': row['ticker'],
-            'stockName': row['company_name'],
-            'grokRank': int(row['grok_rank']),
-            'technicalData': {
-                'prevClose': float(row['phase1_end_price']) if pd.notna(row.get('phase1_end_price')) else 0,
-                'prevDayChangePct': float(row['phase1_return']) * 100 if pd.notna(row.get('phase1_return')) else 0,
-                'atr': {
-                    'value': 0,
-                    'level': 'medium'
-                },
-                'volume': 0,
-                'volatilityLevel': '中ボラ'
-            },
             'recommendation': {
                 'action': row['recommendation_action'],
-                'score': int(row['recommendation_score']) if pd.notna(row.get('recommendation_score')) else 0,
-                'confidence': row['recommendation_confidence'] if pd.notna(row.get('recommendation_confidence')) else 'medium',
-                'stopLoss': {
-                    'percent': 3.0,
-                    'calculation': 'デフォルト'
-                },
+                'score': float(row['recommendation_score']) if pd.notna(row.get('recommendation_score')) else 0.0,
+                'confidence': str(row['recommendation_confidence']) if pd.notna(row.get('recommendation_confidence')) else 'medium',
                 'reasons': reasons
-            },
-            'categories': []
+            }
         }
         stocks.append(stock)
 
@@ -134,18 +102,9 @@ def load_recommendation_data() -> dict:
 
     # レスポンス構築
     response = {
-        'version': '2.0',
-        'generatedAt': pd.Timestamp.now().isoformat(),
-        'dataSource': {
-            'backtestCount': len(rec_df),
-            'backtestPeriod': {
-                'start': rec_df['backtest_date'].min().strftime('%Y-%m-%d'),
-                'end': latest_date.strftime('%Y-%m-%d')
-            },
-            'technicalDataDate': latest_date.strftime('%Y-%m-%d')
-        },
+        'generatedAt': latest_date.isoformat(),
+        'totalStocks': len(stocks),
         'summary': {
-            'total': len(stocks),
             'buy': int(buy_count),
             'sell': int(sell_count),
             'hold': int(hold_count)
