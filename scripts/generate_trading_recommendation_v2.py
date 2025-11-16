@@ -181,13 +181,13 @@ def fetch_prices_from_parquet(ticker, lookback_days=30):
             return None
 
         # 各種指標計算（カラム名は大文字）
-        latest = recent_df.iloc[0]
-        prev = recent_df.iloc[1]
+        latest = recent_df.iloc[0]  # 最新営業日
+        prev = recent_df.iloc[1]    # 1営業日前
 
         price_data = {
             'currentPrice': float(latest['Close']),
-            'prevClose': float(prev['Close']),
-            'dailyChangePct': float((latest['Close'] - prev['Close']) / prev['Close'] * 100),
+            'prevClose': float(latest['Close']),  # 最新営業日の終値（次回取引の基準価格）
+            'dailyChangePct': float((latest['Close'] - prev['Close']) / prev['Close'] * 100),  # 最新営業日の変動率
             'volume': int(latest['Volume']),
             'high52w': float(recent_df['High'].max()),
             'low52w': float(recent_df['Low'].min()),

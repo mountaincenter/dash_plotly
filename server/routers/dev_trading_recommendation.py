@@ -20,6 +20,7 @@ router = APIRouter()
 
 # JSONファイルのパス
 JSON_FILE = ROOT / "data" / "parquet" / "backtest" / "trading_recommendation.json"
+DEEP_ANALYSIS_DIR = ROOT / "data" / "parquet" / "backtest" / "analysis"
 
 # S3設定（環境変数から取得）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
@@ -73,6 +74,9 @@ def load_recommendation_data() -> dict:
 async def get_trading_recommendations():
     """
     Grok推奨銘柄の売買判断データを取得
+    - trading_recommendation.json (v2スコア)
+    - deep_analysis_YYYYMMDD.json (深掘り分析結果)
+    - finalScore順にソート
 
     Returns:
         TradingRecommendationResponse: 売買判断データ
@@ -83,6 +87,49 @@ async def get_trading_recommendations():
     try:
         # データ読み込み（ローカルまたはS3から）
         data = load_recommendation_data()
+
+        # deep_analysis を読み込んでマージ
+        try:
+            # 最新の deep_analysis ファイルを取得
+            deep_files = sorted(DEEP_ANALYSIS_DIR.glob("deep_analysis_*.json"), reverse=True)
+            if deep_files:
+                with open(deep_files[0], 'r', encoding='utf-8') as f:
+                    deep_data = json.load(f)
+
+                # deep_analysis のデータをマージ
+                deep_scores = {stock["ticker"]: stock for stock in deep_data.get("stockAnalyses", [])}
+
+                for stock in data.get("stocks", []):
+                    ticker = stock.get("ticker")
+                    if ticker in deep_scores:
+                        deep_stock = deep_scores[ticker]
+                        stock["deepAnalysis"] = {
+                            "v2Score": deep_stock.get("v2Score"),
+                            "finalScore": deep_stock.get("finalScore"),
+                            "scoreAdjustment": deep_stock.get("scoreAdjustment"),
+                            "recommendation": deep_stock.get("recommendation"),
+                            "confidence": deep_stock.get("confidence"),
+                            "verdict": deep_stock.get("verdict"),
+                            "adjustmentReasons": deep_stock.get("adjustmentReasons", []),
+                            "risks": deep_stock.get("risks", []),
+                            "opportunities": deep_stock.get("opportunities", [])
+                        }
+
+                # finalScore順にソート
+                data["stocks"] = sorted(
+                    data.get("stocks", []),
+                    key=lambda x: x.get("deepAnalysis", {}).get("finalScore", x.get("recommendation", {}).get("score", 0)),
+                    reverse=True
+                )
+
+                # メタデータ追加
+                data["deepAnalysisFile"] = deep_files[0].name
+                data["deepAnalysisDate"] = deep_data.get("sourceDate")
+
+        except Exception as e:
+            print(f"[WARNING] Could not load deep_analysis: {e}")
+            # deep_analysis が読み込めなくてもエラーにしない
+
         return data
 
     except json.JSONDecodeError as e:
