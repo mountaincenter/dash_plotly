@@ -617,6 +617,77 @@ jobs:
           echo "✅ Grok Analysis Data generation completed"
           echo "   File size: $FILE_SIZE"
 
+      - name: Generate and merge timing analysis
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "📊 Generating timing analysis for latest backtest day..."
+
+          # タイミング分析を実行（最新のバックテスト日のみ）
+          python3 scripts/analyze_trading_timing.py
+
+          if [ $? -eq 0 ] && [ -f "test_output/timing_analysis_results.parquet" ]; then
+            TIMING_RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('test_output/timing_analysis_results.parquet')))")
+            echo "  ✅ Timing analysis completed ($TIMING_RECORDS records)"
+
+            # 最新日のみフィルターしてgrok_analysis_merged.parquetにマージ
+            python3 << 'EOF'
+          import pandas as pd
+          import numpy as np
+
+          # 元データとタイミング分析結果を読み込み
+          grok_df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet')
+          timing_df = pd.read_parquet('test_output/timing_analysis_results.parquet')
+
+          grok_df['backtest_date'] = pd.to_datetime(grok_df['backtest_date'])
+          timing_df['backtest_date'] = pd.to_datetime(timing_df['backtest_date'])
+
+          # 最新のバックテスト日のみフィルター
+          latest_date = timing_df['backtest_date'].max()
+          timing_df_filtered = timing_df[timing_df['backtest_date'] == latest_date].copy()
+
+          print(f"Latest backtest date: {latest_date.date()}")
+          print(f"Timing records for latest date: {len(timing_df_filtered)}")
+
+          # タイミング分析の新規カラムのみを選択
+          timing_cols = [
+              'ticker', 'backtest_date',
+              'morning_close_price', 'day_close_price',
+              'profit_morning', 'profit_day_close',
+              'profit_morning_pct', 'profit_day_close_pct',
+              'better_profit_timing', 'better_loss_timing',
+              'is_win_morning', 'is_win_day_close'
+          ]
+
+          # 存在するカラムのみ選択
+          available_cols = [col for col in timing_cols if col in timing_df_filtered.columns]
+          timing_df_selected = timing_df_filtered[available_cols]
+
+          # マージ
+          merged_df = grok_df.merge(
+              timing_df_selected,
+              on=['ticker', 'backtest_date'],
+              how='left'
+          )
+
+          # 保存
+          merged_df.to_parquet('data/parquet/backtest/grok_analysis_merged.parquet', index=False)
+
+          timing_data_count = merged_df['morning_close_price'].notna().sum()
+          print(f"✅ Merged timing data: {timing_data_count} records with timing analysis")
+          EOF
+
+            # S3にアップロード
+            aws s3 cp \
+              data/parquet/backtest/grok_analysis_merged.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
+              --region ${{ env.AWS_REGION }} \
+              --only-show-errors
+
+            echo "  ✅ Uploaded merged data to S3"
+          else
+            echo "  ⚠️  Timing analysis failed or no results (non-critical)"
+          fi
+
       - name: Extract GROK stocks info
         id: grok-info
         if: success()
