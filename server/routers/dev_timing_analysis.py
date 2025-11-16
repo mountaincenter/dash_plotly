@@ -19,11 +19,34 @@ router = APIRouter()
 
 # データファイルのパス
 DATA_PATH = ROOT / 'data' / 'parquet' / 'backtest' / 'grok_analysis_merged.parquet'
+META_PATH = ROOT / 'data' / 'parquet' / 'meta_jquants.parquet'
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+
+# 日付フィルター
+START_DATE = "2025-11-14"
+
+
+def load_meta_data() -> pd.DataFrame:
+    """
+    企業メタデータを読み込み（meta_jquants.parquet）
+    """
+    try:
+        s3_key = f"{S3_PREFIX}meta_jquants.parquet"
+        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+        meta_df = pd.read_parquet(s3_url, storage_options={
+            "client_kwargs": {"region_name": AWS_REGION}
+        })
+        return meta_df[['ticker', 'company_name']]
+    except Exception as e:
+        print(f"[WARNING] Could not load meta from S3: {e}")
+        if META_PATH.exists():
+            meta_df = pd.read_parquet(META_PATH)
+            return meta_df[['ticker', 'company_name']]
+    return pd.DataFrame(columns=['ticker', 'company_name'])
 
 
 def load_timing_data() -> pd.DataFrame:
@@ -31,6 +54,8 @@ def load_timing_data() -> pd.DataFrame:
     タイミング分析データを読み込み
     - S3から読み込み（本番環境）
     - ローカルファイルにフォールバック（開発環境）
+    - meta_jquants.parquetから企業名をマージ
+    - 2025-11-14以降のデータでフィルター
     """
     # S3から読み込み
     try:
@@ -42,16 +67,28 @@ def load_timing_data() -> pd.DataFrame:
             "client_kwargs": {"region_name": AWS_REGION}
         })
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
-        return df
     except Exception as e:
         print(f"[WARNING] Could not load from S3: {e}")
+        if DATA_PATH.exists():
+            print(f"[INFO] Loading from local file: {DATA_PATH}")
+            df = pd.read_parquet(DATA_PATH)
+        else:
+            raise FileNotFoundError("Timing analysis data not found")
 
-    # ローカルファイルにフォールバック
-    if DATA_PATH.exists():
-        print(f"[INFO] Loading from local file: {DATA_PATH}")
-        return pd.read_parquet(DATA_PATH)
+    # 日付フィルター（2025-11-14以降）
+    if 'backtest_date' in df.columns:
+        df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        df = df[df['backtest_date'] >= START_DATE].copy()
+        print(f"[INFO] Filtered to {len(df)} records from {START_DATE}")
 
-    raise FileNotFoundError("Timing analysis data not found")
+    # meta_jquants.parquetから企業名をマージ
+    meta_df = load_meta_data()
+    if not meta_df.empty:
+        df = df.drop(columns=['company_name'], errors='ignore')
+        df = df.merge(meta_df, on='ticker', how='left')
+        print(f"[INFO] Merged company names from meta_jquants.parquet")
+
+    return df
 
 
 def safe_float(value: Any) -> float | None:
@@ -193,6 +230,117 @@ def calculate_score_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return results
 
 
+def calculate_marketcap_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """時価総額別のタイミング統計"""
+    df_valid = df[df['morning_close_price'].notna()].copy()
+
+    if 'market_cap' not in df_valid.columns:
+        return None
+
+    # 時価総額で3分位
+    df_valid['cap_group'] = pd.qcut(
+        df_valid['market_cap'],
+        q=3,
+        labels=['小型株', '中型株', '大型株'],
+        duplicates='drop'
+    )
+
+    results = []
+    for group in ['小型株', '中型株', '大型株']:
+        group_df = df_valid[df_valid['cap_group'] == group]
+        if len(group_df) == 0:
+            continue
+
+        morning_better = int((group_df['better_profit_timing'] == 'morning_close').sum())
+        win_morning = int((group_df['is_win_morning'] == True).sum())
+        win_day = int((group_df['is_win_day_close'] == True).sum())
+
+        results.append({
+            'group': group,
+            'total': len(group_df),
+            'morningBetter': morning_better,
+            'morningBetterPct': safe_float(morning_better / len(group_df) * 100),
+            'avgProfitMorning': safe_float(group_df['profit_morning'].mean()),
+            'avgProfitDay': safe_float(group_df['profit_day_close'].mean()),
+            'winRateMorning': safe_float(win_morning / len(group_df) * 100),
+            'winRateDay': safe_float(win_day / len(group_df) * 100),
+        })
+
+    return results
+
+
+def calculate_price_level_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """株価水準別のタイミング統計"""
+    df_valid = df[df['morning_close_price'].notna()].copy()
+
+    if 'morning_open' not in df_valid.columns:
+        return None
+
+    # 株価で3分位
+    df_valid['price_group'] = pd.qcut(
+        df_valid['morning_open'],
+        q=3,
+        labels=['低位株', '中位株', '高位株'],
+        duplicates='drop'
+    )
+
+    results = []
+    for group in ['低位株', '中位株', '高位株']:
+        group_df = df_valid[df_valid['price_group'] == group]
+        if len(group_df) == 0:
+            continue
+
+        morning_better = int((group_df['better_profit_timing'] == 'morning_close').sum())
+
+        results.append({
+            'group': group,
+            'total': len(group_df),
+            'morningBetter': morning_better,
+            'morningBetterPct': safe_float(morning_better / len(group_df) * 100),
+            'avgPrice': safe_float(group_df['morning_open'].mean()),
+            'avgProfitMorning': safe_float(group_df['profit_morning'].mean()),
+            'avgProfitDay': safe_float(group_df['profit_day_close'].mean()),
+        })
+
+    return results
+
+
+def calculate_volume_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """出来高別のタイミング統計"""
+    df_valid = df[df['morning_close_price'].notna()].copy()
+
+    if 'volume' not in df_valid.columns:
+        return None
+
+    # 出来高で3分位
+    df_valid['vol_group'] = pd.qcut(
+        df_valid['volume'],
+        q=3,
+        labels=['小商い', '中商い', '大商い'],
+        duplicates='drop'
+    )
+
+    results = []
+    for group in ['小商い', '中商い', '大商い']:
+        group_df = df_valid[df_valid['vol_group'] == group]
+        if len(group_df) == 0:
+            continue
+
+        morning_better = int((group_df['better_profit_timing'] == 'morning_close').sum())
+
+        results.append({
+            'group': group,
+            'total': len(group_df),
+            'morningBetter': morning_better,
+            'morningBetterPct': safe_float(morning_better / len(group_df) * 100),
+            'avgVolume': safe_float(group_df['volume'].mean()),
+            'avgProfitMorning': safe_float(group_df['profit_morning'].mean()),
+            'avgProfitDay': safe_float(group_df['profit_day_close'].mean()),
+        })
+
+    return results
+
+
 def calculate_daily_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """日別のタイミング統計"""
     df_valid = df[df['morning_close_price'].notna()].copy()
@@ -275,6 +423,9 @@ async def get_timing_analysis():
             'byRecommendation': calculate_recommendation_timing(df),
             'byVolatility': calculate_volatility_timing(df),
             'byScore': calculate_score_timing(df),
+            'byMarketCap': calculate_marketcap_timing(df),
+            'byPriceLevel': calculate_price_level_timing(df),
+            'byVolume': calculate_volume_timing(df),
             'daily': calculate_daily_timing(df),
             'stocks': get_stock_details(df),
             'winRates': {
