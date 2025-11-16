@@ -14,6 +14,7 @@ from server.routers.dev_analyze import router as dev_analyze_router
 from server.routers.market_summary import router as market_summary_router
 from server.routers.dev_trading_recommendation import router as dev_trading_recommendation_router
 from server.routers.dev_grok_analysis import router as dev_grok_analysis_router
+from server.routers.dev_timing_analysis import router as dev_timing_analysis_router
 
 import os
 
@@ -89,3 +90,4 @@ app.include_router(dev_analyze_router, tags=["dev"])
 app.include_router(market_summary_router, tags=["market-summary"])
 app.include_router(dev_trading_recommendation_router, tags=["trading-recommendations"])
 app.include_router(dev_grok_analysis_router, tags=["grok-analysis"])
+app.include_router(dev_timing_analysis_router, tags=["timing-analysis"])

@@ -617,53 +617,6 @@ jobs:
           echo "✅ Grok Analysis Data generation completed"
           echo "   File size: $FILE_SIZE"
 
-      - name: Generate Timing Analysis Report
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "📊 Generating Timing Analysis Report..."
-
-          # 出力ディレクトリ作成
-          mkdir -p data/parquet/timing_analysis
-
-          # grok_analysis_merged.parquet が存在するか確認
-          if [ -f "data/parquet/backtest/grok_analysis_merged.parquet" ]; then
-            echo "  ✅ Found grok_analysis_merged.parquet"
-
-            # タイミング分析HTMLを生成
-            python3 scripts/generate_timing_analysis_html.py
-
-            if [ $? -eq 0 ] && [ -f "data/parquet/timing_analysis/timing_analysis_report.html" ]; then
-              FILE_SIZE=$(du -h data/parquet/timing_analysis/timing_analysis_report.html | cut -f1)
-              echo "  ✅ Generated timing_analysis_report.html ($FILE_SIZE)"
-
-              # manifest.json作成
-              python3 scripts/pipeline/create_timing_analysis_manifest.py
-
-              # S3にアップロード
-              aws s3 cp \
-                data/parquet/timing_analysis/timing_analysis_report.html \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}timing_analysis/timing_analysis_report.html" \
-                --region ${{ env.AWS_REGION }} \
-                --content-type "text/html; charset=utf-8" \
-                --only-show-errors
-
-              aws s3 cp \
-                data/parquet/timing_analysis/manifest.json \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}timing_analysis/manifest.json" \
-                --region ${{ env.AWS_REGION }} \
-                --content-type "application/json; charset=utf-8" \
-                --only-show-errors
-
-              echo "  ✅ Uploaded to S3"
-            else
-              echo "  ❌ Failed to generate timing_analysis_report.html"
-            fi
-          else
-            echo "  ⚠️  grok_analysis_merged.parquet not found, skipping timing analysis"
-          fi
-
-          echo "✅ Timing Analysis Report generation completed"
-
       - name: Extract GROK stocks info
         id: grok-info
         if: success()
