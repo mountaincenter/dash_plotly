@@ -118,13 +118,53 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         return None
 
 
-def fetch_morning_volume(ticker: str, date: datetime) -> float:
+def fetch_intraday_timing_data(ticker: str, date: datetime, buy_price: float, direction: str = 'buy') -> Dict[str, float]:
     """
-    yfinanceの5分足から前場(9:00-11:30)の出来高合計を取得
+    yfinanceの5分足からタイミング分析データを取得
+
+    Args:
+        ticker: 銘柄コード
+        date: 対象日
+        buy_price: 買値（寄り付き価格）
+        direction: 'buy' or 'sell'
 
     Returns:
-        float: 前場出来高合計、取得失敗時はNaN
+        dict: {
+            'morning_volume': 前場出来高,
+            'morning_close_price': 前場終値(11:30),
+            'day_close_price': 大引値(15:30),
+            'morning_high': 前場高値,
+            'morning_low': 前場安値,
+            'day_high': 日中高値,
+            'day_low': 日中安値,
+            'profit_morning': 前場利益（円）,
+            'profit_day_close': 大引利益（円）,
+            'profit_morning_pct': 前場利益率（%）,
+            'profit_day_close_pct': 大引利益率（%）,
+            'better_profit_timing': 'morning_close' or 'day_close',
+            'better_loss_timing': 'morning_close' or 'day_close',
+            'is_win_morning': 前場勝ち,
+            'is_win_day_close': 大引勝ち
+        }
     """
+    result = {
+        'morning_volume': np.nan,
+        'morning_close_price': np.nan,
+        'day_close_price': np.nan,
+        'morning_high': np.nan,
+        'morning_low': np.nan,
+        'day_high': np.nan,
+        'day_low': np.nan,
+        'profit_morning': np.nan,
+        'profit_day_close': np.nan,
+        'profit_morning_pct': np.nan,
+        'profit_day_close_pct': np.nan,
+        'better_profit_timing': np.nan,
+        'better_loss_timing': np.nan,
+        'is_win_morning': False,
+        'is_win_day_close': False,
+    }
+
     try:
         start_date = date.strftime('%Y-%m-%d')
         end_date = (date + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -133,7 +173,7 @@ def fetch_morning_volume(ticker: str, date: datetime) -> float:
         df = yf.download(ticker, start=start_date, end=end_date, interval='5m', progress=False)
 
         if df.empty:
-            return np.nan
+            return result
 
         # MultiIndex対応（価格データはMultiIndexで返される）
         if isinstance(df.columns, pd.MultiIndex):
@@ -145,17 +185,49 @@ def fetch_morning_volume(ticker: str, date: datetime) -> float:
 
         # 前場データ抽出(9:00-11:30 JST)
         morning_data = df.between_time('09:00', '11:30')
+        # 全日データ(9:00-15:30 JST)
+        full_day_data = df.between_time('09:00', '15:30')
 
-        if morning_data.empty:
-            return np.nan
+        if morning_data.empty or full_day_data.empty:
+            return result
 
-        # 出来高合計
-        morning_volume = float(morning_data['Volume'].sum())
-        return morning_volume
+        # 出来高
+        result['morning_volume'] = float(morning_data['Volume'].sum())
+
+        # 価格データ
+        result['morning_close_price'] = float(morning_data['Close'].iloc[-1])
+        result['day_close_price'] = float(full_day_data['Close'].iloc[-1])
+        result['morning_high'] = float(morning_data['High'].max())
+        result['morning_low'] = float(morning_data['Low'].min())
+        result['day_high'] = float(full_day_data['High'].max())
+        result['day_low'] = float(full_day_data['Low'].min())
+
+        # 売買方向（買い=1, 売り=-1）
+        dir_mult = -1 if direction == 'sell' else 1
+
+        # 利益計算
+        result['profit_morning'] = (result['morning_close_price'] - buy_price) * dir_mult
+        result['profit_day_close'] = (result['day_close_price'] - buy_price) * dir_mult
+        result['profit_morning_pct'] = (result['profit_morning'] / buy_price) * 100 if buy_price > 0 else 0
+        result['profit_day_close_pct'] = (result['profit_day_close'] / buy_price) * 100 if buy_price > 0 else 0
+
+        # 有利なタイミング判定
+        result['better_profit_timing'] = 'morning_close' if result['profit_morning'] > result['profit_day_close'] else 'day_close'
+
+        # 損切りタイミング（損失がより小さい方）
+        loss_morning = result['morning_close_price'] - buy_price
+        loss_day = result['day_close_price'] - buy_price
+        result['better_loss_timing'] = 'morning_close' if loss_morning > loss_day else 'day_close'
+
+        # 勝敗判定
+        result['is_win_morning'] = result['profit_morning'] > 0
+        result['is_win_day_close'] = result['profit_day_close'] > 0
+
+        return result
 
     except Exception as e:
-        logger.warning(f"Error fetching morning volume for {ticker} on {date.date()}: {e}")
-        return np.nan
+        logger.warning(f"Error fetching intraday timing data for {ticker} on {date.date()}: {e}")
+        return result
 
 
 def fetch_previous_days_data(ticker: str, date: datetime) -> Dict[str, float]:
@@ -271,8 +343,19 @@ def create_analysis_base():
 
         logger.info(f"Processing {idx+1}/{len(grok_df)}: {ticker} on {date.date()}")
 
-        # morning_volume取得
-        morning_volume = fetch_morning_volume(ticker, date)
+        # 売買方向の決定（recommendation_actionから）
+        rec_action = row.get('recommendation_action')
+        rec_score = row.get('recommendation_score', 0)
+
+        if rec_action == 'sell':
+            direction = 'sell'
+        elif rec_action == 'hold' and rec_score < 0:
+            direction = 'sell'
+        else:
+            direction = 'buy'
+
+        # 5分足からタイミング分析データ取得
+        timing_data = fetch_intraday_timing_data(ticker, date, row['buy_price'], direction)
 
         # 時価総額取得（daily_closeを使用）
         market_cap = fetch_market_cap(ticker, row['daily_close'], date)
@@ -280,9 +363,13 @@ def create_analysis_base():
         # 前日・前々日データ取得
         prev_data = fetch_previous_days_data(ticker, date)
 
-        # 基礎レコード作成（既存データ + morning_volume + market_cap + 前日データ）
+        # 基礎レコード作成（既存データ + timing_data + market_cap + 前日データ）
         base_record = row.to_dict()
-        base_record['morning_volume'] = morning_volume
+
+        # タイミング分析データ追加
+        for key, value in timing_data.items():
+            base_record[key] = value
+
         base_record['market_cap'] = market_cap
 
         # 前日・前々日データ追加
