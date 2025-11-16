@@ -18,8 +18,8 @@ if str(ROOT) not in sys.path:
 
 router = APIRouter()
 
-# Parquetファイルのパス
-HISTORY_FILE = ROOT / "data" / "parquet" / "backtest" / "trading_recommendation_history.parquet"
+# JSONファイルのパス
+JSON_FILE = ROOT / "data" / "parquet" / "backtest" / "trading_recommendation.json"
 
 # S3設定（環境変数から取得）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
@@ -29,33 +29,33 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 def load_recommendation_data() -> dict:
     """
-    推奨データを読み込み（最新日付のみ）
-    - trading_recommendation_history.parquet から最新日付のデータを取得
+    推奨データを読み込み
+    - trading_recommendation.json から読み込み（手動深掘り分析の結果）
     - S3から読み込み（本番環境、常に最新）
     - S3が失敗したらローカルファイルを使用（開発環境）
     """
-    df = None
-
     # S3から読み込み
     try:
-        s3_key = f"{S3_PREFIX}backtest/trading_recommendation_history.parquet"
-        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+        s3 = boto3.client('s3', region_name=AWS_REGION)
+        s3_key = f"{S3_PREFIX}backtest/trading_recommendation.json"
 
-        print(f"[INFO] Loading recommendation history from S3: {s3_url}")
+        print(f"[INFO] Loading recommendation from S3: s3://{S3_BUCKET}/{s3_key}")
 
-        df = pd.read_parquet(s3_url, storage_options={
-            "client_kwargs": {"region_name": AWS_REGION}
-        })
+        response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        data = json.loads(response['Body'].read().decode('utf-8'))
 
-        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        print(f"[INFO] Successfully loaded from S3: {data.get('summary', {}).get('total', 0)} stocks")
+        return data
 
-    except Exception as e:
-        print(f"[WARNING] Could not load from S3: {type(e).__name__}: {e}")
+    except ClientError as e:
+        print(f"[WARNING] Could not load from S3: {e}")
 
         # ローカルファイルにフォールバック
-        if HISTORY_FILE.exists():
-            print(f"[INFO] Loading from local file: {HISTORY_FILE}")
-            df = pd.read_parquet(HISTORY_FILE)
+        if JSON_FILE.exists():
+            print(f"[INFO] Loading from local file: {JSON_FILE}")
+            with open(JSON_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data
         else:
             raise HTTPException(
                 status_code=404,
@@ -67,60 +67,6 @@ def load_recommendation_data() -> dict:
                     }
                 }
             )
-
-    # 最新日付のデータのみ抽出
-    df['recommendation_date'] = pd.to_datetime(df['recommendation_date'])
-    latest_date = df['recommendation_date'].max()
-    latest_df = df[df['recommendation_date'] == latest_date].copy()
-
-    print(f"[INFO] Latest recommendation date: {latest_date.date()}, {len(latest_df)} stocks")
-
-    # JSON形式に変換
-    stocks = []
-    for _, row in latest_df.iterrows():
-        # reasons_json をパース
-        try:
-            reasons = json.loads(row['recommendation_reasons_json']) if pd.notna(row.get('recommendation_reasons_json')) else []
-        except:
-            reasons = []
-
-        stock = {
-            'ticker': row['ticker'],
-            'recommendation': {
-                'action': row['recommendation_action'],
-                'score': float(row['recommendation_score']) if pd.notna(row.get('recommendation_score')) else 0.0,
-                'confidence': str(row['recommendation_confidence']) if pd.notna(row.get('recommendation_confidence')) else 'medium',
-                'reasons': reasons
-            }
-        }
-        stocks.append(stock)
-
-    # サマリー計算
-    buy_count = (latest_df['recommendation_action'] == 'buy').sum()
-    sell_count = (latest_df['recommendation_action'] == 'sell').sum()
-    hold_count = (latest_df['recommendation_action'] == 'hold').sum()
-
-    # レスポンス構築
-    response = {
-        'generatedAt': latest_date.isoformat(),
-        'dataSource': {
-            'backtestCount': len(df),
-            'backtestPeriod': {
-                'start': df['recommendation_date'].min().strftime('%Y-%m-%d'),
-                'end': df['recommendation_date'].max().strftime('%Y-%m-%d')
-            },
-            'technicalDataDate': latest_date.strftime('%Y-%m-%d')
-        },
-        'totalStocks': len(stocks),
-        'summary': {
-            'buy': int(buy_count),
-            'sell': int(sell_count),
-            'hold': int(hold_count)
-        },
-        'stocks': stocks
-    }
-
-    return response
 
 
 @router.get("/api/trading-recommendations")
