@@ -224,6 +224,36 @@ def calculate_daily_timing(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return sorted(results, key=lambda x: x['date'])
 
 
+def get_stock_details(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """株式レベルの詳細データ"""
+    df_valid = df[df['morning_close_price'].notna()].copy()
+
+    stocks = []
+    for _, row in df_valid.iterrows():
+        stocks.append({
+            'ticker': row.get('ticker'),
+            'companyName': row.get('company_name', row.get('ticker')),
+            'backtestDate': row.get('backtest_date').strftime('%Y-%m-%d') if pd.notna(row.get('backtest_date')) else None,
+            'recommendationAction': row.get('recommendation_action'),
+            'grokRank': int(row.get('grok_rank')) if pd.notna(row.get('grok_rank')) else None,
+            'buyPrice': safe_float(row.get('morning_open')),
+            'morningClosePrice': safe_float(row.get('morning_close_price')),
+            'dayClosePrice': safe_float(row.get('day_close_price')),
+            'profitMorning': safe_float(row.get('profit_morning')),
+            'profitDayClose': safe_float(row.get('profit_day_close')),
+            'profitMorningPct': safe_float(row.get('profit_morning_pct')),
+            'profitDayClosePct': safe_float(row.get('profit_day_close_pct')),
+            'betterProfitTiming': row.get('better_profit_timing'),
+            'betterLossTiming': row.get('better_loss_timing'),
+            'isWinMorning': bool(row.get('is_win_morning')) if pd.notna(row.get('is_win_morning')) else None,
+            'isWinDayClose': bool(row.get('is_win_day_close')) if pd.notna(row.get('is_win_day_close')) else None,
+            'highPrice': safe_float(row.get('high')),
+            'lowPrice': safe_float(row.get('low')),
+        })
+
+    return stocks
+
+
 @router.get("/api/dev/timing-analysis")
 async def get_timing_analysis():
     """
@@ -235,12 +265,22 @@ async def get_timing_analysis():
     try:
         df = load_timing_data()
 
+        # 勝率データを計算
+        df_valid = df[df['morning_close_price'].notna()].copy()
+        win_rate_morning = safe_float((df_valid['is_win_morning'] == True).sum() / len(df_valid) * 100) if len(df_valid) > 0 else None
+        win_rate_day = safe_float((df_valid['is_win_day_close'] == True).sum() / len(df_valid) * 100) if len(df_valid) > 0 else None
+
         return {
             'summary': calculate_timing_summary(df),
             'byRecommendation': calculate_recommendation_timing(df),
             'byVolatility': calculate_volatility_timing(df),
             'byScore': calculate_score_timing(df),
             'daily': calculate_daily_timing(df),
+            'stocks': get_stock_details(df),
+            'winRates': {
+                'morning': win_rate_morning,
+                'dayClose': win_rate_day,
+            },
             'metadata': {
                 'totalRecords': len(df),
                 'recordsWithTiming': len(df[df['morning_close_price'].notna()]),
