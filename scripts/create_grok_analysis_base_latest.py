@@ -402,7 +402,8 @@ def create_analysis_base():
             base_record['prev_day_change_pct'] = np.nan
 
         # 前日出来高比
-        if not pd.isna(prev_data['prev_day_volume']) and prev_data['prev_day_volume'] > 0:
+        morning_volume = base_record.get('morning_volume', np.nan)
+        if not pd.isna(prev_data['prev_day_volume']) and prev_data['prev_day_volume'] > 0 and not pd.isna(morning_volume):
             base_record['prev_day_volume_ratio'] = morning_volume / prev_data['prev_day_volume']
         else:
             base_record['prev_day_volume_ratio'] = np.nan
