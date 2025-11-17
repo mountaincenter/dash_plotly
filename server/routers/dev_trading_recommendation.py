@@ -90,11 +90,27 @@ async def get_trading_recommendations():
 
         # deep_analysis を読み込んでマージ
         try:
-            # 最新の deep_analysis ファイルを取得
-            deep_files = sorted(DEEP_ANALYSIS_DIR.glob("deep_analysis_*.json"), reverse=True)
-            if deep_files:
-                with open(deep_files[0], 'r', encoding='utf-8') as f:
-                    deep_data = json.load(f)
+            # S3から最新のdeep_analysisを読み込み
+            deep_data = None
+            try:
+                s3 = boto3.client('s3', region_name=AWS_REGION)
+                s3_key = f"{S3_PREFIX}backtest/analysis/deep_analysis_2025-11-17.json"
+
+                print(f"[INFO] Loading deep_analysis from S3: s3://{S3_BUCKET}/{s3_key}")
+                response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+                deep_data = json.loads(response['Body'].read().decode('utf-8'))
+                print(f"[INFO] Successfully loaded deep_analysis from S3")
+            except ClientError as e:
+                print(f"[WARNING] Could not load deep_analysis from S3: {e}, trying local file...")
+
+                # ローカルファイルにフォールバック
+                deep_files = sorted(DEEP_ANALYSIS_DIR.glob("deep_analysis_*.json"), reverse=True)
+                if deep_files:
+                    with open(deep_files[0], 'r', encoding='utf-8') as f:
+                        deep_data = json.load(f)
+                    print(f"[INFO] Loaded deep_analysis from local: {deep_files[0].name}")
+
+            if deep_data:
 
                 # deep_analysis のデータをマージ
                 deep_scores = {stock["ticker"]: stock for stock in deep_data.get("stockAnalyses", [])}
@@ -112,7 +128,11 @@ async def get_trading_recommendations():
                             "verdict": deep_stock.get("verdict"),
                             "adjustmentReasons": deep_stock.get("adjustmentReasons", []),
                             "risks": deep_stock.get("risks", []),
-                            "opportunities": deep_stock.get("opportunities", [])
+                            "opportunities": deep_stock.get("opportunities", []),
+                            "latestNews": deep_stock.get("latestNews", []),
+                            "sectorTrend": deep_stock.get("sectorTrend", ""),
+                            "marketSentiment": deep_stock.get("marketSentiment", "neutral"),
+                            "newsHeadline": deep_stock.get("newsHeadline", "")
                         }
 
                 # finalScore順にソート
@@ -123,8 +143,9 @@ async def get_trading_recommendations():
                 )
 
                 # メタデータ追加
-                data["deepAnalysisFile"] = deep_files[0].name
+                data["deepAnalysisVersion"] = deep_data.get("version", "unknown")
                 data["deepAnalysisDate"] = deep_data.get("sourceDate")
+                data["deepAnalysisUpdated"] = deep_data.get("lastUpdated")
 
         except Exception as e:
             print(f"[WARNING] Could not load deep_analysis: {e}")
