@@ -662,18 +662,31 @@ jobs:
           available_cols = [col for col in timing_cols if col in timing_df_filtered.columns]
           timing_df_selected = timing_df_filtered[available_cols]
 
-          # マージ
-          merged_df = grok_df.merge(
-              timing_df_selected,
-              on=['ticker', 'backtest_date'],
-              how='left'
-          )
+          print(f"Available timing columns: {available_cols}")
+
+          # マージ（ticker と backtest_date で結合）
+          if len(timing_df_selected) > 0:
+              merged_df = grok_df.merge(
+                  timing_df_selected,
+                  on=['ticker', 'backtest_date'],
+                  how='left'
+              )
+
+              # マージ成功確認
+              if 'morning_close_price' in merged_df.columns:
+                  timing_data_count = merged_df['morning_close_price'].notna().sum()
+                  print(f"✅ Merged timing data: {timing_data_count} records with timing analysis")
+              else:
+                  print(f"⚠️  Warning: morning_close_price column not found after merge")
+                  timing_data_count = 0
+          else:
+              print(f"⚠️  No timing data to merge (empty timing_df_selected)")
+              merged_df = grok_df
+              timing_data_count = 0
 
           # 保存
           merged_df.to_parquet('data/parquet/backtest/grok_analysis_merged.parquet', index=False)
-
-          timing_data_count = merged_df['morning_close_price'].notna().sum()
-          print(f"✅ Merged timing data: {timing_data_count} records with timing analysis")
+          print(f"Saved merged data: {len(merged_df)} total records")
           EOF
 
             # S3にアップロード
