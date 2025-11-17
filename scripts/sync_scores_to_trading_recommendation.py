@@ -24,6 +24,7 @@ def main():
     for stock in deep_analysis['stockAnalyses']:
         ticker = stock['ticker']
         score_map[ticker] = {
+            'v2Score': stock.get('v2Score'),
             'finalScore': stock['finalScore'],
             'recommendation': stock['recommendation'],
             'confidence': stock.get('confidence', 'medium'),
@@ -37,7 +38,8 @@ def main():
         ticker = stock['ticker']
 
         if ticker in score_map:
-            v2_score = stock['recommendation']['score']  # 元のv2スコアを保存
+            # deep_analysisからv2ScoreとfinalScoreを取得
+            v2_score = score_map[ticker]['v2Score']
             final_score = score_map[ticker]['finalScore']
             new_action = score_map[ticker]['recommendation']
 
