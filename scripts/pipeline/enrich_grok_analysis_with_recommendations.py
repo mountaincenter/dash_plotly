@@ -89,15 +89,37 @@ def main():
     rec_list = []
     for stock in rec_data['stocks']:
         rec = stock['recommendation']
-        rec_list.append({
+        deep = stock.get('deepAnalysis', {})
+
+        rec_data_item = {
             'ticker': stock['ticker'],
             'recommendation_action': rec['action'],
-            'recommendation_score': rec['score'],
+            'recommendation_score': rec['score'],  # finalScore (メイン)
             'recommendation_confidence': rec['confidence']
-        })
+        }
+
+        # v2Score を追加（recommendationまたはdeepAnalysisから）
+        if 'v2Score' in rec:
+            rec_data_item['recommendation_v2_score'] = rec['v2Score']
+        elif 'v2Score' in deep:
+            rec_data_item['recommendation_v2_score'] = deep['v2Score']
+
+        # finalScore を追加（deepAnalysisから、なければscoreを使用）
+        if 'finalScore' in deep:
+            rec_data_item['recommendation_final_score'] = deep['finalScore']
+        else:
+            rec_data_item['recommendation_final_score'] = rec['score']
+
+        rec_list.append(rec_data_item)
 
     rec_df = pd.DataFrame(rec_list)
     print(f"  Actions: {rec_df['recommendation_action'].value_counts().to_dict()}")
+
+    # v2ScoreとfinalScoreの統計
+    if 'recommendation_v2_score' in rec_df.columns:
+        print(f"  Records with v2Score: {rec_df['recommendation_v2_score'].notna().sum()}")
+    if 'recommendation_final_score' in rec_df.columns:
+        print(f"  Records with finalScore: {rec_df['recommendation_final_score'].notna().sum()}")
 
     # Step 3: grok_analysis_merged.parquet を読み込み
     print("\n[Step 3] Loading grok_analysis_merged.parquet...")
