@@ -90,11 +90,22 @@ async def get_trading_recommendations():
 
         # deep_analysis を読み込んでマージ
         try:
+            # trading_recommendation.json の technicalDataDate + 1 を計算
+            from datetime import datetime, timedelta
+            technical_date = data.get('dataSource', {}).get('technicalDataDate')
+            if not technical_date:
+                print("[WARNING] No technicalDataDate found in trading_recommendation.json")
+                raise Exception("technicalDataDate not found")
+
+            technical_dt = datetime.strptime(technical_date, '%Y-%m-%d')
+            target_dt = technical_dt + timedelta(days=1)
+            target_date = target_dt.strftime('%Y-%m-%d')
+
             # S3から最新のdeep_analysisを読み込み
             deep_data = None
             try:
                 s3 = boto3.client('s3', region_name=AWS_REGION)
-                s3_key = f"{S3_PREFIX}backtest/analysis/deep_analysis_2025-11-17.json"
+                s3_key = f"{S3_PREFIX}backtest/analysis/deep_analysis_{target_date}.json"
 
                 print(f"[INFO] Loading deep_analysis from S3: s3://{S3_BUCKET}/{s3_key}")
                 response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)

@@ -1,23 +1,58 @@
 #!/usr/bin/env python3
 """
-deep_analysis_2025-11-17.jsonのスコアをtrading_recommendation.jsonに反映
+deep_analysis_YYYY-MM-DD.jsonのスコアをtrading_recommendation.jsonに反映
+trading_recommendation.jsonの日付と一致するdeep_analysis_*.jsonを自動検出
 """
 import json
 from pathlib import Path
 from datetime import datetime
+import sys
 
 BASE_DIR = Path(__file__).parent.parent
-DEEP_ANALYSIS = BASE_DIR / "data/parquet/backtest/analysis/deep_analysis_2025-11-17.json"
+ANALYSIS_DIR = BASE_DIR / "data/parquet/backtest/analysis"
 TRADING_REC = BASE_DIR / "data/parquet/backtest/trading_recommendation.json"
 
 def main():
-    # データ読み込み
-    print("[INFO] Loading files...")
-    with open(DEEP_ANALYSIS, 'r', encoding='utf-8') as f:
-        deep_analysis = json.load(f)
+    # trading_recommendation.json読み込み
+    print("[INFO] Loading trading_recommendation.json...")
+    if not TRADING_REC.exists():
+        print(f"[ERROR] trading_recommendation.json not found: {TRADING_REC}")
+        sys.exit(1)
 
     with open(TRADING_REC, 'r', encoding='utf-8') as f:
         trading_rec = json.load(f)
+
+    # 日付を取得 (technicalDataDate + 1 = target_date)
+    technical_date = trading_rec.get('dataSource', {}).get('technicalDataDate')
+
+    if not technical_date:
+        print("[ERROR] No technicalDataDate found in trading_recommendation.json")
+        sys.exit(1)
+
+    # target_date = technicalDataDate + 1
+    from datetime import datetime, timedelta
+    technical_dt = datetime.strptime(technical_date, '%Y-%m-%d')
+    target_dt = technical_dt + timedelta(days=1)
+    target_date = target_dt.strftime('%Y-%m-%d')
+
+    print(f"[INFO] Trading recommendation date: {target_date} (technicalDataDate: {technical_date})")
+
+    # 対応するdeep_analysis_*.jsonを探す
+    deep_analysis_file = ANALYSIS_DIR / f"deep_analysis_{target_date}.json"
+
+    if not deep_analysis_file.exists():
+        print(f"[ERROR] deep_analysis_{target_date}.json not found")
+        print(f"[INFO] Looking for files in {ANALYSIS_DIR}...")
+        analysis_files = list(ANALYSIS_DIR.glob("deep_analysis_*.json"))
+        if analysis_files:
+            print(f"[INFO] Available files:")
+            for f in sorted(analysis_files):
+                print(f"  - {f.name}")
+        sys.exit(1)
+
+    print(f"[INFO] Loading {deep_analysis_file.name}...")
+    with open(deep_analysis_file, 'r', encoding='utf-8') as f:
+        deep_analysis = json.load(f)
 
     # deep_analysisからスコアマップを作成
     score_map = {}
