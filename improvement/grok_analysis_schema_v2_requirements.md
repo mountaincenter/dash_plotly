@@ -1,0 +1,295 @@
+# V2スコアリング 要件定義書
+
+**作成日**: 2025-11-20
+**目的**: デイトレードで収益を上げるためのv2スコアリング改善
+**現状**: 売り71.4%勝率 / 買い39.0%勝率
+**目標**: 売り70%以上維持 / 買い50%以上に改善
+
+---
+
+## 概要
+
+このドキュメントは、`generate_trading_recommendation_v2.py` のスコアリングに使用するカラムのみを定義します。
+
+**78カラムの完全版（grok_analysis_schema_requirements.md）とは別**です。
+
+---
+
+## 現在のv2（v2.0）使用カラム
+
+### 入力データ（8カラム）
+
+| # | カラム名 | データソース | 取得方法 | 現在の使い方 |
+|---|---------|-------------|---------|------------|
+| 1 | `grok_rank` | grok_trending.parquet | 直接取得 | 基礎スコア（-10〜40） |
+| 2 | `backtest_win_rate` | grok_analysis_base_latest.parquet | ランク別集計 | ランク補正（-20〜30） |
+| 3 | `roe` | J-Quants API `/fins/statements` | 純利益/自己資本 | >15% → +20, <0% → -15 |
+| 4 | `operating_profit_growth` | J-Quants API `/fins/statements` | 前年比 | >50% → +25, <-30% → -20 |
+| 5 | `daily_change_pct` | prices_max_1d.parquet | (Close-PrevClose)/PrevClose | <-3% → +15, >10% → -10 |
+| 6 | `atr_pct` | prices_max_1d.parquet | ATR14日/Close | <3.0% → +10, >8.0% → -15 |
+| 7 | `current_price` | prices_max_1d.parquet | 最新Close | 比較用 |
+| 8 | `ma25` | prices_max_1d.parquet | 25日移動平均 | ±5%乖離で±10 |
+
+### スコアリングロジック
+
+```
+1. 基礎スコア = calculate_rank_score_improved()
+   - 相対位置（上位25%: 40, 50%: 20, 75%: 0, 下位: -10）
+   - バックテスト勝率補正（70%以上: +30, 30%以下: -20）
+
+2. ファンダメンタルズ補正
+   - ROE > 15%: +20
+   - ROE < 0%: -15
+   - 営業利益成長 > 50%: +25
+   - 営業利益成長 < -30%: -20
+
+3. テクニカル補正
+   - 前日-3%以上下落: +15（リバウンド期待）
+   - 前日+10%以上上昇: -10（過熱感）
+   - ATR < 3.0%: +10（低ボラ）
+   - ATR > 8.0%: -15（高ボラ）
+   - 25日線から+5%以上: -10（割高）
+   - 25日線から-5%以上: +10（割安）
+
+4. 判断
+   - スコア >= 40: 買い（高）
+   - スコア >= 20: 買い（中）
+   - スコア <= -30: 売り（高）
+   - スコア <= -15: 売り（中）
+   - それ以外: 静観
+```
+
+---
+
+## 問題点
+
+### 売りシグナル（71.4%勝率）✅ 機能している
+
+- ROE < 0%（赤字）
+- 営業利益成長 < -30%（減益）
+- → **業績悪化 = 株価下落** は中長期で成立
+
+### 買いシグナル（39.0%勝率）❌ 機能していない
+
+- ROE > 15%（優良）
+- 営業利益成長 > 50%（増益）
+- → **業績好調 ≠ 短期株価上昇** とは限らない
+- **Grokランク勝率を軽視している**（勝率60%超の銘柄を見落とす）
+
+### 具体例（2025-11-19）
+
+| 銘柄 | v2スコア | v2判断 | Grok勝率 | 実際の優先度 |
+|------|---------|--------|----------|------------|
+| バリオセキュア | 85（最高） | 買い（高） | 36.4% | ❌ 低い |
+| シェアリングテクノロジー | 60 | 買い（中） | 63.6% | ✅ 最高 |
+| クラウドワークス | 20（最低） | 買い（中） | 60.0% | ✅ 高い |
+| トレックス | 60 | 買い（中） | 9.1% | ❌ 最低 |
+
+**→ v2スコアよりもGrokランク勝率の方が信頼できる**
+
+---
+
+## 改善版v2.1 追加カラム
+
+### 必要最小限の追加（4カラム）
+
+| # | カラム名 | データソース | 計算方法 | 使い方 | 買い改善への寄与 |
+|---|---------|-------------|---------|-------|---------------|
+| 9 | `rsi_14d` | prices_max_1d.parquet | 14日RSI | <30: +20（売られすぎ）, >70: -10（買われすぎ） | ★★★ |
+| 10 | `volume_change_20d` | prices_max_1d.parquet | Volume/SMA20 | >2.0: +15（注目急増） | ★★ |
+| 11 | `sma_5d` | prices_max_1d.parquet | 5日移動平均 | トレンド判定 | ★ |
+| 12 | `price_vs_sma5_pct` | prices_max_1d.parquet | (Price-SMA5)/SMA5 | -2%〜0%: +15（押し目） | ★★ |
+
+### v2.1 スコアリングロジック変更
+
+```python
+# 1. Grokランク勝率を最重視（変更）
+if backtest_win_rate > 0.60:
+    score += 50  # 旧: 最大30
+elif backtest_win_rate > 0.50:
+    score += 30  # 旧: 20
+elif backtest_win_rate < 0.30:
+    score -= 30  # 旧: -20
+
+# 2. RSI追加（新規）
+if rsi_14d < 30:
+    score += 20
+    reasons.append("RSI 30以下（売られすぎ）")
+elif rsi_14d > 70:
+    score -= 10
+    reasons.append("RSI 70以上（買われすぎ）")
+
+# 3. 出来高急増（新規）
+if volume_change_20d > 2.0:
+    score += 15
+    reasons.append("出来高2倍以上（注目急増）")
+
+# 4. 5日線押し目（新規）
+if -2.0 < price_vs_sma5_pct < 0:
+    score += 15
+    reasons.append("5日線押し目（短期反発）")
+```
+
+---
+
+## 期待効果
+
+| | v2.0（現在） | v2.1（改善後） |
+|---|------------|--------------|
+| **売りシグナル勝率** | 71.4% | 70%以上（維持） |
+| **買いシグナル勝率** | 39.0% | **50-55%**（目標） |
+| **使用カラム** | 8カラム | 12カラム（+4） |
+| **ロジック変更** | - | Grok勝率重視 + RSI/出来高 |
+
+### 改善理由
+
+1. **Grokランク勝率を最重視**
+   - 勝率60%超の銘柄を優先
+   - v2スコアの過信を防ぐ
+
+2. **RSI追加**
+   - 売られすぎ（RSI < 30）でリバウンド狙い
+   - 買われすぎ（RSI > 70）で過熱回避
+
+3. **出来高急増検知**
+   - 注目度上昇を捉える
+   - 材料発生の早期検知
+
+4. **5日線押し目**
+   - 短期トレンド内の押し目買い
+   - 25日線（現在）より短期に適応
+
+---
+
+## 実装優先順位
+
+### Phase 1（2-3日）: v2.1リリース
+
+1. 4カラム追加（RSI、出来高変化、SMA5、乖離率）
+2. スコアリングロジック修正
+3. バックテストで検証（過去11日間で勝率50%超確認）
+4. generate_trading_recommendation_v2.py 更新
+
+### Phase 2（1週間後）: 実運用開始
+
+1. 毎日のGrok推奨に対してv2.1実行
+2. 勝率をモニタリング
+3. 売り70%以上、買い50%以上を確認
+
+### Phase 3（1-2ヶ月後）: v2.2検討
+
+運用データが蓄積されてから、さらに有効な指標を追加：
+- MACD（トレンド転換）
+- PER/PBR（バリュエーション）
+- セクター相対強度
+
+---
+
+## 将来の拡張（v2.2以降）
+
+### オプション追加カラム（優先度順）
+
+| カラム名 | データソース | 使い方 | 優先度 |
+|---------|-------------|-------|--------|
+| `macd`, `macd_signal` | prices計算 | ゴールデン/デッドクロス | 🟡 中 |
+| `per`, `pbr` | J-Quants API | 割高/割安判定 | 🟡 中 |
+| `distance_from_high_52w_pct` | yfinance | 天井/底判定 | 🟢 低 |
+| `sector_relative_strength` | meta + prices集計 | セクターローテーション | 🟢 低 |
+
+**注**: v2.1で勝率50%超を達成してから検討
+
+---
+
+## データ取得方法
+
+### 1. grok_trending.parquet（既存）
+
+```python
+df = pd.read_parquet('data/parquet/grok_trending.parquet')
+# カラム: date, ticker, stock_name, grok_rank, selection_score, reason
+```
+
+### 2. J-Quants API（既存）
+
+```python
+from scripts.lib.jquants_client import JQuantsClient
+client = JQuantsClient()
+response = client.request('/fins/statements', params={'code': ticker})
+# ROE、営業利益成長率を計算
+```
+
+### 3. prices_max_1d.parquet（既存 + 追加計算）
+
+```python
+df = pd.read_parquet('data/parquet/prices_max_1d.parquet')
+ticker_df = df[df['ticker'] == ticker].sort_values('date', ascending=False)
+
+# 既存
+current_price = ticker_df.iloc[0]['Close']
+atr = (ticker_df['High'] - ticker_df['Low']).head(14).mean()
+ma25 = ticker_df['Close'].head(25).mean()
+
+# 追加（v2.1）
+# RSI計算
+delta = ticker_df['Close'].diff()
+gain = delta.where(delta > 0, 0).rolling(14).mean()
+loss = -delta.where(delta < 0, 0).rolling(14).mean()
+rs = gain / loss
+rsi_14d = 100 - (100 / (1 + rs))
+
+# 出来高変化率
+volume_sma20 = ticker_df['Volume'].head(20).mean()
+volume_change_20d = ticker_df.iloc[0]['Volume'] / volume_sma20
+
+# 5日移動平均
+sma_5d = ticker_df['Close'].head(5).mean()
+price_vs_sma5_pct = (current_price - sma_5d) / sma_5d * 100
+```
+
+### 4. バックテスト統計（既存）
+
+```python
+backtest_df = pd.read_parquet('test_output/grok_analysis_base_latest.parquet')
+rank_stats = backtest_df.groupby('grok_rank')['phase2_win'].mean()
+```
+
+---
+
+## スキーマバージョン管理
+
+| バージョン | カラム数 | 主な変更 | 目標勝率 | リリース日 |
+|----------|---------|---------|---------|----------|
+| **v2.0** | 8 | 初版（ROE、成長率重視） | - | 2025-11-17 |
+| **v2.1** | 12 (+4) | Grok勝率重視 + RSI/出来高 | 買い50%超 | 2025-11-21（予定） |
+| v2.2 | 16 (+4) | MACD、PER/PBR追加 | 買い55%超 | TBD |
+| v2.3 | 20 (+4) | セクター分析追加 | 買い60%超 | TBD |
+
+---
+
+## 注意事項
+
+### 1. 完全版スキーマとの関係
+
+- **本書（v2用）**: スコアリング入力のみ（12カラム）
+- **完全版（78カラム）**: バックテスト結果含む（grok_analysis_schema_requirements.md）
+- **用途**: v2改善 → 本書、データ分析 → 完全版
+
+### 2. バックテスト結果は含まない
+
+本書はスコアリング**入力**のみを定義します。
+以下のカラムは含みません：
+- phase1/2/3_return（バックテスト結果）
+- profit_per_100_shares（利益計算）
+- morning_high/low（イントラデイ分析）
+
+### 3. 段階的な拡張
+
+- v2.1で勝率50%超を達成してからv2.2を検討
+- 全てのカラムを一度に追加しない
+- 実運用データで効果を検証
+
+---
+
+## 更新履歴
+
+- 2025-11-20: 初版作成（v2.0の8カラム定義、v2.1の+4カラム追加提案）
