@@ -588,7 +588,7 @@ def main():
     new_df = pd.DataFrame(new_records)
     print(f"\n  Created {len(new_df)} records")
 
-    # Step 5: Merge with existing data (append then deduplicate)
+    # Step 5: Merge with existing data (UPSERT pattern)
     print("\n[Step 5] Merging with existing grok_analysis_merged.parquet...")
 
     if GROK_ANALYSIS_PARQUET.exists():
@@ -596,36 +596,34 @@ def main():
         existing_df['backtest_date'] = pd.to_datetime(existing_df['backtest_date'])
 
         old_count = len(existing_df)
+        backtest_dt = pd.to_datetime(backtest_date)
+
         print(f"  Existing records: {old_count}")
         print(f"  Date range: {existing_df['backtest_date'].min().date()} to {existing_df['backtest_date'].max().date()}")
 
-        new_count = len(new_df)
-        print(f"  New records: {new_count}")
+        # UPSERT: Remove all existing records for this backtest_date
+        existing_df_filtered = existing_df[existing_df['backtest_date'] != backtest_dt]
+        removed_for_date = old_count - len(existing_df_filtered)
 
-        # Combine first (existing + new)
-        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-        combined_before_dedup = len(combined_df)
-        print(f"  Combined (before dedup): {combined_before_dedup}")
+        print(f"  Removed existing records for {backtest_date}: {removed_for_date}")
+        print(f"  New records for {backtest_date}: {len(new_df)}")
 
-        # Remove duplicates (keep='last' = keep new data)
-        combined_df = combined_df.drop_duplicates(subset=['backtest_date', 'ticker'], keep='last')
-        removed_count = combined_before_dedup - len(combined_df)
+        # Append new records for this date
+        combined_df = pd.concat([existing_df_filtered, new_df], ignore_index=True)
 
-        print(f"  Removed duplicates: {removed_count}")
-
-        # Verification
         final_count = len(combined_df)
+        net_change = final_count - old_count
 
         print(f"\n  Verification:")
-        print(f"  - Old records: {old_count}")
-        print(f"  - New records: {new_count}")
-        print(f"  - Combined before dedup: {combined_before_dedup}")
-        print(f"  - Removed duplicates: {removed_count}")
-        print(f"  - Final records: {final_count}")
-        print(f"  - Expected: {old_count} + {new_count} - {removed_count} = {old_count + new_count - removed_count}")
+        print(f"  - Old total: {old_count}")
+        print(f"  - Removed for {backtest_date}: {removed_for_date}")
+        print(f"  - Added for {backtest_date}: {len(new_df)}")
+        print(f"  - New total: {final_count}")
+        print(f"  - Net change: {net_change:+d}")
+        print(f"  - Expected: {old_count} - {removed_for_date} + {len(new_df)} = {old_count - removed_for_date + len(new_df)}")
 
-        if final_count == old_count + new_count - removed_count:
-            print(f"  - Status: ✅ PASS (merge successful)")
+        if final_count == old_count - removed_for_date + len(new_df):
+            print(f"  - Status: ✅ PASS (upsert successful)")
         else:
             print(f"  - Status: ❌ FAIL (record count mismatch)")
             sys.exit(1)

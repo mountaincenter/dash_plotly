@@ -442,24 +442,6 @@ jobs:
               --region ${{ env.AWS_REGION }}
             echo "✅ Uploaded to S3: s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$BACKTEST_FILE"
 
-            # 7日以前のファイルを削除
-            echo "🗑️  Cleaning old backtest files (keeping last 7 days)..."
-            CUTOFF_DATE=$(TZ=Asia/Tokyo date -d '7 days ago' +%Y%m%d)
-
-            # S3上のバックテストファイルをリストアップ
-            aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/" \
-              --region ${{ env.AWS_REGION }} | while read -r line; do
-              FILE=$(echo "$line" | awk '{print $4}')
-              if [[ "$FILE" =~ grok_trending_([0-9]{8})\.parquet ]]; then
-                FILE_DATE="${BASH_REMATCH[1]}"
-                if [ "$FILE_DATE" -lt "$CUTOFF_DATE" ]; then
-                  echo "  Deleting old file: $FILE (date: $FILE_DATE)"
-                  aws s3 rm "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$FILE" \
-                    --region ${{ env.AWS_REGION }}
-                fi
-              fi
-            done
-
             echo "✅ Backtest archiving completed"
           else
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
@@ -551,16 +533,18 @@ jobs:
           GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
           echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
 
-          # trading_recommendation.json をダウンロード
-          echo "  - Downloading trading_recommendation.json..."
-          if aws s3 cp \
+          # trading_recommendation.json をダウンロード（必須）
+          echo "  - Downloading trading_recommendation.json (required)..."
+          if ! aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
             data/parquet/backtest/trading_recommendation.json \
-            --only-show-errors 2>/dev/null; then
-            echo "  ✅ Downloaded trading_recommendation.json"
-          else
-            echo "  ℹ️  No existing trading_recommendation.json in S3"
+            --only-show-errors; then
+            echo "  ❌ ERROR: trading_recommendation.json not found in S3"
+            echo "  This file is required for merge_json_to_grok_analysis.py"
+            echo "  Pipeline cannot proceed without this file"
+            exit 1
           fi
+          echo "  ✅ Downloaded trading_recommendation.json"
 
           # grok_trending.parquet (最新の選定結果) をダウンロード - 必須ファイル
           echo "  - Downloading grok_trending.parquet (required)..."
@@ -578,83 +562,20 @@ jobs:
           # === Step 2: grok_analysis_merged.parquet の生成 ===
           echo ""
           echo "📊 Step 2: Generating grok_analysis_merged.parquet..."
+          echo "  ℹ️  Using merge_json_to_grok_analysis.py (49 columns with v2.0.3 logic)"
 
-          # 条件確認：trading_recommendation.json と deep_analysis_*.json が両方存在するか
-          TRADING_REC_EXISTS=false
-          DEEP_ANALYSIS_EXISTS=false
+          python3 scripts/pipeline/merge_json_to_grok_analysis.py
 
-          if [ -f "data/parquet/backtest/trading_recommendation.json" ]; then
-            TRADING_REC_EXISTS=true
-          fi
-
-          DEEP_ANALYSIS_FILE=$(ls -t data/parquet/backtest/analysis/deep_analysis_*.json 2>/dev/null | head -1)
-          if [ -n "$DEEP_ANALYSIS_FILE" ]; then
-            DEEP_ANALYSIS_EXISTS=true
-          fi
-
-          # 新しいロジック：trading_recommendation.json と deep_analysis が両方存在する場合
-          if [ "$TRADING_REC_EXISTS" = "true" ] && [ "$DEEP_ANALYSIS_EXISTS" = "true" ]; then
-            echo "  ℹ️  Found trading_recommendation.json and $(basename $DEEP_ANALYSIS_FILE)"
-            echo "  ℹ️  Using merge_json_to_grok_analysis.py (49 columns with v2.0.3 logic)"
-
-            python3 scripts/pipeline/merge_json_to_grok_analysis.py
-
-            if [ $? -eq 0 ]; then
-              RECORDS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df))")
-              COLUMNS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df.columns))")
-              echo "  ✅ Generated grok_analysis_merged.parquet ($RECORDS records, $COLUMNS columns)"
-            else
-              echo "  ❌ Failed to run merge_json_to_grok_analysis.py"
-              exit 1
-            fi
-
+          if [ $? -eq 0 ]; then
+            RECORDS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df))")
+            COLUMNS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df.columns))")
+            echo "  ✅ Generated grok_analysis_merged.parquet ($RECORDS records, $COLUMNS columns)"
           else
-            # 従来の方法（後方互換性）
-            echo "  ℹ️  Using legacy method (create_grok_analysis_base_latest.py - 49 columns with v2.0.3 logic)"
-
-            if [ "$GROK_FILES_COUNT" -gt 0 ]; then
-              python3 scripts/create_grok_analysis_base_latest.py
-
-              if [ $? -eq 0 ] && [ -f "data/parquet/backtest/grok_analysis_base_latest.parquet" ]; then
-                RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/backtest/grok_analysis_base_latest.parquet')))")
-                echo "  ✅ Created grok_analysis_base_latest.parquet ($RECORDS records)"
-              else
-                echo "  ❌ Failed to create grok_analysis_base_latest.parquet"
-                exit 1
-              fi
-            else
-              echo "  ❌ ERROR: No grok_trending archive files found"
-              echo "  Expected at least one grok_trending_202*.parquet file in backtest/"
-              echo "  This indicates that no Grok selections have been archived yet"
-              exit 1
-            fi
-
-            # === Step 3: 既存データとマージ（従来の方法のみ） ===
-            echo ""
-            echo "📦 Step 3: Merging with existing data..."
-
-            # S3から既存のgrok_analysis_merged.parquetをダウンロード（存在する場合）
-            if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" > /dev/null 2>&1; then
-              aws s3 cp \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
-                data/parquet/backtest/grok_analysis_merged_existing.parquet \
-                --only-show-errors
-              echo "  ✅ Downloaded existing grok_analysis_merged.parquet"
-
-              # Pythonスクリプトで既存データと新データをマージ
-              python3 scripts/pipeline/merge_grok_analysis_data.py \
-                data/parquet/backtest/grok_analysis_merged_existing.parquet \
-                data/parquet/backtest/grok_analysis_base_latest.parquet \
-                data/parquet/backtest/grok_analysis_merged.parquet
-            else
-              echo "  ⚠️  No existing grok_analysis_merged.parquet in S3, using new data only"
-              cp data/parquet/backtest/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
-            fi
-
-            echo "  ✅ Saved to data/parquet/backtest/grok_analysis_merged.parquet"
+            echo "  ❌ Failed to run merge_json_to_grok_analysis.py"
+            exit 1
           fi
 
-          # === Step 4: S3にアップロード ===
+          # === Step 3: S3にアップロード ===
           echo ""
           echo "📤 Step 4: Uploading to S3..."
 
@@ -667,34 +588,6 @@ jobs:
           else
             echo "  ❌ ERROR: Failed to upload grok_analysis_merged.parquet to S3"
             exit 1
-          fi
-
-          # === Step 4.5: Sync deep_analysis scores to trading_recommendation ===
-          echo ""
-          echo "🔄 Step 4.5: Syncing deep_analysis scores to trading_recommendation..."
-
-          if [ -f data/parquet/backtest/trading_recommendation.json ]; then
-            python3 scripts/sync_scores_to_trading_recommendation.py
-
-            if [ $? -eq 0 ]; then
-              echo "  ✅ Scores synced successfully"
-              # 更新された trading_recommendation.json を S3 にアップロード
-              if aws s3 cp \
-                data/parquet/backtest/trading_recommendation.json \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
-                --region ${{ env.AWS_REGION }} \
-                --only-show-errors; then
-                echo "  ✅ Uploaded updated trading_recommendation.json to S3"
-              else
-                echo "  ❌ ERROR: Failed to upload trading_recommendation.json to S3"
-                exit 1
-              fi
-            else
-              echo "  ❌ ERROR: Score sync failed"
-              exit 1
-            fi
-          else
-            echo "  ℹ️  No trading_recommendation.json found, skipping score sync"
           fi
 
           # === Step 5: Enrich with trading recommendations ===
