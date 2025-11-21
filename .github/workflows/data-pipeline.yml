@@ -564,6 +564,20 @@ jobs:
           echo "📊 Step 2: Generating grok_analysis_merged.parquet..."
           echo "  ℹ️  Using merge_json_to_grok_analysis.py (49 columns with v2.0.3 logic)"
 
+          # S3から既存のgrok_analysis_merged.parquetをダウンロード
+          ANALYSIS_FILE="grok_analysis_merged.parquet"
+          S3_ANALYSIS_PATH="s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$ANALYSIS_FILE"
+
+          if aws s3 ls "$S3_ANALYSIS_PATH" > /dev/null 2>&1; then
+            echo "  📥 Downloading existing grok_analysis_merged.parquet from S3..."
+            aws s3 cp "$S3_ANALYSIS_PATH" "data/parquet/backtest/$ANALYSIS_FILE" --only-show-errors
+            EXISTING_RECORDS=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/$ANALYSIS_FILE'); print(len(df))")
+            EXISTING_DATES=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/$ANALYSIS_FILE'); print(df['backtest_date'].nunique())")
+            echo "  ✅ Downloaded existing file: $EXISTING_RECORDS records across $EXISTING_DATES days"
+          else
+            echo "  ℹ️  No existing grok_analysis_merged.parquet found in S3, will create new one"
+          fi
+
           python3 scripts/pipeline/merge_json_to_grok_analysis.py
 
           if [ $? -eq 0 ]; then
@@ -609,90 +623,6 @@ jobs:
           echo ""
           echo "✅ Grok Analysis Data generation completed"
           echo "   File size: $FILE_SIZE"
-
-      - name: Generate and merge timing analysis
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "📊 Generating timing analysis for latest backtest day..."
-
-          # タイミング分析を実行（最新のバックテスト日のみ）
-          python3 scripts/analyze_trading_timing.py
-
-          if [ $? -eq 0 ] && [ -f "test_output/timing_analysis_results.parquet" ]; then
-            TIMING_RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('test_output/timing_analysis_results.parquet')))")
-            echo "  ✅ Timing analysis completed ($TIMING_RECORDS records)"
-
-            # 最新日のみフィルターしてgrok_analysis_merged.parquetにマージ
-            python3 << 'EOF'
-          import pandas as pd
-          import numpy as np
-
-          # 元データとタイミング分析結果を読み込み
-          grok_df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet')
-          timing_df = pd.read_parquet('test_output/timing_analysis_results.parquet')
-
-          grok_df['backtest_date'] = pd.to_datetime(grok_df['backtest_date'])
-          timing_df['backtest_date'] = pd.to_datetime(timing_df['backtest_date'])
-
-          # 最新のバックテスト日のみフィルター
-          latest_date = timing_df['backtest_date'].max()
-          timing_df_filtered = timing_df[timing_df['backtest_date'] == latest_date].copy()
-
-          print(f"Latest backtest date: {latest_date.date()}")
-          print(f"Timing records for latest date: {len(timing_df_filtered)}")
-
-          # タイミング分析の新規カラムのみを選択
-          timing_cols = [
-              'ticker', 'backtest_date',
-              'morning_close_price', 'day_close_price',
-              'profit_morning', 'profit_day_close',
-              'profit_morning_pct', 'profit_day_close_pct',
-              'better_profit_timing', 'better_loss_timing',
-              'is_win_morning', 'is_win_day_close'
-          ]
-
-          # 存在するカラムのみ選択
-          available_cols = [col for col in timing_cols if col in timing_df_filtered.columns]
-          timing_df_selected = timing_df_filtered[available_cols]
-
-          print(f"Available timing columns: {available_cols}")
-
-          # マージ（ticker と backtest_date で結合）
-          if len(timing_df_selected) > 0:
-              merged_df = grok_df.merge(
-                  timing_df_selected,
-                  on=['ticker', 'backtest_date'],
-                  how='left'
-              )
-
-              # マージ成功確認
-              if 'morning_close_price' in merged_df.columns:
-                  timing_data_count = merged_df['morning_close_price'].notna().sum()
-                  print(f"✅ Merged timing data: {timing_data_count} records with timing analysis")
-              else:
-                  print(f"⚠️  Warning: morning_close_price column not found after merge")
-                  timing_data_count = 0
-          else:
-              print(f"⚠️  No timing data to merge (empty timing_df_selected)")
-              merged_df = grok_df
-              timing_data_count = 0
-
-          # 保存
-          merged_df.to_parquet('data/parquet/backtest/grok_analysis_merged.parquet', index=False)
-          print(f"Saved merged data: {len(merged_df)} total records")
-          EOF
-
-            # S3にアップロード
-            aws s3 cp \
-              data/parquet/backtest/grok_analysis_merged.parquet \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
-              --region ${{ env.AWS_REGION }} \
-              --only-show-errors
-
-            echo "  ✅ Uploaded merged data to S3"
-          else
-            echo "  ⚠️  Timing analysis failed or no results (non-critical)"
-          fi
 
       - name: Check xAI billing
         if: success()
