@@ -514,10 +514,15 @@ jobs:
                 WORD_COUNT=$(wc -m < "$RAW_FILE")
                 echo "   Word count: $WORD_COUNT characters"
               else
-                echo "⚠️  Warning: Expected files not found"
+                echo "❌ ERROR: Market summary files not found"
+                echo "Expected files:"
+                echo "  - $RAW_FILE"
+                echo "  - $JSON_FILE"
+                exit 1
               fi
             else
-              echo "❌ Market summary generation failed (non-critical, continuing)"
+              echo "❌ ERROR: Market summary generation failed"
+              exit 1
             fi
           else
             echo "ℹ️  Skipping market summary (only runs at 16:45 JST)"
@@ -618,8 +623,10 @@ jobs:
                 exit 1
               fi
             else
-              echo "  ⚠️  No grok_trending files found, skipping grok analysis generation"
-              exit 0
+              echo "  ❌ ERROR: No grok_trending archive files found"
+              echo "  Expected at least one grok_trending_202*.parquet file in backtest/"
+              echo "  This indicates that no Grok selections have been archived yet"
+              exit 1
             fi
 
             # === Step 3: 既存データとマージ（従来の方法のみ） ===
@@ -651,13 +658,16 @@ jobs:
           echo ""
           echo "📤 Step 4: Uploading to S3..."
 
-          aws s3 cp \
+          if aws s3 cp \
             data/parquet/backtest/grok_analysis_merged.parquet \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
             --region ${{ env.AWS_REGION }} \
-            --only-show-errors
-
-          echo "  ✅ Uploaded to S3"
+            --only-show-errors; then
+            echo "  ✅ Uploaded to S3"
+          else
+            echo "  ❌ ERROR: Failed to upload grok_analysis_merged.parquet to S3"
+            exit 1
+          fi
 
           # === Step 4.5: Sync deep_analysis scores to trading_recommendation ===
           echo ""
@@ -669,14 +679,19 @@ jobs:
             if [ $? -eq 0 ]; then
               echo "  ✅ Scores synced successfully"
               # 更新された trading_recommendation.json を S3 にアップロード
-              aws s3 cp \
+              if aws s3 cp \
                 data/parquet/backtest/trading_recommendation.json \
                 "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
                 --region ${{ env.AWS_REGION }} \
-                --only-show-errors
-              echo "  ✅ Uploaded updated trading_recommendation.json to S3"
+                --only-show-errors; then
+                echo "  ✅ Uploaded updated trading_recommendation.json to S3"
+              else
+                echo "  ❌ ERROR: Failed to upload trading_recommendation.json to S3"
+                exit 1
+              fi
             else
-              echo "  ⚠️  Score sync failed or skipped (non-critical)"
+              echo "  ❌ ERROR: Score sync failed"
+              exit 1
             fi
           else
             echo "  ℹ️  No trading_recommendation.json found, skipping score sync"
@@ -692,7 +707,8 @@ jobs:
           if [ $? -eq 0 ]; then
             echo "  ✅ Recommendation enrichment completed"
           else
-            echo "  ⚠️  Recommendation enrichment skipped or failed (non-critical)"
+            echo "  ❌ ERROR: Recommendation enrichment failed"
+            exit 1
           fi
 
           # ファイルサイズ確認
