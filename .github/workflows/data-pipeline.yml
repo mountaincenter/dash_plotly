@@ -801,6 +801,27 @@ jobs:
             echo "  ⚠️  Timing analysis failed or no results (non-critical)"
           fi
 
+      - name: Check xAI billing
+        if: success()
+        env:
+          XAI_MANAGEMENT_API_KEY: ${{ secrets.XAI_MANAGEMENT_API_KEY }}
+          XAI_TEAM_ID: ${{ secrets.XAI_TEAM_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          echo "💰 Checking xAI billing..."
+
+          # Install requests if not already installed
+          pip install requests 2>/dev/null || true
+
+          # Run billing check script
+          python3 scripts/check_xai_billing.py
+
+          if [ $? -eq 0 ]; then
+            echo "  ✅ xAI billing check completed"
+          else
+            echo "  ⚠️  xAI billing check failed (non-critical)"
+          fi
+
       - name: Extract GROK stocks info
         id: grok-info
         if: success()
