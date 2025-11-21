@@ -299,8 +299,12 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
+        keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データも保持
+        keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
+        # backtest/deep_analysis_YYYY-MM-DD.json ファイルも保護
+        # backtest/analysis/deep_analysis_YYYY-MM-DD.json ファイルも保護
         # market_summary/ 配下のファイルも保護
         # これらは data-pipeline.yml の "Archive GROK trending for backtest" および "Generate market summary" ステップで管理される
         import re
@@ -308,6 +312,12 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
             key = obj["Key"]
             # backtest/grok_trending_YYYYMMDD.parquet パターンにマッチするファイルは保持
             if re.match(rf"{prefix}backtest/grok_trending_\d{{8}}\.parquet$", key):
+                keep_keys.add(key)
+            # backtest/deep_analysis_YYYY-MM-DD.json パターンにマッチするファイルは保持
+            if re.match(rf"{prefix}backtest/deep_analysis_\d{{4}}-\d{{2}}-\d{{2}}\.json$", key):
+                keep_keys.add(key)
+            # backtest/analysis/deep_analysis_YYYY-MM-DD.json パターンにマッチするファイルは保持
+            if re.match(rf"{prefix}backtest/analysis/deep_analysis_\d{{4}}-\d{{2}}-\d{{2}}\.json$", key):
                 keep_keys.add(key)
             # market_summary/raw/YYYY-MM-DD.md パターンにマッチするファイルは保持
             if re.match(rf"{prefix}market_summary/raw/\d{{4}}-\d{{2}}-\d{{2}}\.md$", key):
