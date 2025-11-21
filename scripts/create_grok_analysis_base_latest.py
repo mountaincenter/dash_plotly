@@ -9,12 +9,12 @@ Grok銘柄分析用基礎データ作成 (最新版)
 
 import pandas as pd
 import numpy as np
-import yfinance as yf
 from pathlib import Path
 from datetime import datetime, timedelta
 import logging
 from typing import Optional, Dict
 from glob import glob
+import json
 
 # J-Quants クライアント
 import sys
@@ -39,8 +39,12 @@ logger = logging.getLogger(__name__)
 # パス設定
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / 'data' / 'parquet' / 'backtest'
-OUTPUT_DIR = BASE_DIR / 'test_output'
-OUTPUT_PATH = OUTPUT_DIR / 'grok_analysis_base_latest.parquet'
+PRICES_DIR = BASE_DIR / 'data' / 'parquet'
+OUTPUT_PATH = DATA_DIR / 'grok_analysis_base_latest.parquet'
+
+# Prices parquet paths
+PRICES_1D = PRICES_DIR / 'prices_max_1d.parquet'
+PRICES_5M = PRICES_DIR / 'prices_60d_5m.parquet'
 
 
 def get_latest_daily_files():
@@ -118,125 +122,14 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         return None
 
 
-def fetch_intraday_timing_data(ticker: str, date: datetime, buy_price: float, direction: str = 'buy') -> Dict[str, float]:
+def fetch_previous_days_data(ticker: str, date: datetime, prices_1d_df: pd.DataFrame) -> Dict[str, float]:
     """
-    yfinanceの5分足からタイミング分析データを取得
-
-    Args:
-        ticker: 銘柄コード
-        date: 対象日
-        buy_price: 買値（寄り付き価格）
-        direction: 'buy' or 'sell'
-
-    Returns:
-        dict: {
-            'morning_volume': 前場出来高,
-            'morning_close_price': 前場終値(11:30),
-            'day_close_price': 大引値(15:30),
-            'morning_high': 前場高値,
-            'morning_low': 前場安値,
-            'day_high': 日中高値,
-            'day_low': 日中安値,
-            'profit_morning': 前場利益（円）,
-            'profit_day_close': 大引利益（円）,
-            'profit_morning_pct': 前場利益率（%）,
-            'profit_day_close_pct': 大引利益率（%）,
-            'better_profit_timing': 'morning_close' or 'day_close',
-            'better_loss_timing': 'morning_close' or 'day_close',
-            'is_win_morning': 前場勝ち,
-            'is_win_day_close': 大引勝ち
-        }
-    """
-    result = {
-        'morning_volume': np.nan,
-        'morning_close_price': np.nan,
-        'day_close_price': np.nan,
-        'morning_high': np.nan,
-        'morning_low': np.nan,
-        'day_high': np.nan,
-        'day_low': np.nan,
-        'profit_morning': np.nan,
-        'profit_day_close': np.nan,
-        'profit_morning_pct': np.nan,
-        'profit_day_close_pct': np.nan,
-        'better_profit_timing': np.nan,
-        'better_loss_timing': np.nan,
-        'is_win_morning': False,
-        'is_win_day_close': False,
-    }
-
-    try:
-        start_date = date.strftime('%Y-%m-%d')
-        end_date = (date + timedelta(days=1)).strftime('%Y-%m-%d')
-
-        # 5分足取得
-        df = yf.download(ticker, start=start_date, end=end_date, interval='5m', progress=False)
-
-        if df.empty:
-            return result
-
-        # MultiIndex対応（価格データはMultiIndexで返される）
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # タイムゾーン変換: UTC → JST
-        if df.index.tz is not None:
-            df.index = df.index.tz_convert('Asia/Tokyo')
-
-        # 前場データ抽出(9:00-11:30 JST)
-        morning_data = df.between_time('09:00', '11:30')
-        # 全日データ(9:00-15:30 JST)
-        full_day_data = df.between_time('09:00', '15:30')
-
-        if morning_data.empty or full_day_data.empty:
-            return result
-
-        # 出来高
-        result['morning_volume'] = float(morning_data['Volume'].sum())
-
-        # 価格データ
-        result['morning_close_price'] = float(morning_data['Close'].iloc[-1])
-        result['day_close_price'] = float(full_day_data['Close'].iloc[-1])
-        result['morning_high'] = float(morning_data['High'].max())
-        result['morning_low'] = float(morning_data['Low'].min())
-        result['day_high'] = float(full_day_data['High'].max())
-        result['day_low'] = float(full_day_data['Low'].min())
-
-        # 売買方向（買い=1, 売り=-1）
-        dir_mult = -1 if direction == 'sell' else 1
-
-        # 利益計算
-        result['profit_morning'] = (result['morning_close_price'] - buy_price) * dir_mult
-        result['profit_day_close'] = (result['day_close_price'] - buy_price) * dir_mult
-        result['profit_morning_pct'] = (result['profit_morning'] / buy_price) * 100 if buy_price > 0 else 0
-        result['profit_day_close_pct'] = (result['profit_day_close'] / buy_price) * 100 if buy_price > 0 else 0
-
-        # 有利なタイミング判定
-        result['better_profit_timing'] = 'morning_close' if result['profit_morning'] > result['profit_day_close'] else 'day_close'
-
-        # 損切りタイミング（損失がより小さい方）
-        loss_morning = result['morning_close_price'] - buy_price
-        loss_day = result['day_close_price'] - buy_price
-        result['better_loss_timing'] = 'morning_close' if loss_morning > loss_day else 'day_close'
-
-        # 勝敗判定
-        result['is_win_morning'] = result['profit_morning'] > 0
-        result['is_win_day_close'] = result['profit_day_close'] > 0
-
-        return result
-
-    except Exception as e:
-        logger.warning(f"Error fetching intraday timing data for {ticker} on {date.date()}: {e}")
-        return result
-
-
-def fetch_previous_days_data(ticker: str, date: datetime) -> Dict[str, float]:
-    """
-    yfinanceから前日・前々日の終値と出来高を取得
+    parquetから前日・前々日の終値と出来高を取得
 
     Args:
         ticker: 銘柄コード (例: "7203.T")
         date: 基準日
+        prices_1d_df: 1日足データ
 
     Returns:
         dict: {
@@ -254,33 +147,14 @@ def fetch_previous_days_data(ticker: str, date: datetime) -> Dict[str, float]:
     }
 
     try:
-        # 前々日から当日まで取得（営業日ベース）
-        end_date = date
-        start_date = date - timedelta(days=7)  # 余裕を持って7日前から取得
-
-        # 日次データ取得
-        df = yf.download(ticker, start=start_date.strftime('%Y-%m-%d'),
-                        end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d'),
-                        interval='1d', progress=False)
-
-        if df.empty:
-            return result
-
-        # MultiIndex対応
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # タイムゾーンを除去してdate型に変換
-        if df.index.tz is not None:
-            df.index = df.index.tz_localize(None)
-
-        df.index = pd.to_datetime(df.index).date
-
-        # 基準日の前営業日を取得
-        target_date = date.date()
+        # parquetから取得
+        target_date = pd.to_datetime(date).date()
 
         # 基準日より前のデータのみ抽出
-        past_data = df[df.index < target_date]
+        past_data = prices_1d_df[
+            (prices_1d_df['ticker'] == ticker) &
+            (prices_1d_df['date'].dt.date < target_date)
+        ].sort_values('date')
 
         if len(past_data) == 0:
             return result
@@ -303,8 +177,79 @@ def fetch_previous_days_data(ticker: str, date: datetime) -> Dict[str, float]:
     return result
 
 
+def apply_v2_0_3_logic(row, prev_day_close):
+    """
+    v2.0.3 価格帯ロジックを適用してv2_actionを決定
+
+    Args:
+        row: データ行
+        prev_day_close: 前日終値
+
+    Returns:
+        dict: {
+            'v2_score': スコア,
+            'v2_action': '買い'/'売り'/'静観',
+            'v2_confidence': '高'/'中'/'低',
+            'v2_reasons_json': JSON文字列
+        }
+    """
+    # Default v2_action from recommendation_action (if exists)
+    rec_action = row.get('recommendation_action', 'hold')
+    action_map = {'buy': '買い', 'sell': '売り', 'hold': '静観'}
+    v2_action_default = action_map.get(rec_action, '静観')
+
+    # v2_score
+    v2_score = row.get('recommendation_score', 0)
+    v2_confidence = row.get('recommendation_confidence', '中')
+
+    # Apply v2.0.3 price-based forced positions
+    v2_reasons = []
+    if not pd.isna(prev_day_close):
+        if 5000 <= prev_day_close < 10000:
+            # Forced buy for 5,000-10,000円
+            v2_action = '買い'
+            v2_confidence = '高'
+            v2_reasons.append({
+                'type': 'price_5000_10000',
+                'description': f'5,000-10,000円範囲（{prev_day_close:,.0f}円）→ロング戦略',
+                'impact': 0
+            })
+        elif prev_day_close >= 10000:
+            # Forced sell for >10,000円
+            v2_action = '売り'
+            v2_confidence = '高'
+            v2_reasons.append({
+                'type': 'price_over_10000',
+                'description': f'10,000円超え（{prev_day_close:,.0f}円）→ショート戦略',
+                'impact': 0
+            })
+        else:
+            # Use default action for <5,000円
+            v2_action = v2_action_default
+            v2_reasons.append({
+                'type': 'recommendation_based',
+                'description': f'価格帯<5,000円: スコアベース判定',
+                'impact': 0
+            })
+    else:
+        # No prev_day_close data, use default
+        v2_action = v2_action_default
+        v2_reasons.append({
+            'type': 'recommendation_based',
+            'description': 'スコアベース判定（前日終値データなし）',
+            'impact': 0
+        })
+
+    return {
+        'v2_score': v2_score,
+        'v2_action': v2_action,
+        'v2_confidence': v2_confidence,
+        'v2_reasons_json': json.dumps(v2_reasons, ensure_ascii=False)
+    }
+
+
 def create_analysis_base():
-    """基礎データ作成"""
+    """基礎データ作成 - 49カラムに統一"""
 
     # 日次ファイルを取得
     daily_files = get_latest_daily_files()
@@ -334,7 +279,7 @@ def create_analysis_base():
     logger.info(f"\nTotal records: {len(grok_df)}")
     logger.info(f"Date range: {grok_df['backtest_date'].min().date()} to {grok_df['backtest_date'].max().date()}")
 
-    # morning_volume + 前日・前々日データ追加
+    # 49カラムに統一したデータを作成
     base_data = []
 
     for idx, row in grok_df.iterrows():
@@ -343,70 +288,110 @@ def create_analysis_base():
 
         logger.info(f"Processing {idx+1}/{len(grok_df)}: {ticker} on {date.date()}")
 
-        # 売買方向の決定（recommendation_actionから）
-        rec_action = row.get('recommendation_action')
-        rec_score = row.get('recommendation_score', 0)
+        # 前日・前々日データ取得
+        prev_data = fetch_previous_days_data(ticker, date)
 
-        if rec_action == 'sell':
-            direction = 'sell'
-        elif rec_action == 'hold' and rec_score < 0:
-            direction = 'sell'
-        else:
-            direction = 'buy'
-
-        # 5分足からタイミング分析データ取得
-        timing_data = fetch_intraday_timing_data(ticker, date, row['buy_price'], direction)
+        # v2.0.3ロジック適用
+        v2_data = apply_v2_0_3_logic(row, prev_data['prev_day_close'])
 
         # 時価総額取得（daily_closeを使用）
         market_cap = fetch_market_cap(ticker, row['daily_close'], date)
 
-        # 前日・前々日データ取得
-        prev_data = fetch_previous_days_data(ticker, date)
-
-        # 基礎レコード作成（既存データ + timing_data + market_cap + 前日データ）
-        base_record = row.to_dict()
-
-        # タイミング分析データ追加
-        for key, value in timing_data.items():
-            base_record[key] = value
-
-        base_record['market_cap'] = market_cap
-
-        # 前日・前々日データ追加
-        base_record['prev_day_close'] = prev_data['prev_day_close']
-        base_record['prev_day_volume'] = prev_data['prev_day_volume']
-        base_record['prev_2day_close'] = prev_data['prev_2day_close']
-        base_record['prev_2day_volume'] = prev_data['prev_2day_volume']
-
-        # ボラティリティ計算（morning_highとmorning_lowが既に存在）
+        # ボラティリティ計算
+        morning_volatility = np.nan
         if not pd.isna(row.get('morning_high')) and not pd.isna(row.get('morning_low')) and row['buy_price'] > 0:
-            base_record['morning_volatility'] = (
-                (row['morning_high'] - row['morning_low']) / row['buy_price'] * 100
-            )
-        else:
-            base_record['morning_volatility'] = np.nan
+            morning_volatility = (row['morning_high'] - row['morning_low']) / row['buy_price'] * 100
 
+        daily_volatility = np.nan
         if not pd.isna(row.get('high')) and not pd.isna(row.get('low')) and row['buy_price'] > 0:
-            base_record['daily_volatility'] = (
-                (row['high'] - row['low']) / row['buy_price'] * 100
-            )
-        else:
-            base_record['daily_volatility'] = np.nan
+            daily_volatility = (row['high'] - row['low']) / row['buy_price'] * 100
 
         # 前日比計算
+        prev_day_change_pct = np.nan
         if not pd.isna(prev_data['prev_day_close']) and prev_data['prev_day_close'] > 0:
-            base_record['prev_day_change_pct'] = (
-                (row['buy_price'] - prev_data['prev_day_close']) / prev_data['prev_day_close'] * 100
-            )
-        else:
-            base_record['prev_day_change_pct'] = np.nan
+            prev_day_change_pct = (row['buy_price'] - prev_data['prev_day_close']) / prev_data['prev_day_close'] * 100
 
         # 前日出来高比
-        morning_volume = base_record.get('morning_volume', np.nan)
+        prev_day_volume_ratio = np.nan
+        morning_volume = row.get('morning_volume')
         if not pd.isna(prev_data['prev_day_volume']) and prev_data['prev_day_volume'] > 0 and not pd.isna(morning_volume):
-            base_record['prev_day_volume_ratio'] = morning_volume / prev_data['prev_day_volume']
-        else:
-            base_record['prev_day_volume_ratio'] = np.nan
+            prev_day_volume_ratio = morning_volume / prev_data['prev_day_volume']
+
+        # 49カラムに統一したレコード作成
+        base_record = {
+            # 1-8: Basic info
+            'selection_date': row.get('selection_date'),
+            'backtest_date': date,
+            'ticker': ticker,
+            'company_name': row.get('company_name', ''),
+            'category': row.get('category', ''),
+            'reason': row.get('reason', ''),
+            'grok_rank': row.get('grok_rank'),
+            'selection_score': row.get('selection_score', 0.0),
+
+            # 9-14: Price data
+            'buy_price': row.get('buy_price'),
+            'sell_price': row.get('sell_price'),
+            'daily_close': row.get('daily_close'),
+            'high': row.get('high'),
+            'low': row.get('low'),
+            'volume': row.get('volume'),
+
+            # 15-17: Phase 1-2 results
+            'phase1_win': row.get('phase1_win'),
+            'phase2_win': row.get('phase2_win'),
+            'profit_per_100_shares_phase2': row.get('profit_per_100_shares_phase2'),
+
+            # 18-23: Phase 3 results
+            'phase3_1pct_win': row.get('phase3_1pct_win'),
+            'phase3_1pct_exit_reason': row.get('phase3_1pct_exit_reason'),
+            'phase3_2pct_win': row.get('phase3_2pct_win'),
+            'phase3_2pct_exit_reason': row.get('phase3_2pct_exit_reason'),
+            'phase3_3pct_win': row.get('phase3_3pct_win'),
+            'phase3_3pct_exit_reason': row.get('phase3_3pct_exit_reason'),
+
+            # 24-25: Max gain/drawdown
+            'daily_max_gain_pct': row.get('daily_max_gain_pct'),
+            'daily_max_drawdown_pct': row.get('daily_max_drawdown_pct'),
+
+            # 26-27: Metadata
+            'data_source': row.get('data_source', 'legacy'),
+            'prompt_version': 'v2_0_3',
+
+            # 28-31: Market/timing data
+            'market_cap': market_cap,
+            'morning_volume': row.get('morning_volume'),
+            'day_high': row.get('high'),
+            'day_low': row.get('low'),
+
+            # 32-35: Previous days data
+            'prev_day_close': prev_data['prev_day_close'],
+            'prev_day_volume': prev_data['prev_day_volume'],
+            'prev_2day_close': prev_data['prev_2day_close'],
+            'prev_2day_volume': prev_data['prev_2day_volume'],
+
+            # 36-39: Volatility and ratios
+            'morning_volatility': morning_volatility,
+            'daily_volatility': daily_volatility,
+            'prev_day_change_pct': prev_day_change_pct,
+            'prev_day_volume_ratio': prev_day_volume_ratio,
+
+            # 40-44: Phase returns (percentage)
+            'phase1_return_pct': row.get('phase1_return', 0) * 100,
+            'phase2_return_pct': row.get('phase2_return', 0) * 100,
+            'phase3_1pct_return_pct': row.get('phase3_1pct_return', 0) * 100,
+            'phase3_2pct_return_pct': row.get('phase3_2pct_return', 0) * 100,
+            'phase3_3pct_return_pct': row.get('phase3_3pct_return', 0) * 100,
+
+            # 45: Previous date
+            'prev_date': (date - timedelta(days=1)).strftime('%Y-%m-%d'),
+
+            # 46-49: v2 columns (v2.0.3 logic applied)
+            'v2_score': v2_data['v2_score'],
+            'v2_action': v2_data['v2_action'],
+            'v2_confidence': v2_data['v2_confidence'],
+            'v2_reasons_json': v2_data['v2_reasons_json'],
+        }
 
         base_data.append(base_record)
 
@@ -414,17 +399,10 @@ def create_analysis_base():
     base_df = pd.DataFrame(base_data)
 
     logger.info(f"\nTotal records after processing: {len(base_df)}")
-
-    # Phase1-3のreturnをパーセント形式に変換
-    logger.info("Adding percentage columns...")
-    base_df['phase1_return_pct'] = base_df['phase1_return'] * 100
-    base_df['phase2_return_pct'] = base_df['phase2_return'] * 100
-    base_df['phase3_1pct_return_pct'] = base_df['phase3_1pct_return'] * 100
-    base_df['phase3_2pct_return_pct'] = base_df['phase3_2pct_return'] * 100
-    base_df['phase3_3pct_return_pct'] = base_df['phase3_3pct_return'] * 100
+    logger.info(f"Columns: {len(base_df.columns)}")
 
     # 保存
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     base_df.to_parquet(OUTPUT_PATH, index=False)
     logger.info(f"\nSaved to {OUTPUT_PATH}")
 

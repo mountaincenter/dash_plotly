@@ -525,7 +525,6 @@ jobs:
           echo "📊 Generating Grok Analysis Data..."
 
           # 出力ディレクトリ作成
-          mkdir -p test_output
           mkdir -p data/parquet/backtest
 
           # === Step 1: S3から必要なファイルをダウンロード ===
@@ -542,6 +541,17 @@ jobs:
 
           GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
           echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
+
+          # trading_recommendation.json をダウンロード
+          echo "  - Downloading trading_recommendation.json..."
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
+            data/parquet/backtest/trading_recommendation.json \
+            --only-show-errors 2>/dev/null; then
+            echo "  ✅ Downloaded trading_recommendation.json"
+          else
+            echo "  ℹ️  No existing trading_recommendation.json in S3"
+          fi
 
           # === Step 2: grok_analysis_merged.parquet の生成 ===
           echo ""
@@ -563,13 +573,14 @@ jobs:
           # 新しいロジック：trading_recommendation.json と deep_analysis が両方存在する場合
           if [ "$TRADING_REC_EXISTS" = "true" ] && [ "$DEEP_ANALYSIS_EXISTS" = "true" ]; then
             echo "  ℹ️  Found trading_recommendation.json and $(basename $DEEP_ANALYSIS_FILE)"
-            echo "  ℹ️  Using merge_json_to_grok_analysis.py (full 95 columns)"
+            echo "  ℹ️  Using merge_json_to_grok_analysis.py (49 columns with v2.0.3 logic)"
 
             python3 scripts/pipeline/merge_json_to_grok_analysis.py
 
             if [ $? -eq 0 ]; then
               RECORDS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df))")
-              echo "  ✅ Generated grok_analysis_merged.parquet with full columns ($RECORDS records)"
+              COLUMNS=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged.parquet'); print(len(df.columns))")
+              echo "  ✅ Generated grok_analysis_merged.parquet ($RECORDS records, $COLUMNS columns)"
             else
               echo "  ❌ Failed to run merge_json_to_grok_analysis.py"
               exit 1
@@ -577,13 +588,13 @@ jobs:
 
           else
             # 従来の方法（後方互換性）
-            echo "  ℹ️  Using legacy method (create_grok_analysis_base_latest.py)"
+            echo "  ℹ️  Using legacy method (create_grok_analysis_base_latest.py - 49 columns with v2.0.3 logic)"
 
             if [ "$GROK_FILES_COUNT" -gt 0 ]; then
               python3 scripts/create_grok_analysis_base_latest.py
 
-              if [ $? -eq 0 ] && [ -f "test_output/grok_analysis_base_latest.parquet" ]; then
-                RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('test_output/grok_analysis_base_latest.parquet')))")
+              if [ $? -eq 0 ] && [ -f "data/parquet/backtest/grok_analysis_base_latest.parquet" ]; then
+                RECORDS=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/backtest/grok_analysis_base_latest.parquet')))")
                 echo "  ✅ Created grok_analysis_base_latest.parquet ($RECORDS records)"
               else
                 echo "  ❌ Failed to create grok_analysis_base_latest.parquet"
@@ -609,11 +620,11 @@ jobs:
               # Pythonスクリプトで既存データと新データをマージ
               python3 scripts/pipeline/merge_grok_analysis_data.py \
                 data/parquet/backtest/grok_analysis_merged_existing.parquet \
-                test_output/grok_analysis_base_latest.parquet \
+                data/parquet/backtest/grok_analysis_base_latest.parquet \
                 data/parquet/backtest/grok_analysis_merged.parquet
             else
               echo "  ⚠️  No existing grok_analysis_merged.parquet in S3, using new data only"
-              cp test_output/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
+              cp data/parquet/backtest/grok_analysis_base_latest.parquet data/parquet/backtest/grok_analysis_merged.parquet
             fi
 
             echo "  ✅ Saved to data/parquet/backtest/grok_analysis_merged.parquet"
