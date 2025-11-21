@@ -251,10 +251,20 @@ def apply_v2_0_3_logic(row, prev_day_close):
 def create_analysis_base():
     """基礎データ作成 - 49カラムに統一"""
 
+    # Prices 1d データ読み込み
+    if not PRICES_1D.exists():
+        logger.error(f"prices_max_1d.parquet not found: {PRICES_1D}")
+        return None
+
+    logger.info(f"Loading prices_max_1d.parquet...")
+    prices_1d_df = pd.read_parquet(PRICES_1D)
+    prices_1d_df['date'] = pd.to_datetime(prices_1d_df['date'])
+    logger.info(f"  Loaded {len(prices_1d_df)} price records")
+
     # 日次ファイルを取得
     daily_files = get_latest_daily_files()
 
-    logger.info(f"Found {len(daily_files)} daily files:")
+    logger.info(f"\nFound {len(daily_files)} daily files:")
     for file_path in daily_files:
         logger.info(f"  {file_path.name}")
 
@@ -289,7 +299,7 @@ def create_analysis_base():
         logger.info(f"Processing {idx+1}/{len(grok_df)}: {ticker} on {date.date()}")
 
         # 前日・前々日データ取得
-        prev_data = fetch_previous_days_data(ticker, date)
+        prev_data = fetch_previous_days_data(ticker, date, prices_1d_df)
 
         # v2.0.3ロジック適用
         v2_data = apply_v2_0_3_logic(row, prev_data['prev_day_close'])

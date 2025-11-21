@@ -557,6 +557,17 @@ jobs:
             echo "  ℹ️  No existing trading_recommendation.json in S3"
           fi
 
+          # grok_trending.parquet (最新の選定結果) をダウンロード
+          echo "  - Downloading grok_trending.parquet..."
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
+            data/parquet/grok_trending.parquet \
+            --only-show-errors 2>/dev/null; then
+            echo "  ✅ Downloaded grok_trending.parquet"
+          else
+            echo "  ℹ️  No existing grok_trending.parquet in S3"
+          fi
+
           # === Step 2: grok_analysis_merged.parquet の生成 ===
           echo ""
           echo "📊 Step 2: Generating grok_analysis_merged.parquet..."
