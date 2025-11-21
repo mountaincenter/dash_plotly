@@ -382,21 +382,8 @@ def main():
     print(f"  Backtest date: {backtest_date}")
     print(f"  Stocks: {len(rec_data['stocks'])}")
 
-    # Step 2: Load deep_analysis JSON
-    print("\n[Step 2] Loading deep_analysis_{backtest_date}.json...")
-    deep_analysis_file = DEEP_ANALYSIS_DIR / f'deep_analysis_{backtest_date}.json'
-
-    if not deep_analysis_file.exists():
-        print(f"❌ File not found: {deep_analysis_file}")
-        sys.exit(1)
-
-    with open(deep_analysis_file, 'r', encoding='utf-8') as f:
-        deep_data = json.load(f)
-
-    print(f"  Deep analysis stocks: {len(deep_data['stockAnalyses'])}")
-
-    # Create ticker -> deep analysis mapping
-    deep_map = {stock['ticker']: stock for stock in deep_data['stockAnalyses']}
+    # Step 2: Skip deep_analysis (not used)
+    print("\n[Step 2] Skipping deep_analysis (not used)...")
 
     # Step 3: Load grok_trending data for category, reason, selection_score
     print("\n[Step 3] Loading grok_trending data...")
@@ -467,14 +454,9 @@ def main():
         action_map = {'buy': '買い', 'sell': '売り', 'hold': '静観'}
         v2_action_default = action_map.get(base_action, '静観')
 
-        # v2_score: Use v2Score from rec or deep, fallback to score
-        if ticker in deep_map:
-            deep = deep_map[ticker]
-            v2_score = deep.get('v2Score') or rec.get('v2Score') or rec['score']
-            v2_confidence = deep.get('confidence') or rec['confidence']
-        else:
-            v2_score = rec.get('v2Score') or rec['score']
-            v2_confidence = rec['confidence']
+        # v2_score: Use score and confidence from trading_recommendation only
+        v2_score = rec['score']
+        v2_confidence = rec['confidence']
 
         # Apply v2.0.3 price-based forced positions
         v2_reasons = []
@@ -606,23 +588,51 @@ def main():
     new_df = pd.DataFrame(new_records)
     print(f"\n  Created {len(new_df)} records")
 
-    # Step 5: Merge with existing data
+    # Step 5: Merge with existing data (append then deduplicate)
     print("\n[Step 5] Merging with existing grok_analysis_merged.parquet...")
 
     if GROK_ANALYSIS_PARQUET.exists():
         existing_df = pd.read_parquet(GROK_ANALYSIS_PARQUET)
         existing_df['backtest_date'] = pd.to_datetime(existing_df['backtest_date'])
 
-        print(f"  Existing: {len(existing_df)} records ({existing_df['backtest_date'].min().date()} to {existing_df['backtest_date'].max().date()})")
+        old_count = len(existing_df)
+        print(f"  Existing records: {old_count}")
+        print(f"  Date range: {existing_df['backtest_date'].min().date()} to {existing_df['backtest_date'].max().date()}")
 
-        # Remove existing records for the same backtest_date
-        existing_df = existing_df[existing_df['backtest_date'] != pd.to_datetime(backtest_date)]
-        print(f"  After removing {backtest_date}: {len(existing_df)} records")
+        new_count = len(new_df)
+        print(f"  New records: {new_count}")
 
-        # Combine
+        # Combine first (existing + new)
         combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+        combined_before_dedup = len(combined_df)
+        print(f"  Combined (before dedup): {combined_before_dedup}")
+
+        # Remove duplicates (keep='last' = keep new data)
+        combined_df = combined_df.drop_duplicates(subset=['backtest_date', 'ticker'], keep='last')
+        removed_count = combined_before_dedup - len(combined_df)
+
+        print(f"  Removed duplicates: {removed_count}")
+
+        # Verification
+        final_count = len(combined_df)
+
+        print(f"\n  Verification:")
+        print(f"  - Old records: {old_count}")
+        print(f"  - New records: {new_count}")
+        print(f"  - Combined before dedup: {combined_before_dedup}")
+        print(f"  - Removed duplicates: {removed_count}")
+        print(f"  - Final records: {final_count}")
+        print(f"  - Expected: {old_count} + {new_count} - {removed_count} = {old_count + new_count - removed_count}")
+
+        if final_count == old_count + new_count - removed_count:
+            print(f"  - Status: ✅ PASS (merge successful)")
+        else:
+            print(f"  - Status: ❌ FAIL (record count mismatch)")
+            sys.exit(1)
     else:
         combined_df = new_df
+        print(f"  No existing data - creating new file")
+        print(f"  New records: {len(new_df)}")
 
     combined_df = combined_df.sort_values('backtest_date').reset_index(drop=True)
 

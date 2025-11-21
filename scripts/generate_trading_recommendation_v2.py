@@ -513,7 +513,7 @@ def generate_recommendation_report_v2():
                 'prevClose': price_data.get('prevClose'),
                 'prevDayChangePct': price_data.get('dailyChangePct'),
                 'atr': {
-                    'value': price_data.get('atr'),
+                    'value': price_data.get('atrPct'),
                     'level': atr_level
                 },
                 'volume': price_data.get('volume'),
