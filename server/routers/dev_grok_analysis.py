@@ -312,6 +312,144 @@ def calculate_daily_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return sorted(results, key=lambda x: x['date'])
 
 
+def calculate_v2_action_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
+    """v2 Action別統計を計算（買い/売り/静観）"""
+    # v2_actionカラムが存在しない場合はNoneを返す
+    if 'v2_action' not in df.columns:
+        return None
+
+    # v2_actionがあるデータのみ抽出
+    v2_df = df[df['v2_action'].notna()].copy()
+
+    if len(v2_df) == 0:
+        return None
+
+    # 全体サマリー
+    summary = {
+        'total': len(v2_df),
+        'buy': int((v2_df['v2_action'] == '買い').sum()),
+        'sell': int((v2_df['v2_action'] == '売り').sum()),
+        'hold': int((v2_df['v2_action'] == '静観').sum()),
+    }
+
+    # アクション別統計
+    action_stats = []
+    action_mapping = {'買い': 'buy', '売り': 'sell', '静観': 'hold'}
+
+    for action_jp, action_en in action_mapping.items():
+        action_df = v2_df[v2_df['v2_action'] == action_jp]
+        if len(action_df) == 0:
+            continue
+
+        total = len(action_df)
+
+        # 売り推奨の場合は勝敗を反転（下がったら勝ち）
+        if action_jp == '売り':
+            # phase2_win == False が勝ち（下がった = 勝ち）
+            win_count_all = int((action_df['phase2_win'] == False).sum())
+            # 引分除外
+            non_draw = action_df[action_df['profit_per_100_shares_phase2'] != 0]
+            win_count_excl_draw = int((non_draw['phase2_win'] == False).sum())
+            total_excl_draw = len(non_draw)
+            # profit_per_100_shares_phase2は負の値が利益（ショートポジション）
+            total_profit = safe_float(-action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(-action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(-action_df['phase2_return_pct'].mean())
+        else:
+            # 買い・静観は通常通り
+            win_count_all = int(action_df['phase2_win'].sum())
+            # 引分除外
+            non_draw = action_df[action_df['profit_per_100_shares_phase2'] != 0]
+            win_count_excl_draw = int(non_draw['phase2_win'].sum())
+            total_excl_draw = len(non_draw)
+            total_profit = safe_float(action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(action_df['phase2_return_pct'].mean())
+
+        win_rate_all = safe_float(win_count_all / total * 100) if total > 0 else None
+        win_rate_excl_draw = safe_float(win_count_excl_draw / total_excl_draw * 100) if total_excl_draw > 0 else None
+
+        action_stats.append({
+            'action': action_en,
+            'actionJp': action_jp,
+            'total': total,
+            'winCount': win_count_all,
+            'loseCount': total - win_count_all,
+            'winRate': win_rate_all,
+            'winRateExclDraw': win_rate_excl_draw,
+            'totalProfit': total_profit,
+            'avgProfit': avg_profit,
+            'avgReturn': avg_return,
+        })
+
+    # 日別データ（最新のものも含む）
+    date_stats = []
+    for date in sorted(v2_df['backtest_date'].unique(), reverse=True):
+        date_df = v2_df[v2_df['backtest_date'] == date]
+
+        date_action_stats = []
+        for action_jp, action_en in action_mapping.items():
+            action_df = date_df[date_df['v2_action'] == action_jp]
+            if len(action_df) == 0:
+                continue
+
+            stocks = []
+            for _, row in action_df.iterrows():
+                # 売りの場合は反転
+                if action_jp == '売り':
+                    is_win = not row['phase2_win'] if pd.notna(row['phase2_win']) else None
+                    profit = -row['profit_per_100_shares_phase2'] if pd.notna(row['profit_per_100_shares_phase2']) else None
+                    return_pct = -row['phase2_return_pct'] if pd.notna(row['phase2_return_pct']) else None
+                else:
+                    is_win = row['phase2_win'] if pd.notna(row['phase2_win']) else None
+                    profit = row['profit_per_100_shares_phase2'] if pd.notna(row['profit_per_100_shares_phase2']) else None
+                    return_pct = row['phase2_return_pct'] if pd.notna(row['phase2_return_pct']) else None
+
+                stocks.append({
+                    'ticker': row['ticker'],
+                    'companyName': row['company_name'],
+                    'grokRank': int(row['grok_rank']) if pd.notna(row['grok_rank']) else None,
+                    'prevDayClose': safe_float(row.get('prev_day_close')),
+                    'v2Score': safe_float(row['v2_score']),
+                    'v2Action': action_jp,
+                    'buyPrice': safe_float(row.get('buy_price')),
+                    'sellPrice': safe_float(row.get('sell_price')),
+                    'high': safe_float(row.get('high')),
+                    'low': safe_float(row.get('low')),
+                    'profitPer100': safe_float(profit),
+                    'returnPct': safe_float(return_pct),
+                    'isWin': bool(is_win) if is_win is not None else None,
+                })
+
+            date_action_stats.append({
+                'action': action_en,
+                'actionJp': action_jp,
+                'total': len(action_df),
+                'stocks': stocks,
+            })
+
+        date_stats.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'total': len(date_df),
+            'actions': date_action_stats,
+        })
+
+    # v2_scoreの統計
+    v2_score_stats = {
+        'mean': safe_float(v2_df['v2_score'].mean()),
+        'median': safe_float(v2_df['v2_score'].median()),
+        'min': safe_float(v2_df['v2_score'].min()),
+        'max': safe_float(v2_df['v2_score'].max()),
+    }
+
+    return {
+        'summary': summary,
+        'actionStats': action_stats,
+        'dateStats': date_stats,
+        'v2ScoreStats': v2_score_stats,
+    }
+
+
 def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
     """売買判断別統計を計算"""
     # recommendation_actionカラムが存在しない場合はNoneを返す
@@ -458,6 +596,7 @@ async def get_grok_analysis():
         volatility_stats = calculate_volatility_stats(df)
         prev_day_stats = calculate_prev_day_stats(df)
         daily_stats = calculate_daily_stats(df)
+        v2_action_stats = calculate_v2_action_stats(df)
         recommendation_stats = calculate_recommendation_stats(df)
 
         # メタデータ
@@ -480,6 +619,7 @@ async def get_grok_analysis():
             'volatilityStats': volatility_stats,
             'prevDayStats': prev_day_stats,
             'dailyStats': daily_stats,
+            'v2ActionStats': v2_action_stats,
             'recommendationStats': recommendation_stats,
         }
 
