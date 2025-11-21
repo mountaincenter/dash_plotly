@@ -70,7 +70,8 @@ jobs:
         run: |
           # Create .env.jquants for J-Quants API authentication
           cat > .env.jquants <<EOF
-          JQUANTS_REFRESH_TOKEN=${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          JQUANTS_MAIL_ADDRESS=${{ secrets.JQUANTS_MAIL_ADDRESS }}
+          JQUANTS_PASSWORD=${{ secrets.JQUANTS_PASSWORD }}
           EOF
 
           echo "✅ J-Quants authentication configured"
@@ -111,7 +112,8 @@ jobs:
         id: check_trading
         if: ${{ github.event.inputs.skip_trading_day_check != 'true' && steps.exec_mode.outputs.skip_trading_check != 'true' }}
         env:
-          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          JQUANTS_MAIL_ADDRESS: ${{ secrets.JQUANTS_MAIL_ADDRESS }}
+          JQUANTS_PASSWORD: ${{ secrets.JQUANTS_PASSWORD }}
         run: |
           echo "🔍 Checking if within trading day execution window..."
           python scripts/check_trading_day.py
@@ -129,7 +131,8 @@ jobs:
         id: check_next_trading
         if: steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced'
         env:
-          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          JQUANTS_MAIL_ADDRESS: ${{ secrets.JQUANTS_MAIL_ADDRESS }}
+          JQUANTS_PASSWORD: ${{ secrets.JQUANTS_PASSWORD }}
         run: |
           echo "🔍 Checking if next day is a trading day..."
           python scripts/check_next_day_trading.py
@@ -197,7 +200,8 @@ jobs:
             steps.check_next_trading.conclusion == 'success'
           )
         env:
-          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
+          JQUANTS_MAIL_ADDRESS: ${{ secrets.JQUANTS_MAIL_ADDRESS }}
+          JQUANTS_PASSWORD: ${{ secrets.JQUANTS_PASSWORD }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
           SKIP_GROK_GENERATION: ${{ steps.exec_mode.outputs.skip_grok }}
