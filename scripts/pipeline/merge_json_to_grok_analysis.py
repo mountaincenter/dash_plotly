@@ -456,7 +456,9 @@ def main():
 
         # v2_score: Use score and confidence from trading_recommendation only
         v2_score = rec['score']
-        v2_confidence = rec['confidence']
+        # Convert English confidence to Japanese
+        confidence_map = {'high': '高', 'medium': '中', 'low': '低'}
+        v2_confidence = confidence_map.get(rec['confidence'], '中')
 
         # Apply v2.0.3 price-based forced positions
         v2_reasons = []
@@ -480,21 +482,13 @@ def main():
                     'impact': 0
                 })
             else:
-                # Use default action for <5,000円
+                # Use default action for <5,000円 and use full reasons from trading_recommendation.json
                 v2_action = v2_action_default
-                v2_reasons.append({
-                    'type': 'recommendation_based',
-                    'description': f'価格帯<5,000円: スコアベース判定',
-                    'impact': 0
-                })
+                v2_reasons = rec.get('reasons', [])
         else:
-            # No prev_day_close data, use default
+            # No prev_day_close data, use default and use full reasons from trading_recommendation.json
             v2_action = v2_action_default
-            v2_reasons.append({
-                'type': 'recommendation_based',
-                'description': 'スコアベース判定（前日終値データなし）',
-                'impact': 0
-            })
+            v2_reasons = rec.get('reasons', [])
 
         # Base record - 49 columns matching existing schema
         record = {
