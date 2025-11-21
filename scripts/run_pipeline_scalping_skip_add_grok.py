@@ -46,9 +46,10 @@ class PipelineRunner:
 
         # Grok選定ステップ（23:00 JST実行時のみ）
         if not skip_grok:
-            self.steps.append(
-                ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）")
-            )
+            self.steps.extend([
+                ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
+                ("pipeline.generate_trading_recommendation_v2", "売買判断生成（v2.0.3 価格帯ロジック）"),
+            ])
 
         # 共通ステップ
         self.steps.extend([
