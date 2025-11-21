@@ -243,6 +243,37 @@ jobs:
 
           exit $EXIT_CODE
 
+      - name: Generate trading recommendation (23:00 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
+        run: |
+          echo "============================================================"
+          echo "Generating trading_recommendation.json (23:00 Grok selection)"
+          echo "============================================================"
+
+          mkdir -p data/parquet/backtest
+
+          # trading_recommendation.json を生成（v2.0.3ロジック）
+          echo "📊 Generating trading_recommendation.json (v2.0.3)..."
+          python3 scripts/pipeline/generate_trading_recommendation_v2.py
+
+          if [ $? -eq 0 ] && [ -f "data/parquet/backtest/trading_recommendation.json" ]; then
+            echo "✅ Generated trading_recommendation.json"
+
+            # S3にアップロード
+            echo "📤 Uploading trading_recommendation.json to S3..."
+            aws s3 cp \
+              data/parquet/backtest/trading_recommendation.json \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
+              --region ${{ env.AWS_REGION }} \
+              --only-show-errors
+            echo "✅ Uploaded trading_recommendation.json to S3"
+          else
+            echo "❌ ERROR: Failed to generate trading_recommendation.json"
+            exit 1
+          fi
+
+          echo "============================================================"
+
       - name: Run backtest and archive
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -533,7 +564,7 @@ jobs:
           GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
           echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
 
-          # trading_recommendation.json をダウンロード（必須）
+          # trading_recommendation.json をダウンロード（23:00に生成されたもの）
           echo "  - Downloading trading_recommendation.json (required)..."
           if ! aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
