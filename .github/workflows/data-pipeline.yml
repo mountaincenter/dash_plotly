@@ -254,7 +254,7 @@ jobs:
 
           # trading_recommendation.json を生成（v2.0.3ロジック）
           echo "📊 Generating trading_recommendation.json (v2.0.3)..."
-          python3 scripts/pipeline/generate_trading_recommendation_v2.py
+          python3 scripts/pipeline/generate_trading_recommendation_v2_0_3.py
 
           if [ $? -eq 0 ] && [ -f "data/parquet/backtest/trading_recommendation.json" ]; then
             echo "✅ Generated trading_recommendation.json"
