@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>v2.0.3 vs v2.1 比較レポート</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    color: #333;
+}
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+.header .subtitle {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+.summary-section {
+    padding: 40px;
+    background: #f8f9fa;
+}
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+}
+.summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-left: 6px solid #667eea;
+    transition: transform 0.2s;
+}
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.summary-card h3 {
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #667eea;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label {
+    font-size: 1em;
+    color: #666;
+}
+.stat-value {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #333;
+}
+.table-section {
+    padding: 40px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+th {
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
+}
+th.number { text-align: right; }
+td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+td.number {
+    text-align: right;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 0.95em;
+}
+td.number.positive {
+    color: #27ae60;
+    font-weight: 600;
+}
+td.number.negative {
+    color: #e74c3c;
+    font-weight: 600;
+}
+.highlight {
+    background: #fff3cd;
+    font-weight: bold;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>v2.0.3 vs v2.1 比較レポート</h1>
+        <div class="subtitle">対象期間: 2025-11-04 ~ 2025-11-21 | 総レコード数: 151</div>
+    </div>
+
+    <div class="summary-section">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>📊 v2.0.3 判定結果</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">79</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">31</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">41</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>🚀 v2.1 判定結果</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">23</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">85</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">43</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>🔄 判定変更</h3>
+                <div class="stat-row">
+                    <span class="stat-label">変更数</span>
+                    <span class="stat-value">79</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">変更率</span>
+                    <span class="stat-value">52.3%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">維持</span>
+                    <span class="stat-value">72</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #3498db;">
+                <h3>💰 v2.0.3 買い成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">79</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">45.6%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+5,800円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #9b59b6;">
+                <h3>📉 v2.0.3 売り成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">31</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">74.2%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+366,850円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #e74c3c;">
+                <h3>💰 v2.1 買い成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">23</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">47.8%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+72,700円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #27ae60;">
+                <h3>📉 v2.1 売り成績（合計）</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">85</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">60.0%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+401,350円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #16a085;">
+                <h3>🔄 v2.0.3売り→v2.1売り</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">31</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">74.2%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+366,850円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #e67e22;">
+                <h3>🔄 v2.0.3静観→v2.1売り</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">17</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">70.6%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+39,500円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #c0392b;">
+                <h3>🔄 v2.0.3買い→v2.1売り</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">37</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">43.2%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #e74c3c;">-5,000円</span>
+                </div>
+            </div>
+
+            <div class="summary-card highlight" style="border-left-color: #f39c12;">
+                <h3>🏆 総合比較</h3>
+                <div class="stat-row">
+                    <span class="stat-label">v2.0.3 総利益</span>
+                    <span class="stat-value">+372,650円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">v2.1 総利益</span>
+                    <span class="stat-value">+474,050円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">差分</span>
+                    <span class="stat-value" style="color: #27ae60;">+101,400円</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>📈 テクニカル指標統計</h3>
+                <div class="stat-row">
+                    <span class="stat-label">RSI平均</span>
+                    <span class="stat-value">51.9</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">出来高変化平均</span>
+                    <span class="stat-value">1.67x</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">SMA5乖離平均</span>
+                    <span class="stat-value">0.9%</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <h3 style="margin-bottom: 16px; color: #667eea;">変更パターン詳細</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>変更パターン</th>
+                        <th class="number">件数</th>
+                        <th class="number">変更前勝率</th>
+                        <th class="number">変更前100株利益</th>
+                        <th class="number">変更後勝率</th>
+                        <th class="number">変更後100株利益</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>買い → 売り</td><td class="number">37</td><td class="number positive">51.4%</td><td class="number positive">+135円</td><td class="number negative">43.2%</td><td class="number negative">-135円</td></tr>
+<tr><td>買い → 静観</td><td class="number">22</td><td class="number negative">31.8%</td><td class="number negative">-1,391円</td><td class="number negative">31.8%</td><td class="number negative">-1,391円</td></tr>
+<tr><td>静観 → 売り</td><td class="number">17</td><td class="number negative">23.5%</td><td class="number negative">-2,324円</td><td class="number positive">70.6%</td><td class="number positive">+2,324円</td></tr>
+<tr><td>静観 → 買い</td><td class="number">3</td><td class="number negative">33.3%</td><td class="number positive">+13,767円</td><td class="number negative">33.3%</td><td class="number positive">+13,767円</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
