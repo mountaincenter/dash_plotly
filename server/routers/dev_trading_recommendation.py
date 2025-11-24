@@ -86,13 +86,16 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
             "recommendation": {
                 "action": action,
                 "score": score,
-                "v2Score": stock.get("v2_0_3_score"),  # 参考情報
                 "confidence": confidence,
                 "stopLoss": {
                     "percent": stock.get("stop_loss_pct", 5.0),
                     "calculation": f"ATR {stock.get('atr_pct', 0):.1f}% × 0.8"
                 },
-                "reasons": reasons
+                "reasons": reasons,
+                # v2_0_3 情報（比較用）
+                "v2_0_3_action": map_action(stock.get("v2_0_3_action", "静観")),
+                "v2_0_3_score": stock.get("v2_0_3_score"),
+                "v2_0_3_reasons": stock.get("v2_0_3_reasons", "")
             },
             "categories": [],
             # deepAnalysis は後でマージされる
