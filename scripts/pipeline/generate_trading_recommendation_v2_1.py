@@ -378,18 +378,26 @@ def main():
             row['grok_rank'], total_stocks
         )
 
-        # 損切り水準
-        atr_pct = price_data.get('atrPct')
+        # 損切り水準（価格帯別）
         if v2_1_action == '売り':
-            if atr_pct:
-                stop_loss_pct = max(5.0, min(atr_pct * 1.2, 10.0))
-            else:
-                stop_loss_pct = 7.0
-        else:
-            if atr_pct:
-                stop_loss_pct = max(2.0, min(atr_pct * 0.8, 5.0))
-            else:
+            # 売りは一律5%
+            stop_loss_pct = 5.0
+        elif v2_1_action == '買い':
+            # 買いは価格帯別
+            if prev_close >= 10000:
+                stop_loss_pct = 2.5
+            elif prev_close >= 5000:
+                stop_loss_pct = 2.5
+            elif prev_close >= 3000:
                 stop_loss_pct = 3.0
+            elif prev_close >= 1000:
+                stop_loss_pct = 5.0
+            else:
+                # 1000円以下は損切りなし
+                stop_loss_pct = 0.0
+        else:
+            # 静観はデフォルト
+            stop_loss_pct = 3.0
 
         recommendations.append({
             'ticker': ticker,
