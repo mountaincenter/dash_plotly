@@ -28,6 +28,105 @@ S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 
+def map_action(action_jp: str) -> str:
+    """日本語アクションを英語にマッピング"""
+    mapping = {"買い": "buy", "売り": "sell", "静観": "hold"}
+    return mapping.get(action_jp, "hold")
+
+
+def calculate_confidence(score: int) -> str:
+    """スコアから信頼度を計算"""
+    abs_score = abs(score)
+    if abs_score >= 50:
+        return "high"
+    elif abs_score >= 30:
+        return "medium"
+    else:
+        return "low"
+
+
+def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
+    """
+    v2.1 のスキーマをフロントエンドが期待する形式に変換
+    """
+    if trading_data.get("strategy_version") != "v2.1":
+        # v2.1 でない場合はそのまま返す
+        return trading_data
+
+    converted_stocks = []
+    for stock in trading_data.get("stocks", []):
+        # v2.1 フィールドを recommendation 形式に変換
+        action = map_action(stock.get("v2_1_action", "静観"))
+        score = stock.get("v2_1_score", 0)
+        confidence = calculate_confidence(score)
+
+        # reasons を配列から Reason オブジェクトに変換
+        v2_1_reasons = stock.get("v2_1_reasons", [])
+        reasons = []
+        for i, reason_text in enumerate(v2_1_reasons):
+            reasons.append({
+                "type": "grok_rank" if i == 0 else "category",
+                "description": reason_text,
+                "impact": 10  # デフォルト値
+            })
+
+        converted_stock = {
+            "ticker": stock.get("ticker"),
+            "stockName": stock.get("company_name", stock.get("ticker")),
+            "grokRank": stock.get("grok_rank"),
+            "technicalData": {
+                "prevClose": stock.get("prev_day_close"),
+                "prevDayChangePct": stock.get("prev_day_change_pct"),
+                "atr": {
+                    "value": stock.get("atr_pct"),
+                    "level": "high" if stock.get("atr_pct", 0) > 5 else "medium" if stock.get("atr_pct", 0) > 3 else "low"
+                },
+                "volatilityLevel": "高ボラ" if stock.get("atr_pct", 0) > 5 else "中ボラ" if stock.get("atr_pct", 0) > 3 else "低ボラ"
+            },
+            "recommendation": {
+                "action": action,
+                "score": score,
+                "v2Score": stock.get("v2_0_3_score"),  # 参考情報
+                "confidence": confidence,
+                "stopLoss": {
+                    "percent": stock.get("stop_loss_pct", 5.0),
+                    "calculation": f"ATR {stock.get('atr_pct', 0):.1f}% × 0.8"
+                },
+                "reasons": reasons
+            },
+            "categories": [],
+            # deepAnalysis は後でマージされる
+            "deepAnalysis": stock.get("deepAnalysis")
+        }
+        converted_stocks.append(converted_stock)
+
+    # 変換後のレスポンス
+    return {
+        "version": "v2.1-compatible",
+        "generatedAt": trading_data.get("generated_at"),
+        "dataSource": {
+            "backtestCount": 0,  # v2.1 には含まれていない
+            "backtestPeriod": {
+                "start": "2025-01-01",
+                "end": "2025-11-24"
+            },
+            "technicalDataDate": "2025-11-24"
+        },
+        "summary": {
+            "total": trading_data.get("total_stocks", 0),
+            "buy": trading_data.get("buy_count", 0),
+            "sell": trading_data.get("sell_count", 0),
+            "hold": trading_data.get("hold_count", 0)
+        },
+        "warnings": [],
+        "stocks": converted_stocks,
+        # 既存のフィールドを保持
+        "deepAnalysisVersion": trading_data.get("deepAnalysisVersion"),
+        "deepAnalysisDate": trading_data.get("deepAnalysisDate"),
+        "deepAnalysisUpdated": trading_data.get("deepAnalysisUpdated")
+    }
+
+
 def load_recommendation_data() -> dict:
     """
     推奨データを読み込み
@@ -161,6 +260,9 @@ async def get_trading_recommendations():
         except Exception as e:
             print(f"[WARNING] Could not load deep_analysis: {e}")
             # deep_analysis が読み込めなくてもエラーにしない
+
+        # v2.1 の場合はフロントエンド形式に変換
+        data = convert_v2_1_to_frontend_format(data)
 
         return data
 
