@@ -156,7 +156,7 @@ jobs:
 
       - name: Verify S3 backups before Grok selection
         id: verify_backup
-        if: success() && (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced')
+        if: success() && steps.exec_mode.outputs.mode == 'grok_daily'
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
@@ -178,7 +178,7 @@ jobs:
           fi
 
       - name: Cleanup grok_trending before selection
-        if: success() && (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced')
+        if: success() && steps.exec_mode.outputs.mode == 'grok_daily'
         run: |
           echo "🧹 Cleaning up grok_trending.parquet on S3..."
           echo "============================================================"
