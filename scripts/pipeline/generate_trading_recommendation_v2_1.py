@@ -387,7 +387,7 @@ def main():
             if prev_close >= 10000:
                 stop_loss_pct = 2.5
             elif prev_close >= 5000:
-                stop_loss_pct = 2.5
+                stop_loss_pct = 3.0  # 5,000-10,000円: 3%
             elif prev_close >= 3000:
                 stop_loss_pct = 3.0
             elif prev_close >= 1000:
@@ -405,7 +405,7 @@ def main():
             'grok_rank': int(row.get('grok_rank', 0)),
             'prev_day_close': prev_close,
             'prev_day_change_pct': price_data.get('dailyChangePct', 0),
-            'atr_pct': atr_pct if atr_pct else 0,
+            'atr_pct': price_data.get('atrPct', 0),
             'v2_0_3_action': v2_0_3_action,
             'v2_0_3_score': v2_0_3_score,
             'v2_0_3_reasons': ' / '.join(v2_0_3_reasons),
