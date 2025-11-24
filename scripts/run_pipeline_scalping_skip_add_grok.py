@@ -48,7 +48,8 @@ class PipelineRunner:
         if not skip_grok:
             self.steps.extend([
                 ("pipeline.generate_grok_trending", "Grok銘柄選定（xAI API）"),
-                ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
+                # NOTE: trading_recommendation.json の生成は workflow で v2.1 を実行
+                # ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
             ])
 
         # 共通ステップ

@@ -143,7 +143,12 @@ def send_slack_notification(billing_data: Dict[str, Any]) -> bool:
 
         # billing cycle
         billing_cycle = core_invoice.get("billingCycle", {})
-        cycle_text = f"{billing_cycle.get('year', 'N/A')}-{billing_cycle.get('month', 'N/A'):02d}"
+        year = billing_cycle.get('year', 'N/A')
+        month = billing_cycle.get('month', 'N/A')
+        if isinstance(month, int):
+            cycle_text = f"{year}-{month:02d}"
+        else:
+            cycle_text = f"{year}-{month}"
 
         # Slack メッセージ構築
         message = {
