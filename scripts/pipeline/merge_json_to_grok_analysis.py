@@ -161,13 +161,13 @@ def fetch_previous_days_data(ticker: str, date: datetime, prices_1d_df: pd.DataF
 
 def get_backtest_date_from_json(rec_data):
     """trading_recommendation.jsonから対象日を取得"""
-    # technicalDataDateの翌日がbacktest_date
+    # technicalDataDate = selection_date = backtest_date（同日）
     tech_date = rec_data.get('dataSource', {}).get('technicalDataDate')
     if not tech_date:
         raise ValueError("technicalDataDate not found in trading_recommendation.json")
 
     tech_dt = datetime.strptime(tech_date, '%Y-%m-%d')
-    backtest_dt = tech_dt + timedelta(days=1)
+    backtest_dt = tech_dt  # +1しない！selection_dateと同じ日
     # selection_date と backtest_date は同じ
     return backtest_dt.strftime('%Y-%m-%d'), backtest_dt.strftime('%Y-%m-%d')
 

@@ -167,7 +167,7 @@ def get_backtest_date_from_json(rec_data):
         raise ValueError("technicalDataDate not found in trading_recommendation.json")
 
     tech_dt = datetime.strptime(tech_date, '%Y-%m-%d')
-    backtest_dt = tech_dt + timedelta(days=1)
+    backtest_dt = tech_dt  # +1しない！selection_dateと同じ日
     # selection_date と backtest_date は同じ
     return backtest_dt.strftime('%Y-%m-%d'), backtest_dt.strftime('%Y-%m-%d')
 
