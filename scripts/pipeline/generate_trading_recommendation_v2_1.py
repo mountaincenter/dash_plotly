@@ -325,11 +325,16 @@ def main():
     print(f"   読み込み完了: {len(grok_df)} 銘柄")
 
     # 必須カラムの存在確認
-    required_columns = ['ticker', 'grok_rank', 'stock_name']
+    required_columns = ['ticker', 'grok_rank', 'stock_name', 'date']
     missing_columns = [col for col in required_columns if col not in grok_df.columns]
     if missing_columns:
         print(f"エラー: 必須カラムが欠損しています: {missing_columns}")
         return 1
+
+    # technicalDataDate を grok_trending.parquet の date から取得
+    grok_df['date'] = pd.to_datetime(grok_df['date'])
+    technical_data_date = grok_df['date'].max().strftime('%Y-%m-%d')
+    print(f"   Technical data date: {technical_data_date}")
 
     # 2. prices_max_1d.parquet 読み込み
     print("\n2. prices_max_1d.parquet 読み込み中...")
@@ -438,6 +443,10 @@ def main():
     output_data = {
         'generated_at': datetime.now().isoformat(),
         'strategy_version': 'v2.1',
+        'dataSource': {
+            'backtestCount': len(backtest_stats['rank_win_rates']) if backtest_stats else 0,
+            'technicalDataDate': technical_data_date
+        },
         'total_stocks': len(recommendations),
         'buy_count': buy_count,
         'hold_count': hold_count,
