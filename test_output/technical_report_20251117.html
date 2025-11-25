@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テクニカル分析レポート - 20251117</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95em;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .summary-card .label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .summary-card.buy .value {
+            color: #10b981;
+        }
+
+        .summary-card.hold .value {
+            color: #f59e0b;
+        }
+
+        .summary-card.sell .value {
+            color: #ef4444;
+        }
+
+        .summary-card.total .value {
+            color: #667eea;
+        }
+
+        .stocks-section {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .signal-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .signal-badge.StrongBuy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .signal-badge.Hold {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .signal-badge.StrongSell {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .score {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .score.positive {
+            color: #10b981;
+        }
+
+        .score.negative {
+            color: #ef4444;
+        }
+
+        .score.neutral {
+            color: #6b7280;
+        }
+
+        .tech-details {
+            font-size: 0.85em;
+            color: #6b7280;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        .note {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+
+        .note strong {
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 テクニカル分析レポート（Phase 1）</h1>
+            <p>Core30 + 政策銘柄 | 寄付→大引け戦略</p>
+            <p>生成日時: 2025-11-17T14:18:18.394779</p>
+        </div>
+
+        <div class="summary">
+            <div class="summary-card total">
+                <div class="label">総銘柄数</div>
+                <div class="value">56</div>
+            </div>
+            <div class="summary-card buy">
+                <div class="label">StrongBuy</div>
+                <div class="value">0</div>
+            </div>
+            <div class="summary-card hold">
+                <div class="label">Hold</div>
+                <div class="value">53</div>
+            </div>
+            <div class="summary-card sell">
+                <div class="label">StrongSell</div>
+                <div class="value">3</div>
+            </div>
+        </div>
+
+        <div class="stocks-section">
+            <div class="note">
+                <strong>Phase 1:</strong> テクニカル分析のみ（WebSearch分析は Phase 2 で実施）<br>
+                スコア範囲: -100 ~ +100 | StrongBuy: ≥50 | StrongSell: ≤-40 | Hold: その他
+            </div>
+
+            <h2 class="section-title">🟢 StrongBuy 銘柄（スコア順）</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>銘柄名</th>
+                        <th>終値</th>
+                        <th>スコア</th>
+                        <th>シグナル</th>
+                        <th>tech_snapshot</th>
+                        <th>TOPIX相対</th>
+                        <th>セクター</th>
+                    </tr>
+                </thead>
+                <tbody>
+<tr><td colspan="8" style="text-align:center; color:#999;">該当なし</td></tr>
+                </tbody>
+            </table>
+
+            <h2 class="section-title">🟡 Hold 銘柄（スコア順）</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>銘柄名</th>
+                        <th>終値</th>
+                        <th>スコア</th>
+                        <th>シグナル</th>
+                        <th>tech_snapshot</th>
+                        <th>TOPIX相対</th>
+                        <th>セクター</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>8411.T</td>
+                        <td>みずほフィナンシャルグループ</td>
+                        <td>5,300円</td>
+                        <td class="score positive">+45.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+10</td>
+                        <td class="tech-details">銀行業</td>
+                    </tr>
+
+                    <tr>
+                        <td>1812.T</td>
+                        <td>鹿島建設</td>
+                        <td>5,605円</td>
+                        <td class="score positive">+45.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+10</td>
+                        <td class="tech-details">建設業</td>
+                    </tr>
+
+                    <tr>
+                        <td>6702.T</td>
+                        <td>富士通</td>
+                        <td>4,173円</td>
+                        <td class="score positive">+40.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+5</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>4307.T</td>
+                        <td>野村総合研究所</td>
+                        <td>6,330円</td>
+                        <td class="score positive">+40.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>+10</td>
+                        <td class="tech-details">情報・通信業</td>
+                    </tr>
+
+                    <tr>
+                        <td>1801.T</td>
+                        <td>大成建設</td>
+                        <td>12,520円</td>
+                        <td class="score positive">+40.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>+10</td>
+                        <td class="tech-details">建設業</td>
+                    </tr>
+
+                    <tr>
+                        <td>8031.T</td>
+                        <td>三井物産</td>
+                        <td>4,103円</td>
+                        <td class="score positive">+35.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+0</td>
+                        <td class="tech-details">卸売業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9433.T</td>
+                        <td>ＫＤＤＩ</td>
+                        <td>2,650円</td>
+                        <td class="score positive">+35.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+0</td>
+                        <td class="tech-details">情報･通信業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9501.T</td>
+                        <td>東京電力ホールディングス</td>
+                        <td>878円</td>
+                        <td class="score positive">+35.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>+5</td>
+                        <td class="tech-details">電気・ガス業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9503.T</td>
+                        <td>関西電力</td>
+                        <td>2,521円</td>
+                        <td class="score positive">+35.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+25</td>
+                        <td>+10</td>
+                        <td class="tech-details">電気・ガス業</td>
+                    </tr>
+
+                    <tr>
+                        <td>1802.T</td>
+                        <td>大林組</td>
+                        <td>2,850円</td>
+                        <td class="score positive">+35.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+35</td>
+                        <td>+0</td>
+                        <td class="tech-details">建設業</td>
+                    </tr>
+
+                    <tr>
+                        <td>3382.T</td>
+                        <td>セブン＆アイ・ホールディングス</td>
+                        <td>2,039円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>+0</td>
+                        <td class="tech-details">小売業</td>
+                    </tr>
+
+                    <tr>
+                        <td>6367.T</td>
+                        <td>ダイキン工業</td>
+                        <td>20,595円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+25</td>
+                        <td>+5</td>
+                        <td class="tech-details">機械</td>
+                    </tr>
+
+                    <tr>
+                        <td>8306.T</td>
+                        <td>三菱ＵＦＪフィナンシャル・グループ</td>
+                        <td>2,451円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">銀行業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9434.T</td>
+                        <td>ソフトバンク</td>
+                        <td>222円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>+0</td>
+                        <td class="tech-details">情報･通信業</td>
+                    </tr>
+
+                    <tr>
+                        <td>6701.T</td>
+                        <td>ＮＥＣ</td>
+                        <td>5,980円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6723.T</td>
+                        <td>ルネサスエレクトロニクス</td>
+                        <td>1,935円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>1605.T</td>
+                        <td>INPEX</td>
+                        <td>3,175円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">鉱業</td>
+                    </tr>
+
+                    <tr>
+                        <td>5020.T</td>
+                        <td>ENEOSホールディングス</td>
+                        <td>1,044円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">石油・石炭製品</td>
+                    </tr>
+
+                    <tr>
+                        <td>1803.T</td>
+                        <td>清水建設</td>
+                        <td>2,507円</td>
+                        <td class="score positive">+30.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+10</td>
+                        <td class="tech-details">建設業</td>
+                    </tr>
+
+                    <tr>
+                        <td>4502.T</td>
+                        <td>武田薬品工業</td>
+                        <td>4,443円</td>
+                        <td class="score positive">+25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>+10</td>
+                        <td class="tech-details">医薬品</td>
+                    </tr>
+
+                    <tr>
+                        <td>6501.T</td>
+                        <td>日立製作所</td>
+                        <td>5,083円</td>
+                        <td class="score positive">+25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+30</td>
+                        <td>-5</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6758.T</td>
+                        <td>ソニーグループ</td>
+                        <td>4,700円</td>
+                        <td class="score positive">+25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>+10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>8058.T</td>
+                        <td>三菱商事</td>
+                        <td>3,750円</td>
+                        <td class="score positive">+25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+5</td>
+                        <td class="tech-details">卸売業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9005.T</td>
+                        <td>東急</td>
+                        <td>1,756円</td>
+                        <td class="score positive">+25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+25</td>
+                        <td>+0</td>
+                        <td class="tech-details">陸運業</td>
+                    </tr>
+
+                    <tr>
+                        <td>2914.T</td>
+                        <td>日本たばこ産業</td>
+                        <td>5,685円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+0</td>
+                        <td class="tech-details">食料品</td>
+                    </tr>
+
+                    <tr>
+                        <td>7203.T</td>
+                        <td>トヨタ自動車</td>
+                        <td>3,180円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+0</td>
+                        <td class="tech-details">輸送用機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>8001.T</td>
+                        <td>伊藤忠商事</td>
+                        <td>9,510円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+25</td>
+                        <td>-5</td>
+                        <td class="tech-details">卸売業</td>
+                    </tr>
+
+                    <tr>
+                        <td>8316.T</td>
+                        <td>三井住友フィナンシャルグループ</td>
+                        <td>4,330円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>+5</td>
+                        <td class="tech-details">銀行業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9513.T</td>
+                        <td>電源開発</td>
+                        <td>2,940円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>+5</td>
+                        <td class="tech-details">電気・ガス業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9022.T</td>
+                        <td>JR東海</td>
+                        <td>4,136円</td>
+                        <td class="score positive">+20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>+0</td>
+                        <td class="tech-details">陸運業</td>
+                    </tr>
+
+                    <tr>
+                        <td>5631.T</td>
+                        <td>日本製鋼所</td>
+                        <td>9,534円</td>
+                        <td class="score positive">+15.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+5</td>
+                        <td>+10</td>
+                        <td class="tech-details">機械</td>
+                    </tr>
+
+                    <tr>
+                        <td>6946.T</td>
+                        <td>日本アビオニクス</td>
+                        <td>4,990円</td>
+                        <td class="score positive">+15.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>-5</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6920.T</td>
+                        <td>レーザーテック</td>
+                        <td>28,095円</td>
+                        <td class="score positive">+15.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+25</td>
+                        <td>-10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6857.T</td>
+                        <td>アドバンテスト</td>
+                        <td>19,530円</td>
+                        <td class="score positive">+10.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+20</td>
+                        <td>-10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6762.T</td>
+                        <td>ＴＤＫ</td>
+                        <td>2,536円</td>
+                        <td class="score positive">+10.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+10</td>
+                        <td>+0</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>6503.T</td>
+                        <td>三菱電機</td>
+                        <td>4,237円</td>
+                        <td class="score positive">+5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>-10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>7974.T</td>
+                        <td>任天堂</td>
+                        <td>13,445円</td>
+                        <td class="score positive">+5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+15</td>
+                        <td>-10</td>
+                        <td class="tech-details">その他製品</td>
+                    </tr>
+
+                    <tr>
+                        <td>1766.T</td>
+                        <td>竹中工務店</td>
+                        <td>14,420円</td>
+                        <td class="score positive">+5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+5</td>
+                        <td>+0</td>
+                        <td class="tech-details">建設業</td>
+                    </tr>
+
+                    <tr>
+                        <td>6981.T</td>
+                        <td>村田製作所</td>
+                        <td>3,109円</td>
+                        <td class="score neutral">+0.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+10</td>
+                        <td>-10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>7011.T</td>
+                        <td>三菱重工業</td>
+                        <td>4,174円</td>
+                        <td class="score neutral">+0.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+10</td>
+                        <td>-10</td>
+                        <td class="tech-details">機械</td>
+                    </tr>
+
+                    <tr>
+                        <td>7741.T</td>
+                        <td>ＨＯＹＡ</td>
+                        <td>24,185円</td>
+                        <td class="score neutral">+0.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+10</td>
+                        <td>-10</td>
+                        <td class="tech-details">精密機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>9984.T</td>
+                        <td>ソフトバンクグループ</td>
+                        <td>19,780円</td>
+                        <td class="score neutral">+0.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+10</td>
+                        <td>-10</td>
+                        <td class="tech-details">情報･通信業</td>
+                    </tr>
+
+                    <tr>
+                        <td>7735.T</td>
+                        <td>SCREENホールディングス</td>
+                        <td>12,815円</td>
+                        <td class="score neutral">+0.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-5</td>
+                        <td>+5</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>8035.T</td>
+                        <td>東京エレクトロン</td>
+                        <td>31,850円</td>
+                        <td class="score negative">-5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+5</td>
+                        <td>-10</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>8729.T</td>
+                        <td>ソニーフィナンシャルグループ</td>
+                        <td>154円</td>
+                        <td class="score negative">-5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-5</td>
+                        <td>+0</td>
+                        <td class="tech-details">保険業</td>
+                    </tr>
+
+                    <tr>
+                        <td>7013.T</td>
+                        <td>ＩＨＩ</td>
+                        <td>2,910円</td>
+                        <td class="score negative">-5.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+5</td>
+                        <td>-10</td>
+                        <td class="tech-details">機械</td>
+                    </tr>
+
+                    <tr>
+                        <td>4063.T</td>
+                        <td>信越化学工業</td>
+                        <td>4,641円</td>
+                        <td class="score negative">-10.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-10</td>
+                        <td>+0</td>
+                        <td class="tech-details">化学</td>
+                    </tr>
+
+                    <tr>
+                        <td>8766.T</td>
+                        <td>東京海上ホールディングス</td>
+                        <td>5,922円</td>
+                        <td class="score negative">-10.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-10</td>
+                        <td>+0</td>
+                        <td class="tech-details">保険業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9983.T</td>
+                        <td>ファーストリテイリング</td>
+                        <td>56,500円</td>
+                        <td class="score negative">-10.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>+0</td>
+                        <td>-10</td>
+                        <td class="tech-details">小売業</td>
+                    </tr>
+
+                    <tr>
+                        <td>6098.T</td>
+                        <td>リクルートホールディングス</td>
+                        <td>8,103円</td>
+                        <td class="score negative">-15.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-5</td>
+                        <td>-10</td>
+                        <td class="tech-details">サービス業</td>
+                    </tr>
+
+                    <tr>
+                        <td>7012.T</td>
+                        <td>川崎重工業</td>
+                        <td>10,535円</td>
+                        <td class="score negative">-20.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-10</td>
+                        <td>-10</td>
+                        <td class="tech-details">機械</td>
+                    </tr>
+
+                    <tr>
+                        <td>4568.T</td>
+                        <td>第一三共</td>
+                        <td>3,505円</td>
+                        <td class="score negative">-25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-30</td>
+                        <td>+5</td>
+                        <td class="tech-details">医薬品</td>
+                    </tr>
+
+                    <tr>
+                        <td>7267.T</td>
+                        <td>本田技研工業</td>
+                        <td>1,556円</td>
+                        <td class="score negative">-25.0</td>
+                        <td><span class="signal-badge Hold">Hold</span></td>
+                        <td>-15</td>
+                        <td>-10</td>
+                        <td class="tech-details">輸送用機器</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <h2 class="section-title">🔴 StrongSell 銘柄（スコア順）</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>銘柄名</th>
+                        <th>終値</th>
+                        <th>スコア</th>
+                        <th>シグナル</th>
+                        <th>tech_snapshot</th>
+                        <th>TOPIX相対</th>
+                        <th>セクター</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>6861.T</td>
+                        <td>キーエンス</td>
+                        <td>55,650円</td>
+                        <td class="score negative">-40.0</td>
+                        <td><span class="signal-badge StrongSell">StrongSell</span></td>
+                        <td>-40</td>
+                        <td>+0</td>
+                        <td class="tech-details">電気機器</td>
+                    </tr>
+
+                    <tr>
+                        <td>9432.T</td>
+                        <td>ＮＴＴ</td>
+                        <td>151円</td>
+                        <td class="score negative">-40.0</td>
+                        <td><span class="signal-badge StrongSell">StrongSell</span></td>
+                        <td>-35</td>
+                        <td>-5</td>
+                        <td class="tech-details">情報･通信業</td>
+                    </tr>
+
+                    <tr>
+                        <td>9021.T</td>
+                        <td>JR西日本</td>
+                        <td>3,077円</td>
+                        <td class="score negative">-45.0</td>
+                        <td><span class="signal-badge StrongSell">StrongSell</span></td>
+                        <td>-40</td>
+                        <td>-5</td>
+                        <td class="tech-details">陸運業</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="optimization-section" style="padding: 30px; background: #f0fdf4; border-top: 3px solid #10b981;">
+            <h2 class="section-title" style="color: #10b981;">✅ スコアリング最適化結果</h2>
+
+            <div class="success-box" style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #065f46; margin-bottom: 10px;">重要な発見</h3>
+                <ul style="color: #065f46; margin-left: 20px; font-size: 1.05em;">
+
+                    <li><strong>ATR（ボラティリティ指標）のみが一貫した予測力を持つ</strong></li>
+                    <li>高ボラティリティ銘柄 → 翌週パフォーマンスが良い</li>
+                    <li>モメンタム相場で合理的（ボラティリティ = トレンドの強さ）</li>
+
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">個別指標分析（Train/Test分割検証）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>指標</th>
+                        <th>Train相関</th>
+                        <th>Train Spread</th>
+                        <th>Test相関</th>
+                        <th>Test Spread</th>
+                        <th>判定</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #d1fae5; font-weight: bold;">
+                        <td>atr14_pct</td>
+                        <td class="score positive">+0.0930</td>
+                        <td class="score positive">+1.415%</td>
+                        <td class="score positive">+0.0436</td>
+                        <td class="score positive">+0.901%</td>
+                        <td>✅ 採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>rsi14</td>
+                        <td class="score negative">-0.0728</td>
+                        <td class="score negative">-1.101%</td>
+                        <td class="score positive">+0.0084</td>
+                        <td class="score positive">+0.136%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>macd_hist</td>
+                        <td class="score negative">-0.0358</td>
+                        <td class="score negative">-0.359%</td>
+                        <td class="score positive">+0.0019</td>
+                        <td class="score positive">+0.081%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>percent_b</td>
+                        <td class="score negative">-0.0513</td>
+                        <td class="score negative">-0.591%</td>
+                        <td class="score positive">+0.0021</td>
+                        <td class="score positive">+0.080%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>cmf20</td>
+                        <td class="score negative">-0.0229</td>
+                        <td class="score negative">-0.007%</td>
+                        <td class="score negative">-0.0205</td>
+                        <td class="score negative">-0.320%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>obv_slope</td>
+                        <td class="score negative">-0.0548</td>
+                        <td class="score negative">-1.499%</td>
+                        <td class="score positive">+0.0063</td>
+                        <td class="score positive">+0.306%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                    <tr >
+                        <td>sma25_dev_pct</td>
+                        <td class="score negative">-0.0716</td>
+                        <td class="score negative">-0.956%</td>
+                        <td class="score positive">+0.0426</td>
+                        <td class="score positive">+0.247%</td>
+                        <td>❌ 不採用</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">最適化されたウェイト</h3>
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+                <div style="margin-bottom: 10px;">
+                    <span style="display: inline-block; width: 150px; font-weight: bold;">atr14_pct:</span>
+                    <span style="display: inline-block; width: 300px; background: #10b981; height: 20px; border-radius: 4px; position: relative;">
+                        <span style="display: block; background: #059669; height: 100%; width: 100.0%; border-radius: 4px;"></span>
+                    </span>
+                    <span style="margin-left: 10px;">1.000</span>
+                </div>
+
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">最適化スコアのパフォーマンス</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>データセット</th>
+                        <th>相関</th>
+                        <th>Spread (High - Low)</th>
+                        <th>High Tercile</th>
+                        <th>Low Tercile</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td><strong>Train Set</strong><br><small>前半6ヶ月（最適化用）</small></td>
+                        <td class="score positive">+0.0899</td>
+                        <td class="score positive">+0.613%</td>
+                        <td class="score positive">+0.515%</td>
+                        <td class="score negative">-0.098%</td>
+                    </tr>
+                    <tr style="background: #d1fae5;">
+                        <td><strong>Test Set (Out-of-Sample)</strong><br><small>後半6ヶ月（検証用）</small></td>
+                        <td class="score positive"><strong>+0.0627</strong></td>
+                        <td class="score positive"><strong>+0.709%</strong></td>
+                        <td class="score positive"><strong>+1.392%</strong></td>
+                        <td class="score positive"><strong>+0.683%</strong></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div class="note" style="margin-top: 30px; background: #d1fae5; border-left: 4px solid #10b981; padding: 15px;">
+                <strong>結論:</strong><br>
+                ✅ ATR（ボラティリティ）が唯一の予測力のある指標<br>
+                ✅ Out-of-Sample検証で相関 +0.0627、Spread +0.709%<br>
+                ✅ 他の伝統的テクニカル指標（RSI, MACD, Bollinger等）は予測力なし
+            </div>
+        </div>
+
+        <div class="optimization-section" style="padding: 30px; background: #ecfdf5; border-top: 3px solid #059669;">
+            <h2 class="section-title" style="color: #059669;">🎉 マーケット要因追加版（v2）</h2>
+
+            <div class="success-box" style="background: #a7f3d0; border-left: 4px solid #059669; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #065f46; margin-bottom: 10px;">✅ 改善成功！</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 0.9em; color: #666;">Test相関</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #059669;">+0.0744</div>
+                        <div style="font-size: 0.85em; color: #10b981;">↑ +18.7% 改善</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 0.9em; color: #666;">Test Spread</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #059669;">+0.942%</div>
+                        <div style="font-size: 0.85em; color: #10b981;">↑ +32.9% 改善</div>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 0.9em; color: #666;">High Tercile</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #059669;">+1.738%</div>
+                        <div style="font-size: 0.85em; color: #10b981;">翌週リターン</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">採用された指標（4つ）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>指標</th>
+                        <th>種類</th>
+                        <th>ウェイト</th>
+                        <th>Train相関</th>
+                        <th>Test相関</th>
+                        <th>Test Spread</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #d1fae5;">
+                        <td><strong>stock_volatility_20d</strong></td>
+                        <td>個別銘柄</td>
+                        <td>0.346 (34.6%)</td>
+                        <td class="score positive">+0.1198</td>
+                        <td class="score positive">+0.0516</td>
+                        <td class="score positive">+0.982%</td>
+                    </tr>
+
+                    <tr style="background: #d1fae5;">
+                        <td><strong>atr14_pct</strong></td>
+                        <td>テクニカル</td>
+                        <td>0.336 (33.6%)</td>
+                        <td class="score positive">+0.0930</td>
+                        <td class="score positive">+0.0436</td>
+                        <td class="score positive">+0.901%</td>
+                    </tr>
+
+                    <tr style="background: #d1fae5;">
+                        <td><strong>relative_volatility</strong></td>
+                        <td>マーケット相対</td>
+                        <td>0.175 (17.5%)</td>
+                        <td class="score negative">-0.0072</td>
+                        <td class="score positive">+0.0525</td>
+                        <td class="score positive">+0.942%</td>
+                    </tr>
+
+                    <tr style="background: #d1fae5;">
+                        <td><strong>relative_strength_20d</strong></td>
+                        <td>マーケット相対</td>
+                        <td>0.143 (14.3%)</td>
+                        <td class="score negative">-0.0053</td>
+                        <td class="score positive">+0.0414</td>
+                        <td class="score positive">+0.766%</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h4 style="margin-bottom: 15px; color: #333;">重要な発見</h4>
+                <ul style="color: #065f46; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>ボラティリティ/モメンタム系が全て</strong><br>
+                        4指標全てがボラティリティまたはモメンタム関連</li>
+                    <li><strong>マーケット相対強度が効く</strong><br>
+                        TOPIX対比の20日リターン（relative_strength_20d）が採用</li>
+                    <li><strong>相対ボラティリティも有効</strong><br>
+                        個別銘柄単体よりマーケット対比のボラティリティが重要</li>
+                    <li><strong>伝統的テクニカル指標は全滅</strong><br>
+                        RSI, MACD, Bollinger Bands等は依然として不採用</li>
+                </ul>
+            </div>
+
+            <div class="note" style="margin-top: 30px; background: #a7f3d0; border-left: 4px solid #059669; padding: 15px;">
+                <strong>結論:</strong><br>
+                🎉 マーケット要因の追加で相関・Spread共に改善<br>
+                ✅ ボラティリティ + 相対強度の組み合わせが有効<br>
+                ✅ 次のステップ: ファンダメンタルズ（ニュース・IR・決算）追加で更なる改善を目指す<br>
+                <br>
+                ⚠️ それでも相関は0.07と弱い → テクニカルだけでは限界あり
+            </div>
+        </div>
+
+        <div class="phase2-section" style="padding: 30px; background: #fef3c7; border-top: 4px solid #f59e0b;">
+            <h2 class="section-title" style="color: #d97706;">🎯 Phase 1 + Phase 2 実戦分析</h2>
+
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #92400e; margin-bottom: 10px;">2段階スクリーニング結果</h3>
+                <p style="color: #78350f; font-size: 1.05em;">
+                    <strong>対象日:</strong> 2025-11-18<br>
+                    <strong>Phase 1:</strong> 全56銘柄をスコアリング → 上位10%（5銘柄）抽出<br>
+                    <strong>Phase 2:</strong> 上位5銘柄のみ深掘り分析 → 再スコアリング
+                </p>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">Phase 2 分析対象銘柄（上位10%）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>最終ランク</th>
+                        <th>Ticker</th>
+                        <th>銘柄名</th>
+                        <th>終値</th>
+                        <th>Phase 1</th>
+                        <th>Phase 2</th>
+                        <th>最終スコア</th>
+                        <th>セクター</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #fef3c7;">
+                        <td><strong>#1</strong></td>
+                        <td>6857.T</td>
+                        <td><strong>アドバンテスト</strong></td>
+                        <td>19,530円</td>
+                        <td class="score positive">+67.19</td>
+                        <td class="score neutral">+0.00</td>
+                        <td class="score positive"><strong>+26.88</strong></td>
+                        <td style="font-size: 0.85em;">電気機器</td>
+                    </tr>
+
+                    <tr style="background: #fef3c7;">
+                        <td><strong>#2</strong></td>
+                        <td>9984.T</td>
+                        <td><strong>ソフトバンクグループ</strong></td>
+                        <td>19,780円</td>
+                        <td class="score positive">+62.66</td>
+                        <td class="score neutral">+0.00</td>
+                        <td class="score positive"><strong>+25.06</strong></td>
+                        <td style="font-size: 0.85em;">情報･通信業</td>
+                    </tr>
+
+                    <tr style="background: #fef3c7;">
+                        <td><strong>#3</strong></td>
+                        <td>6920.T</td>
+                        <td><strong>レーザーテック</strong></td>
+                        <td>28,095円</td>
+                        <td class="score positive">+52.99</td>
+                        <td class="score neutral">+0.00</td>
+                        <td class="score positive"><strong>+21.20</strong></td>
+                        <td style="font-size: 0.85em;">電気機器</td>
+                    </tr>
+
+                    <tr style="background: #fef3c7;">
+                        <td><strong>#4</strong></td>
+                        <td>6946.T</td>
+                        <td><strong>日本アビオニクス</strong></td>
+                        <td>4,990円</td>
+                        <td class="score positive">+44.28</td>
+                        <td class="score neutral">+0.00</td>
+                        <td class="score positive"><strong>+17.71</strong></td>
+                        <td style="font-size: 0.85em;">電気機器</td>
+                    </tr>
+
+                    <tr style="background: #fef3c7;">
+                        <td><strong>#5</strong></td>
+                        <td>7735.T</td>
+                        <td><strong>SCREENホールディングス</strong></td>
+                        <td>12,815円</td>
+                        <td class="score positive">+7.19</td>
+                        <td class="score neutral">+0.00</td>
+                        <td class="score positive"><strong>+2.88</strong></td>
+                        <td style="font-size: 0.85em;">電気機器</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h4 style="margin-bottom: 15px; color: #333;">Phase 2 スコア内訳（プロトタイプ版）</h4>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">6857.T アドバンテスト</div>
+                    <ul style="margin-left: 20px; color: #78350f; line-height: 1.6;">
+                        <li>ニュースセンチメント: +0 <span style="color: #999;">(TODO: WebSearch実装)</span></li>
+                        <li>IR情報分析: +0 <span style="color: #999;">(TODO: IR分析実装)</span></li>
+                        <li>ファンダメンタルズ: +0 <span style="color: #999;">(TODO: PER/PBR分析)</span></li>
+                        <li>モメンタム確認: +0 <span style="color: #999;">(TODO: 材料確認)</span></li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">9984.T ソフトバンクグループ</div>
+                    <ul style="margin-left: 20px; color: #78350f; line-height: 1.6;">
+                        <li>ニュースセンチメント: +0 <span style="color: #999;">(TODO: WebSearch実装)</span></li>
+                        <li>IR情報分析: +0 <span style="color: #999;">(TODO: IR分析実装)</span></li>
+                        <li>ファンダメンタルズ: +0 <span style="color: #999;">(TODO: PER/PBR分析)</span></li>
+                        <li>モメンタム確認: +0 <span style="color: #999;">(TODO: 材料確認)</span></li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">6920.T レーザーテック</div>
+                    <ul style="margin-left: 20px; color: #78350f; line-height: 1.6;">
+                        <li>ニュースセンチメント: +0 <span style="color: #999;">(TODO: WebSearch実装)</span></li>
+                        <li>IR情報分析: +0 <span style="color: #999;">(TODO: IR分析実装)</span></li>
+                        <li>ファンダメンタルズ: +0 <span style="color: #999;">(TODO: PER/PBR分析)</span></li>
+                        <li>モメンタム確認: +0 <span style="color: #999;">(TODO: 材料確認)</span></li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">6946.T 日本アビオニクス</div>
+                    <ul style="margin-left: 20px; color: #78350f; line-height: 1.6;">
+                        <li>ニュースセンチメント: +0 <span style="color: #999;">(TODO: WebSearch実装)</span></li>
+                        <li>IR情報分析: +0 <span style="color: #999;">(TODO: IR分析実装)</span></li>
+                        <li>ファンダメンタルズ: +0 <span style="color: #999;">(TODO: PER/PBR分析)</span></li>
+                        <li>モメンタム確認: +0 <span style="color: #999;">(TODO: 材料確認)</span></li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">7735.T SCREENホールディングス</div>
+                    <ul style="margin-left: 20px; color: #78350f; line-height: 1.6;">
+                        <li>ニュースセンチメント: +0 <span style="color: #999;">(TODO: WebSearch実装)</span></li>
+                        <li>IR情報分析: +0 <span style="color: #999;">(TODO: IR分析実装)</span></li>
+                        <li>ファンダメンタルズ: +0 <span style="color: #999;">(TODO: PER/PBR分析)</span></li>
+                        <li>モメンタム確認: +0 <span style="color: #999;">(TODO: 材料確認)</span></li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="note" style="margin-top: 30px; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px;">
+                <strong>⚠️ プロトタイプ版について:</strong><br>
+                Phase 2は構造のみ実装済み。以下を追加実装することで実用化：<br><br>
+                <strong>実装予定:</strong><br>
+                1. <strong>WebSearch API</strong>: 各銘柄のニュース・材料を検索<br>
+                2. <strong>センチメント分析</strong>: ニュースの好悪判定<br>
+                3. <strong>IR情報取得</strong>: 決算発表・業績修正等<br>
+                4. <strong>ファンダメンタルズ</strong>: PER/PBR/ROE等の評価<br><br>
+                <strong>次のステップ:</strong><br>
+                この5銘柄に対して手動で深掘り → Phase 2スコアリングロジックを設計
+            </div>
+        </div>
+
+        <div class="backtest-section" style="padding: 30px; background: #f8f9fa; border-top: 3px solid #667eea;">
+            <h2 class="section-title" style="color: #dc2626;">⚠️ バックテスト検証結果</h2>
+
+            <div class="warning-box" style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #991b1b; margin-bottom: 10px;">重大な問題が発見されました</h3>
+                <p style="font-size: 1.1em; color: #991b1b; margin-bottom: 10px;">
+                    <strong>現在のテクニカルスコアリングは予測力がほぼゼロです</strong>
+                </p>
+                <ul style="color: #991b1b; margin-left: 20px;">
+
+                    <li>スコアとリターンの相関: <strong>-0.0019</strong>（翌日）、<strong>-0.0102</strong>（翌週）</li>
+                    <li>検証期間: 15,837 レコード</li>
+
+                    <li>最良シグナル: <strong>強い売り</strong> → 翌週 +1.13%</li>
+                    <li>最悪シグナル: <strong>中立</strong> → 翌週 +0.54%</li>
+
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">シグナル別パフォーマンス（過去1年のバックテスト）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>シグナル</th>
+                        <th>サンプル数</th>
+                        <th>翌日リターン</th>
+                        <th>翌日勝率</th>
+                        <th>翌週リターン</th>
+                        <th>翌週勝率</th>
+                        <th>翌週中央値</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr >
+                        <td><span class="signal-badge 強買">強い買い</span></td>
+                        <td>1,798</td>
+                        <td class="score positive">+0.256%</td>
+                        <td>52.3%</td>
+                        <td class="score positive">+0.794%</td>
+                        <td>54.5%</td>
+                        <td>+0.497%</td>
+                    </tr>
+
+                    <tr >
+                        <td><span class="signal-badge 買">買い</span></td>
+                        <td>2,833</td>
+                        <td class="score positive">+0.141%</td>
+                        <td>50.9%</td>
+                        <td class="score positive">+0.796%</td>
+                        <td>54.6%</td>
+                        <td>+0.430%</td>
+                    </tr>
+
+                    <tr >
+                        <td><span class="signal-badge 中立">中立</span></td>
+                        <td>4,893</td>
+                        <td class="score positive">+0.077%</td>
+                        <td>49.3%</td>
+                        <td class="score positive">+0.544%</td>
+                        <td>52.4%</td>
+                        <td>+0.261%</td>
+                    </tr>
+
+                    <tr >
+                        <td><span class="signal-badge 売">売り</span></td>
+                        <td>3,552</td>
+                        <td class="score positive">+0.128%</td>
+                        <td>49.2%</td>
+                        <td class="score positive">+0.620%</td>
+                        <td>52.2%</td>
+                        <td>+0.188%</td>
+                    </tr>
+
+                    <tr style="background: #d1fae5;">
+                        <td><span class="signal-badge 強売">強い売り</span></td>
+                        <td>2,761</td>
+                        <td class="score positive">+0.230%</td>
+                        <td>52.6%</td>
+                        <td class="score positive">+1.134%</td>
+                        <td>57.1%</td>
+                        <td>+0.667%</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div class="note" style="margin-top: 30px; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px;">
+                <strong>結論:</strong> 現在のスコアリングロジックは改善が必要です。<br>
+                推奨アクション:<br>
+                1. テクニカル指標の重み付けを見直し<br>
+                2. 期間パラメータを最適化<br>
+                3. マーケット環境（トレンド/レンジ）に応じた適応型スコアリング<br>
+                4. ファンダメンタル要因の追加
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Data source: technical_scores_20251117.json</p>
+            <p>Next Phase: WebSearch分析（ニュース・IR・ファンダメンタルズ）を追加予定</p>
+        </div>
+    </div>
+</body>
+</html>

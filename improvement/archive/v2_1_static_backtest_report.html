@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v2 バックテスト分析レポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        main {
+            padding: 40px;
+        }
+
+        .summary-section {
+            margin-bottom: 50px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .summary-card h3 {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 0.95em;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+        }
+
+        th.number {
+            text-align: right;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        td.number {
+            text-align: right;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .positive {
+            color: #27ae60;
+        }
+
+        .negative {
+            color: #e74c3c;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        h3 {
+            color: #34495e;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            font-size: 0.9em;
+        }
+
+        .date-separator {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 v2.1.0 静的バックテスト分析レポート</h1>
+            <p>政策銘柄 + TOPIX_CORE30 | 2020-2025 全価格帯 | RSI + 出来高 + SMA5</p>
+        </header>
+
+        <main>
+            
+    <div class="summary-section">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>📊 全体統計</h3>
+                <div class="stat-row">
+                    <span class="stat-label">総判定数</span>
+                    <span class="stat-value">80,528</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">7,012</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">9,788</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">63,728</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>📈 買いシグナル成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">判定数</span>
+                    <span class="stat-value">7,012</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">50.77%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">100株平均利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+69</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+483,083</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>📉 売りシグナル成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">判定数</span>
+                    <span class="stat-value">9,788</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">50.61%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">100株平均利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+167</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+1,637,078</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            
+    <div class="summary-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">📊 RSI範囲別成績</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3 style="margin-bottom: 16px; color: #27ae60;">買いシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>RSI範囲</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 30 (売られすぎ)</td>
+            <td class="number">6,681</td>
+            <td class="number" style="color: #27ae60;">50.79%</td>
+            <td class="number" style="color: #27ae60;">+130</td>
+        </tr>
+        <tr>
+            <td>30-40</td>
+            <td class="number">80</td>
+            <td class="number" style="color: #e74c3c;">47.50%</td>
+            <td class="number" style="color: #e74c3c;">-64</td>
+        </tr>
+        <tr>
+            <td>40-60 (中立)</td>
+            <td class="number">175</td>
+            <td class="number" style="color: #27ae60;">52.00%</td>
+            <td class="number" style="color: #e74c3c;">-2,551</td>
+        </tr>
+        <tr>
+            <td>60-70</td>
+            <td class="number">54</td>
+            <td class="number" style="color: #e74c3c;">48.15%</td>
+            <td class="number" style="color: #27ae60;">+2,249</td>
+        </tr>
+        <tr>
+            <td>> 70 (買われすぎ)</td>
+            <td class="number">22</td>
+            <td class="number" style="color: #27ae60;">54.55%</td>
+            <td class="number" style="color: #e74c3c;">-2,405</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 16px; color: #e74c3c;">売りシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>RSI範囲</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 30 (売られすぎ)</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>30-40</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>40-60 (中立)</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>60-70</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>> 70 (買われすぎ)</td>
+            <td class="number">9,781</td>
+            <td class="number" style="color: #27ae60;">50.62%</td>
+            <td class="number" style="color: #27ae60;">+158</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+            
+    <div class="summary-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">📊 出来高変化率別成績</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3 style="margin-bottom: 16px; color: #27ae60;">買いシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>出来高変化率</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 0.5x (極小)</td>
+            <td class="number">158</td>
+            <td class="number" style="color: #e74c3c;">48.73%</td>
+            <td class="number" style="color: #e74c3c;">-450</td>
+        </tr>
+        <tr>
+            <td>0.5-1.0x (低調)</td>
+            <td class="number">2,856</td>
+            <td class="number" style="color: #27ae60;">50.56%</td>
+            <td class="number" style="color: #27ae60;">+530</td>
+        </tr>
+        <tr>
+            <td>1.0-1.5x (平常)</td>
+            <td class="number">2,382</td>
+            <td class="number" style="color: #27ae60;">50.13%</td>
+            <td class="number" style="color: #e74c3c;">-649</td>
+        </tr>
+        <tr>
+            <td>1.5-2.0x (やや活発)</td>
+            <td class="number">820</td>
+            <td class="number" style="color: #27ae60;">51.71%</td>
+            <td class="number" style="color: #27ae60;">+852</td>
+        </tr>
+        <tr>
+            <td>> 2.0x (急増)</td>
+            <td class="number">744</td>
+            <td class="number" style="color: #27ae60;">52.15%</td>
+            <td class="number" style="color: #e74c3c;">-186</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 16px; color: #e74c3c;">売りシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>出来高変化率</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 0.5x (極小)</td>
+            <td class="number">190</td>
+            <td class="number" style="color: #27ae60;">54.21%</td>
+            <td class="number" style="color: #27ae60;">+2,037</td>
+        </tr>
+        <tr>
+            <td>0.5-1.0x (低調)</td>
+            <td class="number">4,716</td>
+            <td class="number" style="color: #27ae60;">50.28%</td>
+            <td class="number" style="color: #27ae60;">+12</td>
+        </tr>
+        <tr>
+            <td>1.0-1.5x (平常)</td>
+            <td class="number">3,828</td>
+            <td class="number" style="color: #27ae60;">51.15%</td>
+            <td class="number" style="color: #27ae60;">+240</td>
+        </tr>
+        <tr>
+            <td>1.5-2.0x (やや活発)</td>
+            <td class="number">1,042</td>
+            <td class="number" style="color: #e74c3c;">49.52%</td>
+            <td class="number" style="color: #27ae60;">+277</td>
+        </tr>
+        <tr>
+            <td>> 2.0x (急増)</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+            
+    <div class="summary-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">📊 SMA5乖離率別成績</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3 style="margin-bottom: 16px; color: #27ae60;">買いシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SMA5乖離率</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< -5% (大幅下落)</td>
+            <td class="number">831</td>
+            <td class="number" style="color: #27ae60;">54.39%</td>
+            <td class="number" style="color: #27ae60;">+393</td>
+        </tr>
+        <tr>
+            <td>-5% ~ -2% (下落)</td>
+            <td class="number">1,921</td>
+            <td class="number" style="color: #e74c3c;">49.71%</td>
+            <td class="number" style="color: #e74c3c;">-99</td>
+        </tr>
+        <tr>
+            <td>-2% ~ 0% (押し目)</td>
+            <td class="number">2,994</td>
+            <td class="number" style="color: #e74c3c;">49.80%</td>
+            <td class="number" style="color: #27ae60;">+3</td>
+        </tr>
+        <tr>
+            <td>0% ~ 2% (微上昇)</td>
+            <td class="number">1,101</td>
+            <td class="number" style="color: #27ae60;">51.32%</td>
+            <td class="number" style="color: #e74c3c;">-13</td>
+        </tr>
+        <tr>
+            <td>2% ~ 5% (上昇)</td>
+            <td class="number">139</td>
+            <td class="number" style="color: #27ae60;">58.99%</td>
+            <td class="number" style="color: #27ae60;">+2,006</td>
+        </tr>
+        <tr>
+            <td>> 5% (大幅上昇)</td>
+            <td class="number">23</td>
+            <td class="number" style="color: #27ae60;">56.52%</td>
+            <td class="number" style="color: #27ae60;">+3,191</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 16px; color: #e74c3c;">売りシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SMA5乖離率</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< -5% (大幅下落)</td>
+            <td class="number">3</td>
+            <td class="number" style="color: #27ae60;">100.00%</td>
+            <td class="number" style="color: #27ae60;">+7,957</td>
+        </tr>
+        <tr>
+            <td>-5% ~ -2% (下落)</td>
+            <td class="number">162</td>
+            <td class="number" style="color: #e74c3c;">47.53%</td>
+            <td class="number" style="color: #e74c3c;">-861</td>
+        </tr>
+        <tr>
+            <td>-2% ~ 0% (押し目)</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>0% ~ 2% (微上昇)</td>
+            <td class="number">5,651</td>
+            <td class="number" style="color: #e74c3c;">49.69%</td>
+            <td class="number" style="color: #e74c3c;">-109</td>
+        </tr>
+        <tr>
+            <td>2% ~ 5% (上昇)</td>
+            <td class="number">3,345</td>
+            <td class="number" style="color: #27ae60;">51.42%</td>
+            <td class="number" style="color: #27ae60;">+250</td>
+        </tr>
+        <tr>
+            <td>> 5% (大幅上昇)</td>
+            <td class="number">627</td>
+            <td class="number" style="color: #27ae60;">55.18%</td>
+            <td class="number" style="color: #27ae60;">+2,442</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+            
+    <div class="summary-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">📊 株価レンジ別成績</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3 style="margin-bottom: 16px; color: #27ae60;">買いシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>株価レンジ</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 500円</td>
+            <td class="number">759</td>
+            <td class="number" style="color: #e74c3c;">48.35%</td>
+            <td class="number" style="color: #e74c3c;">-28</td>
+        </tr>
+        <tr>
+            <td>500-1,000円</td>
+            <td class="number">856</td>
+            <td class="number" style="color: #e74c3c;">49.18%</td>
+            <td class="number" style="color: #27ae60;">+13</td>
+        </tr>
+        <tr>
+            <td>1,000-2,000円</td>
+            <td class="number">1,592</td>
+            <td class="number" style="color: #27ae60;">51.57%</td>
+            <td class="number" style="color: #27ae60;">+129</td>
+        </tr>
+        <tr>
+            <td>2,000-3,000円</td>
+            <td class="number">1,257</td>
+            <td class="number" style="color: #27ae60;">50.76%</td>
+            <td class="number" style="color: #27ae60;">+140</td>
+        </tr>
+        <tr>
+            <td>3,000-5,000円</td>
+            <td class="number">965</td>
+            <td class="number" style="color: #27ae60;">50.67%</td>
+            <td class="number" style="color: #27ae60;">+246</td>
+        </tr>
+        <tr>
+            <td>5,000-10,000円</td>
+            <td class="number">629</td>
+            <td class="number" style="color: #27ae60;">52.15%</td>
+            <td class="number" style="color: #27ae60;">+1,206</td>
+        </tr>
+        <tr>
+            <td>10,000円以上</td>
+            <td class="number">954</td>
+            <td class="number" style="color: #27ae60;">51.99%</td>
+            <td class="number" style="color: #e74c3c;">-926</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 16px; color: #e74c3c;">売りシグナル</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>株価レンジ</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>< 500円</td>
+            <td class="number">702</td>
+            <td class="number" style="color: #27ae60;">51.57%</td>
+            <td class="number" style="color: #e74c3c;">-1</td>
+        </tr>
+        <tr>
+            <td>500-1,000円</td>
+            <td class="number">998</td>
+            <td class="number" style="color: #27ae60;">51.50%</td>
+            <td class="number" style="color: #27ae60;">+49</td>
+        </tr>
+        <tr>
+            <td>1,000-2,000円</td>
+            <td class="number">2,314</td>
+            <td class="number" style="color: #e74c3c;">49.01%</td>
+            <td class="number" style="color: #e74c3c;">-18</td>
+        </tr>
+        <tr>
+            <td>2,000-3,000円</td>
+            <td class="number">1,783</td>
+            <td class="number" style="color: #27ae60;">50.08%</td>
+            <td class="number" style="color: #e74c3c;">-70</td>
+        </tr>
+        <tr>
+            <td>3,000-5,000円</td>
+            <td class="number">1,736</td>
+            <td class="number" style="color: #27ae60;">51.44%</td>
+            <td class="number" style="color: #27ae60;">+288</td>
+        </tr>
+        <tr>
+            <td>5,000-10,000円</td>
+            <td class="number">1,028</td>
+            <td class="number" style="color: #27ae60;">51.85%</td>
+            <td class="number" style="color: #e74c3c;">-307</td>
+        </tr>
+        <tr>
+            <td>10,000円以上</td>
+            <td class="number">1,227</td>
+            <td class="number" style="color: #27ae60;">50.94%</td>
+            <td class="number" style="color: #27ae60;">+1,279</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+            
+    <div class="summary-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">📊 スコア範囲別成績</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3 style="margin-bottom: 16px; color: #27ae60;">買いシグナル (スコア 20+)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>スコア範囲</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>20 ~ 30</td>
+            <td class="number">3,677</td>
+            <td class="number" style="color: #27ae60;">51.21%</td>
+            <td class="number" style="color: #e74c3c;">-37</td>
+        </tr>
+        <tr>
+            <td>30 ~ 40</td>
+            <td class="number">3,285</td>
+            <td class="number" style="color: #27ae60;">50.35%</td>
+            <td class="number" style="color: #27ae60;">+284</td>
+        </tr>
+        <tr>
+            <td>40+</td>
+            <td class="number">50</td>
+            <td class="number" style="color: #e74c3c;">46.00%</td>
+            <td class="number" style="color: #e74c3c;">-6,281</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3 style="margin-bottom: 16px; color: #e74c3c;">売りシグナル (スコア -10以下)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>スコア範囲</th>
+                            <th class="number">判定数</th>
+                            <th class="number">勝率</th>
+                            <th class="number">100株平均利益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>-30 ~ -20</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+        <tr>
+            <td>-20 ~ -10</td>
+            <td class="number">0</td>
+            <td class="number" style="color: #e74c3c;">0.00%</td>
+            <td class="number" style="color: #e74c3c;">0</td>
+        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+        </main>
+
+        <footer>
+            <p>Generated on 2025-11-22 17:10:46</p>
+        </footer>
+    </div>
+</body>
+</html>

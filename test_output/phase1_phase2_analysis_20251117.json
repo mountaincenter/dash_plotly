@@ -1,0 +1,946 @@
+{
+  "generated_at": "2025-11-17T22:22:57.620811",
+  "analysis_date": "2025-11-14",
+  "target_date": "2025-11-18",
+  "methodology": {
+    "phase1": "テクニカル + マーケット要因（最適化スコアリング）",
+    "phase1_threshold": "Top 10%",
+    "phase2": "WebSearch + ファンダメンタルズ分析（プロトタイプ版）",
+    "final_score": "Phase1 × 0.4 + Phase2 × 0.6"
+  },
+  "summary": {
+    "total_stocks": 56,
+    "top_10_percent_count": 5,
+    "phase2_analyzed_count": 5
+  },
+  "phase1_all_stocks": [
+    {
+      "ticker": "6857.T",
+      "stock_name": "アドバンテスト",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 19530.0,
+      "phase1_score": 67.19,
+      "atr14_pct": 6.5422006192250635,
+      "stock_volatility_20d": 6.418190407602577,
+      "phase1_rank": 1
+    },
+    {
+      "ticker": "9984.T",
+      "stock_name": "ソフトバンクグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 19780.0,
+      "phase1_score": 62.66,
+      "atr14_pct": 8.755294975450658,
+      "stock_volatility_20d": 5.248638193118799,
+      "phase1_rank": 2
+    },
+    {
+      "ticker": "6920.T",
+      "stock_name": "レーザーテック",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 28095.0,
+      "phase1_score": 52.99,
+      "atr14_pct": 5.852723304356255,
+      "stock_volatility_20d": 5.992929171640495,
+      "phase1_rank": 3
+    },
+    {
+      "ticker": "6946.T",
+      "stock_name": "日本アビオニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4990.0,
+      "phase1_score": 44.28,
+      "atr14_pct": 6.005272644247237,
+      "stock_volatility_20d": 5.487599599628075,
+      "phase1_rank": 4
+    },
+    {
+      "ticker": "7735.T",
+      "stock_name": "SCREENホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 12815.0,
+      "phase1_score": 7.19,
+      "atr14_pct": 5.271188165022305,
+      "stock_volatility_20d": 3.9233296375706965,
+      "phase1_rank": 5
+    },
+    {
+      "ticker": "6098.T",
+      "stock_name": "リクルートホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "サービス業",
+      "latest_close": 8103.0,
+      "phase1_score": 6.49,
+      "atr14_pct": 4.027156585425522,
+      "stock_volatility_20d": 4.41624995984281,
+      "phase1_rank": 6
+    },
+    {
+      "ticker": "7012.T",
+      "stock_name": "川崎重工業",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "latest_close": 10535.0,
+      "phase1_score": 5.39,
+      "atr14_pct": 4.626770810051225,
+      "stock_volatility_20d": 4.10600801342626,
+      "phase1_rank": 7
+    },
+    {
+      "ticker": "9501.T",
+      "stock_name": "東京電力ホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "latest_close": 878.0,
+      "phase1_score": -1.17,
+      "atr14_pct": 5.171953214896873,
+      "stock_volatility_20d": 3.542744235240862,
+      "phase1_rank": 8
+    },
+    {
+      "ticker": "5631.T",
+      "stock_name": "日本製鋼所",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "latest_close": 9534.0,
+      "phase1_score": -7.69,
+      "atr14_pct": 4.675797678915433,
+      "stock_volatility_20d": 3.423830865839582,
+      "phase1_rank": 9
+    },
+    {
+      "ticker": "6723.T",
+      "stock_name": "ルネサスエレクトロニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 1935.0,
+      "phase1_score": -8.74,
+      "atr14_pct": 5.2745892046245,
+      "stock_volatility_20d": 3.1160139535644014,
+      "phase1_rank": 10
+    },
+    {
+      "ticker": "6701.T",
+      "stock_name": "ＮＥＣ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 5980.0,
+      "phase1_score": -17.26,
+      "atr14_pct": 3.727374407260918,
+      "stock_volatility_20d": 3.3428040742442757,
+      "phase1_rank": 11
+    },
+    {
+      "ticker": "6501.T",
+      "stock_name": "日立製作所",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 5083.0,
+      "phase1_score": -20.69,
+      "atr14_pct": 3.9921163111470626,
+      "stock_volatility_20d": 3.0567444543280935,
+      "phase1_rank": 12
+    },
+    {
+      "ticker": "6981.T",
+      "stock_name": "村田製作所",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 3109.0,
+      "phase1_score": -22.16,
+      "atr14_pct": 3.275030847578268,
+      "stock_volatility_20d": 3.286902320225551,
+      "phase1_rank": 13
+    },
+    {
+      "ticker": "7013.T",
+      "stock_name": "ＩＨＩ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "latest_close": 2910.0,
+      "phase1_score": -22.58,
+      "atr14_pct": 4.188934074514155,
+      "stock_volatility_20d": 2.877275593827084,
+      "phase1_rank": 14
+    },
+    {
+      "ticker": "8035.T",
+      "stock_name": "東京エレクトロン",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 31850.0,
+      "phase1_score": -23.16,
+      "atr14_pct": 4.238046405782488,
+      "stock_volatility_20d": 2.8270656123569085,
+      "phase1_rank": 15
+    },
+    {
+      "ticker": "4307.T",
+      "stock_name": "野村総合研究所",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "情報・通信業",
+      "latest_close": 6330.0,
+      "phase1_score": -24.22,
+      "atr14_pct": 3.515812705384797,
+      "stock_volatility_20d": 3.0803786878071313,
+      "phase1_rank": 16
+    },
+    {
+      "ticker": "6762.T",
+      "stock_name": "ＴＤＫ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 2535.5,
+      "phase1_score": -28.71,
+      "atr14_pct": 3.6905968426480085,
+      "stock_volatility_20d": 2.7788457807647493,
+      "phase1_rank": 17
+    },
+    {
+      "ticker": "1812.T",
+      "stock_name": "鹿島建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "latest_close": 5605.0,
+      "phase1_score": -31.18,
+      "atr14_pct": 3.650154105445845,
+      "stock_volatility_20d": 2.6713333956077596,
+      "phase1_rank": 18
+    },
+    {
+      "ticker": "4568.T",
+      "stock_name": "第一三共",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "医薬品",
+      "latest_close": 3505.0,
+      "phase1_score": -33.74,
+      "atr14_pct": 3.5822297773428677,
+      "stock_volatility_20d": 2.5705852591689635,
+      "phase1_rank": 19
+    },
+    {
+      "ticker": "7011.T",
+      "stock_name": "三菱重工業",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "latest_close": 4174.0,
+      "phase1_score": -34.91,
+      "atr14_pct": 3.863542658362049,
+      "stock_volatility_20d": 2.3920571478492287,
+      "phase1_rank": 20
+    },
+    {
+      "ticker": "1803.T",
+      "stock_name": "清水建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "latest_close": 2507.0,
+      "phase1_score": -36.51,
+      "atr14_pct": 3.8315232784136177,
+      "stock_volatility_20d": 2.324908235034483,
+      "phase1_rank": 21
+    },
+    {
+      "ticker": "9022.T",
+      "stock_name": "JR東海",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "latest_close": 4136.0,
+      "phase1_score": -41.46,
+      "atr14_pct": 2.5222749458309117,
+      "stock_volatility_20d": 2.630577786060583,
+      "phase1_rank": 22
+    },
+    {
+      "ticker": "7974.T",
+      "stock_name": "任天堂",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "その他製品",
+      "latest_close": 13445.0,
+      "phase1_score": -42.77,
+      "atr14_pct": 3.1815416814316335,
+      "stock_volatility_20d": 2.2842835526957814,
+      "phase1_rank": 23
+    },
+    {
+      "ticker": "1802.T",
+      "stock_name": "大林組",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "latest_close": 2850.5,
+      "phase1_score": -45.42,
+      "atr14_pct": 2.76552412480127,
+      "stock_volatility_20d": 2.3270436616329784,
+      "phase1_rank": 24
+    },
+    {
+      "ticker": "1801.T",
+      "stock_name": "大成建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "latest_close": 12520.0,
+      "phase1_score": -45.62,
+      "atr14_pct": 3.5885414584878905,
+      "stock_volatility_20d": 1.9669963889293671,
+      "phase1_rank": 25
+    },
+    {
+      "ticker": "6367.T",
+      "stock_name": "ダイキン工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "機械",
+      "latest_close": 20595.0,
+      "phase1_score": -47.64,
+      "atr14_pct": 2.68439873258804,
+      "stock_volatility_20d": 2.249288880141597,
+      "phase1_rank": 26
+    },
+    {
+      "ticker": "8729.T",
+      "stock_name": "ソニーフィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "保険業",
+      "latest_close": 154.39999389648438,
+      "phase1_score": -47.67,
+      "atr14_pct": 3.2774030486582313,
+      "stock_volatility_20d": 1.995740155851047,
+      "phase1_rank": 27
+    },
+    {
+      "ticker": "7741.T",
+      "stock_name": "ＨＯＹＡ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "精密機器",
+      "latest_close": 24185.0,
+      "phase1_score": -48.02,
+      "atr14_pct": 3.220096980164841,
+      "stock_volatility_20d": 2.002266036036114,
+      "phase1_rank": 28
+    },
+    {
+      "ticker": "6758.T",
+      "stock_name": "ソニーグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4700.0,
+      "phase1_score": -49.76,
+      "atr14_pct": 3.085447904112839,
+      "stock_volatility_20d": 1.9713872557521928,
+      "phase1_rank": 29
+    },
+    {
+      "ticker": "6702.T",
+      "stock_name": "富士通",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4173.0,
+      "phase1_score": -50.14,
+      "atr14_pct": 2.8728753913018426,
+      "stock_volatility_20d": 2.0428373338330674,
+      "phase1_rank": 30
+    },
+    {
+      "ticker": "9503.T",
+      "stock_name": "関西電力",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "latest_close": 2521.0,
+      "phase1_score": -53.09,
+      "atr14_pct": 2.7590751595867253,
+      "stock_volatility_20d": 1.9415988043907855,
+      "phase1_rank": 31
+    },
+    {
+      "ticker": "8411.T",
+      "stock_name": "みずほフィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "latest_close": 5300.0,
+      "phase1_score": -53.63,
+      "atr14_pct": 2.3795060576083102,
+      "stock_volatility_20d": 2.0757421025887974,
+      "phase1_rank": 32
+    },
+    {
+      "ticker": "7267.T",
+      "stock_name": "本田技研工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "輸送用機器",
+      "latest_close": 1556.5,
+      "phase1_score": -54.29,
+      "atr14_pct": 2.292361113712647,
+      "stock_volatility_20d": 2.079151497884093,
+      "phase1_rank": 33
+    },
+    {
+      "ticker": "9983.T",
+      "stock_name": "ファーストリテイリング",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "小売業",
+      "latest_close": 56500.0,
+      "phase1_score": -55.77,
+      "atr14_pct": 2.570027842086641,
+      "stock_volatility_20d": 1.8865274698432526,
+      "phase1_rank": 34
+    },
+    {
+      "ticker": "1605.T",
+      "stock_name": "INPEX",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "鉱業",
+      "latest_close": 3175.0,
+      "phase1_score": -56.02,
+      "atr14_pct": 2.5966344362239466,
+      "stock_volatility_20d": 1.8623788211576255,
+      "phase1_rank": 35
+    },
+    {
+      "ticker": "2914.T",
+      "stock_name": "日本たばこ産業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "食料品",
+      "latest_close": 5685.0,
+      "phase1_score": -57.03,
+      "atr14_pct": 1.7644248870217458,
+      "stock_volatility_20d": 2.1648358176939473,
+      "phase1_rank": 36
+    },
+    {
+      "ticker": "6861.T",
+      "stock_name": "キーエンス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 55650.0,
+      "phase1_score": -57.12,
+      "atr14_pct": 2.2374189265507995,
+      "stock_volatility_20d": 1.9596699472125736,
+      "phase1_rank": 37
+    },
+    {
+      "ticker": "5020.T",
+      "stock_name": "ENEOSホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "石油・石炭製品",
+      "latest_close": 1044.5,
+      "phase1_score": -59.11,
+      "atr14_pct": 3.060431440338083,
+      "stock_volatility_20d": 1.5093825155771097,
+      "phase1_rank": 38
+    },
+    {
+      "ticker": "6503.T",
+      "stock_name": "三菱電機",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4237.0,
+      "phase1_score": -61.04,
+      "atr14_pct": 2.697042361102429,
+      "stock_volatility_20d": 1.5661293638432379,
+      "phase1_rank": 39
+    },
+    {
+      "ticker": "7203.T",
+      "stock_name": "トヨタ自動車",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "輸送用機器",
+      "latest_close": 3180.0,
+      "phase1_score": -61.98,
+      "atr14_pct": 2.1647068314249585,
+      "stock_volatility_20d": 1.7445982129170727,
+      "phase1_rank": 40
+    },
+    {
+      "ticker": "8306.T",
+      "stock_name": "三菱ＵＦＪフィナンシャル・グループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "latest_close": 2451.0,
+      "phase1_score": -63.16,
+      "atr14_pct": 2.0728863648407723,
+      "stock_volatility_20d": 1.7239899841681245,
+      "phase1_rank": 41
+    },
+    {
+      "ticker": "8031.T",
+      "stock_name": "三井物産",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "卸売業",
+      "latest_close": 4103.0,
+      "phase1_score": -63.3,
+      "atr14_pct": 2.2351872087289433,
+      "stock_volatility_20d": 1.6480956647699239,
+      "phase1_rank": 42
+    },
+    {
+      "ticker": "8316.T",
+      "stock_name": "三井住友フィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "latest_close": 4330.0,
+      "phase1_score": -63.48,
+      "atr14_pct": 2.024025890552549,
+      "stock_volatility_20d": 1.7283846617321716,
+      "phase1_rank": 43
+    },
+    {
+      "ticker": "9513.T",
+      "stock_name": "電源開発",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "latest_close": 2940.0,
+      "phase1_score": -65.13,
+      "atr14_pct": 2.041651908287181,
+      "stock_volatility_20d": 1.637401038060253,
+      "phase1_rank": 44
+    },
+    {
+      "ticker": "8001.T",
+      "stock_name": "伊藤忠商事",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "卸売業",
+      "latest_close": 9510.0,
+      "phase1_score": -65.6,
+      "atr14_pct": 2.1769195930336434,
+      "stock_volatility_20d": 1.5562832904734194,
+      "phase1_rank": 45
+    },
+    {
+      "ticker": "8058.T",
+      "stock_name": "三菱商事",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "卸売業",
+      "latest_close": 3750.0,
+      "phase1_score": -69.16,
+      "atr14_pct": 1.8999260675770548,
+      "stock_volatility_20d": 1.4939915533994403,
+      "phase1_rank": 46
+    },
+    {
+      "ticker": "8766.T",
+      "stock_name": "東京海上ホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "保険業",
+      "latest_close": 5922.0,
+      "phase1_score": -71.68,
+      "atr14_pct": 1.681573874180578,
+      "stock_volatility_20d": 1.4591967412571256,
+      "phase1_rank": 47
+    },
+    {
+      "ticker": "9433.T",
+      "stock_name": "ＫＤＤＩ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 2649.5,
+      "phase1_score": -74.34,
+      "atr14_pct": 1.782700608382196,
+      "stock_volatility_20d": 1.2818272748152033,
+      "phase1_rank": 48
+    },
+    {
+      "ticker": "9021.T",
+      "stock_name": "JR西日本",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "latest_close": 3077.0,
+      "phase1_score": -74.41,
+      "atr14_pct": 1.7802909249822947,
+      "stock_volatility_20d": 1.279208159244008,
+      "phase1_rank": 49
+    },
+    {
+      "ticker": "4502.T",
+      "stock_name": "武田薬品工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "医薬品",
+      "latest_close": 4443.0,
+      "phase1_score": -76.7,
+      "atr14_pct": 1.7040005080783662,
+      "stock_volatility_20d": 1.1959520612933674,
+      "phase1_rank": 50
+    },
+    {
+      "ticker": "4063.T",
+      "stock_name": "信越化学工業",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "化学",
+      "latest_close": 4641.0,
+      "phase1_score": -78.33,
+      "atr14_pct": 1.5497619808838243,
+      "stock_volatility_20d": 1.1787791945390536,
+      "phase1_rank": 51
+    },
+    {
+      "ticker": "9005.T",
+      "stock_name": "東急",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "latest_close": 1756.5,
+      "phase1_score": -79.01,
+      "atr14_pct": 1.7914055875697548,
+      "stock_volatility_20d": 1.042063320216439,
+      "phase1_rank": 52
+    },
+    {
+      "ticker": "3382.T",
+      "stock_name": "セブン＆アイ・ホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "小売業",
+      "latest_close": 2039.0,
+      "phase1_score": -79.56,
+      "atr14_pct": 1.4479706034636763,
+      "stock_volatility_20d": 1.1599729565935655,
+      "phase1_rank": 53
+    },
+    {
+      "ticker": "9432.T",
+      "stock_name": "ＮＴＴ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 151.1999969482422,
+      "phase1_score": -80.58,
+      "atr14_pct": 1.3739226016978525,
+      "stock_volatility_20d": 1.139839538180825,
+      "phase1_rank": 54
+    },
+    {
+      "ticker": "1766.T",
+      "stock_name": "竹中工務店",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "latest_close": 14420.0,
+      "phase1_score": -82.03,
+      "atr14_pct": 1.6371338222211878,
+      "stock_volatility_20d": 0.9549181940876662,
+      "phase1_rank": 55
+    },
+    {
+      "ticker": "9434.T",
+      "stock_name": "ソフトバンク",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 222.39999389648438,
+      "phase1_score": -88.13,
+      "atr14_pct": 1.3637213701191642,
+      "stock_volatility_20d": 0.7620655035787569,
+      "phase1_rank": 56
+    }
+  ],
+  "top_10_percent": [
+    {
+      "ticker": "6857.T",
+      "stock_name": "アドバンテスト",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 19530.0,
+      "phase1_score": 67.19,
+      "atr14_pct": 6.5422006192250635,
+      "stock_volatility_20d": 6.418190407602577,
+      "phase1_rank": 1
+    },
+    {
+      "ticker": "9984.T",
+      "stock_name": "ソフトバンクグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 19780.0,
+      "phase1_score": 62.66,
+      "atr14_pct": 8.755294975450658,
+      "stock_volatility_20d": 5.248638193118799,
+      "phase1_rank": 2
+    },
+    {
+      "ticker": "6920.T",
+      "stock_name": "レーザーテック",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 28095.0,
+      "phase1_score": 52.99,
+      "atr14_pct": 5.852723304356255,
+      "stock_volatility_20d": 5.992929171640495,
+      "phase1_rank": 3
+    },
+    {
+      "ticker": "6946.T",
+      "stock_name": "日本アビオニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4990.0,
+      "phase1_score": 44.28,
+      "atr14_pct": 6.005272644247237,
+      "stock_volatility_20d": 5.487599599628075,
+      "phase1_rank": 4
+    },
+    {
+      "ticker": "7735.T",
+      "stock_name": "SCREENホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 12815.0,
+      "phase1_score": 7.19,
+      "atr14_pct": 5.271188165022305,
+      "stock_volatility_20d": 3.9233296375706965,
+      "phase1_rank": 5
+    }
+  ],
+  "phase2_results": [
+    {
+      "ticker": "6857.T",
+      "stock_name": "アドバンテスト",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 19530.0,
+      "phase1_score": 67.19,
+      "atr14_pct": 6.5422006192250635,
+      "stock_volatility_20d": 6.418190407602577,
+      "phase1_rank": 1,
+      "phase2_executed": true,
+      "phase2_components": {
+        "news_sentiment": 0,
+        "ir_sentiment": 0,
+        "fundamental_score": 0,
+        "momentum_confirmation": 0
+      },
+      "phase2_score": 0,
+      "final_score": 26.88,
+      "phase2_note": "Phase 2はプロトタイプ版（WebSearch未実装）",
+      "final_rank": 1
+    },
+    {
+      "ticker": "9984.T",
+      "stock_name": "ソフトバンクグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "情報･通信業",
+      "latest_close": 19780.0,
+      "phase1_score": 62.66,
+      "atr14_pct": 8.755294975450658,
+      "stock_volatility_20d": 5.248638193118799,
+      "phase1_rank": 2,
+      "phase2_executed": true,
+      "phase2_components": {
+        "news_sentiment": 0,
+        "ir_sentiment": 0,
+        "fundamental_score": 0,
+        "momentum_confirmation": 0
+      },
+      "phase2_score": 0,
+      "final_score": 25.06,
+      "phase2_note": "Phase 2はプロトタイプ版（WebSearch未実装）",
+      "final_rank": 2
+    },
+    {
+      "ticker": "6920.T",
+      "stock_name": "レーザーテック",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 28095.0,
+      "phase1_score": 52.99,
+      "atr14_pct": 5.852723304356255,
+      "stock_volatility_20d": 5.992929171640495,
+      "phase1_rank": 3,
+      "phase2_executed": true,
+      "phase2_components": {
+        "news_sentiment": 0,
+        "ir_sentiment": 0,
+        "fundamental_score": 0,
+        "momentum_confirmation": 0
+      },
+      "phase2_score": 0,
+      "final_score": 21.2,
+      "phase2_note": "Phase 2はプロトタイプ版（WebSearch未実装）",
+      "final_rank": 3
+    },
+    {
+      "ticker": "6946.T",
+      "stock_name": "日本アビオニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 4990.0,
+      "phase1_score": 44.28,
+      "atr14_pct": 6.005272644247237,
+      "stock_volatility_20d": 5.487599599628075,
+      "phase1_rank": 4,
+      "phase2_executed": true,
+      "phase2_components": {
+        "news_sentiment": 0,
+        "ir_sentiment": 0,
+        "fundamental_score": 0,
+        "momentum_confirmation": 0
+      },
+      "phase2_score": 0,
+      "final_score": 17.71,
+      "phase2_note": "Phase 2はプロトタイプ版（WebSearch未実装）",
+      "final_rank": 4
+    },
+    {
+      "ticker": "7735.T",
+      "stock_name": "SCREENホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "latest_close": 12815.0,
+      "phase1_score": 7.19,
+      "atr14_pct": 5.271188165022305,
+      "stock_volatility_20d": 3.9233296375706965,
+      "phase1_rank": 5,
+      "phase2_executed": true,
+      "phase2_components": {
+        "news_sentiment": 0,
+        "ir_sentiment": 0,
+        "fundamental_score": 0,
+        "momentum_confirmation": 0
+      },
+      "phase2_score": 0,
+      "final_score": 2.88,
+      "phase2_note": "Phase 2はプロトタイプ版（WebSearch未実装）",
+      "final_rank": 5
+    }
+  ]
+}

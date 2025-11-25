@@ -1,0 +1,82 @@
+{
+  "generated_at": "2025-11-17T19:11:23.796934",
+  "date": "20251117",
+  "overall_stats": {
+    "total_records": 15837,
+    "avg_next_day_return": 0.14683248064564494,
+    "avg_next_week_return": 0.7374769661032154,
+    "score_range": {
+      "min": -4,
+      "max": 6,
+      "mean": -0.19808044452863546
+    }
+  },
+  "signal_performance": {
+    "強い買い": {
+      "count": 1798,
+      "avg_next_day_return": 0.2559274320103162,
+      "avg_next_week_return": 0.7940897238463668,
+      "next_day_win_rate": 52.28031145717463,
+      "next_week_win_rate": 54.50500556173527,
+      "next_day_median": 0.12561956966568033,
+      "next_week_median": 0.49672642446781934
+    },
+    "買い": {
+      "count": 2833,
+      "avg_next_day_return": 0.14095046328804092,
+      "avg_next_week_return": 0.7963628019199245,
+      "next_day_win_rate": 50.8648076244264,
+      "next_week_win_rate": 54.571126014825275,
+      "next_day_median": 0.05313725011892867,
+      "next_week_median": 0.42968429747347603
+    },
+    "中立": {
+      "count": 4893,
+      "avg_next_day_return": 0.07705542413665314,
+      "avg_next_week_return": 0.5438960500119457,
+      "next_day_win_rate": 49.33578581647251,
+      "next_week_win_rate": 52.44226445943184,
+      "next_day_median": 0.0,
+      "next_week_median": 0.26064415428139753
+    },
+    "売り": {
+      "count": 3552,
+      "avg_next_day_return": 0.12783842098848,
+      "avg_next_week_return": 0.6203751575963175,
+      "next_day_win_rate": 49.23986486486486,
+      "next_week_win_rate": 52.16779279279279,
+      "next_day_median": 0.0,
+      "next_week_median": 0.18805405705448752
+    },
+    "強い売り": {
+      "count": 2761,
+      "avg_next_day_return": 0.22991725790792666,
+      "avg_next_week_return": 1.133899905241267,
+      "next_day_win_rate": 52.553422672944585,
+      "next_week_win_rate": 57.116986599058315,
+      "next_day_median": 0.09868494093154823,
+      "next_week_median": 0.6666666666666599
+    }
+  },
+  "score_correlation": {
+    "next_day": -0.0019185920836289532,
+    "next_week": -0.010212489259304517
+  },
+  "score_bins": {
+    "-5~0": {
+      "count": 11206,
+      "avg_next_day_return": 0.13081526064032753,
+      "avg_next_week_return": 0.7135064760718999
+    },
+    "0~5": {
+      "count": 4630,
+      "avg_next_day_return": 0.18523585997509046,
+      "avg_next_week_return": 0.7947439283187141
+    },
+    "5~10": {
+      "count": 1,
+      "avg_next_day_return": 1.8281535648994485,
+      "avg_next_week_return": 4.20475319926874
+    }
+  }
+}

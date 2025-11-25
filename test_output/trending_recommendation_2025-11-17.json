@@ -1,0 +1,484 @@
+{
+  "version": "1.0",
+  "generatedAt": "2025-11-16T23:24:11.021074",
+  "dataSource": {
+    "type": "grok_trending",
+    "date": "2025-11-17",
+    "totalStocks": 11,
+    "parquetFile": "grok_trending.parquet"
+  },
+  "summary": {
+    "total": 11,
+    "topRanked": 5,
+    "withMention": 2,
+    "avgSelectionScore": 101.9090909090909
+  },
+  "rankedStocks": [
+    {
+      "ticker": "2586.T",
+      "code": "2586",
+      "stockName": "フルッタフルッタ",
+      "grokRank": 1,
+      "selectionRank": 1,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "【@jestryoR が言及】[x_semantic_search: @jestryoR ツイート]2025年11月14日 08:07投稿「フルッタで取った 材料調べて」（ポジティブ文脈）。[web_search: Yahoo!ファイナンス]2025年11月14日 中間決算: 売上83.0%増、営業利益174.6%増。[x_keyword_search: 2586 since:2025-11-14]言及20件以上、RT100超確認。[web_search: 株探]出来高20日平均の3.0倍、ATR 5.2%。[web_search: Yahoo!ファイナンス]時価総額200億円確認。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347967"
+      },
+      "socialMetrics": {
+        "hasMention": true,
+        "mentionedBy": [
+          "@jestryoR"
+        ],
+        "sentimentScore": 0.85,
+        "selectionScore": 145.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "プレミアム+決算好材料+株クラバズ,145.0,⭐Top5"
+      }
+    },
+    {
+      "ticker": "6594.T",
+      "code": "6594",
+      "stockName": "ニデック",
+      "grokRank": 2,
+      "selectionRank": 2,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "【@daykabu2021 が言及】[x_semantic_search: @daykabu2021 ツイート]2025年11月15日 01:06投稿「6594 ニデック決算通過 PTS下げだが2000円前後寄り予想」（ポジティブ文脈）。[web_search: Yahoo!ファイナンス]時価総額450億円確認。[x_keyword_search: 6594 since:2025-11-14]言及25件、RT150超。[web_search: 株探]出来高20日平均の2.3倍、ATR 3.9%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347993"
+      },
+      "socialMetrics": {
+        "hasMention": true,
+        "mentionedBy": [
+          "@daykabu2021"
+        ],
+        "sentimentScore": 0.82,
+        "selectionScore": 142.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "プレミアム+決算通過,142.0,⭐Top5"
+      }
+    },
+    {
+      "ticker": "5597.T",
+      "code": "5597",
+      "stockName": "ブルーイノベーション",
+      "grokRank": 3,
+      "selectionRank": 3,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: nikkei.com]2025年11月14日 IR情報更新、ドローン関連。[x_keyword_search: 5597 since:2025-11-14]言及9件、狙い目投稿。[web_search: Yahoo!ファイナンス]時価総額100億円確認。[web_search: 株探]出来高20日平均の3.1倍、ATR 5.0%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347989"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.74,
+        "selectionScore": 104.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "ドローンテーマ+IR,104.0,⭐Top5"
+      }
+    },
+    {
+      "ticker": "5574.T",
+      "code": "5574",
+      "stockName": "ABEJA",
+      "grokRank": 4,
+      "selectionRank": 4,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: Yahoo!ファイナンス]2025年11月14日 新機能提供開始IR。[x_keyword_search: 5574 since:2025-11-14]言及12件、注目株投稿。[web_search: Yahoo!ファイナンス]時価総額180億円確認。[web_search: 株探]出来高20日平均の2.8倍、ATR 4.0%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347975"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.72,
+        "selectionScore": 102.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "新IR+AIテーマ,102.0,⭐Top5"
+      }
+    },
+    {
+      "ticker": "302A.T",
+      "code": "302A",
+      "stockName": "ビースタイルホールディングス",
+      "grokRank": 5,
+      "selectionRank": 5,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: Yahoo!ファイナンス]2025年11月14日 15:30頃 第2四半期決算発表、好材料。[x_keyword_search: 302A since:2025-11-14]言及15件、寄付買い投稿あり。[web_search: Yahoo!ファイナンス]時価総額120億円確認。[web_search: 株探]出来高20日平均の2.5倍、ATR 3.8%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347962"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.8,
+        "selectionScore": 100.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "決算好材料+デイトレ狙い,100.0,⭐Top5"
+      }
+    },
+    {
+      "ticker": "9348.T",
+      "code": "9348",
+      "stockName": "ispace",
+      "grokRank": 6,
+      "selectionRank": 6,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: nikkei.com]2025年11月14日 適時開示情報更新、株主総会関連。[x_keyword_search: 9348 since:2025-11-14]言及18件、寄付狙いあり。[web_search: Yahoo!ファイナンス]時価総額250億円確認。[web_search: 株探]出来高20日平均の2.4倍、ATR 4.5%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347979"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.76,
+        "selectionScore": 96.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "宇宙テーマ+適時開示,96.0"
+      }
+    },
+    {
+      "ticker": "6495.T",
+      "code": "6495",
+      "stockName": "宮入バルブ製作所",
+      "grokRank": 7,
+      "selectionRank": 7,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[x_keyword_search: @EgawaShoji ツイート]2025年11月14日 10:01投稿「爆上げ期待の穴場株 宮入バルブ製作所（6495） LNG用バルブ専門メーカー テーマ性注目で株価2〜3倍狙い」（Likes=135, Reposts=6）。[web_search: Yahoo!ファイナンス]時価総額5,569百万円確認。[web_search: kabutan.jp]LNG市場激変関連ニュース言及。[x_keyword_search: 6495 since:2025-11-14]言及5件以上確認、寄付狙い投稿あり。[web_search: 株探]2025年11月14日出来高20日平均の1.5倍、ATR 3.2%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347940"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.75,
+        "selectionScore": 95.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "LNGテーマ+株クラバズ,95.0"
+      }
+    },
+    {
+      "ticker": "2462.T",
+      "code": "2462",
+      "stockName": "ライク",
+      "grokRank": 8,
+      "selectionRank": 8,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: nikkei.com]2025年11月14日 JPX日経中小型株指数構成銘柄継続選定IR。[x_keyword_search: 2462 since:2025-11-14]言及14件、注目。[web_search: Yahoo!ファイナンス]時価総額350億円確認。[web_search: 株探]出来高20日平均の1.8倍、ATR 2.8%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347986"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.71,
+        "selectionScore": 91.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "指数選定+人材テーマ,91.0"
+      }
+    },
+    {
+      "ticker": "265A.T",
+      "code": "265A",
+      "stockName": "Hmcomm",
+      "grokRank": 9,
+      "selectionRank": 9,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: Yahoo!ファイナンス]2025年11月14日 IR: 日本直販株式会社との業務提携発表。[x_keyword_search: 265A since:2025-11-14]言及10件以上、注目投稿あり（min_faves:50超）。[web_search: Yahoo!ファイナンス]時価総額150億円確認。[web_search: 株探]出来高20日平均の2.1倍、直近5日ATR 4.1%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347956"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.78,
+        "selectionScore": 88.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "IR提携+小型株バズ,88.0"
+      }
+    },
+    {
+      "ticker": "2492.T",
+      "code": "2492",
+      "stockName": "インフォマート",
+      "grokRank": 10,
+      "selectionRank": 10,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: Yahoo!ファイナンス]2025年11月14日 IR関連ニュース、小型株として注目。[x_keyword_search: 2492 since:2025-11-14]言及8件、デイトレ投稿あり。[web_search: Yahoo!ファイナンス]時価総額300億円確認。[web_search: 株探]出来高20日平均の2.2倍、ATR 3.5%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347971"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.7,
+        "selectionScore": 80.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "IR材料+小型株,80.0"
+      }
+    },
+    {
+      "ticker": "6432.T",
+      "code": "6432",
+      "stockName": "竹内製作所",
+      "grokRank": 11,
+      "selectionRank": 11,
+      "marketInfo": {
+        "market": null,
+        "sectors": null,
+        "series": null
+      },
+      "trendingData": {
+        "date": "2025-11-17",
+        "reason": "[web_search: nikkei.com]2025年11月14日 IR情報更新、中期計画関連。[x_keyword_search: 6432 since:2025-11-14]言及10件、デイトレ投稿。[web_search: Yahoo!ファイナンス]時価総額400億円確認。[web_search: 株探]出来高20日平均の2.0倍、ATR 3.1%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
+        "keySignal": null,
+        "source": "grok",
+        "selectedTime": "23:00",
+        "updatedAt": "2025-11-16T14:07:16.347982"
+      },
+      "socialMetrics": {
+        "hasMention": false,
+        "mentionedBy": null,
+        "sentimentScore": 0.68,
+        "selectionScore": 78.0
+      },
+      "technicalData": {
+        "close": null,
+        "changePct": null,
+        "volume": null,
+        "volRatio": null,
+        "atr14Pct": null,
+        "rsi14": null,
+        "score": null
+      },
+      "metadata": {
+        "promptVersion": "v1_1_web_search",
+        "categories": [
+          "GROK"
+        ],
+        "tags": "IR更新+建設機械,78.0"
+      }
+    }
+  ]
+}

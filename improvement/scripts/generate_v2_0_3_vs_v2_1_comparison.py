@@ -48,14 +48,8 @@ def calculate_v2_1_score_and_action(row: pd.Series) -> tuple[int, str, list[str]
     prev_close = row.get('prev_day_close')
     v2_0_3_action = row.get('v2_0_3_action')
 
-    # 価格帯強制判定（v2.1でも維持）
-    if pd.notna(prev_close):
-        if 5000 <= prev_close < 10000:
-            return (100, '買い', ['5,000-10,000円（強制買い）'])
-        elif prev_close >= 10000:
-            return (-100, '売り', ['10,000円以上（強制売り）'])
+    # === 1階: スコアリング層（全銘柄で計算してデータ蓄積） ===
 
-    # スコアベース判定（v2.1: 配点強化）
     # 1. Grokランク配点強化
     grok_rank = row.get('grok_rank', 999)
     total_stocks = row.get('total_stocks', 1)
@@ -105,7 +99,18 @@ def calculate_v2_1_score_and_action(row: pd.Series) -> tuple[int, str, list[str]
             score -= 10
             reasons.append(f'前日+10%以上急騰')
 
-    # アクション判定
+    # === 2階: 定性判定層（強制判定） ===
+
+    # 優先度1: 価格帯強制判定（最優先、v2.0.3/v2.1共通）
+    if pd.notna(prev_close):
+        if prev_close >= 10000:
+            reasons.append('【価格帯10,000円以上→売り強制】')
+            return (score, '売り', reasons)
+        elif 5000 <= prev_close < 10000:
+            reasons.append('【価格帯5,000-10,000円→買い強制】')
+            return (score, '買い', reasons)
+
+    # スコアベース仮判定（1階の結果）
     if score >= 30:
         action = '買い'
     elif score <= -20:
@@ -113,10 +118,15 @@ def calculate_v2_1_score_and_action(row: pd.Series) -> tuple[int, str, list[str]
     else:
         action = '静観'
 
-    # 重要: v2.0.3が「売り」なら、v2.1も「売り」に固定
-    if v2_0_3_action == '売り':
+    # 優先度2: 2段階変化阻止（買い↔売り）
+    if v2_0_3_action == '買い' and action == '売り':
+        action = '買い'
+        reasons.append('【2段階変化阻止: 買い→売り→買い】')
+
+    # 優先度3: v2.0.3売り判定の保持
+    elif v2_0_3_action == '売り':
         action = '売り'
-        reasons.append('（v2.0.3売り判定を保持）')
+        reasons.append('【v2.0.3売り判定を保持】')
 
     return (score, action, reasons)
 
@@ -229,6 +239,22 @@ def generate_html_report(df: pd.DataFrame) -> str:
 
     # v2.1 総利益
     v21_total_profit = v21_buy_total_profit + v21_sell_total_profit
+
+    # 買い→静観によるリスク回避効果
+    buy_to_hold_df = df[(df['v2_0_3_action'] == '買い') & (df['v2_1_action'] == '静観')].copy()
+    if len(buy_to_hold_df) > 0:
+        buy_to_hold_df['if_buy_profit'] = (buy_to_hold_df['daily_close'] - buy_to_hold_df['buy_price']) * 100
+        buy_to_hold_count = len(buy_to_hold_df)
+        buy_to_hold_if_buy_profit = buy_to_hold_df['if_buy_profit'].sum()
+        buy_to_hold_hold_profit = 0
+        buy_to_hold_risk_avoidance = buy_to_hold_hold_profit - buy_to_hold_if_buy_profit
+        buy_to_hold_wins = (buy_to_hold_df['if_buy_profit'] > 0).sum()
+        buy_to_hold_if_buy_win_rate = buy_to_hold_wins / buy_to_hold_count * 100
+    else:
+        buy_to_hold_count = 0
+        buy_to_hold_if_buy_profit = 0
+        buy_to_hold_risk_avoidance = 0
+        buy_to_hold_if_buy_win_rate = 0
 
     # 変更パターンの集計
     change_patterns = {}
@@ -431,183 +457,89 @@ td.number.negative {{
     </div>
 
     <div class="summary-section">
+        <div style="margin-bottom: 40px;">
+            <h3 style="margin-bottom: 16px; color: #667eea;">📊 戦略比較サマリー</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>指標</th>
+                        <th class="number">v2.0.3</th>
+                        <th class="number">v2.1</th>
+                        <th class="number">差分</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="highlight">
+                        <td><strong>総利益（100株）</strong></td>
+                        <td class="number positive">{v203_total_profit:+,.0f}円</td>
+                        <td class="number positive">{v21_total_profit:+,.0f}円</td>
+                        <td class="number {'positive' if v21_total_profit > v203_total_profit else 'negative'}">{v21_total_profit - v203_total_profit:+,.0f}円</td>
+                    </tr>
+                    <tr>
+                        <td>買い判定数</td>
+                        <td class="number">{v203_buy_total}件</td>
+                        <td class="number">{v21_buy_total}件</td>
+                        <td class="number">{v21_buy_total - v203_buy_total:+d}件</td>
+                    </tr>
+                    <tr>
+                        <td>買い勝率</td>
+                        <td class="number {'positive' if v203_buy_win_rate >= 50 else 'negative'}">{v203_buy_win_rate:.1f}%</td>
+                        <td class="number {'positive' if v21_buy_win_rate >= 50 else 'negative'}">{v21_buy_win_rate:.1f}%</td>
+                        <td class="number {'positive' if v21_buy_win_rate > v203_buy_win_rate else 'negative'}">{v21_buy_win_rate - v203_buy_win_rate:+.1f}%</td>
+                    </tr>
+                    <tr>
+                        <td>買い合計利益</td>
+                        <td class="number {'positive' if v203_buy_total_profit > 0 else 'negative'}">{v203_buy_total_profit:+,.0f}円</td>
+                        <td class="number {'positive' if v21_buy_total_profit > 0 else 'negative'}">{v21_buy_total_profit:+,.0f}円</td>
+                        <td class="number {'positive' if v21_buy_total_profit > v203_buy_total_profit else 'negative'}">{v21_buy_total_profit - v203_buy_total_profit:+,.0f}円</td>
+                    </tr>
+                    <tr>
+                        <td>売り判定数</td>
+                        <td class="number">{v203_sell_total}件</td>
+                        <td class="number">{v21_sell_total}件</td>
+                        <td class="number">{v21_sell_total - v203_sell_total:+d}件</td>
+                    </tr>
+                    <tr>
+                        <td>売り勝率</td>
+                        <td class="number {'positive' if v203_sell_win_rate >= 50 else 'negative'}">{v203_sell_win_rate:.1f}%</td>
+                        <td class="number {'positive' if v21_sell_win_rate >= 50 else 'negative'}">{v21_sell_win_rate:.1f}%</td>
+                        <td class="number {'positive' if v21_sell_win_rate > v203_sell_win_rate else 'negative'}">{v21_sell_win_rate - v203_sell_win_rate:+.1f}%</td>
+                    </tr>
+                    <tr>
+                        <td>売り合計利益</td>
+                        <td class="number positive">{v203_sell_total_profit:+,.0f}円</td>
+                        <td class="number positive">{v21_sell_total_profit:+,.0f}円</td>
+                        <td class="number {'positive' if v21_sell_total_profit > v203_sell_total_profit else 'negative'}">{v21_sell_total_profit - v203_sell_total_profit:+,.0f}円</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>🛡️ リスク回避（買い→静観）</strong></td>
+                        <td class="number">-</td>
+                        <td class="number">{buy_to_hold_count}件</td>
+                        <td class="number">-</td>
+                    </tr>
+                    <tr>
+                        <td>　└ もし買いのまま利益</td>
+                        <td class="number">-</td>
+                        <td class="number {'positive' if buy_to_hold_if_buy_profit > 0 else 'negative'}">{buy_to_hold_if_buy_profit:+,.0f}円</td>
+                        <td class="number">-</td>
+                    </tr>
+                    <tr>
+                        <td>　└ 静観による回避効果</td>
+                        <td class="number">-</td>
+                        <td class="number {'positive' if buy_to_hold_risk_avoidance > 0 else 'negative'}">{buy_to_hold_risk_avoidance:+,.0f}円</td>
+                        <td class="number">-</td>
+                    </tr>
+                    <tr>
+                        <td>　└ 買いのまま勝率</td>
+                        <td class="number">-</td>
+                        <td class="number {'positive' if buy_to_hold_if_buy_win_rate >= 50 else 'negative'}">{buy_to_hold_if_buy_win_rate:.1f}%</td>
+                        <td class="number">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div class="summary-grid">
-            <div class="summary-card">
-                <h3>📊 v2.0.3 判定結果</h3>
-                <div class="stat-row">
-                    <span class="stat-label">買い</span>
-                    <span class="stat-value">{v2_0_3_counts.get('買い', 0)}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">売り</span>
-                    <span class="stat-value">{v2_0_3_counts.get('売り', 0)}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">静観</span>
-                    <span class="stat-value">{v2_0_3_counts.get('静観', 0)}</span>
-                </div>
-            </div>
-
-            <div class="summary-card">
-                <h3>🚀 v2.1 判定結果</h3>
-                <div class="stat-row">
-                    <span class="stat-label">買い</span>
-                    <span class="stat-value">{v2_1_counts.get('買い', 0)}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">売り</span>
-                    <span class="stat-value">{v2_1_counts.get('売り', 0)}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">静観</span>
-                    <span class="stat-value">{v2_1_counts.get('静観', 0)}</span>
-                </div>
-            </div>
-
-            <div class="summary-card">
-                <h3>🔄 判定変更</h3>
-                <div class="stat-row">
-                    <span class="stat-label">変更数</span>
-                    <span class="stat-value">{changed_records}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">変更率</span>
-                    <span class="stat-value">{changed_pct:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">維持</span>
-                    <span class="stat-value">{total_records - changed_records}</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #3498db;">
-                <h3>💰 v2.0.3 買い成績</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{v203_buy_total}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v203_buy_win_rate > 50 else '#e74c3c'};">{v203_buy_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v203_buy_total_profit > 0 else '#e74c3c'};">{v203_buy_total_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #9b59b6;">
-                <h3>📉 v2.0.3 売り成績</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{v203_sell_total}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v203_sell_win_rate > 50 else '#e74c3c'};">{v203_sell_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v203_sell_total_profit > 0 else '#e74c3c'};">{v203_sell_total_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #e74c3c;">
-                <h3>💰 v2.1 買い成績</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{v21_buy_total}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v21_buy_win_rate > 50 else '#e74c3c'};">{v21_buy_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v21_buy_total_profit > 0 else '#e74c3c'};">{v21_buy_total_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #27ae60;">
-                <h3>📉 v2.1 売り成績（合計）</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{v21_sell_total}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v21_sell_win_rate > 50 else '#e74c3c'};">{v21_sell_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v21_sell_total_profit > 0 else '#e74c3c'};">{v21_sell_total_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #16a085;">
-                <h3>🔄 v2.0.3売り→v2.1売り</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{sell_to_sell_count}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if sell_to_sell_win_rate > 50 else '#e74c3c'};">{sell_to_sell_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if sell_to_sell_profit > 0 else '#e74c3c'};">{sell_to_sell_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #e67e22;">
-                <h3>🔄 v2.0.3静観→v2.1売り</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{hold_to_sell_count}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if hold_to_sell_win_rate > 50 else '#e74c3c'};">{hold_to_sell_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if hold_to_sell_profit > 0 else '#e74c3c'};">{hold_to_sell_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card" style="border-left-color: #c0392b;">
-                <h3>🔄 v2.0.3買い→v2.1売り</h3>
-                <div class="stat-row">
-                    <span class="stat-label">対象銘柄数</span>
-                    <span class="stat-value">{buy_to_sell_count}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">勝率</span>
-                    <span class="stat-value" style="color: {'#27ae60' if buy_to_sell_win_rate > 50 else '#e74c3c'};">{buy_to_sell_win_rate:.1f}%</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">合計利益</span>
-                    <span class="stat-value" style="color: {'#27ae60' if buy_to_sell_profit > 0 else '#e74c3c'};">{buy_to_sell_profit:+,.0f}円</span>
-                </div>
-            </div>
-
-            <div class="summary-card highlight" style="border-left-color: #f39c12;">
-                <h3>🏆 総合比較</h3>
-                <div class="stat-row">
-                    <span class="stat-label">v2.0.3 総利益</span>
-                    <span class="stat-value">{v203_total_profit:+,.0f}円</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">v2.1 総利益</span>
-                    <span class="stat-value">{v21_total_profit:+,.0f}円</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">差分</span>
-                    <span class="stat-value" style="color: {'#27ae60' if v21_total_profit > v203_total_profit else '#e74c3c'};">{v21_total_profit - v203_total_profit:+,.0f}円</span>
-                </div>
-            </div>
-
             <div class="summary-card">
                 <h3>📈 テクニカル指標統計</h3>
                 <div class="stat-row">

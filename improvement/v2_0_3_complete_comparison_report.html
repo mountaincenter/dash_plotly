@@ -1,0 +1,2816 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>完全版 v2.0.3 Hybrid 比較レポート</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    color: #333;
+}
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+.header .subtitle {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+.summary-section {
+    padding: 40px;
+    background: #f8f9fa;
+}
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+}
+.summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-left: 6px solid #667eea;
+    transition: transform 0.2s;
+}
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.summary-card h3 {
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #667eea;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label {
+    font-size: 1em;
+    color: #666;
+}
+.stat-value {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #333;
+}
+.table-section {
+    padding: 40px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+th {
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
+}
+th.number { text-align: right; }
+td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+td.number {
+    text-align: right;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 0.95em;
+}
+td.number.positive {
+    color: #27ae60;
+    font-weight: 600;
+}
+td.number.negative {
+    color: #e74c3c;
+    font-weight: 600;
+}
+tr.date-separator {
+    background: linear-gradient(to right, #667eea, #764ba2);
+    color: white;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+tr.date-separator td {
+    padding: 16px 12px;
+    border: none;
+}
+tr.action-買い {
+    background: #ffdddd;
+}
+tr.action-売り {
+    background: #cce5ff;
+}
+tr.action-静観 {
+    background: #f5f5f5;
+}
+tr:hover:not(.date-separator) {
+    background: #fff3cd !important;
+}
+.action-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+.action-買い-badge {
+    background: #ff6b6b;
+    color: white;
+}
+.action-売り-badge {
+    background: #4dabf7;
+    color: white;
+}
+.action-静観-badge {
+    background: #adb5bd;
+    color: white;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>完全版 v2.0.3 Hybrid 比較レポート</h1>
+        <div class="subtitle">Improvement v2.0.3 (完全版) vs Pipeline v2.0.3 vs Hybrid</div>
+        <div class="subtitle">対象期間: 2025-11-04 ~ 2025-11-21 | 総レコード数: 151</div>
+    </div>
+
+    <div class="summary-section">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>📊 Improvement v2.0.3 (完全版)</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">79</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">32</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">40</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <h3>🚀 Pipeline v2.0.3</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">83</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">27</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">41</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #f39c12;">
+                <h3>⚡ Hybrid (売り優先)</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い</span>
+                    <span class="stat-value">77</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り</span>
+                    <span class="stat-value">32</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">静観</span>
+                    <span class="stat-value">42</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #e74c3c;">
+                <h3>💰 Hybrid「買い」成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">77</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">41.56%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #e74c3c;">-25,200円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #27ae60;">
+                <h3>📉 Hybrid「売り」成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">対象銘柄数</span>
+                    <span class="stat-value">32</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">71.88%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+365,050円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #667eea;">
+                <h3>🏆 Improvement 総合成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">46.84%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">買い利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+51,000円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">71.88%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+365,050円</span>
+                </div>
+                <div class="stat-row" style="border-top: 2px solid #667eea; margin-top: 10px; padding-top: 10px;">
+                    <span class="stat-label" style="font-weight: 700;">総合利益</span>
+                    <span class="stat-value" style="color: #27ae60; font-size: 1.8em;">+416,050円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #3498db;">
+                <h3>📊 Pipeline 総合成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">40.96%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">買い利益</span>
+                    <span class="stat-value" style="color: #e74c3c;">-38,800円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">70.37%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+348,680円</span>
+                </div>
+                <div class="stat-row" style="border-top: 2px solid #3498db; margin-top: 10px; padding-top: 10px;">
+                    <span class="stat-label" style="font-weight: 700;">総合利益</span>
+                    <span class="stat-value" style="color: #27ae60; font-size: 1.8em;">+309,880円</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #f39c12;">
+                <h3>⚡ Hybrid 総合成績</h3>
+                <div class="stat-row">
+                    <span class="stat-label">買い勝率</span>
+                    <span class="stat-value" style="color: #e74c3c;">41.56%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">買い利益</span>
+                    <span class="stat-value" style="color: #e74c3c;">-25,200円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り勝率</span>
+                    <span class="stat-value" style="color: #27ae60;">71.88%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">売り利益</span>
+                    <span class="stat-value" style="color: #27ae60;">+365,050円</span>
+                </div>
+                <div class="stat-row" style="border-top: 2px solid #f39c12; margin-top: 10px; padding-top: 10px;">
+                    <span class="stat-label" style="font-weight: 700;">総合利益</span>
+                    <span class="stat-value" style="color: #27ae60; font-size: 1.8em;">+339,850円</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-section">
+        <h2 style="margin-bottom: 24px; color: #667eea;">詳細比較テーブル</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th class="number">Grokランク</th>
+                    <th class="number">前日終値</th>
+                    <th class="number">Imp<br/>スコア</th>
+                    <th>Imp<br/>判定</th>
+                    <th class="number">Pipe<br/>スコア</th>
+                    <th>Pipe<br/>判定</th>
+                    <th class="number">Hybrid<br/>スコア</th>
+                    <th>Hybrid<br/>判定</th>
+                    <th class="number">始値</th>
+                    <th class="number">終値</th>
+                    <th class="number">勝負引分</th>
+                    <th class="number">100株利益</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+        <tr class="date-separator">
+            <td colspan="14">2025-11-21</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3350.T</td>
+            <td>メタプラネット</td>
+            <td class="number">1</td>
+            <td class="number">387</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">365</td>
+            <td class="number">357</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-800</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7603.T</td>
+            <td>ジーイエット</td>
+            <td class="number">6</td>
+            <td class="number">152</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">149</td>
+            <td class="number">156</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td class="number">3</td>
+            <td class="number">996</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">985</td>
+            <td class="number">999</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,400</td>
+        </tr>
+        <tr class="action-静観">
+            <td>8894.T</td>
+            <td>REVOLUTION</td>
+            <td class="number">2</td>
+            <td class="number">57</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">55</td>
+            <td class="number">61</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+600</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4397.T</td>
+            <td>チームスピリット</td>
+            <td class="number">4</td>
+            <td class="number">507</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">504</td>
+            <td class="number">515</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,100</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7695.T</td>
+            <td>交換できるくん</td>
+            <td class="number">7</td>
+            <td class="number">799</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">793</td>
+            <td class="number">864</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-7,100</td>
+        </tr>
+        <tr class="action-売り">
+            <td>3409.T</td>
+            <td>北紡</td>
+            <td class="number">5</td>
+            <td class="number">125</td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">125</td>
+            <td class="number">127</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-20</td>
+        </tr>
+        <tr class="action-買い">
+            <td>319A.T</td>
+            <td>技術承継機構</td>
+            <td class="number">11</td>
+            <td class="number">9,290</td>
+            <td class="number">15</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">9,400</td>
+            <td class="number">9,620</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+22,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7721.T</td>
+            <td>東京計器</td>
+            <td class="number">9</td>
+            <td class="number">5,580</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5,710</td>
+            <td class="number">5,750</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+4,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4494.T</td>
+            <td>バリオセキュア</td>
+            <td class="number">3</td>
+            <td class="number">764</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">764</td>
+            <td class="number">764</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3989.T</td>
+            <td>シェアリングテクノロジー</td>
+            <td class="number">6</td>
+            <td class="number">1,041</td>
+            <td class="number">60</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,050</td>
+            <td class="number">1,029</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,100</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3900.T</td>
+            <td>クラウドワークス</td>
+            <td class="number">8</td>
+            <td class="number">869</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">865</td>
+            <td class="number">841</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,400</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6617.T</td>
+            <td>トレックス・セミコンダクター</td>
+            <td class="number">2</td>
+            <td class="number">3,365</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">3,470</td>
+            <td class="number">3,565</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+9,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5074.T</td>
+            <td>テスホールディングス</td>
+            <td class="number">1</td>
+            <td class="number">340</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">346</td>
+            <td class="number">337</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-900</td>
+        </tr>
+        <tr class="action-静観">
+            <td>9560.T</td>
+            <td>プログリット</td>
+            <td class="number">10</td>
+            <td class="number">941</td>
+            <td class="number">-10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">951</td>
+            <td class="number">949</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6538.T</td>
+            <td>ディスラプターズ</td>
+            <td class="number">7</td>
+            <td class="number">323</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">324</td>
+            <td class="number">333</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+900</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4680.T</td>
+            <td>ラウンドワン</td>
+            <td class="number">12</td>
+            <td class="number">965</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">965</td>
+            <td class="number">976</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,070</td>
+        </tr>
+        <tr class="action-売り">
+            <td>9348.T</td>
+            <td>ispace</td>
+            <td class="number">5</td>
+            <td class="number">451</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">456</td>
+            <td class="number">449</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td class="number">4</td>
+            <td class="number">1,013</td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">1,018</td>
+            <td class="number">996</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,200</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-19</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7564.T</td>
+            <td>ワークマン</td>
+            <td class="number">7</td>
+            <td class="number">6,630</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,700</td>
+            <td class="number">6,750</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+5,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8061.T</td>
+            <td>西華産業</td>
+            <td class="number">3</td>
+            <td class="number">2,171</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,155</td>
+            <td class="number">2,154</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-100</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7271.T</td>
+            <td>安永</td>
+            <td class="number">2</td>
+            <td class="number">1,149</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,075</td>
+            <td class="number">1,036</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-3,900</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td class="number">9</td>
+            <td class="number">1,355</td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,360</td>
+            <td class="number">1,323</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-3,700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>9051.T</td>
+            <td>センコン物流</td>
+            <td class="number">8</td>
+            <td class="number">1,414</td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,414</td>
+            <td class="number">1,414</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5985.T</td>
+            <td>サンコール</td>
+            <td class="number">6</td>
+            <td class="number">1,375</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,376</td>
+            <td class="number">1,266</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-11,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6989.T</td>
+            <td>北陸電気工業</td>
+            <td class="number">10</td>
+            <td class="number">2,540</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">2,540</td>
+            <td class="number">2,496</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-4,400</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td class="number">1</td>
+            <td class="number">2,199</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">2,160</td>
+            <td class="number">2,588</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+42,800</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6366.T</td>
+            <td>千代田化工建設</td>
+            <td class="number">5</td>
+            <td class="number">625</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">624</td>
+            <td class="number">618</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7896.T</td>
+            <td>セブン工業</td>
+            <td class="number">4</td>
+            <td class="number">502</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">496</td>
+            <td class="number">496</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-18</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8136.T</td>
+            <td>サンリオ</td>
+            <td class="number">5</td>
+            <td class="number">5,459</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5,400</td>
+            <td class="number">5,539</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+13,900</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6269.T</td>
+            <td>三井海洋開発</td>
+            <td class="number">1</td>
+            <td class="number">15,075</td>
+            <td class="number">65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">14,375</td>
+            <td class="number">14,000</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+37,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>9101.T</td>
+            <td>日本郵船</td>
+            <td class="number">6</td>
+            <td class="number">4,945</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,875</td>
+            <td class="number">4,877</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+200</td>
+        </tr>
+        <tr class="action-買い">
+            <td>9424.T</td>
+            <td>日本通信</td>
+            <td class="number">3</td>
+            <td class="number">151</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">149</td>
+            <td class="number">143</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-600</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3989.T</td>
+            <td>シェアリングテクノロジー</td>
+            <td class="number">8</td>
+            <td class="number">1,040</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,036</td>
+            <td class="number">1,046</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7453.T</td>
+            <td>良品計画</td>
+            <td class="number">9</td>
+            <td class="number">2,943</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,993</td>
+            <td class="number">2,938</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-5,450</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7018.T</td>
+            <td>内海造船</td>
+            <td class="number">2</td>
+            <td class="number">16,580</td>
+            <td class="number">20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">16,560</td>
+            <td class="number">15,150</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+141,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>5803.T</td>
+            <td>フジクラ</td>
+            <td class="number">11</td>
+            <td class="number">19,840</td>
+            <td class="number">15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">19,300</td>
+            <td class="number">17,875</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+142,500</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6613.T</td>
+            <td>QDレーザ</td>
+            <td class="number">7</td>
+            <td class="number">359</td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">355</td>
+            <td class="number">345</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6594.T</td>
+            <td>ニデック</td>
+            <td class="number">4</td>
+            <td class="number">2,064</td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,079</td>
+            <td class="number">2,043</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+3,600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>9561.T</td>
+            <td>グラッドキューブ</td>
+            <td class="number">12</td>
+            <td class="number">487</td>
+            <td class="number">-45</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-45</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">480</td>
+            <td class="number">458</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,200</td>
+        </tr>
+        <tr class="action-売り">
+            <td>5597.T</td>
+            <td>ブルーイノベーション</td>
+            <td class="number">10</td>
+            <td class="number">1,635</td>
+            <td class="number">-65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-45</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">1,635</td>
+            <td class="number">1,541</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+9,400</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-17</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6432.T</td>
+            <td>竹内製作所</td>
+            <td class="number">11</td>
+            <td class="number">6,550</td>
+            <td class="number">15</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,500</td>
+            <td class="number">6,530</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+3,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5597.T</td>
+            <td>ブルーイノベーション</td>
+            <td class="number">3</td>
+            <td class="number">1,752</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,681</td>
+            <td class="number">1,635</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-4,600</td>
+        </tr>
+        <tr class="action-買い">
+            <td>9348.T</td>
+            <td>ispace</td>
+            <td class="number">6</td>
+            <td class="number">467</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">475</td>
+            <td class="number">457</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,800</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2586.T</td>
+            <td>フルッタフルッタ</td>
+            <td class="number">1</td>
+            <td class="number">187</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">137</td>
+            <td class="number">137</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2462.T</td>
+            <td>ライク</td>
+            <td class="number">8</td>
+            <td class="number">1,500</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,500</td>
+            <td class="number">1,500</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-買い">
+            <td>265A.T</td>
+            <td>Hmcomm</td>
+            <td class="number">9</td>
+            <td class="number">1,003</td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,033</td>
+            <td class="number">1,010</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>302A.T</td>
+            <td>ビースタイルホールディングス</td>
+            <td class="number">5</td>
+            <td class="number">1,219</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,189</td>
+            <td class="number">1,133</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-5,600</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6495.T</td>
+            <td>宮入バルブ製作所</td>
+            <td class="number">7</td>
+            <td class="number">114</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">116</td>
+            <td class="number">112</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-400</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2492.T</td>
+            <td>インフォマート</td>
+            <td class="number">10</td>
+            <td class="number">344</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">347</td>
+            <td class="number">345</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5574.T</td>
+            <td>ABEJA</td>
+            <td class="number">4</td>
+            <td class="number">2,738</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">2,750</td>
+            <td class="number">2,658</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-9,200</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6594.T</td>
+            <td>ニデック</td>
+            <td class="number">2</td>
+            <td class="number">2,246</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,151</td>
+            <td class="number">2,064</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+8,700</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-14</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8136.T</td>
+            <td>サンリオ</td>
+            <td class="number">11</td>
+            <td class="number">5,989</td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5,800</td>
+            <td class="number">5,813</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6087.T</td>
+            <td>ネットスターズ</td>
+            <td class="number">6</td>
+            <td class="number">3,180</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">3,185</td>
+            <td class="number">3,175</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>5706.T</td>
+            <td>三井金属鉱業</td>
+            <td class="number">2</td>
+            <td class="number">19,400</td>
+            <td class="number">45</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">45</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">18,200</td>
+            <td class="number">19,500</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-130,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4575.T</td>
+            <td>海洋ファーマ</td>
+            <td class="number">3</td>
+            <td class="number">815</td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">815</td>
+            <td class="number">818</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>1844.T</td>
+            <td>大盛工業</td>
+            <td class="number">9</td>
+            <td class="number">615</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">634</td>
+            <td class="number">660</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,600</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4061.T</td>
+            <td>デンカ</td>
+            <td class="number">5</td>
+            <td class="number">2,416</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,433</td>
+            <td class="number">2,448</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5406.T</td>
+            <td>神戸製鋼所</td>
+            <td class="number">8</td>
+            <td class="number">1,865</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,846</td>
+            <td class="number">1,902</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+5,550</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6525.T</td>
+            <td>コクサイエレクトリック</td>
+            <td class="number">1</td>
+            <td class="number">4,374</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,250</td>
+            <td class="number">4,112</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-13,800</td>
+        </tr>
+        <tr class="action-静観">
+            <td>9501.T</td>
+            <td>東京電力HD</td>
+            <td class="number">4</td>
+            <td class="number">934</td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">910</td>
+            <td class="number">878</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-3,200</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6309.T</td>
+            <td>海洋建設</td>
+            <td class="number">7</td>
+            <td class="number">1,621</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,624</td>
+            <td class="number">1,651</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,700</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5711.T</td>
+            <td>三菱マテリアル</td>
+            <td class="number">10</td>
+            <td class="number">3,117</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">3,050</td>
+            <td class="number">3,115</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+6,500</td>
+        </tr>
+        <tr class="action-売り">
+            <td>4911.T</td>
+            <td>資生堂</td>
+            <td class="number">12</td>
+            <td class="number">2,675</td>
+            <td class="number">-65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,695</td>
+            <td class="number">2,666</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,950</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-13</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7294.T</td>
+            <td>ヨロズ</td>
+            <td class="number">6</td>
+            <td class="number">1,002</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">972</td>
+            <td class="number">980</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+800</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4598.T</td>
+            <td>WELBY</td>
+            <td class="number">3</td>
+            <td class="number">500</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">505</td>
+            <td class="number">494</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,100</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5029.T</td>
+            <td>サークレイス</td>
+            <td class="number">9</td>
+            <td class="number">1,083</td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,089</td>
+            <td class="number">1,096</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5255.T</td>
+            <td>モンスターラボ</td>
+            <td class="number">8</td>
+            <td class="number">176</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">179</td>
+            <td class="number">172</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>325A.T</td>
+            <td>TENTIAL</td>
+            <td class="number">2</td>
+            <td class="number">4,265</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,275</td>
+            <td class="number">4,200</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-7,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4165.T</td>
+            <td>プレイド</td>
+            <td class="number">5</td>
+            <td class="number">1,055</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">995</td>
+            <td class="number">910</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-8,500</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2378.T</td>
+            <td>セントケア・ホールディング</td>
+            <td class="number">4</td>
+            <td class="number">1,043</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,043</td>
+            <td class="number">1,038</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-500</td>
+        </tr>
+        <tr class="action-静観">
+            <td>241A.T</td>
+            <td>ROXX</td>
+            <td class="number">11</td>
+            <td class="number">625</td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">635</td>
+            <td class="number">605</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-3,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5071.T</td>
+            <td>ヴィス</td>
+            <td class="number">12</td>
+            <td class="number">1,394</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,368</td>
+            <td class="number">1,395</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,700</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4251.T</td>
+            <td>JSP</td>
+            <td class="number">7</td>
+            <td class="number">1,159</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,160</td>
+            <td class="number">1,183</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,300</td>
+        </tr>
+        <tr class="action-売り">
+            <td>4499.T</td>
+            <td>SPEEE</td>
+            <td class="number">1</td>
+            <td class="number">2,666</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,648</td>
+            <td class="number">2,610</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+3,800</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-12</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6496.T</td>
+            <td>中北製作所</td>
+            <td class="number">6</td>
+            <td class="number">6,080</td>
+            <td class="number">-10</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,060</td>
+            <td class="number">6,280</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+22,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7438.T</td>
+            <td>コンドーテック</td>
+            <td class="number">2</td>
+            <td class="number">1,571</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,574</td>
+            <td class="number">1,570</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-400</td>
+        </tr>
+        <tr class="action-静観">
+            <td>5952.T</td>
+            <td>アマテイ</td>
+            <td class="number">7</td>
+            <td class="number">200</td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">201</td>
+            <td class="number">201</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4259.T</td>
+            <td>エクサウィザーズ</td>
+            <td class="number">1</td>
+            <td class="number">643</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">725</td>
+            <td class="number">743</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,800</td>
+        </tr>
+        <tr class="action-売り">
+            <td>4591.T</td>
+            <td>リボミック</td>
+            <td class="number">3</td>
+            <td class="number">88</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">89</td>
+            <td class="number">91</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="action-売り">
+            <td>8105.T</td>
+            <td>Bitcoin Japan</td>
+            <td class="number">5</td>
+            <td class="number">774</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">849</td>
+            <td class="number">924</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-7,500</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7320.T</td>
+            <td>Solvvy</td>
+            <td class="number">4</td>
+            <td class="number">2,147</td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,131</td>
+            <td class="number">2,171</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-4,000</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-11</td>
+        </tr>
+        <tr class="action-買い">
+            <td>1944.T</td>
+            <td>きんでん</td>
+            <td class="number">3</td>
+            <td class="number">6,175</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,255</td>
+            <td class="number">6,203</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-5,200</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7320.T</td>
+            <td>Solvvy</td>
+            <td class="number">6</td>
+            <td class="number">2,142</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,129</td>
+            <td class="number">2,147</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,800</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7014.T</td>
+            <td>名村造船所</td>
+            <td class="number">2</td>
+            <td class="number">4,525</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,455</td>
+            <td class="number">4,330</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-12,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5941.T</td>
+            <td>中西製作所</td>
+            <td class="number">5</td>
+            <td class="number">2,386</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,379</td>
+            <td class="number">2,370</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-900</td>
+        </tr>
+        <tr class="action-買い">
+            <td>9302.T</td>
+            <td>三井倉庫ホールディングス</td>
+            <td class="number">8</td>
+            <td class="number">3,749</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">3,752</td>
+            <td class="number">3,759</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3766.T</td>
+            <td>システムズ・デザイン</td>
+            <td class="number">9</td>
+            <td class="number">1,275</td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,258</td>
+            <td class="number">1,274</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,600</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6794.T</td>
+            <td>フォスター電機</td>
+            <td class="number">4</td>
+            <td class="number">2,528</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">2,525</td>
+            <td class="number">2,518</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-700</td>
+        </tr>
+        <tr class="action-静観">
+            <td>3895.T</td>
+            <td>ハビックス</td>
+            <td class="number">11</td>
+            <td class="number">406</td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">403</td>
+            <td class="number">403</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-静観">
+            <td>8850.T</td>
+            <td>スターツコーポレーション</td>
+            <td class="number">10</td>
+            <td class="number">4,780</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">4,765</td>
+            <td class="number">4,675</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-9,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>3103.T</td>
+            <td>日東紡績</td>
+            <td class="number">1</td>
+            <td class="number">197</td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">197</td>
+            <td class="number">247</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+5,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>9158.T</td>
+            <td>シーユーシー</td>
+            <td class="number">7</td>
+            <td class="number">1,000</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">967</td>
+            <td class="number">985</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,800</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-10</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4318.T</td>
+            <td>クイック</td>
+            <td class="number">3</td>
+            <td class="number">2,370</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,370</td>
+            <td class="number">2,383</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8746.T</td>
+            <td>unbanked</td>
+            <td class="number">6</td>
+            <td class="number">454</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">50</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">453</td>
+            <td class="number">460</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3077.T</td>
+            <td>ホリイフードサービス</td>
+            <td class="number">1</td>
+            <td class="number">605</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">595</td>
+            <td class="number">568</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td class="number">2</td>
+            <td class="number">1,007</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,048</td>
+            <td class="number">1,025</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,300</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6927.T</td>
+            <td>ヘリオステクノHD</td>
+            <td class="number">7</td>
+            <td class="number">965</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">967</td>
+            <td class="number">977</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>3744.T</td>
+            <td>サイオス</td>
+            <td class="number">12</td>
+            <td class="number">555</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">554</td>
+            <td class="number">528</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,600</td>
+        </tr>
+        <tr class="action-静観">
+            <td>7937.T</td>
+            <td>ツツミ</td>
+            <td class="number">11</td>
+            <td class="number">2,330</td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">2,362</td>
+            <td class="number">2,314</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-4,800</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6803.T</td>
+            <td>TOA</td>
+            <td class="number">9</td>
+            <td class="number">91</td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">95</td>
+            <td class="number">102</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2334.T</td>
+            <td>イオレ</td>
+            <td class="number">5</td>
+            <td class="number">440</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">4,500</td>
+            <td class="number">5,080</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+58,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6986.T</td>
+            <td>双葉電子工業</td>
+            <td class="number">8</td>
+            <td class="number">648</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">654</td>
+            <td class="number">660</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>5189.T</td>
+            <td>櫻護謨</td>
+            <td class="number">10</td>
+            <td class="number">2,320</td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">2,333</td>
+            <td class="number">2,331</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+200</td>
+        </tr>
+        <tr class="action-売り">
+            <td>4598.T</td>
+            <td>DELTA-P</td>
+            <td class="number">4</td>
+            <td class="number">497</td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">523</td>
+            <td class="number">476</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+4,700</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-07</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7711.T</td>
+            <td>助川電気工業</td>
+            <td class="number">9</td>
+            <td class="number">6,670</td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,470</td>
+            <td class="number">6,200</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-27,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3110.T</td>
+            <td>日東紡績</td>
+            <td class="number">4</td>
+            <td class="number">8,280</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">9,780</td>
+            <td class="number">9,780</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8105.T</td>
+            <td>堀田丸正</td>
+            <td class="number">3</td>
+            <td class="number">674</td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">654</td>
+            <td class="number">630</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,400</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2700.T</td>
+            <td>木徳神糧</td>
+            <td class="number">5</td>
+            <td class="number">4,920</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,220</td>
+            <td class="number">4,220</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7826.T</td>
+            <td>フルヤ金属</td>
+            <td class="number">6</td>
+            <td class="number">2,762</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">3,225</td>
+            <td class="number">3,100</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-12,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6328.T</td>
+            <td>荏原実業</td>
+            <td class="number">2</td>
+            <td class="number">4,225</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">4,395</td>
+            <td class="number">4,340</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-5,500</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7018.T</td>
+            <td>内海造船</td>
+            <td class="number">8</td>
+            <td class="number">17,480</td>
+            <td class="number">10</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">10</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">16,280</td>
+            <td class="number">15,250</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+103,000</td>
+        </tr>
+        <tr class="action-静観">
+            <td>3798.T</td>
+            <td>ULSグループ</td>
+            <td class="number">7</td>
+            <td class="number">722</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">718</td>
+            <td class="number">699</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,900</td>
+        </tr>
+        <tr class="action-静観">
+            <td>6524.T</td>
+            <td>湖北工業</td>
+            <td class="number">10</td>
+            <td class="number">3,215</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">3,280</td>
+            <td class="number">3,290</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7746.T</td>
+            <td>岡本硝子</td>
+            <td class="number">1</td>
+            <td class="number">417</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">406</td>
+            <td class="number">394</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,200</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-06</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6022.T</td>
+            <td>赤阪鐵工所(株)</td>
+            <td class="number">11</td>
+            <td class="number">6,050</td>
+            <td class="number">15</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5,860</td>
+            <td class="number">5,750</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-11,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7729.T</td>
+            <td>(株)東京精密</td>
+            <td class="number">3</td>
+            <td class="number">10,980</td>
+            <td class="number">65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-100</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">65</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">11,275</td>
+            <td class="number">10,860</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+41,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>219A.T</td>
+            <td>Heartseed(株)</td>
+            <td class="number">9</td>
+            <td class="number">1,935</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,900</td>
+            <td class="number">1,817</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-8,300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6994.T</td>
+            <td>指月電機製作(株)</td>
+            <td class="number">8</td>
+            <td class="number">695</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">762</td>
+            <td class="number">763</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+100</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6366.T</td>
+            <td>千代田化工建設(株)</td>
+            <td class="number">4</td>
+            <td class="number">473</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">477</td>
+            <td class="number">503</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,600</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4570.T</td>
+            <td>(株)免疫生物研究所</td>
+            <td class="number">6</td>
+            <td class="number">553</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">580</td>
+            <td class="number">551</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,900</td>
+        </tr>
+        <tr class="action-買い">
+            <td>6240.T</td>
+            <td>ヤマシンフィルタ(株)</td>
+            <td class="number">7</td>
+            <td class="number">724</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">654</td>
+            <td class="number">663</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+900</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4237.T</td>
+            <td>フジプレアム(株)</td>
+            <td class="number">13</td>
+            <td class="number">311</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">311</td>
+            <td class="number">309</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="action-静観">
+            <td>7069.T</td>
+            <td>(株)サイバー・バズ</td>
+            <td class="number">2</td>
+            <td class="number">764</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">914</td>
+            <td class="number">914</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4082.T</td>
+            <td>第一稀元素化学工業(株)</td>
+            <td class="number">1</td>
+            <td class="number">1,412</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,420</td>
+            <td class="number">1,228</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-19,200</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4875.T</td>
+            <td>メディシノバ</td>
+            <td class="number">5</td>
+            <td class="number">234</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">233</td>
+            <td class="number">212</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-2,100</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス(株)</td>
+            <td class="number">10</td>
+            <td class="number">48</td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">51</td>
+            <td class="number">45</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>3082.T</td>
+            <td>(株)きちりホールディングス</td>
+            <td class="number">12</td>
+            <td class="number">920</td>
+            <td class="number">-50</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-20</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-50</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">920</td>
+            <td class="number">920</td>
+            <td class="number " style="font-weight: bold;">分</td>
+            <td class="number " style="font-weight: bold;">0</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-05</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3350.T</td>
+            <td>メタプラネット</td>
+            <td class="number">3</td>
+            <td class="number">450</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">55</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">429</td>
+            <td class="number">441</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,200</td>
+        </tr>
+        <tr class="action-買い">
+            <td>5994.T</td>
+            <td>ファインシンター</td>
+            <td class="number">6</td>
+            <td class="number">1,571</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,531</td>
+            <td class="number">1,586</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+5,500</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7983.T</td>
+            <td>ミロク</td>
+            <td class="number">5</td>
+            <td class="number">1,486</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,484</td>
+            <td class="number">1,437</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-4,700</td>
+        </tr>
+        <tr class="action-買い">
+            <td>8912.T</td>
+            <td>エリアクエスト</td>
+            <td class="number">9</td>
+            <td class="number">160</td>
+            <td class="number">-10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">159</td>
+            <td class="number">160</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+100</td>
+        </tr>
+        <tr class="action-買い">
+            <td>7255.T</td>
+            <td>桜井製作所</td>
+            <td class="number">8</td>
+            <td class="number">575</td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">575</td>
+            <td class="number">573</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-200</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2160.T</td>
+            <td>ジーエヌアイグループ</td>
+            <td class="number">2</td>
+            <td class="number">2,532</td>
+            <td class="number">30</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">2,499</td>
+            <td class="number">2,466</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-3,300</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3660.T</td>
+            <td>アイスタイル</td>
+            <td class="number">1</td>
+            <td class="number">447</td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">446</td>
+            <td class="number">440</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td class="number">4</td>
+            <td class="number">996</td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-25</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">1,041</td>
+            <td class="number">1,021</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+2,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>6035.T</td>
+            <td>IRジャパン</td>
+            <td class="number">10</td>
+            <td class="number">789</td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">786</td>
+            <td class="number">785</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+100</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7859.T</td>
+            <td>アルメディオ</td>
+            <td class="number">7</td>
+            <td class="number">211</td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">15</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">180</td>
+            <td class="number">178</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+200</td>
+        </tr>
+        <tr class="date-separator">
+            <td colspan="14">2025-11-04</td>
+        </tr>
+        <tr class="action-買い">
+            <td>1798.T</td>
+            <td>守谷商会</td>
+            <td class="number">9</td>
+            <td class="number">6,420</td>
+            <td class="number">0</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">100</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">6,720</td>
+            <td class="number">7,060</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+34,000</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4875.T</td>
+            <td>メディシノバ</td>
+            <td class="number">3</td>
+            <td class="number">227</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">209</td>
+            <td class="number">200</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-900</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td class="number">2</td>
+            <td class="number">1,308</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">35</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">1,381</td>
+            <td class="number">1,365</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,600</td>
+        </tr>
+        <tr class="action-買い">
+            <td>3997.T</td>
+            <td>トレードワークス</td>
+            <td class="number">6</td>
+            <td class="number">337</td>
+            <td class="number">40</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">25</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">338</td>
+            <td class="number">346</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+800</td>
+        </tr>
+        <tr class="action-買い">
+            <td>4259.T</td>
+            <td>エクサウィザーズ</td>
+            <td class="number">1</td>
+            <td class="number">670</td>
+            <td class="number">45</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">675</td>
+            <td class="number">666</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-900</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2445.T</td>
+            <td>タカミヤ</td>
+            <td class="number">5</td>
+            <td class="number">416</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">410</td>
+            <td class="number">417</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+700</td>
+        </tr>
+        <tr class="action-静観">
+            <td>1844.T</td>
+            <td>大盛工業</td>
+            <td class="number">13</td>
+            <td class="number">646</td>
+            <td class="number">-10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">640</td>
+            <td class="number">624</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,600</td>
+        </tr>
+        <tr class="action-静観">
+            <td>8014.T</td>
+            <td>蝶理</td>
+            <td class="number">12</td>
+            <td class="number">3,975</td>
+            <td class="number">-5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-30</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">3,905</td>
+            <td class="number">3,890</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-1,500</td>
+        </tr>
+        <tr class="action-静観">
+            <td>9552.T</td>
+            <td>M&A総研ホールディングス</td>
+            <td class="number">8</td>
+            <td class="number">1,267</td>
+            <td class="number">65</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">1,265</td>
+            <td class="number">1,343</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+7,800</td>
+        </tr>
+        <tr class="action-静観">
+            <td>4436.T</td>
+            <td>ミンカブ・ジ・インフォノイド</td>
+            <td class="number">11</td>
+            <td class="number">482</td>
+            <td class="number">10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-10</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">466</td>
+            <td class="number">481</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,500</td>
+        </tr>
+        <tr class="action-静観">
+            <td>3914.T</td>
+            <td>JIG-SAW</td>
+            <td class="number">4</td>
+            <td class="number">4,060</td>
+            <td class="number">20</td>
+            <td><span class="action-買い-badge action-badge">買い</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">0</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">3,920</td>
+            <td class="number">3,470</td>
+            <td class="number negative" style="font-weight: bold;">負</td>
+            <td class="number negative" style="font-weight: bold;">-45,000</td>
+        </tr>
+        <tr class="action-売り">
+            <td>7746.T</td>
+            <td>岡本硝子</td>
+            <td class="number">7</td>
+            <td class="number">430</td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">5</td>
+            <td><span class="action-静観-badge action-badge">静観</span></td>
+            <td class="number">-15</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">433</td>
+            <td class="number">387</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+4,600</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2743.T</td>
+            <td>ピクセルカンパニーズ</td>
+            <td class="number">10</td>
+            <td class="number">122</td>
+            <td class="number">-40</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-35</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">-40</td>
+            <td><span class="action-売り-badge action-badge">売り</span></td>
+            <td class="number">122</td>
+            <td class="number">112</td>
+            <td class="number positive" style="font-weight: bold;">勝</td>
+            <td class="number positive" style="font-weight: bold;">+1,000</td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,2771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V2.1.1 バックテストレポート（最適損切り戦略）</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    color: #333;
+}
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+.header .subtitle {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+.strategy-box {
+    background: #f8f9fa;
+    padding: 30px;
+    margin: 30px;
+    border-radius: 12px;
+    border-left: 6px solid #667eea;
+}
+.strategy-box h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+.strategy-box ul {
+    list-style: none;
+    padding-left: 0;
+}
+.strategy-box li {
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+.strategy-box li:last-child {
+    border-bottom: none;
+}
+.summary-section {
+    padding: 40px;
+    background: #f8f9fa;
+}
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 24px;
+    margin-bottom: 30px;
+}
+.summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-left: 6px solid #667eea;
+}
+.summary-card h3 {
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    color: #667eea;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 12px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label {
+    color: #666;
+    font-size: 0.95em;
+}
+.stat-value {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #333;
+}
+.positive { color: #27ae60 !important; }
+.negative { color: #e74c3c !important; }
+.impact-positive { color: #27ae60 !important; font-weight: 600; }
+.impact-negative { color: #e74c3c !important; font-weight: 600; }
+.table-section {
+    padding: 40px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.9em;
+}
+thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+th.number { text-align: right; }
+th.center { text-align: center; }
+td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+td.number { text-align: right; }
+td.center { text-align: center; }
+tr:hover {
+    background: #f8f9fa;
+}
+.date-separator {
+    background: #e8eaf6 !important;
+    font-weight: bold;
+    text-align: center;
+}
+.date-separator td {
+    padding: 8px !important;
+}
+.action-買い {
+    background: rgba(52, 152, 219, 0.05);
+}
+.action-静観 {
+    background: rgba(149, 165, 166, 0.05);
+}
+.action-売り {
+    background: rgba(231, 76, 60, 0.05);
+}
+.badge-買い {
+    background: #3498db;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.badge-静観 {
+    background: #95a5a6;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.badge-売り {
+    background: #e74c3c;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+.badge-triggered {
+    background: #e74c3c;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.8em;
+    font-weight: 600;
+}
+.badge-not-triggered {
+    color: #999;
+    font-size: 0.8em;
+}
+.result-勝 {
+    color: #27ae60;
+    font-weight: bold;
+    text-align: center;
+}
+.result-負 {
+    color: #e74c3c;
+    font-weight: bold;
+    text-align: center;
+}
+.result-分 {
+    color: #95a5a6;
+    font-weight: bold;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 V2.1.1 バックテストレポート</h1>
+        <div class="subtitle">ハイブリッド戦略（v2.1.0.1）+ 最適損切り戦略</div>
+        <div class="subtitle" style="margin-top: 10px;">期間: 2025-11-04 ~ 2025-11-21 | 対象: Grok銘柄 151件</div>
+    </div>
+
+    <div class="strategy-box">
+        <h2>🎯 V2.1.1 戦略</h2>
+        <ul>
+            <li>✅ <strong>ハイブリッド判定</strong>: 買い→静観、静観→売りのみv2.1.0適用</li>
+            <li>💎 <strong>買い（1,000円未満）</strong>: 損切りなし</li>
+            <li>💰 <strong>買い（1,000-3,000円）</strong>: 損切り-5%（Low判定）</li>
+            <li>💵 <strong>買い（3,000円以上）</strong>: 損切り-3%（Low判定）</li>
+            <li>📉 <strong>売り（全価格帯）</strong>: 損切り+5%（High判定）</li>
+        </ul>
+    </div>
+
+    <div class="summary-section">
+        <h2 style="margin-bottom: 20px; color: #667eea; text-align: center;">📈 判定別成績</h2>
+        <div class="summary-grid">
+            <div class="summary-card" style="border-left-color: #3498db;">
+                <h3>💎 買い判定 (57銘柄)</h3>
+                <div class="stat-row">
+                    <span class="stat-label">勝率 (引分除外)</span>
+                    <span class="stat-value positive">54.7%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value positive">+82,935円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">平均利益</span>
+                    <span class="stat-value positive">+1,455円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損切り発動率</span>
+                    <span class="stat-value">10.5%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損失回避額</span>
+                    <span class="stat-value positive">+53,980円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">機会損失額</span>
+                    <span class="stat-value negative">-7,445円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損切り純影響</span>
+                    <span class="stat-value positive">+46,535円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝/負/分</span>
+                    <span class="stat-value">29/24/4</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #95a5a6;">
+                <h3>⏸️ 静観判定 (46銘柄)</h3>
+                <div class="stat-row">
+                    <span class="stat-label">勝率 (引分除外)</span>
+                    <span class="stat-value negative">42.9%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value negative">-2,330円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">平均利益</span>
+                    <span class="stat-value negative">-51円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝/負/分</span>
+                    <span class="stat-value">18/24/4</span>
+                </div>
+            </div>
+
+            <div class="summary-card" style="border-left-color: #e74c3c;">
+                <h3>📉 売り判定 (48銘柄)</h3>
+                <div class="stat-row">
+                    <span class="stat-label">勝率 (引分除外)</span>
+                    <span class="stat-value positive">75.6%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">合計利益</span>
+                    <span class="stat-value positive">+444,975円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">平均利益</span>
+                    <span class="stat-value positive">+9,270円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損切り発動率</span>
+                    <span class="stat-value">8.3%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損失回避額</span>
+                    <span class="stat-value positive">+45,390円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">機会損失額</span>
+                    <span class="stat-value negative">-6,765円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">損切り純影響</span>
+                    <span class="stat-value positive">+38,625円</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">勝/負/分</span>
+                    <span class="stat-value">34/11/3</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>選定日</th>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th>判定</th>
+                    <th class="number">購入価格</th>
+                    <th class="number">高値</th>
+                    <th class="number">安値</th>
+                    <th class="number">終値</th>
+                    <th class="number">損切り設定</th>
+                    <th class="center">損切り</th>
+                    <th class="number">100株利益</th>
+                    <th class="center">影響</th>
+                    <th class="number">影響額</th>
+                    <th class="center">結果</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="date-separator"><td colspan="15">2025-11-21</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-21</td>
+            <td>3350.T</td>
+            <td>メタプラネット</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">365円</td>
+            <td class="number">376円</td>
+            <td class="number">351円</td>
+            <td class="number">357円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-21</td>
+            <td>4397.T</td>
+            <td>チームスピリット</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">504円</td>
+            <td class="number">520円</td>
+            <td class="number">498円</td>
+            <td class="number">515円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-21</td>
+            <td>7603.T</td>
+            <td>ジーイエット</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">149円</td>
+            <td class="number">157円</td>
+            <td class="number">149円</td>
+            <td class="number">156円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-21</td>
+            <td>8894.T</td>
+            <td>REVOLUTION</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">55円</td>
+            <td class="number">64円</td>
+            <td class="number">54円</td>
+            <td class="number">61円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-21</td>
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">985円</td>
+            <td class="number">1,013円</td>
+            <td class="number">976円</td>
+            <td class="number">999円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-21</td>
+            <td>3409.T</td>
+            <td>北紡</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">125円</td>
+            <td class="number">128円</td>
+            <td class="number">122円</td>
+            <td class="number">127円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-21</td>
+            <td>7695.T</td>
+            <td>交換できるくん</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">793円</td>
+            <td class="number">864円</td>
+            <td class="number">783円</td>
+            <td class="number">864円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-3,965円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+3,135円</td>
+            <td class="result-負">負</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-20</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-20</td>
+            <td>3900.T</td>
+            <td>クラウドワークス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">865円</td>
+            <td class="number">884円</td>
+            <td class="number">835円</td>
+            <td class="number">841円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-20</td>
+            <td>3989.T</td>
+            <td>シェアリングテクノロジー</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,050円</td>
+            <td class="number">1,061円</td>
+            <td class="number">1,020円</td>
+            <td class="number">1,029円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-20</td>
+            <td>319A.T</td>
+            <td>技術承継機構</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">9,400円</td>
+            <td class="number">10,030円</td>
+            <td class="number">9,400円</td>
+            <td class="number">9,620円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+22,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-20</td>
+            <td>7721.T</td>
+            <td>東京計器</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">5,710円</td>
+            <td class="number">5,870円</td>
+            <td class="number">5,610円</td>
+            <td class="number">5,750円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+4,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-20</td>
+            <td>6617.T</td>
+            <td>トレックス・セミコンダクター</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">3,470円</td>
+            <td class="number">3,580円</td>
+            <td class="number">3,405円</td>
+            <td class="number">3,565円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+9,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-20</td>
+            <td>4494.T</td>
+            <td>バリオセキュア</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">764円</td>
+            <td class="number">767円</td>
+            <td class="number">759円</td>
+            <td class="number">764円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-20</td>
+            <td>5074.T</td>
+            <td>テスホールディングス</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">346円</td>
+            <td class="number">347円</td>
+            <td class="number">337円</td>
+            <td class="number">337円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-20</td>
+            <td>4680.T</td>
+            <td>ラウンドワン</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">965円</td>
+            <td class="number">983円</td>
+            <td class="number">962円</td>
+            <td class="number">976円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,070円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-20</td>
+            <td>9348.T</td>
+            <td>ispace</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">456円</td>
+            <td class="number">456円</td>
+            <td class="number">445円</td>
+            <td class="number">449円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-20</td>
+            <td>9560.T</td>
+            <td>プログリット</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">951円</td>
+            <td class="number">963円</td>
+            <td class="number">949円</td>
+            <td class="number">949円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-20</td>
+            <td>6538.T</td>
+            <td>ディスラプターズ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">324円</td>
+            <td class="number">334円</td>
+            <td class="number">324円</td>
+            <td class="number">333円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-20</td>
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,018円</td>
+            <td class="number">1,033円</td>
+            <td class="number">993円</td>
+            <td class="number">996円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-19</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-19</td>
+            <td>7564.T</td>
+            <td>ワークマン</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,700円</td>
+            <td class="number">6,770円</td>
+            <td class="number">6,640円</td>
+            <td class="number">6,750円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+5,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-19</td>
+            <td>9051.T</td>
+            <td>センコン物流</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,414円</td>
+            <td class="number">1,414円</td>
+            <td class="number">1,390円</td>
+            <td class="number">1,414円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-19</td>
+            <td>6366.T</td>
+            <td>千代田化工建設</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">624円</td>
+            <td class="number">630円</td>
+            <td class="number">556円</td>
+            <td class="number">618円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-19</td>
+            <td>5985.T</td>
+            <td>サンコール</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,376円</td>
+            <td class="number">1,417円</td>
+            <td class="number">1,256円</td>
+            <td class="number">1,266円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-11,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-19</td>
+            <td>7271.T</td>
+            <td>安永</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,075円</td>
+            <td class="number">1,078円</td>
+            <td class="number">1,034円</td>
+            <td class="number">1,036円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-3,900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-19</td>
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">2,160円</td>
+            <td class="number">2,699円</td>
+            <td class="number">2,144円</td>
+            <td class="number">2,588円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+42,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-19</td>
+            <td>8061.T</td>
+            <td>西華産業</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">2,155円</td>
+            <td class="number">2,180円</td>
+            <td class="number">2,125円</td>
+            <td class="number">2,154円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-19</td>
+            <td>6989.T</td>
+            <td>北陸電気工業</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,540円</td>
+            <td class="number">2,555円</td>
+            <td class="number">2,482円</td>
+            <td class="number">2,496円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+4,400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-19</td>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,360円</td>
+            <td class="number">1,383円</td>
+            <td class="number">1,291円</td>
+            <td class="number">1,323円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+3,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-19</td>
+            <td>7896.T</td>
+            <td>セブン工業</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">496円</td>
+            <td class="number">507円</td>
+            <td class="number">493円</td>
+            <td class="number">496円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-18</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-18</td>
+            <td>3989.T</td>
+            <td>シェアリングテクノロジー</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,036円</td>
+            <td class="number">1,093円</td>
+            <td class="number">1,035円</td>
+            <td class="number">1,046円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-18</td>
+            <td>7453.T</td>
+            <td>良品計画</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">2,993円</td>
+            <td class="number">3,018円</td>
+            <td class="number">2,905円</td>
+            <td class="number">2,938円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-5,450円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-18</td>
+            <td>8136.T</td>
+            <td>サンリオ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">5,400円</td>
+            <td class="number">5,632円</td>
+            <td class="number">5,343円</td>
+            <td class="number">5,539円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+13,900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-18</td>
+            <td>9424.T</td>
+            <td>日本通信</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">149円</td>
+            <td class="number">149円</td>
+            <td class="number">142円</td>
+            <td class="number">143円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-18</td>
+            <td>9101.T</td>
+            <td>日本郵船</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">4,875円</td>
+            <td class="number">4,893円</td>
+            <td class="number">4,842円</td>
+            <td class="number">4,877円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>6613.T</td>
+            <td>QDレーザ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">355円</td>
+            <td class="number">356円</td>
+            <td class="number">345円</td>
+            <td class="number">345円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>5597.T</td>
+            <td>ブルーイノベーション</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,635円</td>
+            <td class="number">1,643円</td>
+            <td class="number">1,509円</td>
+            <td class="number">1,541円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+9,400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>5803.T</td>
+            <td>フジクラ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">19,300円</td>
+            <td class="number">19,370円</td>
+            <td class="number">17,860円</td>
+            <td class="number">17,875円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+142,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>9561.T</td>
+            <td>グラッドキューブ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">480円</td>
+            <td class="number">492円</td>
+            <td class="number">454円</td>
+            <td class="number">458円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>6594.T</td>
+            <td>ニデック</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,079円</td>
+            <td class="number">2,098円</td>
+            <td class="number">2,027円</td>
+            <td class="number">2,043円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+3,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>7018.T</td>
+            <td>内海造船</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">16,560円</td>
+            <td class="number">16,600円</td>
+            <td class="number">15,150円</td>
+            <td class="number">15,150円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+141,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-18</td>
+            <td>6269.T</td>
+            <td>三井海洋開発</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">14,375円</td>
+            <td class="number">15,075円</td>
+            <td class="number">13,830円</td>
+            <td class="number">14,000円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+37,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-17</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-17</td>
+            <td>6432.T</td>
+            <td>竹内製作所</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,500円</td>
+            <td class="number">6,600円</td>
+            <td class="number">6,470円</td>
+            <td class="number">6,530円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+3,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-17</td>
+            <td>2586.T</td>
+            <td>フルッタフルッタ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">137円</td>
+            <td class="number">137円</td>
+            <td class="number">137円</td>
+            <td class="number">137円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-17</td>
+            <td>6495.T</td>
+            <td>宮入バルブ製作所</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">116円</td>
+            <td class="number">116円</td>
+            <td class="number">112円</td>
+            <td class="number">112円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-17</td>
+            <td>265A.T</td>
+            <td>Hmcomm</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,033円</td>
+            <td class="number">1,052円</td>
+            <td class="number">998円</td>
+            <td class="number">1,010円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-17</td>
+            <td>9348.T</td>
+            <td>ispace</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">475円</td>
+            <td class="number">478円</td>
+            <td class="number">456円</td>
+            <td class="number">457円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-1,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-17</td>
+            <td>5597.T</td>
+            <td>ブルーイノベーション</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,681円</td>
+            <td class="number">1,715円</td>
+            <td class="number">1,627円</td>
+            <td class="number">1,635円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-4,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-17</td>
+            <td>302A.T</td>
+            <td>ビースタイルホールディングス</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,189円</td>
+            <td class="number">1,189円</td>
+            <td class="number">1,133円</td>
+            <td class="number">1,133円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-5,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-17</td>
+            <td>2492.T</td>
+            <td>インフォマート</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">347円</td>
+            <td class="number">349円</td>
+            <td class="number">341円</td>
+            <td class="number">345円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-17</td>
+            <td>2462.T</td>
+            <td>ライク</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,500円</td>
+            <td class="number">1,504円</td>
+            <td class="number">1,496円</td>
+            <td class="number">1,500円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-17</td>
+            <td>6594.T</td>
+            <td>ニデック</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,151円</td>
+            <td class="number">2,188円</td>
+            <td class="number">2,032円</td>
+            <td class="number">2,064円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+8,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-17</td>
+            <td>5574.T</td>
+            <td>ABEJA</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,750円</td>
+            <td class="number">2,769円</td>
+            <td class="number">2,645円</td>
+            <td class="number">2,658円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+9,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-14</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>8136.T</td>
+            <td>サンリオ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">5,800円</td>
+            <td class="number">6,007円</td>
+            <td class="number">5,780円</td>
+            <td class="number">5,813円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>5406.T</td>
+            <td>神戸製鋼所</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,846円</td>
+            <td class="number">1,902円</td>
+            <td class="number">1,840円</td>
+            <td class="number">1,902円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+5,550円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>1844.T</td>
+            <td>大盛工業</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">634円</td>
+            <td class="number">679円</td>
+            <td class="number">632円</td>
+            <td class="number">660円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>4061.T</td>
+            <td>デンカ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">2,433円</td>
+            <td class="number">2,460円</td>
+            <td class="number">2,406円</td>
+            <td class="number">2,448円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>6525.T</td>
+            <td>コクサイエレクトリック</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">4,250円</td>
+            <td class="number">4,289円</td>
+            <td class="number">4,077円</td>
+            <td class="number">4,112円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-12,750円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+1,050円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-14</td>
+            <td>6087.T</td>
+            <td>ネットスターズ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">3,185円</td>
+            <td class="number">3,185円</td>
+            <td class="number">3,165円</td>
+            <td class="number">3,175円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-14</td>
+            <td>9501.T</td>
+            <td>東京電力HD</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">910円</td>
+            <td class="number">937円</td>
+            <td class="number">866円</td>
+            <td class="number">878円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-3,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-14</td>
+            <td>4575.T</td>
+            <td>海洋ファーマ</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">815円</td>
+            <td class="number">834円</td>
+            <td class="number">807円</td>
+            <td class="number">818円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-14</td>
+            <td>6309.T</td>
+            <td>海洋建設</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,624円</td>
+            <td class="number">1,653円</td>
+            <td class="number">1,618円</td>
+            <td class="number">1,651円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-14</td>
+            <td>5711.T</td>
+            <td>三菱マテリアル</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">3,050円</td>
+            <td class="number">3,122円</td>
+            <td class="number">3,040円</td>
+            <td class="number">3,115円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-6,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-14</td>
+            <td>5706.T</td>
+            <td>三井金属鉱業</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">18,200円</td>
+            <td class="number">19,950円</td>
+            <td class="number">18,200円</td>
+            <td class="number">19,500円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-91,000円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+39,000円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-14</td>
+            <td>4911.T</td>
+            <td>資生堂</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,695円</td>
+            <td class="number">2,721円</td>
+            <td class="number">2,644円</td>
+            <td class="number">2,666円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,950円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-13</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-13</td>
+            <td>5029.T</td>
+            <td>サークレイス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,089円</td>
+            <td class="number">1,105円</td>
+            <td class="number">1,078円</td>
+            <td class="number">1,096円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-13</td>
+            <td>5255.T</td>
+            <td>モンスターラボ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">179円</td>
+            <td class="number">179円</td>
+            <td class="number">171円</td>
+            <td class="number">172円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-13</td>
+            <td>325A.T</td>
+            <td>TENTIAL</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">4,275円</td>
+            <td class="number">4,345円</td>
+            <td class="number">4,200円</td>
+            <td class="number">4,200円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-7,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>2378.T</td>
+            <td>セントケア・ホールディング</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,043円</td>
+            <td class="number">1,050円</td>
+            <td class="number">1,036円</td>
+            <td class="number">1,038円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>7294.T</td>
+            <td>ヨロズ</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">972円</td>
+            <td class="number">995円</td>
+            <td class="number">962円</td>
+            <td class="number">980円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>241A.T</td>
+            <td>ROXX</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">635円</td>
+            <td class="number">635円</td>
+            <td class="number">601円</td>
+            <td class="number">605円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-3,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>4165.T</td>
+            <td>プレイド</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">995円</td>
+            <td class="number">995円</td>
+            <td class="number">893円</td>
+            <td class="number">910円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-8,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>5071.T</td>
+            <td>ヴィス</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,368円</td>
+            <td class="number">1,395円</td>
+            <td class="number">1,368円</td>
+            <td class="number">1,395円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-13</td>
+            <td>4251.T</td>
+            <td>JSP</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,160円</td>
+            <td class="number">1,190円</td>
+            <td class="number">1,157円</td>
+            <td class="number">1,183円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-13</td>
+            <td>4598.T</td>
+            <td>WELBY</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">505円</td>
+            <td class="number">505円</td>
+            <td class="number">484円</td>
+            <td class="number">494円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-13</td>
+            <td>4499.T</td>
+            <td>SPEEE</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,648円</td>
+            <td class="number">2,660円</td>
+            <td class="number">2,549円</td>
+            <td class="number">2,610円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+3,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-12</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-12</td>
+            <td>6496.T</td>
+            <td>中北製作所</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,060円</td>
+            <td class="number">6,290円</td>
+            <td class="number">6,000円</td>
+            <td class="number">6,280円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+22,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-12</td>
+            <td>4259.T</td>
+            <td>エクサウィザーズ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">725円</td>
+            <td class="number">743円</td>
+            <td class="number">712円</td>
+            <td class="number">743円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-12</td>
+            <td>5952.T</td>
+            <td>アマテイ</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">201円</td>
+            <td class="number">204円</td>
+            <td class="number">199円</td>
+            <td class="number">201円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-12</td>
+            <td>7438.T</td>
+            <td>コンドーテック</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,574円</td>
+            <td class="number">1,600円</td>
+            <td class="number">1,554円</td>
+            <td class="number">1,570円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-12</td>
+            <td>4591.T</td>
+            <td>リボミック</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">89円</td>
+            <td class="number">92円</td>
+            <td class="number">88円</td>
+            <td class="number">91円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-12</td>
+            <td>7320.T</td>
+            <td>Solvvy</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,131円</td>
+            <td class="number">2,171円</td>
+            <td class="number">2,120円</td>
+            <td class="number">2,171円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-4,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-12</td>
+            <td>8105.T</td>
+            <td>Bitcoin Japan</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">849円</td>
+            <td class="number">924円</td>
+            <td class="number">837円</td>
+            <td class="number">924円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-4,245円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+3,255円</td>
+            <td class="result-負">負</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-11</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-11</td>
+            <td>1944.T</td>
+            <td>きんでん</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,255円</td>
+            <td class="number">6,288円</td>
+            <td class="number">6,155円</td>
+            <td class="number">6,203円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-5,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-11</td>
+            <td>7014.T</td>
+            <td>名村造船所</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">4,455円</td>
+            <td class="number">4,475円</td>
+            <td class="number">4,200円</td>
+            <td class="number">4,330円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-13,365円</td>
+            <td class="center impact-negative">機会損失</td>
+            <td class="number impact-negative">-865円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-11</td>
+            <td>3103.T</td>
+            <td>日東紡績</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">197円</td>
+            <td class="number">247円</td>
+            <td class="number">195円</td>
+            <td class="number">247円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+5,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-11</td>
+            <td>7320.T</td>
+            <td>Solvvy</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">2,129円</td>
+            <td class="number">2,149円</td>
+            <td class="number">2,105円</td>
+            <td class="number">2,147円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-11</td>
+            <td>9302.T</td>
+            <td>三井倉庫ホールディングス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">3,752円</td>
+            <td class="number">3,809円</td>
+            <td class="number">3,723円</td>
+            <td class="number">3,759円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-11</td>
+            <td>6794.T</td>
+            <td>フォスター電機</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">2,525円</td>
+            <td class="number">2,530円</td>
+            <td class="number">2,346円</td>
+            <td class="number">2,518円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-11</td>
+            <td>5941.T</td>
+            <td>中西製作所</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">2,379円</td>
+            <td class="number">2,380円</td>
+            <td class="number">2,369円</td>
+            <td class="number">2,370円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-11</td>
+            <td>3895.T</td>
+            <td>ハビックス</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">403円</td>
+            <td class="number">405円</td>
+            <td class="number">401円</td>
+            <td class="number">403円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-11</td>
+            <td>3766.T</td>
+            <td>システムズ・デザイン</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,258円</td>
+            <td class="number">1,288円</td>
+            <td class="number">1,253円</td>
+            <td class="number">1,274円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-11</td>
+            <td>9158.T</td>
+            <td>シーユーシー</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">967円</td>
+            <td class="number">985円</td>
+            <td class="number">942円</td>
+            <td class="number">985円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-11</td>
+            <td>8850.T</td>
+            <td>スターツコーポレーション</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">4,765円</td>
+            <td class="number">4,795円</td>
+            <td class="number">4,605円</td>
+            <td class="number">4,675円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+9,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-10</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-10</td>
+            <td>6927.T</td>
+            <td>ヘリオステクノHD</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">967円</td>
+            <td class="number">980円</td>
+            <td class="number">960円</td>
+            <td class="number">977円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-10</td>
+            <td>4318.T</td>
+            <td>クイック</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">2,370円</td>
+            <td class="number">2,409円</td>
+            <td class="number">2,370円</td>
+            <td class="number">2,383円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-10</td>
+            <td>3077.T</td>
+            <td>ホリイフードサービス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">595円</td>
+            <td class="number">596円</td>
+            <td class="number">552円</td>
+            <td class="number">568円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-10</td>
+            <td>2334.T</td>
+            <td>イオレ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">4,500円</td>
+            <td class="number">5,100円</td>
+            <td class="number">4,470円</td>
+            <td class="number">5,080円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+58,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-10</td>
+            <td>6803.T</td>
+            <td>TOA</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">95円</td>
+            <td class="number">105円</td>
+            <td class="number">93円</td>
+            <td class="number">102円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-10</td>
+            <td>8746.T</td>
+            <td>unbanked</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">453円</td>
+            <td class="number">466円</td>
+            <td class="number">453円</td>
+            <td class="number">460円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>6986.T</td>
+            <td>双葉電子工業</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">654円</td>
+            <td class="number">661円</td>
+            <td class="number">651円</td>
+            <td class="number">660円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>3744.T</td>
+            <td>サイオス</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">554円</td>
+            <td class="number">554円</td>
+            <td class="number">515円</td>
+            <td class="number">528円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>7937.T</td>
+            <td>ツツミ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,362円</td>
+            <td class="number">2,362円</td>
+            <td class="number">2,306円</td>
+            <td class="number">2,314円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+4,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>5189.T</td>
+            <td>櫻護謨</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">2,333円</td>
+            <td class="number">2,349円</td>
+            <td class="number">2,331円</td>
+            <td class="number">2,331円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,048円</td>
+            <td class="number">1,052円</td>
+            <td class="number">1,018円</td>
+            <td class="number">1,025円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-10</td>
+            <td>4598.T</td>
+            <td>DELTA-P</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">523円</td>
+            <td class="number">524円</td>
+            <td class="number">461円</td>
+            <td class="number">476円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+4,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-07</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-07</td>
+            <td>7711.T</td>
+            <td>助川電気工業</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,470円</td>
+            <td class="number">6,680円</td>
+            <td class="number">6,050円</td>
+            <td class="number">6,200円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-19,410円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+7,590円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-07</td>
+            <td>3110.T</td>
+            <td>日東紡績</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">9,780円</td>
+            <td class="number">9,780円</td>
+            <td class="number">9,780円</td>
+            <td class="number">9,780円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-07</td>
+            <td>8105.T</td>
+            <td>堀田丸正</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">654円</td>
+            <td class="number">664円</td>
+            <td class="number">616円</td>
+            <td class="number">630円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,400円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-07</td>
+            <td>6524.T</td>
+            <td>湖北工業</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">3,280円</td>
+            <td class="number">3,345円</td>
+            <td class="number">3,220円</td>
+            <td class="number">3,290円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-07</td>
+            <td>2700.T</td>
+            <td>木徳神糧</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">4,220円</td>
+            <td class="number">4,220円</td>
+            <td class="number">4,220円</td>
+            <td class="number">4,220円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-07</td>
+            <td>6328.T</td>
+            <td>荏原実業</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">4,395円</td>
+            <td class="number">4,450円</td>
+            <td class="number">4,260円</td>
+            <td class="number">4,340円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-5,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-07</td>
+            <td>7018.T</td>
+            <td>内海造船</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">16,280円</td>
+            <td class="number">16,490円</td>
+            <td class="number">14,430円</td>
+            <td class="number">15,250円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+103,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-07</td>
+            <td>3798.T</td>
+            <td>ULSグループ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">718円</td>
+            <td class="number">719円</td>
+            <td class="number">695円</td>
+            <td class="number">699円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-07</td>
+            <td>7826.T</td>
+            <td>フルヤ金属</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">3,225円</td>
+            <td class="number">3,265円</td>
+            <td class="number">3,065円</td>
+            <td class="number">3,100円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+12,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-07</td>
+            <td>7746.T</td>
+            <td>岡本硝子</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">406円</td>
+            <td class="number">416円</td>
+            <td class="number">391円</td>
+            <td class="number">394円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-06</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>219A.T</td>
+            <td>Heartseed(株)</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,900円</td>
+            <td class="number">1,914円</td>
+            <td class="number">1,811円</td>
+            <td class="number">1,817円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-8,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>6994.T</td>
+            <td>指月電機製作(株)</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">762円</td>
+            <td class="number">774円</td>
+            <td class="number">725円</td>
+            <td class="number">763円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>6022.T</td>
+            <td>赤阪鐵工所(株)</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">5,860円</td>
+            <td class="number">5,940円</td>
+            <td class="number">5,360円</td>
+            <td class="number">5,750円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-17,580円</td>
+            <td class="center impact-negative">機会損失</td>
+            <td class="number impact-negative">-6,580円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>4570.T</td>
+            <td>(株)免疫生物研究所</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">580円</td>
+            <td class="number">605円</td>
+            <td class="number">541円</td>
+            <td class="number">551円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>7069.T</td>
+            <td>(株)サイバー・バズ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">914円</td>
+            <td class="number">914円</td>
+            <td class="number">914円</td>
+            <td class="number">914円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業(株)</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,420円</td>
+            <td class="number">1,421円</td>
+            <td class="number">1,198円</td>
+            <td class="number">1,228円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-7,100円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+12,100円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>4875.T</td>
+            <td>メディシノバ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">233円</td>
+            <td class="number">235円</td>
+            <td class="number">212円</td>
+            <td class="number">212円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-2,100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-06</td>
+            <td>6366.T</td>
+            <td>千代田化工建設(株)</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">477円</td>
+            <td class="number">510円</td>
+            <td class="number">475円</td>
+            <td class="number">503円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-06</td>
+            <td>4237.T</td>
+            <td>フジプレアム(株)</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">311円</td>
+            <td class="number">312円</td>
+            <td class="number">309円</td>
+            <td class="number">309円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-06</td>
+            <td>6240.T</td>
+            <td>ヤマシンフィルタ(株)</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">654円</td>
+            <td class="number">673円</td>
+            <td class="number">620円</td>
+            <td class="number">663円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-06</td>
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス(株)</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">51円</td>
+            <td class="number">51円</td>
+            <td class="number">44円</td>
+            <td class="number">45円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-06</td>
+            <td>3082.T</td>
+            <td>(株)きちりホールディングス</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">920円</td>
+            <td class="number">924円</td>
+            <td class="number">919円</td>
+            <td class="number">920円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number ">0円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-分">分</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-06</td>
+            <td>7729.T</td>
+            <td>(株)東京精密</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">11,275円</td>
+            <td class="number">11,520円</td>
+            <td class="number">10,720円</td>
+            <td class="number">10,860円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+41,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-05</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-05</td>
+            <td>5994.T</td>
+            <td>ファインシンター</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,531円</td>
+            <td class="number">1,606円</td>
+            <td class="number">1,484円</td>
+            <td class="number">1,586円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+5,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-05</td>
+            <td>2160.T</td>
+            <td>ジーエヌアイグループ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">2,499円</td>
+            <td class="number">2,502円</td>
+            <td class="number">2,406円</td>
+            <td class="number">2,466円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-3,300円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-05</td>
+            <td>3350.T</td>
+            <td>メタプラネット</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">429円</td>
+            <td class="number">444円</td>
+            <td class="number">413円</td>
+            <td class="number">441円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-05</td>
+            <td>8912.T</td>
+            <td>エリアクエスト</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">159円</td>
+            <td class="number">160円</td>
+            <td class="number">156円</td>
+            <td class="number">160円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-05</td>
+            <td>7255.T</td>
+            <td>桜井製作所</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">575円</td>
+            <td class="number">575円</td>
+            <td class="number">573円</td>
+            <td class="number">573円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-05</td>
+            <td>3660.T</td>
+            <td>アイスタイル</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">446円</td>
+            <td class="number">446円</td>
+            <td class="number">430円</td>
+            <td class="number">440円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-05</td>
+            <td>7983.T</td>
+            <td>ミロク</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">1,484円</td>
+            <td class="number">1,484円</td>
+            <td class="number">1,402円</td>
+            <td class="number">1,437円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-4,700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-05</td>
+            <td>6035.T</td>
+            <td>IRジャパン</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">786円</td>
+            <td class="number">792円</td>
+            <td class="number">765円</td>
+            <td class="number">785円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+100円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-05</td>
+            <td>7859.T</td>
+            <td>アルメディオ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">180円</td>
+            <td class="number">186円</td>
+            <td class="number">178円</td>
+            <td class="number">178円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+200円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-05</td>
+            <td>6232.T</td>
+            <td>ACSL</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">1,041円</td>
+            <td class="number">1,048円</td>
+            <td class="number">991円</td>
+            <td class="number">1,021円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+2,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr><tr class="date-separator"><td colspan="15">2025-11-04</td></tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>4259.T</td>
+            <td>エクサウィザーズ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">675円</td>
+            <td class="number">675円</td>
+            <td class="number">646円</td>
+            <td class="number">666円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>1798.T</td>
+            <td>守谷商会</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">6,720円</td>
+            <td class="number">7,200円</td>
+            <td class="number">6,560円</td>
+            <td class="number">7,060円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+34,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>9552.T</td>
+            <td>M&A総研ホールディングス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,265円</td>
+            <td class="number">1,400円</td>
+            <td class="number">1,264円</td>
+            <td class="number">1,343円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+7,800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>3997.T</td>
+            <td>トレードワークス</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">338円</td>
+            <td class="number">368円</td>
+            <td class="number">330円</td>
+            <td class="number">346円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+800円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">1,381円</td>
+            <td class="number">1,430円</td>
+            <td class="number">1,328円</td>
+            <td class="number">1,365円</td>
+            <td class="number">-5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-1,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>2445.T</td>
+            <td>タカミヤ</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">410円</td>
+            <td class="number">418円</td>
+            <td class="number">405円</td>
+            <td class="number">417円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+700円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-買い">
+            <td>2025-11-04</td>
+            <td>3914.T</td>
+            <td>JIG-SAW</td>
+            <td><span class="badge-買い">買い</span></td>
+            <td class="number">3,920円</td>
+            <td class="number">4,000円</td>
+            <td class="number">3,445円</td>
+            <td class="number">3,470円</td>
+            <td class="number">-3%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-11,760円</td>
+            <td class="center impact-positive">回避</td>
+            <td class="number impact-positive">+33,240円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-04</td>
+            <td>1844.T</td>
+            <td>大盛工業</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">640円</td>
+            <td class="number">646円</td>
+            <td class="number">614円</td>
+            <td class="number">624円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-1,600円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-静観">
+            <td>2025-11-04</td>
+            <td>4875.T</td>
+            <td>メディシノバ</td>
+            <td><span class="badge-静観">静観</span></td>
+            <td class="number">209円</td>
+            <td class="number">217円</td>
+            <td class="number">196円</td>
+            <td class="number">200円</td>
+            <td class="number">nan%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-900円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-04</td>
+            <td>2743.T</td>
+            <td>ピクセルカンパニーズ</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">122円</td>
+            <td class="number">122円</td>
+            <td class="number">111円</td>
+            <td class="number">112円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,000円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-04</td>
+            <td>8014.T</td>
+            <td>蝶理</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">3,905円</td>
+            <td class="number">3,940円</td>
+            <td class="number">3,815円</td>
+            <td class="number">3,890円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number positive">+1,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-勝">勝</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-04</td>
+            <td>4436.T</td>
+            <td>ミンカブ・ジ・インフォノイド</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">466円</td>
+            <td class="number">482円</td>
+            <td class="number">462円</td>
+            <td class="number">481円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-not-triggered">-</span></td>
+            <td class="number negative">-1,500円</td>
+            <td class="center ">-</td>
+            <td class="number ">0円</td>
+            <td class="result-負">負</td>
+        </tr>
+        <tr class="action-売り">
+            <td>2025-11-04</td>
+            <td>7746.T</td>
+            <td>岡本硝子</td>
+            <td><span class="badge-売り">売り</span></td>
+            <td class="number">433円</td>
+            <td class="number">457円</td>
+            <td class="number">386円</td>
+            <td class="number">387円</td>
+            <td class="number">+5%</td>
+            <td class="center"><span class="badge-triggered">発動</span></td>
+            <td class="number negative">-2,165円</td>
+            <td class="center impact-negative">機会損失</td>
+            <td class="number impact-negative">-6,765円</td>
+            <td class="result-負">負</td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div style="text-align: center; color: white; padding: 20px; font-size: 0.9em;">
+    <p>V2.1.1バージョン: v2.1.0.1ハイブリッド戦略 + 最適損切り戦略（買い: 価格帯別、売り: +5%）</p>
+    <p style="margin-top: 10px;">損切り判定: 買い=Low、売り=High | 影響: 回避=損失軽減、機会損失=利益逃失</p>
+</div>
+
+</body>
+</html>

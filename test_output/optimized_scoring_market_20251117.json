@@ -1,0 +1,381 @@
+{
+  "generated_at": "2025-11-17T21:28:57.842814",
+  "date": "20251117",
+  "version": "v2_with_market_features",
+  "methodology": {
+    "approach": "Train/Test Split with Market Features",
+    "features_added": [
+      "TOPIX trend (5d, 20d)",
+      "TOPIX volatility (20d)",
+      "Nikkei 225 trend (5d)",
+      "Stock returns (5d, 20d)",
+      "Stock volatility (20d)",
+      "Relative strength vs TOPIX (5d, 20d)",
+      "Relative volatility vs TOPIX"
+    ],
+    "indicator_selection": "Test相関が正 かつ Train/Test両方のSpreadが正",
+    "weighting": "平均Spreadに比例した重み付け"
+  },
+  "indicator_analysis": {
+    "rsi14": {
+      "train": {
+        "correlation": -0.07281961561815084,
+        "top_tercile_return": -0.22094438655780874,
+        "bottom_tercile_return": 0.8803531728015341,
+        "spread": -1.1012975593593428,
+        "sample_size": 7888
+      },
+      "test": {
+        "correlation": 0.008423099834100806,
+        "top_tercile_return": 1.1789650119202146,
+        "bottom_tercile_return": 1.0428921854979059,
+        "spread": 0.13607282642230878,
+        "sample_size": 7947
+      }
+    },
+    "macd_hist": {
+      "train": {
+        "correlation": -0.035798744815829384,
+        "top_tercile_return": 0.19444876319189175,
+        "bottom_tercile_return": 0.5537371268753204,
+        "spread": -0.35928836368342865,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": 0.0018572580415120422,
+        "top_tercile_return": 1.2037112721899301,
+        "bottom_tercile_return": 1.1224491075377556,
+        "spread": 0.0812621646521745,
+        "sample_size": 7948
+      }
+    },
+    "percent_b": {
+      "train": {
+        "correlation": -0.05126904264737906,
+        "top_tercile_return": 0.06821047420882523,
+        "bottom_tercile_return": 0.6594122335141653,
+        "spread": -0.5912017593053401,
+        "sample_size": 7863
+      },
+      "test": {
+        "correlation": 0.0021496855040860677,
+        "top_tercile_return": 1.203230850104836,
+        "bottom_tercile_return": 1.1233360194932236,
+        "spread": 0.07989483061161251,
+        "sample_size": 7929
+      }
+    },
+    "cmf20": {
+      "train": {
+        "correlation": -0.022917704582532797,
+        "top_tercile_return": 0.2615596753564857,
+        "bottom_tercile_return": 0.26817016910142294,
+        "spread": -0.006610493744937218,
+        "sample_size": 7863
+      },
+      "test": {
+        "correlation": -0.020457674825618256,
+        "top_tercile_return": 1.0804151260758852,
+        "bottom_tercile_return": 1.4000730017985126,
+        "spread": -0.3196578757226274,
+        "sample_size": 7929
+      }
+    },
+    "obv_slope": {
+      "train": {
+        "correlation": -0.054761634313933424,
+        "top_tercile_return": -0.5172447822414598,
+        "bottom_tercile_return": 0.9814341212126793,
+        "spread": -1.498678903454139,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": 0.006253201291285601,
+        "top_tercile_return": 1.3130242905465923,
+        "bottom_tercile_return": 1.0070129383515876,
+        "spread": 0.30601135219500475,
+        "sample_size": 7948
+      }
+    },
+    "sma25_dev_pct": {
+      "train": {
+        "correlation": -0.0716408252158505,
+        "top_tercile_return": -0.051640964498767546,
+        "bottom_tercile_return": 0.9043140352780717,
+        "spread": -0.9559549997768393,
+        "sample_size": 7853
+      },
+      "test": {
+        "correlation": 0.04263740512294961,
+        "top_tercile_return": 1.3373832303343645,
+        "bottom_tercile_return": 1.090446504217253,
+        "spread": 0.24693672611711137,
+        "sample_size": 7924
+      }
+    },
+    "atr14_pct": {
+      "train": {
+        "correlation": 0.09300375076580887,
+        "top_tercile_return": 1.3217933381473974,
+        "bottom_tercile_return": -0.09292704256041669,
+        "spread": 1.4147203807078141,
+        "sample_size": 7875
+      },
+      "test": {
+        "correlation": 0.043612353742331085,
+        "top_tercile_return": 1.5858209537260384,
+        "bottom_tercile_return": 0.684854178678121,
+        "spread": 0.9009667750479173,
+        "sample_size": 7935
+      }
+    },
+    "topix_return_5d": {
+      "train": {
+        "correlation": -0.023766539809381735,
+        "top_tercile_return": 0.7957659028890428,
+        "bottom_tercile_return": 0.4113941932269935,
+        "spread": 0.3843717096620493,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": -0.13405677325938062,
+        "top_tercile_return": 0.4069510211262987,
+        "bottom_tercile_return": 2.015597240688999,
+        "spread": -1.6086462195627003,
+        "sample_size": 7948
+      }
+    },
+    "topix_return_20d": {
+      "train": {
+        "correlation": -0.19691219056082293,
+        "top_tercile_return": -0.7246851510792024,
+        "bottom_tercile_return": 1.7143834941406801,
+        "spread": -2.4390686452198826,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": -0.11496381471501924,
+        "top_tercile_return": 0.3736883265948825,
+        "bottom_tercile_return": 2.0066485612662417,
+        "spread": -1.6329602346713592,
+        "sample_size": 7948
+      }
+    },
+    "topix_volatility_20d": {
+      "train": {
+        "correlation": 0.21863467131944758,
+        "top_tercile_return": 0.3876998786077374,
+        "bottom_tercile_return": -0.2356528661825326,
+        "spread": 0.62335274479027,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": -0.0028730085778540825,
+        "top_tercile_return": 1.1742076026999066,
+        "bottom_tercile_return": 0.7863906362660624,
+        "spread": 0.3878169664338442,
+        "sample_size": 7948
+      }
+    },
+    "nikkei_return_5d": {
+      "train": {
+        "correlation": 0,
+        "top_tercile_return": 0,
+        "bottom_tercile_return": 0,
+        "spread": 0,
+        "sample_size": 0
+      },
+      "test": {
+        "correlation": 0,
+        "top_tercile_return": 0,
+        "bottom_tercile_return": 0,
+        "spread": 0,
+        "sample_size": 0
+      }
+    },
+    "stock_return_5d": {
+      "train": {
+        "correlation": -0.02215030155885818,
+        "top_tercile_return": 0.5008005742070247,
+        "bottom_tercile_return": 0.38367100095782936,
+        "spread": 0.11712957324919537,
+        "sample_size": 7884
+      },
+      "test": {
+        "correlation": 0.00776766786945669,
+        "top_tercile_return": 1.1131099187268054,
+        "bottom_tercile_return": 1.469826837289228,
+        "spread": -0.3567169185624226,
+        "sample_size": 7943
+      }
+    },
+    "stock_return_20d": {
+      "train": {
+        "correlation": -0.082309046606309,
+        "top_tercile_return": -0.15634706732670278,
+        "bottom_tercile_return": 0.9486664246476825,
+        "spread": -1.1050134919743853,
+        "sample_size": 7861
+      },
+      "test": {
+        "correlation": 0.018375223990185083,
+        "top_tercile_return": 1.3427881348545978,
+        "bottom_tercile_return": 1.018209345305121,
+        "spread": 0.3245787895494767,
+        "sample_size": 7928
+      }
+    },
+    "stock_volatility_20d": {
+      "train": {
+        "correlation": 0.11975404179540912,
+        "top_tercile_return": 1.2405073599763143,
+        "bottom_tercile_return": -0.16186835610733796,
+        "spread": 1.4023757160836523,
+        "sample_size": 7861
+      },
+      "test": {
+        "correlation": 0.05162311243557849,
+        "top_tercile_return": 1.7491022982082995,
+        "bottom_tercile_return": 0.7672365642430928,
+        "spread": 0.9818657339652067,
+        "sample_size": 7928
+      }
+    },
+    "relative_strength_5d": {
+      "train": {
+        "correlation": -0.012906572631372687,
+        "top_tercile_return": 0.2800868418072926,
+        "bottom_tercile_return": 0.6789754487618614,
+        "spread": -0.39888860695456885,
+        "sample_size": 7884
+      },
+      "test": {
+        "correlation": 0.050650422742040346,
+        "top_tercile_return": 1.2872651162493378,
+        "bottom_tercile_return": 1.1059589558897513,
+        "spread": 0.18130616035958647,
+        "sample_size": 7943
+      }
+    },
+    "relative_strength_20d": {
+      "train": {
+        "correlation": -0.005275819805058498,
+        "top_tercile_return": 0.40895089462548717,
+        "bottom_tercile_return": 0.19268570934642446,
+        "spread": 0.21626518527906272,
+        "sample_size": 7861
+      },
+      "test": {
+        "correlation": 0.04144669576581618,
+        "top_tercile_return": 1.527119428763951,
+        "bottom_tercile_return": 0.7607830109990816,
+        "spread": 0.7663364177648693,
+        "sample_size": 7928
+      }
+    },
+    "relative_volatility": {
+      "train": {
+        "correlation": -0.0071937197765771736,
+        "top_tercile_return": 0.6270381698647635,
+        "bottom_tercile_return": 0.3608027194610454,
+        "spread": 0.26623545040371804,
+        "sample_size": 7861
+      },
+      "test": {
+        "correlation": 0.052532198498281335,
+        "top_tercile_return": 1.7608634363880669,
+        "bottom_tercile_return": 0.8186052946165613,
+        "spread": 0.9422581417715056,
+        "sample_size": 7928
+      }
+    }
+  },
+  "selected_indicators": [
+    {
+      "name": "stock_volatility_20d",
+      "test_corr": 0.05162311243557849,
+      "train_spread": 1.4023757160836523,
+      "test_spread": 0.9818657339652067,
+      "avg_spread": 1.1921207250244295
+    },
+    {
+      "name": "atr14_pct",
+      "test_corr": 0.043612353742331085,
+      "train_spread": 1.4147203807078141,
+      "test_spread": 0.9009667750479173,
+      "avg_spread": 1.1578435778778657
+    },
+    {
+      "name": "relative_volatility",
+      "test_corr": 0.052532198498281335,
+      "train_spread": 0.26623545040371804,
+      "test_spread": 0.9422581417715056,
+      "avg_spread": 0.6042467960876118
+    },
+    {
+      "name": "relative_strength_20d",
+      "test_corr": 0.04144669576581618,
+      "train_spread": 0.21626518527906272,
+      "test_spread": 0.7663364177648693,
+      "avg_spread": 0.491300801521966
+    }
+  ],
+  "weights": {
+    "stock_volatility_20d": 0.34599234001987494,
+    "atr14_pct": 0.33604399326145235,
+    "relative_volatility": 0.1753721402029822,
+    "relative_strength_20d": 0.14259152651569051
+  },
+  "performance": {
+    "train": {
+      "correlation": 0.0826464424809711,
+      "tercile_performance": {
+        "Low": {
+          "count": 2689,
+          "avg_return": -0.153258163852711,
+          "median_return": -0.29247590255637723,
+          "win_rate": 46.00223131275567
+        },
+        "Mid": {
+          "count": 2654,
+          "avg_return": -0.04324785789880257,
+          "median_return": 0.25931851203885303,
+          "win_rate": 52.90128108515448
+        },
+        "High": {
+          "count": 2546,
+          "avg_return": 1.176938414108371,
+          "median_return": 0.7432381560141366,
+          "win_rate": 53.809897879025925
+        }
+      },
+      "spread": 1.330196577961082,
+      "sample_size": 7889
+    },
+    "test": {
+      "correlation": 0.074440235058146,
+      "tercile_performance": {
+        "Low": {
+          "count": 2651,
+          "avg_return": 0.7956015971504328,
+          "median_return": 0.539447066756571,
+          "win_rate": 57.751791776688044
+        },
+        "Mid": {
+          "count": 2691,
+          "avg_return": 0.9556049124852076,
+          "median_return": 0.5942473412185123,
+          "win_rate": 56.52173913043478
+        },
+        "High": {
+          "count": 2606,
+          "avg_return": 1.737972323014805,
+          "median_return": 0.7998801969270275,
+          "win_rate": 55.98618572524943
+        }
+      },
+      "spread": 0.9423707258643722,
+      "sample_size": 7948
+    }
+  }
+}

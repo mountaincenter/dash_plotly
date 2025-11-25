@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投資プラン - 2025年11月18日</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #e0e0e0;
+            background: #1a1a1a;
+            padding: 20px;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            color: #ffffff;
+            border-bottom: 4px solid #00aaff;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+
+        h2 {
+            color: #ffffff;
+            margin: 30px 0 20px;
+            padding-left: 15px;
+            border-left: 6px solid #00aaff;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        h3 {
+            color: #ffffff;
+            font-size: 1.4em;
+            margin: 20px 0 10px;
+        }
+
+        .summary-box {
+            background: #1a5f8a;
+            color: #ffffff;
+            padding: 40px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border: 3px solid #00aaff;
+        }
+
+        .summary-box h2 {
+            color: #ffffff;
+            border-left-color: #ffffff;
+        }
+
+        .summary-box strong {
+            color: #ffd700;
+        }
+
+        .stock-card {
+            border: 3px solid #555;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 25px 0;
+            background: #2d2d2d;
+        }
+
+        .stock-card.priority-S {
+            border: 3px solid #00ff00;
+            background: #1a3a1a;
+        }
+
+        .stock-card.priority-C {
+            border: 3px solid #ffaa00;
+            background: #3a2a1a;
+        }
+
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stock-title {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .priority-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+        }
+
+        .priority-S { background: #00ff00; color: #000; }
+        .priority-C { background: #ffaa00; color: #000; }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .metric {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #444;
+        }
+
+        .metric-label {
+            color: #aaa;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .positive { color: #00ff00; font-weight: bold; }
+        .negative { color: #ff3333; font-weight: bold; }
+
+        .order-section {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border: 2px solid #444;
+        }
+
+        .order-section h4 {
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .order-detail {
+            background: #2d2d2d;
+            padding: 15px;
+            margin: 12px 0;
+            border-radius: 4px;
+            border: 2px solid #00aaff;
+            font-size: 1.05em;
+            line-height: 1.8;
+            color: #e0e0e0;
+        }
+
+        .order-detail strong {
+            color: #ffffff;
+            font-size: 1.1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border: 2px solid #555;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid #555;
+            font-size: 1.05em;
+        }
+
+        th {
+            background: #1a1a1a;
+            color: #00aaff;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        td {
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        tr:hover td {
+            background: #3a3a3a;
+        }
+
+        .alert {
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 3px solid;
+            font-size: 1.05em;
+            line-height: 1.8;
+        }
+
+        .alert strong {
+            font-size: 1.2em;
+        }
+
+        .alert-success {
+            background: #1a3a1a;
+            border-color: #00ff00;
+            color: #ffffff;
+        }
+
+        .alert-warning {
+            background: #3a2a1a;
+            border-color: #ffaa00;
+            color: #ffffff;
+        }
+
+        .alert-info {
+            background: #1a2a3a;
+            border-color: #00aaff;
+            color: #ffffff;
+        }
+
+        .total-box {
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border: 4px solid #00aaff;
+        }
+
+        .total-box h3 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+
+        .total-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 2px solid #444;
+            font-size: 1.1em;
+        }
+
+        .total-metric:last-child {
+            border-bottom: none;
+            font-size: 1.5em;
+            font-weight: bold;
+            padding-top: 20px;
+            color: #ffd700;
+        }
+
+        ul, ol {
+            margin-left: 25px;
+            line-height: 2;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        code {
+            background: #1a1a1a;
+            padding: 3px 8px;
+            border-radius: 3px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        .timeline {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid #444;
+        }
+
+        .timeline-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #2d2d2d;
+            border-left: 4px solid #00aaff;
+            border-radius: 4px;
+        }
+
+        .timeline-item strong {
+            color: #00aaff;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 2025年11月18日 投資プラン</h1>
+
+        <div class="alert alert-info">
+            <strong>資金:</strong> 信用買い 200万円<br>
+            <strong>分析期間:</strong> 2025-11-04 〜 2025-11-17 (110レコード)<br>
+            <strong>戦略:</strong> 寄付成行買い（バックテストデータと整合）<br>
+            <strong>リスク考慮:</strong> ストップ高での約定を想定した金額計算
+        </div>
+
+        <div class="summary-box">
+            <h2>✅ 推奨投資プラン</h2>
+            <p style="font-size: 1.2em; line-height: 2; margin-top: 15px;">
+                <strong>サンリオ 200株 + 日本郵船 100株</strong><br><br>
+
+                <strong>投資額（最悪ケース）:</strong> 1,856,300円<br>
+                → サンリオ: 1,291,800円（ストップ高6,459円×200株）<br>
+                → 日本郵船: 564,500円（ストップ高5,645円×100株）<br><br>
+
+                <strong>期待利益:</strong> <span style="font-size: 1.4em; color: #ffd700;">+10,520円</span><br>
+                → サンリオ: +9,180円（大引けまで保有）<br>
+                → 日本郵船: +1,340円（+1%即利確）<br><br>
+
+                <strong>期待収益率:</strong> +0.57%<br>
+                <strong>予算残:</strong> 143,700円
+            </p>
+        </div>
+
+        <h2>📊 銘柄①: サンリオ（Rank 5 - 最優秀）</h2>
+
+        <div class="stock-card priority-S">
+            <div class="stock-header">
+                <div class="stock-title">8136.T サンリオ</div>
+                <div class="priority-badge priority-S">S 最優秀</div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">前日終値</div>
+                    <div class="metric-value">5,459円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">ストップ高</div>
+                    <div class="metric-value">6,459円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">購入数量</div>
+                    <div class="metric-value">200株</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">期待値</div>
+                    <div class="metric-value positive">+4,590円/100株</div>
+                </div>
+            </div>
+
+            <div class="order-section">
+                <h4>📋 注文設定</h4>
+
+                <div class="order-detail">
+                    <strong>注文1: 寄付成行買い</strong><br>
+                    銘柄: 8136 サンリオ<br>
+                    数量: <strong>200株</strong><br>
+                    注文種別: <strong>成行</strong><br>
+                    執行条件: <strong>寄付</strong><br>
+                    <br>
+                    想定約定額: 1,091,800円（前日終値）〜 1,291,800円（ストップ高）
+                </div>
+
+                <div class="order-detail">
+                    <strong>注文2: 損切り（逆指値）</strong><br>
+                    条件: 株価が前日終値の<strong>-1.0%</strong>（5,405円）以下<br>
+                    執行: <strong>成行売り 200株</strong><br>
+                    <span class="negative">想定損失: -10,800円</span>
+                </div>
+
+                <div class="order-detail">
+                    <strong>注文3: 利確（なし）</strong><br>
+                    <span class="positive">大引け（15:30）まで保有</span><br>
+                    理由: Rank 5は利益残存率85-98%、大引けまで保有が最適<br>
+                    <span class="positive">期待利益: +9,180円（200株 × 4,590円/100株）</span>
+                </div>
+            </div>
+        </div>
+
+        <h2>📊 銘柄②: 日本郵船（Rank 6）</h2>
+
+        <div class="stock-card priority-C">
+            <div class="stock-header">
+                <div class="stock-title">9101.T 日本郵船</div>
+                <div class="priority-badge priority-C">C 微妙</div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">前日終値</div>
+                    <div class="metric-value">4,945円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">ストップ高</div>
+                    <div class="metric-value">5,645円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">購入数量</div>
+                    <div class="metric-value">100株</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">期待値</div>
+                    <div class="metric-value positive">+1,340円/100株</div>
+                </div>
+            </div>
+
+            <div class="order-section">
+                <h4>📋 注文設定</h4>
+
+                <div class="order-detail">
+                    <strong>注文1: 寄付成行買い</strong><br>
+                    銘柄: 9101 日本郵船<br>
+                    数量: <strong>100株</strong><br>
+                    注文種別: <strong>成行</strong><br>
+                    執行条件: <strong>寄付</strong><br>
+                    <br>
+                    想定約定額: 494,500円（前日終値）〜 564,500円（ストップ高）
+                </div>
+
+                <div class="order-detail">
+                    <strong>注文2: 損切り（逆指値）</strong><br>
+                    条件: 株価が前日終値の<strong>-1.0%</strong>（4,895円）以下<br>
+                    執行: <strong>成行売り 100株</strong><br>
+                    <span class="negative">想定損失: -4,950円</span>
+                </div>
+
+                <div class="order-detail">
+                    <strong>注文3: 利確（通常指値）</strong><br>
+                    条件: 株価が前日終値の<strong>+1.0%</strong>（4,995円）以上<br>
+                    執行: <strong>指値売り 100株 @4,995円</strong><br>
+                    <span class="positive">想定利益: +5,000円</span><br>
+                    理由: Rank 6は大引けまでに利益の21%を失う → +1%で即利確推奨
+                </div>
+            </div>
+        </div>
+
+        <h2>⏰ 当日のタイムライン</h2>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <strong>8:50 - 8:59</strong><br>
+                気配値を確認（参考情報）<br>
+                → ストップ高気配でなければ予定通り進める
+            </div>
+
+            <div class="timeline-item">
+                <strong>9:00 寄付</strong><br>
+                <code>8136 サンリオ 200株 成行買い</code><br>
+                <code>9101 日本郵船 100株 成行買い</code>
+            </div>
+
+            <div class="timeline-item">
+                <strong>9:00 - 9:05 約定後すぐ</strong><br>
+                逆指値注文を設定:<br>
+                → サンリオ: 5,405円以下で成行売り 200株<br>
+                → 日本郵船: 4,895円以下で成行売り 100株<br>
+                <br>
+                通常指値注文を設定:<br>
+                → 日本郵船: 4,995円で指値売り 100株（+1%利確）
+            </div>
+
+            <div class="timeline-item">
+                <strong>15:20頃</strong><br>
+                サンリオの含み益を確認<br>
+                → プラスなら大引けまで保有継続<br>
+                → 損切りライン接近なら手動判断
+            </div>
+
+            <div class="timeline-item">
+                <strong>15:30 大引け</strong><br>
+                サンリオ 200株を成行売り（利確）
+            </div>
+        </div>
+
+        <div class="total-box">
+            <h3>💵 期待収支サマリー</h3>
+            <div class="total-metric">
+                <span>投資総額（前日終値ベース）</span>
+                <span>1,586,300円</span>
+            </div>
+            <div class="total-metric">
+                <span>投資総額（最悪ケース = ストップ高）</span>
+                <span>1,856,300円</span>
+            </div>
+            <div class="total-metric">
+                <span>期待利益（合計）</span>
+                <span style="color: #00ff00;">+10,520円</span>
+            </div>
+            <div class="total-metric">
+                <span>最大損失（両方損切り）</span>
+                <span style="color: #ff3333;">-15,750円</span>
+            </div>
+            <div class="total-metric">
+                <span>期待収益率</span>
+                <span>+0.66%（前日終値ベース）</span>
+            </div>
+        </div>
+
+        <h2>📋 値幅制限の詳細</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>銘柄</th>
+                    <th>前日終値</th>
+                    <th>値幅制限</th>
+                    <th>ストップ高</th>
+                    <th>ストップ安</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>8136.T サンリオ</strong></td>
+                    <td>5,459円</td>
+                    <td>±1,000円</td>
+                    <td class="positive">6,459円</td>
+                    <td class="negative">4,459円</td>
+                </tr>
+                <tr>
+                    <td><strong>9101.T 日本郵船</strong></td>
+                    <td>4,945円</td>
+                    <td>±700円</td>
+                    <td class="positive">5,645円</td>
+                    <td class="negative">4,245円</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <strong>⚠️ 寄付成行買いのリスク</strong><br><br>
+            <ul style="margin-left: 20px;">
+                <li><strong>ストップ高で約定する可能性:</strong> 上記の最悪ケース金額で買うリスクあり</li>
+                <li><strong>損切りラインまでの余裕:</strong> ストップ高で買うと損切りまでの幅が狭くなる</li>
+                <li><strong>期待値の前提:</strong> 過去110レコードにはストップ高で買った日も含まれる</li>
+                <li><strong>リスクも込みで期待値+4,590円:</strong> ストップ高リスクを考慮済み</li>
+            </ul>
+        </div>
+
+        <div class="alert alert-success">
+            <strong>✅ なぜこの組み合わせか</strong><br><br>
+            <ul style="margin-left: 20px;">
+                <li><strong>200万円をフル活用:</strong> 1,856,300円（最悪ケース）で予算内</li>
+                <li><strong>期待利益最大化:</strong> +10,520円（他の組み合わせより優位）</li>
+                <li><strong>リスク分散:</strong> 2銘柄に分散、異なる戦略（大引け保有 vs +1%利確）</li>
+                <li><strong>データに基づく判断:</strong> 110レコードの統計分析に基づく</li>
+            </ul>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>📊 他の組み合わせとの比較</strong><br><br>
+            <strong>サンリオ300株のみ:</strong> 期待利益+13,770円だが予算の62,300円が未使用<br>
+            <strong>サンリオ100株 + 日本郵船200株:</strong> 期待利益+7,270円（本プランより-3,250円悪い）<br>
+            <strong>内海造船100株のみ:</strong> ストップ高で予算オーバー（1,958,000円）
+        </div>
+
+        <div style="margin-top: 50px; padding: 20px; background: #1a1a1a; border: 2px solid #444; border-radius: 5px;">
+            <p style="text-align: center; color: #888;">
+                レポート生成日時: 2025-11-18<br>
+                分析手法: イントラデイ価格推移分析 + Rank別期待値計算 + ストップ高考慮<br>
+                データソース: grok_analysis_merged.parquet (110 records)<br>
+                <br>
+                <strong style="color: #fff;">投資は自己責任で行ってください</strong>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

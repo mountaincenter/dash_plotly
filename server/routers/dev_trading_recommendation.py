@@ -190,6 +190,9 @@ async def get_trading_recommendations():
         # データ読み込み（ローカルまたはS3から）
         data = load_recommendation_data()
 
+        # v2.1 の場合はフロントエンド形式に変換（deep_analysis マージ前）
+        data = convert_v2_1_to_frontend_format(data)
+
         # deep_analysis を読み込んでマージ
         try:
             # trading_recommendation.json の technicalDataDate + 1 を計算

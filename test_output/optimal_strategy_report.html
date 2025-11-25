@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最適投資戦略レポート - 2025-11-18</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin: 30px 0 15px;
+            padding-left: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        h3 {
+            color: #7f8c8d;
+            margin: 20px 0 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .alert-danger {
+            background: #fee;
+            border-left: 5px solid #e74c3c;
+            color: #c0392b;
+        }
+
+        .alert-success {
+            background: #efe;
+            border-left: 5px solid #27ae60;
+            color: #196f3d;
+        }
+
+        .alert-warning {
+            background: #ffeaa7;
+            border-left: 5px solid #f39c12;
+            color: #d68910;
+        }
+
+        .alert-info {
+            background: #e8f4f8;
+            border-left: 5px solid #3498db;
+            color: #2980b9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .rank-excellent {
+            background: #d4edda;
+            font-weight: bold;
+        }
+
+        .rank-good {
+            background: #fff3cd;
+        }
+
+        .rank-poor {
+            background: #f8d7da;
+        }
+
+        .positive {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .action-plan {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .stock-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            background: white;
+        }
+
+        .stock-card.buy {
+            border-left: 5px solid #27ae60;
+        }
+
+        .stock-card.avoid {
+            border-left: 5px solid #e74c3c;
+        }
+
+        .metric {
+            display: inline-block;
+            margin: 5px 15px 5px 0;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+
+        .summary-box h2 {
+            color: white;
+            border-left-color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .ifd-order {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 最適投資戦略レポート - 2025年11月18日</h1>
+
+        <div class="alert alert-info">
+            <strong>分析期間:</strong> 2025-11-04 〜 2025-11-17 (110レコード)<br>
+            <strong>分析手法:</strong> イントラデイ価格推移分析 + Rank別期待値計算<br>
+            <strong>資金:</strong> 信用買い 200万円
+        </div>
+
+        <!-- 重大な発見 -->
+        <div class="summary-box">
+            <h2>🚨 重大な発見</h2>
+            <p style="font-size: 1.1em; line-height: 1.8;">
+                <strong>Rank 6-8を大引けまで保有する戦略は不適切です。</strong><br><br>
+
+                特にRank 8は大引けまで保有すると<strong style="font-size: 1.3em;">-9,906円/100株の期待損失</strong>となります。<br>
+                ザラ場で+1%以上になっても、大引けまでに平均で<strong>利益の138%を失い、マイナスに転落</strong>します。<br><br>
+
+                <strong>結論: Rank毎に最適な損切り・利確ラインが全く異なるため、Rank別戦略が必須。</strong>
+            </p>
+        </div>
+
+        <!-- 2025-11-18の推奨アクション -->
+        <h2>💡 2025-11-18 の推奨アクション</h2>
+
+        <div class="alert alert-danger">
+            <strong>❌ 本日のGrok選定銘柄（Rank 6-8）は推奨しません</strong><br>
+            理由: 全て「+1%即利確必須」銘柄。大引けまで保有すると利益消失リスク大。
+        </div>
+
+        <h3>本日のGrok選定銘柄（参考）</h3>
+        <div class="grid">
+            <div class="stock-card avoid">
+                <h4>9101.T 日本郵船</h4>
+                <div class="metric">
+                    <div class="metric-label">Grok Rank</div>
+                    <div class="metric-value">6</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">株価</div>
+                    <div class="metric-value">4,945円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">期待値</div>
+                    <div class="metric-value positive">+1,340円/100株</div>
+                </div>
+                <div class="ifd-order">
+                    <strong>IFD設定（参考）:</strong><br>
+                    成行買い → 利確 +1.0% / 損切り -1.0%<br>
+                    <span style="color: #e74c3c;">⚠️ 大引けまで保有NG（利益残存率-21%）</span>
+                </div>
+            </div>
+
+            <div class="stock-card avoid">
+                <h4>6613.T QDレーザ</h4>
+                <div class="metric">
+                    <div class="metric-label">Grok Rank</div>
+                    <div class="metric-value">7</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">株価</div>
+                    <div class="metric-value">359円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">期待値</div>
+                    <div class="metric-value positive">+160円/100株</div>
+                </div>
+                <div class="ifd-order">
+                    <strong>IFD設定（参考）:</strong><br>
+                    成行買い → 利確 +1.0% / 損切り -1.0%<br>
+                    <span style="color: #e74c3c;">⚠️ 大引けまで保有NG（利益残存率+21%だが期待値低）</span>
+                </div>
+            </div>
+
+            <div class="stock-card avoid">
+                <h4>3989.T シェアリングテクノロジー</h4>
+                <div class="metric">
+                    <div class="metric-label">Grok Rank</div>
+                    <div class="metric-value">8</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">株価</div>
+                    <div class="metric-value">1,040円</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">期待値</div>
+                    <div class="metric-value negative">-9,906円/100株</div>
+                </div>
+                <div class="ifd-order">
+                    <strong>IFD設定（参考）:</strong><br>
+                    成行買い → 利確 +1.0% / 損切り -1.0%<br>
+                    <span style="color: #e74c3c;">⚠️ Phase2（大引けまで保有）は絶対NG！</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-success">
+            <strong>✅ 推奨アクション</strong><br>
+            1. <strong>Rank 5銘柄を探す</strong> → 大引けまで保有で利益最大化（期待値+4,590円、利益残存率85-98%）<br>
+            2. <strong>Rank 2銘柄</strong> → ハイリスク承知で大勝狙い（期待値+8,820円、勝率10%）、または+1%安全利確<br>
+            3. 本日のRank 6-8は見送り、または+1%厳守で少額投資
+        </div>
+
+        <!-- Rank別最適戦略 -->
+        <h2>📈 Rank別最適戦略（全13Rank分析）</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Phase2期待値<br>(大引けまで保有)</th>
+                    <th>損切りライン</th>
+                    <th>利確ライン</th>
+                    <th>利益残存率<br>(+1%時点)</th>
+                    <th>最適戦略</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="rank-excellent">
+                    <td><strong>Rank 5</strong></td>
+                    <td class="positive">+4,590円</td>
+                    <td>-1.0%</td>
+                    <td><strong>大引け</strong></td>
+                    <td class="positive">85.1%</td>
+                    <td><strong>大引けまで保有（最優秀）</strong></td>
+                </tr>
+                <tr class="rank-good">
+                    <td><strong>Rank 2</strong></td>
+                    <td class="positive">+8,820円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td class="negative">-69.2%</td>
+                    <td>ハイリスク大勝狙いor +1%利確</td>
+                </tr>
+                <tr class="rank-good">
+                    <td>Rank 6</td>
+                    <td class="positive">+1,340円</td>
+                    <td>-1.0%</td>
+                    <td><strong>+1.0%</strong></td>
+                    <td class="negative">-20.7%</td>
+                    <td>+1%即利確（大引けでマイナス転換）</td>
+                </tr>
+                <tr>
+                    <td>Rank 9</td>
+                    <td class="positive">+233円</td>
+                    <td>-2.0%</td>
+                    <td>+1.0%</td>
+                    <td>6.6%</td>
+                    <td>-2%まで我慢可、+1%利確</td>
+                </tr>
+                <tr>
+                    <td>Rank 7</td>
+                    <td class="positive">+160円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td>21.1%</td>
+                    <td>+1%利確</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 8</td>
+                    <td class="negative">-9,906円</td>
+                    <td>-1.0%</td>
+                    <td><strong>+1.0%</strong></td>
+                    <td class="negative">-37.7%</td>
+                    <td><strong>Phase2絶対NG、+1%利確必須</strong></td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 10</td>
+                    <td class="negative">-450円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td>52.7%</td>
+                    <td>+1%利確</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 12</td>
+                    <td class="negative">-870円</td>
+                    <td>-1.0%</td>
+                    <td>大引け</td>
+                    <td>100.0%</td>
+                    <td>大引けまで保有（サンプル少）</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 11</td>
+                    <td class="negative">-1,857円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td class="negative">-1.8%</td>
+                    <td>+1%即利確</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 1</td>
+                    <td class="negative">-3,540円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td>26.6%</td>
+                    <td>+1%利確</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 3</td>
+                    <td class="negative">-5,270円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td class="negative">-57.7%</td>
+                    <td>+1%即利確</td>
+                </tr>
+                <tr class="rank-poor">
+                    <td>Rank 4</td>
+                    <td class="negative">-5,870円</td>
+                    <td>-1.0%</td>
+                    <td>+1.0%</td>
+                    <td class="negative">-125.7%</td>
+                    <td>+1%即利確</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- グラフ -->
+        <h2>📊 視覚化: Rank別期待値とリスク</h2>
+
+        <div class="chart-container">
+            <canvas id="expectedValueChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="profitRetentionChart"></canvas>
+        </div>
+
+        <!-- 具体的なIFD設定例 -->
+        <h2>⚙️ 具体的なIFD注文設定（Rank 5銘柄の場合）</h2>
+
+        <div class="action-plan">
+            <h3>Rank 5銘柄を200万円で買う場合の設定例</h3>
+
+            <p><strong>前提:</strong> Rank 5銘柄の株価を仮に2,000円とする</p>
+
+            <div class="ifd-order">
+                <strong>注文1: 成行買い</strong><br>
+                数量: 1,000株（200万円 ÷ 2,000円）<br>
+                タイミング: 寄付（9:00）
+            </div>
+
+            <div class="ifd-order">
+                <strong>注文2: 損切り（逆指値）</strong><br>
+                条件: 株価が 1,980円（-1.0%）以下になったら<br>
+                執行: 成行売り 1,000株<br>
+                <span class="negative">想定損失: -20,000円</span>
+            </div>
+
+            <div class="ifd-order">
+                <strong>注文3: 利確（なし）</strong><br>
+                <span class="positive">大引け（15:30）まで保有</span><br>
+                理由: Rank 5は利益残存率85-98%、大引けまで保有が最適<br>
+                <span class="positive">期待利益: +45,900円（1,000株 × 4,590円/100株）</span>
+            </div>
+
+            <p style="margin-top: 20px; font-weight: bold;">
+                期待値: <span class="positive">+45,900円</span><br>
+                リスク: <span class="negative">-20,000円</span>（損切り時）<br>
+                リスクリワード比: <span class="positive">1 : 2.3</span>
+            </p>
+        </div>
+
+        <h3>Rank 6-8銘柄を買う場合の設定例（非推奨）</h3>
+
+        <div class="action-plan">
+            <p><strong>前提:</strong> シェアリングテクノロジー（Rank 8）1,040円、100株のみ少額投資</p>
+
+            <div class="ifd-order">
+                <strong>注文1: 成行買い</strong><br>
+                数量: 100株（104,000円）<br>
+                タイミング: 寄付（9:00）
+            </div>
+
+            <div class="ifd-order">
+                <strong>注文2: 損切り（逆指値）</strong><br>
+                条件: 株価が 1,030円（-1.0%）以下になったら<br>
+                執行: 成行売り 100株<br>
+                <span class="negative">想定損失: -1,040円</span>
+            </div>
+
+            <div class="ifd-order">
+                <strong>注文3: 利確（指値）⚠️ 必須</strong><br>
+                条件: 株価が 1,050円（+1.0%）以上になったら<br>
+                執行: 指値売り 100株 @1,050円<br>
+                <span class="positive">想定利益: +1,040円</span>
+            </div>
+
+            <div class="alert alert-danger" style="margin-top: 15px;">
+                <strong>⚠️ 重要:</strong> Rank 8は大引けまで保有すると-9,906円/100株の損失期待値。<br>
+                <strong>+1%利確を設定しないと大損失リスク大。</strong>
+            </div>
+        </div>
+
+        <!-- まとめ -->
+        <h2>📝 結論: どうすれば良いか</h2>
+
+        <div class="action-plan">
+            <h3>推奨戦略（優先順位順）</h3>
+
+            <ol style="line-height: 2;">
+                <li><strong style="color: #27ae60;">Rank 5銘柄を探して200万円投資</strong>
+                    <ul>
+                        <li>損切り: -1.0%</li>
+                        <li>利確: 大引けまで保有</li>
+                        <li>期待利益: +45,900円</li>
+                        <li>勝率: 40%</li>
+                    </ul>
+                </li>
+
+                <li><strong style="color: #f39c12;">Rank 2銘柄でハイリスク投資</strong>
+                    <ul>
+                        <li>損切り: -1.0%</li>
+                        <li>利確: 大勝狙いなら大引け、安定なら+1%</li>
+                        <li>期待利益: +88,200円（200万円投資時）</li>
+                        <li>勝率: 10%（10回中1回の大勝で期待値プラス）</li>
+                        <li>⚠️ リスク大: 9割は損失</li>
+                    </ul>
+                </li>
+
+                <li><strong style="color: #95a5a6;">本日のRank 6-8は見送り</strong>
+                    <ul>
+                        <li>理由: 全て+1%即利確必須、期待値低い</li>
+                        <li>特にRank 8は大引けまで保有で大損失</li>
+                    </ul>
+                </li>
+
+                <li><strong>複数Rank分散投資（中級者向け）</strong>
+                    <ul>
+                        <li>Rank 5: 100万円（大引けまで保有）</li>
+                        <li>Rank 2: 50万円（+1%利確）</li>
+                        <li>Rank 6: 50万円（+1%利確）</li>
+                        <li>期待利益合計: 約+32,000円</li>
+                        <li>リスク分散効果あり</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="alert alert-warning">
+            <strong>⚠️ 重要な注意事項</strong><br>
+            1. この分析は過去データ（2025-11-04〜11-17）に基づく統計的期待値です<br>
+            2. 将来の結果を保証するものではありません<br>
+            3. 投資は自己責任で行ってください<br>
+            4. Rank 5, Rank 2銘柄は毎日Grok選定結果から探す必要があります<br>
+            5. 損切りラインは必ず設定してください（-1%厳守）
+        </div>
+
+        <div style="margin-top: 50px; padding: 20px; background: #ecf0f1; border-radius: 5px;">
+            <p style="text-align: center; color: #7f8c8d;">
+                レポート生成日時: 2025-11-18<br>
+                分析エンジン: Claude Code + Python + Pandas<br>
+                データソース: grok_analysis_merged.parquet (110 records)
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 期待値チャート
+        const ctx1 = document.getElementById('expectedValueChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: ['Rank 2', 'Rank 5', 'Rank 6', 'Rank 9', 'Rank 7', 'Rank 10', 'Rank 12', 'Rank 11', 'Rank 1', 'Rank 3', 'Rank 4', 'Rank 8'],
+                datasets: [{
+                    label: 'Phase2期待値（円/100株）',
+                    data: [8820, 4590, 1340, 233, 160, -450, -870, -1857, -3540, -5270, -5870, -9906],
+                    backgroundColor: [
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(201, 203, 207, 0.8)',
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderColor: [
+                        'rgb(255, 206, 86)',
+                        'rgb(75, 192, 192)',
+                        'rgb(54, 162, 235)',
+                        'rgb(153, 102, 255)',
+                        'rgb(201, 203, 207)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)',
+                        'rgb(255, 99, 132)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Rank別 Phase2期待値（大引けまで保有）',
+                        font: {
+                            size: 16
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '期待値（円/100株）'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 利益残存率チャート
+        const ctx2 = document.getElementById('profitRetentionChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: ['Rank 12', 'Rank 5', 'Rank 10', 'Rank 7', 'Rank 1', 'Rank 9', 'Rank 11', 'Rank 6', 'Rank 8', 'Rank 3', 'Rank 2', 'Rank 4'],
+                datasets: [{
+                    label: '利益残存率（%）',
+                    data: [100, 85.1, 52.7, 21.1, 26.6, 6.6, -1.8, -20.7, -37.7, -57.7, -69.2, -125.7],
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        if (value >= 60) return 'rgba(75, 192, 192, 0.8)';
+                        if (value >= 20) return 'rgba(255, 206, 86, 0.8)';
+                        if (value >= 0) return 'rgba(201, 203, 207, 0.8)';
+                        return 'rgba(255, 99, 132, 0.8)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        if (value >= 60) return 'rgb(75, 192, 192)';
+                        if (value >= 20) return 'rgb(255, 206, 86)';
+                        if (value >= 0) return 'rgb(201, 203, 207)';
+                        return 'rgb(255, 99, 132)';
+                    },
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Rank別 利益残存率（ザラ場+1%到達時、大引けで何%残るか）',
+                        font: {
+                            size: 16
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: '利益残存率（%）'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

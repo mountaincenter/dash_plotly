@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Recommendation v2.1</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    color: #333;
+}
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+.header .subtitle {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+.summary-section {
+    padding: 40px;
+    background: #f8f9fa;
+}
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+.summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+    text-align: center;
+}
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.summary-card.buy {
+    border-left: 6px solid #27ae60;
+}
+.summary-card.hold {
+    border-left: 6px solid #95a5a6;
+}
+.summary-card.sell {
+    border-left: 6px solid #e74c3c;
+}
+.summary-card h3 {
+    font-size: 1.2em;
+    margin-bottom: 16px;
+    font-weight: 600;
+    color: #666;
+}
+.summary-card .count {
+    font-size: 3em;
+    font-weight: 700;
+    color: #333;
+}
+.table-section {
+    padding: 40px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+th {
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
+}
+th.number { text-align: right; }
+td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+td.number {
+    text-align: right;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 0.95em;
+}
+td.number.positive {
+    color: #27ae60;
+    font-weight: 600;
+}
+td.number.negative {
+    color: #e74c3c;
+    font-weight: 600;
+}
+.action-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+.action-badge.buy {
+    background: #d4edda;
+    color: #155724;
+}
+.action-badge.hold {
+    background: #e2e3e5;
+    color: #383d41;
+}
+.action-badge.sell {
+    background: #f8d7da;
+    color: #721c24;
+}
+.reasons {
+    font-size: 0.85em;
+    color: #666;
+    line-height: 1.6;
+}
+.reasons-v2_1 {
+    font-size: 0.85em;
+    color: #667eea;
+    line-height: 1.6;
+    font-weight: 600;
+}
+.stock-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.stock-row:hover {
+    background: #f8f9fa;
+}
+.comparison-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.arrow {
+    font-size: 1.2em;
+    color: #666;
+}
+.score-change {
+    font-size: 0.85em;
+    color: #999;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 Trading Recommendation v2.1</h1>
+        <div class="subtitle">生成日時: 2025-11-24 22:22:22 | 総銘柄数: 7</div>
+    </div>
+
+    <div class="summary-section">
+        <div class="summary-grid">
+            <div class="summary-card buy">
+                <h3>買い</h3>
+                <div class="count">4</div>
+            </div>
+            <div class="summary-card hold">
+                <h3>静観</h3>
+                <div class="count">1</div>
+            </div>
+            <div class="summary-card sell">
+                <h3>売り</h3>
+                <div class="count">2</div>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 16px; color: #667eea;">📈 銘柄詳細（v2.1スコア順）</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ティッカー</th>
+                    <th>銘柄名</th>
+                    <th class="number">Grokランク</th>
+                    <th class="number">前日終値</th>
+                    <th class="number">前日変化率</th>
+                    <th>v2.0.3判定</th>
+                    <th>v2.1判定</th>
+                    <th class="number">v2.1スコア</th>
+                    <th>v2.1理由</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="stock-row">
+                    <td><strong>3350.T</strong></td>
+                    <td>メタプラネット</td>
+                    <td class="number">1</td>
+                    <td class="number">357円</td>
+                    <td class="number negative">-7.75%</td>
+                    <td><span class="action-badge buy">買い</span> (45)</td>
+                    <td><span class="action-badge buy">買い</span></td>
+                    <td class="number positive">70</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク上位25%（強化）<br>
+                        • RSI 26.6（売られすぎ）
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>8894.T</strong></td>
+                    <td>REVOLUTION</td>
+                    <td class="number">2</td>
+                    <td class="number">61円</td>
+                    <td class="number positive">+7.02%</td>
+                    <td><span class="action-badge hold">静観</span> (5)</td>
+                    <td><span class="action-badge buy">買い</span></td>
+                    <td class="number positive">65</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク上位25%（強化）<br>
+                        • 出来高3.9倍（注目急増）
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>6232.T</strong></td>
+                    <td>ACSL</td>
+                    <td class="number">3</td>
+                    <td class="number">999円</td>
+                    <td class="number">+0.30%</td>
+                    <td><span class="action-badge hold">静観</span> (-5)</td>
+                    <td><span class="action-badge buy">買い</span></td>
+                    <td class="number positive">45</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク上位50%<br>
+                        • 5日線押し目-0.7%
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>4397.T</strong></td>
+                    <td>チームスピリット</td>
+                    <td class="number">4</td>
+                    <td class="number">515円</td>
+                    <td class="number positive">+1.58%</td>
+                    <td><span class="action-badge buy">買い</span> (20)</td>
+                    <td><span class="action-badge buy">買い</span></td>
+                    <td class="number positive">30</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク上位50%
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>3409.T</strong></td>
+                    <td>北紡</td>
+                    <td class="number">5</td>
+                    <td class="number">127円</td>
+                    <td class="number positive">+1.60%</td>
+                    <td><span class="action-badge sell">売り</span> (-25)</td>
+                    <td><span class="action-badge sell">売り</span></td>
+                    <td class="number positive">20</td>
+                    <td class="reasons-v2_1">
+                        • RSI 29.8（売られすぎ）<br>
+                        <strong>• 【v2.0.3売り判定を保持】</strong>
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>7603.T</strong></td>
+                    <td>ジーイエット</td>
+                    <td class="number">6</td>
+                    <td class="number">156円</td>
+                    <td class="number positive">+2.63%</td>
+                    <td><span class="action-badge hold">静観</span> (5)</td>
+                    <td><span class="action-badge hold">静観</span></td>
+                    <td class="number negative">-10</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク下位25%（減点強化）<br>
+                        • RSI 28.8（売られすぎ）
+                    </td>
+                </tr>
+                <tr class="stock-row">
+                    <td><strong>7695.T</strong></td>
+                    <td>交換できるくん</td>
+                    <td class="number">7</td>
+                    <td class="number">864円</td>
+                    <td class="number positive">+8.14%</td>
+                    <td><span class="action-badge sell">売り</span> (-15)</td>
+                    <td><span class="action-badge sell">売り</span></td>
+                    <td class="number negative">-15</td>
+                    <td class="reasons-v2_1">
+                        • Grokランク下位25%（減点強化）<br>
+                        • 出来高3.1倍（注目急増）<br>
+                        <strong>• 【v2.0.3売り判定を保持】</strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 40px;">
+            <h3 style="margin-bottom: 16px; color: #667eea;">📋 テクニカル指標詳細</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ティッカー</th>
+                        <th>銘柄名</th>
+                        <th class="number">RSI (14日)</th>
+                        <th class="number">出来高変化 (20日)</th>
+                        <th class="number">SMA5乖離率</th>
+                        <th class="number">ATR %</th>
+                        <th class="number">損切り水準</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>3350.T</strong></td>
+                        <td>メタプラネット</td>
+                        <td class="number negative">26.6</td>
+                        <td class="number">0.60x</td>
+                        <td class="number negative">-2.99%</td>
+                        <td class="number">7.00%</td>
+                        <td class="number">5.0%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>8894.T</strong></td>
+                        <td>REVOLUTION</td>
+                        <td class="number">53.6</td>
+                        <td class="number positive">3.87x</td>
+                        <td class="number positive">+12.13%</td>
+                        <td class="number">6.79%</td>
+                        <td class="number">5.0%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>6232.T</strong></td>
+                        <td>ACSL</td>
+                        <td class="number">42.1</td>
+                        <td class="number">0.84x</td>
+                        <td class="number negative">-0.66%</td>
+                        <td class="number">3.79%</td>
+                        <td class="number">3.0%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4397.T</strong></td>
+                        <td>チームスピリット</td>
+                        <td class="number">54.5</td>
+                        <td class="number">0.60x</td>
+                        <td class="number positive">+1.46%</td>
+                        <td class="number">3.05%</td>
+                        <td class="number">2.4%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3409.T</strong></td>
+                        <td>北紡</td>
+                        <td class="number negative">29.8</td>
+                        <td class="number">0.65x</td>
+                        <td class="number negative">-2.61%</td>
+                        <td class="number">5.29%</td>
+                        <td class="number">6.3%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>7603.T</strong></td>
+                        <td>ジーイエット</td>
+                        <td class="number negative">28.8</td>
+                        <td class="number">0.71x</td>
+                        <td class="number positive">+2.09%</td>
+                        <td class="number">4.53%</td>
+                        <td class="number">3.6%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>7695.T</strong></td>
+                        <td>交換できるくん</td>
+                        <td class="number">55.5</td>
+                        <td class="number positive">3.12x</td>
+                        <td class="number positive">+4.80%</td>
+                        <td class="number">2.18%</td>
+                        <td class="number">5.0%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <h3 style="margin-bottom: 16px; color: #667eea;">🔄 v2.0.3 → v2.1 変更パターン</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>変更パターン</th>
+                        <th class="number">件数</th>
+                        <th>該当銘柄</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>買い → 買い</strong></td>
+                        <td class="number">2</td>
+                        <td>3350.T (メタプラネット), 4397.T (チームスピリット)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>静観 → 買い</strong></td>
+                        <td class="number">2</td>
+                        <td>8894.T (REVOLUTION), 6232.T (ACSL)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>静観 → 静観</strong></td>
+                        <td class="number">1</td>
+                        <td>7603.T (ジーイエット)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>売り → 売り</strong> ✓ v2.0.3保持</td>
+                        <td class="number">2</td>
+                        <td>3409.T (北紡), 7695.T (交換できるくん)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 40px; padding: 20px; background: white; border-radius: 12px; border-left: 6px solid #667eea;">
+            <h3 style="margin-bottom: 16px; color: #667eea;">💡 v2.1戦略の特徴</h3>
+            <div style="line-height: 1.8;">
+                <p><strong>2階建てアーキテクチャ:</strong></p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>1階（スコアリング層）:</strong> 全銘柄に統一した強化スコアリング
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Grokランク配点強化（上位25%: 50点、上位50%: 30点、下位25%: -30点）</li>
+                            <li>RSI追加（< 30: +20点, > 70: -10点）</li>
+                            <li>出来高急増（> 2.0倍: +15点）</li>
+                            <li>5日線押し目（-2% ~ 0%: +15点）</li>
+                        </ul>
+                    </li>
+                    <li style="margin-top: 10px;"><strong>2階（定性判定層）:</strong> 3段階の強制判定ルール
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li><strong>優先度1:</strong> 価格帯強制判定（≥10,000円→売り、5,000-10,000円→買い）</li>
+                            <li><strong>優先度2:</strong> 2段階変化阻止（買い↔売りの直接変換を禁止）</li>
+                            <li><strong>優先度3:</strong> v2.0.3売り判定の保持（実績ある売りシグナルを維持）</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

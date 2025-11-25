@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>売買タイミング最適化分析レポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #60a5fa;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .summary {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .summary h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #60a5fa;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-value.positive {
+            color: #34d399;
+        }
+
+        .stat-value.negative {
+            color: #f87171;
+        }
+
+        .stat-value.neutral {
+            color: #60a5fa;
+        }
+
+        .comparison {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .comparison h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #60a5fa;
+        }
+
+        .comparison-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .comparison-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .comparison-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 1rem;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .table-container {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead {
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #60a5fa;
+            border-bottom: 2px solid #334155;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        td.number {
+            text-align: right;
+        }
+
+        tr:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .positive {
+            color: #34d399;
+        }
+
+        .negative {
+            color: #f87171;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-morning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid #fbbf24;
+        }
+
+        .badge-day {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            border: 1px solid #60a5fa;
+        }
+
+        .footer {
+            text-align: center;
+            color: #64748b;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 売買タイミング最適化分析レポート</h1>
+        <p class="subtitle">利確・損切りタイミングの比較分析（2025-11-14）</p>
+
+        <!-- サマリー統計 -->
+        <div class="summary">
+            <h2>📈 サマリー統計</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">分析銘柄数</div>
+                    <div class="stat-value neutral">12件</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均利益率（前場不成）</div>
+                    <div class="stat-value positive">0.96%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均利益率（大引不成）</div>
+                    <div class="stat-value positive">0.66%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">勝率（前場不成）</div>
+                    <div class="stat-value neutral">66.7%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">勝率（大引不成）</div>
+                    <div class="stat-value neutral">58.3%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 利確タイミング比較 -->
+        <div class="comparison">
+            <h2>💰 利確タイミング比較</h2>
+            <p style="color: #94a3b8; margin-bottom: 1.5rem;">どちらのタイミングで売却した方が利益が大きかったか</p>
+
+            <div class="comparison-row">
+                <span class="comparison-label">前場不成（11:30）</span>
+                <span class="comparison-value" style="color: #fbbf24;">5件 (41.7%)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 41.66666666666667%; background: linear-gradient(90deg, #fbbf24, #fcd34d);">
+                    41.7%
+                </div>
+            </div>
+
+            <div class="comparison-row">
+                <span class="comparison-label">大引不成（15:30）</span>
+                <span class="comparison-value" style="color: #60a5fa;">7件 (58.3%)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 58.333333333333336%;">
+                    58.3%
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 4px;">
+                <strong style="color: #60a5fa;">結論:</strong>
+                <span style="color: #e2e8f0;">
+                    大引不成（15:30）の方が有利なケースが多い（58.3%）
+                </span>
+            </div>
+        </div>
+
+        <!-- 損切りタイミング比較 -->
+        <div class="comparison">
+            <h2>🛡️ 損切りタイミング比較</h2>
+            <p style="color: #94a3b8; margin-bottom: 1.5rem;">どちらのタイミングで損切りした方が損失が小さかったか</p>
+
+            <div class="comparison-row">
+                <span class="comparison-label">前場損切り（11:30）</span>
+                <span class="comparison-value" style="color: #fbbf24;">5件 (41.7%)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 41.66666666666667%; background: linear-gradient(90deg, #fbbf24, #fcd34d);">
+                    41.7%
+                </div>
+            </div>
+
+            <div class="comparison-row">
+                <span class="comparison-label">大引精算（15:30）</span>
+                <span class="comparison-value" style="color: #60a5fa;">7件 (58.3%)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 58.333333333333336%;">
+                    58.3%
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 4px;">
+                <strong style="color: #60a5fa;">結論:</strong>
+                <span style="color: #e2e8f0;">
+                    大引精算（15:30）の方が損失が小さいケースが多い（58.3%）
+                </span>
+            </div>
+        </div>
+
+        <!-- 詳細データテーブル -->
+        <div class="table-container">
+            <h2 style="color: #60a5fa; margin-bottom: 1.5rem;">📋 銘柄別詳細データ</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>銘柄コード</th>
+                        <th>企業名</th>
+                        <th>売買推奨</th>
+                        <th>前場利益(100株)</th>
+                        <th>大引利益(100株)</th>
+                        <th>買値</th>
+                        <th>前場終値</th>
+                        <th>前場利益率</th>
+                        <th>大引値</th>
+                        <th>大引利益率</th>
+                        <th>有利なタイミング</th>
+                        <th>最高値</th>
+                        <th>最安値</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>4575.T</strong></td>
+                        <td>キャンバス</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number negative">-200</td>
+                        <td class="number negative">-100</td>
+                        <td class="number">815</td>
+                        <td class="number">813</td>
+                        <td class="number negative">-0.25%</td>
+                        <td class="number">814</td>
+                        <td class="number negative">-0.12%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">834 (+2.33%)</td>
+                        <td class="number negative">807 (-0.98%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>6087.T</strong></td>
+                        <td>アビスト</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number negative">+0</td>
+                        <td class="number negative">-1,000</td>
+                        <td class="number">3,185</td>
+                        <td class="number">3,185</td>
+                        <td class="number negative">+0.00%</td>
+                        <td class="number">3,175</td>
+                        <td class="number negative">-0.31%</td>
+                        <td><span class="badge badge-morning">前場</span></td>
+                        <td class="number positive">3,185 (+0.00%)</td>
+                        <td class="number negative">3,165 (-0.63%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>6525.T</strong></td>
+                        <td>ＫＯＫＵＳＡＩ　ＥＬＥＣＴＲＩＣ</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number negative">-15,300</td>
+                        <td class="number negative">-14,300</td>
+                        <td class="number">4,250</td>
+                        <td class="number">4,097</td>
+                        <td class="number negative">-3.60%</td>
+                        <td class="number">4,107</td>
+                        <td class="number negative">-3.36%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">4,289 (+0.92%)</td>
+                        <td class="number negative">4,077 (-4.07%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>5706.T</strong></td>
+                        <td>三井金属</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number positive">+115,000</td>
+                        <td class="number positive">+119,500</td>
+                        <td class="number">18,200</td>
+                        <td class="number">19,350</td>
+                        <td class="number positive">+6.32%</td>
+                        <td class="number">19,395</td>
+                        <td class="number positive">+6.57%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">19,950 (+9.62%)</td>
+                        <td class="number negative">18,200 (+0.00%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>5406.T</strong></td>
+                        <td>神戸製鋼所</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number positive">+3,600</td>
+                        <td class="number positive">+4,850</td>
+                        <td class="number">1,846</td>
+                        <td class="number">1,882</td>
+                        <td class="number positive">+1.95%</td>
+                        <td class="number">1,895</td>
+                        <td class="number positive">+2.63%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">1,901 (+2.95%)</td>
+                        <td class="number negative">1,849 (+0.14%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>4061.T</strong></td>
+                        <td>デンカ</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number positive">+2,050</td>
+                        <td class="number positive">+1,500</td>
+                        <td class="number">2,433</td>
+                        <td class="number">2,454</td>
+                        <td class="number positive">+0.84%</td>
+                        <td class="number">2,448</td>
+                        <td class="number positive">+0.62%</td>
+                        <td><span class="badge badge-morning">前場</span></td>
+                        <td class="number positive">2,460 (+1.11%)</td>
+                        <td class="number negative">2,425 (-0.33%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>1844.T</strong></td>
+                        <td>大盛工業</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number positive">+2,200</td>
+                        <td class="number positive">+2,300</td>
+                        <td class="number">634</td>
+                        <td class="number">656</td>
+                        <td class="number positive">+3.47%</td>
+                        <td class="number">657</td>
+                        <td class="number positive">+3.63%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">679 (+7.10%)</td>
+                        <td class="number negative">637 (+0.47%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>8136.T</strong></td>
+                        <td>サンリオ</td>
+                        <td><span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e;">買い</span></td>
+                        <td class="number positive">+11,900</td>
+                        <td class="number positive">+3,900</td>
+                        <td class="number">5,800</td>
+                        <td class="number">5,919</td>
+                        <td class="number positive">+2.05%</td>
+                        <td class="number">5,839</td>
+                        <td class="number positive">+0.67%</td>
+                        <td><span class="badge badge-morning">前場</span></td>
+                        <td class="number positive">6,007 (+3.57%)</td>
+                        <td class="number negative">5,780 (-0.34%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>6309.T</strong></td>
+                        <td>巴工業</td>
+                        <td><span class="badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24;">静観</span></td>
+                        <td class="number positive">+900</td>
+                        <td class="number positive">+2,200</td>
+                        <td class="number">1,624</td>
+                        <td class="number">1,633</td>
+                        <td class="number positive">+0.55%</td>
+                        <td class="number">1,646</td>
+                        <td class="number positive">+1.35%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">1,653 (+1.79%)</td>
+                        <td class="number negative">1,618 (-0.37%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>9501.T</strong></td>
+                        <td>東京電力ホールディングス</td>
+                        <td><span class="badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24;">静観</span></td>
+                        <td class="number positive">+540</td>
+                        <td class="number negative">-2,880</td>
+                        <td class="number">910</td>
+                        <td class="number">915</td>
+                        <td class="number positive">+0.59%</td>
+                        <td class="number">881</td>
+                        <td class="number negative">-3.16%</td>
+                        <td><span class="badge badge-morning">前場</span></td>
+                        <td class="number positive">937 (+2.96%)</td>
+                        <td class="number negative">866 (-4.84%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>5711.T</strong></td>
+                        <td>三菱マテリアル</td>
+                        <td><span class="badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24;">静観</span></td>
+                        <td class="number negative">-3,100</td>
+                        <td class="number negative">-5,300</td>
+                        <td class="number">3,050</td>
+                        <td class="number">3,081</td>
+                        <td class="number negative">-1.02%</td>
+                        <td class="number">3,103</td>
+                        <td class="number negative">-1.74%</td>
+                        <td><span class="badge badge-morning">前場</span></td>
+                        <td class="number positive">3,122 (+2.36%)</td>
+                        <td class="number negative">3,054 (+0.13%)</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-14</td>
+                        <td><strong>4911.T</strong></td>
+                        <td>資生堂</td>
+                        <td><span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444;">売り</span></td>
+                        <td class="number positive">+1,750</td>
+                        <td class="number positive">+3,200</td>
+                        <td class="number">2,695</td>
+                        <td class="number">2,678</td>
+                        <td class="number positive">+0.65%</td>
+                        <td class="number">2,663</td>
+                        <td class="number positive">+1.19%</td>
+                        <td><span class="badge badge-day">大引</span></td>
+                        <td class="number positive">2,721 (+0.96%)</td>
+                        <td class="number negative">2,652 (-1.60%)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="comparison">
+            <h2>📊 利確タイミング - 要因別サマリー</h2>
+            <p style="color: #94a3b8; margin-bottom: 1.5rem;">どの状況で前場/大引が有利か一覧</p>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #334155;">
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 120px;">要因</th>
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 150px;">カテゴリ</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 80px;">件数</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 120px;">有利なタイミング</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 100px;">前場</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 100px;">大引</th>
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 200px;">結論</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">ボラティリティ</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.10%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.09%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.10%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.02%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 3件 (75%) / 大引 1件 (25%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.70%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.92%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">時価総額</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.46%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.46%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">大型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +2.40%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.32%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">小型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.94%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.14%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">株価水準</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.61%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.67%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.09%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.42%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.19%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.89%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">売買推奨</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">buy</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">8</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.35%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.29%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 3件 (38%) / 大引 5件 (62%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">hold</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">3</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.04%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -1.18%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (67%) / 大引 1件 (33%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">sell</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">1</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.65%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.19%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 0件 (0%) / 大引 1件 (100%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">スコア</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中スコア(20〜50)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">3</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +2.12%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.64%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (67%) / 大引 1件 (33%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低スコア(-∞〜20)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.20%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.59%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高スコア(50〜)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">5</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.88%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.08%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (20%) / 大引 4件 (80%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">出来高</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.61%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.67%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.94%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.14%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.34%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.18%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <h2>🛡️ 損切りタイミング - 要因別サマリー</h2>
+            <p style="color: #94a3b8; margin-bottom: 1.5rem;">どの状況で前場/大引の損失が小さいか一覧</p>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #334155;">
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 120px;">要因</th>
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 150px;">カテゴリ</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 80px;">件数</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 120px;">有利なタイミング</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 100px;">前場</th>
+                            <th style="padding: 1rem; text-align: center; color: #60a5fa; min-width: 100px;">大引</th>
+                            <th style="padding: 1rem; text-align: left; color: #60a5fa; min-width: 200px;">結論</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">ボラティリティ</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.10%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.09%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.10%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.02%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高ボラ</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.70%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.92%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">時価総額</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.46%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.46%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">大型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +2.40%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.32%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 3件 (75%) / 大引 1件 (25%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">小型株</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.94%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.14%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">株価水準</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.61%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.67%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.09%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.42%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高価格帯</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.19%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.89%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">売買推奨</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">buy</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">8</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.35%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.29%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 3件 (38%) / 大引 5件 (62%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">hold</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">3</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.04%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -1.18%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (33%) / 大引 2件 (67%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">sell</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">1</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.65%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.19%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (100%) / 大引 0件 (0%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">スコア</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中スコア(20〜50)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">3</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #fbbf24;">
+                                    前場
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +2.12%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.64%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (67%) / 大引 1件 (33%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低スコア(-∞〜20)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.20%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #f87171;">
+                                -0.59%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高スコア(50〜)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">5</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.88%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.08%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (20%) / 大引 4件 (80%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;">出来高</td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">中出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.61%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.67%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(30, 41, 59, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">低出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(96, 165, 250, 0.2); color: #60a5fa; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #60a5fa;">
+                                    大引
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.94%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.14%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 1件 (25%) / 大引 3件 (75%)
+                            </td>
+                        </tr>
+
+                        <tr style="border-bottom: 1px solid #334155; background: rgba(15, 23, 42, 0.4);">
+                            <td style="padding: 0.75rem; color: #e2e8f0; font-weight: 600;"></td>
+                            <td style="padding: 0.75rem; color: #cbd5e1;">高出来高</td>
+                            <td style="padding: 0.75rem; text-align: center; color: #94a3b8;">4</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 600; border: 1px solid #94a3b8;">
+                                    同等
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +1.34%
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #34d399;">
+                                +0.18%
+                            </td>
+                            <td style="padding: 0.75rem; color: #cbd5e1; font-size: 0.85rem;">
+                                前場 2件 (50%) / 大引 2件 (50%)
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>分析期間: 2025-11-14</p>
+            <p>データソース: Yahoo Finance (5分足データ)</p>
+            <p>生成日時: 2025-11-16 15:53:11</p>
+        </div>
+    </div>
+</body>
+</html>

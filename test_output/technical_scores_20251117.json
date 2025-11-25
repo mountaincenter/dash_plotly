@@ -1,0 +1,1589 @@
+{
+  "generated_at": "2025-11-17T14:18:18.394779",
+  "date": "20251117",
+  "total_stocks": 56,
+  "summary": {
+    "StrongBuy": 0,
+    "Hold": 53,
+    "StrongSell": 3
+  },
+  "stocks": [
+    {
+      "ticker": "2914.T",
+      "stock_name": "日本たばこ産業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "食料品",
+      "series": "食品",
+      "latest_close": 5685.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -2,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "3382.T",
+      "stock_name": "セブン＆アイ・ホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "小売業",
+      "series": "小売",
+      "latest_close": 2039.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "4063.T",
+      "stock_name": "信越化学工業",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "化学",
+      "series": "素材・化学",
+      "latest_close": 4641.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -10,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": -10,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "4502.T",
+      "stock_name": "武田薬品工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "医薬品",
+      "series": "医薬品",
+      "latest_close": 4443.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "4568.T",
+      "stock_name": "第一三共",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "医薬品",
+      "series": "医薬品",
+      "latest_close": 3505.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -30,
+      "tech_details": {
+        "ma": -2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 2
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": -25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6098.T",
+      "stock_name": "リクルートホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "サービス業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 8103.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -5,
+      "tech_details": {
+        "ma": -1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": -1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -15,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6367.T",
+      "stock_name": "ダイキン工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "機械",
+      "series": "機械",
+      "latest_close": 20595.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 25,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -1,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6501.T",
+      "stock_name": "日立製作所",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 5083.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": -5,
+      "sector_relative": 0,
+      "total_score": 25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6503.T",
+      "stock_name": "三菱電機",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 4237.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6758.T",
+      "stock_name": "ソニーグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 4700.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6861.T",
+      "stock_name": "キーエンス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 55650.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -40,
+      "tech_details": {
+        "ma": -2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": -40,
+      "signal": "StrongSell"
+    },
+    {
+      "ticker": "6981.T",
+      "stock_name": "村田製作所",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 3109.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 10,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 0,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 0,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7011.T",
+      "stock_name": "三菱重工業",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "series": "機械",
+      "latest_close": 4174.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 10,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 2,
+        "ichimoku": 1,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 0,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7203.T",
+      "stock_name": "トヨタ自動車",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "輸送用機器",
+      "series": "自動車・輸送機",
+      "latest_close": 3180.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7267.T",
+      "stock_name": "本田技研工業",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "輸送用機器",
+      "series": "自動車・輸送機",
+      "latest_close": 1556.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -15,
+      "tech_details": {
+        "ma": -1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": -1,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7741.T",
+      "stock_name": "ＨＯＹＡ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "精密機器",
+      "series": "電機・精密",
+      "latest_close": 24185.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 10,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 0,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7974.T",
+      "stock_name": "任天堂",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "その他製品",
+      "series": "情報通信・サービスその他",
+      "latest_close": 13445.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": -1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8001.T",
+      "stock_name": "伊藤忠商事",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "卸売業",
+      "series": "商社・卸売",
+      "latest_close": 9510.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 25,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": -5,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8031.T",
+      "stock_name": "三井物産",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "卸売業",
+      "series": "商社・卸売",
+      "latest_close": 4103.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 35,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8035.T",
+      "stock_name": "東京エレクトロン",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 31850.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 5,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 0,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8058.T",
+      "stock_name": "三菱商事",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "卸売業",
+      "series": "商社・卸売",
+      "latest_close": 3750.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 25,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8306.T",
+      "stock_name": "三菱ＵＦＪフィナンシャル・グループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "series": "銀行",
+      "latest_close": 2451.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8316.T",
+      "stock_name": "三井住友フィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "series": "銀行",
+      "latest_close": 4330.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8411.T",
+      "stock_name": "みずほフィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "銀行業",
+      "series": "銀行",
+      "latest_close": 5300.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 45,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8729.T",
+      "stock_name": "ソニーフィナンシャルグループ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "保険業",
+      "series": "金融（除く銀行）",
+      "latest_close": 154.39999389648438,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -5,
+      "tech_details": {
+        "ma": -1,
+        "macd_hist": 0,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -1,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 1,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": -5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "8766.T",
+      "stock_name": "東京海上ホールディングス",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "保険業",
+      "series": "金融（除く銀行）",
+      "latest_close": 5922.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -10,
+      "tech_details": {
+        "ma": -1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": -10,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9432.T",
+      "stock_name": "ＮＴＴ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 151.1999969482422,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -35,
+      "tech_details": {
+        "ma": -2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": -5,
+      "sector_relative": 0,
+      "total_score": -40,
+      "signal": "StrongSell"
+    },
+    {
+      "ticker": "9433.T",
+      "stock_name": "ＫＤＤＩ",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 2649.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 35,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9434.T",
+      "stock_name": "ソフトバンク",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "情報･通信業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 222.39999389648438,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9983.T",
+      "stock_name": "ファーストリテイリング",
+      "categories": [
+        "TOPIX_CORE30"
+      ],
+      "sectors": "小売業",
+      "series": "小売",
+      "latest_close": 56500.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 0,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": -1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -10,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9984.T",
+      "stock_name": "ソフトバンクグループ",
+      "categories": [
+        "TOPIX_CORE30",
+        "政策銘柄"
+      ],
+      "sectors": "情報･通信業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 19780.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 10,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 1,
+        "percent_b": 2,
+        "ichimoku": -2,
+        "cmf20": 2,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 2
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 0,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7012.T",
+      "stock_name": "川崎重工業",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "series": "機械",
+      "latest_close": 10535.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -10,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -1,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7013.T",
+      "stock_name": "ＩＨＩ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "series": "機械",
+      "latest_close": 2910.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 5,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 2,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": -5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "5631.T",
+      "stock_name": "日本製鋼所",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "機械",
+      "series": "機械",
+      "latest_close": 9534.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 5,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": -1,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 15,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6946.T",
+      "stock_name": "日本アビオニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 4990.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": -5,
+      "sector_relative": 0,
+      "total_score": 15,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6701.T",
+      "stock_name": "ＮＥＣ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 5980.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6702.T",
+      "stock_name": "富士通",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 4173.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 40,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6723.T",
+      "stock_name": "ルネサスエレクトロニクス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 1935.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6920.T",
+      "stock_name": "レーザーテック",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 28095.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 25,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 15,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "7735.T",
+      "stock_name": "SCREENホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 12815.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -5,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 0,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6857.T",
+      "stock_name": "アドバンテスト",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 19530.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 2,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": -10,
+      "sector_relative": 0,
+      "total_score": 10,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "6762.T",
+      "stock_name": "ＴＤＫ",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気機器",
+      "series": "電機・精密",
+      "latest_close": 2535.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 10,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": -1
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 10,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "4307.T",
+      "stock_name": "野村総合研究所",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "情報・通信業",
+      "series": "情報通信・サービスその他",
+      "latest_close": 6330.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -1,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 40,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1605.T",
+      "stock_name": "INPEX",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "鉱業",
+      "series": "エネルギー資源",
+      "latest_close": 3175.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -2,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "5020.T",
+      "stock_name": "ENEOSホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "石油・石炭製品",
+      "series": "エネルギー資源",
+      "latest_close": 1044.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -2,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9513.T",
+      "stock_name": "電源開発",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "series": "電力・ガス",
+      "latest_close": 2940.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 15,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9501.T",
+      "stock_name": "東京電力ホールディングス",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "series": "電力・ガス",
+      "latest_close": 878.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 0,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 5,
+      "sector_relative": 0,
+      "total_score": 35,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9503.T",
+      "stock_name": "関西電力",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "電気・ガス業",
+      "series": "電力・ガス",
+      "latest_close": 2521.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 25,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": -1,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 35,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1812.T",
+      "stock_name": "鹿島建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "series": "建設・資材",
+      "latest_close": 5605.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 45,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1802.T",
+      "stock_name": "大林組",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "series": "建設・資材",
+      "latest_close": 2850.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 35,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 35,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1803.T",
+      "stock_name": "清水建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "series": "建設・資材",
+      "latest_close": 2507.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -2,
+        "percent_b": -2,
+        "ichimoku": 2,
+        "cmf20": 2,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 30,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1801.T",
+      "stock_name": "大成建設",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "series": "建設・資材",
+      "latest_close": 12520.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 30,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": -1,
+        "percent_b": 0,
+        "ichimoku": 2,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 2,
+        "sma25_dev_pct": -2
+      },
+      "topix_relative": 10,
+      "sector_relative": 0,
+      "total_score": 40,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "1766.T",
+      "stock_name": "竹中工務店",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "建設業",
+      "series": "建設・資材",
+      "latest_close": 14420.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 5,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -1,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 5,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9021.T",
+      "stock_name": "JR西日本",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "series": "運輸・物流",
+      "latest_close": 3077.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": -40,
+      "tech_details": {
+        "ma": -2,
+        "macd_hist": -1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": -2,
+        "cmf20": -1,
+        "obv_slope": -1,
+        "donchian": 0,
+        "roc12": -2,
+        "sma25_dev_pct": 1
+      },
+      "topix_relative": -5,
+      "sector_relative": 0,
+      "total_score": -45,
+      "signal": "StrongSell"
+    },
+    {
+      "ticker": "9022.T",
+      "stock_name": "JR東海",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "series": "運輸・物流",
+      "latest_close": 4136.0,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 20,
+      "tech_details": {
+        "ma": 2,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": -1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 20,
+      "signal": "Hold"
+    },
+    {
+      "ticker": "9005.T",
+      "stock_name": "東急",
+      "categories": [
+        "政策銘柄"
+      ],
+      "sectors": "陸運業",
+      "series": "運輸・物流",
+      "latest_close": 1756.5,
+      "latest_date": "2025-11-14",
+      "tech_snapshot_score": 25,
+      "tech_details": {
+        "ma": 1,
+        "macd_hist": 1,
+        "rsi14": 0,
+        "percent_b": 0,
+        "ichimoku": 1,
+        "cmf20": 1,
+        "obv_slope": 1,
+        "donchian": 0,
+        "roc12": 0,
+        "sma25_dev_pct": 0
+      },
+      "topix_relative": 0,
+      "sector_relative": 0,
+      "total_score": 25,
+      "signal": "Hold"
+    }
+  ]
+}

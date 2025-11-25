@@ -416,7 +416,7 @@ def main() -> int:
                 'start': '2025-11-04',
                 'end': datetime.now().strftime('%Y-%m-%d')
             },
-            'technicalDataDate': (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+            'technicalDataDate': datetime.now().strftime('%Y-%m-%d')
         },
         'summary': {
             'total': total_stocks,

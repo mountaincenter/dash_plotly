@@ -76,14 +76,26 @@ def main():
 
     print(f"✅ Loaded {len(rec_data['stocks'])} stocks from trading_recommendation.json")
 
-    # 推奨データの日付を取得
-    rec_date_str = rec_data.get('dataSource', {}).get('technicalDataDate')
-    if not rec_date_str:
-        print("❌ No technicalDataDate found in trading_recommendation.json")
+    # 推奨データの日付を取得 - マスターデータ（grok_trending_YYYYMMDD.parquet）から
+    print("\n[Step 1.5] Detecting date from master data (grok_trending_YYYYMMDD.parquet)...")
+
+    # backtest/ ディレクトリから grok_trending_YYYYMMDD.parquet ファイルを検索
+    backtest_dir = ROOT / 'data' / 'parquet' / 'backtest'
+    grok_files = sorted(backtest_dir.glob('grok_trending_202*.parquet'))
+
+    if not grok_files:
+        print("❌ No grok_trending_YYYYMMDD.parquet files found in backtest/")
         sys.exit(1)
 
-    rec_date = pd.to_datetime(rec_date_str)
-    print(f"  Recommendation date: {rec_date.date()}")
+    # 最新のファイルから日付を取得
+    latest_grok_file = grok_files[-1]
+    filename = latest_grok_file.stem  # grok_trending_20251118
+    date_str = filename.split('_')[-1]  # 20251118
+    rec_date = pd.to_datetime(date_str, format='%Y%m%d')
+
+    print(f"  Latest grok_trending file: {latest_grok_file.name}")
+    print(f"  Extracted date: {rec_date.date()}")
+    print(f"  ℹ️  Ignoring trading_recommendation.json date fields (using master data)")
 
     # 推奨データをDataFrameに変換
     rec_list = []
@@ -109,6 +121,15 @@ def main():
             rec_data_item['recommendation_final_score'] = deep['finalScore']
         else:
             rec_data_item['recommendation_final_score'] = rec['score']
+
+        # stopLoss フィールドを追加
+        if 'stopLoss' in rec:
+            rec_data_item['recommendation_stop_loss_percent'] = rec['stopLoss'].get('percent')
+            rec_data_item['recommendation_stop_loss_calculation'] = rec['stopLoss'].get('calculation')
+
+        # reasons フィールドを追加（JSON文字列として保存）
+        if 'reasons' in rec:
+            rec_data_item['recommendation_reasons_json'] = json.dumps(rec['reasons'], ensure_ascii=False)
 
         rec_list.append(rec_data_item)
 

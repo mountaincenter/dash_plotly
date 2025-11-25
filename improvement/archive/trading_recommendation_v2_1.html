@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Recommendation V2.1</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+</style>
+</head>
+<body class="min-h-screen p-8">
+<div class="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-8">
+        <h1 class="text-4xl font-bold text-white mb-2">Trading Recommendation V2.1</h1>
+        <p class="text-indigo-100">Generated at: 2025-11-24T00:54:06.900877</p>
+        <p class="text-indigo-100">Total: 7 stocks | Buy: 0 | Hold: 5 | Sell: 2</p>
+    </div>
+
+    <div class="p-8">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-slate-700/50">
+                    <th class="text-left p-3">ティッカー</th>
+                    <th class="text-left p-3">銘柄名</th>
+                    <th class="text-center p-3">ランク</th>
+                    <th class="text-right p-3">前日終値</th>
+                    <th class="text-right p-3">前日変化率</th>
+                    <th class="text-right p-3">ATR(%)</th>
+                    <th class="text-center p-3">v2.0.3判断</th>
+                    <th class="text-right p-3">v2.0.3スコア</th>
+                    <th class="text-center p-3">v2.1判断</th>
+                    <th class="text-right p-3">RSI(14d)</th>
+                    <th class="text-right p-3">出来高変化(20d)</th>
+                    <th class="text-right p-3">5日線乖離率</th>
+                    <th class="text-right p-3">損切り水準</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr class="bg-gray-50 border-b">
+                    <td class="p-3 font-mono">8894.T</td>
+                    <td class="p-3">REVOLUTION</td>
+                    <td class="text-center p-3">2</td>
+                    <td class="text-right p-3">¥61</td>
+                    <td class="text-right p-3">+7.02%</td>
+                    <td class="text-right p-3">6.79%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-800">静観</span></td>
+                    <td class="text-right p-3">+5</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white">静観</span></td>
+                    <td class="text-right p-3">48.0</td>
+                    <td class="text-right p-3">6.19x</td>
+                    <td class="text-right p-3">+6.34%</td>
+                    <td class="text-right p-3">5.0</td>
+                </tr>
+
+                <tr class="bg-gray-50 border-b">
+                    <td class="p-3 font-mono">7603.T</td>
+                    <td class="p-3">ジーイエット</td>
+                    <td class="text-center p-3">6</td>
+                    <td class="text-right p-3">¥156</td>
+                    <td class="text-right p-3">+2.63%</td>
+                    <td class="text-right p-3">4.53%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-800">静観</span></td>
+                    <td class="text-right p-3">+5</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white">静観</span></td>
+                    <td class="text-right p-3">30.2</td>
+                    <td class="text-right p-3">0.86x</td>
+                    <td class="text-right p-3">-1.04%</td>
+                    <td class="text-right p-3">3.6</td>
+                </tr>
+
+                <tr class="bg-gray-50 border-b">
+                    <td class="p-3 font-mono">3350.T</td>
+                    <td class="p-3">メタプラネット</td>
+                    <td class="text-center p-3">1</td>
+                    <td class="text-right p-3">¥357</td>
+                    <td class="text-right p-3">-7.75%</td>
+                    <td class="text-right p-3">7.00%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-blue-200 text-blue-800">買い</span></td>
+                    <td class="text-right p-3">+45</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white">静観</span></td>
+                    <td class="text-right p-3">30.8</td>
+                    <td class="text-right p-3">0.62x</td>
+                    <td class="text-right p-3">+2.76%</td>
+                    <td class="text-right p-3">5.0</td>
+                </tr>
+
+                <tr class="bg-gray-50 border-b">
+                    <td class="p-3 font-mono">4397.T</td>
+                    <td class="p-3">チームスピリット</td>
+                    <td class="text-center p-3">4</td>
+                    <td class="text-right p-3">¥515</td>
+                    <td class="text-right p-3">+1.58%</td>
+                    <td class="text-right p-3">3.05%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-blue-200 text-blue-800">買い</span></td>
+                    <td class="text-right p-3">+20</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white">静観</span></td>
+                    <td class="text-right p-3">52.5</td>
+                    <td class="text-right p-3">1.20x</td>
+                    <td class="text-right p-3">-0.51%</td>
+                    <td class="text-right p-3">2.4</td>
+                </tr>
+
+                <tr class="bg-gray-50 border-b">
+                    <td class="p-3 font-mono">6232.T</td>
+                    <td class="p-3">ACSL</td>
+                    <td class="text-center p-3">3</td>
+                    <td class="text-right p-3">¥999</td>
+                    <td class="text-right p-3">+0.30%</td>
+                    <td class="text-right p-3">3.79%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-800">静観</span></td>
+                    <td class="text-right p-3">-5</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white">静観</span></td>
+                    <td class="text-right p-3">40.4</td>
+                    <td class="text-right p-3">0.86x</td>
+                    <td class="text-right p-3">-1.19%</td>
+                    <td class="text-right p-3">3.0</td>
+                </tr>
+
+                <tr class="bg-red-50 border-b">
+                    <td class="p-3 font-mono">7695.T</td>
+                    <td class="p-3">交換できるくん</td>
+                    <td class="text-center p-3">7</td>
+                    <td class="text-right p-3">¥864</td>
+                    <td class="text-right p-3">+8.14%</td>
+                    <td class="text-right p-3">2.18%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-red-200 text-red-800">売り</span></td>
+                    <td class="text-right p-3">-15</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-red-600 text-white">売り</span></td>
+                    <td class="text-right p-3">33.6</td>
+                    <td class="text-right p-3">2.22x</td>
+                    <td class="text-right p-3">-3.10%</td>
+                    <td class="text-right p-3">5.0</td>
+                </tr>
+
+                <tr class="bg-red-50 border-b">
+                    <td class="p-3 font-mono">3409.T</td>
+                    <td class="p-3">北紡</td>
+                    <td class="text-center p-3">5</td>
+                    <td class="text-right p-3">¥127</td>
+                    <td class="text-right p-3">+1.60%</td>
+                    <td class="text-right p-3">5.29%</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-red-200 text-red-800">売り</span></td>
+                    <td class="text-right p-3">-25</td>
+                    <td class="text-center p-3"><span class="px-2 py-1 rounded text-xs font-semibold bg-red-600 text-white">売り</span></td>
+                    <td class="text-right p-3">28.6</td>
+                    <td class="text-right p-3">2.21x</td>
+                    <td class="text-right p-3">-7.41%</td>
+                    <td class="text-right p-3">6.3</td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

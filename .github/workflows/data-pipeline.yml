@@ -702,20 +702,6 @@ jobs:
             exit 1
           fi
 
-          # === Step 4: Enrich with trading recommendations ===
-          echo ""
-          echo "📊 Step 5: Enriching with trading recommendations..."
-
-          # trading_recommendation.json が存在する場合のみマージ
-          python3 scripts/pipeline/enrich_grok_analysis_with_recommendations.py
-
-          if [ $? -eq 0 ]; then
-            echo "  ✅ Recommendation enrichment completed"
-          else
-            echo "  ❌ ERROR: Recommendation enrichment failed"
-            exit 1
-          fi
-
           # ファイルサイズ確認
           FILE_SIZE=$(du -h data/parquet/backtest/grok_analysis_merged.parquet | cut -f1)
           echo ""

@@ -1,0 +1,431 @@
+
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>v2.1.5 バックテストレポート（価格フィルタ付き）</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            h1 {
+                color: #1976d2;
+                border-bottom: 3px solid #1976d2;
+                padding-bottom: 10px;
+            }
+            h2 {
+                color: #333;
+                margin-top: 30px;
+                border-bottom: 2px solid #ddd;
+                padding-bottom: 8px;
+            }
+            .summary {
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            .stat-card {
+                background-color: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .stat-label {
+                color: #666;
+                font-size: 0.9em;
+                margin-bottom: 5px;
+            }
+            .stat-value {
+                font-size: 1.8em;
+                font-weight: bold;
+                color: #1976d2;
+            }
+            .buy-signal {
+                color: #2e7d32;
+            }
+            .sell-signal {
+                color: #c62828;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+            th, td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+            th {
+                background-color: #1976d2;
+                color: white;
+                font-weight: bold;
+            }
+            tr:hover {
+                background-color: #f5f5f5;
+            }
+            .comparison-section {
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>v2.1.5 静的バックテストレポート</h1>
+        <div class="summary">
+            <p><strong>分析期間:</strong> 2020-2025（5年間）</p>
+            <p><strong>対象銘柄:</strong> 政策銘柄 + TOPIX_CORE30（56銘柄）</p>
+            <p><strong>スコアリングロジック:</strong> データドリブン（実績ベース配点）+ 価格フィルタ（買い: ≥1,000円）</p>
+            <p><strong>総判定数:</strong> 80,528件</p>
+        </div>
+
+        
+    <div class="comparison-section">
+        <h2>📊 v2.1.4 vs v2.1.5 比較</h2>
+        <table>
+            <tr>
+                <th>指標</th>
+                <th>v2.1.4（価格フィルタなし）</th>
+                <th>v2.1.5（≥1,000円フィルタ）</th>
+                <th>差分</th>
+            </tr>
+            <tr>
+                <td>買いシグナル数</td>
+                <td>5,410件</td>
+                <td>4,084件</td>
+                <td style="color: orange">-1,326件 (-24.5%)</td>
+            </tr>
+            <tr>
+                <td>買い勝率</td>
+                <td>50.59%</td>
+                <td>51.86%</td>
+                <td style="color: green; font-weight: bold">+1.27%</td>
+            </tr>
+            <tr>
+                <td>買い平均利益</td>
+                <td>707円</td>
+                <td>937円</td>
+                <td style="color: green; font-weight: bold">+230円 (+32.6%)</td>
+            </tr>
+            <tr>
+                <td>買い合計利益</td>
+                <td>3,825,638円</td>
+                <td>3,828,146円</td>
+                <td style="color: green">+2,508円</td>
+            </tr>
+            <tr>
+                <td>除外された買いシグナル</td>
+                <td>-</td>
+                <td>1,326件</td>
+                <td style="color: gray">1,000円未満で除外</td>
+            </tr>
+        </table>
+        <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-left: 4px solid #2196f3;">
+            <strong>改善ポイント:</strong><br>
+            • 価格フィルタにより勝率が <strong>+1.27%</strong> 向上<br>
+            • 平均利益が <strong>+230円 (+32.6%)</strong> 改善<br>
+            • シグナル数を24.5%削減しつつ、総利益はほぼ維持<br>
+            • 低品質な1,326件のシグナルを除外し、精度向上を実現
+        </div>
+    </div>
+    
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">買いシグナル</div>
+                <div class="stat-value buy-signal">4,084件</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">買い勝率</div>
+                <div class="stat-value buy-signal">51.86%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">買い平均利益</div>
+                <div class="stat-value buy-signal">937円</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">買い合計利益</div>
+                <div class="stat-value buy-signal">3,828,146円</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">売りシグナル</div>
+                <div class="stat-value sell-signal">14,637件</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">売り勝率</div>
+                <div class="stat-value sell-signal">50.29%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">売り平均利益</div>
+                <div class="stat-value sell-signal">298円</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">売り合計利益</div>
+                <div class="stat-value sell-signal">4,363,255円</div>
+            </div>
+        </div>
+
+        <h2>📈 RSI範囲別分析（買いシグナル）</h2>
+        <table>
+            <tr>
+                <th>RSI範囲</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均利益</th>
+                <th>合計利益</th>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>RSI 0-10</td>
+                <td>175件</td>
+                <td>50.29%</td>
+                <td>3,133円</td>
+                <td>548,340円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>RSI 10-20</td>
+                <td>47件</td>
+                <td>61.70%</td>
+                <td>4,583円</td>
+                <td>215,408円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>RSI 20-30</td>
+                <td>1,045件</td>
+                <td>51.96%</td>
+                <td>1,194円</td>
+                <td>1,247,427円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>RSI 30-40</td>
+                <td>2,808件</td>
+                <td>51.78%</td>
+                <td>664円</td>
+                <td>1,863,237円</td>
+            </tr>
+            
+            <tr style="background-color: #ffebee">
+                <td>RSI 40-50</td>
+                <td>6件</td>
+                <td>33.33%</td>
+                <td>-3,376円</td>
+                <td>-20,258円</td>
+            </tr>
+            
+            <tr style="background-color: #ffebee">
+                <td>RSI 50-60</td>
+                <td>3件</td>
+                <td>66.67%</td>
+                <td>-8,669円</td>
+                <td>-26,008円</td>
+            </tr>
+            
+        </table>
+
+        <h2>📊 出来高変化率別分析（買いシグナル）</h2>
+        <table>
+            <tr>
+                <th>出来高変化率</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均利益</th>
+                <th>合計利益</th>
+            </tr>
+            
+            <tr style="background-color: #ffebee">
+                <td>< 0.5倍</td>
+                <td>1件</td>
+                <td>0.00%</td>
+                <td>-94円</td>
+                <td>-94円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>0.5-0.8倍</td>
+                <td>3,352件</td>
+                <td>51.55%</td>
+                <td>732円</td>
+                <td>2,454,356円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>0.8-1.0倍</td>
+                <td>28件</td>
+                <td>42.86%</td>
+                <td>3,199円</td>
+                <td>89,575円</td>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>1.0-1.2倍</td>
+                <td>461件</td>
+                <td>52.49%</td>
+                <td>78円</td>
+                <td>35,895円</td>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>1.2-1.5倍</td>
+                <td>64件</td>
+                <td>59.38%</td>
+                <td>22円</td>
+                <td>1,422円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>1.5-2.0倍</td>
+                <td>75件</td>
+                <td>58.67%</td>
+                <td>8,474円</td>
+                <td>635,542円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>2.0-3.0倍</td>
+                <td>81件</td>
+                <td>54.32%</td>
+                <td>4,458円</td>
+                <td>361,080円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>> 3.0倍</td>
+                <td>20件</td>
+                <td>45.00%</td>
+                <td>12,827円</td>
+                <td>256,531円</td>
+            </tr>
+            
+        </table>
+
+        <h2>📉 SMA5乖離率別分析（買いシグナル）</h2>
+        <table>
+            <tr>
+                <th>SMA5乖離率</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均利益</th>
+                <th>合計利益</th>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>< -10%</td>
+                <td>148件</td>
+                <td>55.41%</td>
+                <td>4,192円</td>
+                <td>620,468円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>-10% ~ -5%</td>
+                <td>73件</td>
+                <td>58.90%</td>
+                <td>6,938円</td>
+                <td>506,486円</td>
+            </tr>
+            
+            <tr style="background-color: #ffebee">
+                <td>-5% ~ -2%</td>
+                <td>380件</td>
+                <td>51.58%</td>
+                <td>-1,091円</td>
+                <td>-414,669円</td>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>-2% ~ 0%</td>
+                <td>1,851件</td>
+                <td>50.08%</td>
+                <td>915円</td>
+                <td>1,693,390円</td>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>0% ~ 2%</td>
+                <td>1,632件</td>
+                <td>53.31%</td>
+                <td>872円</td>
+                <td>1,422,471円</td>
+            </tr>
+            
+        </table>
+
+        <h2>💰 価格帯別分析（買いシグナル）</h2>
+        <table>
+            <tr>
+                <th>価格帯</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均利益</th>
+                <th>合計利益</th>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>1,000-2,000円</td>
+                <td>1,301件</td>
+                <td>53.04%</td>
+                <td>206円</td>
+                <td>268,157円</td>
+            </tr>
+            
+            <tr style="background-color: #fff3e0">
+                <td>2,000-5,000円</td>
+                <td>1,751件</td>
+                <td>50.60%</td>
+                <td>263円</td>
+                <td>460,471円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>5,000-10,000円</td>
+                <td>434件</td>
+                <td>52.07%</td>
+                <td>1,420円</td>
+                <td>616,084円</td>
+            </tr>
+            
+            <tr style="background-color: #e8f5e9">
+                <td>≥ 10,000円</td>
+                <td>598件</td>
+                <td>52.84%</td>
+                <td>4,153円</td>
+                <td>2,483,434円</td>
+            </tr>
+            
+        </table>
+
+        <div style="margin-top: 30px; padding: 15px; background-color: #fff3e0; border-left: 4px solid #ff9800;">
+            <strong>💡 キーインサイト:</strong><br>
+            • <strong>価格フィルタ（≥1,000円）</strong>により買いシグナルの質が大幅向上<br>
+            • 勝率: 50.59% → <strong>51.86% (+1.27%)</strong><br>
+            • 平均利益: +707円 → <strong>+937円 (+32.5%)</strong><br>
+            • シグナル数は24.5%減少したが、総利益はほぼ同等を維持<br>
+            • <strong>500円未満・500-1,000円の低価格帯は損失傾向</strong>が明確化
+        </div>
+    </body>
+    </html>
+    

@@ -1,0 +1,176 @@
+{
+  "generated_at": "2025-11-17T19:18:11.828082",
+  "date": "20251117",
+  "methodology": {
+    "approach": "Train/Test Split (前半6ヶ月 / 後半6ヶ月)",
+    "indicator_selection": "Test相関が正 かつ Train/Test両方のSpreadが正",
+    "weighting": "平均Spreadに比例した重み付け",
+    "scoring": "Tercile-based normalization (-1, 0, +1)"
+  },
+  "indicator_analysis": {
+    "rsi14": {
+      "train": {
+        "correlation": -0.07281961561815084,
+        "top_tercile_return": -0.22094438655780874,
+        "bottom_tercile_return": 0.8803531728015341,
+        "spread": -1.1012975593593428,
+        "sample_size": 7888
+      },
+      "test": {
+        "correlation": 0.008423099834100806,
+        "top_tercile_return": 1.1789650119202146,
+        "bottom_tercile_return": 1.0428921854979059,
+        "spread": 0.13607282642230878,
+        "sample_size": 7947
+      }
+    },
+    "macd_hist": {
+      "train": {
+        "correlation": -0.035798744815829384,
+        "top_tercile_return": 0.19444876319189175,
+        "bottom_tercile_return": 0.5537371268753204,
+        "spread": -0.35928836368342865,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": 0.0018572580415120422,
+        "top_tercile_return": 1.2037112721899301,
+        "bottom_tercile_return": 1.1224491075377556,
+        "spread": 0.0812621646521745,
+        "sample_size": 7948
+      }
+    },
+    "percent_b": {
+      "train": {
+        "correlation": -0.05126904264737906,
+        "top_tercile_return": 0.06821047420882523,
+        "bottom_tercile_return": 0.6594122335141653,
+        "spread": -0.5912017593053401,
+        "sample_size": 7863
+      },
+      "test": {
+        "correlation": 0.0021496855040860677,
+        "top_tercile_return": 1.203230850104836,
+        "bottom_tercile_return": 1.1233360194932236,
+        "spread": 0.07989483061161251,
+        "sample_size": 7929
+      }
+    },
+    "cmf20": {
+      "train": {
+        "correlation": -0.022917704582532797,
+        "top_tercile_return": 0.2615596753564857,
+        "bottom_tercile_return": 0.26817016910142294,
+        "spread": -0.006610493744937218,
+        "sample_size": 7863
+      },
+      "test": {
+        "correlation": -0.020457674825618256,
+        "top_tercile_return": 1.0804151260758852,
+        "bottom_tercile_return": 1.4000730017985126,
+        "spread": -0.3196578757226274,
+        "sample_size": 7929
+      }
+    },
+    "obv_slope": {
+      "train": {
+        "correlation": -0.054761634313933424,
+        "top_tercile_return": -0.5172447822414598,
+        "bottom_tercile_return": 0.9814341212126793,
+        "spread": -1.498678903454139,
+        "sample_size": 7889
+      },
+      "test": {
+        "correlation": 0.006253201291285601,
+        "top_tercile_return": 1.3130242905465923,
+        "bottom_tercile_return": 1.0070129383515876,
+        "spread": 0.30601135219500475,
+        "sample_size": 7948
+      }
+    },
+    "sma25_dev_pct": {
+      "train": {
+        "correlation": -0.0716408252158505,
+        "top_tercile_return": -0.051640964498767546,
+        "bottom_tercile_return": 0.9043140352780717,
+        "spread": -0.9559549997768393,
+        "sample_size": 7853
+      },
+      "test": {
+        "correlation": 0.04263740512294961,
+        "top_tercile_return": 1.3373832303343645,
+        "bottom_tercile_return": 1.090446504217253,
+        "spread": 0.24693672611711137,
+        "sample_size": 7924
+      }
+    },
+    "atr14_pct": {
+      "train": {
+        "correlation": 0.09300375076580887,
+        "top_tercile_return": 1.3217933381473974,
+        "bottom_tercile_return": -0.09292704256041669,
+        "spread": 1.4147203807078141,
+        "sample_size": 7875
+      },
+      "test": {
+        "correlation": 0.043612353742331085,
+        "top_tercile_return": 1.5858209537260384,
+        "bottom_tercile_return": 0.684854178678121,
+        "spread": 0.9009667750479173,
+        "sample_size": 7935
+      }
+    }
+  },
+  "selected_indicators": [
+    {
+      "name": "atr14_pct",
+      "test_corr": 0.043612353742331085,
+      "train_spread": 1.4147203807078141,
+      "test_spread": 0.9009667750479173,
+      "avg_spread": 1.1578435778778657
+    }
+  ],
+  "weights": {
+    "atr14_pct": 1.0
+  },
+  "performance": {
+    "train": {
+      "correlation": 0.08990287662723323,
+      "tercile_performance": {
+        "Low": {
+          "count": 2599,
+          "avg_return": -0.0979386169589246,
+          "median_return": -0.24154984584059402,
+          "win_rate": 46.633320507887646
+        },
+        "High": {
+          "count": 5290,
+          "avg_return": 0.5149596692500559,
+          "median_return": 0.4155522327903505,
+          "win_rate": 52.911153119092624
+        }
+      },
+      "spread": 0.6128982862089805,
+      "sample_size": 7889
+    },
+    "test": {
+      "correlation": 0.06268895406438321,
+      "tercile_performance": {
+        "Low": {
+          "count": 2619,
+          "avg_return": 0.6832819577774604,
+          "median_return": 0.4392764857881204,
+          "win_rate": 56.662848415425735
+        },
+        "High": {
+          "count": 5329,
+          "avg_return": 1.3924400600301943,
+          "median_return": 0.7533539758121321,
+          "win_rate": 56.802401951585665
+        }
+      },
+      "spread": 0.7091581022527339,
+      "sample_size": 7948
+    }
+  }
+}

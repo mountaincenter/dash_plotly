@@ -29,6 +29,9 @@ S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
+# グローバルキャッシュ（起動時に一度だけロード）
+_archive_cache = None
+
 
 def load_archive_data() -> pd.DataFrame:
     """
@@ -60,10 +63,33 @@ def load_archive_data() -> pd.DataFrame:
     # ローカルファイルにフォールバック
     if ARCHIVE_FILE.exists():
         print(f"[INFO] Loading backtest archive from local file: {ARCHIVE_FILE}")
-        df = pd.read_parquet(ARCHIVE_FILE)
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
-        return df
+
+        # Docker volume deadlock回避: 直接 /tmp にコピーしてから読み込む
+        import subprocess
+        tmp_file = f"/tmp/{ARCHIVE_FILE.name}"
+        try:
+            result = subprocess.run(
+                ["dd", f"if={ARCHIVE_FILE}", f"of={tmp_file}", "bs=1M"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0:
+                df = pd.read_parquet(tmp_file)
+                if 'backtest_date' in df.columns:
+                    df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+                print(f"[INFO] Successfully loaded {len(df)} records from local file via dd")
+                return df
+        except Exception as e:
+            print(f"[ERROR] Failed to load via dd: {e}")
+
+        # dd失敗時は直接読み込みを試行
+        try:
+            df = pd.read_parquet(ARCHIVE_FILE)
+            if 'backtest_date' in df.columns:
+                df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            return df
+        except Exception as e:
+            print(f"[ERROR] Failed to load directly: {e}")
 
     # どちらも失敗
     print(f"[WARNING] Backtest archive not found in S3 or local file")
