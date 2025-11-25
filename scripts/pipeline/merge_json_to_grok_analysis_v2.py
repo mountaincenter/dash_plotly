@@ -419,11 +419,10 @@ def main():
     backtest_dt = pd.to_datetime(backtest_date)
 
     for idx, stock in enumerate(rec_data['stocks'], 1):
+        # === v2.1 flat schema ===
         ticker = stock['ticker']
-        stock_name = stock['stockName']
-        grok_rank = stock.get('grokRank', 0)
-        tech_data = stock['technicalData']
-        rec = stock['recommendation']
+        stock_name = stock.get('company_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
+        grok_rank = stock.get('grok_rank', stock.get('grokRank', 0))  # v2.1 or v2.0.3
 
         print(f"  Processing {idx}/{len(rec_data['stocks'])}: {ticker} {stock_name}")
 
@@ -447,18 +446,20 @@ def main():
         trending_data = grok_trending_map.get(ticker, {})
 
         # === v2.1: Use trading_recommendation.json values directly (no forced positions) ===
-        # v2_action from recommendation
-        base_action = rec['action']  # 'buy', 'sell', 'hold'
+        # v2_1_action from flat structure
+        base_action = stock.get('v2_1_action', '静観')  # '買い', '売り', '静観'
+        action_map_reverse = {'買い': 'buy', '売り': 'sell', '静観': 'hold'}
         action_map = {'buy': '買い', 'sell': '売り', 'hold': '静観'}
-        v2_1_action = action_map.get(base_action, '静観')
+        v2_1_action = base_action if base_action in ['買い', '売り', '静観'] else action_map.get(base_action, '静観')
 
-        # v2_score and confidence from trading_recommendation
-        v2_1_score = rec['score']
-        confidence_map = {'high': '高', 'medium': '中', 'low': '低'}
-        v2_1_confidence = confidence_map.get(rec['confidence'], '中')
+        # v2_score and confidence from trading_recommendation (flat structure)
+        v2_1_score = stock.get('v2_1_score', 0)
+        confidence_map = {'high': '高', 'medium': '中', 'low': '低', '高': '高', '中': '中', '低': '低'}
+        v2_1_confidence_raw = stock.get('v2_1_confidence', 'medium')
+        v2_1_confidence = confidence_map.get(v2_1_confidence_raw, '中')
 
-        # v2_reasons from trading_recommendation
-        v2_1_reasons = rec.get('reasons', [])
+        # v2_reasons from trading_recommendation (flat structure)
+        v2_1_reasons = stock.get('v2_1_reasons', [])
 
         # Base record - 49 columns matching existing schema
         record = {
