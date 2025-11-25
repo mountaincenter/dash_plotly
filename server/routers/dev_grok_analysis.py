@@ -19,6 +19,7 @@ router = APIRouter()
 
 # データファイルのパス（新パイプライン: S3同期対象）
 DATA_PATH = ROOT / 'data' / 'parquet' / 'backtest' / 'grok_analysis_merged.parquet'
+DATA_PATH_V2_1 = ROOT / 'data' / 'parquet' / 'backtest' / 'grok_analysis_merged_v2_1.parquet'
 
 # S3設定（環境変数から取得）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
@@ -74,6 +75,50 @@ def load_analysis_data() -> pd.DataFrame:
 
     # どちらも失敗
     print(f"[ERROR] Analysis data not found in S3 or local file")
+    raise
+
+
+def load_analysis_data_v2_1() -> pd.DataFrame:
+    """
+    v2.1分析データを読み込み（grok_analysis_merged_v2_1.parquet）
+    - S3から読み込み（本番環境、常に最新）
+    - S3が失敗したらローカルファイルを使用（開発環境）
+    """
+    # S3から読み込み
+    try:
+        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged_v2_1.parquet"
+        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+
+        print(f"[INFO] Loading v2.1 analysis data from S3: {s3_url}")
+
+        # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
+        df = pd.read_parquet(s3_url, storage_options={
+            "client_kwargs": {"region_name": AWS_REGION}
+        })
+
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        if 'selection_date' in df.columns:
+            df['selection_date'] = pd.to_datetime(df['selection_date'])
+
+        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        return df
+
+    except Exception as e:
+        print(f"[WARNING] Could not load v2.1 analysis data from S3: {type(e).__name__}: {e}")
+
+    # ローカルファイルにフォールバック
+    if DATA_PATH_V2_1.exists():
+        print(f"[INFO] Loading v2.1 analysis data from local file: {DATA_PATH_V2_1}")
+        df = pd.read_parquet(DATA_PATH_V2_1)
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        if 'selection_date' in df.columns:
+            df['selection_date'] = pd.to_datetime(df['selection_date'])
+        return df
+
+    # どちらも失敗
+    print(f"[ERROR] v2.1 analysis data not found in S3 or local file")
     raise
 
 
@@ -573,6 +618,244 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
     }
 
 
+def calculate_v2_0_3_vs_v2_1_comparison(df: pd.DataFrame) -> Dict[str, Any]:
+    """v2.0.3とv2.1の比較統計を計算"""
+
+    # 全体サマリー
+    summary = {
+        'total': len(df),
+        'dateRange': {
+            'start': df['backtest_date'].min().strftime('%Y-%m-%d'),
+            'end': df['backtest_date'].max().strftime('%Y-%m-%d'),
+        }
+    }
+
+    # v2.0.3アクション分布
+    v2_0_3_actions = {
+        'buy': int((df['v2_0_3_action'] == '買い').sum()),
+        'sell': int((df['v2_0_3_action'] == '売り').sum()),
+        'hold': int((df['v2_0_3_action'] == '静観').sum()),
+    }
+
+    # v2.1アクション分布
+    v2_1_actions = {
+        'buy': int((df['v2_1_action'] == '買い').sum()),
+        'sell': int((df['v2_1_action'] == '売り').sum()),
+        'hold': int((df['v2_1_action'] == '静観').sum()),
+    }
+
+    # アクション変更マトリックス（v2.0.3 → v2.1）
+    action_mapping = {
+        '買い': 'buy',
+        '売り': 'sell',
+        '静観': 'hold'
+    }
+
+    action_changes = {}
+    for v2_0_3_action_jp, v2_0_3_action_en in action_mapping.items():
+        for v2_1_action_jp, v2_1_action_en in action_mapping.items():
+            key = f"{v2_0_3_action_en}_to_{v2_1_action_en}"
+            count = int(((df['v2_0_3_action'] == v2_0_3_action_jp) &
+                         (df['v2_1_action'] == v2_1_action_jp)).sum())
+            action_changes[key] = count
+
+    # v2.0.3アクション別統計（Phase2基準）
+    v2_0_3_stats = []
+    for action_jp, action_en in action_mapping.items():
+        action_df = df[df['v2_0_3_action'] == action_jp]
+        if len(action_df) == 0:
+            continue
+
+        total = len(action_df)
+
+        # 売りの場合は勝敗反転
+        if action_jp == '売り':
+            win_count = int((action_df['phase2_win'] == False).sum())
+            total_profit = safe_float(-action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(-action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(-action_df['phase2_return_pct'].mean())
+        else:
+            win_count = int(action_df['phase2_win'].sum())
+            total_profit = safe_float(action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(action_df['phase2_return_pct'].mean())
+
+        win_rate = safe_float(win_count / total * 100) if total > 0 else None
+
+        v2_0_3_stats.append({
+            'action': action_en,
+            'actionJp': action_jp,
+            'total': total,
+            'winCount': win_count,
+            'loseCount': total - win_count,
+            'winRate': win_rate,
+            'totalProfit': total_profit,
+            'avgProfit': avg_profit,
+            'avgReturn': avg_return,
+        })
+
+    # v2.1アクション別統計（Phase2基準）
+    v2_1_stats = []
+    for action_jp, action_en in action_mapping.items():
+        action_df = df[df['v2_1_action'] == action_jp]
+        if len(action_df) == 0:
+            continue
+
+        total = len(action_df)
+
+        # 売りの場合は勝敗反転
+        if action_jp == '売り':
+            win_count = int((action_df['phase2_win'] == False).sum())
+            total_profit = safe_float(-action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(-action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(-action_df['phase2_return_pct'].mean())
+        else:
+            win_count = int(action_df['phase2_win'].sum())
+            total_profit = safe_float(action_df['profit_per_100_shares_phase2'].sum())
+            avg_profit = safe_float(action_df['profit_per_100_shares_phase2'].mean())
+            avg_return = safe_float(action_df['phase2_return_pct'].mean())
+
+        win_rate = safe_float(win_count / total * 100) if total > 0 else None
+
+        v2_1_stats.append({
+            'action': action_en,
+            'actionJp': action_jp,
+            'total': total,
+            'winCount': win_count,
+            'loseCount': total - win_count,
+            'winRate': win_rate,
+            'totalProfit': total_profit,
+            'avgProfit': avg_profit,
+            'avgReturn': avg_return,
+        })
+
+    return {
+        'summary': summary,
+        'v2_0_3Actions': v2_0_3_actions,
+        'v2_1Actions': v2_1_actions,
+        'actionChanges': action_changes,
+        'v2_0_3Stats': v2_0_3_stats,
+        'v2_1Stats': v2_1_stats,
+    }
+
+
+def calculate_stop_loss_tier_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """損切り水準別統計を計算"""
+
+    # stop_loss_pctでグループ化
+    tier_stats = []
+
+    for tier in sorted(df['stop_loss_pct'].unique()):
+        tier_df = df[df['stop_loss_pct'] == tier]
+
+        if len(tier_df) == 0:
+            continue
+
+        total = len(tier_df)
+
+        # 買いアクションのみを対象（静観・売りは損切り対象外）
+        buy_df = tier_df[tier_df['v2_1_action'] == '買い']
+        buy_total = len(buy_df)
+
+        if buy_total > 0:
+            buy_win_count = int(buy_df['phase2_win'].sum())
+            buy_win_rate = safe_float(buy_win_count / buy_total * 100)
+            buy_total_profit = safe_float(buy_df['profit_per_100_shares_phase2'].sum())
+            buy_avg_profit = safe_float(buy_df['profit_per_100_shares_phase2'].mean())
+            buy_avg_return = safe_float(buy_df['phase2_return_pct'].mean())
+        else:
+            buy_win_count = 0
+            buy_win_rate = None
+            buy_total_profit = None
+            buy_avg_profit = None
+            buy_avg_return = None
+
+        # 全アクションの統計
+        all_win_count = int(tier_df['phase2_win'].sum())
+        all_win_rate = safe_float(all_win_count / total * 100)
+
+        tier_stats.append({
+            'stopLossPct': safe_float(tier),
+            'total': total,
+            'buyTotal': buy_total,
+            'buyWinCount': buy_win_count,
+            'buyWinRate': buy_win_rate,
+            'buyTotalProfit': buy_total_profit,
+            'buyAvgProfit': buy_avg_profit,
+            'buyAvgReturn': buy_avg_return,
+            'allWinCount': all_win_count,
+            'allWinRate': all_win_rate,
+        })
+
+    return tier_stats
+
+
+def calculate_action_change_analysis(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """アクション変更分析（v2.0.3 → v2.1 の変化）"""
+
+    action_mapping = {
+        '買い': 'buy',
+        '売り': 'sell',
+        '静観': 'hold'
+    }
+
+    change_patterns = []
+
+    for v2_0_3_action_jp, v2_0_3_action_en in action_mapping.items():
+        for v2_1_action_jp, v2_1_action_en in action_mapping.items():
+            # 同じアクションは除外（変化なし）
+            if v2_0_3_action_jp == v2_1_action_jp:
+                continue
+
+            # 該当するレコードを抽出
+            change_df = df[(df['v2_0_3_action'] == v2_0_3_action_jp) &
+                          (df['v2_1_action'] == v2_1_action_jp)]
+
+            if len(change_df) == 0:
+                continue
+
+            total = len(change_df)
+
+            # Phase2の結果（v2.1アクションで判定）
+            if v2_1_action_jp == '売り':
+                win_count = int((change_df['phase2_win'] == False).sum())
+                avg_return = safe_float(-change_df['phase2_return_pct'].mean())
+            else:
+                win_count = int(change_df['phase2_win'].sum())
+                avg_return = safe_float(change_df['phase2_return_pct'].mean())
+
+            win_rate = safe_float(win_count / total * 100) if total > 0 else None
+
+            # 銘柄詳細
+            stocks = []
+            for _, row in change_df.head(10).iterrows():  # 上位10件
+                stocks.append({
+                    'ticker': row['ticker'],
+                    'companyName': row['company_name'],
+                    'grokRank': int(row['grok_rank']),
+                    'date': row['backtest_date'].strftime('%Y-%m-%d'),
+                    'v2_0_3Score': safe_float(row['v2_0_3_score']),
+                    'v2_1Score': safe_float(row['v2_1_score']),
+                    'v2_0_3Reasons': row['v2_0_3_reasons'],
+                    'v2_1Reasons': row['v2_1_reasons'],
+                })
+
+            change_patterns.append({
+                'from': v2_0_3_action_en,
+                'fromJp': v2_0_3_action_jp,
+                'to': v2_1_action_en,
+                'toJp': v2_1_action_jp,
+                'total': total,
+                'winCount': win_count,
+                'winRate': win_rate,
+                'avgReturn': avg_return,
+                'stocks': stocks,
+            })
+
+    # 変化件数の降順でソート
+    return sorted(change_patterns, key=lambda x: x['total'], reverse=True)
+
+
 @router.get("/api/dev/grok-analysis")
 async def get_grok_analysis():
     """
@@ -630,6 +913,104 @@ async def get_grok_analysis():
                 "error": {
                     "code": "INTERNAL_ERROR",
                     "message": "データ取得中にエラーが発生しました",
+                    "details": str(e)
+                }
+            }
+        )
+
+
+@router.get("/api/dev/grok-analysis-v2")
+async def get_grok_analysis_v2():
+    """
+    Grok推奨銘柄のv2.0.3 vs v2.1比較分析データを取得
+
+    Returns:
+        GrokAnalysisV2Response: v2.0.3とv2.1の比較分析データ
+
+    Raises:
+        HTTPException: ファイルが見つからない場合は404/500
+    """
+    try:
+        # v2.1データ読み込み（ローカルまたはS3から）
+        df = load_analysis_data_v2_1()
+
+        # v2.0.3 vs v2.1比較統計
+        comparison_stats = calculate_v2_0_3_vs_v2_1_comparison(df)
+
+        # 損切り水準別統計
+        stop_loss_stats = calculate_stop_loss_tier_stats(df)
+
+        # アクション変更分析
+        action_change_stats = calculate_action_change_analysis(df)
+
+        # 既存の統計も提供（Phase別、リスクリワード等）
+        phase_stats = calculate_phase_stats(df)
+        risk_stats = calculate_risk_reward_stats(df)
+
+        # 日別統計（v2.1アクション別）
+        date_stats = []
+        for date in sorted(df['backtest_date'].unique(), reverse=True)[:30]:  # 最新30日
+            date_df = df[df['backtest_date'] == date]
+
+            date_v2_0_3 = {
+                'buy': int((date_df['v2_0_3_action'] == '買い').sum()),
+                'sell': int((date_df['v2_0_3_action'] == '売り').sum()),
+                'hold': int((date_df['v2_0_3_action'] == '静観').sum()),
+            }
+
+            date_v2_1 = {
+                'buy': int((date_df['v2_1_action'] == '買い').sum()),
+                'sell': int((date_df['v2_1_action'] == '売り').sum()),
+                'hold': int((date_df['v2_1_action'] == '静観').sum()),
+            }
+
+            # v2.1の買いアクションの統計
+            buy_df = date_df[date_df['v2_1_action'] == '買い']
+            if len(buy_df) > 0:
+                buy_win_rate = safe_float(buy_df['phase2_win'].sum() / len(buy_df) * 100)
+                buy_avg_return = safe_float(buy_df['phase2_return_pct'].mean())
+            else:
+                buy_win_rate = None
+                buy_avg_return = None
+
+            date_stats.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'total': len(date_df),
+                'v2_0_3Actions': date_v2_0_3,
+                'v2_1Actions': date_v2_1,
+                'buyWinRate': buy_win_rate,
+                'buyAvgReturn': buy_avg_return,
+            })
+
+        # メタデータ
+        metadata = {
+            'totalStocks': len(df),
+            'uniqueStocks': int(df['ticker'].nunique()),
+            'dateRange': {
+                'start': df['backtest_date'].min().strftime('%Y-%m-%d'),
+                'end': df['backtest_date'].max().strftime('%Y-%m-%d'),
+            },
+            'generatedAt': pd.Timestamp.now().isoformat(),
+            'version': 'v2.1',
+        }
+
+        return {
+            'metadata': metadata,
+            'comparisonStats': comparison_stats,
+            'stopLossStats': stop_loss_stats,
+            'actionChangeStats': action_change_stats,
+            'phaseStats': phase_stats,
+            'riskStats': risk_stats,
+            'dateStats': date_stats,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "v2.1データ取得中にエラーが発生しました",
                     "details": str(e)
                 }
             }

@@ -300,6 +300,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
         keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データも保持
+        keep_keys.add(prefix + "backtest/grok_analysis_merged_v2_1.parquet")  # バックテスト統合データ（v2.1）も保持
         keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
