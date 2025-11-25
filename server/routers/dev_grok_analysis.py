@@ -130,13 +130,20 @@ def safe_float(value: Any) -> float | None:
 
 
 def safe_list(value: Any) -> list | None:
-    """numpy.ndarrayをPythonリストに変換"""
-    if pd.isna(value):
-        return None
+    """numpy.ndarray/文字列をPythonリストに変換"""
+    # numpy配列を先にチェック（pd.isna()の前に）
     if isinstance(value, np.ndarray):
         return value.tolist()
     if isinstance(value, list):
         return value
+    # スカラー値のNaNチェック
+    if pd.isna(value):
+        return None
+    if isinstance(value, str):
+        # " / " で区切られた文字列を分割
+        if " / " in value:
+            return [s.strip() for s in value.split(" / ")]
+        return [value]
     return [str(value)]
 
 
