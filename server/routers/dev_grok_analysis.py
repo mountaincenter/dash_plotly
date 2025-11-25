@@ -129,6 +129,17 @@ def safe_float(value: Any) -> float | None:
     return float(value)
 
 
+def safe_list(value: Any) -> list | None:
+    """numpy.ndarrayをPythonリストに変換"""
+    if pd.isna(value):
+        return None
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, list):
+        return value
+    return [str(value)]
+
+
 def calculate_phase_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """Phase別統計を計算"""
     phases = {
@@ -836,8 +847,8 @@ def calculate_action_change_analysis(df: pd.DataFrame) -> List[Dict[str, Any]]:
                     'date': row['backtest_date'].strftime('%Y-%m-%d'),
                     'v2_0_3Score': safe_float(row['v2_0_3_score']),
                     'v2_1Score': safe_float(row['v2_1_score']),
-                    'v2_0_3Reasons': row['v2_0_3_reasons'],
-                    'v2_1Reasons': row['v2_1_reasons'],
+                    'v2_0_3Reasons': safe_list(row['v2_0_3_reasons']),
+                    'v2_1Reasons': safe_list(row['v2_1_reasons']),
                 })
 
             change_patterns.append({
