@@ -57,6 +57,7 @@ UPLOAD_FILES = [
     "topix_prices_max_1d.parquet",
     "sectors_prices_max_1d.parquet",
     "series_prices_max_1d.parquet",
+    # Grok Analysis (backtest配下は除外 - workflowで直接アップロード)
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
@@ -299,7 +300,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
-        keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データも保持
+        keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データ（v2.0.3）も保持
         keep_keys.add(prefix + "backtest/grok_analysis_merged_v2_1.parquet")  # バックテスト統合データ（v2.1）も保持
         keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
 

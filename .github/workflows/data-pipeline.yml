@@ -644,22 +644,65 @@ jobs:
             exit 1
           fi
 
+          # === Step 2.5: grok_analysis_merged_v2_1.parquet の生成 ===
+          echo ""
+          echo "📊 Step 2.5: Generating grok_analysis_merged_v2_1.parquet..."
+          echo "  ℹ️  Using merge_json_to_grok_analysis_v2.py (49 columns with v2.1 logic)"
+
+          # S3から既存のgrok_analysis_merged_v2_1.parquetをダウンロード
+          ANALYSIS_V2_1_FILE="grok_analysis_merged_v2_1.parquet"
+          S3_ANALYSIS_V2_1_PATH="s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/$ANALYSIS_V2_1_FILE"
+
+          if aws s3 ls "$S3_ANALYSIS_V2_1_PATH" > /dev/null 2>&1; then
+            echo "  📥 Downloading existing grok_analysis_merged_v2_1.parquet from S3..."
+            aws s3 cp "$S3_ANALYSIS_V2_1_PATH" "data/parquet/backtest/$ANALYSIS_V2_1_FILE" --only-show-errors
+            EXISTING_RECORDS_V2_1=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/$ANALYSIS_V2_1_FILE'); print(len(df))")
+            EXISTING_DATES_V2_1=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/$ANALYSIS_V2_1_FILE'); print(df['backtest_date'].nunique())")
+            echo "  ✅ Downloaded existing file: $EXISTING_RECORDS_V2_1 records across $EXISTING_DATES_V2_1 days"
+          else
+            echo "  ℹ️  No existing grok_analysis_merged_v2_1.parquet found in S3, will create new one"
+          fi
+
+          python3 scripts/pipeline/merge_json_to_grok_analysis_v2.py
+
+          if [ $? -eq 0 ]; then
+            RECORDS_V2_1=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged_v2_1.parquet'); print(len(df))")
+            COLUMNS_V2_1=$(python3 -c "import pandas as pd; df = pd.read_parquet('data/parquet/backtest/grok_analysis_merged_v2_1.parquet'); print(len(df.columns))")
+            echo "  ✅ Generated grok_analysis_merged_v2_1.parquet ($RECORDS_V2_1 records, $COLUMNS_V2_1 columns)"
+          else
+            echo "  ❌ Failed to run merge_json_to_grok_analysis_v2.py"
+            exit 1
+          fi
+
           # === Step 3: S3にアップロード ===
           echo ""
-          echo "📤 Step 4: Uploading to S3..."
+          echo "📤 Step 3: Uploading to S3..."
 
+          # v2.0.3のアップロード
           if aws s3 cp \
             data/parquet/backtest/grok_analysis_merged.parquet \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged.parquet" \
             --region ${{ env.AWS_REGION }} \
             --only-show-errors; then
-            echo "  ✅ Uploaded to S3"
+            echo "  ✅ Uploaded grok_analysis_merged.parquet to S3"
           else
             echo "  ❌ ERROR: Failed to upload grok_analysis_merged.parquet to S3"
             exit 1
           fi
 
-          # === Step 5: Enrich with trading recommendations ===
+          # v2.1のアップロード
+          if aws s3 cp \
+            data/parquet/backtest/grok_analysis_merged_v2_1.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_analysis_merged_v2_1.parquet" \
+            --region ${{ env.AWS_REGION }} \
+            --only-show-errors; then
+            echo "  ✅ Uploaded grok_analysis_merged_v2_1.parquet to S3"
+          else
+            echo "  ❌ ERROR: Failed to upload grok_analysis_merged_v2_1.parquet to S3"
+            exit 1
+          fi
+
+          # === Step 4: Enrich with trading recommendations ===
           echo ""
           echo "📊 Step 5: Enriching with trading recommendations..."
 
