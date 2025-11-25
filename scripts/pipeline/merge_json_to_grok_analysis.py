@@ -377,6 +377,14 @@ def main():
     with open(TRADING_REC_JSON, 'r', encoding='utf-8') as f:
         rec_data = json.load(f)
 
+    # DEBUG: Print keys to verify dataSource exists
+    print(f"  DEBUG: JSON keys: {list(rec_data.keys())}")
+    if 'dataSource' in rec_data:
+        print(f"  DEBUG: dataSource keys: {list(rec_data['dataSource'].keys())}")
+        print(f"  DEBUG: technicalDataDate: {rec_data['dataSource'].get('technicalDataDate')}")
+    else:
+        print(f"  DEBUG: dataSource NOT FOUND in JSON")
+
     backtest_date, selection_date = get_backtest_date_from_json(rec_data)
     print(f"  Selection date: {selection_date}")
     print(f"  Backtest date: {backtest_date}")
