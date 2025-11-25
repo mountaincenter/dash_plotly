@@ -428,10 +428,27 @@ def main():
 
     for idx, stock in enumerate(rec_data['stocks'], 1):
         ticker = stock['ticker']
-        stock_name = stock['stockName']
-        grok_rank = stock.get('grokRank', 0)
-        tech_data = stock['technicalData']
-        rec = stock['recommendation']
+        stock_name = stock.get('company_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
+        grok_rank = stock.get('grok_rank', stock.get('grokRank', 0))  # v2.1 or v2.0.3
+
+        # Handle both nested (v2.0.3) and flat (v2.1) schema
+        if 'technicalData' in stock and 'recommendation' in stock:
+            # v2.0.3 nested schema
+            tech_data = stock['technicalData']
+            rec = stock['recommendation']
+        else:
+            # v2.1 flat schema - create nested structure for compatibility
+            tech_data = {
+                'prevDayClose': stock.get('prev_day_close', 0),
+                'prevDayChangePct': stock.get('prev_day_change_pct', 0),
+                'atrPct': stock.get('atr_pct', 0),
+            }
+            rec = {
+                'action': stock.get('v2_0_3_action', '静観'),
+                'score': stock.get('v2_0_3_score', 0),
+                'confidence': '中',
+                'reasons': stock.get('v2_0_3_reasons', '').split(' / ') if isinstance(stock.get('v2_0_3_reasons'), str) else []
+            }
 
         print(f"  Processing {idx}/{len(rec_data['stocks'])}: {ticker} {stock_name}")
 
