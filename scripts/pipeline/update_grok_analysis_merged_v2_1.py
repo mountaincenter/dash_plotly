@@ -537,7 +537,6 @@ def main():
             merged_df[col] = merged_df[col].astype(str)
 
     # リスト型を含むカラムをJSON文字列に変換（pyarrow型エラー回避）
-    import json
     for col in ['v2_1_reasons', 'v2_0_3_reasons', 'v2_reasons_json']:
         if col in merged_df.columns:
             merged_df[col] = merged_df[col].apply(
