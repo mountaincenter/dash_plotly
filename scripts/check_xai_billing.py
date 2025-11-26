@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 check_xai_billing.py
-xAI Management API を使って billing 情報を取得し Slack に通知
+xAI Management API を使って billing 情報を取得し、Slack通知用セクションを出力
 
 実行方法:
     python3 scripts/check_xai_billing.py
@@ -9,21 +9,20 @@ xAI Management API を使って billing 情報を取得し Slack に通知
 環境変数:
     XAI_MANAGEMENT_API_KEY: xAI Management API key
     XAI_TEAM_ID: xAI Team ID
-    SLACK_WEBHOOK_URL: Slack Incoming Webhook URL (オプション)
+
+出力:
+    /tmp/billing_section.txt - パイプライン成功通知に統合されるSlack用JSONセクション
 """
 
 import os
 import sys
-import json
 import requests
-from datetime import datetime
 from typing import Optional, Dict, Any
 
 # 設定
 MANAGEMENT_API_BASE = "https://management-api.x.ai"
 MANAGEMENT_API_KEY = os.getenv("XAI_MANAGEMENT_API_KEY")
 TEAM_ID = os.getenv("XAI_TEAM_ID")
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 
 def get_billing_preview() -> Optional[Dict[str, Any]]:
@@ -82,20 +81,17 @@ def format_usd_cents(cents_str: str) -> str:
         return "$0.00"
 
 
-def send_slack_notification(billing_data: Dict[str, Any]) -> bool:
+def save_billing_section(billing_data: Dict[str, Any], output_path: str = "/tmp/billing_section.txt") -> bool:
     """
-    Slack に billing 情報を通知
+    Slack通知用のbillingセクションをファイルに保存
 
     Args:
         billing_data: billing API からのレスポンス
+        output_path: 出力ファイルパス
 
     Returns:
-        送信成功時 True
+        保存成功時 True
     """
-    if not SLACK_WEBHOOK_URL:
-        print("ℹ️  SLACK_WEBHOOK_URL not set, skipping Slack notification")
-        return False
-
     try:
         core_invoice = billing_data.get("coreInvoice", {})
 
@@ -113,98 +109,23 @@ def send_slack_notification(billing_data: Dict[str, Any]) -> bool:
             used_this_cycle = 0
             remaining_credits = 0
 
-        # 使用量詳細（モデル別）
-        lines = core_invoice.get("lines", [])
-        usage_details = []
+        # Slack用のセクションJSON生成
+        section = f'''{{
+  "type": "section",
+  "fields": [
+    {{"type": "mrkdwn", "text": "*💰 xAI残高:*\\n{format_usd_cents(str(remaining_credits))}"}},
+    {{"type": "mrkdwn", "text": "*今回使用:*\\n{format_usd_cents(str(used_this_cycle))}"}}
+  ]
+}}'''
 
-        # モデル別に集計
-        model_usage = {}
-        for line in lines:
-            desc = line.get("description", "Unknown")
-            amount = line.get("amount", "0")
+        with open(output_path, 'w') as f:
+            f.write(section)
 
-            # モデル名を抽出 (例: "Chat grok-2-1212-1.0.0" → "grok-2-1212")
-            model_name = desc.split()[-1] if desc else "Unknown"
-
-            if model_name not in model_usage:
-                model_usage[model_name] = 0
-
-            try:
-                model_usage[model_name] += int(amount)
-            except (ValueError, TypeError):
-                pass
-
-        # 使用量テキスト生成
-        for model, amount_cents in sorted(model_usage.items(), key=lambda x: x[1], reverse=True):
-            if amount_cents > 0:
-                usage_details.append(f"• {model}: {format_usd_cents(str(amount_cents))}")
-
-        usage_text = "\n".join(usage_details) if usage_details else "• No usage this month"
-
-        # billing cycle
-        billing_cycle = core_invoice.get("billingCycle", {})
-        year = billing_cycle.get('year', 'N/A')
-        month = billing_cycle.get('month', 'N/A')
-        if isinstance(month, int):
-            cycle_text = f"{year}-{month:02d}"
-        else:
-            cycle_text = f"{year}-{month}"
-
-        # Slack メッセージ構築
-        message = {
-            "text": "💰 xAI API Billing Report",
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*💰 xAI API Billing Report*\nBilling Cycle: `{cycle_text}`"
-                    }
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Total prepaid credits:*\n{format_usd_cents(str(total_credits))}"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*今回使用:*\n{format_usd_cents(str(used_this_cycle))}"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*残高:*\n{format_usd_cents(str(remaining_credits))}"
-                        }
-                    ]
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*使用量詳細:*\n{usage_text}"
-                    }
-                },
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S JST')}"
-                        }
-                    ]
-                }
-            ]
-        }
-
-        response = requests.post(SLACK_WEBHOOK_URL, json=message, timeout=10)
-        response.raise_for_status()
-
-        print("✅ Slack notification sent successfully")
+        print(f"✅ Billing section saved to {output_path}")
         return True
 
     except Exception as e:
-        print(f"❌ Error sending Slack notification: {e}")
+        print(f"❌ Error saving billing section: {e}")
         return False
 
 
@@ -270,8 +191,8 @@ def main() -> int:
 
     print()
 
-    # Slack 通知
-    send_slack_notification(billing_data)
+    # Slack通知用セクションをファイルに保存
+    save_billing_section(billing_data)
 
     return 0
 

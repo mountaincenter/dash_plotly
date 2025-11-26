@@ -718,14 +718,13 @@ jobs:
         env:
           XAI_MANAGEMENT_API_KEY: ${{ secrets.XAI_MANAGEMENT_API_KEY }}
           XAI_TEAM_ID: ${{ secrets.XAI_TEAM_ID }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
         run: |
           echo "💰 Checking xAI billing..."
 
           # Install requests if not already installed
           pip install requests 2>/dev/null || true
 
-          # Run billing check script
+          # Run billing check script (outputs to /tmp/billing_section.txt)
           python3 scripts/check_xai_billing.py
 
           if [ $? -eq 0 ]; then
@@ -821,6 +820,12 @@ jobs:
           # GROK銘柄情報をフォーマット（23:00のみ）
           GROK_SECTION=""
           MARKET_SUMMARY_SECTION=""
+          BILLING_SECTION=""
+
+          # xAI billing情報を読み込み
+          if [ -f "/tmp/billing_section.txt" ] && [ -s "/tmp/billing_section.txt" ]; then
+            BILLING_SECTION=",$(cat /tmp/billing_section.txt)"
+          fi
 
           # 23:00 または force_grok=true → GROK銘柄を表示
           if [ "${{ github.event.schedule }}" = "0 14 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
@@ -897,7 +902,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$GROK_SECTION$MARKET_SUMMARY_SECTION"'
+              }'"$BILLING_SECTION$GROK_SECTION$MARKET_SUMMARY_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
