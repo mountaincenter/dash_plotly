@@ -536,6 +536,14 @@ def main():
         if col in merged_df.columns:
             merged_df[col] = merged_df[col].astype(str)
 
+    # リスト型を含むカラムをJSON文字列に変換（pyarrow型エラー回避）
+    import json
+    for col in ['v2_1_reasons', 'v2_0_3_reasons', 'v2_reasons_json']:
+        if col in merged_df.columns:
+            merged_df[col] = merged_df[col].apply(
+                lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, list) else (x if pd.isna(x) else str(x))
+            )
+
     MERGED_V2_1_PATH.parent.mkdir(parents=True, exist_ok=True)
     merged_df.to_parquet(MERGED_V2_1_PATH, index=False)
     print(f"保存完了: {MERGED_V2_1_PATH}")
