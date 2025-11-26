@@ -235,6 +235,8 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
         daily_max_gain_pct = ((high - open_price) / open_price * 100) if open_price > 0 else 0.0
         daily_max_drawdown_pct = ((low - open_price) / open_price * 100) if open_price > 0 else 0.0
         morning_volume = None
+        morning_high = high  # 日次データで代用
+        morning_low = low    # 日次データで代用
 
         # Phase3も日次データで代用
         if phase3_1_return is None:
@@ -255,12 +257,21 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
             df_5min, open_price
         )
 
-        # 前場出来高
+        # 前場データ（出来高、高値、安値）
         try:
             morning_data = df_5min.between_time("09:00", "11:30")
-            morning_volume = morning_data['Volume'].sum() if not morning_data.empty else None
+            if not morning_data.empty:
+                morning_volume = morning_data['Volume'].sum()
+                morning_high = morning_data['High'].max()
+                morning_low = morning_data['Low'].min()
+            else:
+                morning_volume = None
+                morning_high = high
+                morning_low = low
         except:
             morning_volume = None
+            morning_high = high
+            morning_low = low
 
     # 時価総額取得
     market_cap = fetch_market_cap(ticker, close_price)
@@ -371,8 +382,8 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
         'prev_day_volume': prev_day_volume if prev_day_volume else np.nan,
         'prev_2day_close': prev_2day_close if prev_2day_close else np.nan,
         'prev_2day_volume': prev_2day_volume if prev_2day_volume else np.nan,
-        'morning_volatility': np.nan,  # 5分足から計算が必要な場合のみ
-        'daily_volatility': np.nan,    # 5分足から計算が必要な場合のみ
+        'morning_volatility': ((morning_high - morning_low) / open_price * 100) if open_price > 0 else 0.0,
+        'daily_volatility': ((high - low) / open_price * 100) if open_price > 0 else 0.0,
         'prev_day_change_pct': prev_day_change_pct if prev_day_change_pct is not None else np.nan,
         'prev_day_volume_ratio': prev_day_volume_ratio if prev_day_volume_ratio is not None else np.nan,
 
@@ -387,7 +398,8 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
         # 46-49: v2.0.3データ
         'v2_score': trading_rec.get('v2_0_3_score', np.nan),
         'v2_action': trading_rec.get('v2_0_3_action', np.nan),
-        'v2_confidence': np.nan,  # trading_recommendation.jsonにはない
+        # v2_confidenceはv2_1_scoreから導出（score >= 70: 高, >= 40: 中, else: 低）
+        'v2_confidence': '高' if trading_rec.get('v2_1_score', 0) >= 70 else ('中' if trading_rec.get('v2_1_score', 0) >= 40 else '低'),
         'v2_reasons_json': trading_rec.get('v2_0_3_reasons', np.nan),
 
         # 50-53: v2.0.3追加データ
