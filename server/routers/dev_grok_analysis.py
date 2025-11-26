@@ -808,6 +808,120 @@ def calculate_stop_loss_tier_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return tier_stats
 
 
+def calculate_performance_stats(df: pd.DataFrame) -> Dict[str, Any]:
+    """各モデル（v2.0.3, v2.1）の買い/売り成績を計算"""
+
+    def calc_model_performance(df: pd.DataFrame, action_col: str) -> Dict[str, Any]:
+        """1つのモデルの成績を計算"""
+        buy_df = df[df[action_col] == '買い']
+        sell_df = df[df[action_col] == '売り']
+
+        # 買い成績
+        if len(buy_df) > 0:
+            buy_wins = int(buy_df['phase2_win'].sum())
+            buy_total = len(buy_df)
+            buy_win_rate = safe_float(buy_wins / buy_total * 100)
+            buy_total_profit = safe_float(buy_df['profit_per_100_shares_phase2'].sum())
+        else:
+            buy_wins = buy_total = 0
+            buy_win_rate = buy_total_profit = None
+
+        # 売り成績（勝敗反転: 下がったら勝ち）
+        if len(sell_df) > 0:
+            sell_wins = int((sell_df['phase2_win'] == False).sum())
+            sell_total = len(sell_df)
+            sell_win_rate = safe_float(sell_wins / sell_total * 100)
+            # 売りの利益は符号反転
+            sell_total_profit = safe_float(-sell_df['profit_per_100_shares_phase2'].sum())
+        else:
+            sell_wins = sell_total = 0
+            sell_win_rate = sell_total_profit = None
+
+        # 総合
+        total_profit = (buy_total_profit or 0) + (sell_total_profit or 0)
+
+        return {
+            'buy': {
+                'total': buy_total,
+                'wins': buy_wins,
+                'winRate': buy_win_rate,
+                'totalProfit': buy_total_profit,
+            },
+            'sell': {
+                'total': sell_total,
+                'wins': sell_wins,
+                'winRate': sell_win_rate,
+                'totalProfit': sell_total_profit,
+            },
+            'totalProfit': safe_float(total_profit),
+        }
+
+    return {
+        'v2_0_3': calc_model_performance(df, 'v2_0_3_action'),
+        'v2_1': calc_model_performance(df, 'v2_1_action'),
+    }
+
+
+def calculate_daily_details(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """日別詳細データ（全銘柄）を生成"""
+    details = []
+
+    for date in sorted(df['backtest_date'].unique(), reverse=True):
+        date_df = df[df['backtest_date'] == date]
+        stocks = []
+
+        for _, row in date_df.iterrows():
+            # v2.1アクションに基づいて勝敗・利益を計算
+            v2_1_action = row['v2_1_action']
+            phase2_win = row['phase2_win']
+            profit = row['profit_per_100_shares_phase2']
+
+            if v2_1_action == '売り':
+                # 売りの場合: 下がったら勝ち、利益は符号反転
+                is_win = not phase2_win if pd.notna(phase2_win) else None
+                adjusted_profit = -profit if pd.notna(profit) else None
+            else:
+                is_win = bool(phase2_win) if pd.notna(phase2_win) else None
+                adjusted_profit = profit if pd.notna(profit) else None
+
+            # 勝敗判定（引き分け対応）
+            if adjusted_profit is not None:
+                if adjusted_profit > 0:
+                    result = 'win'
+                elif adjusted_profit < 0:
+                    result = 'lose'
+                else:
+                    result = 'draw'
+            else:
+                result = None
+
+            stocks.append({
+                'ticker': row['ticker'],
+                'companyName': row['company_name'],
+                'grokRank': int(row['grok_rank']) if pd.notna(row['grok_rank']) else None,
+                'prevDayClose': safe_float(row.get('prev_day_close')),
+                'v2_0_3Score': safe_float(row.get('v2_0_3_score')),
+                'v2_0_3Action': row['v2_0_3_action'],
+                'v2_1Score': safe_float(row.get('v2_1_score')),
+                'v2_1Action': row['v2_1_action'],
+                'buyPrice': safe_float(row.get('buy_price')),
+                'sellPrice': safe_float(row.get('sell_price')),
+                'result': result,
+                'profitPer100': safe_float(adjusted_profit),
+            })
+
+        # スコア降順でソート
+        stocks.sort(key=lambda x: (x['v2_1Score'] or 0), reverse=True)
+
+        details.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'total': len(stocks),
+            'stocks': stocks,
+        })
+
+    return details
+
+
 def calculate_action_change_analysis(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """アクション変更分析（v2.0.3 → v2.1 の変化）"""
 
@@ -965,6 +1079,12 @@ async def get_grok_analysis_v2():
         phase_stats = calculate_phase_stats(df)
         risk_stats = calculate_risk_reward_stats(df)
 
+        # 各モデルの成績サマリー（サマリーカード用）
+        performance_stats = calculate_performance_stats(df)
+
+        # 日別詳細データ（全銘柄）
+        daily_details = calculate_daily_details(df)
+
         # 日別統計（v2.1アクション別）
         date_stats = []
         for date in sorted(df['backtest_date'].unique(), reverse=True)[:30]:  # 最新30日
@@ -1020,6 +1140,8 @@ async def get_grok_analysis_v2():
             'phaseStats': phase_stats,
             'riskStats': risk_stats,
             'dateStats': date_stats,
+            'performanceStats': performance_stats,
+            'dailyDetails': daily_details,
         }
 
     except Exception as e:
