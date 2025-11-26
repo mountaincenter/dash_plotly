@@ -342,8 +342,8 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
         'selection_date': target_date.strftime('%Y-%m-%d'),
         'backtest_date': target_date.strftime('%Y-%m-%d'),
         'ticker': ticker,
-        'company_name': grok_data.get('company_name', ''),
-        'category': grok_data.get('category', ''),
+        'stock_name': grok_data.get('stock_name', ''),
+        'categories': grok_data.get('categories', ''),
         'reason': grok_data.get('reason', ''),
         'grok_rank': grok_data.get('grok_rank'),
         'selection_score': grok_data.get('selection_score'),
@@ -485,8 +485,8 @@ def main():
 
         # grok_trendingデータ
         grok_data = {
-            'company_name': row.get('company_name', ''),
-            'category': row.get('category', ''),
+            'stock_name': row.get('stock_name', ''),
+            'categories': row.get('categories', ''),
             'reason': row.get('reason', ''),
             'grok_rank': row.get('grok_rank'),
             'selection_score': row.get('selection_score'),
@@ -558,7 +558,7 @@ def main():
             return None
         return str(x)
 
-    for col in ['v2_1_reasons', 'v2_0_3_reasons', 'v2_reasons_json']:
+    for col in ['categories', 'v2_1_reasons', 'v2_0_3_reasons', 'v2_reasons_json']:
         if col in merged_df.columns:
             merged_df[col] = merged_df[col].apply(convert_to_json_str)
 
