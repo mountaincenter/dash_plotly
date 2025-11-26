@@ -531,6 +531,11 @@ def main():
     print()
 
     # 7. 保存
+    # 日付カラムを文字列に統一（pyarrow型エラー回避）
+    for col in ['selection_date', 'backtest_date']:
+        if col in merged_df.columns:
+            merged_df[col] = merged_df[col].astype(str)
+
     MERGED_V2_1_PATH.parent.mkdir(parents=True, exist_ok=True)
     merged_df.to_parquet(MERGED_V2_1_PATH, index=False)
     print(f"保存完了: {MERGED_V2_1_PATH}")
