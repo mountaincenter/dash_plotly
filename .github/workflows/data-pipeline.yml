@@ -614,6 +614,11 @@ jobs:
           fi
           echo "  ✅ Downloaded grok_trending.parquet"
 
+          # grok_trending.parquetをbacktest/にもコピー（v2.1スクリプト用）
+          echo "  📋 Copying grok_trending.parquet to backtest/ directory..."
+          cp data/parquet/grok_trending.parquet data/parquet/backtest/grok_trending.parquet
+          echo "  ✅ Copied to backtest/"
+
           # === Step 2: grok_analysis_merged.parquet の生成 ===
           echo ""
           echo "📊 Step 2: Generating grok_analysis_merged.parquet..."
