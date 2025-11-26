@@ -537,11 +537,18 @@ def main():
             merged_df[col] = merged_df[col].astype(str)
 
     # リスト型を含むカラムをJSON文字列に変換（pyarrow型エラー回避）
+    def convert_to_json_str(x):
+        if isinstance(x, list):
+            return json.dumps(x, ensure_ascii=False)
+        if isinstance(x, np.ndarray):
+            return json.dumps(x.tolist(), ensure_ascii=False)
+        if x is None or (isinstance(x, float) and np.isnan(x)):
+            return None
+        return str(x)
+
     for col in ['v2_1_reasons', 'v2_0_3_reasons', 'v2_reasons_json']:
         if col in merged_df.columns:
-            merged_df[col] = merged_df[col].apply(
-                lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, list) else (x if pd.isna(x) else str(x))
-            )
+            merged_df[col] = merged_df[col].apply(convert_to_json_str)
 
     MERGED_V2_1_PATH.parent.mkdir(parents=True, exist_ok=True)
     merged_df.to_parquet(MERGED_V2_1_PATH, index=False)
