@@ -179,7 +179,7 @@ def calculate_phase_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
 
 def calculate_category_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     """カテゴリー別統計を計算"""
-    cat_stats = df.groupby('category').agg({
+    cat_stats = df.groupby('categories').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
         'phase2_return_pct': ['mean', 'median', 'std'],
         'daily_max_gain_pct': 'mean',
@@ -192,7 +192,7 @@ def calculate_category_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
     results = []
     for category, row in cat_stats.iterrows():
         results.append({
-            'category': category,
+            'categories': category,
             'total': int(row['total']),
             'winCount': int(row['winCount']),
             'winRate': safe_float(row['winRate']),
@@ -470,7 +470,7 @@ def calculate_v2_action_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
 
                 stocks.append({
                     'ticker': row['ticker'],
-                    'companyName': row['company_name'],
+                    'companyName': row['stock_name'],
                     'grokRank': int(row['grok_rank']) if pd.notna(row['grok_rank']) else None,
                     'prevDayClose': safe_float(row.get('prev_day_close')),
                     'v2Score': safe_float(row['v2_score']),
@@ -612,7 +612,7 @@ def calculate_recommendation_stats(df: pd.DataFrame) -> Dict[str, Any] | None:
 
             stocks_detail.append({
                 'ticker': row['ticker'],
-                'companyName': row['company_name'],
+                'companyName': row['stock_name'],
                 'action': action,
                 'grokRank': int(row['grok_rank']),
                 'isWin': bool(is_win),
@@ -897,7 +897,7 @@ def calculate_daily_details(df: pd.DataFrame) -> List[Dict[str, Any]]:
 
             stocks.append({
                 'ticker': row['ticker'],
-                'companyName': row['company_name'],
+                'companyName': row['stock_name'],
                 'grokRank': int(row['grok_rank']) if pd.notna(row['grok_rank']) else None,
                 'prevDayClose': safe_float(row.get('prev_day_close')),
                 'v2_0_3Score': safe_float(row.get('v2_0_3_score')),
@@ -963,7 +963,7 @@ def calculate_action_change_analysis(df: pd.DataFrame) -> List[Dict[str, Any]]:
             for _, row in change_df.head(10).iterrows():  # 上位10件
                 stocks.append({
                     'ticker': row['ticker'],
-                    'companyName': row['company_name'],
+                    'companyName': row['stock_name'],
                     'grokRank': int(row['grok_rank']),
                     'date': row['backtest_date'].strftime('%Y-%m-%d'),
                     'v2_0_3Score': safe_float(row['v2_0_3_score']),
