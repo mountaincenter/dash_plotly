@@ -72,16 +72,16 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
 
         converted_stock = {
             "ticker": stock.get("ticker"),
-            "stockName": stock.get("company_name", stock.get("ticker")),
+            "stockName": stock.get("stock_name", stock.get("company_name", stock.get("ticker"))),
             "grokRank": stock.get("grok_rank"),
             "technicalData": {
                 "prevClose": stock.get("prev_day_close"),
                 "prevDayChangePct": stock.get("prev_day_change_pct"),
                 "atr": {
                     "value": stock.get("atr_pct"),
-                    "level": "high" if stock.get("atr_pct", 0) > 5 else "medium" if stock.get("atr_pct", 0) > 3 else "low"
+                    "level": "high" if (stock.get("atr_pct") or 0) > 5 else "medium" if (stock.get("atr_pct") or 0) > 3 else "low"
                 },
-                "volatilityLevel": "高ボラ" if stock.get("atr_pct", 0) > 5 else "中ボラ" if stock.get("atr_pct", 0) > 3 else "低ボラ"
+                "volatilityLevel": "高ボラ" if (stock.get("atr_pct") or 0) > 5 else "中ボラ" if (stock.get("atr_pct") or 0) > 3 else "低ボラ"
             },
             "recommendation": {
                 "action": action,
@@ -89,7 +89,7 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
                 "confidence": confidence,
                 "stopLoss": {
                     "percent": stock.get("stop_loss_pct", 5.0),
-                    "calculation": f"ATR {stock.get('atr_pct', 0):.1f}% × 0.8"
+                    "calculation": f"ATR {(stock.get('atr_pct') or 0):.1f}% × 0.8"
                 },
                 "reasons": reasons,
                 # v2_0_3 情報（比較用）
