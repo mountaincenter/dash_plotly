@@ -76,7 +76,7 @@ def load_archive_with_market() -> pd.DataFrame:
     df = pd.read_parquet(file_path)
 
     if 'backtest_date' in df.columns:
-        df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
 
     # キャッシュに保存
     _cache['df'] = df
@@ -701,9 +701,9 @@ def load_political_archive() -> pd.DataFrame:
     df = pd.read_parquet(POLITICAL_ARCHIVE_FILE)
 
     if 'backtest_date' in df.columns:
-        df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
     if 'selection_date' in df.columns:
-        df['selection_date'] = pd.to_datetime(df['selection_date'])
+        df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
 
     return df
 
@@ -767,7 +767,7 @@ async def political_analysis():
             day_stats['worst3'] = [
                 {
                     'ticker': row['ticker'],
-                    'company_name': row['company_name'],
+                    'company_name': row['stock_name'],
                     'profit_per_100_shares_phase2': float(row['profit_per_100_shares_phase2']),
                     'return_pct': float(row['phase2_return'] * 100),
                     'tags': row['tags'],
@@ -780,7 +780,7 @@ async def political_analysis():
             day_stats['best3'] = [
                 {
                     'ticker': row['ticker'],
-                    'company_name': row['company_name'],
+                    'company_name': row['stock_name'],
                     'profit_per_100_shares_phase2': float(row['profit_per_100_shares_phase2']),
                     'return_pct': float(row['phase2_return'] * 100),
                     'tags': row['tags'],

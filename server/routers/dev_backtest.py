@@ -52,7 +52,7 @@ def load_archive_data() -> pd.DataFrame:
         })
 
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
 
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
         return df
@@ -76,7 +76,7 @@ def load_archive_data() -> pd.DataFrame:
             if result.returncode == 0:
                 df = pd.read_parquet(tmp_file)
                 if 'backtest_date' in df.columns:
-                    df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+                    df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
                 print(f"[INFO] Successfully loaded {len(df)} records from local file via dd")
                 return df
         except Exception as e:
@@ -86,7 +86,7 @@ def load_archive_data() -> pd.DataFrame:
         try:
             df = pd.read_parquet(ARCHIVE_FILE)
             if 'backtest_date' in df.columns:
-                df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+                df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
             return df
         except Exception as e:
             print(f"[ERROR] Failed to load directly: {e}")
@@ -564,7 +564,7 @@ async def get_daily_backtest(
 
         record = {
             "ticker": row.get("ticker"),
-            "stock_name": row.get("company_name"),  # company_nameをstock_nameとして返す
+            "stock_name": row.get("stock_name"),
             "selection_score": float(row["selection_score"]) if pd.notna(row.get("selection_score")) else None,
             "grok_rank": int(row["grok_rank"]) if pd.notna(row.get("grok_rank")) else None,
             "reason": row.get("reason"),

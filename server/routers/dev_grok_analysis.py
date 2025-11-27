@@ -40,6 +40,8 @@ def load_analysis_data() -> pd.DataFrame:
     このAPIはバックテスト分析専用のため、recommendation_actionがないデータのみ返す。
     詳細: data/parquet/backtest/README_DATA_CORRUPTION_20251113.md
     """
+    s3_error = None
+
     # S3から読み込み
     try:
         s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
@@ -53,29 +55,31 @@ def load_analysis_data() -> pd.DataFrame:
         })
 
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
         if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'])
+            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
 
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
         return df
 
     except Exception as e:
-        print(f"[WARNING] Could not load analysis data from S3: {type(e).__name__}: {e}")
+        s3_error = f"{type(e).__name__}: {e}"
+        print(f"[WARNING] Could not load analysis data from S3: {s3_error}")
 
     # ローカルファイルにフォールバック
     if DATA_PATH.exists():
         print(f"[INFO] Loading analysis data from local file: {DATA_PATH}")
         df = pd.read_parquet(DATA_PATH)
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
         if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'])
+            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
         return df
 
     # どちらも失敗
-    print(f"[ERROR] Analysis data not found in S3 or local file")
-    raise
+    error_msg = f"Analysis data not found. S3 error: {s3_error}, Local path: {DATA_PATH}"
+    print(f"[ERROR] {error_msg}")
+    raise FileNotFoundError(error_msg)
 
 
 def load_analysis_data_v2_1() -> pd.DataFrame:
@@ -84,6 +88,8 @@ def load_analysis_data_v2_1() -> pd.DataFrame:
     - S3から読み込み（本番環境、常に最新）
     - S3が失敗したらローカルファイルを使用（開発環境）
     """
+    s3_error = None
+
     # S3から読み込み
     try:
         s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged_v2_1.parquet"
@@ -97,29 +103,31 @@ def load_analysis_data_v2_1() -> pd.DataFrame:
         })
 
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
         if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'])
+            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
 
         print(f"[INFO] Successfully loaded {len(df)} records from S3")
         return df
 
     except Exception as e:
-        print(f"[WARNING] Could not load v2.1 analysis data from S3: {type(e).__name__}: {e}")
+        s3_error = f"{type(e).__name__}: {e}"
+        print(f"[WARNING] Could not load v2.1 analysis data from S3: {s3_error}")
 
     # ローカルファイルにフォールバック
     if DATA_PATH_V2_1.exists():
         print(f"[INFO] Loading v2.1 analysis data from local file: {DATA_PATH_V2_1}")
         df = pd.read_parquet(DATA_PATH_V2_1)
         if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
         if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'])
+            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
         return df
 
     # どちらも失敗
-    print(f"[ERROR] v2.1 analysis data not found in S3 or local file")
-    raise
+    error_msg = f"v2.1 analysis data not found. S3 error: {s3_error}, Local path: {DATA_PATH_V2_1}"
+    print(f"[ERROR] {error_msg}")
+    raise FileNotFoundError(error_msg)
 
 
 def safe_float(value: Any) -> float | None:

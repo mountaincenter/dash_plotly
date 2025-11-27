@@ -40,13 +40,13 @@ def load_meta_data() -> pd.DataFrame:
         meta_df = pd.read_parquet(s3_url, storage_options={
             "client_kwargs": {"region_name": AWS_REGION}
         })
-        return meta_df[['ticker', 'company_name']]
+        return meta_df[['ticker', 'stock_name']]
     except Exception as e:
         print(f"[WARNING] Could not load meta from S3: {e}")
         if META_PATH.exists():
             meta_df = pd.read_parquet(META_PATH)
-            return meta_df[['ticker', 'company_name']]
-    return pd.DataFrame(columns=['ticker', 'company_name'])
+            return meta_df[['ticker', 'stock_name']]
+    return pd.DataFrame(columns=['ticker', 'stock_name'])
 
 
 def load_timing_data() -> pd.DataFrame:
@@ -77,14 +77,14 @@ def load_timing_data() -> pd.DataFrame:
 
     # 日付フィルター（2025-11-14以降）
     if 'backtest_date' in df.columns:
-        df['backtest_date'] = pd.to_datetime(df['backtest_date'])
+        df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
         df = df[df['backtest_date'] >= START_DATE].copy()
         print(f"[INFO] Filtered to {len(df)} records from {START_DATE}")
 
     # meta_jquants.parquetから企業名をマージ
     meta_df = load_meta_data()
     if not meta_df.empty:
-        df = df.drop(columns=['company_name'], errors='ignore')
+        df = df.drop(columns=['stock_name'], errors='ignore')
         df = df.merge(meta_df, on='ticker', how='left')
         print(f"[INFO] Merged company names from meta_jquants.parquet")
 
@@ -380,7 +380,7 @@ def get_stock_details(df: pd.DataFrame) -> List[Dict[str, Any]]:
     for _, row in df_valid.iterrows():
         stocks.append({
             'ticker': row.get('ticker'),
-            'companyName': row.get('company_name', row.get('ticker')),
+            'companyName': row.get('stock_name', row.get('ticker')),
             'backtestDate': row.get('backtest_date').strftime('%Y-%m-%d') if pd.notna(row.get('backtest_date')) else None,
             'recommendationAction': row.get('recommendation_action'),
             'grokRank': int(row.get('grok_rank')) if pd.notna(row.get('grok_rank')) else None,
