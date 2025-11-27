@@ -402,7 +402,7 @@ def main():
         grok_trending_df = pd.read_parquet(grok_trending_file)
         for _, row in grok_trending_df.iterrows():
             grok_trending_map[row['ticker']] = {
-                'category': row.get('category', ''),
+                'categories': row.get('categories', ''),
                 'reason': row.get('reason', ''),
                 'selection_score': row.get('selection_score', 0.0)
             }
@@ -428,7 +428,7 @@ def main():
 
     for idx, stock in enumerate(rec_data['stocks'], 1):
         ticker = stock['ticker']
-        stock_name = stock.get('company_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
+        stock_name = stock.get('stock_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
         grok_rank = stock.get('grok_rank', stock.get('grokRank', 0))  # v2.1 or v2.0.3
 
         # Handle both nested (v2.0.3) and flat (v2.1) schema
@@ -519,10 +519,10 @@ def main():
         record = {
             # 1-8: Basic info
             'selection_date': selection_date,
-            'backtest_date': backtest_dt,
+            'backtest_date': backtest_date,  # 文字列形式 'YYYY-MM-DD' で統一
             'ticker': ticker,
-            'company_name': stock_name,
-            'category': trending_data.get('category', ''),
+            'stock_name': stock_name,
+            'categories': trending_data.get('categories', ''),
             'reason': trending_data.get('reason', ''),
             'grok_rank': grok_rank,
             'selection_score': trending_data.get('selection_score', 0.0),
@@ -612,16 +612,19 @@ def main():
 
     if GROK_ANALYSIS_PARQUET.exists():
         existing_df = pd.read_parquet(GROK_ANALYSIS_PARQUET)
-        existing_df['backtest_date'] = pd.to_datetime(existing_df['backtest_date'])
+
+        # 日付カラムを文字列形式に統一（'YYYY-MM-DD'）
+        for col in ['selection_date', 'backtest_date']:
+            if col in existing_df.columns:
+                existing_df[col] = pd.to_datetime(existing_df[col], format='mixed').dt.strftime('%Y-%m-%d')
 
         old_count = len(existing_df)
-        backtest_dt = pd.to_datetime(backtest_date)
 
         print(f"  Existing records: {old_count}")
-        print(f"  Date range: {existing_df['backtest_date'].min().date()} to {existing_df['backtest_date'].max().date()}")
+        print(f"  Date range: {existing_df['backtest_date'].min()} to {existing_df['backtest_date'].max()}")
 
         # UPSERT: Remove all existing records for this backtest_date
-        existing_df_filtered = existing_df[existing_df['backtest_date'] != backtest_dt]
+        existing_df_filtered = existing_df[existing_df['backtest_date'] != backtest_date]
         removed_for_date = old_count - len(existing_df_filtered)
 
         print(f"  Removed existing records for {backtest_date}: {removed_for_date}")
@@ -653,7 +656,7 @@ def main():
 
     combined_df = combined_df.sort_values('backtest_date').reset_index(drop=True)
 
-    print(f"\n  Final: {len(combined_df)} records ({combined_df['backtest_date'].min().date()} to {combined_df['backtest_date'].max().date()})")
+    print(f"\n  Final: {len(combined_df)} records ({combined_df['backtest_date'].min()} to {combined_df['backtest_date'].max()})")
 
     # Step 6: Save
     print("\n[Step 6] Saving...")
@@ -665,7 +668,7 @@ def main():
     print("Summary")
     print("=" * 60)
     print(f"Total records: {len(combined_df)}")
-    print(f"Date range: {combined_df['backtest_date'].min().date()} to {combined_df['backtest_date'].max().date()}")
+    print(f"Date range: {combined_df['backtest_date'].min()} to {combined_df['backtest_date'].max()}")
     print(f"New date added: {backtest_date}")
     print(f"New records: {len(new_df)}")
     print("\n✅ Merge completed successfully!")

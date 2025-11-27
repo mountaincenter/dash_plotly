@@ -465,6 +465,11 @@ def main():
         existing_df = pd.read_parquet(MERGED_V2_1_PATH)
         print(f"既存データ: {len(existing_df)}レコード")
 
+        # 日付カラムを文字列形式に統一（'YYYY-MM-DD'）
+        for col in ['selection_date', 'backtest_date']:
+            if col in existing_df.columns:
+                existing_df[col] = pd.to_datetime(existing_df[col], format='mixed').dt.strftime('%Y-%m-%d')
+
         # 重複チェック
         existing_dates = existing_df['selection_date'].unique()
         if selection_date.strftime('%Y-%m-%d') in existing_dates:
