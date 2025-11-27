@@ -30,7 +30,7 @@ for idx, row in buy_signals.iterrows():
     # 日付をdatetimeに変換
     target_date = pd.to_datetime(selection_date_str)
 
-    print(f"[{idx+1}/{len(buy_signals)}] {ticker} ({row['company_name']}) - {selection_date_str}")
+    print(f"[{idx+1}/{len(buy_signals)}] {ticker} ({row['stock_name']}) - {selection_date_str}")
 
     try:
         yf_ticker = yf.Ticker(ticker)
@@ -93,7 +93,7 @@ for idx, row in buy_signals.iterrows():
         backtest_results.append({
             'selection_date': selection_date_str,
             'ticker': ticker,
-            'company_name': row['company_name'],
+            'stock_name': row['stock_name'],
             'v2_score': v2_score,
             'open_price': open_price,
             'phase1_close': phase1_close,
@@ -145,7 +145,7 @@ if len(results_df) > 0:
     results_sorted = results_df.sort_values('phase2_return_pct', ascending=False)
     for _, r in results_sorted.iterrows():
         status = "✅" if r['phase2_win'] else "❌"
-        print(f"{status} {r['selection_date']} {r['ticker']:8s} {r['company_name']:20s} スコア:{r['v2_score']:3d} → {r['phase2_return_pct']:+6.2f}%")
+        print(f"{status} {r['selection_date']} {r['ticker']:8s} {r['stock_name']:20s} スコア:{r['v2_score']:3d} → {r['phase2_return_pct']:+6.2f}%")
 
 else:
     print("⚠ バックテスト結果がありません")

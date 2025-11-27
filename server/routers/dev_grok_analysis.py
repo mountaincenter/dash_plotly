@@ -30,8 +30,8 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 def load_analysis_data() -> pd.DataFrame:
     """
     分析データを読み込み
-    - S3から読み込み（本番環境、常に最新）
-    - S3が失敗したらローカルファイルを使用（開発環境）
+    - ローカルファイルを最優先（開発環境）
+    - ローカルがなければS3から読み込み（本番環境）
     - バックテストデータのみ（recommendation_action がないデータ）を返す
 
     注意:
@@ -40,33 +40,7 @@ def load_analysis_data() -> pd.DataFrame:
     このAPIはバックテスト分析専用のため、recommendation_actionがないデータのみ返す。
     詳細: data/parquet/backtest/README_DATA_CORRUPTION_20251113.md
     """
-    s3_error = None
-
-    # S3から読み込み
-    try:
-        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
-        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
-
-        print(f"[INFO] Loading analysis data from S3: {s3_url}")
-
-        # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
-        df = pd.read_parquet(s3_url, storage_options={
-            "client_kwargs": {"region_name": AWS_REGION}
-        })
-
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
-        if 'selection_date' in df.columns:
-            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
-
-        print(f"[INFO] Successfully loaded {len(df)} records from S3")
-        return df
-
-    except Exception as e:
-        s3_error = f"{type(e).__name__}: {e}"
-        print(f"[WARNING] Could not load analysis data from S3: {s3_error}")
-
-    # ローカルファイルにフォールバック
+    # ローカルファイルを最優先
     if DATA_PATH.exists():
         print(f"[INFO] Loading analysis data from local file: {DATA_PATH}")
         df = pd.read_parquet(DATA_PATH)
@@ -76,28 +50,13 @@ def load_analysis_data() -> pd.DataFrame:
             df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
         return df
 
-    # どちらも失敗
-    error_msg = f"Analysis data not found. S3 error: {s3_error}, Local path: {DATA_PATH}"
-    print(f"[ERROR] {error_msg}")
-    raise FileNotFoundError(error_msg)
-
-
-def load_analysis_data_v2_1() -> pd.DataFrame:
-    """
-    v2.1分析データを読み込み（grok_analysis_merged_v2_1.parquet）
-    - S3から読み込み（本番環境、常に最新）
-    - S3が失敗したらローカルファイルを使用（開発環境）
-    """
-    s3_error = None
-
-    # S3から読み込み
+    # ローカルがなければS3から読み込み
     try:
-        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged_v2_1.parquet"
+        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
         s3_url = f"s3://{S3_BUCKET}/{s3_key}"
 
-        print(f"[INFO] Loading v2.1 analysis data from S3: {s3_url}")
+        print(f"[INFO] Loading analysis data from S3: {s3_url}")
 
-        # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
         df = pd.read_parquet(s3_url, storage_options={
             "client_kwargs": {"region_name": AWS_REGION}
         })
@@ -111,10 +70,18 @@ def load_analysis_data_v2_1() -> pd.DataFrame:
         return df
 
     except Exception as e:
-        s3_error = f"{type(e).__name__}: {e}"
-        print(f"[WARNING] Could not load v2.1 analysis data from S3: {s3_error}")
+        error_msg = f"Analysis data not found. Local path: {DATA_PATH}, S3 error: {type(e).__name__}: {e}"
+        print(f"[ERROR] {error_msg}")
+        raise FileNotFoundError(error_msg)
 
-    # ローカルファイルにフォールバック
+
+def load_analysis_data_v2_1() -> pd.DataFrame:
+    """
+    v2.1分析データを読み込み（grok_analysis_merged_v2_1.parquet）
+    - ローカルファイルを最優先（開発環境）
+    - ローカルがなければS3から読み込み（本番環境）
+    """
+    # ローカルファイルを最優先
     if DATA_PATH_V2_1.exists():
         print(f"[INFO] Loading v2.1 analysis data from local file: {DATA_PATH_V2_1}")
         df = pd.read_parquet(DATA_PATH_V2_1)
@@ -124,10 +91,29 @@ def load_analysis_data_v2_1() -> pd.DataFrame:
             df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
         return df
 
-    # どちらも失敗
-    error_msg = f"v2.1 analysis data not found. S3 error: {s3_error}, Local path: {DATA_PATH_V2_1}"
-    print(f"[ERROR] {error_msg}")
-    raise FileNotFoundError(error_msg)
+    # ローカルがなければS3から読み込み
+    try:
+        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged_v2_1.parquet"
+        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+
+        print(f"[INFO] Loading v2.1 analysis data from S3: {s3_url}")
+
+        df = pd.read_parquet(s3_url, storage_options={
+            "client_kwargs": {"region_name": AWS_REGION}
+        })
+
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
+        if 'selection_date' in df.columns:
+            df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
+
+        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        return df
+
+    except Exception as e:
+        error_msg = f"v2.1 analysis data not found. Local path: {DATA_PATH_V2_1}, S3 error: {type(e).__name__}: {e}"
+        print(f"[ERROR] {error_msg}")
+        raise FileNotFoundError(error_msg)
 
 
 def safe_float(value: Any) -> float | None:

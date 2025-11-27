@@ -394,7 +394,7 @@ def main():
         grok_trending_df = pd.read_parquet(grok_trending_file)
         for _, row in grok_trending_df.iterrows():
             grok_trending_map[row['ticker']] = {
-                'category': row.get('category', ''),
+                'categories': row.get('categories', ''),
                 'reason': row.get('reason', ''),
                 'selection_score': row.get('selection_score', 0.0)
             }
@@ -421,7 +421,7 @@ def main():
     for idx, stock in enumerate(rec_data['stocks'], 1):
         # === v2.1 flat schema ===
         ticker = stock['ticker']
-        stock_name = stock.get('company_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
+        stock_name = stock.get('stock_name', stock.get('stockName', ''))  # v2.1 or v2.0.3
         grok_rank = stock.get('grok_rank', stock.get('grokRank', 0))  # v2.1 or v2.0.3
 
         print(f"  Processing {idx}/{len(rec_data['stocks'])}: {ticker} {stock_name}")
@@ -467,8 +467,8 @@ def main():
             'selection_date': selection_date,
             'backtest_date': backtest_dt,
             'ticker': ticker,
-            'company_name': stock_name,
-            'category': trending_data.get('category', ''),
+            'stock_name': stock_name,
+            'categories': trending_data.get('categories', ''),
             'reason': trending_data.get('reason', ''),
             'grok_rank': grok_rank,
             'selection_score': trending_data.get('selection_score', 0.0),

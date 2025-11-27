@@ -773,7 +773,7 @@ def main():
         results.append({
             'selection_date': selection_date,
             'ticker': ticker,
-            'stock_name': row.get('company_name', ''),
+            'stock_name': row.get('stock_name', ''),
             'grok_rank': grok_rank,
             'prev_day_close': prev_close,
             'buy_price': row.get('buy_price'),

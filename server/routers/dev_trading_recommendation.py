@@ -134,10 +134,17 @@ def load_recommendation_data() -> dict:
     """
     推奨データを読み込み
     - trading_recommendation.json から読み込み（手動深掘り分析の結果）
-    - S3から読み込み（本番環境、常に最新）
-    - S3が失敗したらローカルファイルを使用（開発環境）
+    - ローカルファイルを最優先（開発環境）
+    - ローカルがなければS3から読み込み（本番環境）
     """
-    # S3から読み込み
+    # ローカルファイルを最優先
+    if JSON_FILE.exists():
+        print(f"[INFO] Loading from local file: {JSON_FILE}")
+        with open(JSON_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+
+    # ローカルがなければS3から読み込み
     try:
         s3 = boto3.client('s3', region_name=AWS_REGION)
         s3_key = f"{S3_PREFIX}backtest/trading_recommendation.json"
@@ -151,25 +158,16 @@ def load_recommendation_data() -> dict:
         return data
 
     except ClientError as e:
-        print(f"[WARNING] Could not load from S3: {e}")
-
-        # ローカルファイルにフォールバック
-        if JSON_FILE.exists():
-            print(f"[INFO] Loading from local file: {JSON_FILE}")
-            with open(JSON_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return data
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error": {
-                        "code": "NOT_FOUND",
-                        "message": "推奨データが見つかりません",
-                        "details": "S3・ローカル共に存在しません"
-                    }
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "推奨データが見つかりません",
+                    "details": f"ローカル: {JSON_FILE}, S3: {e}"
                 }
-            )
+            }
+        )
 
 
 @router.get("/api/trading-recommendations")
@@ -206,25 +204,32 @@ async def get_trading_recommendations():
             target_dt = technical_dt + timedelta(days=1)
             target_date = target_dt.strftime('%Y-%m-%d')
 
-            # S3から最新のdeep_analysisを読み込み
+            # ローカルファイルを最優先でdeep_analysisを読み込み
             deep_data = None
-            try:
-                s3 = boto3.client('s3', region_name=AWS_REGION)
-                s3_key = f"{S3_PREFIX}backtest/analysis/deep_analysis_{target_date}.json"
-
-                print(f"[INFO] Loading deep_analysis from S3: s3://{S3_BUCKET}/{s3_key}")
-                response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
-                deep_data = json.loads(response['Body'].read().decode('utf-8'))
-                print(f"[INFO] Successfully loaded deep_analysis from S3")
-            except ClientError as e:
-                print(f"[WARNING] Could not load deep_analysis from S3: {e}, trying local file...")
-
-                # ローカルファイルにフォールバック
+            local_file = DEEP_ANALYSIS_DIR / f"deep_analysis_{target_date}.json"
+            if local_file.exists():
+                with open(local_file, 'r', encoding='utf-8') as f:
+                    deep_data = json.load(f)
+                print(f"[INFO] Loaded deep_analysis from local: {local_file.name}")
+            else:
+                # 最新のローカルファイルを探す
                 deep_files = sorted(DEEP_ANALYSIS_DIR.glob("deep_analysis_*.json"), reverse=True)
                 if deep_files:
                     with open(deep_files[0], 'r', encoding='utf-8') as f:
                         deep_data = json.load(f)
                     print(f"[INFO] Loaded deep_analysis from local: {deep_files[0].name}")
+                else:
+                    # ローカルがなければS3から読み込み
+                    try:
+                        s3 = boto3.client('s3', region_name=AWS_REGION)
+                        s3_key = f"{S3_PREFIX}backtest/analysis/deep_analysis_{target_date}.json"
+
+                        print(f"[INFO] Loading deep_analysis from S3: s3://{S3_BUCKET}/{s3_key}")
+                        response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+                        deep_data = json.loads(response['Body'].read().decode('utf-8'))
+                        print(f"[INFO] Successfully loaded deep_analysis from S3")
+                    except ClientError as e:
+                        print(f"[WARNING] Could not load deep_analysis: {e}")
 
             if deep_data:
 

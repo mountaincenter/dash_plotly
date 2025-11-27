@@ -269,8 +269,8 @@ def validate_and_analyze(grok_result: list[dict], target_date: str) -> pd.DataFr
 
         results.append({
             'ticker': ticker,
-            'company_name': stock.get('company_name', ''),
-            'category': stock.get('category', ''),
+            'stock_name': stock.get('stock_name', ''),
+            'categories': stock.get('categories', ''),
             'mentioned_by': ','.join(stock.get('mentioned_by', [])),
             'has_mention': len(stock.get('mentioned_by', [])) > 0,
             'sentiment_score': stock.get('sentiment_score', 0),

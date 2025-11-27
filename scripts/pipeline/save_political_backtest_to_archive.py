@@ -89,8 +89,8 @@ def calculate_backtest_stats(
         'selection_date': selection_date.strftime('%Y-%m-%d'),
         'backtest_date': backtest_date.strftime('%Y-%m-%d'),
         'ticker': ticker,
-        'company_name': meta_row['stock_name'],
-        'category': '政策銘柄',
+        'stock_name': meta_row['stock_name'],
+        'categories': '政策銘柄',
         'tags': ', '.join(meta_row['tags']) if isinstance(meta_row['tags'], (list, np.ndarray)) and len(meta_row['tags']) > 0 else '',
     }
 

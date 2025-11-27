@@ -59,7 +59,7 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
 
         converted_stock = {
             "ticker": stock.get("ticker"),
-            "stockName": stock.get("company_name", stock.get("ticker")),
+            "stockName": stock.get("stock_name", stock.get("ticker")),
             "grokRank": stock.get("grok_rank"),
             "technicalData": {
                 "prevClose": stock.get("prev_day_close"),

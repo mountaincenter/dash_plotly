@@ -166,7 +166,7 @@ def extract_success_patterns(df: pd.DataFrame) -> dict:
             'win_rate': len(phase1_success) / len(df) * 100 if len(df) > 0 else 0,
             'avg_return': phase1_success['morning_change_pct'].mean() if len(phase1_success) > 0 else 0,
             'median_return': phase1_success['morning_change_pct'].median() if len(phase1_success) > 0 else 0,
-            'top_categories': phase1_success['category'].value_counts().head(5).to_dict() if 'category' in phase1_success.columns else {},
+            'top_categories': phase1_success['categories'].value_counts().head(5).to_dict() if 'categories' in phase1_success.columns else {},
             'avg_sentiment_score': phase1_success['sentiment_score'].mean() if 'sentiment_score' in phase1_success.columns else 0,
             'mention_rate': (phase1_success['has_mention'].sum() / len(phase1_success) * 100) if 'has_mention' in phase1_success.columns and len(phase1_success) > 0 else 0,
             'policy_link_dist': phase1_success['policy_link'].value_counts().to_dict() if 'policy_link' in phase1_success.columns else {},
@@ -184,7 +184,7 @@ def extract_success_patterns(df: pd.DataFrame) -> dict:
             'total_count': len(phase2_success),
             'achievement_rate': len(phase2_success) / len(df) * 100 if len(df) > 0 else 0,
             'avg_return': phase2_success['phase2_return_3pct'].mean() if 'phase2_return_3pct' in phase2_success.columns and len(phase2_success) > 0 else 0,
-            'top_categories': phase2_success['category'].value_counts().head(5).to_dict() if 'category' in phase2_success.columns else {},
+            'top_categories': phase2_success['categories'].value_counts().head(5).to_dict() if 'categories' in phase2_success.columns else {},
             'avg_sentiment_score': phase2_success['sentiment_score'].mean() if 'sentiment_score' in phase2_success.columns else 0,
             'mention_rate': (phase2_success['has_mention'].sum() / len(phase2_success) * 100) if 'has_mention' in phase2_success.columns and len(phase2_success) > 0 else 0,
             'policy_link_dist': phase2_success['policy_link'].value_counts().to_dict() if 'policy_link' in phase2_success.columns else {},
@@ -223,7 +223,7 @@ def extract_failure_patterns(df: pd.DataFrame) -> dict:
             'failure_rate': len(phase1_failure) / len(df) * 100 if len(df) > 0 else 0,
             'avg_loss': phase1_failure['morning_change_pct'].mean() if len(phase1_failure) > 0 else 0,
             'worst_loss': phase1_failure['morning_change_pct'].min() if len(phase1_failure) > 0 else 0,
-            'top_categories': phase1_failure['category'].value_counts().head(5).to_dict() if 'category' in phase1_failure.columns else {},
+            'top_categories': phase1_failure['categories'].value_counts().head(5).to_dict() if 'categories' in phase1_failure.columns else {},
             'avg_sentiment_score': phase1_failure['sentiment_score'].mean() if 'sentiment_score' in phase1_failure.columns else 0,
             'mention_rate': (phase1_failure['has_mention'].sum() / len(phase1_failure) * 100) if 'has_mention' in phase1_failure.columns and len(phase1_failure) > 0 else 0,
             'policy_link_dist': phase1_failure['policy_link'].value_counts().to_dict() if 'policy_link' in phase1_failure.columns else {},
@@ -244,7 +244,7 @@ def extract_failure_patterns(df: pd.DataFrame) -> dict:
             'total_count': len(phase2_failure),
             'failure_rate': len(phase2_failure) / len(df) * 100 if len(df) > 0 else 0,
             'avg_loss': phase2_failure['morning_change_pct'].mean() if len(phase2_failure) > 0 else 0,
-            'top_categories': phase2_failure['category'].value_counts().head(5).to_dict() if 'category' in phase2_failure.columns else {},
+            'top_categories': phase2_failure['categories'].value_counts().head(5).to_dict() if 'categories' in phase2_failure.columns else {},
             'avg_sentiment_score': phase2_failure['sentiment_score'].mean() if 'sentiment_score' in phase2_failure.columns else 0,
             'mention_rate': (phase2_failure['has_mention'].sum() / len(phase2_failure) * 100) if 'has_mention' in phase2_failure.columns and len(phase2_failure) > 0 else 0,
             'policy_link_dist': phase2_failure['policy_link'].value_counts().to_dict() if 'policy_link' in phase2_failure.columns else {},
@@ -277,7 +277,7 @@ def generate_top_performers(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 
     # 必要なカラムのみ抽出
     columns_to_keep = [
-        'target_date', 'ticker', 'company_name', 'category',
+        'target_date', 'ticker', 'stock_name', 'categories',
         'sentiment_score', 'policy_link', 'has_mention',
         'morning_change_pct', 'daily_change_pct'
     ]
@@ -293,10 +293,10 @@ def generate_top_performers(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     print(f"\n[Top {n} Performers]")
     for idx, row in top_performers.iterrows():
         ticker = row['ticker']
-        name = row.get('company_name', 'N/A')
+        name = row.get('stock_name', 'N/A')
         return_pct = row['morning_change_pct']
-        category = row.get('category', 'N/A')
-        print(f"  {ticker} {name[:15]:<15} | {return_pct:>6.2f}% | {category}")
+        categories = row.get('categories', 'N/A')
+        print(f"  {ticker} {name[:15]:<15} | {return_pct:>6.2f}% | {categories}")
 
     return top_performers
 
@@ -321,7 +321,7 @@ def generate_worst_performers(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 
     # 必要なカラムのみ抽出
     columns_to_keep = [
-        'target_date', 'ticker', 'company_name', 'category',
+        'target_date', 'ticker', 'stock_name', 'categories',
         'sentiment_score', 'policy_link', 'has_mention',
         'morning_change_pct', 'daily_change_pct'
     ]
@@ -333,10 +333,10 @@ def generate_worst_performers(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     print(f"\n[Worst {n} Performers]")
     for idx, row in worst_performers.iterrows():
         ticker = row['ticker']
-        name = row.get('company_name', 'N/A')
+        name = row.get('stock_name', 'N/A')
         return_pct = row['morning_change_pct']
-        category = row.get('category', 'N/A')
-        print(f"  {ticker} {name[:15]:<15} | {return_pct:>6.2f}% | {category}")
+        categories = row.get('categories', 'N/A')
+        print(f"  {ticker} {name[:15]:<15} | {return_pct:>6.2f}% | {categories}")
 
     return worst_performers
 

@@ -398,8 +398,8 @@ def _extract_top_stocks_from_df(df: pd.DataFrame) -> pd.DataFrame:
 
     # 必要なカラムのみ抽出
     columns_to_keep = [
-        'target_date', 'ticker', 'company_name', 'selection_score',
-        'rank', 'category', 'sentiment_score', 'policy_link', 'has_mention',
+        'target_date', 'ticker', 'stock_name', 'selection_score',
+        'rank', 'categories', 'sentiment_score', 'policy_link', 'has_mention',
         'morning_change_pct', 'daily_change_pct'
     ]
 

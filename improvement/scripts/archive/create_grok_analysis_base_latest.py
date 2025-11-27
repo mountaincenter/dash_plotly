@@ -445,9 +445,9 @@ def main():
     logger.info(f"Date range: {base_df['backtest_date'].min().date()} to {base_df['backtest_date'].max().date()}")
     logger.info(f"Unique dates: {base_df['backtest_date'].nunique()}")
 
-    if 'category' in base_df.columns:
+    if 'categories' in base_df.columns:
         logger.info(f"\nCategory distribution:")
-        logger.info(base_df['category'].value_counts().head(10))
+        logger.info(base_df['categories'].value_counts().head(10))
 
     logger.info(f"\nmorning_volume stats:")
     logger.info(f"  Non-NaN: {base_df['morning_volume'].notna().sum()} / {len(base_df)}")
@@ -470,7 +470,7 @@ def main():
         logger.info(f"  Median: {base_df['prev_day_change_pct'].median():.2f}%")
 
     logger.info("\nSample data:")
-    print(base_df[['ticker', 'company_name', 'backtest_date', 'category',
+    print(base_df[['ticker', 'stock_name', 'backtest_date', 'categories',
                     'prev_day_close', 'prev_day_change_pct', 'prev_day_volume_ratio']].head(5))
 
 

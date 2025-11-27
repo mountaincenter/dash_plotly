@@ -12,7 +12,7 @@
   "stocks": [
     {
       "ticker": "4579.T",
-      "company_name": "ラクオリア創薬",
+      "stock_name": "ラクオリア創薬",
       "grok_rank": 1,
       "prev_day_close": 650.0,
       "prev_day_change_pct": -9.722222222222223,
@@ -34,7 +34,7 @@
     },
     {
       "ticker": "3321.T",
-      "company_name": "ミタチ産業",
+      "stock_name": "ミタチ産業",
       "grok_rank": 2,
       "prev_day_close": 1678.0,
       "prev_day_change_pct": -0.11904761904761905,
@@ -56,7 +56,7 @@
     },
     {
       "ticker": "4464.T",
-      "company_name": "ソフト99",
+      "stock_name": "ソフト99",
       "grok_rank": 3,
       "prev_day_close": 4000.0,
       "prev_day_change_pct": -0.12484394506866417,
@@ -78,7 +78,7 @@
     },
     {
       "ticker": "4936.T",
-      "company_name": "アクシージア",
+      "stock_name": "アクシージア",
       "grok_rank": 5,
       "prev_day_close": 416.0,
       "prev_day_change_pct": 1.4634146341463417,
@@ -100,7 +100,7 @@
     },
     {
       "ticker": "3201.T",
-      "company_name": "ニッケ",
+      "stock_name": "ニッケ",
       "grok_rank": 4,
       "prev_day_close": 1694.0,
       "prev_day_change_pct": 2.9787234042553195,
@@ -123,7 +123,7 @@
     },
     {
       "ticker": "9242.T",
-      "company_name": "メディア総研",
+      "stock_name": "メディア総研",
       "grok_rank": 6,
       "prev_day_close": 1767.0,
       "prev_day_change_pct": 2.852153667054715,
@@ -144,7 +144,7 @@
     },
     {
       "ticker": "2743.T",
-      "company_name": "ピクセル",
+      "stock_name": "ピクセル",
       "grok_rank": 7,
       "prev_day_close": 72.0,
       "prev_day_change_pct": 2.857142857142857,
@@ -166,7 +166,7 @@
     },
     {
       "ticker": "2438.T",
-      "company_name": "アスカネット",
+      "stock_name": "アスカネット",
       "grok_rank": 8,
       "prev_day_close": 335.0,
       "prev_day_change_pct": 0.6006006006006006,
@@ -185,7 +185,7 @@
     },
     {
       "ticker": "7198.T",
-      "company_name": "SBIアルヒ",
+      "stock_name": "SBIアルヒ",
       "grok_rank": 9,
       "prev_day_close": 840.0,
       "prev_day_change_pct": 1.083032490974729,
@@ -204,7 +204,7 @@
     },
     {
       "ticker": "7695.T",
-      "company_name": "交換できるくん",
+      "stock_name": "交換できるくん",
       "grok_rank": 10,
       "prev_day_close": 864.0,
       "prev_day_change_pct": 8.1351689612015,
@@ -227,7 +227,7 @@
     },
     {
       "ticker": "9344.T",
-      "company_name": "アクシスコンサルティング",
+      "stock_name": "アクシスコンサルティング",
       "grok_rank": 11,
       "prev_day_close": 891.0,
       "prev_day_change_pct": 5.44378698224852,
@@ -250,7 +250,7 @@
     },
     {
       "ticker": "2876.T",
-      "company_name": "デルソーレ",
+      "stock_name": "デルソーレ",
       "grok_rank": 12,
       "prev_day_close": 445.0,
       "prev_day_change_pct": 0.0,

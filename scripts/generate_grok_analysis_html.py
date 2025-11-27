@@ -109,7 +109,7 @@ def create_return_distribution(df):
 
 def create_category_analysis(df):
     """カテゴリー別分析"""
-    category_stats = df.groupby('category').agg({
+    category_stats = df.groupby('categories').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
         'phase2_return_pct': 'mean'
     }).round(2)
@@ -651,7 +651,7 @@ def create_category_detail_analysis(df):
         df['phase2_return_pct'] = df['phase2_return'] * 100
 
     # カテゴリー別の詳細統計
-    cat_stats = df.groupby('category').agg({
+    cat_stats = df.groupby('categories').agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
         'phase2_return_pct': ['mean', 'median', 'std'],
         'daily_max_gain_pct': 'mean',
@@ -903,7 +903,7 @@ def generate_html_report():
 
     # 全銘柄（phase2リターン降順）
     all_stocks = df.sort_values('phase2_return_pct', ascending=False)[
-        ['ticker', 'company_name', 'category', 'backtest_date', 'phase1_return_pct', 'phase2_return_pct',
+        ['ticker', 'stock_name', 'categories', 'backtest_date', 'phase1_return_pct', 'phase2_return_pct',
          'morning_volume', 'prev_day_change_pct', 'prev_day_volume_ratio']
     ]
     stock_rows = []
@@ -914,8 +914,8 @@ def generate_html_report():
         stock_rows.append(f"""
             <tr>
                 <td>{row['ticker']}</td>
-                <td>{row['company_name']}</td>
-                <td>{row['category']}</td>
+                <td>{row['stock_name']}</td>
+                <td>{row['categories']}</td>
                 <td class="num">{row['backtest_date'].strftime('%Y-%m-%d')}</td>
                 <td class="num">{row['phase1_return_pct']:.2f}%</td>
                 <td class="num">{row['phase2_return_pct']:.2f}%</td>

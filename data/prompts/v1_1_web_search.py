@@ -78,11 +78,11 @@ since:{context['latest_trading_day_raw']}
 **Top3成功銘柄（学ぶべき好例）:**
 """
         for i, stock in enumerate(backtest.get('top_performers', []), 1):
-            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **+{stock['return']:.2f}%**\n"
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['categories']}) → **+{stock['return']:.2f}%**\n"
 
         backtest_section += "\n**Top3失敗銘柄（避けるべき悪例）:**\n"
         for i, stock in enumerate(backtest.get('worst_performers', []), 1):
-            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **{stock['return']:.2f}%**\n"
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['categories']}) → **{stock['return']:.2f}%**\n"
 
         backtest_section += f"""
 **✅ 選定戦略への反映（重要）:**
@@ -282,9 +282,9 @@ since:{context['latest_trading_day_raw']}
 [
   {{
     "ticker_symbol": "3031",
-    "company_name": "ラクーンHD",
+    "stock_name": "ラクーンHD",
     "reason": "【@kabuchenko が言及】[web_search: 日経新聞]{context['latest_trading_day']} 15:30配信、EC新サービスのIR発表。[web_search: Yahoo!ファイナンス]適時開示掲載確認。[x_search: @kabuchenko ツイート]{context['latest_trading_day']} 16:30投稿「{context['next_trading_day']}寄付買い」（RT200超、いいね350）。[x_search: #注目銘柄]X株クラで言及150件以上確認。[web_search: 株探]出来高は20日平均の4.2倍、直近5日ATR 5.8%。[web_search: Yahoo!ファイナンス]時価総額350億円確認。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし",
-    "category": "プレミアム+IR好材料+株クラバズ",
+    "categories": "プレミアム+IR好材料+株クラバズ",
     "sentiment_score": 0.85,
     "policy_link": "High",
     "has_mention": true,
@@ -292,9 +292,9 @@ since:{context['latest_trading_day_raw']}
   }},
   {{
     "ticker_symbol": "4563",
-    "company_name": "アンジェス",
+    "stock_name": "アンジェス",
     "reason": "【@tesuta001,@kaikai2120621 が複数言及】[web_search: Bloomberg]{context['latest_trading_day']} 17:00配信、治験進展ニュース。[web_search: 株探]IR情報掲載確認。[x_search: @tesuta001]{context['latest_trading_day']} 18:00投稿「明日狙い目」（RT150）。[x_search: @kaikai2120621]{context['latest_trading_day']} 19:30投稿「寄り付き回転」（RT80）。[x_search: ストップ高]X言及200件超確認（RT合計500超）。[web_search: 株探]出来高20日平均の3.5倍、ATR 6.2%。[web_search: Yahoo!]時価総額200億円。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、上場廃止なし",
-    "category": "プレミアム複数+バイオ材料+仕手株",
+    "categories": "プレミアム複数+バイオ材料+仕手株",
     "sentiment_score": 0.82,
     "policy_link": "Med",
     "has_mention": true,

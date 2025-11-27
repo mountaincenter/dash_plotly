@@ -428,7 +428,7 @@ def generate_stop_loss_detail_sections(buy_df: pd.DataFrame, stop_loss_levels: l
         rows = []
         for _, row in df_detail.iterrows():
             ticker = row['ticker']
-            company = row.get('company_name', '')
+            company = row.get('stock_name', '')
             bracket = row['price_bracket']
             buy_price = row['buy_price']
             low = row['low']

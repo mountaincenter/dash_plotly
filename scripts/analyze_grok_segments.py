@@ -136,8 +136,8 @@ def main():
         print()
 
     # 1. カテゴリ × 戦略
-    if 'category' in df.columns:
-        analyze_segment_performance(df, "カテゴリ（トピック）× 戦略", "category")
+    if 'categories' in df.columns:
+        analyze_segment_performance(df, "カテゴリ（トピック）× 戦略", "categories")
 
     # 2. 株価帯 × 戦略
     df['price_range'] = pd.cut(

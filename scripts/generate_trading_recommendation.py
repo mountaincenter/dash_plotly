@@ -118,7 +118,7 @@ def load_backtest_stats():
             rank_scores[rank] = adjusted_score
 
         # カテゴリー別勝率
-        cat_stats = df.groupby('category').agg({
+        cat_stats = df.groupby('categories').agg({
             'phase2_win': lambda x: x.sum() / len(x) * 100,
             'phase2_return': 'mean'
         }).round(1)

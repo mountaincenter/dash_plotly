@@ -176,7 +176,7 @@ def main():
         results.append({
             'selection_date': str(selection_date.date()),
             'ticker': ticker,
-            'company_name': row['company_name'],
+            'stock_name': row['stock_name'],
             'grok_rank': grok_rank,
             'prev_close': prev_close,
             'prev_day_change_pct': prev_day_change_pct,
@@ -674,7 +674,7 @@ tr:hover {{
 
         html += f"""                <tr class="{row_class}">
                     <td>{row['ticker']}</td>
-                    <td>{row['company_name']}</td>
+                    <td>{row['stock_name']}</td>
                     <td class="number">{row['grok_rank']}</td>
                     <td class="number">{prev_2day_text}</td>
                     <td class="number {prev_close_class}">{prev_close_text}</td>

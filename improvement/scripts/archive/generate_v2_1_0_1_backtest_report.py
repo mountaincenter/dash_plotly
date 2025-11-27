@@ -142,7 +142,7 @@ def generate_html_report(df: pd.DataFrame) -> str:
             table_rows.append(f'<tr class="date-separator"><td colspan="12">{date_str}</td></tr>')
 
         ticker = row['ticker']
-        company = row.get('company_name', '')
+        company = row.get('stock_name', '')
         grok_rank = row.get('grok_rank', 0)
         prev_close = row.get('prev_day_close', 0)
         v2_score = row.get('v2_0_3_score', 0)

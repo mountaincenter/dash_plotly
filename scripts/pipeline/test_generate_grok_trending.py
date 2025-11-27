@@ -126,8 +126,8 @@ def load_backtest_patterns() -> dict[str, Any]:
             for _, row in df_top.head(3).iterrows():
                 backtest_context['top_performers'].append({
                     'ticker': row['ticker'],
-                    'name': row.get('company_name', 'N/A'),
-                    'category': row.get('category', 'N/A'),
+                    'name': row.get('stock_name', 'N/A'),
+                    'categories': row.get('categories', 'N/A'),
                     'return': row.get('morning_change_pct', 0)
                 })
         except Exception as e:
@@ -140,8 +140,8 @@ def load_backtest_patterns() -> dict[str, Any]:
             for _, row in df_worst.head(3).iterrows():
                 backtest_context['worst_performers'].append({
                     'ticker': row['ticker'],
-                    'name': row.get('company_name', 'N/A'),
-                    'category': row.get('category', 'N/A'),
+                    'name': row.get('stock_name', 'N/A'),
+                    'categories': row.get('categories', 'N/A'),
                     'return': row.get('morning_change_pct', 0)
                 })
         except Exception as e:

@@ -11,3 +11,7 @@ data/parquet/
 data/test_output/
 test_output/
 notebooks/
+terraform/
+.terraform/
+*.tfstate*
+.claude/

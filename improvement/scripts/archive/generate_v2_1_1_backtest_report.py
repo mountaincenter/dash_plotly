@@ -211,7 +211,7 @@ def generate_html_report(df: pd.DataFrame) -> str:
             table_rows.append(f'<tr class="date-separator"><td colspan="15">{date_str}</td></tr>')
 
         ticker = row['ticker']
-        company = row.get('company_name', '')
+        company = row.get('stock_name', '')
         action = row['v2_1_1_action']
         buy_price = row['buy_price']
         high = row['high']

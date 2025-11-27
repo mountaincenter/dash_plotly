@@ -36,31 +36,10 @@ _archive_cache = None
 def load_archive_data() -> pd.DataFrame:
     """
     アーカイブファイルを読み込み
-    - S3から読み込み（本番環境、常に最新）
-    - S3が失敗したらローカルファイルを使用（開発環境）
+    - ローカルファイルを最優先（開発環境）
+    - ローカルがなければS3から読み込み（本番環境）
     """
-    # S3から読み込み
-    try:
-        s3_key = f"{S3_PREFIX}backtest/grok_trending_archive.parquet"
-        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
-
-        print(f"[INFO] Loading backtest archive from S3: {s3_url}")
-
-        # S3から直接読み込み（pandas.read_parquet はs3://をサポート）
-        df = pd.read_parquet(s3_url, storage_options={
-            "client_kwargs": {"region_name": AWS_REGION}
-        })
-
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
-
-        print(f"[INFO] Successfully loaded {len(df)} records from S3")
-        return df
-
-    except Exception as e:
-        print(f"[WARNING] Could not load backtest archive from S3: {type(e).__name__}: {e}")
-
-    # ローカルファイルにフォールバック
+    # ローカルファイルを最優先
     if ARCHIVE_FILE.exists():
         print(f"[INFO] Loading backtest archive from local file: {ARCHIVE_FILE}")
 
@@ -91,8 +70,28 @@ def load_archive_data() -> pd.DataFrame:
         except Exception as e:
             print(f"[ERROR] Failed to load directly: {e}")
 
+    # ローカルがなければS3から読み込み
+    try:
+        s3_key = f"{S3_PREFIX}backtest/grok_trending_archive.parquet"
+        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+
+        print(f"[INFO] Loading backtest archive from S3: {s3_url}")
+
+        df = pd.read_parquet(s3_url, storage_options={
+            "client_kwargs": {"region_name": AWS_REGION}
+        })
+
+        if 'backtest_date' in df.columns:
+            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
+
+        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        return df
+
+    except Exception as e:
+        print(f"[WARNING] Could not load backtest archive from S3: {type(e).__name__}: {e}")
+
     # どちらも失敗
-    print(f"[WARNING] Backtest archive not found in S3 or local file")
+    print(f"[WARNING] Backtest archive not found in local or S3")
     return pd.DataFrame()
 
 

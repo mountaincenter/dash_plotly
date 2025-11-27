@@ -282,7 +282,7 @@ def generate_html_report():
     ticker_to_name = dict(zip(meta_df['ticker'], meta_df['stock_name']))
 
     # 企業名をマージ
-    df['company_name'] = df['ticker'].map(ticker_to_name).fillna('N/A')
+    df['stock_name'] = df['ticker'].map(ticker_to_name).fillna('N/A')
 
     # grok_analysis_merged.parquetから追加情報を取得（要因分析用）
     grok_df = pd.read_parquet(GROK_ANALYSIS)
@@ -717,7 +717,7 @@ def generate_html_report():
         html += f"""                    <tr>
                         <td>{row['backtest_date'].strftime('%Y-%m-%d')}</td>
                         <td><strong>{row['ticker']}</strong></td>
-                        <td>{row['company_name']}</td>
+                        <td>{row['stock_name']}</td>
                         <td>{rec_badge}</td>
                         <td class="number {profit_morning_100_class}">{profit_morning_100:+,.0f}</td>
                         <td class="number {profit_day_100_class}">{profit_day_100:+,.0f}</td>

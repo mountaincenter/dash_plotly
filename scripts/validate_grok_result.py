@@ -220,10 +220,10 @@ def validate_grok_stocks(grok_data: list[dict], target_date: str = None) -> pd.D
 
     for i, stock in enumerate(grok_data, 1):
         ticker_code = stock.get("ticker_symbol", "").replace(".T", "")
-        company_name = stock.get("company_name", "")
+        stock_name = stock.get("stock_name", "")
         mentioned_by = stock.get("mentioned_by", [])
 
-        print(f"\n[{i}/{len(grok_data)}] {ticker_code} - {company_name}")
+        print(f"\n[{i}/{len(grok_data)}] {ticker_code} - {stock_name}")
 
         # 1. 時価総額チェック
         print("  - 時価総額チェック中...")
@@ -243,7 +243,7 @@ def validate_grok_stocks(grok_data: list[dict], target_date: str = None) -> pd.D
         # 結果を集約
         result = {
             "ticker_code": ticker_code,
-            "company_name": company_name,
+            "stock_name": stock_name,
             "mentioned_by": ", ".join(mentioned_by) if mentioned_by else "",
             "market_cap_billion": market_cap_result["market_cap_billion"],
             "market_cap_in_range": market_cap_result["in_range"],
@@ -292,7 +292,7 @@ def print_validation_summary(df: pd.DataFrame, target_date: str = None):
         for _, row in ng_stocks.iterrows():
             cap = row["market_cap_billion"]
             cap_str = f"{cap:.1f}億円" if cap is not None else "取得不可"
-            print(f"    - {row['ticker_code']} ({row['company_name']}): {cap_str}")
+            print(f"    - {row['ticker_code']} ({row['stock_name']}): {cap_str}")
 
     # 2. 除外銘柄チェック
     excluded_count = df["is_excluded"].sum()
@@ -304,7 +304,7 @@ def print_validation_summary(df: pd.DataFrame, target_date: str = None):
         print(f"\n  除外リストに該当する銘柄:")
         excluded_stocks = df[df["is_excluded"]]
         for _, row in excluded_stocks.iterrows():
-            print(f"    - {row['ticker_code']} ({row['company_name']}): {row['exclusion_reason']}")
+            print(f"    - {row['ticker_code']} ({row['stock_name']}): {row['exclusion_reason']}")
 
     # 3. 重複チェック
     duplicates = df[df.duplicated(subset=["ticker_code"], keep=False)]

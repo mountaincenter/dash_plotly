@@ -33,7 +33,11 @@ START_DATE = "2025-11-14"
 def load_meta_data() -> pd.DataFrame:
     """
     企業メタデータを読み込み（meta_jquants.parquet）
+    - ローカルファイルを最優先
     """
+    if META_PATH.exists():
+        meta_df = pd.read_parquet(META_PATH)
+        return meta_df[['ticker', 'stock_name']]
     try:
         s3_key = f"{S3_PREFIX}meta_jquants.parquet"
         s3_url = f"s3://{S3_BUCKET}/{s3_key}"
@@ -42,38 +46,35 @@ def load_meta_data() -> pd.DataFrame:
         })
         return meta_df[['ticker', 'stock_name']]
     except Exception as e:
-        print(f"[WARNING] Could not load meta from S3: {e}")
-        if META_PATH.exists():
-            meta_df = pd.read_parquet(META_PATH)
-            return meta_df[['ticker', 'stock_name']]
+        print(f"[WARNING] Could not load meta: {e}")
     return pd.DataFrame(columns=['ticker', 'stock_name'])
 
 
 def load_timing_data() -> pd.DataFrame:
     """
     タイミング分析データを読み込み
-    - S3から読み込み（本番環境）
-    - ローカルファイルにフォールバック（開発環境）
+    - ローカルファイルを最優先（開発環境）
+    - ローカルがなければS3から読み込み（本番環境）
     - meta_jquants.parquetから企業名をマージ
     - 2025-11-14以降のデータでフィルター
     """
-    # S3から読み込み
-    try:
-        s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
-        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
-        print(f"[INFO] Loading timing data from S3: {s3_url}")
+    # ローカルファイルを最優先
+    if DATA_PATH.exists():
+        print(f"[INFO] Loading from local file: {DATA_PATH}")
+        df = pd.read_parquet(DATA_PATH)
+    else:
+        # ローカルがなければS3から読み込み
+        try:
+            s3_key = f"{S3_PREFIX}backtest/grok_analysis_merged.parquet"
+            s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+            print(f"[INFO] Loading timing data from S3: {s3_url}")
 
-        df = pd.read_parquet(s3_url, storage_options={
-            "client_kwargs": {"region_name": AWS_REGION}
-        })
-        print(f"[INFO] Successfully loaded {len(df)} records from S3")
-    except Exception as e:
-        print(f"[WARNING] Could not load from S3: {e}")
-        if DATA_PATH.exists():
-            print(f"[INFO] Loading from local file: {DATA_PATH}")
-            df = pd.read_parquet(DATA_PATH)
-        else:
-            raise FileNotFoundError("Timing analysis data not found")
+            df = pd.read_parquet(s3_url, storage_options={
+                "client_kwargs": {"region_name": AWS_REGION}
+            })
+            print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        except Exception as e:
+            raise FileNotFoundError(f"Timing analysis data not found. Local: {DATA_PATH}, S3 error: {e}")
 
     # 日付フィルター（2025-11-14以降）
     if 'backtest_date' in df.columns:

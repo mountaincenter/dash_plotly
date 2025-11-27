@@ -163,7 +163,7 @@ def generate_hold_to_sell_section(df):
         table_rows.append(f"""
         <tr class="action-売り">
             <td>{row['ticker']}</td>
-            <td>{row['company_name']}</td>
+            <td>{row['stock_name']}</td>
             <td><span class="action-badge action-静観-badge">静観</span></td>
             <td><span class="action-badge action-売り-badge">売り</span></td>
             <td class="number">{format_price(prev_2day_close)}</td>

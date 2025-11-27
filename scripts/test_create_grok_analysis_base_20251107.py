@@ -102,7 +102,7 @@ def create_analysis_base():
         # 基礎レコード作成
         base_record = {
             'code': ticker,
-            'stock_name': row['company_name'],
+            'stock_name': row['stock_name'],
             'date': date.strftime('%Y-%m-%d'),
             'open': row['buy_price'],
             'morning_close': morning_close,
@@ -113,7 +113,7 @@ def create_analysis_base():
             'low': row['low'],
             'morning_volume': morning_volume,
             'volume': row['volume'],
-            'category': row['category'],
+            'categories': row['categories'],
             'reason': row['reason'],
         }
 
@@ -129,12 +129,12 @@ def create_analysis_base():
             (row['high'] - row['low']) / row['buy_price'] * 100
         )
 
-        # tags分割（categoryから）
-        # categoryが "株クラバズ+出来高急増" のような形式の場合、分割
-        if '+' in row['category']:
-            tags_list = [tag.strip() for tag in row['category'].split('+')]
+        # tags分割（categoriesから）
+        # categoriesが "株クラバズ+出来高急増" のような形式の場合、分割
+        if '+' in row['categories']:
+            tags_list = [tag.strip() for tag in row['categories'].split('+')]
         else:
-            tags_list = [row['category']]
+            tags_list = [row['categories']]
 
         # 各tagごとに1レコード作成
         for tag in tags_list:

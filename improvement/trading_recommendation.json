@@ -8,7 +8,7 @@
   "stocks": [
     {
       "ticker": "8894.T",
-      "company_name": "REVOLUTION",
+      "stock_name": "REVOLUTION",
       "grok_rank": 2,
       "prev_day_close": 61.0,
       "prev_day_change_pct": 7.017543859649122,
@@ -27,7 +27,7 @@
     },
     {
       "ticker": "7603.T",
-      "company_name": "ジーイエット",
+      "stock_name": "ジーイエット",
       "grok_rank": 6,
       "prev_day_close": 156.0,
       "prev_day_change_pct": 2.631578947368421,
@@ -46,7 +46,7 @@
     },
     {
       "ticker": "3350.T",
-      "company_name": "メタプラネット",
+      "stock_name": "メタプラネット",
       "grok_rank": 1,
       "prev_day_close": 357.0,
       "prev_day_change_pct": -7.751937984496124,
@@ -67,7 +67,7 @@
     },
     {
       "ticker": "4397.T",
-      "company_name": "チームスピリット",
+      "stock_name": "チームスピリット",
       "grok_rank": 4,
       "prev_day_close": 515.0,
       "prev_day_change_pct": 1.5779092702169626,
@@ -88,7 +88,7 @@
     },
     {
       "ticker": "6232.T",
-      "company_name": "ACSL",
+      "stock_name": "ACSL",
       "grok_rank": 3,
       "prev_day_close": 999.0,
       "prev_day_change_pct": 0.30120481927710846,
@@ -107,7 +107,7 @@
     },
     {
       "ticker": "7695.T",
-      "company_name": "交換できるくん",
+      "stock_name": "交換できるくん",
       "grok_rank": 7,
       "prev_day_close": 864.0,
       "prev_day_change_pct": 8.1351689612015,
@@ -126,7 +126,7 @@
     },
     {
       "ticker": "3409.T",
-      "company_name": "北紡",
+      "stock_name": "北紡",
       "grok_rank": 5,
       "prev_day_close": 127.0,
       "prev_day_change_pct": 1.6,

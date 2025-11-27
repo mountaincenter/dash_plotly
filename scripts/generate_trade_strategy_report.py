@@ -41,7 +41,7 @@ def generate_report():
     df['prev_direction'] = df['prev_day_change_pct'].apply(lambda x: 'プラス' if x >= 0 else 'マイナス')
 
     # 勝率0%のパターン抽出
-    combo_stats = df.groupby(['category', 'prev_direction']).agg({
+    combo_stats = df.groupby(['categories', 'prev_direction']).agg({
         'phase2_win': ['sum', 'count', lambda x: x.sum() / len(x) * 100],
         'phase2_return_pct': 'mean'
     }).round(2)
@@ -99,12 +99,12 @@ def generate_report():
     detail_rows = []
     if len(zero_win) > 0:
         for (category, prev_dir), _ in zero_win.iterrows():
-            matched = df[(df['category'] == category) & (df['prev_direction'] == prev_dir)]
+            matched = df[(df['categories'] == category) & (df['prev_direction'] == prev_dir)]
             for _, row in matched.iterrows():
                 detail_rows.append(f"""
                     <tr>
                         <td>{row['ticker']}</td>
-                        <td>{row['company_name']}</td>
+                        <td>{row['stock_name']}</td>
                         <td>{category}</td>
                         <td>{prev_dir}</td>
                         <td class="num">{row['backtest_date'].strftime('%Y-%m-%d')}</td>

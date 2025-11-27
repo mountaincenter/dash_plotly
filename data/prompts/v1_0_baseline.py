@@ -41,11 +41,11 @@ def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
 **Top3成功銘柄（学ぶべき好例）:**
 """
         for i, stock in enumerate(backtest.get('top_performers', []), 1):
-            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **+{stock['return']:.2f}%**\n"
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['categories']}) → **+{stock['return']:.2f}%**\n"
 
         backtest_section += "\n**Top3失敗銘柄（避けるべき悪例）:**\n"
         for i, stock in enumerate(backtest.get('worst_performers', []), 1):
-            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['category']}) → **{stock['return']:.2f}%**\n"
+            backtest_section += f"{i}. 【{stock['ticker']} {stock['name']}】({stock['categories']}) → **{stock['return']:.2f}%**\n"
 
         backtest_section += f"""
 **✅ 選定戦略への反映（重要）:**
@@ -130,9 +130,9 @@ X（株クラ）の情報、IR材料、出来高急増、ATRを重視して選�
 [
   {{
     "ticker_symbol": "3031",
-    "company_name": "ラクーンHD",
+    "stock_name": "ラクーンHD",
     "reason": "{context['latest_trading_day']}引け後にEC新サービスのIR発表。その後の株クラで「{context['next_trading_day']}寄付買い」の投稿が急増（100件以上）。{context['latest_trading_day']}の出来高は平均の4.2倍、直近5日ATR 5.8%で値動き活発。小型株（時価総額350億円）で個人投資家主導の急騰期待",
-    "category": "IR好材料+株クラバズ",
+    "categories": "IR好材料+株クラバズ",
     "sentiment_score": 0.85,
     "policy_link": "High",
     "has_mention": true,
@@ -140,9 +140,9 @@ X（株クラ）の情報、IR材料、出来高急増、ATRを重視して選�
   }},
   {{
     "ticker_symbol": "4563",
-    "company_name": "アンジェス",
+    "stock_name": "アンジェス",
     "reason": "バイオベンチャー。{context['latest_trading_day']}以降に治験進展のニュースが報道され、Xで「{context['next_trading_day']}ストップ高狙い」の言及急増。出来高3.5倍、ATR 6.2%。時価総額200億円の典型的な仕手株",
-    "category": "バイオ材料+仕手株",
+    "categories": "バイオ材料+仕手株",
     "sentiment_score": 0.72,
     "policy_link": "Med",
     "has_mention": false,

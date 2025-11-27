@@ -382,7 +382,7 @@ def main():
 
         recommendations.append({
             'ticker': ticker,
-            'company_name': row.get('stock_name', ''),
+            'stock_name': row.get('stock_name', ''),
             'grok_rank': int(row.get('grok_rank', 0)),
             'prev_day_close': prev_close,
             'prev_day_change_pct': price_data.get('dailyChangePct', 0),

@@ -140,8 +140,8 @@ def load_backtest_patterns() -> dict[str, Any]:
             for _, row in df_top.head(3).iterrows():
                 backtest_context['top_performers'].append({
                     'ticker': row['ticker'],
-                    'name': row.get('company_name', 'N/A'),
-                    'category': row.get('category', 'N/A'),
+                    'name': row.get('stock_name', 'N/A'),
+                    'categories': row.get('categories', 'N/A'),
                     'return': row.get('morning_change_pct', 0)
                 })
         except Exception as e:
@@ -155,8 +155,8 @@ def load_backtest_patterns() -> dict[str, Any]:
             for _, row in df_worst.head(3).iterrows():
                 backtest_context['worst_performers'].append({
                     'ticker': row['ticker'],
-                    'name': row.get('company_name', 'N/A'),
-                    'category': row.get('category', 'N/A'),
+                    'name': row.get('stock_name', 'N/A'),
+                    'categories': row.get('categories', 'N/A'),
                     'return': row.get('morning_change_pct', 0)
                 })
         except Exception as e:
@@ -425,9 +425,9 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     rows = []
     for idx, item in enumerate(grok_data, 1):
         ticker_symbol = item.get("ticker_symbol", "")
-        company_name = item.get("company_name", "")
+        stock_name_val = item.get("stock_name", item.get("company_name", ""))
         reason = item.get("reason", "")
-        category = item.get("category", "")
+        categories_val = item.get("categories", item.get("category", ""))
         sentiment_score = item.get("sentiment_score", 0.5)
         policy_link = item.get("policy_link", "Low")
         has_mention = item.get("has_mention", False)
@@ -443,13 +443,13 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         row = {
             "ticker": ticker,
             "code": code,
-            "stock_name": company_name,
+            "stock_name": stock_name_val,
             "market": None,  # Grokからは取得できない
             "sectors": None,
             "series": None,
             "topixnewindexseries": None,
             "categories": ["GROK"],  # 固定値（配列形式）
-            "tags": category,  # Grokのcategoryをtagsに格納
+            "tags": categories_val,  # Grokのcategoriesをtagsに格納
             "reason": reason,  # 新規カラム: Grokの選定理由
             "date": selected_date,
             "Close": None,

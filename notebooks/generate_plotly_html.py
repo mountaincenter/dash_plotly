@@ -16,18 +16,18 @@ print("Loading data...")
 
 # Grok予想データ
 grok_predictions = [
-    {"ticker": "9348", "name_jp": "ispace", "name_en": "ispace", "mentioned_by": ["@kabuchenko"], "category": "Premium+IR+X+Policy", "policy_link": "High", "sentiment_score": 0.85},
-    {"ticker": "3929", "name_jp": "Synspective", "name_en": "Synspective", "mentioned_by": ["@kaikai2120621"], "category": "Premium+Bio+Geo", "policy_link": "High", "sentiment_score": 0.82},
-    {"ticker": "5595", "name_jp": "QPS研究所", "name_en": "QPS Kenkyujo", "mentioned_by": [], "category": "Theme+X+Policy", "policy_link": "Med", "sentiment_score": 0.70},
-    {"ticker": "6237", "name_jp": "ウエスト", "name_en": "West", "mentioned_by": ["@kabu777b"], "category": "Premium+IR+X+Policy", "policy_link": "High", "sentiment_score": 0.88},
-    {"ticker": "6264", "name_jp": "イワキ", "name_en": "Iwaki", "mentioned_by": [], "category": "IR+X+Policy", "policy_link": "Med", "sentiment_score": 0.78},
-    {"ticker": "186A", "name_jp": "アストロスケールHD", "name_en": "Astroscale HD", "mentioned_by": ["@daykabu2021"], "category": "Premium+Theme+X", "policy_link": "High", "sentiment_score": 0.75},
-    {"ticker": "2459", "name_jp": "アウンコンサルティング", "name_en": "Aun Consulting", "mentioned_by": ["@jestryoR"], "category": "Premium+IR+X+Policy", "policy_link": "Med", "sentiment_score": 0.80},
-    {"ticker": "3079", "name_jp": "ディーブイエックス", "name_en": "DVx", "mentioned_by": [], "category": "IR+X+Geo", "policy_link": "Low", "sentiment_score": 0.72},
-    {"ticker": "3664", "name_jp": "モブキャストHD", "name_en": "Mobcast HD", "mentioned_by": [], "category": "News+X+Policy", "policy_link": "Med", "sentiment_score": 0.70},
-    {"ticker": "2158", "name_jp": "FRONTEO", "name_en": "FRONTEO", "mentioned_by": ["@tesuta001"], "category": "Premium+News+X", "policy_link": "Low", "sentiment_score": 0.76},
-    {"ticker": "3769", "name_jp": "ランディックス", "name_en": "RANDIX", "mentioned_by": [], "category": "Earnings+X+Policy", "policy_link": "Med", "sentiment_score": 0.74},
-    {"ticker": "4398", "name_jp": "情報戦略テクノロジー", "name_en": "IT Strategy", "mentioned_by": [], "category": "News+X+Policy", "policy_link": "Low", "sentiment_score": 0.68}
+    {"ticker": "9348", "name_jp": "ispace", "name_en": "ispace", "mentioned_by": ["@kabuchenko"], "categories": "Premium+IR+X+Policy", "policy_link": "High", "sentiment_score": 0.85},
+    {"ticker": "3929", "name_jp": "Synspective", "name_en": "Synspective", "mentioned_by": ["@kaikai2120621"], "categories": "Premium+Bio+Geo", "policy_link": "High", "sentiment_score": 0.82},
+    {"ticker": "5595", "name_jp": "QPS研究所", "name_en": "QPS Kenkyujo", "mentioned_by": [], "categories": "Theme+X+Policy", "policy_link": "Med", "sentiment_score": 0.70},
+    {"ticker": "6237", "name_jp": "ウエスト", "name_en": "West", "mentioned_by": ["@kabu777b"], "categories": "Premium+IR+X+Policy", "policy_link": "High", "sentiment_score": 0.88},
+    {"ticker": "6264", "name_jp": "イワキ", "name_en": "Iwaki", "mentioned_by": [], "categories": "IR+X+Policy", "policy_link": "Med", "sentiment_score": 0.78},
+    {"ticker": "186A", "name_jp": "アストロスケールHD", "name_en": "Astroscale HD", "mentioned_by": ["@daykabu2021"], "categories": "Premium+Theme+X", "policy_link": "High", "sentiment_score": 0.75},
+    {"ticker": "2459", "name_jp": "アウンコンサルティング", "name_en": "Aun Consulting", "mentioned_by": ["@jestryoR"], "categories": "Premium+IR+X+Policy", "policy_link": "Med", "sentiment_score": 0.80},
+    {"ticker": "3079", "name_jp": "ディーブイエックス", "name_en": "DVx", "mentioned_by": [], "categories": "IR+X+Geo", "policy_link": "Low", "sentiment_score": 0.72},
+    {"ticker": "3664", "name_jp": "モブキャストHD", "name_en": "Mobcast HD", "mentioned_by": [], "categories": "News+X+Policy", "policy_link": "Med", "sentiment_score": 0.70},
+    {"ticker": "2158", "name_jp": "FRONTEO", "name_en": "FRONTEO", "mentioned_by": ["@tesuta001"], "categories": "Premium+News+X", "policy_link": "Low", "sentiment_score": 0.76},
+    {"ticker": "3769", "name_jp": "ランディックス", "name_en": "RANDIX", "mentioned_by": [], "categories": "Earnings+X+Policy", "policy_link": "Med", "sentiment_score": 0.74},
+    {"ticker": "4398", "name_jp": "情報戦略テクノロジー", "name_en": "IT Strategy", "mentioned_by": [], "categories": "News+X+Policy", "policy_link": "Low", "sentiment_score": 0.68}
 ]
 
 df_predictions = pd.DataFrame(grok_predictions)
@@ -73,7 +73,7 @@ for idx, row in df_predictions.iterrows():
                 'mentioned_by_str': row['mentioned_by_str'],
                 'policy_link': row['policy_link'],
                 'sentiment_score': row['sentiment_score'],
-                'category': row['category']
+                'categories': row['categories']
             })
     except Exception as e:
         pass

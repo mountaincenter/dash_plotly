@@ -167,7 +167,7 @@ def generate_html_report(df: pd.DataFrame) -> str:
 
         # 各カラムの値
         ticker = row['ticker']
-        stock_name = row.get('company_name', '')
+        stock_name = row.get('stock_name', '')
         grok_rank = row['grok_rank']
         prev_2day_close = row.get('prev_2day_close', 0)
         prev_close = row.get('prev_day_close', 0)
@@ -257,7 +257,7 @@ def generate_html_report(df: pd.DataFrame) -> str:
 
         # 各カラムの値
         ticker = row['ticker']
-        stock_name = row.get('company_name', '')
+        stock_name = row.get('stock_name', '')
         grok_rank = row['grok_rank']
         prev_2day_close = row.get('prev_2day_close', 0)
         prev_close = row.get('prev_day_close', 0)

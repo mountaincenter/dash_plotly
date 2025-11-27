@@ -306,7 +306,7 @@ def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
 [
   {{
     "ticker_symbol": "1798",
-    "company_name": "守谷商会",
+    "stock_name": "守谷商会",
     "reason": "[web_search: 日経新聞]{context['latest_trading_day']} 15:30配信、第2四半期決算上方修正IR発表（経常利益+43.2%増、具体的数値あり）。[web_search: Yahoo!ファイナンス]時価総額145億円、前日終値552円（+2.8%、安全ゾーン）。[x_search: IR言及]言及48件確認（最適ゾーン20-50件）、RT180、「好決算」中心、過熱前。[web_search: 株探]出来高20日平均の2.5倍、ATR 4.1%。除外確認: Core30リスト照合済み、前日+16%未満OK、Twitter80件未満OK",
     "sentiment_score": 0.75,
     "policy_link": "Med",
@@ -315,7 +315,7 @@ def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
   }},
   {{
     "ticker_symbol": "9552",
-    "company_name": "M&A総研ホールディングス",
+    "stock_name": "M&A総研ホールディングス",
     "reason": "[web_search: Bloomberg]{context['latest_trading_day']} 17:00配信、大型M&A案件受注ニュース（案件規模50億円）。[web_search: Yahoo!]時価総額250億円、前日終値1,265円（+5.2%、安全ゾーン）。[x_search: M&A言及]言及65件（最適ゾーンやや超えるが許容範囲）、RT250、ニュース反応中心。[web_search: 株探]出来高2.1倍、ATR 4.5%。除外確認: 前日+16%未満OK、Twitter80件未満OK",
     "sentiment_score": 0.70,
     "policy_link": "Low",

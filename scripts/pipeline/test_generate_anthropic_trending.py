@@ -79,7 +79,7 @@ def build_claude_prompt(execution_date: str, latest_trading_day: str, next_tradi
   "stocks": [
     {{
       "ticker": "1234.T",
-      "company_name": "〇〇株式会社",
+      "stock_name": "〇〇株式会社",
       "reason": "[web_search: 株探]2025-XX-XX 17:00配信、今期最終2倍上方修正IR発表（最終利益XX億円、前回予想YY億円から+50%）。[web_search: TDnet]決算短信で具体的数値確認。前日終値+3.2%、出来高1.5倍、Twitter言及35件。",
       "sentiment_score": 0.75,
       "selection_score": 88,
@@ -279,7 +279,7 @@ def main():
     # Preview
     print("Top 5 stocks:")
     for idx, row in df.head(5).iterrows():
-        print(f"  {idx+1}. {row['ticker']} - {row['company_name']}")
+        print(f"  {idx+1}. {row['ticker']} - {row['stock_name']}")
         print(f"     Score: {row.get('selection_score', 'N/A')}")
         print(f"     Reason: {row.get('reason', 'N/A')[:100]}...")
         print()

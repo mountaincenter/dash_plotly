@@ -96,7 +96,7 @@ def main():
     trend_up = hold_to_sell[hold_to_sell['prev_day_trend'] == '上昇'].sort_values('profit_100', ascending=False)
     for _, row in trend_up.iterrows():
         prev_change_pct = (row['prev_day_change'] / row['prev_2day_close']) * 100 if row['prev_2day_close'] > 0 else 0
-        print(f"  {row['ticker']} {row['company_name']}: 前日+{prev_change_pct:.2f}% → {row['result']} (利益: {row['profit_100']:,.0f}円)")
+        print(f"  {row['ticker']} {row['stock_name']}: 前日+{prev_change_pct:.2f}% → {row['result']} (利益: {row['profit_100']:,.0f}円)")
 
     # 詳細データ（前日下落の銘柄）
     print(f"\n" + "=" * 60)
@@ -106,7 +106,7 @@ def main():
     trend_down = hold_to_sell[hold_to_sell['prev_day_trend'] == '下落'].sort_values('profit_100', ascending=False)
     for _, row in trend_down.iterrows():
         prev_change_pct = (row['prev_day_change'] / row['prev_2day_close']) * 100 if row['prev_2day_close'] > 0 else 0
-        print(f"  {row['ticker']} {row['company_name']}: 前日{prev_change_pct:.2f}% → {row['result']} (利益: {row['profit_100']:,.0f}円)")
+        print(f"  {row['ticker']} {row['stock_name']}: 前日{prev_change_pct:.2f}% → {row['result']} (利益: {row['profit_100']:,.0f}円)")
 
 if __name__ == '__main__':
     main()

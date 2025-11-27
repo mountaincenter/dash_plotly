@@ -272,7 +272,7 @@ def main():
     # 確認
     print("=== 17カラムの充足確認 ===")
     required_cols = [
-        'ticker', 'company_name', 'grok_rank', 'prev_day_close', 'prev_day_change_pct',
+        'ticker', 'stock_name', 'grok_rank', 'prev_day_close', 'prev_day_change_pct',
         'atr_pct', 'v2_0_3_action', 'v2_0_3_score', 'v2_0_3_reasons',
         'v2_1_action', 'v2_1_score', 'v2_1_reasons',
         'rsi_14d', 'volume_change_20d', 'price_vs_sma5_pct',
