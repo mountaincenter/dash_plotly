@@ -194,6 +194,11 @@ def main() -> int:
     # Slack通知用セクションをファイルに保存
     save_billing_section(billing_data)
 
+    # タイトル用に残高だけを別ファイルに保存
+    with open("/tmp/xai_remaining.txt", "w") as f:
+        f.write(format_usd_cents(str(remaining_credits)))
+    print(f"✅ Remaining credits saved to /tmp/xai_remaining.txt")
+
     return 0
 
 
