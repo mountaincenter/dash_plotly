@@ -356,18 +356,16 @@ jobs:
 
               # STRONG_BUY銘柄をSlackタイトル用に保存
               python3 -c "
-import pandas as pd
-df = pd.read_parquet('data/parquet/static_signals.parquet')
-sb = df[df['signal'] == 'STRONG_BUY']
-with open('/tmp/strong_buy_title.txt', 'w') as f:
-    if len(sb) > 0:
-        lines = []
-        for _, r in sb.iterrows():
-            lines.append(f\"{r['ticker']}:{r['stock_name']}:¥{r['close']:,.0f}\")
-        f.write(' | '.join(lines))
-    else:
-        f.write('なし')
-"
+              import pandas as pd
+              df = pd.read_parquet('data/parquet/static_signals.parquet')
+              sb = df[df['signal'] == 'STRONG_BUY']
+              with open('/tmp/strong_buy_title.txt', 'w') as f:
+                  if len(sb) > 0:
+                      lines = [f\"{r['ticker']}:{r['stock_name']}:¥{r['close']:,.0f}\" for _, r in sb.iterrows()]
+                      f.write(' | '.join(lines))
+                  else:
+                      f.write('なし')
+              "
             fi
           else
             echo "  ❌ Failed to generate static_signals.parquet"
