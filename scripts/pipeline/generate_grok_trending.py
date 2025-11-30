@@ -252,10 +252,10 @@ def build_grok_prompt(context: dict[str, str], backtest: dict[str, Any]) -> str:
     except ImportError as e:
         print(f"[ERROR] Failed to import prompt module: {module_name}")
         print(f"[ERROR] {e}")
-        print(f"[INFO] Falling back to v1_0_baseline")
+        print(f"[INFO] Falling back to v1_1_web_search")
 
-        # フォールバック: v1_0_baseline を使用
-        from data.prompts.v1_0_baseline import build_grok_prompt as fallback_prompt
+        # フォールバック: v1_1_web_search を使用
+        from data.prompts.v1_1_web_search import build_grok_prompt as fallback_prompt
         return fallback_prompt(context, backtest)
 
 

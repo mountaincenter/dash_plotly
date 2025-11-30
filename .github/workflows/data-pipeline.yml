@@ -205,7 +205,7 @@ jobs:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           FORCE_META_UPDATE: ${{ steps.check_trading.outputs.force_meta_update }}
           SKIP_GROK_GENERATION: ${{ steps.exec_mode.outputs.skip_grok }}
-          PROMPT_VERSION: v1_1_web_search
+          PROMPT_VERSION: v1_2_increased_selection
           ALLOW_GROK_API: "1"
         run: |
           # Create .env.xai for Grok API
