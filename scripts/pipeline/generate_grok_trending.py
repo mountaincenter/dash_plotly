@@ -62,6 +62,16 @@ from scripts.lib.jquants_fetcher import JQuantsFetcher
 GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 ENV_XAI_PATH = ROOT / ".env.xai"
 
+# 取引制限データのパス（複数候補）
+MARGIN_CODE_MASTER_PATHS = [
+    PARQUET_DIR / "margin_code_master.parquet",
+    ROOT / "improvement" / "data" / "margin_code_master.parquet",
+]
+JSF_RESTRICTION_PATHS = [
+    PARQUET_DIR / "jsf_seigenichiran.csv",
+    ROOT / "improvement" / "data" / "jsf_seigenichiran.csv",
+]
+
 
 def parse_args():
     """コマンドライン引数をパース"""
@@ -550,6 +560,77 @@ def download_manifest_from_s3() -> dict:
         return {}
 
 
+def add_trading_restrictions(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    取引制限カラムを追加（margin_code, jsf_restricted, is_shortable）
+
+    Args:
+        df: grok_trending DataFrame
+
+    Returns:
+        取引制限カラムを追加したDataFrame
+
+    Raises:
+        FileNotFoundError: 必須ファイルが見つからない場合
+    """
+    if df.empty:
+        return df
+
+    # MarginCodeマスター読み込み
+    margin_path = None
+    for path in MARGIN_CODE_MASTER_PATHS:
+        if path.exists():
+            margin_path = path
+            break
+
+    if not margin_path:
+        raise FileNotFoundError(
+            f"[ERROR] MarginCode master not found. "
+            f"Checked paths: {[str(p) for p in MARGIN_CODE_MASTER_PATHS]}. "
+            f"Please ensure margin_code_master.parquet is available."
+        )
+
+    margin_df = pd.read_parquet(margin_path)
+    margin_code_map = dict(zip(margin_df['ticker'], margin_df['margin_code']))
+    margin_name_map = dict(zip(margin_df['ticker'], margin_df['margin_code_name']))
+    print(f"[INFO] MarginCode loaded: {len(margin_code_map)} stocks from {margin_path.name}")
+
+    # 日証金制限データ読み込み
+    jsf_path = None
+    for path in JSF_RESTRICTION_PATHS:
+        if path.exists():
+            jsf_path = path
+            break
+
+    if not jsf_path:
+        raise FileNotFoundError(
+            f"[ERROR] JSF restriction file not found. "
+            f"Checked paths: {[str(p) for p in JSF_RESTRICTION_PATHS]}. "
+            f"Please ensure jsf_seigenichiran.csv is available."
+        )
+
+    try:
+        jsf = pd.read_csv(jsf_path, skiprows=4)
+        jsf_stop_codes = set(jsf[jsf['実施措置'] == '申込停止']['銘柄コード'].astype(str))
+        print(f"[INFO] JSF restrictions loaded: {len(jsf_stop_codes)} stocks from {jsf_path.name}")
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] Failed to parse JSF CSV: {e}")
+
+    # カラム追加
+    df = df.copy()
+    df['margin_code'] = df['ticker'].map(margin_code_map).fillna('2')
+    df['margin_code_name'] = df['ticker'].map(margin_name_map).fillna('貸借')
+    df['jsf_restricted'] = df['ticker'].str.replace('.T', '', regex=False).isin(jsf_stop_codes)
+    df['is_shortable'] = (df['margin_code'] == '2') & (~df['jsf_restricted'])
+
+    # サマリー表示
+    print(f"[INFO] Trading restrictions added:")
+    print(f"       Shortable: {df['is_shortable'].sum()}/{len(df)}")
+    print(f"       JSF restricted: {df['jsf_restricted'].sum()}")
+
+    return df
+
+
 def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool = False) -> None:
     """
     Save to grok_trending.parquet
@@ -589,6 +670,9 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
                 print(f"[WARN] Failed to download from S3: {e}")
                 print(f"[WARN] Will create new file instead of merging")
 
+    # 取引制限カラムを追加
+    df = add_trading_restrictions(df)
+
     if should_merge and GROK_TRENDING_PATH.exists():
         # 既存データとマージ（26時更新時）
         try:
@@ -599,6 +683,10 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
             if "selected_time" in existing_df.columns:
                 existing_df = existing_df[existing_df["selected_time"] != selected_time]
                 print(f"[INFO] Removed old {selected_time} data, remaining: {len(existing_df)} stocks")
+
+            # 既存データにも取引制限カラムがない場合は追加
+            if 'margin_code' not in existing_df.columns:
+                existing_df = add_trading_restrictions(existing_df)
 
             # 新データと結合
             df_merged = pd.concat([existing_df, df], ignore_index=True)

@@ -46,6 +46,22 @@ BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
 
+# 取引制限データのパス（複数の候補をチェック）
+ROOT = Path(__file__).resolve().parents[2]
+MARGIN_CODE_MASTER_PATHS = [
+    ROOT / "data" / "parquet" / "margin_code_master.parquet",
+    ROOT / "improvement" / "data" / "margin_code_master.parquet",
+]
+JSF_RESTRICTION_PATHS = [
+    ROOT / "data" / "parquet" / "jsf_seigenichiran.csv",
+    ROOT / "improvement" / "data" / "jsf_seigenichiran.csv",
+]
+
+# 取引制限データ（グローバルキャッシュ）
+_margin_code_map: Optional[dict] = None
+_margin_name_map: Optional[dict] = None
+_jsf_stop_codes: Optional[set] = None
+
 # J-Quants クライアント（グローバル）
 _jquants_client: Optional[JQuantsClient] = None
 
@@ -56,6 +72,89 @@ def get_jquants_client() -> JQuantsClient:
     if _jquants_client is None:
         _jquants_client = JQuantsClient()
     return _jquants_client
+
+
+def load_trading_restrictions() -> Tuple[dict, dict, set]:
+    """
+    取引制限データを読み込み（シングルトン）
+
+    Returns:
+        Tuple of (margin_code_map, margin_name_map, jsf_stop_codes)
+
+    Raises:
+        FileNotFoundError: 必須ファイルが見つからない場合
+    """
+    global _margin_code_map, _margin_name_map, _jsf_stop_codes
+
+    # MarginCodeマスター（複数パスをチェック）
+    if _margin_code_map is None:
+        margin_path = None
+        for path in MARGIN_CODE_MASTER_PATHS:
+            if path.exists():
+                margin_path = path
+                break
+
+        if margin_path:
+            margin_df = pd.read_parquet(margin_path)
+            _margin_code_map = dict(zip(margin_df['ticker'], margin_df['margin_code']))
+            _margin_name_map = dict(zip(margin_df['ticker'], margin_df['margin_code_name']))
+            print(f"[INFO] MarginCode loaded: {len(_margin_code_map)} stocks from {margin_path.name}")
+        else:
+            raise FileNotFoundError(
+                f"[ERROR] MarginCode master not found. "
+                f"Checked paths: {[str(p) for p in MARGIN_CODE_MASTER_PATHS]}. "
+                f"Please ensure margin_code_master.parquet is available on S3 or locally."
+            )
+
+    # 日証金制限データ（複数パスをチェック）
+    if _jsf_stop_codes is None:
+        jsf_path = None
+        for path in JSF_RESTRICTION_PATHS:
+            if path.exists():
+                jsf_path = path
+                break
+
+        if jsf_path:
+            try:
+                jsf = pd.read_csv(jsf_path, skiprows=4)
+                _jsf_stop_codes = set(jsf[jsf['実施措置'] == '申込停止']['銘柄コード'].astype(str))
+                print(f"[INFO] JSF restrictions loaded: {len(_jsf_stop_codes)} stocks from {jsf_path.name}")
+            except Exception as e:
+                raise RuntimeError(f"[ERROR] Failed to parse JSF CSV: {e}")
+        else:
+            raise FileNotFoundError(
+                f"[ERROR] JSF restriction file not found. "
+                f"Checked paths: {[str(p) for p in JSF_RESTRICTION_PATHS]}. "
+                f"Please ensure jsf_seigenichiran.csv is available on S3 or locally."
+            )
+
+    return _margin_code_map, _margin_name_map, _jsf_stop_codes
+
+
+def get_trading_restriction_info(ticker: str) -> dict:
+    """
+    銘柄の取引制限情報を取得
+
+    Args:
+        ticker: 銘柄コード (例: "7203.T")
+
+    Returns:
+        dict with margin_code, margin_code_name, jsf_restricted, is_shortable
+    """
+    margin_code_map, margin_name_map, jsf_stop_codes = load_trading_restrictions()
+
+    code = ticker.replace('.T', '')
+    margin_code = margin_code_map.get(ticker, '2')  # デフォルトは貸借
+    margin_code_name = margin_name_map.get(ticker, '貸借')
+    jsf_restricted = code in jsf_stop_codes
+    is_shortable = (margin_code == '2') and (not jsf_restricted)
+
+    return {
+        'margin_code': margin_code,
+        'margin_code_name': margin_code_name,
+        'jsf_restricted': jsf_restricted,
+        'is_shortable': is_shortable,
+    }
 
 
 def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optional[float]:
@@ -467,6 +566,9 @@ def run_backtest() -> pd.DataFrame:
             print("SKIP (no data)")
             continue
 
+        # 取引制限情報を取得
+        trading_restrictions = get_trading_restriction_info(ticker)
+
         result = {
             "selection_date": selection_date.strftime("%Y-%m-%d"),
             "backtest_date": backtest_date.strftime("%Y-%m-%d"),
@@ -477,11 +579,17 @@ def run_backtest() -> pd.DataFrame:
             "grok_rank": row.get("grok_rank", idx + 1),
             "selection_score": row.get("selection_score", 0),
             **backtest_data,
-            "prompt_version": row.get("prompt_version", "v1_1_web_search")
+            "prompt_version": row.get("prompt_version", "v1_1_web_search"),
+            # 取引制限カラム
+            "margin_code": trading_restrictions['margin_code'],
+            "margin_code_name": trading_restrictions['margin_code_name'],
+            "jsf_restricted": trading_restrictions['jsf_restricted'],
+            "is_shortable": trading_restrictions['is_shortable'],
         }
 
         results.append(result)
-        print(f"OK (Phase1: {backtest_data['phase1_return']*100:+.2f}%, Phase2: {backtest_data['phase2_return']*100:+.2f}%)")
+        shortable_mark = "○" if trading_restrictions['is_shortable'] else "✗"
+        print(f"OK (Phase1: {backtest_data['phase1_return']*100:+.2f}%, Phase2: {backtest_data['phase2_return']*100:+.2f}%, Short: {shortable_mark})")
 
     if not results:
         print("[WARN] No backtest results generated")
@@ -505,6 +613,12 @@ def run_backtest() -> pd.DataFrame:
     phase3_3pct_avg_return = df_results['phase3_3pct_return'].mean() * 100 if df_results['phase3_3pct_return'].notna().any() else 0
     print(f"  Win rate: {phase3_3pct_win_rate:.1f}%")
     print(f"  Avg return: {phase3_3pct_avg_return:+.2f}%")
+    print("-" * 80)
+    print(f"Trading Restrictions:")
+    print(f"  Total stocks: {len(df_results)}")
+    print(f"  Shortable (貸借+JSF OK): {df_results['is_shortable'].sum()}")
+    print(f"  Margin only (信用): {len(df_results[df_results['margin_code'] == '1'])}")
+    print(f"  JSF restricted: {df_results['jsf_restricted'].sum()}")
     print("=" * 80)
 
     return df_results
@@ -537,6 +651,44 @@ def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
 
     if archive_exists:
         df_archive = pd.read_parquet(BACKTEST_ARCHIVE_PATH)
+
+        # カラム名統一: 旧カラム名 → 新カラム名 (COLUMN_RENAME_TASKS.md準拠)
+        if 'company_name' in df_archive.columns:
+            # stock_nameが空またはNoneの場合、company_nameの値を使用
+            if 'stock_name' not in df_archive.columns:
+                df_archive['stock_name'] = df_archive['company_name']
+            else:
+                df_archive['stock_name'] = df_archive['stock_name'].fillna(df_archive['company_name'])
+                df_archive.loc[df_archive['stock_name'] == '', 'stock_name'] = df_archive.loc[df_archive['stock_name'] == '', 'company_name']
+            df_archive = df_archive.drop(columns=['company_name'])
+            print("[INFO] Migrated company_name → stock_name")
+
+        if 'category' in df_archive.columns:
+            # categoriesが空またはNoneの場合、categoryの値を使用
+            if 'categories' not in df_archive.columns:
+                df_archive['categories'] = df_archive['category']
+            else:
+                df_archive['categories'] = df_archive['categories'].fillna(df_archive['category'])
+                df_archive.loc[df_archive['categories'] == '', 'categories'] = df_archive.loc[df_archive['categories'] == '', 'category']
+            df_archive = df_archive.drop(columns=['category'])
+            print("[INFO] Migrated category → categories")
+
+        # 取引制限カラムがない場合は追加（既存アーカイブのバックフィル）
+        if 'margin_code' not in df_archive.columns or 'jsf_restricted' not in df_archive.columns:
+            print("[INFO] Backfilling trading restriction columns for existing archive...")
+            margin_code_map, margin_name_map, jsf_stop_codes = load_trading_restrictions()
+            for col in ['margin_code', 'margin_code_name', 'jsf_restricted', 'is_shortable']:
+                if col not in df_archive.columns:
+                    df_archive[col] = None
+            for idx, row in df_archive.iterrows():
+                ticker = row['ticker']
+                code = ticker.replace('.T', '')
+                df_archive.at[idx, 'margin_code'] = margin_code_map.get(ticker, '2')
+                df_archive.at[idx, 'margin_code_name'] = margin_name_map.get(ticker, '貸借')
+                df_archive.at[idx, 'jsf_restricted'] = code in jsf_stop_codes
+                df_archive.at[idx, 'is_shortable'] = (margin_code_map.get(ticker, '2') == '2') and (code not in jsf_stop_codes)
+            print(f"[INFO] Backfilled {len(df_archive)} archive records with trading restrictions")
+
         # 同じbacktest_dateのデータを削除（上書き）
         df_archive = df_archive[df_archive['backtest_date'] != backtest_date]
         df_merged = pd.concat([df_archive, df], ignore_index=True)

@@ -45,6 +45,14 @@ def calculate_confidence(score: int) -> str:
         return "low"
 
 
+def get_action_sort_order(action: str, is_restricted: bool) -> int:
+    """表示順序を決定: 買い(0) → 静観(1) → 売り(2) → 取引制限(3)"""
+    if is_restricted:
+        return 3
+    order_map = {"buy": 0, "hold": 1, "sell": 2}
+    return order_map.get(action, 1)
+
+
 def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
     """
     v2.1 のスキーマをフロントエンドが期待する形式に変換
@@ -59,6 +67,10 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
         action = map_action(stock.get("v2_1_action", "静観"))
         score = stock.get("v2_1_score", 0)
         confidence = calculate_confidence(score)
+
+        # 取引制限情報
+        is_restricted = stock.get("is_restricted", False)
+        restriction_reason = stock.get("restriction_reason")
 
         # reasons を配列から Reason オブジェクトに変換
         v2_1_reasons = stock.get("v2_1_reasons", [])
@@ -98,10 +110,28 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
                 "v2_0_3_reasons": stock.get("v2_0_3_reasons", "")
             },
             "categories": [],
+            # 取引制限情報
+            "tradingRestriction": {
+                "isRestricted": is_restricted,
+                "reason": restriction_reason,
+                "marginCode": stock.get("margin_code"),
+                "marginCodeName": stock.get("margin_code_name"),
+                "jsfRestricted": stock.get("jsf_restricted", False),
+                "isShortable": stock.get("is_shortable", True)
+            },
             # deepAnalysis は後でマージされる
             "deepAnalysis": stock.get("deepAnalysis")
         }
         converted_stocks.append(converted_stock)
+
+    # 表示順序でソート: 買い → 静観 → 売り → 取引制限
+    converted_stocks.sort(key=lambda x: (
+        get_action_sort_order(
+            x.get("recommendation", {}).get("action", "hold"),
+            x.get("tradingRestriction", {}).get("isRestricted", False)
+        ),
+        -x.get("recommendation", {}).get("score", 0)  # 同じカテゴリ内はスコア順
+    ))
 
     # 変換後のレスポンス
     return {
@@ -113,13 +143,14 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
                 "start": "2025-01-01",
                 "end": "2025-11-24"
             },
-            "technicalDataDate": "2025-11-24"
+            "technicalDataDate": trading_data.get("dataSource", {}).get("technicalDataDate", "2025-11-24")
         },
         "summary": {
             "total": trading_data.get("total_stocks", 0),
             "buy": trading_data.get("buy_count", 0),
             "sell": trading_data.get("sell_count", 0),
-            "hold": trading_data.get("hold_count", 0)
+            "hold": trading_data.get("hold_count", 0),
+            "restricted": trading_data.get("restricted_count", 0)
         },
         "warnings": [],
         "stocks": converted_stocks,

@@ -404,6 +404,29 @@ def main():
             # 静観はデフォルト
             stop_loss_pct = 3.0
 
+        # 取引制限情報（grok_trending.parquetから取得）
+        margin_code = row.get('margin_code', '2')
+        margin_code_name = row.get('margin_code_name', '貸借')
+        jsf_restricted = row.get('jsf_restricted', False)
+        is_shortable = row.get('is_shortable', True)
+
+        # 取引制限判定
+        # 売りシグナルで空売り不可 → 取引制限
+        # 信用取引不可（margin_code='3'）→ 取引制限
+        is_restricted = False
+        restriction_reason = None
+        if str(margin_code) == '3':
+            is_restricted = True
+            restriction_reason = '信用取引不可（その他）'
+        elif v2_1_action == '売り' and not is_shortable:
+            is_restricted = True
+            if jsf_restricted:
+                restriction_reason = '日証金申込停止（空売り不可）'
+            elif str(margin_code) == '1':
+                restriction_reason = '信用銘柄（空売り不可）'
+            else:
+                restriction_reason = '空売り制限'
+
         recommendations.append({
             'ticker': ticker,
             'stock_name': row.get('stock_name', ''),
@@ -421,7 +444,14 @@ def main():
             'volume_change_20d': technical.get('volume_change_20d'),
             'price_vs_sma5_pct': technical.get('price_vs_sma5_pct'),
             'stop_loss_pct': round(stop_loss_pct, 1),
-            'settlement_timing': '大引け'
+            'settlement_timing': '大引け',
+            # 取引制限情報
+            'margin_code': str(margin_code),
+            'margin_code_name': margin_code_name,
+            'jsf_restricted': bool(jsf_restricted),
+            'is_shortable': bool(is_shortable),
+            'is_restricted': is_restricted,
+            'restriction_reason': restriction_reason
         })
 
     # 5. v2_1スコア順にソート
@@ -436,9 +466,12 @@ def main():
 
     # 6. JSON出力
     print(f"\n5. JSON出力中: {OUTPUT_JSON}")
-    buy_count = sum(1 for r in recommendations if r['v2_1_action'] == '買い')
-    sell_count = sum(1 for r in recommendations if r['v2_1_action'] == '売り')
-    hold_count = sum(1 for r in recommendations if r['v2_1_action'] == '静観')
+
+    # カウント集計（制限銘柄は別カテゴリ）
+    buy_count = sum(1 for r in recommendations if r['v2_1_action'] == '買い' and not r['is_restricted'])
+    sell_count = sum(1 for r in recommendations if r['v2_1_action'] == '売り' and not r['is_restricted'])
+    hold_count = sum(1 for r in recommendations if r['v2_1_action'] == '静観' and not r['is_restricted'])
+    restricted_count = sum(1 for r in recommendations if r['is_restricted'])
 
     output_data = {
         'generated_at': datetime.now().isoformat(),
@@ -451,6 +484,7 @@ def main():
         'buy_count': buy_count,
         'hold_count': hold_count,
         'sell_count': sell_count,
+        'restricted_count': restricted_count,
         'stocks': recommendations
     }
 
@@ -459,7 +493,7 @@ def main():
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
     print(f"   完了: {len(recommendations)} 銘柄")
-    print(f"   買い: {buy_count}, 静観: {hold_count}, 売り: {sell_count}")
+    print(f"   買い: {buy_count}, 静観: {hold_count}, 売り: {sell_count}, 取引制限: {restricted_count}")
 
     print("\n=== 完了 ===")
     return 0

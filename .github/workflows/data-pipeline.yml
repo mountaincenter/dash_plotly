@@ -231,6 +231,36 @@ jobs:
             echo "⚠️ Manual force update enabled for meta_jquants.parquet"
           fi
 
+          # 取引制限データをダウンロード（23:00 Grok選定用）
+          echo "📥 Downloading trading restriction data for Grok selection..."
+          mkdir -p data/parquet
+
+          # 1. margin_code_master.parquet（S3から）
+          if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}margin_code_master.parquet" "data/parquet/margin_code_master.parquet" --only-show-errors; then
+            echo "❌ ERROR: Failed to download margin_code_master.parquet from S3"
+            exit 1
+          fi
+          echo "✅ margin_code_master.parquet downloaded from S3"
+
+          # 2. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
+          JSF_PATH="data/parquet/jsf_seigenichiran.csv"
+          echo "📥 Downloading JSF restrictions from $JSF_URL..."
+          if curl -fsSL --connect-timeout 10 --max-time 30 "$JSF_URL" -o "$JSF_PATH" 2>/dev/null; then
+            # Shift-JIS → UTF-8 変換
+            if command -v iconv &> /dev/null; then
+              iconv -f SHIFT-JIS -t UTF-8 "$JSF_PATH" > "${JSF_PATH}.tmp" && mv "${JSF_PATH}.tmp" "$JSF_PATH"
+            fi
+            echo "✅ JSF restrictions downloaded from 日証金 (latest)"
+          else
+            echo "⚠️ Failed to download from 日証金, using S3 fallback..."
+            if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jsf_seigenichiran.csv" "$JSF_PATH" --only-show-errors; then
+              echo "❌ ERROR: Failed to download jsf_seigenichiran.csv from S3 fallback"
+              exit 1
+            fi
+            echo "✅ JSF restrictions downloaded from S3 (fallback)"
+          fi
+
           # Run the NEW pipeline (scalping skip + Grok)
           # Old pipeline (with scalping): python scripts/run_pipeline.py
           python scripts/run_pipeline_scalping_skip_add_grok.py
@@ -318,6 +348,35 @@ jobs:
             echo "✅ Downloaded archive: $EXISTING_RECORDS records across $EXISTING_DATES days"
           else
             echo "ℹ️  No existing archive found in S3, will create new one"
+          fi
+
+          # 取引制限データをダウンロード（margin_code + 日証金制限）- 必須ファイル
+          echo "📥 Downloading trading restriction data (required)..."
+
+          # 1. margin_code_master.parquet（S3から）
+          if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}margin_code_master.parquet" "data/parquet/margin_code_master.parquet" --only-show-errors; then
+            echo "❌ ERROR: Failed to download margin_code_master.parquet from S3"
+            exit 1
+          fi
+          echo "✅ margin_code_master.parquet downloaded from S3"
+
+          # 2. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
+          JSF_PATH="data/parquet/jsf_seigenichiran.csv"
+          echo "📥 Downloading JSF restrictions from $JSF_URL..."
+          if curl -fsSL --connect-timeout 10 --max-time 30 "$JSF_URL" -o "$JSF_PATH" 2>/dev/null; then
+            # Shift-JIS → UTF-8 変換
+            if command -v iconv &> /dev/null; then
+              iconv -f SHIFT-JIS -t UTF-8 "$JSF_PATH" > "${JSF_PATH}.tmp" && mv "${JSF_PATH}.tmp" "$JSF_PATH"
+            fi
+            echo "✅ JSF restrictions downloaded from 日証金 (latest)"
+          else
+            echo "⚠️ Failed to download from 日証金, using S3 fallback..."
+            if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jsf_seigenichiran.csv" "$JSF_PATH" --only-show-errors; then
+              echo "❌ ERROR: Failed to download jsf_seigenichiran.csv from S3 fallback"
+              exit 1
+            fi
+            echo "✅ JSF restrictions downloaded from S3 (fallback)"
           fi
 
           # バックテストを実行（S3のGROK選定結果を使用）
