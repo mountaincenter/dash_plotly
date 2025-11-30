@@ -514,6 +514,120 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
     return df
 
 
+def filter_and_enrich_with_meta_jquants(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    meta_jquants.parquetを使って銘柄をフィルタリング・エンリッチ
+
+    1. meta_jquantsに存在しない銘柄を除外（ETF等）
+    2. stock_nameを正式名称で上書き
+    3. market, sectors等のメタ情報を付与
+
+    Args:
+        df: Grok APIから変換されたDataFrame
+
+    Returns:
+        フィルタリング・エンリッチされたDataFrame
+    """
+    import boto3
+    import io
+    from botocore.exceptions import ClientError
+
+    if df.empty:
+        return df
+
+    # meta_jquants.parquetを読み込み（S3から）
+    try:
+        bucket = os.getenv('S3_BUCKET', 'stock-api-data')
+        key = 'parquet/meta_jquants.parquet'
+
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        meta_df = pd.read_parquet(io.BytesIO(response['Body'].read()))
+
+        print(f"[OK] Loaded meta_jquants.parquet from S3: {len(meta_df)} stocks")
+
+    except ClientError as e:
+        print(f"[WARN] Failed to load meta_jquants.parquet from S3: {e}")
+        print("[WARN] Skipping meta_jquants filtering")
+        return df
+    except Exception as e:
+        print(f"[WARN] Failed to parse meta_jquants.parquet: {e}")
+        print("[WARN] Skipping meta_jquants filtering")
+        return df
+
+    # meta_jquantsに存在する銘柄のセットを作成
+    valid_tickers = set(meta_df['ticker'].tolist())
+
+    # フィルタリング前の銘柄数
+    before_count = len(df)
+
+    # meta_jquantsに存在しない銘柄を除外
+    excluded_tickers = df[~df['ticker'].isin(valid_tickers)]['ticker'].tolist()
+    df_filtered = df[df['ticker'].isin(valid_tickers)].copy()
+
+    if excluded_tickers:
+        print(f"[INFO] Excluded {len(excluded_tickers)} stocks not in meta_jquants:")
+        for ticker in excluded_tickers:
+            original_name = df[df['ticker'] == ticker]['stock_name'].iloc[0]
+            print(f"       - {ticker}: {original_name}")
+
+    # stock_nameを正式名称で上書き & メタ情報付与
+    meta_dict = meta_df.set_index('ticker').to_dict('index')
+
+    corrected_names = []
+    for idx, row in df_filtered.iterrows():
+        ticker = row['ticker']
+        if ticker in meta_dict:
+            meta = meta_dict[ticker]
+            original_name = row['stock_name']
+            correct_name = meta.get('stock_name', original_name)
+
+            # stock_nameを上書き
+            df_filtered.at[idx, 'stock_name'] = correct_name
+
+            # メタ情報を付与
+            df_filtered.at[idx, 'market'] = meta.get('market')
+            df_filtered.at[idx, 'sectors'] = meta.get('sectors')
+            df_filtered.at[idx, 'series'] = meta.get('series')
+            df_filtered.at[idx, 'topixnewindexseries'] = meta.get('topixnewindexseries')
+
+            if original_name != correct_name:
+                corrected_names.append((ticker, original_name, correct_name))
+
+    if corrected_names:
+        print(f"[INFO] Corrected {len(corrected_names)} stock names:")
+        for ticker, orig, correct in corrected_names:
+            print(f"       - {ticker}: '{orig}' → '{correct}'")
+
+    # grok_rank を再計算（フィルタリング後の順位）
+    df_filtered = df_filtered.reset_index(drop=True)
+    df_filtered['grok_rank'] = range(1, len(df_filtered) + 1)
+    df_filtered['selection_rank'] = range(1, len(df_filtered) + 1)
+
+    # tagsを再構築（Top5バッジ更新）
+    def rebuild_tags(row):
+        tags_list = []
+        # 元のカテゴリを保持（tagsの最初の要素）
+        original_tags = row.get('tags', '')
+        if original_tags and ',' in str(original_tags):
+            tags_list.append(str(original_tags).split(',')[0])
+        elif original_tags:
+            tags_list.append(str(original_tags))
+        # スコア
+        tags_list.append(f"{row['selection_score']:.1f}")
+        # Top5バッジ
+        if row['selection_rank'] <= 5:
+            tags_list.append("⭐Top5")
+        return ",".join(tags_list)
+
+    df_filtered['tags'] = df_filtered.apply(rebuild_tags, axis=1)
+
+    after_count = len(df_filtered)
+    print(f"[OK] Filtered: {before_count} → {after_count} stocks")
+
+    return df_filtered
+
+
 def get_jst_date() -> str:
     """
     JST基準の日付を取得（YYYY-MM-DD形式）
@@ -788,7 +902,12 @@ def main() -> int:
         df = convert_to_all_stocks_schema(grok_data, selected_date, selected_time, prompt_version)
         print()
 
-        # 7. Preview
+        # 7. Filter and enrich with meta_jquants (ETF除外、stock_name正式名称化)
+        print("[INFO] Filtering and enriching with meta_jquants...")
+        df = filter_and_enrich_with_meta_jquants(df)
+        print()
+
+        # 8. Preview
         print("[INFO] Preview (first 5 stocks):")
         print("-" * 80)
         for i, row in df.head(5).iterrows():
@@ -797,7 +916,7 @@ def main() -> int:
             print(f"   Reason: {row['reason'][:80]}..." if len(row['reason']) > 80 else f"   Reason: {row['reason']}")
             print()
 
-        # 8. Save
+        # 9. Save
         save_grok_trending(df, selected_time, should_merge=should_merge)
 
         print("\n" + "=" * 60)

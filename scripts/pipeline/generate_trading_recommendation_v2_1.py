@@ -121,6 +121,50 @@ def calculate_technical_indicators(ticker: str, prices_df: pd.DataFrame) -> dict
         return {}
 
 
+def apply_v3_strategy(v2_1_action: str, prev_close: float) -> tuple[str, int, str, str]:
+    """
+    v3.0 戦略: シグナル + 価格帯 → アクション + 保有期間
+
+    Args:
+        v2_1_action: v2.1のアクション（'買い', '売り', '静観'）
+        prev_close: 前日終値
+
+    Returns:
+        tuple: (v3_action, v3_holding_days, v3_label, v3_reason)
+        - v3_action: '買い', '売り', '静観'
+        - v3_holding_days: 0 (当日), 5 (5日保有)
+        - v3_label: 表示用ラベル
+        - v3_reason: 理由
+    """
+    if pd.isna(prev_close) or prev_close <= 0:
+        return v2_1_action, 0, v2_1_action, '当日決済'
+
+    # 買いシグナル
+    if v2_1_action == '買い':
+        if 7500 <= prev_close < 10000:
+            return '買い', 5, '買い5日', '5日スイング（7,500-10,000円帯）'
+        elif 5000 <= prev_close < 7500:
+            return '買い', 0, '買い', '当日決済'
+        else:
+            return '買い', 0, '買い', '当日決済'
+
+    # 静観シグナル
+    elif v2_1_action == '静観':
+        if 1500 <= prev_close < 3000:
+            return '買い', 5, '買い5日', '5日転換（1,500-3,000円帯）'
+        else:
+            return '静観', 0, '静観', ''
+
+    # 売りシグナル
+    elif v2_1_action == '売り':
+        if 2000 <= prev_close < 10000:
+            return '売り', 5, '売り5日', '5日スイング（2,000-10,000円帯）'
+        else:
+            return '売り', 0, '売り', '当日決済'
+
+    return v2_1_action, 0, v2_1_action, '当日決済'
+
+
 def calculate_v2_0_3_score_and_action(row: pd.Series, backtest_stats: dict,
                                       fundamentals: dict, price_data: dict,
                                       total_stocks: int) -> tuple[int, str, list[str]]:
@@ -427,6 +471,9 @@ def main():
             else:
                 restriction_reason = '空売り制限'
 
+        # v3戦略を適用
+        v3_action, v3_holding_days, v3_label, v3_reason = apply_v3_strategy(v2_1_action, prev_close)
+
         recommendations.append({
             'ticker': ticker,
             'stock_name': row.get('stock_name', ''),
@@ -451,7 +498,12 @@ def main():
             'jsf_restricted': bool(jsf_restricted),
             'is_shortable': bool(is_shortable),
             'is_restricted': is_restricted,
-            'restriction_reason': restriction_reason
+            'restriction_reason': restriction_reason,
+            # v3戦略
+            'v3_action': v3_action,
+            'v3_holding_days': v3_holding_days,
+            'v3_reason': v3_reason,
+            'v3_label': v3_label
         })
 
     # 5. v2_1スコア順にソート

@@ -53,6 +53,21 @@ def get_action_sort_order(action: str, is_restricted: bool) -> int:
     return order_map.get(action, 1)
 
 
+def get_v3_sort_order(v3_label: str, is_restricted: bool) -> int:
+    """v3ラベルに基づく表示順序: 買い(0) → 買い5日(1) → 売り(2) → 売り5日(3) → 静観(4) → 取引制限(5)"""
+    if is_restricted:
+        return 5
+    # v3_labelの値に基づいてソート
+    order_map = {
+        "買い": 0,
+        "買い5日": 1,
+        "売り": 2,
+        "売り5日": 3,
+        "静観": 4,
+    }
+    return order_map.get(v3_label, 4)  # デフォルトは静観扱い
+
+
 def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
     """
     v2.1 のスキーマをフロントエンドが期待する形式に変換
@@ -107,7 +122,12 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
                 # v2_0_3 情報（比較用）
                 "v2_0_3_action": map_action(stock.get("v2_0_3_action", "静観")),
                 "v2_0_3_score": stock.get("v2_0_3_score"),
-                "v2_0_3_reasons": stock.get("v2_0_3_reasons", "")
+                "v2_0_3_reasons": stock.get("v2_0_3_reasons", ""),
+                # v3 情報
+                "v3_action": map_action(stock.get("v3_action", "静観")),
+                "v3_holding_days": stock.get("v3_holding_days", 0),
+                "v3_label": stock.get("v3_label", ""),
+                "v3_reason": stock.get("v3_reason", "")
             },
             "categories": [],
             # 取引制限情報
@@ -124,13 +144,13 @@ def convert_v2_1_to_frontend_format(trading_data: dict) -> dict:
         }
         converted_stocks.append(converted_stock)
 
-    # 表示順序でソート: 買い → 静観 → 売り → 取引制限
+    # 表示順序でソート: v3ラベル順（買い→買い5日→売り→売り5日→静観→取引制限）、同グループ内はv2.1スコア順
     converted_stocks.sort(key=lambda x: (
-        get_action_sort_order(
-            x.get("recommendation", {}).get("action", "hold"),
+        get_v3_sort_order(
+            x.get("recommendation", {}).get("v3_label", ""),
             x.get("tradingRestriction", {}).get("isRestricted", False)
         ),
-        -x.get("recommendation", {}).get("score", 0)  # 同じカテゴリ内はスコア順
+        -x.get("recommendation", {}).get("score", 0)  # 同じカテゴリ内はv2.1スコア順
     ))
 
     # 変換後のレスポンス
