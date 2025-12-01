@@ -106,8 +106,11 @@ jobs:
             WANTED_S3KEYS+=("${{ env.S3_PREFIX }}${filename}")
           done
 
-          # Always protect manifest.json and special directories
-          PROTECT=("${{ env.S3_PREFIX }}manifest.json")
+          # Always protect manifest.json, master data, and special directories
+          PROTECT=(
+            "${{ env.S3_PREFIX }}manifest.json"
+            "${{ env.S3_PREFIX }}margin_code_master.parquet"
+          )
 
           # Protect all market_summary files (not in manifest.json)
           mapfile -t MARKET_SUMMARY_FILES < <(aws s3api list-objects-v2 \
