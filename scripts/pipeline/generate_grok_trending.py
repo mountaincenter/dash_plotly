@@ -40,11 +40,15 @@ xAI Grok APIを使って「翌営業日デイトレ銘柄」を選定
 from __future__ import annotations
 
 import sys
+import os
+import io
 import json
 import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Any
+
+import boto3
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -442,6 +446,11 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         policy_link = item.get("policy_link", "Low")
         has_mention = item.get("has_mention", False)
         mentioned_by = item.get("mentioned_by", "")
+        # Normalize mentioned_by to string (Grok may return list or string)
+        if isinstance(mentioned_by, list):
+            mentioned_by = ", ".join(str(m) for m in mentioned_by)
+        elif mentioned_by is None:
+            mentioned_by = ""
 
         # tickerは "1234.T" 形式、codeは "1234" 形式
         ticker = f"{ticker_symbol}.T" if not ticker_symbol.endswith(".T") else ticker_symbol
