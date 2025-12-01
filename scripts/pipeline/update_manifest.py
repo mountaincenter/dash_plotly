@@ -25,6 +25,7 @@ from common_cfg.paths import PARQUET_DIR
 UPLOAD_FILES = [
     "meta.parquet",
     "meta_jquants.parquet",
+    "margin_code_master.parquet",  # 取引制限マスタ（信用取引制限コード）
     "all_stocks.parquet",
     "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
