@@ -414,17 +414,7 @@ jobs:
               echo "  ✅ Generated: $SIGNALS_COUNT signals (STRONG_BUY: $STRONG_BUY)"
 
               # STRONG_BUY銘柄をSlackタイトル用に保存
-              python3 << 'PYEOF'
-import pandas as pd
-df = pd.read_parquet('data/parquet/static_signals.parquet')
-sb = df[df['signal'] == 'STRONG_BUY']
-with open('/tmp/strong_buy_title.txt', 'w') as f:
-    if len(sb) > 0:
-        lines = [f"{r['ticker']}:{r['stock_name']}:¥{r['close']:,.0f}" for _, r in sb.iterrows()]
-        f.write(' | '.join(lines))
-    else:
-        f.write('なし')
-PYEOF
+              python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/static_signals.parquet'); sb=df[df['signal']=='STRONG_BUY']; open('/tmp/strong_buy_title.txt','w').write(' | '.join([f\"{r['ticker']}:{r['stock_name']}:¥{r['close']:,.0f}\" for _,r in sb.iterrows()]) if len(sb)>0 else 'なし')"
             fi
           else
             echo "  ❌ Failed to generate static_signals.parquet"
