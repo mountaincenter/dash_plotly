@@ -316,7 +316,6 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
     # セクション分割（簡易版）
     sections = {
         'indices': '',
-        'volatility': '',
         'sectors': '',
         'news': '',
         'trends': '',
@@ -345,8 +344,6 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
 
             if '主要指数' in section_header or 'indices' in section_header:
                 current_section = 'indices'
-            elif 'ボラティリティ' in section_header or 'volatility' in section_header or '日経vi' in section_header:
-                current_section = 'volatility'
             elif 'セクター' in section_header or 'sector' in section_header:
                 current_section = 'sectors'
             elif 'ニュース' in section_header or 'news' in section_header:
