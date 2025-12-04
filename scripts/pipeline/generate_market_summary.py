@@ -57,7 +57,7 @@ ENV_XAI_PATH = ROOT / ".env.xai"
 
 # プロンプトインポート
 sys.path.insert(0, str(ROOT / "data" / "prompts"))
-from v1_3_market_summary import build_market_summary_prompt, format_jquants_table
+from v1_4_market_summary import build_market_summary_prompt, format_jquants_table
 
 
 def parse_args():
@@ -218,11 +218,11 @@ def build_prompt(target_date: datetime) -> str:
     # J-Quantsデータを読み込み
     jquants_data = load_jquants_indices_data(target_date)
 
-    # v1.3プロンプト構築
+    # v1.4プロンプト構築
     context = {
         'execution_date': target_date.strftime("%Y-%m-%d"),
         'latest_trading_day': target_date.strftime("%Y-%m-%d"),
-        'report_time': '16:00',
+        'report_time': '16:45',
         'jquants_topix': jquants_data['topix'],
         'jquants_sectors': jquants_data['sectors'],
         'jquants_series': jquants_data['series'],
@@ -316,6 +316,7 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
     # セクション分割（簡易版）
     sections = {
         'indices': '',
+        'volatility': '',
         'sectors': '',
         'news': '',
         'trends': '',
@@ -344,6 +345,8 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
 
             if '主要指数' in section_header or 'indices' in section_header:
                 current_section = 'indices'
+            elif 'ボラティリティ' in section_header or 'volatility' in section_header or '日経vi' in section_header:
+                current_section = 'volatility'
             elif 'セクター' in section_header or 'sector' in section_header:
                 current_section = 'sectors'
             elif 'ニュース' in section_header or 'news' in section_header:
@@ -368,7 +371,7 @@ def parse_markdown_response(response: str, target_date: datetime, metadata: dict
         'report_metadata': {
             'date': target_date.strftime('%Y-%m-%d'),
             'generated_at': datetime.now().isoformat(),
-            'prompt_version': '1.3',
+            'prompt_version': '1.4',
             'word_count': len(response),
             'placeholder_count': response.count('[確認中]'),
             'usage': metadata['usage'],
@@ -547,7 +550,7 @@ def main() -> int:
     args = parse_args()
 
     print("=" * 60)
-    print("Generate Market Summary Report (v1.3)")
+    print("Generate Market Summary Report (v1.4)")
     print("=" * 60)
 
     # 0. 環境変数チェック（課金API呼び出し防止）
