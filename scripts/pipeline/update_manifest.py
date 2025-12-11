@@ -60,6 +60,9 @@ UPLOAD_FILES = [
     "series_prices_max_1d.parquet",
     # Static銘柄シグナル（manifest.jsonに含めて保護、アップロードはworkflowで実行）
     "static_signals.parquet",
+    # 取引結果
+    "stock_results.parquet",
+    "stock_results_summary.parquet",
     # Grok Analysis (backtest配下は除外 - s3-sync.ymlで保護される)
 ]
 
