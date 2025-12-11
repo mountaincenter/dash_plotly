@@ -10,12 +10,12 @@ from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
 from server.routers.grok import router as grok_router
 from server.routers.dev_backtest import router as dev_backtest_router
-from server.routers.dev_analyze import router as dev_analyze_router
 from server.routers.market_summary import router as market_summary_router
 from server.routers.dev_trading_recommendation import router as dev_trading_recommendation_router
-from server.routers.dev_grok_analysis import router as dev_grok_analysis_router
-from server.routers.dev_timing_analysis import router as dev_timing_analysis_router
 from server.routers.dev_recommendations import router as dev_recommendations_router
+from server.routers.dev_v3 import router as dev_v3_router
+from server.routers.dev_ifo import router as dev_ifo_router
+from server.routers.dev_stock_results import router as dev_stock_results_router
 
 import os
 
@@ -87,9 +87,9 @@ app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
 app.include_router(grok_router, tags=["grok"])
 app.include_router(dev_backtest_router, tags=["dev"])
-app.include_router(dev_analyze_router, tags=["dev"])
 app.include_router(market_summary_router, tags=["market-summary"])
 app.include_router(dev_trading_recommendation_router, tags=["trading-recommendations"])
-app.include_router(dev_grok_analysis_router, tags=["grok-analysis"])
-app.include_router(dev_timing_analysis_router, tags=["timing-analysis"])
 app.include_router(dev_recommendations_router, prefix="/dev", tags=["recommendations"])
+app.include_router(dev_v3_router, tags=["v3"])
+app.include_router(dev_ifo_router, tags=["ifo"])
+app.include_router(dev_stock_results_router, tags=["stock-results"])
