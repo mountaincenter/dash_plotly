@@ -15,6 +15,17 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
   }
 
+  # サインインポリシー（パスワード + パスキー）
+  sign_in_policy {
+    allowed_first_auth_factors = ["PASSWORD", "WEB_AUTHN"]
+  }
+
+  # WebAuthn/パスキー設定
+  web_authn_configuration {
+    relying_party_id  = "stock.porque-and-because.work"
+    user_verification = "preferred"  # "required" or "preferred"
+  }
+
   # MFA設定 (FIDO2/WebAuthn)
   mfa_configuration = "OPTIONAL"
 
@@ -96,11 +107,12 @@ resource "aws_cognito_user_pool_client" "nextjs" {
   # シークレット生成しない（SPA用）
   generate_secret = false
 
-  # 明示的な認証フロー
+  # 明示的な認証フロー（パスキー対応）
   explicit_auth_flows = [
     "ALLOW_USER_SRP_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
     "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_USER_AUTH",  # パスキー/WebAuthn認証に必要
   ]
 
   # サポートするIDプロバイダー
@@ -108,20 +120,20 @@ resource "aws_cognito_user_pool_client" "nextjs" {
 
   # コールバックURL（Next.jsアプリ）
   callback_urls = [
-    "http://localhost:3000/api/auth/callback/cognito",
-    "https://stock.porque-and-because.work/api/auth/callback/cognito",
+    "http://localhost:3000/dev/stock-results",
+    "https://stock.porque-and-because.work/dev/stock-results",
   ]
 
   # ログアウトURL
   logout_urls = [
-    "http://localhost:3000",
-    "https://stock.porque-and-because.work",
+    "http://localhost:3000/dev",
+    "https://stock.porque-and-because.work/dev",
   ]
 
   # OAuth設定
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_scopes                 = ["email", "openid", "profile"]
+  allowed_oauth_scopes                 = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
 
   # トークン有効期限
   access_token_validity  = 1   # 1時間
