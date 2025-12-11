@@ -120,8 +120,8 @@ resource "aws_cognito_user_pool_client" "nextjs" {
 
   # コールバックURL（Next.jsアプリ）
   callback_urls = [
-    "http://localhost:3000/dev/stock-results",
-    "https://stock.porque-and-because.work/dev/stock-results",
+    "http://localhost:3000/login",
+    "https://stock.porque-and-because.work/login",
   ]
 
   # ログアウトURL
