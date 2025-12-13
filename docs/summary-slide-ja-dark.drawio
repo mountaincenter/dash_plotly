@@ -6,7 +6,7 @@
         <mxCell id="1" parent="0" />
 
         <!-- Background -->
-        <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+        <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0a0a0f;strokeColor=none;" vertex="1" parent="1">
           <mxGeometry width="1600" height="820" as="geometry" />
         </mxCell>
 
@@ -19,7 +19,7 @@
         </mxCell>
 
         <!-- Row 1: 背景・制約・着眼点 -->
-        <mxCell id="card1" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="card1" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#12121a;strokeColor=#2a2a3a;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="124" width="480" height="200" as="geometry" />
         </mxCell>
         <mxCell id="num1" value="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
@@ -32,7 +32,7 @@
           <mxGeometry x="80" y="194" width="440" height="110" as="geometry" />
         </mxCell>
 
-        <mxCell id="card2" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="card2" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#12121a;strokeColor=#2a2a3a;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="560" y="124" width="480" height="200" as="geometry" />
         </mxCell>
         <mxCell id="num2" value="2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
@@ -45,7 +45,7 @@
           <mxGeometry x="580" y="194" width="440" height="110" as="geometry" />
         </mxCell>
 
-        <mxCell id="card3" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="card3" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#12121a;strokeColor=#2a2a3a;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="1060" y="124" width="480" height="200" as="geometry" />
         </mxCell>
         <mxCell id="num3" value="3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
@@ -59,7 +59,7 @@
         </mxCell>
 
         <!-- Row 2: アプローチ・仮説 -->
-        <mxCell id="card4" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#172554;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="card4" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1a1a28;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="344" width="980" height="400" as="geometry" />
         </mxCell>
         <mxCell id="num4" value="4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#2563EB;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
@@ -87,7 +87,7 @@
         </mxCell>
 
         <!-- 仮説 -->
-        <mxCell id="card5" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#052e16;strokeColor=#10B981;strokeWidth=2;" vertex="1" parent="1">
+        <mxCell id="card5" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1a1a28;strokeColor=#10B981;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="1060" y="344" width="480" height="400" as="geometry" />
         </mxCell>
         <mxCell id="num5" value="5" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10B981;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
@@ -124,7 +124,7 @@
         <mxCell id="1" parent="0" />
 
         <!-- Background -->
-        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0a0a0f;strokeColor=none;" vertex="1" parent="1">
           <mxGeometry width="1600" height="820" as="geometry" />
         </mxCell>
 
@@ -137,7 +137,7 @@
         </mxCell>
 
         <!-- Tech Stack Card -->
-        <mxCell id="tech-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="tech-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#12121a;strokeColor=#2a2a3a;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="124" width="720" height="380" as="geometry" />
         </mxCell>
         <mxCell id="tech-title" value="技術スタック" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
@@ -209,7 +209,7 @@
         </mxCell>
 
         <!-- Dev Style Card -->
-        <mxCell id="dev-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#172554;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="dev-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1a1a28;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="524" width="720" height="220" as="geometry" />
         </mxCell>
         <mxCell id="dev-title" value="開発スタイル" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
@@ -223,7 +223,7 @@
         </mxCell>
 
         <!-- Highlight Card - Light background -->
-        <mxCell id="hl-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+        <mxCell id="hl-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#12121a;strokeColor=#2a2a3a;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="800" y="124" width="740" height="620" as="geometry" />
         </mxCell>
         <mxCell id="hl-title" value="ハイライト" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
