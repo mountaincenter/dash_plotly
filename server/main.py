@@ -36,7 +36,7 @@ app.add_middleware(
     ],
     allow_origin_regex=r"^https://([a-z0-9-]+\.)?vercel\.app$",
     allow_credentials=False,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 

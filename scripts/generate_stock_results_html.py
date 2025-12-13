@@ -1123,5 +1123,21 @@ if s3_cfg.bucket:
     upload_file(s3_cfg, PARQUET_PATH, "stock_results.parquet")
     upload_file(s3_cfg, summary_path, "stock_results_summary.parquet")
     upload_file(s3_cfg, MANIFEST_PATH, "manifest.json")
+
+    # App Runnerのキャッシュをリフレッシュ
+    import urllib.request
+    import urllib.error
+
+    API_URL = "https://qnfmh5i4ed.ap-northeast-1.awsapprunner.com/api/dev/stock-results/refresh"
+    print("\nApp Runnerのキャッシュをリフレッシュ中...")
+    try:
+        req = urllib.request.Request(API_URL, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as response:
+            result = response.read().decode("utf-8")
+            print(f"[OK] キャッシュリフレッシュ完了: {result}")
+    except urllib.error.URLError as e:
+        print(f"[WARNING] キャッシュリフレッシュ失敗: {e}")
+    except Exception as e:
+        print(f"[WARNING] キャッシュリフレッシュ失敗: {e}")
 else:
     print("[INFO] S3バケットが設定されていません。アップロードをスキップしました。")

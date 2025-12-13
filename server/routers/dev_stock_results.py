@@ -32,7 +32,15 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 _results_cache: Optional[pd.DataFrame] = None
 _summary_cache: Optional[pd.DataFrame] = None
 _cache_timestamp: Optional[datetime] = None
-CACHE_TTL_SECONDS = 300  # 5分
+CACHE_TTL_SECONDS = 60  # 1分に短縮
+
+
+def clear_cache():
+    """キャッシュをクリア"""
+    global _results_cache, _summary_cache, _cache_timestamp
+    _results_cache = None
+    _summary_cache = None
+    _cache_timestamp = None
 
 
 def load_stock_results() -> pd.DataFrame:
@@ -345,4 +353,30 @@ async def get_results_by_stock():
 
     return {
         "results": results,
+    }
+
+
+@router.post("/api/dev/stock-results/refresh")
+async def refresh_stock_results():
+    """
+    キャッシュをクリアして最新データを再読み込み
+    S3アップロード後に呼び出すことでリアルタイム反映
+    """
+    clear_cache()
+
+    # データを再読み込み
+    df = load_stock_results()
+
+    if df.empty:
+        return {
+            "status": "warning",
+            "message": "Cache cleared but no data found",
+            "count": 0,
+        }
+
+    return {
+        "status": "success",
+        "message": "Cache refreshed",
+        "count": len(df),
+        "updated_at": datetime.now().isoformat(),
     }
