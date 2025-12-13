@@ -1,0 +1,279 @@
+<mxfile host="app.diagrams.net" modified="2025-12-14T00:00:00.000Z" agent="Claude" version="22.0.0" type="device">
+  <diagram name="1. 株の話" id="slide-1">
+    <mxGraphModel dx="1600" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Background -->
+        <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry width="1600" height="820" as="geometry" />
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="株式分析プラットフォーム" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=42;fontStyle=1;fontColor=#f1f5f9;" vertex="1" parent="1">
+          <mxGeometry x="60" y="24" width="600" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="— 注目銘柄に絞った分析アプローチ —" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#94a3b8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="74" width="450" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Row 1: 背景・制約・着眼点 -->
+        <mxCell id="card1" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="124" width="480" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="num1" value="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="144" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec1-title" value="背景" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="124" y="144" width="100" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec1-text" value="個人開発の株価分析ツールは数多く存在するが、&lt;br&gt;&lt;b&gt;&lt;font color=&quot;#D97706&quot;&gt;コイントス（勝率50%）を超える&lt;/font&gt;&lt;/b&gt;ものは少ない。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="194" width="440" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="card2" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="124" width="480" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="num2" value="2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="144" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec2-title" value="制約" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="624" y="144" width="100" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec2-text" value="yFinance等の&lt;b&gt;&lt;font color=&quot;#DC2626&quot;&gt;API制限&lt;/font&gt;&lt;/b&gt;により、&lt;br&gt;東証全銘柄の株価データを取得することが困難。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="194" width="440" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="card3" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="124" width="480" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="num3" value="3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="144" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec3-title" value="着眼点" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1124" y="144" width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec3-text" value="全銘柄を網羅的に分析するより、&lt;br&gt;&lt;b&gt;&lt;font color=&quot;#059669&quot;&gt;「注目が集まる銘柄」&lt;/font&gt;&lt;/b&gt;に絞った方が&lt;br&gt;効率的ではないか？" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="194" width="440" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Row 2: アプローチ・仮説 -->
+        <mxCell id="card4" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#172554;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="344" width="980" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="num4" value="4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#2563EB;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="364" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec4-title" value="アプローチ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="124" y="364" width="140" height="32" as="geometry" />
+        </mxCell>
+
+        <mxCell id="static-badge" value="静的銘柄" style="rounded=6;whiteSpace=wrap;html=1;fillColor=#6B7280;strokeColor=none;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="424" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="static-item1" value="• Core30（TOPIX核心銘柄）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontColor=#f1f5f9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="474" width="400" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="static-item2" value="• 政策銘柄（Claude Codeで選定）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontColor=#f1f5f9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="518" width="400" height="32" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dynamic-badge" value="動的銘柄" style="rounded=6;whiteSpace=wrap;html=1;fillColor=#7C3AED;strokeColor=none;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="594" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dynamic-text" value="毎日23時に&lt;b&gt;&lt;font color=&quot;#7C3AED&quot;&gt;Grok（xAI API）&lt;/font&gt;&lt;/b&gt;で「Xで話題の上昇期待銘柄」を15-20銘柄選定" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=18;fontColor=#f1f5f9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="644" width="900" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- 仮説 -->
+        <mxCell id="card5" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#052e16;strokeColor=#10B981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="344" width="480" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="num5" value="5" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10B981;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="364" width="32" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec5-title" value="仮説" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1124" y="364" width="100" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="sec5-text" value="注目が集まる銘柄に&lt;br&gt;絞って分析することで、" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=18;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="434" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sec5-highlight" value="コイントス以上の&lt;br&gt;勝率・リターン" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=40;fontColor=#059669;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="514" width="440" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="sec5-text2" value="が期待できるのではないか。" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=18;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="674" width="440" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer-url" value="stock.api.ymnk.jp" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#64748b;" vertex="1" parent="1">
+          <mxGeometry x="60" y="770" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="footer-page" value="1 / 2" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#64748b;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="770" width="80" height="24" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="2. 技術の話" id="slide-2">
+    <mxGraphModel dx="1600" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Background -->
+        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry width="1600" height="820" as="geometry" />
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title2" value="株式分析プラットフォーム" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=42;fontStyle=1;fontColor=#f1f5f9;" vertex="1" parent="1">
+          <mxGeometry x="60" y="24" width="600" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle2" value="— 技術スタック &amp; 開発スタイル —" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#94a3b8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="74" width="450" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Tech Stack Card -->
+        <mxCell id="tech-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="124" width="720" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="tech-title" value="技術スタック" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="144" width="160" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- Tech rows -->
+        <mxCell id="tech-row1-label" value="Backend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="194" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-py" value="Python" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#3776AB;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="194" width="72" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-fast" value="FastAPI" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#009688;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="282" y="194" width="72" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-row2-label" value="Frontend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="242" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-ts" value="TypeScript" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#3178C6;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="242" width="92" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-next" value="Next.js" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="302" y="242" width="68" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-vercel" value="Vercel" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="242" width="60" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-row3-label" value="Infrastructure" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="290" width="110" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-aws" value="AWS" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=none;fontColor=#000000;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="290" width="52" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-tf" value="Terraform" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#7B42BC;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="262" y="290" width="88" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-docker" value="Docker" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#2496ED;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="290" width="68" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-row4-label" value="Auth" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="338" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-cognito" value="Cognito" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#DD344C;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="338" width="72" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-passkey" value="Passkey" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#4F46E5;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="282" y="338" width="72" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-row5-label" value="CI/CD" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="386" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-gha" value="GitHub Actions" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#2088FF;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="386" width="120" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-row6-label" value="AI" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="80" y="434" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-grok" value="xAI Grok" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#374151;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="434" width="84" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-claude" value="Claude" style="rounded=4;whiteSpace=wrap;html=1;fillColor=#D97706;strokeColor=none;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="294" y="434" width="68" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Dev Style Card -->
+        <mxCell id="dev-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#172554;strokeColor=#3B82F6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="524" width="720" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-title" value="開発スタイル" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="544" width="160" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-vibe" value="Vibe Coding" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=40;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="594" width="320" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-desc" value="AIと対話しながらコードを書く開発手法。&lt;br&gt;要件を伝えるだけで設計からデプロイまでAIがサポート。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#cbd5e1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="664" width="640" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Highlight Card - Light background -->
+        <mxCell id="hl-card" value="" style="rounded=12;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#334155;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="124" width="740" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-title" value="ハイライト" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="144" width="160" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- Highlight 1: Grok AI -->
+        <mxCell id="hl-num1" value="Grok AI" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=50;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="194" width="340" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-label1" value="毎日の銘柄選定 + マーケットサマリー自動生成" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="840" y="260" width="420" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Highlight 2: AI駆動開発 -->
+        <mxCell id="hl-num2" value="AI駆動開発" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=50;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="314" width="400" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-label2" value="Vibe Coding + IaC（Terraform）でインフラも含めAI対応" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="840" y="380" width="460" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Highlight 3: yFinance -->
+        <mxCell id="hl-num3" value="yFinance" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=50;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="434" width="340" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-label3" value="長期分析 + リアルタイムデータ（バックエンド/フロントエンド両対応）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="840" y="500" width="520" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Highlight 4: セキュリティ -->
+        <mxCell id="hl-num4" value="Passkey + Cognito" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=50;fontColor=#f1f5f9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="554" width="660" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="hl-label4" value="ログイン管理 + パスワードレス認証で堅固なセキュリティ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="840" y="620" width="460" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer2-url" value="stock.api.ymnk.jp" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#64748b;" vertex="1" parent="1">
+          <mxGeometry x="60" y="770" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="footer2-year" value="2025 · 個人開発" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#64748b;" vertex="1" parent="1">
+          <mxGeometry x="720" y="770" width="160" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="footer2-page" value="2 / 2" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#64748B;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="770" width="80" height="24" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
