@@ -94,6 +94,7 @@ def prices(
 
     # --- period 自動マッピング ---
     period_map = {
+        "1m": "5d",
         "5m": "60d",
         "15m": "60d",
         "1h": "730d",
@@ -148,7 +149,7 @@ def prices(
         return []
 
     # --- 出力：分足・時間足のみ時刻付き ---
-    need_time = interval.lower() in {"5m", "15m", "1h"}
+    need_time = interval.lower() in {"1m", "5m", "15m", "1h"}
     return _to_json_records(sel, include_time=need_time)
 
 

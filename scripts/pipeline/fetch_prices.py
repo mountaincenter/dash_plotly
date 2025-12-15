@@ -25,6 +25,7 @@ ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 
 # 取得する価格データの設定
 PRICE_CONFIGS = [
+    {"period": "5d", "interval": "1m", "filename": "prices_5d_1m.parquet"},
     {"period": "60d", "interval": "15m", "filename": "prices_60d_15m.parquet"},
     {"period": "60d", "interval": "5m", "filename": "prices_60d_5m.parquet"},
     {"period": "730d", "interval": "1h", "filename": "prices_730d_1h.parquet", "fallback_period": "max"},

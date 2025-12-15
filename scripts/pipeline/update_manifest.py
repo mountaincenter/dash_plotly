@@ -32,6 +32,7 @@ UPLOAD_FILES = [
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
     "scalping_entry.parquet",
     "scalping_active.parquet",
+    "prices_5d_1m.parquet",
     "prices_60d_15m.parquet",
     "prices_60d_5m.parquet",
     "prices_730d_1h.parquet",
