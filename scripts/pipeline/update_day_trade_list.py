@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""
+grok_day_trade_list.parquet に grok_trending.parquet の銘柄を追加するスクリプト
+
+処理フロー:
+1. S3から grok_day_trade_list.parquet をダウンロード
+2. grok_trending.parquet から新規銘柄を抽出
+3. 既存銘柄は上書きせず、新規銘柄のみ追加
+4. S3に grok_day_trade_list.parquet をアップロード
+
+重要: 既存データの上書きは厳禁
+"""
+
+import os
+import sys
+import pandas as pd
+import boto3
+from io import BytesIO
+
+# 設定
+S3_BUCKET = os.environ.get("S3_BUCKET", "stock-api-data")
+S3_PREFIX = os.environ.get("S3_PREFIX", "parquet/")
+DAY_TRADE_LIST_FILE = "grok_day_trade_list.parquet"
+GROK_TRENDING_PATH = "data/parquet/grok_trending.parquet"
+
+
+def download_from_s3(s3_client, key: str) -> pd.DataFrame | None:
+    """S3からparquetファイルをダウンロード"""
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+        return pd.read_parquet(BytesIO(response["Body"].read()))
+    except s3_client.exceptions.NoSuchKey:
+        print(f"  ⚠️ ファイルが存在しません: s3://{S3_BUCKET}/{key}")
+        return None
+    except Exception as e:
+        print(f"  ❌ ダウンロードエラー: {e}")
+        return None
+
+
+def upload_to_s3(s3_client, df: pd.DataFrame, key: str) -> bool:
+    """DataFrameをS3にparquet形式でアップロード"""
+    try:
+        buffer = BytesIO()
+        df.to_parquet(buffer, index=False)
+        buffer.seek(0)
+        s3_client.put_object(Bucket=S3_BUCKET, Key=key, Body=buffer.getvalue())
+        return True
+    except Exception as e:
+        print(f"  ❌ アップロードエラー: {e}")
+        return False
+
+
+def main():
+    print("=" * 60)
+    print("grok_day_trade_list.parquet 銘柄追加処理")
+    print("=" * 60)
+    print()
+
+    # S3クライアント初期化
+    s3_client = boto3.client("s3")
+    s3_key = f"{S3_PREFIX}{DAY_TRADE_LIST_FILE}"
+
+    # Step 1: grok_trending.parquet を読み込み（ローカル）
+    print("📥 Step 1: grok_trending.parquet を読み込み...")
+    if not os.path.exists(GROK_TRENDING_PATH):
+        print(f"  ❌ ERROR: {GROK_TRENDING_PATH} が見つかりません")
+        sys.exit(1)
+
+    df_grok = pd.read_parquet(GROK_TRENDING_PATH)
+    grok_tickers = set(df_grok["ticker"].unique())
+    print(f"  ✅ grok_trending: {len(grok_tickers)} 銘柄")
+
+    # Step 2: S3から grok_day_trade_list.parquet をダウンロード
+    print()
+    print(f"📥 Step 2: S3から {DAY_TRADE_LIST_FILE} をダウンロード...")
+    df_master = download_from_s3(s3_client, s3_key)
+
+    if df_master is None:
+        # 新規作成
+        print("  ℹ️ 新規作成モード")
+        df_master = pd.DataFrame(columns=["ticker", "shortable", "day_trade", "ng"])
+        existing_tickers = set()
+    else:
+        existing_tickers = set(df_master["ticker"].unique())
+        print(f"  ✅ 既存: {len(existing_tickers)} 銘柄")
+
+    # Step 3: 新規銘柄のみ抽出（上書き厳禁）
+    print()
+    print("🔍 Step 3: 新規銘柄を抽出...")
+    new_tickers = grok_tickers - existing_tickers
+
+    if not new_tickers:
+        print("  ℹ️ 新規銘柄なし - 処理終了")
+        print()
+        print("✅ 完了（変更なし）")
+        return
+
+    print(f"  📊 新規銘柄: {len(new_tickers)} 件")
+    for ticker in sorted(new_tickers):
+        print(f"    - {ticker}")
+
+    # Step 4: 新規銘柄を追加（デフォルト値）
+    print()
+    print("➕ Step 4: 新規銘柄を追加...")
+    new_rows = pd.DataFrame(
+        {
+            "ticker": list(new_tickers),
+            "shortable": False,  # デフォルト: 空売り不可
+            "day_trade": True,  # デフォルト: いちにち信用可
+            "ng": False,  # デフォルト: 取引可
+        }
+    )
+
+    # 既存データを保持しつつ新規追加
+    df_updated = pd.concat([df_master, new_rows], ignore_index=True)
+
+    # ticker でソート
+    df_updated = df_updated.sort_values("ticker").reset_index(drop=True)
+
+    print(f"  ✅ 更新後: {len(df_updated)} 銘柄 (+{len(new_tickers)})")
+
+    # Step 5: S3にアップロード
+    print()
+    print(f"📤 Step 5: S3に {DAY_TRADE_LIST_FILE} をアップロード...")
+    if upload_to_s3(s3_client, df_updated, s3_key):
+        print(f"  ✅ アップロード完了: s3://{S3_BUCKET}/{s3_key}")
+    else:
+        print("  ❌ アップロード失敗")
+        sys.exit(1)
+
+    print()
+    print("=" * 60)
+    print(f"✅ 完了: {len(new_tickers)} 銘柄を追加しました")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

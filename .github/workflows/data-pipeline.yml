@@ -328,6 +328,36 @@ jobs:
 
           echo "============================================================"
 
+      - name: Update day trade list (23:00 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+          S3_PREFIX: ${{ env.S3_PREFIX }}
+        run: |
+          echo "============================================================"
+          echo "Updating grok_day_trade_list.parquet (23:00 Grok selection)"
+          echo "============================================================"
+
+          # grok_trending.parquet は前のステップでダウンロード済み
+          if [ ! -f "data/parquet/grok_trending.parquet" ]; then
+            echo "❌ ERROR: grok_trending.parquet not found"
+            exit 1
+          fi
+
+          # 銘柄追加スクリプトを実行
+          # - S3から grok_day_trade_list.parquet をダウンロード
+          # - 新規銘柄のみ追加（上書き厳禁）
+          # - S3にアップロード
+          python3 scripts/pipeline/update_day_trade_list.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Day trade list updated successfully"
+          else
+            echo "⚠️ Day trade list update failed (non-critical)"
+          fi
+
+          echo "============================================================"
+
       - name: Run backtest and archive
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
