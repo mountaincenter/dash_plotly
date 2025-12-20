@@ -16,6 +16,7 @@ from server.routers.dev_recommendations import router as dev_recommendations_rou
 from server.routers.dev_v3 import router as dev_v3_router
 from server.routers.dev_ifo import router as dev_ifo_router
 from server.routers.dev_stock_results import router as dev_stock_results_router
+from server.routers.dev_day_trade_list import router as dev_day_trade_list_router
 
 import os
 
@@ -36,7 +37,7 @@ app.add_middleware(
     ],
     allow_origin_regex=r"^https://([a-z0-9-]+\.)?vercel\.app$",
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -93,3 +94,4 @@ app.include_router(dev_recommendations_router, prefix="/dev", tags=["recommendat
 app.include_router(dev_v3_router, tags=["v3"])
 app.include_router(dev_ifo_router, tags=["ifo"])
 app.include_router(dev_stock_results_router, tags=["stock-results"])
+app.include_router(dev_day_trade_list_router, tags=["day-trade-list"])
