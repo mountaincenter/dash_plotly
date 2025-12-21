@@ -101,10 +101,10 @@ def main():
     df_master = download_from_s3(s3_client, s3_key)
 
     if df_master is None:
-        # 新規作成
-        print("  ℹ️ 新規作成モード")
-        df_master = pd.DataFrame(columns=EXPECTED_COLUMNS)
-        existing_tickers = set()
+        # 既存データが取得できない場合は処理を中断（上書き防止）
+        print("  ❌ ERROR: S3から既存データを取得できません")
+        print("  ⚠️ 上書き防止のため処理を中断します")
+        sys.exit(1)
     else:
         # 検証
         is_valid, errors = validate_dataframe(df_master)
