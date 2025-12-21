@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>v4アプローチ比較 - Financial Score活用方法</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        h2 { color: #ff6b6b; border-bottom: 1px solid #444; padding-bottom: 8px; margin-top: 40px; }
+        h3 { color: #ffd93d; margin-top: 30px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 12px 16px; }
+        th { background: #2d2d44; color: #00d4ff; text-align: center; }
+        .r { text-align: right; }
+        .c { text-align: center; }
+        .l { text-align: left; }
+        tr:nth-child(even) { background: #242438; }
+        tr:hover { background: #3d3d5c; }
+        .winner { background: #1a4d1a !important; color: #00ff88; font-weight: bold; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .highlight { background: #4a3d1a !important; }
+        .version-tag { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 5px; }
+        .v2-tag { background: #4a90d9; }
+        .v4c-tag { background: #90d94a; }
+        .v4d-tag { background: #d94a90; }
+        .v4e-tag { background: #d9904a; }
+        .conclusion-box { background: linear-gradient(135deg, #1a4d1a 0%, #2d2d44 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border: 2px solid #00ff88; }
+        .conclusion-box h3 { color: #00ff88; margin-top: 0; font-size: 20px; }
+        .big-number { font-size: 32px; font-weight: bold; color: #00d4ff; }
+        .metric-card { display: inline-block; background: #2d2d44; padding: 20px; border-radius: 8px; margin: 10px; text-align: center; min-width: 150px; }
+        .metric-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .metric-value { font-size: 24px; font-weight: bold; }
+        .approach-box { background: #2d2d44; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #00d4ff; }
+        .approach-box h4 { margin: 0 0 10px 0; color: #00d4ff; }
+        .approach-box p { margin: 5px 0; color: #ccc; font-size: 14px; }
+        .rank-1 { color: #ffd700; font-weight: bold; }
+        .rank-2 { color: #c0c0c0; font-weight: bold; }
+        .rank-3 { color: #cd7f32; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>v4アプローチ比較 - Financial Score活用方法</h1>
+    <p>生成日時: 2025-11-29</p>
+    <p>目的: <strong>少ない投資額でお金が増える方法を探す</strong></p>
+    <p>条件: キーエンス除外、20,000円以上除外、STRONG_BUYのみ、5日保有</p>
+
+    <h2>テストしたアプローチ</h2>
+
+    <div class="approach-box">
+        <h4>v2相当 (ベースライン)</h4>
+        <p>条件: Technical Score >= 50 (Financial Scoreは使用しない)</p>
+        <p>説明: 現行v2と同等。テクニカル指標のみでシグナル判定</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4a: Financial Penaltyのみ</h4>
+        <p>条件: tech_score + min(fin_score, 0) >= 閾値</p>
+        <p>説明: Financialスコアがマイナスの場合のみ減点。プラスは無視</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4b: Financial 50%ウェイト</h4>
+        <p>条件: tech_score + fin_score * 0.5 >= 閾値</p>
+        <p>説明: Financialスコアの影響を半分に抑える</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4c: Financial フィルター</h4>
+        <p>条件: tech_score >= 閾値 AND fin_score >= 0</p>
+        <p>説明: Financialスコアは足切りのみ。スコア加算には使わない</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4d: Technical主体 + 小Financial + Margin</h4>
+        <p>条件: tech_score + fin_score * 0.3 + margin_score * 0.5 >= 閾値</p>
+        <p>説明: テクニカル重視。Financialと空売りは補助的に使用</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4e: 決算タイミング除外</h4>
+        <p>条件: tech_score >= 閾値 AND 決算前後10日を除外</p>
+        <p>説明: 決算発表前後のボラティリティを回避</p>
+    </div>
+
+    <div class="approach-box">
+        <h4>v4f: Technical + Marginのみ</h4>
+        <p>条件: tech_score + margin_score * 0.5 >= 閾値</p>
+        <p>説明: Financialは使わず、空売り残高のみ参照</p>
+    </div>
+
+    <h2>ROI順 TOP5 (閾値50)</h2>
+    <table>
+        <tr>
+            <th class="c">順位</th>
+            <th class="l">アプローチ</th>
+            <th class="r">シグナル数</th>
+            <th class="r">勝率</th>
+            <th class="r">平均ROI</th>
+            <th class="r">1シグナル利益</th>
+            <th class="r">合計利益</th>
+        </tr>
+        <tr class="highlight">
+            <td class="c rank-1">1</td>
+            <td class="l"><span class="version-tag v2-tag">v2相当</span> tech>=50</td>
+            <td class="r">121</td>
+            <td class="r">71.9%</td>
+            <td class="r winner">4.05%</td>
+            <td class="r winner">21,797円</td>
+            <td class="r">2,637,442円</td>
+        </tr>
+        <tr class="highlight">
+            <td class="c rank-1">1</td>
+            <td class="l"><span class="version-tag v4c-tag">v4c</span> tech>=50 AND fin>=0</td>
+            <td class="r">121</td>
+            <td class="r">71.9%</td>
+            <td class="r winner">4.05%</td>
+            <td class="r winner">21,797円</td>
+            <td class="r">2,637,442円</td>
+        </tr>
+        <tr>
+            <td class="c rank-3">3</td>
+            <td class="l"><span class="version-tag v4e-tag">v4e</span> tech>=50 AND 決算外</td>
+            <td class="r">120</td>
+            <td class="r">71.7%</td>
+            <td class="r">4.01%</td>
+            <td class="r">21,700円</td>
+            <td class="r">2,604,000円</td>
+        </tr>
+        <tr>
+            <td class="c">4</td>
+            <td class="l"><span class="version-tag v4c-tag">v4c</span> tech>=45 AND fin>=0</td>
+            <td class="r">235</td>
+            <td class="r">67.2%</td>
+            <td class="r">3.39%</td>
+            <td class="r">17,359円</td>
+            <td class="r">4,079,365円</td>
+        </tr>
+        <tr>
+            <td class="c">5</td>
+            <td class="l"><span class="version-tag v4d-tag">v4d</span> tech+fin*0.3>=50</td>
+            <td class="r">213</td>
+            <td class="r">67.6%</td>
+            <td class="r">3.38%</td>
+            <td class="r">17,119円</td>
+            <td class="r">3,646,347円</td>
+        </tr>
+    </table>
+
+    <h2>バランス型 (閾値45)</h2>
+    <p>シグナル数を増やしつつROIも維持したい場合</p>
+    <table>
+        <tr>
+            <th class="l">アプローチ</th>
+            <th class="r">シグナル数</th>
+            <th class="r">勝率</th>
+            <th class="r">平均ROI</th>
+            <th class="r">1シグナル利益</th>
+            <th class="r">合計利益</th>
+        </tr>
+        <tr class="highlight">
+            <td class="l"><span class="version-tag v4d-tag">v4d</span> tech+fin*0.3+margin*0.5>=45</td>
+            <td class="r">290</td>
+            <td class="r">67.6%</td>
+            <td class="r winner">3.40%</td>
+            <td class="r">17,400円</td>
+            <td class="r winner">5,046,000円</td>
+        </tr>
+        <tr>
+            <td class="l"><span class="version-tag v4c-tag">v4c</span> tech>=45 AND fin>=0</td>
+            <td class="r">235</td>
+            <td class="r">67.2%</td>
+            <td class="r">3.39%</td>
+            <td class="r">17,359円</td>
+            <td class="r">4,079,365円</td>
+        </tr>
+        <tr>
+            <td class="l">v2相当 tech>=45</td>
+            <td class="r">240</td>
+            <td class="r">66.3%</td>
+            <td class="r">3.25%</td>
+            <td class="r">16,800円</td>
+            <td class="r">4,032,000円</td>
+        </tr>
+    </table>
+
+    <h2>v3との比較 (参考)</h2>
+    <table>
+        <tr>
+            <th class="l">アプローチ</th>
+            <th class="r">シグナル数</th>
+            <th class="r">勝率</th>
+            <th class="r">平均ROI</th>
+            <th class="r">合計利益</th>
+        </tr>
+        <tr>
+            <td class="l">v3 (total>=60)</td>
+            <td class="r">434</td>
+            <td class="r">63.6%</td>
+            <td class="r negative">2.42%</td>
+            <td class="r">4,738,685円</td>
+        </tr>
+        <tr class="highlight">
+            <td class="l">v2 (tech>=50)</td>
+            <td class="r">121</td>
+            <td class="r">71.9%</td>
+            <td class="r positive">4.05%</td>
+            <td class="r">2,637,442円</td>
+        </tr>
+        <tr class="highlight">
+            <td class="l">v4d (閾値45)</td>
+            <td class="r">290</td>
+            <td class="r">67.6%</td>
+            <td class="r positive">3.40%</td>
+            <td class="r">5,046,000円</td>
+        </tr>
+    </table>
+
+    <div class="conclusion-box">
+        <h3>結論</h3>
+
+        <h4>ROI最大化なら: v2 or v4c (閾値50)</h4>
+        <ul>
+            <li>平均ROI: <span class="big-number">4.05%</span></li>
+            <li>シグナル数: 121件</li>
+            <li>1シグナル利益: 21,797円</li>
+            <li>v4c (fin>=0フィルター) は v2 と完全同一結果 → Financial Scoreがマイナスの銘柄がv2では既にスコア低い</li>
+        </ul>
+
+        <h4 style="margin-top:25px;">バランス重視なら: v4d (閾値45)</h4>
+        <ul>
+            <li>平均ROI: <span class="big-number">3.40%</span> (v2の84%)</li>
+            <li>シグナル数: 290件 (v2の2.4倍)</li>
+            <li>合計利益: 5,046,000円 (v2の1.9倍)</li>
+            <li>トレード機会が増え、総利益は最大化</li>
+        </ul>
+
+        <h4 style="margin-top:25px;">推奨</h4>
+        <table style="width: auto; margin: 15px 0;">
+            <tr>
+                <th class="l">資金状況</th>
+                <th class="l">推奨</th>
+                <th class="l">理由</th>
+            </tr>
+            <tr>
+                <td class="l">限られた資金</td>
+                <td class="l">v2 (tech>=50)</td>
+                <td class="l">ROI最大、少ない投資で効率的に増やす</td>
+            </tr>
+            <tr>
+                <td class="l">余裕のある資金</td>
+                <td class="l">v4d (閾値45)</td>
+                <td class="l">総利益最大、多くのチャンスを活かす</td>
+            </tr>
+            <tr>
+                <td class="l">ハイブリッド</td>
+                <td class="l">v4d発生 + v2条件</td>
+                <td class="l">v4dでシグナル→tech>=50のみ実行</td>
+            </tr>
+        </table>
+    </div>
+
+    <h2>Financial Scoreの教訓</h2>
+    <div style="background: #2d2d44; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>発見:</strong> Financial Score (増収増益、ROE、自己資本比率) を加点に使うとROIが下がる</p>
+        <p><strong>理由の仮説:</strong></p>
+        <ul>
+            <li>好業績銘柄は既に株価に織り込み済み → 割安でない</li>
+            <li>テクニカル的に売られ過ぎ (RSI低、MA乖離大) + 好業績 = 構造的問題の可能性</li>
+            <li>短期トレード (5日) では、業績よりモメンタム・需給が重要</li>
+        </ul>
+        <p><strong>結論:</strong> 5日保有のリバウンド狙いでは、テクニカル指標が最も有効</p>
+    </div>
+</body>
+</html>

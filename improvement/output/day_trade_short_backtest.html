@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>寄付ショート→大引け決済 バックテスト結果</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0a0f; color: #e0e0e0; margin: 20px; }
+        h1 { color: #fff; }
+        .summary { background: #1a1a2e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .summary h2 { margin-top: 0; color: #4fc3f7; }
+        .stats { display: flex; gap: 30px; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2em; font-weight: bold; }
+        .stat-label { color: #888; }
+        .win { color: #4caf50; }
+        .lose { color: #f44336; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+        th, td { border: 1px solid #333; padding: 8px 12px; text-align: right; }
+        th { background: #1a1a2e; color: #4fc3f7; }
+        tr:hover { background: #1a1a2e; }
+        .date-col { text-align: left; }
+        .ticker-col { text-align: left; font-family: monospace; }
+        .name-col { text-align: left; }
+        .positive { color: #4caf50; }
+        .negative { color: #f44336; }
+        .section { margin-top: 30px; }
+        .filter { margin-bottom: 15px; }
+        select { background: #1a1a2e; color: #e0e0e0; border: 1px solid #333; padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>寄付ショート → 大引け決済 バックテスト</h1>
+    <p>対象: Grok選定銘柄 × いちにち信用売可（重複除去済み）</p>
+    
+    <div class="summary">
+        <h2>全体サマリー</h2>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">197</div>
+                <div class="stat-label">総取引数</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color:#4caf50">117</div>
+                <div class="stat-label">勝ち</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color:#f44336">80</div>
+                <div class="stat-label">負け</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">59.4%</div>
+                <div class="stat-label">勝率</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" style="color:#4caf50">+1.85%</div>
+                <div class="stat-label">平均リターン</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>日別サマリー（取引日ベース）</h2>
+        <table>
+            <tr>
+                <th class="date-col">取引日</th>
+                <th>銘柄数</th>
+                <th>勝ち</th>
+                <th>負け</th>
+                <th>勝率</th>
+                <th>平均リターン</th>
+            </tr>
+            <tr>
+                <td class="date-col">2025-10-29</td>
+                <td>8</td>
+                <td class="win">4</td>
+                <td class="lose">4</td>
+                <td>50.0%</td>
+                <td class="positive">+1.74%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-10-30</td>
+                <td>2</td>
+                <td class="win">1</td>
+                <td class="lose">1</td>
+                <td>50.0%</td>
+                <td class="positive">+0.54%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-10-31</td>
+                <td>3</td>
+                <td class="win">0</td>
+                <td class="lose">3</td>
+                <td>0.0%</td>
+                <td class="negative">-3.87%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-04</td>
+                <td>4</td>
+                <td class="win">3</td>
+                <td class="lose">1</td>
+                <td>75.0%</td>
+                <td class="positive">+5.56%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-05</td>
+                <td>5</td>
+                <td class="win">2</td>
+                <td class="lose">3</td>
+                <td>40.0%</td>
+                <td class="negative">-0.39%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-06</td>
+                <td>4</td>
+                <td class="win">3</td>
+                <td class="lose">1</td>
+                <td>75.0%</td>
+                <td class="positive">+1.45%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-07</td>
+                <td>6</td>
+                <td class="win">5</td>
+                <td class="lose">1</td>
+                <td>83.3%</td>
+                <td class="positive">+3.30%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-10</td>
+                <td>5</td>
+                <td class="win">3</td>
+                <td class="lose">2</td>
+                <td>60.0%</td>
+                <td class="positive">+0.26%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-11</td>
+                <td>2</td>
+                <td class="win">1</td>
+                <td class="lose">1</td>
+                <td>50.0%</td>
+                <td class="positive">+0.98%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-12</td>
+                <td>3</td>
+                <td class="win">0</td>
+                <td class="lose">3</td>
+                <td>0.0%</td>
+                <td class="negative">-3.57%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-13</td>
+                <td>7</td>
+                <td class="win">6</td>
+                <td class="lose">1</td>
+                <td>85.7%</td>
+                <td class="positive">+3.13%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-14</td>
+                <td>2</td>
+                <td class="win">0</td>
+                <td class="lose">2</td>
+                <td>0.0%</td>
+                <td class="negative">-2.23%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-17</td>
+                <td>4</td>
+                <td class="win">3</td>
+                <td class="lose">1</td>
+                <td>75.0%</td>
+                <td class="positive">+2.08%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-18</td>
+                <td>4</td>
+                <td class="win">4</td>
+                <td class="lose">0</td>
+                <td>100.0%</td>
+                <td class="positive">+5.42%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-19</td>
+                <td>4</td>
+                <td class="win">3</td>
+                <td class="lose">1</td>
+                <td>75.0%</td>
+                <td class="negative">-1.81%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-20</td>
+                <td>2</td>
+                <td class="win">1</td>
+                <td class="lose">1</td>
+                <td>50.0%</td>
+                <td class="negative">-0.09%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-21</td>
+                <td>4</td>
+                <td class="win">1</td>
+                <td class="lose">3</td>
+                <td>25.0%</td>
+                <td class="negative">-1.53%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-25</td>
+                <td>3</td>
+                <td class="win">2</td>
+                <td class="lose">1</td>
+                <td>66.7%</td>
+                <td class="positive">+1.74%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-26</td>
+                <td>4</td>
+                <td class="win">0</td>
+                <td class="lose">4</td>
+                <td>0.0%</td>
+                <td class="negative">-5.81%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-27</td>
+                <td>4</td>
+                <td class="win">1</td>
+                <td class="lose">3</td>
+                <td>25.0%</td>
+                <td class="negative">-0.66%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-11-28</td>
+                <td>5</td>
+                <td class="win">2</td>
+                <td class="lose">3</td>
+                <td>40.0%</td>
+                <td class="positive">+0.51%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-01</td>
+                <td>10</td>
+                <td class="win">5</td>
+                <td class="lose">5</td>
+                <td>50.0%</td>
+                <td class="positive">+2.43%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-02</td>
+                <td>11</td>
+                <td class="win">9</td>
+                <td class="lose">2</td>
+                <td>81.8%</td>
+                <td class="positive">+7.62%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-03</td>
+                <td>9</td>
+                <td class="win">5</td>
+                <td class="lose">4</td>
+                <td>55.6%</td>
+                <td class="positive">+1.12%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-04</td>
+                <td>10</td>
+                <td class="win">6</td>
+                <td class="lose">4</td>
+                <td>60.0%</td>
+                <td class="negative">-0.11%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-05</td>
+                <td>10</td>
+                <td class="win">7</td>
+                <td class="lose">3</td>
+                <td>70.0%</td>
+                <td class="positive">+1.66%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-08</td>
+                <td>11</td>
+                <td class="win">6</td>
+                <td class="lose">5</td>
+                <td>54.5%</td>
+                <td class="positive">+3.67%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-09</td>
+                <td>9</td>
+                <td class="win">5</td>
+                <td class="lose">4</td>
+                <td>55.6%</td>
+                <td class="positive">+0.64%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-10</td>
+                <td>9</td>
+                <td class="win">5</td>
+                <td class="lose">4</td>
+                <td>55.6%</td>
+                <td class="positive">+0.58%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-11</td>
+                <td>10</td>
+                <td class="win">9</td>
+                <td class="lose">1</td>
+                <td>90.0%</td>
+                <td class="positive">+7.14%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-12</td>
+                <td>8</td>
+                <td class="win">5</td>
+                <td class="lose">3</td>
+                <td>62.5%</td>
+                <td class="positive">+3.99%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-16</td>
+                <td>7</td>
+                <td class="win">6</td>
+                <td class="lose">1</td>
+                <td>85.7%</td>
+                <td class="positive">+3.32%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-17</td>
+                <td>6</td>
+                <td class="win">4</td>
+                <td class="lose">2</td>
+                <td>66.7%</td>
+                <td class="positive">+1.84%</td>
+            </tr>
+            <tr>
+                <td class="date-col">2025-12-18</td>
+                <td>2</td>
+                <td class="win">0</td>
+                <td class="lose">2</td>
+                <td>0.0%</td>
+                <td class="negative">-8.28%</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2>銘柄別詳細</h2>
+        <div class="filter">
+            <select id="dateFilter" onchange="filterByDate()">
+                <option value="">全日付</option>
+                <option value="2025-10-29">2025-10-29</option>
+                <option value="2025-10-30">2025-10-30</option>
+                <option value="2025-10-31">2025-10-31</option>
+                <option value="2025-11-04">2025-11-04</option>
+                <option value="2025-11-05">2025-11-05</option>
+                <option value="2025-11-06">2025-11-06</option>
+                <option value="2025-11-07">2025-11-07</option>
+                <option value="2025-11-10">2025-11-10</option>
+                <option value="2025-11-11">2025-11-11</option>
+                <option value="2025-11-12">2025-11-12</option>
+                <option value="2025-11-13">2025-11-13</option>
+                <option value="2025-11-14">2025-11-14</option>
+                <option value="2025-11-17">2025-11-17</option>
+                <option value="2025-11-18">2025-11-18</option>
+                <option value="2025-11-19">2025-11-19</option>
+                <option value="2025-11-20">2025-11-20</option>
+                <option value="2025-11-21">2025-11-21</option>
+                <option value="2025-11-25">2025-11-25</option>
+                <option value="2025-11-26">2025-11-26</option>
+                <option value="2025-11-27">2025-11-27</option>
+                <option value="2025-11-28">2025-11-28</option>
+                <option value="2025-12-01">2025-12-01</option>
+                <option value="2025-12-02">2025-12-02</option>
+                <option value="2025-12-03">2025-12-03</option>
+                <option value="2025-12-04">2025-12-04</option>
+                <option value="2025-12-05">2025-12-05</option>
+                <option value="2025-12-08">2025-12-08</option>
+                <option value="2025-12-09">2025-12-09</option>
+                <option value="2025-12-10">2025-12-10</option>
+                <option value="2025-12-11">2025-12-11</option>
+                <option value="2025-12-12">2025-12-12</option>
+                <option value="2025-12-16">2025-12-16</option>
+                <option value="2025-12-17">2025-12-17</option>
+                <option value="2025-12-18">2025-12-18</option>
+            </select>
+        </div>
+        <table id="detailTable">
+            <tr>
+                <th class="date-col">取引日</th>
+                <th class="ticker-col">銘柄</th>
+                <th class="name-col">銘柄名</th>
+                <th>売値(寄付)</th>
+                <th>買戻(引け)</th>
+                <th>損益</th>
+                <th>結果</th>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">2334.T</td>
+                <td class="name-col">イオレ</td>
+                <td>3,040</td>
+                <td>3,015</td>
+                <td class="negative">-1.48%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">2934.T</td>
+                <td class="name-col">ジェイフロンティア</td>
+                <td>1,800</td>
+                <td>1,760</td>
+                <td class="positive">+2.89%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">2962.T</td>
+                <td class="name-col">テクニスコ</td>
+                <td>572</td>
+                <td>488</td>
+                <td class="positive">+18.53%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">303A.T</td>
+                <td class="name-col">visumo</td>
+                <td>1,000</td>
+                <td>990</td>
+                <td class="positive">+1.10%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">3914.T</td>
+                <td class="name-col">JIG-SA</td>
+                <td>3,230</td>
+                <td>3,445</td>
+                <td class="negative">-5.88%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">4616.T</td>
+                <td class="name-col">川上塗料</td>
+                <td>2,264</td>
+                <td>2,253</td>
+                <td class="positive">+1.06%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">7018.T</td>
+                <td class="name-col">内海造船</td>
+                <td>18,400</td>
+                <td>17,140</td>
+                <td class="negative">-0.27%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-29">
+                <td class="date-col">2025-10-29</td>
+                <td class="ticker-col">7794.T</td>
+                <td class="name-col">イーディーピー</td>
+                <td>545</td>
+                <td>530</td>
+                <td class="negative">-2.02%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-30">
+                <td class="date-col">2025-10-30</td>
+                <td class="ticker-col">3747.T</td>
+                <td class="name-col">インタートレード</td>
+                <td>829</td>
+                <td>814</td>
+                <td class="positive">+2.65%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-10-30">
+                <td class="date-col">2025-10-30</td>
+                <td class="ticker-col">3856.T</td>
+                <td class="name-col">Abalance</td>
+                <td>893</td>
+                <td>897</td>
+                <td class="negative">-1.57%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-31">
+                <td class="date-col">2025-10-31</td>
+                <td class="ticker-col">3856.T</td>
+                <td class="name-col">Abalance</td>
+                <td>907</td>
+                <td>920</td>
+                <td class="negative">-1.43%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-31">
+                <td class="date-col">2025-10-31</td>
+                <td class="ticker-col">3914.T</td>
+                <td class="name-col">JIG-SAW</td>
+                <td>3,725</td>
+                <td>4,010</td>
+                <td class="negative">-8.99%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-10-31">
+                <td class="date-col">2025-10-31</td>
+                <td class="ticker-col">7746.T</td>
+                <td class="name-col">岡本硝子</td>
+                <td>425</td>
+                <td>432</td>
+                <td class="negative">-1.18%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-04">
+                <td class="date-col">2025-11-04</td>
+                <td class="ticker-col">1844.T</td>
+                <td class="name-col">大盛工業</td>
+                <td>640</td>
+                <td>622</td>
+                <td class="positive">+2.50%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-04">
+                <td class="date-col">2025-11-04</td>
+                <td class="ticker-col">3914.T</td>
+                <td class="name-col">JIG-SAW</td>
+                <td>3,920</td>
+                <td>3,525</td>
+                <td class="positive">+11.48%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-04">
+                <td class="date-col">2025-11-04</td>
+                <td class="ticker-col">3997.T</td>
+                <td class="name-col">トレードワークス</td>
+                <td>338</td>
+                <td>336</td>
+                <td class="negative">-2.37%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-04">
+                <td class="date-col">2025-11-04</td>
+                <td class="ticker-col">7746.T</td>
+                <td class="name-col">岡本硝子</td>
+                <td>433</td>
+                <td>425</td>
+                <td class="positive">+10.62%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-05">
+                <td class="date-col">2025-11-05</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>429</td>
+                <td>418</td>
+                <td class="negative">-2.80%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-05">
+                <td class="date-col">2025-11-05</td>
+                <td class="ticker-col">5994.T</td>
+                <td class="name-col">ファインシンター</td>
+                <td>1,531</td>
+                <td>1,530</td>
+                <td class="negative">-3.59%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-05">
+                <td class="date-col">2025-11-05</td>
+                <td class="ticker-col">6232.T</td>
+                <td class="name-col">ACSL</td>
+                <td>1,041</td>
+                <td>993</td>
+                <td class="positive">+1.92%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-05">
+                <td class="date-col">2025-11-05</td>
+                <td class="ticker-col">7983.T</td>
+                <td class="name-col">ミロク</td>
+                <td>1,484</td>
+                <td>1,418</td>
+                <td class="positive">+3.17%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-05">
+                <td class="date-col">2025-11-05</td>
+                <td class="ticker-col">8912.T</td>
+                <td class="name-col">エリアクエスト</td>
+                <td>159</td>
+                <td>159</td>
+                <td class="negative">-0.63%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-06">
+                <td class="date-col">2025-11-06</td>
+                <td class="ticker-col">219A.T</td>
+                <td class="name-col">Heartseed(株)</td>
+                <td>1,900</td>
+                <td>1,831</td>
+                <td class="positive">+4.37%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-06">
+                <td class="date-col">2025-11-06</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">(株)免疫生物研究所</td>
+                <td>580</td>
+                <td>561</td>
+                <td class="positive">+5.00%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-06">
+                <td class="date-col">2025-11-06</td>
+                <td class="ticker-col">6022.T</td>
+                <td class="name-col">赤阪鐵工所(株)</td>
+                <td>5,860</td>
+                <td>5,810</td>
+                <td class="positive">+1.88%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-06">
+                <td class="date-col">2025-11-06</td>
+                <td class="ticker-col">6366.T</td>
+                <td class="name-col">千代田化工建設(株)</td>
+                <td>477</td>
+                <td>506</td>
+                <td class="negative">-5.45%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">2700.T</td>
+                <td class="name-col">木徳神糧</td>
+                <td>4,220</td>
+                <td>4,220</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">3798.T</td>
+                <td class="name-col">ULSグループ</td>
+                <td>718</td>
+                <td>698</td>
+                <td class="positive">+2.65%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">7018.T</td>
+                <td class="name-col">内海造船</td>
+                <td>16,280</td>
+                <td>15,550</td>
+                <td class="positive">+6.33%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">7711.T</td>
+                <td class="name-col">助川電気工業</td>
+                <td>6,470</td>
+                <td>6,130</td>
+                <td class="positive">+4.17%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">7746.T</td>
+                <td class="name-col">岡本硝子</td>
+                <td>406</td>
+                <td>393</td>
+                <td class="positive">+2.96%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-07">
+                <td class="date-col">2025-11-07</td>
+                <td class="ticker-col">8105.T</td>
+                <td class="name-col">堀田丸正</td>
+                <td>654</td>
+                <td>625</td>
+                <td class="positive">+3.67%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-10">
+                <td class="date-col">2025-11-10</td>
+                <td class="ticker-col">2334.T</td>
+                <td class="name-col">イオレ</td>
+                <td>4,500</td>
+                <td>4,950</td>
+                <td class="negative">-12.89%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-10">
+                <td class="date-col">2025-11-10</td>
+                <td class="ticker-col">3077.T</td>
+                <td class="name-col">ホリイフードサービス</td>
+                <td>595</td>
+                <td>571</td>
+                <td class="positive">+4.54%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-10">
+                <td class="date-col">2025-11-10</td>
+                <td class="ticker-col">4598.T</td>
+                <td class="name-col">DELTA-P</td>
+                <td>523</td>
+                <td>466</td>
+                <td class="positive">+8.99%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-10">
+                <td class="date-col">2025-11-10</td>
+                <td class="ticker-col">6232.T</td>
+                <td class="name-col">ACSL</td>
+                <td>1,048</td>
+                <td>1,034</td>
+                <td class="positive">+2.19%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-10">
+                <td class="date-col">2025-11-10</td>
+                <td class="ticker-col">8746.T</td>
+                <td class="name-col">unbanked</td>
+                <td>453</td>
+                <td>461</td>
+                <td class="negative">-1.55%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-11">
+                <td class="date-col">2025-11-11</td>
+                <td class="ticker-col">7014.T</td>
+                <td class="name-col">名村造船所</td>
+                <td>4,455</td>
+                <td>4,270</td>
+                <td class="positive">+2.81%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-11">
+                <td class="date-col">2025-11-11</td>
+                <td class="ticker-col">7320.T</td>
+                <td class="name-col">Solvvy</td>
+                <td>2,129</td>
+                <td>2,131</td>
+                <td class="negative">-0.85%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-12">
+                <td class="date-col">2025-11-12</td>
+                <td class="ticker-col">5952.T</td>
+                <td class="name-col">アマテイ</td>
+                <td>201</td>
+                <td>200</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-12">
+                <td class="date-col">2025-11-12</td>
+                <td class="ticker-col">7320.T</td>
+                <td class="name-col">Solvvy</td>
+                <td>2,131</td>
+                <td>2,142</td>
+                <td class="negative">-1.88%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-12">
+                <td class="date-col">2025-11-12</td>
+                <td class="ticker-col">8105.T</td>
+                <td class="name-col">Bitcoin Japan</td>
+                <td>849</td>
+                <td>924</td>
+                <td class="negative">-8.83%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">241A.T</td>
+                <td class="name-col">ROXX</td>
+                <td>635</td>
+                <td>603</td>
+                <td class="positive">+4.72%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">325A.T</td>
+                <td class="name-col">TENTIAL</td>
+                <td>4,275</td>
+                <td>4,220</td>
+                <td class="positive">+1.75%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">4165.T</td>
+                <td class="name-col">プレイド</td>
+                <td>995</td>
+                <td>925</td>
+                <td class="positive">+8.54%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">4499.T</td>
+                <td class="name-col">SPEEE</td>
+                <td>2,648</td>
+                <td>2,579</td>
+                <td class="positive">+1.44%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">4598.T</td>
+                <td class="name-col">WELBY</td>
+                <td>505</td>
+                <td>490</td>
+                <td class="positive">+2.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">5029.T</td>
+                <td class="name-col">サークレイス</td>
+                <td>1,089</td>
+                <td>1,095</td>
+                <td class="negative">-0.64%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-13">
+                <td class="date-col">2025-11-13</td>
+                <td class="ticker-col">5255.T</td>
+                <td class="name-col">モンスターラボ</td>
+                <td>179</td>
+                <td>174</td>
+                <td class="positive">+3.91%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-14">
+                <td class="date-col">2025-11-14</td>
+                <td class="ticker-col">1844.T</td>
+                <td class="name-col">大盛工業</td>
+                <td>634</td>
+                <td>656</td>
+                <td class="negative">-4.10%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-14">
+                <td class="date-col">2025-11-14</td>
+                <td class="ticker-col">4575.T</td>
+                <td class="name-col">海洋ファーマ</td>
+                <td>815</td>
+                <td>813</td>
+                <td class="negative">-0.37%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-17">
+                <td class="date-col">2025-11-17</td>
+                <td class="ticker-col">2586.T</td>
+                <td class="name-col">フルッタフルッタ</td>
+                <td>137</td>
+                <td>137</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-17">
+                <td class="date-col">2025-11-17</td>
+                <td class="ticker-col">265A.T</td>
+                <td class="name-col">Hmcomm</td>
+                <td>1,033</td>
+                <td>1,036</td>
+                <td class="positive">+2.23%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-17">
+                <td class="date-col">2025-11-17</td>
+                <td class="ticker-col">5574.T</td>
+                <td class="name-col">ABEJA</td>
+                <td>2,750</td>
+                <td>2,691</td>
+                <td class="positive">+3.35%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-17">
+                <td class="date-col">2025-11-17</td>
+                <td class="ticker-col">5597.T</td>
+                <td class="name-col">ブルーイノベーション</td>
+                <td>1,681</td>
+                <td>1,652</td>
+                <td class="positive">+2.74%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-18">
+                <td class="date-col">2025-11-18</td>
+                <td class="ticker-col">5597.T</td>
+                <td class="name-col">ブルーイノベーション</td>
+                <td>1,635</td>
+                <td>1,536</td>
+                <td class="positive">+5.75%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-18">
+                <td class="date-col">2025-11-18</td>
+                <td class="ticker-col">6613.T</td>
+                <td class="name-col">QDレーザ</td>
+                <td>355</td>
+                <td>353</td>
+                <td class="positive">+2.82%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-18">
+                <td class="date-col">2025-11-18</td>
+                <td class="ticker-col">7018.T</td>
+                <td class="name-col">内海造船</td>
+                <td>16,560</td>
+                <td>15,660</td>
+                <td class="positive">+8.51%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-18">
+                <td class="date-col">2025-11-18</td>
+                <td class="ticker-col">9561.T</td>
+                <td class="name-col">グラッドキューブ</td>
+                <td>480</td>
+                <td>477</td>
+                <td class="positive">+4.58%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-19">
+                <td class="date-col">2025-11-19</td>
+                <td class="ticker-col">5724.T</td>
+                <td class="name-col">アサカ理研</td>
+                <td>2,160</td>
+                <td>2,624</td>
+                <td class="negative">-19.81%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-19">
+                <td class="date-col">2025-11-19</td>
+                <td class="ticker-col">5985.T</td>
+                <td class="name-col">サンコール</td>
+                <td>1,376</td>
+                <td>1,323</td>
+                <td class="positive">+7.99%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-19">
+                <td class="date-col">2025-11-19</td>
+                <td class="ticker-col">6366.T</td>
+                <td class="name-col">千代田化工建設</td>
+                <td>624</td>
+                <td>592</td>
+                <td class="positive">+0.96%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-19">
+                <td class="date-col">2025-11-19</td>
+                <td class="ticker-col">7271.T</td>
+                <td class="name-col">安永</td>
+                <td>1,075</td>
+                <td>1,055</td>
+                <td class="positive">+3.63%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-20">
+                <td class="date-col">2025-11-20</td>
+                <td class="ticker-col">319A.T</td>
+                <td class="name-col">技術承継機構</td>
+                <td>9,400</td>
+                <td>9,960</td>
+                <td class="negative">-2.34%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-20">
+                <td class="date-col">2025-11-20</td>
+                <td class="ticker-col">6232.T</td>
+                <td class="name-col">ACSL</td>
+                <td>1,018</td>
+                <td>1,009</td>
+                <td class="positive">+2.16%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-21">
+                <td class="date-col">2025-11-21</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>365</td>
+                <td>361</td>
+                <td class="positive">+2.19%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-21">
+                <td class="date-col">2025-11-21</td>
+                <td class="ticker-col">4397.T</td>
+                <td class="name-col">チームスピリット</td>
+                <td>504</td>
+                <td>518</td>
+                <td class="negative">-2.18%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-21">
+                <td class="date-col">2025-11-21</td>
+                <td class="ticker-col">6232.T</td>
+                <td class="name-col">ACSL</td>
+                <td>985</td>
+                <td>999</td>
+                <td class="negative">-1.42%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-21">
+                <td class="date-col">2025-11-21</td>
+                <td class="ticker-col">7603.T</td>
+                <td class="name-col">ジーイエット</td>
+                <td>149</td>
+                <td>154</td>
+                <td class="negative">-4.70%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-25">
+                <td class="date-col">2025-11-25</td>
+                <td class="ticker-col">4464.T</td>
+                <td class="name-col">ソフト99</td>
+                <td>4,010</td>
+                <td>4,005</td>
+                <td class="positive">+0.25%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-25">
+                <td class="date-col">2025-11-25</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>725</td>
+                <td>690</td>
+                <td class="positive">+4.97%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-25">
+                <td class="date-col">2025-11-25</td>
+                <td class="ticker-col">9242.T</td>
+                <td class="name-col">メディア総研</td>
+                <td>2,167</td>
+                <td>2,167</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-26">
+                <td class="date-col">2025-11-26</td>
+                <td class="ticker-col">218A.T</td>
+                <td class="name-col">Liberaware</td>
+                <td>1,270</td>
+                <td>1,339</td>
+                <td class="negative">-5.59%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-26">
+                <td class="date-col">2025-11-26</td>
+                <td class="ticker-col">4424.T</td>
+                <td class="name-col">Amazia</td>
+                <td>705</td>
+                <td>705</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-26">
+                <td class="date-col">2025-11-26</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>1,880</td>
+                <td>1,960</td>
+                <td class="negative">-12.71%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-26">
+                <td class="date-col">2025-11-26</td>
+                <td class="ticker-col">5255.T</td>
+                <td class="name-col">モンスターラボ</td>
+                <td>203</td>
+                <td>209</td>
+                <td class="negative">-4.93%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-27">
+                <td class="date-col">2025-11-27</td>
+                <td class="ticker-col">155A.T</td>
+                <td class="name-col">情報戦略テクノロジー</td>
+                <td>1,703</td>
+                <td>1,630</td>
+                <td class="positive">+12.68%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-27">
+                <td class="date-col">2025-11-27</td>
+                <td class="ticker-col">3494.T</td>
+                <td class="name-col">マリオン</td>
+                <td>393</td>
+                <td>388</td>
+                <td class="negative">-2.04%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-27">
+                <td class="date-col">2025-11-27</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>2,319</td>
+                <td>2,619</td>
+                <td class="negative">-12.94%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-27">
+                <td class="date-col">2025-11-27</td>
+                <td class="ticker-col">5724.T</td>
+                <td class="name-col">アサカ理研</td>
+                <td>3,000</td>
+                <td>2,998</td>
+                <td class="negative">-0.33%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-28">
+                <td class="date-col">2025-11-28</td>
+                <td class="ticker-col">202A.T</td>
+                <td class="name-col">豆蔵ホールディングス</td>
+                <td>3,315</td>
+                <td>3,290</td>
+                <td class="negative">-2.56%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-28">
+                <td class="date-col">2025-11-28</td>
+                <td class="ticker-col">4424.T</td>
+                <td class="name-col">Amazia</td>
+                <td>455</td>
+                <td>455</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-28">
+                <td class="date-col">2025-11-28</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>3,120</td>
+                <td>3,120</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-11-28">
+                <td class="date-col">2025-11-28</td>
+                <td class="ticker-col">7746.T</td>
+                <td class="name-col">岡本硝子</td>
+                <td>385</td>
+                <td>363</td>
+                <td class="positive">+0.26%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-11-28">
+                <td class="date-col">2025-11-28</td>
+                <td class="ticker-col">8105.T</td>
+                <td class="name-col">Bitcoin Japan</td>
+                <td>414</td>
+                <td>390</td>
+                <td class="positive">+4.83%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4179.T</td>
+                <td class="name-col">ジーネクスト</td>
+                <td>295</td>
+                <td>285</td>
+                <td class="positive">+1.02%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4420.T</td>
+                <td class="name-col">イーソル</td>
+                <td>657</td>
+                <td>636</td>
+                <td class="positive">+12.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4424.T</td>
+                <td class="name-col">Ａｍａｚｉａ</td>
+                <td>391</td>
+                <td>365</td>
+                <td class="positive">+7.16%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>3,820</td>
+                <td>3,820</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,054</td>
+                <td>1,054</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">4814.T</td>
+                <td class="name-col">ネクストウェア</td>
+                <td>183</td>
+                <td>182</td>
+                <td class="negative">-1.09%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">5843.T</td>
+                <td class="name-col">ニッポンインシュア</td>
+                <td>2,878</td>
+                <td>2,716</td>
+                <td class="positive">+6.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">6834.T</td>
+                <td class="name-col">精工技研</td>
+                <td>14,190</td>
+                <td>13,990</td>
+                <td class="negative">-4.30%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">7746.T</td>
+                <td class="name-col">岡本硝子</td>
+                <td>377</td>
+                <td>369</td>
+                <td class="positive">+3.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-01">
+                <td class="date-col">2025-12-01</td>
+                <td class="ticker-col">9610.T</td>
+                <td class="name-col">ウィルソン・ラーニング　ワールドワイド</td>
+                <td>228</td>
+                <td>228</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">153A.T</td>
+                <td class="name-col">カウリス</td>
+                <td>1,386</td>
+                <td>1,372</td>
+                <td class="positive">+0.36%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">206A.T</td>
+                <td class="name-col">ＰＲＩＳＭ　ＢｉｏＬａｂ</td>
+                <td>242</td>
+                <td>204</td>
+                <td class="positive">+19.01%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">2334.T</td>
+                <td class="name-col">イオレ</td>
+                <td>471</td>
+                <td>448</td>
+                <td class="positive">+8.07%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">2385.T</td>
+                <td class="name-col">総医研ホールディングス</td>
+                <td>312</td>
+                <td>267</td>
+                <td class="positive">+15.38%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">2901.T</td>
+                <td class="name-col">ウェルディッシュ</td>
+                <td>602</td>
+                <td>577</td>
+                <td class="positive">+5.32%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">290A.T</td>
+                <td class="name-col">Ｓｙｎｓｐｅｃｔｉｖｅ</td>
+                <td>1,108</td>
+                <td>1,078</td>
+                <td class="positive">+4.42%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>3,120</td>
+                <td>3,120</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,281</td>
+                <td>1,134</td>
+                <td class="positive">+13.74%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">4777.T</td>
+                <td class="name-col">ガーラ</td>
+                <td>270</td>
+                <td>231</td>
+                <td class="positive">+15.56%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">6664.T</td>
+                <td class="name-col">オプトエレクトロニクス</td>
+                <td>329</td>
+                <td>333</td>
+                <td class="positive">+2.43%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-02">
+                <td class="date-col">2025-12-02</td>
+                <td class="ticker-col">9610.T</td>
+                <td class="name-col">ウィルソン・ラーニング　ワールドワイド</td>
+                <td>222</td>
+                <td>206</td>
+                <td class="negative">-0.45%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">218A.T</td>
+                <td class="name-col">Ｌｉｂｅｒａｗａｒｅ</td>
+                <td>1,430</td>
+                <td>1,385</td>
+                <td class="positive">+4.34%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">2385.T</td>
+                <td class="name-col">総医研ホールディングス</td>
+                <td>256</td>
+                <td>258</td>
+                <td class="positive">+0.39%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>2,420</td>
+                <td>2,420</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,225</td>
+                <td>1,405</td>
+                <td class="negative">-14.69%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">4664.T</td>
+                <td class="name-col">アール・エス・シー</td>
+                <td>1,025</td>
+                <td>1,025</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">6433.T</td>
+                <td class="name-col">ヒーハイスト</td>
+                <td>510</td>
+                <td>510</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">6666.T</td>
+                <td class="name-col">リバーエレテック</td>
+                <td>443</td>
+                <td>444</td>
+                <td class="positive">+2.48%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">7356.T</td>
+                <td class="name-col">Ｒｅｔｔｙ</td>
+                <td>183</td>
+                <td>168</td>
+                <td class="positive">+8.74%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-03">
+                <td class="date-col">2025-12-03</td>
+                <td class="ticker-col">8105.T</td>
+                <td class="name-col">Ｂｉｔｃｏｉｎ　Ｊａｐａｎ</td>
+                <td>340</td>
+                <td>331</td>
+                <td class="positive">+8.82%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">218A.T</td>
+                <td class="name-col">Ｌｉｂｅｒａｗａｒｅ</td>
+                <td>1,352</td>
+                <td>1,390</td>
+                <td class="negative">-3.85%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">277A.T</td>
+                <td class="name-col">グロービング</td>
+                <td>2,425</td>
+                <td>2,475</td>
+                <td class="negative">-1.28%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">2998.T</td>
+                <td class="name-col">クリアル</td>
+                <td>813</td>
+                <td>792</td>
+                <td class="positive">+3.32%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">319A.T</td>
+                <td class="name-col">技術承継機構</td>
+                <td>10,700</td>
+                <td>10,670</td>
+                <td class="positive">+1.87%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">3652.T</td>
+                <td class="name-col">ディジタルメディアプロフェッショナル</td>
+                <td>2,453</td>
+                <td>2,475</td>
+                <td class="positive">+1.51%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">3914.T</td>
+                <td class="name-col">ＪＩＧ−ＳＡＷ</td>
+                <td>2,825</td>
+                <td>2,823</td>
+                <td class="negative">-5.13%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">4069.T</td>
+                <td class="name-col">ＢｌｕｅＭｅｍｅ</td>
+                <td>1,429</td>
+                <td>1,396</td>
+                <td class="positive">+1.47%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">4418.T</td>
+                <td class="name-col">ＪＤＳＣ</td>
+                <td>1,303</td>
+                <td>1,297</td>
+                <td class="positive">+2.53%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">4425.T</td>
+                <td class="name-col">Ｋｕｄａｎ</td>
+                <td>1,268</td>
+                <td>1,448</td>
+                <td class="negative">-6.86%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-04">
+                <td class="date-col">2025-12-04</td>
+                <td class="ticker-col">456A.T</td>
+                <td class="name-col">ＨＵＭＡＮ　ＭＡＤＥ</td>
+                <td>4,650</td>
+                <td>4,430</td>
+                <td class="positive">+5.27%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">2334.T</td>
+                <td class="name-col">イオレ</td>
+                <td>416</td>
+                <td>410</td>
+                <td class="positive">+2.16%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>392</td>
+                <td>396</td>
+                <td class="negative">-0.26%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">4176.T</td>
+                <td class="name-col">ココナラ</td>
+                <td>328</td>
+                <td>322</td>
+                <td class="positive">+2.44%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">4424.T</td>
+                <td class="name-col">Ａｍａｚｉａ</td>
+                <td>331</td>
+                <td>349</td>
+                <td class="positive">+1.81%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>1,621</td>
+                <td>1,320</td>
+                <td class="positive">+13.94%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,201</td>
+                <td>1,152</td>
+                <td class="positive">+6.00%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">5138.T</td>
+                <td class="name-col">Ｒｅｂａｓｅ</td>
+                <td>790</td>
+                <td>817</td>
+                <td class="negative">-6.08%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">5255.T</td>
+                <td class="name-col">モンスターラボ</td>
+                <td>170</td>
+                <td>171</td>
+                <td class="positive">+1.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">8105.T</td>
+                <td class="name-col">Ｂｉｔｃｏｉｎ　Ｊａｐａｎ</td>
+                <td>305</td>
+                <td>301</td>
+                <td class="positive">+3.61%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-05">
+                <td class="date-col">2025-12-05</td>
+                <td class="ticker-col">9610.T</td>
+                <td class="name-col">ウィルソン・ラーニング　ワールドワイド</td>
+                <td>207</td>
+                <td>210</td>
+                <td class="negative">-8.21%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">155A.T</td>
+                <td class="name-col">情報戦略テクノロジー</td>
+                <td>1,340</td>
+                <td>1,335</td>
+                <td class="negative">-0.15%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">281A.T</td>
+                <td class="name-col">インフォメティス</td>
+                <td>420</td>
+                <td>424</td>
+                <td class="negative">-2.62%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">303A.T</td>
+                <td class="name-col">ｖｉｓｕｍｏ</td>
+                <td>1,226</td>
+                <td>1,250</td>
+                <td class="positive">+4.98%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">341A.T</td>
+                <td class="name-col">トヨコー</td>
+                <td>2,119</td>
+                <td>2,082</td>
+                <td class="positive">+2.22%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">4664.T</td>
+                <td class="name-col">アール・エス・シー</td>
+                <td>1,761</td>
+                <td>1,537</td>
+                <td class="positive">+33.84%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">5248.T</td>
+                <td class="name-col">テクノロジーズ</td>
+                <td>557</td>
+                <td>559</td>
+                <td class="positive">+0.18%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">5817.T</td>
+                <td class="name-col">ＪＭＡＣＳ</td>
+                <td>778</td>
+                <td>739</td>
+                <td class="positive">+7.71%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">6696.T</td>
+                <td class="name-col">トラース・オン・プロダクト</td>
+                <td>361</td>
+                <td>317</td>
+                <td class="positive">+14.68%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">7603.T</td>
+                <td class="name-col">ジーイエット</td>
+                <td>153</td>
+                <td>154</td>
+                <td class="negative">-1.31%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">9271.T</td>
+                <td class="name-col">和心</td>
+                <td>848</td>
+                <td>861</td>
+                <td class="negative">-4.13%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-08">
+                <td class="date-col">2025-12-08</td>
+                <td class="ticker-col">9610.T</td>
+                <td class="name-col">ウィルソン・ラーニング　ワールドワイド</td>
+                <td>219</td>
+                <td>246</td>
+                <td class="negative">-15.07%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">198A.T</td>
+                <td class="name-col">ＰｏｓｔＰｒｉｍｅ</td>
+                <td>202</td>
+                <td>225</td>
+                <td class="negative">-19.80%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">2342.T</td>
+                <td class="name-col">トランスジェニックグループ</td>
+                <td>377</td>
+                <td>327</td>
+                <td class="positive">+15.12%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">2586.T</td>
+                <td class="name-col">フルッタフルッタ</td>
+                <td>124</td>
+                <td>125</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>406</td>
+                <td>415</td>
+                <td class="negative">-3.45%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>1,895</td>
+                <td>1,833</td>
+                <td class="positive">+5.80%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,411</td>
+                <td>1,327</td>
+                <td class="positive">+7.80%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">5216.T</td>
+                <td class="name-col">倉元製作所</td>
+                <td>200</td>
+                <td>188</td>
+                <td class="positive">+1.50%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">5817.T</td>
+                <td class="name-col">ＪＭＡＣＳ</td>
+                <td>703</td>
+                <td>704</td>
+                <td class="negative">-1.99%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-09">
+                <td class="date-col">2025-12-09</td>
+                <td class="ticker-col">6081.T</td>
+                <td class="name-col">アライドアーキテクツ</td>
+                <td>246</td>
+                <td>244</td>
+                <td class="positive">+0.81%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">219A.T</td>
+                <td class="name-col">Ｈｅａｒｔｓｅｅｄ</td>
+                <td>2,120</td>
+                <td>2,082</td>
+                <td class="positive">+3.02%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">247A.T</td>
+                <td class="name-col">Ａｉロボティクス</td>
+                <td>1,178</td>
+                <td>1,170</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">2700.T</td>
+                <td class="name-col">木徳神糧</td>
+                <td>3,025</td>
+                <td>3,030</td>
+                <td class="positive">+0.99%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">3914.T</td>
+                <td class="name-col">ＪＩＧ−ＳＡＷ</td>
+                <td>2,976</td>
+                <td>2,944</td>
+                <td class="positive">+0.57%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>1,665</td>
+                <td>1,734</td>
+                <td class="negative">-2.10%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,271</td>
+                <td>1,321</td>
+                <td class="negative">-2.75%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">4588.T</td>
+                <td class="name-col">オンコリスバイオファーマ</td>
+                <td>941</td>
+                <td>947</td>
+                <td class="positive">+0.43%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">5243.T</td>
+                <td class="name-col">ｎｏｔｅ</td>
+                <td>1,590</td>
+                <td>1,513</td>
+                <td class="positive">+5.66%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-10">
+                <td class="date-col">2025-12-10</td>
+                <td class="ticker-col">6629.T</td>
+                <td class="name-col">テクノホライゾン</td>
+                <td>825</td>
+                <td>820</td>
+                <td class="negative">-0.61%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">1844.T</td>
+                <td class="name-col">大盛工業</td>
+                <td>514</td>
+                <td>506</td>
+                <td class="positive">+2.92%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">2338.T</td>
+                <td class="name-col">クオンタムソリューションズ</td>
+                <td>415</td>
+                <td>421</td>
+                <td class="negative">-3.61%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>479</td>
+                <td>417</td>
+                <td class="positive">+12.32%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">3825.T</td>
+                <td class="name-col">リミックスポイント</td>
+                <td>254</td>
+                <td>243</td>
+                <td class="positive">+2.36%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">4056.T</td>
+                <td class="name-col">ニューラルグループ</td>
+                <td>408</td>
+                <td>408</td>
+                <td class="positive">+0.25%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">4570.T</td>
+                <td class="name-col">免疫生物研究所</td>
+                <td>1,660</td>
+                <td>1,603</td>
+                <td class="positive">+7.95%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">4592.T</td>
+                <td class="name-col">サンバイオ</td>
+                <td>1,916</td>
+                <td>1,774</td>
+                <td class="positive">+11.17%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">4664.T</td>
+                <td class="name-col">アール・エス・シー</td>
+                <td>1,431</td>
+                <td>1,242</td>
+                <td class="positive">+10.13%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">5817.T</td>
+                <td class="name-col">ＪＭＡＣＳ</td>
+                <td>942</td>
+                <td>853</td>
+                <td class="positive">+23.89%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-11">
+                <td class="date-col">2025-12-11</td>
+                <td class="ticker-col">6629.T</td>
+                <td class="name-col">テクノホライゾン</td>
+                <td>800</td>
+                <td>775</td>
+                <td class="positive">+4.00%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">2375.T</td>
+                <td class="name-col">ギグワークス</td>
+                <td>263</td>
+                <td>230</td>
+                <td class="positive">+10.27%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">2459.T</td>
+                <td class="name-col">アウンコンサルティング</td>
+                <td>303</td>
+                <td>284</td>
+                <td class="positive">+8.58%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">2776.T</td>
+                <td class="name-col">新都ホールディングス</td>
+                <td>144</td>
+                <td>135</td>
+                <td class="positive">+11.81%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">3350.T</td>
+                <td class="name-col">メタプラネット</td>
+                <td>430</td>
+                <td>435</td>
+                <td class="negative">-2.79%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">4664.T</td>
+                <td class="name-col">アール・エス・シー</td>
+                <td>1,136</td>
+                <td>1,190</td>
+                <td class="negative">-4.40%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">5216.T</td>
+                <td class="name-col">倉元製作所</td>
+                <td>190</td>
+                <td>179</td>
+                <td class="positive">+7.37%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">6666.T</td>
+                <td class="name-col">リバーエレテック</td>
+                <td>533</td>
+                <td>533</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-12">
+                <td class="date-col">2025-12-12</td>
+                <td class="ticker-col">7777.T</td>
+                <td class="name-col">スリー・ディー・マトリックス</td>
+                <td>375</td>
+                <td>366</td>
+                <td class="positive">+1.07%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">2437.T</td>
+                <td class="name-col">Ｓｈｉｎｗａ　Ｗｉｓｅ　Ｈｏｌｄｉｎｇｓ</td>
+                <td>319</td>
+                <td>318</td>
+                <td class="negative">-9.72%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">3825.T</td>
+                <td class="name-col">リミックスポイント</td>
+                <td>310</td>
+                <td>281</td>
+                <td class="positive">+9.35%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">4175.T</td>
+                <td class="name-col">ｃｏｌｙ</td>
+                <td>1,977</td>
+                <td>1,926</td>
+                <td class="positive">+3.19%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">4579.T</td>
+                <td class="name-col">ラクオリア創薬</td>
+                <td>1,155</td>
+                <td>1,096</td>
+                <td class="positive">+5.19%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">4588.T</td>
+                <td class="name-col">オンコリスバイオファーマ</td>
+                <td>901</td>
+                <td>796</td>
+                <td class="positive">+7.88%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">5574.T</td>
+                <td class="name-col">ＡＢＥＪＡ</td>
+                <td>2,700</td>
+                <td>2,605</td>
+                <td class="positive">+3.22%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-16">
+                <td class="date-col">2025-12-16</td>
+                <td class="ticker-col">7115.T</td>
+                <td class="name-col">アルファパーチェス</td>
+                <td>2,349</td>
+                <td>2,279</td>
+                <td class="positive">+4.13%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">323A.T</td>
+                <td class="name-col">フライヤー</td>
+                <td>423</td>
+                <td>429</td>
+                <td class="negative">-1.42%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">4393.T</td>
+                <td class="name-col">バンク・オブ・イノベーション</td>
+                <td>5,750</td>
+                <td>5,730</td>
+                <td class="negative">-0.00%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">4584.T</td>
+                <td class="name-col">キッズウェル・バイオ</td>
+                <td>206</td>
+                <td>201</td>
+                <td class="positive">+2.91%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">4935.T</td>
+                <td class="name-col">リベルタ</td>
+                <td>1,841</td>
+                <td>1,800</td>
+                <td class="positive">+2.34%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">5136.T</td>
+                <td class="name-col">ｔｒｉｐｌａ</td>
+                <td>1,867</td>
+                <td>1,818</td>
+                <td class="positive">+0.37%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-17">
+                <td class="date-col">2025-12-17</td>
+                <td class="ticker-col">7777.T</td>
+                <td class="name-col">スリー・ディー・マトリックス</td>
+                <td>352</td>
+                <td>335</td>
+                <td class="positive">+6.82%</td>
+                <td class="win">○</td>
+            </tr>
+            <tr data-date="2025-12-18">
+                <td class="date-col">2025-12-18</td>
+                <td class="ticker-col">5817.T</td>
+                <td class="name-col">ＪＭＡＣＳ</td>
+                <td>753</td>
+                <td>786</td>
+                <td class="negative">-12.35%</td>
+                <td class="lose">×</td>
+            </tr>
+            <tr data-date="2025-12-18">
+                <td class="date-col">2025-12-18</td>
+                <td class="ticker-col">6177.T</td>
+                <td class="name-col">ＡｐｐＢａｎｋ</td>
+                <td>119</td>
+                <td>120</td>
+                <td class="negative">-4.20%</td>
+                <td class="lose">×</td>
+            </tr>
+        </table>
+    </div>
+    
+    <script>
+    function filterByDate() {
+        const filter = document.getElementById('dateFilter').value;
+        const rows = document.querySelectorAll('#detailTable tr[data-date]');
+        rows.forEach(row => {
+            if (!filter || row.dataset.date === filter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    </script>
+</body>
+</html>

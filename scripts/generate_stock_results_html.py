@@ -1128,7 +1128,7 @@ if s3_cfg.bucket:
     import urllib.request
     import urllib.error
 
-    API_URL = "https://qnfmh5i4ed.ap-northeast-1.awsapprunner.com/api/dev/stock-results/refresh"
+    API_URL = "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/stock-results/refresh"
     print("\nApp Runnerのキャッシュをリフレッシュ中...")
     try:
         req = urllib.request.Request(API_URL, method="POST")

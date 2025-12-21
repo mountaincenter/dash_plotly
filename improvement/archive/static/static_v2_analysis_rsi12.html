@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Static銘柄 v2分析 - 保有期間・売却タイミング最適化</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        h2 { color: #ff6b6b; border-bottom: 1px solid #444; padding-bottom: 8px; }
+        h3 { color: #ffd93d; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 10px 14px; }
+        th { background: #2d2d44; color: #00d4ff; text-align: center; }
+        .r { text-align: right; }
+        .c { text-align: center; }
+        .l { text-align: left; }
+        tr:nth-child(even) { background: #242438; }
+        tr:hover { background: #3d3d5c; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .winner { background: #1a4d1a !important; font-weight: bold; }
+        .strong-buy { background: #1a4d1a !important; }
+        .tag { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .tag-morning { background: #d9904a; }
+        .tag-afternoon { background: #4a90d9; }
+        .summary-card { background: #2d2d44; padding: 20px; border-radius: 8px; margin: 10px; display: inline-block; min-width: 140px; text-align: center; }
+        .summary-value { font-size: 28px; font-weight: bold; }
+        .summary-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .filter-box { background: #2d2d44; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #00d4ff; }
+        .conclusion-box { background: linear-gradient(135deg, #1a4d1a 0%, #2d2d44 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border: 2px solid #00ff88; }
+        .comparison-box { background: #2d2d44; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Static銘柄 v2分析 - 売却タイミング最適化</h1>
+    <p>生成日時: 2025-11-30 00:53</p>
+    <p>対象: STRONG_BUY (Score>=50), RSI>=12, 株価<20,000円</p>
+
+    <h2>1. 前場売り vs 大引け売り (1日目)</h2>
+    
+    <div class="comparison-box">
+        <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+            <div style="margin: 20px; text-align: center;">
+                <h3 style="margin:0;"><span class="tag tag-morning">前場売り</span></h3>
+                <p style="font-size:12px; color:#888;">9:00買い → 11:00 or 12:00売り</p>
+                <div class="summary-card">
+                    <div class="summary-label">勝率</div>
+                    <div class="summary-value" style="color:#d9904a;">56.2%</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Return</div>
+                    <div class="summary-value" style="color:#d9904a;">+0.44%</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">合計利益</div>
+                    <div class="summary-value" style="color:#d9904a; font-size:18px;">258,450円</div>
+                </div>
+            </div>
+            <div style="margin: 20px; text-align: center;">
+                <h3 style="margin:0;"><span class="tag tag-afternoon">大引け売り</span></h3>
+                <p style="font-size:12px; color:#888;">9:00買い → 15:00売り</p>
+                <div class="summary-card" style="border: 2px solid #00ff88;">
+                    <div class="summary-label">勝率</div>
+                    <div class="summary-value" style="color:#4a90d9;">49.5%</div>
+                </div>
+                <div class="summary-card" style="border: 2px solid #00ff88;">
+                    <div class="summary-label">Return</div>
+                    <div class="summary-value" style="color:#4a90d9;">+0.75%</div>
+                </div>
+                <div class="summary-card" style="border: 2px solid #00ff88;">
+                    <div class="summary-label">合計利益</div>
+                    <div class="summary-value" style="color:#4a90d9; font-size:18px;">459,490円</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <th class="l">指標</th>
+            <th class="r"><span class="tag tag-morning">前場売り</span></th>
+            <th class="r"><span class="tag tag-afternoon">大引け売り</span></th>
+            <th class="c">優位</th>
+            <th class="r">差</th>
+        </tr>
+        <tr>
+            <td class="l">勝率</td>
+            <td class="r">56.2%</td>
+            <td class="r">49.5%</td>
+            <td class="c">前場</td>
+            <td class="r positive">+6.7%</td>
+        </tr>
+        <tr class="highlight">
+            <td class="l"><strong>平均Return</strong></td>
+            <td class="r">+0.44%</td>
+            <td class="r winner">+0.75%</td>
+            <td class="c positive">大引</td>
+            <td class="r negative">-0.31%</td>
+        </tr>
+        <tr class="highlight">
+            <td class="l"><strong>合計利益</strong></td>
+            <td class="r">258,450円</td>
+            <td class="r winner">459,490円</td>
+            <td class="c positive">大引</td>
+            <td class="r negative">-201,040円</td>
+        </tr>
+    </table>
+
+    <div style="background: #2d2d44; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>発見:</strong> 前場売りは勝率が高い (56.2% vs 49.5%) が、リターンは大引け売りが優位。</p>
+        <p>後場で値動きが大きく、プラス方向に動く傾向。</p>
+    </div>
+
+    <h2>2. 保有日数別パフォーマンス</h2>
+    
+    <div style="text-align:center; margin: 30px 0;">
+        <div class="summary-card" style="">
+            <div class="summary-label">1日保有</div>
+            <div class="summary-value" style="color: #00d4ff;">+0.75%</div>
+            <div style="font-size:11px; color:#888;">勝率 49.5%</div>
+        </div>
+        <div class="summary-card" style="">
+            <div class="summary-label">2日保有</div>
+            <div class="summary-value" style="color: #00d4ff;">+2.57%</div>
+            <div style="font-size:11px; color:#888;">勝率 67.6%</div>
+        </div>
+        <div class="summary-card" style="">
+            <div class="summary-label">3日保有</div>
+            <div class="summary-value" style="color: #00d4ff;">+2.95%</div>
+            <div style="font-size:11px; color:#888;">勝率 69.6%</div>
+        </div>
+        <div class="summary-card" style="">
+            <div class="summary-label">4日保有</div>
+            <div class="summary-value" style="color: #00d4ff;">+3.20%</div>
+            <div style="font-size:11px; color:#888;">勝率 72.3%</div>
+        </div>
+        <div class="summary-card" style="border: 2px solid #00ff88;">
+            <div class="summary-label">5日保有</div>
+            <div class="summary-value" style="color: #00ff88;">+4.47%</div>
+            <div style="font-size:11px; color:#888;">勝率 72.3%</div>
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <th class="c">保有日数</th>
+            <th class="r">件数</th>
+            <th class="r">勝率</th>
+            <th class="r">平均Return</th>
+            <th class="r">合計利益</th>
+            <th class="r">1件あたり</th>
+        </tr>
+        <tr class="">
+            <td class="c">1日</td>
+            <td class="r">105</td>
+            <td class="r">49.5%</td>
+            <td class="r positive">+0.75%</td>
+            <td class="r">459,490円</td>
+            <td class="r">4,376円</td>
+        </tr>
+        <tr class="">
+            <td class="c">2日</td>
+            <td class="r">105</td>
+            <td class="r">67.6%</td>
+            <td class="r positive">+2.57%</td>
+            <td class="r">1,484,188円</td>
+            <td class="r">14,135円</td>
+        </tr>
+        <tr class="">
+            <td class="c">3日</td>
+            <td class="r">102</td>
+            <td class="r">69.6%</td>
+            <td class="r positive">+2.95%</td>
+            <td class="r">1,553,873円</td>
+            <td class="r">15,234円</td>
+        </tr>
+        <tr class="">
+            <td class="c">4日</td>
+            <td class="r">101</td>
+            <td class="r">72.3%</td>
+            <td class="r positive">+3.20%</td>
+            <td class="r">1,726,068円</td>
+            <td class="r">17,090円</td>
+        </tr>
+        <tr class="winner">
+            <td class="c">5日</td>
+            <td class="r">101</td>
+            <td class="r">72.3%</td>
+            <td class="r positive">+4.47%</td>
+            <td class="r">2,515,151円</td>
+            <td class="r">24,902円</td>
+        </tr>
+    </table>
+
+    <div class="conclusion-box">
+        <h3 style="margin-top:0; color:#00ff88;">結論</h3>
+        <table style="background: transparent; border: none; width: auto;">
+            <tr style="background: transparent;">
+                <td style="border: none; padding: 10px; vertical-align: top;">
+                    <strong>売却タイミング:</strong>
+                </td>
+                <td style="border: none; padding: 10px;">
+                    <span class="tag tag-afternoon">大引け売り</span> が最適<br>
+                    <span style="font-size:12px; color:#aaa;">前場売りより +0.31% / +201,040円</span>
+                </td>
+            </tr>
+            <tr style="background: transparent;">
+                <td style="border: none; padding: 10px; vertical-align: top;">
+                    <strong>保有日数:</strong>
+                </td>
+                <td style="border: none; padding: 10px;">
+                    <span style="font-size:24px; color:#00d4ff;">5日</span> が最適<br>
+                    <span style="font-size:12px; color:#aaa;">Return +4.47%, 1件あたり 24,902円</span>
+                </td>
+            </tr>
+        </table>
+        <p style="margin-top:20px; font-size:14px;">
+            <strong>推奨戦略:</strong> 寄付買い → 5日後大引け売り
+        </p>
+    </div>
+
+    <h2>直近シグナル - 前場vs大引け比較</h2>
+    <table>
+        <tr>
+            <th>日付</th>
+            <th>銘柄</th>
+            <th class="r">前場売り</th>
+            <th class="r">大引け売り</th>
+            <th class="c">優位</th>
+            <th class="r">5日後</th>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>9984.T ソフトバンクG</td>
+            <td class="r positive">+55,500円</td>
+            <td class="r positive">+120,000円</td>
+            <td class="c">大引</td>
+            <td class="r ">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>7012.T 川崎重工</td>
+            <td class="r positive">+27,500円</td>
+            <td class="r positive">+8,000円</td>
+            <td class="c">前場</td>
+            <td class="r ">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>7011.T 三菱重工</td>
+            <td class="r positive">+4,800円</td>
+            <td class="r negative">-6,500円</td>
+            <td class="c">前場</td>
+            <td class="r ">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-21</td>
+            <td>7011.T 三菱重工</td>
+            <td class="r positive">+2,400円</td>
+            <td class="r positive">+8,100円</td>
+            <td class="c">大引</td>
+            <td class="r ">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-13</td>
+            <td>4568.T 第一三共</td>
+            <td class="r positive">+2,900円</td>
+            <td class="r negative">-2,400円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+19,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-11</td>
+            <td>4568.T 第一三共</td>
+            <td class="r positive">+1,200円</td>
+            <td class="r negative">-5,900円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+4,200円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-07</td>
+            <td>4568.T 第一三共</td>
+            <td class="r negative">-6,300円</td>
+            <td class="r positive">+2,200円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+11,100円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-06</td>
+            <td>4568.T 第一三共</td>
+            <td class="r negative">-4,100円</td>
+            <td class="r negative">-9,800円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+10,200円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-05</td>
+            <td>4568.T 第一三共</td>
+            <td class="r positive">+3,100円</td>
+            <td class="r negative">-3,200円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+2,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-04</td>
+            <td>4568.T 第一三共</td>
+            <td class="r negative">-10,900円</td>
+            <td class="r negative">-2,700円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+2,700円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-30</td>
+            <td>9022.T JR東海</td>
+            <td class="r positive">+2,900円</td>
+            <td class="r negative">-3,300円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+33,400円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-09-24</td>
+            <td>9501.T 東京電力</td>
+            <td class="r positive">+1,980円</td>
+            <td class="r positive">+4,630円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+980円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-09-19</td>
+            <td>6098.T リクルート</td>
+            <td class="r positive">+15,000円</td>
+            <td class="r negative">-4,693円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+15,985円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-09-05</td>
+            <td>6946.T 日本アビオニクス</td>
+            <td class="r negative">-6,000円</td>
+            <td class="r ">+0円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+6,000円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-08-28</td>
+            <td>7012.T 川崎重工</td>
+            <td class="r negative">-5,300円</td>
+            <td class="r negative">-30,761円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-28,677円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-08-20</td>
+            <td>7012.T 川崎重工</td>
+            <td class="r negative">-11,100円</td>
+            <td class="r negative">-12,900円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-32,249円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-08-06</td>
+            <td>6920.T レーザーテック</td>
+            <td class="r negative">-3,000円</td>
+            <td class="r positive">+39,000円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+334,000円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-08-05</td>
+            <td>6920.T レーザーテック</td>
+            <td class="r positive">+2,500円</td>
+            <td class="r positive">+9,000円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+186,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-08-01</td>
+            <td>6920.T レーザーテック</td>
+            <td class="r positive">+34,000円</td>
+            <td class="r positive">+43,500円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+139,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-07-28</td>
+            <td>6920.T レーザーテック</td>
+            <td class="r negative">-32,000円</td>
+            <td class="r negative">-55,000円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-97,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-07-25</td>
+            <td>6920.T レーザーテック</td>
+            <td class="r negative">-7,000円</td>
+            <td class="r negative">-133,000円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-169,000円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-07-18</td>
+            <td>3382.T セブン&アイ</td>
+            <td class="r negative">-3,450円</td>
+            <td class="r positive">+2,419円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+3,653円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-07-17</td>
+            <td>3382.T セブン&アイ</td>
+            <td class="r negative">-1,850円</td>
+            <td class="r negative">-1,234円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+4,788円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-07-11</td>
+            <td>6946.T 日本アビオニクス</td>
+            <td class="r positive">+1,500円</td>
+            <td class="r positive">+12,000円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+46,500円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-16</td>
+            <td>6723.T ルネサス</td>
+            <td class="r negative">-1,700円</td>
+            <td class="r negative">-850円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+5,850円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-11</td>
+            <td>4568.T 第一三共</td>
+            <td class="r positive">+8,200円</td>
+            <td class="r positive">+8,697円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+5,535円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-11</td>
+            <td>7741.T HOYA</td>
+            <td class="r positive">+16,500円</td>
+            <td class="r positive">+71,559円</td>
+            <td class="c">大引</td>
+            <td class="r positive">+64,105円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-09</td>
+            <td>3382.T セブン&アイ</td>
+            <td class="r positive">+2,100円</td>
+            <td class="r negative">-444円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-1,037円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-09</td>
+            <td>7741.T HOYA</td>
+            <td class="r positive">+13,500円</td>
+            <td class="r negative">-62,614円</td>
+            <td class="c">前場</td>
+            <td class="r negative">-8,945円</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-04-09</td>
+            <td>7267.T ホンダ</td>
+            <td class="r negative">-3,850円</td>
+            <td class="r negative">-5,139円</td>
+            <td class="c">前場</td>
+            <td class="r positive">+1,419円</td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 40px; padding: 15px; background: #2d2d44; border-radius: 8px; font-size: 12px; color: #888;">
+        <p><strong>v2フィルター:</strong> Score>=50 | RSI>=12 | 株価<20,000円</p>
+        <p><strong>前場売り:</strong> 11:00 Close (なければ 12:00 Open)</p>
+        <p><strong>大引け売り:</strong> 15:00 Close</p>
+    </div>
+</body>
+</html>

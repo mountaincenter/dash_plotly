@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空売り候補（出来高急騰 × 常習犯）</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --border-color: #30363d;
+            --accent-red: #f85149;
+            --accent-orange: #d29922;
+            --accent-green: #3fb950;
+            --accent-blue: #58a6ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 1.8rem; margin-bottom: 10px; }
+        .subtitle { color: var(--text-secondary); margin-bottom: 20px; }
+        .logic-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .logic-box h2 { font-size: 1.1rem; color: var(--accent-blue); margin-bottom: 15px; }
+        .logic-formula {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            margin-bottom: 15px;
+        }
+        .logic-criteria {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .criteria-item {
+            background: var(--bg-tertiary);
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-blue);
+        }
+        .criteria-item.highlight { border-left-color: var(--accent-green); background: rgba(63, 185, 80, 0.1); }
+        .exclusion-note {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        .section { margin-bottom: 40px; }
+        .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .section-title { font-size: 1.3rem; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge.vol-extreme { background: var(--accent-red); color: white; }
+        .badge.vol-high { background: var(--accent-orange); color: black; }
+        .badge.vol-mid { background: var(--accent-blue); color: white; }
+        .count-badge {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        tr:hover { background: var(--bg-tertiary); }
+        .priority-row { background: rgba(63, 185, 80, 0.05); }
+        .priority-row:hover { background: rgba(63, 185, 80, 0.1); }
+        .number { text-align: right; font-variant-numeric: tabular-nums; }
+        .name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vol-extreme { color: var(--accent-red); font-weight: 600; }
+        .vol-high { color: var(--accent-orange); font-weight: 600; }
+        .vol-mid { color: var(--accent-blue); }
+        .count-high { color: var(--accent-red); }
+        .count-mid { color: var(--accent-orange); }
+        .count-low { color: var(--text-primary); }
+        .vol-ok { color: var(--accent-green); }
+        .vol-ng { color: var(--text-secondary); }
+        a { color: var(--accent-blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .subsection-title { font-size: 1rem; color: var(--text-secondary); margin-bottom: 10px; }
+        .priority-label {
+            display: inline-block;
+            background: var(--accent-green);
+            color: black;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>空売り候補（出来高急騰 × 常習犯）</h1>
+        <p class="subtitle">生成日時: 2025-12-18 21:56 | 基準日: 2025-12-18</p>
+
+        <div class="logic-box">
+            <h2>選定ロジック（short_strategy.md準拠）</h2>
+            <div class="logic-formula">
+                <strong>出来高急騰率</strong> = 当日出来高 ÷ 過去20日平均出来高<br>
+                <strong>抽出条件</strong>: 出来高急騰率 ≥ 2倍 AND 高値崩れ常習犯（3回以上）
+            </div>
+            <div class="logic-criteria">
+                <div class="criteria-item">
+                    <strong>2倍以上</strong><br>
+                    <span style="color: var(--accent-blue);">→ 注目</span>
+                </div>
+                <div class="criteria-item">
+                    <strong>5倍以上</strong><br>
+                    <span style="color: var(--accent-orange);">→ 強いシグナル</span>
+                </div>
+                <div class="criteria-item">
+                    <strong>10倍以上</strong><br>
+                    <span style="color: var(--accent-red);">→ 極大（要警戒）</span>
+                </div>
+                <div class="criteria-item highlight">
+                    <strong>1000-2000円帯</strong><br>
+                    <span style="color: var(--accent-green);">→ 勝率64.7%（最優先）</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">貸借銘柄（制度信用可）</h2>
+                <span class="count-badge">24銘柄</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>コード</th>
+                        <th>銘柄名</th>
+                        <th>株価</th>
+                        <th>出来高急騰</th>
+                        <th>常習回数</th>
+                        <th>平均下落</th>
+                        <th>出来高</th>
+                        <th>価格帯</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/1434.T" target="_blank">1434.T</a></td>
+            <td class="name">ＪＥＳＣＯホールディングス</td>
+            <td class="number">1,410円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 6.2倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/6570.T" target="_blank">6570.T</a></td>
+            <td class="name">共和コーポレーション</td>
+            <td class="number">1,104円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.7倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ng">△</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/8006.T" target="_blank">8006.T</a></td>
+            <td class="name">ユアサ・フナショク</td>
+            <td class="number">1,649円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.6倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ng">△</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/7523.T" target="_blank">7523.T</a></td>
+            <td class="name">アールビバン</td>
+            <td class="number">1,691円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.8倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/3079.T" target="_blank">3079.T</a></td>
+            <td class="name">ディーブイエックス</td>
+            <td class="number">1,186円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.5倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-9.8%</td>
+            <td class="vol-ng">△</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5337.T" target="_blank">5337.T</a></td>
+            <td class="name">ダントーホールディングス</td>
+            <td class="number">582円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 12.5倍</td>
+            <td class="number count-mid">7回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/7455.T" target="_blank">7455.T</a></td>
+            <td class="name">パリミキホールディングス</td>
+            <td class="number">579円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 10.5倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3541.T" target="_blank">3541.T</a></td>
+            <td class="name">農業総合研究所</td>
+            <td class="number">430円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 10.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3998.T" target="_blank">3998.T</a></td>
+            <td class="name">すららネット</td>
+            <td class="number">338円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.9倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3134.T" target="_blank">3134.T</a></td>
+            <td class="name">Ｈａｍｅｅ</td>
+            <td class="number">528円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.7倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.7%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3137.T" target="_blank">3137.T</a></td>
+            <td class="name">ファンデリー</td>
+            <td class="number">204円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.7倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-8.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3664.T" target="_blank">3664.T</a></td>
+            <td class="name">モブキャストホールディングス</td>
+            <td class="number">34円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.7倍</td>
+            <td class="number count-high">14回</td>
+            <td class="number">-6.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/7256.T" target="_blank">7256.T</a></td>
+            <td class="name">河西工業</td>
+            <td class="number">139円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.6倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-10.7%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9270.T" target="_blank">9270.T</a></td>
+            <td class="name">バリュエンスホールディングス</td>
+            <td class="number">909円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.5倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-5.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4564.T" target="_blank">4564.T</a></td>
+            <td class="name">オンコセラピー・サイエンス</td>
+            <td class="number">21円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.5倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-8.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5131.T" target="_blank">5131.T</a></td>
+            <td class="name">リンカーズ</td>
+            <td class="number">160円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.1倍</td>
+            <td class="number count-high">17回</td>
+            <td class="number">-9.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/8127.T" target="_blank">8127.T</a></td>
+            <td class="name">ヤマトインターナショナル</td>
+            <td class="number">472円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.0倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3667.T" target="_blank">3667.T</a></td>
+            <td class="name">ｅｎｉｓｈ</td>
+            <td class="number">57円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.0倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-6.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6656.T" target="_blank">6656.T</a></td>
+            <td class="name">インスペック</td>
+            <td class="number">614円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.8倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4597.T" target="_blank">4597.T</a></td>
+            <td class="name">ソレイジア・ファーマ</td>
+            <td class="number">31円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.8倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-6.4%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6343.T" target="_blank">6343.T</a></td>
+            <td class="name">フリージア・マクロス</td>
+            <td class="number">155円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.4倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3377.T" target="_blank">3377.T</a></td>
+            <td class="name">バイク王＆カンパニー</td>
+            <td class="number">399円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.3倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/1965.T" target="_blank">1965.T</a></td>
+            <td class="name">テクノ菱和</td>
+            <td class="number">6,620円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.7%</td>
+            <td class="vol-ok">✓</td>
+            <td>5000円以上</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5955.T" target="_blank">5955.T</a></td>
+            <td class="name">ワイズホールディングス</td>
+            <td class="number">77円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">信用銘柄（いちにち信用のみ）</h2>
+                <span class="count-badge">64銘柄</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>コード</th>
+                        <th>銘柄名</th>
+                        <th>株価</th>
+                        <th>出来高急騰</th>
+                        <th>常習回数</th>
+                        <th>平均下落</th>
+                        <th>出来高</th>
+                        <th>価格帯</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/4395.T" target="_blank">4395.T</a></td>
+            <td class="name">アクリート</td>
+            <td class="number">1,108円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 10.0倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-8.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/5136.T" target="_blank">5136.T</a></td>
+            <td class="name">ｔｒｉｐｌａ</td>
+            <td class="number">1,685円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.6倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-5.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/247A.T" target="_blank">247A.T</a></td>
+            <td class="name">Ａｉロボティクス</td>
+            <td class="number">1,221円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.5倍</td>
+            <td class="number count-high">10回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/6907.T" target="_blank">6907.T</a></td>
+            <td class="name">ジオマテック</td>
+            <td class="number">1,205円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.6倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/137A.T" target="_blank">137A.T</a></td>
+            <td class="name">Ｃｏｃｏｌｉｖｅ</td>
+            <td class="number">1,070円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.6倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/6044.T" target="_blank">6044.T</a></td>
+            <td class="name">三機サービス</td>
+            <td class="number">1,974円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.7倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ng">△</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/304A.T" target="_blank">304A.T</a></td>
+            <td class="name">フォルシア</td>
+            <td class="number">1,961円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.5倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.2%</td>
+            <td class="vol-ng">△</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/5599.T" target="_blank">5599.T</a></td>
+            <td class="name">Ｓ＆Ｊ</td>
+            <td class="number">1,627円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-6.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/5268.T" target="_blank">5268.T</a></td>
+            <td class="name">旭コンクリート工業</td>
+            <td class="number">1,021円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/6521.T" target="_blank">6521.T</a></td>
+            <td class="name">オキサイド</td>
+            <td class="number">1,429円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-6.4%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/5994.T" target="_blank">5994.T</a></td>
+            <td class="name">ファインシンター</td>
+            <td class="number">1,674円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-7.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="priority-row">
+            <td><a href="https://finance.yahoo.co.jp/quote/9211.T" target="_blank">9211.T</a></td>
+            <td class="name">エフ・コード</td>
+            <td class="number">1,428円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.0倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>1000-2000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4479.T" target="_blank">4479.T</a></td>
+            <td class="name">マクアケ</td>
+            <td class="number">762円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 26.5倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/7422.T" target="_blank">7422.T</a></td>
+            <td class="name">東邦レマック</td>
+            <td class="number">540円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 22.0倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9245.T" target="_blank">9245.T</a></td>
+            <td class="name">リベロ</td>
+            <td class="number">2,760円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 13.8倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/7815.T" target="_blank">7815.T</a></td>
+            <td class="name">東京ボード工業</td>
+            <td class="number">454円</td>
+            <td class="number vol-extreme"><span class="badge vol-extreme">極大</span> 12.3倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6173.T" target="_blank">6173.T</a></td>
+            <td class="name">アクアライン</td>
+            <td class="number">277円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 8.5倍</td>
+            <td class="number count-high">18回</td>
+            <td class="number">-7.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/280A.T" target="_blank">280A.T</a></td>
+            <td class="name">ＴＭＨ</td>
+            <td class="number">925円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 7.9倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-5.4%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/8995.T" target="_blank">8995.T</a></td>
+            <td class="name">誠建設工業</td>
+            <td class="number">915円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 7.6倍</td>
+            <td class="number count-high">16回</td>
+            <td class="number">-9.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/1783.T" target="_blank">1783.T</a></td>
+            <td class="name">ｆａｎｔａｓｉｓｔａ</td>
+            <td class="number">56円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 7.1倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5618.T" target="_blank">5618.T</a></td>
+            <td class="name">ナイル</td>
+            <td class="number">350円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 7.0倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/7162.T" target="_blank">7162.T</a></td>
+            <td class="name">アストマックス</td>
+            <td class="number">227円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.7倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-10.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/2970.T" target="_blank">2970.T</a></td>
+            <td class="name">グッドライフカンパニー</td>
+            <td class="number">838円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.6倍</td>
+            <td class="number count-mid">7回</td>
+            <td class="number">-6.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6573.T" target="_blank">6573.T</a></td>
+            <td class="name">アジャイルメディア・ネットワーク</td>
+            <td class="number">68円</td>
+            <td class="number vol-high"><span class="badge vol-high">強</span> 5.5倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/143A.T" target="_blank">143A.T</a></td>
+            <td class="name">イシン</td>
+            <td class="number">820円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.9倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.5%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5572.T" target="_blank">5572.T</a></td>
+            <td class="name">Ｒｉｄｇｅ−ｉ</td>
+            <td class="number">2,220円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.4倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9244.T" target="_blank">9244.T</a></td>
+            <td class="name">デジタリフト</td>
+            <td class="number">873円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.3倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/195A.T" target="_blank">195A.T</a></td>
+            <td class="name">ＭＵＳＣＡＴ　ＧＲＯＵＰ</td>
+            <td class="number">802円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.0倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6663.T" target="_blank">6663.T</a></td>
+            <td class="name">太洋テクノレックス</td>
+            <td class="number">253円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 4.0倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-8.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/8938.T" target="_blank">8938.T</a></td>
+            <td class="name">グローム・ホールディングス</td>
+            <td class="number">380円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.9倍</td>
+            <td class="number count-mid">7回</td>
+            <td class="number">-7.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5721.T" target="_blank">5721.T</a></td>
+            <td class="name">エス・サイエンス</td>
+            <td class="number">123円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.7倍</td>
+            <td class="number count-high">22回</td>
+            <td class="number">-7.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9476.T" target="_blank">9476.T</a></td>
+            <td class="name">中央経済社ホールディングス</td>
+            <td class="number">828円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.6倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-7.3%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6347.T" target="_blank">6347.T</a></td>
+            <td class="name">プラコー</td>
+            <td class="number">315円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.6倍</td>
+            <td class="number count-high">16回</td>
+            <td class="number">-8.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9557.T" target="_blank">9557.T</a></td>
+            <td class="name">エアークローゼット</td>
+            <td class="number">260円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.3倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-7.3%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6039.T" target="_blank">6039.T</a></td>
+            <td class="name">日本動物高度医療センター</td>
+            <td class="number">5,350円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.3倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>5000円以上</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/341A.T" target="_blank">341A.T</a></td>
+            <td class="name">トヨコー</td>
+            <td class="number">2,062円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.2倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-6.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5843.T" target="_blank">5843.T</a></td>
+            <td class="name">ニッポンインシュア</td>
+            <td class="number">2,678円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/2370.T" target="_blank">2370.T</a></td>
+            <td class="name">メディネット</td>
+            <td class="number">30円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 3.0倍</td>
+            <td class="number count-high">11回</td>
+            <td class="number">-6.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/2321.T" target="_blank">2321.T</a></td>
+            <td class="name">ソフトフロントホールディングス</td>
+            <td class="number">197円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.9倍</td>
+            <td class="number count-mid">7回</td>
+            <td class="number">-6.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4673.T" target="_blank">4673.T</a></td>
+            <td class="name">川崎地質</td>
+            <td class="number">4,480円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.8倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5856.T" target="_blank">5856.T</a></td>
+            <td class="name">エルアイイーエイチ</td>
+            <td class="number">31円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.7倍</td>
+            <td class="number count-high">11回</td>
+            <td class="number">-6.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3988.T" target="_blank">3988.T</a></td>
+            <td class="name">ＳＹＳホールディングス</td>
+            <td class="number">578円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.6倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.8%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9213.T" target="_blank">9213.T</a></td>
+            <td class="name">セイファート</td>
+            <td class="number">735円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.6倍</td>
+            <td class="number count-high">14回</td>
+            <td class="number">-12.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/175A.T" target="_blank">175A.T</a></td>
+            <td class="name">Ｗｉｌｌ　Ｓｍａｒｔ</td>
+            <td class="number">826円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.5倍</td>
+            <td class="number count-mid">8回</td>
+            <td class="number">-8.1%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3652.T" target="_blank">3652.T</a></td>
+            <td class="name">ディジタルメディアプロフェッショナル</td>
+            <td class="number">2,360円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.5倍</td>
+            <td class="number count-mid">8回</td>
+            <td class="number">-8.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/1711.T" target="_blank">1711.T</a></td>
+            <td class="name">ＳＤＳホールディングス</td>
+            <td class="number">267円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.4倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-6.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3798.T" target="_blank">3798.T</a></td>
+            <td class="name">ＵＬＳグループ</td>
+            <td class="number">562円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.4倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-5.5%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3647.T" target="_blank">3647.T</a></td>
+            <td class="name">ジー・スリーホールディングス</td>
+            <td class="number">125円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.4倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-9.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/2437.T" target="_blank">2437.T</a></td>
+            <td class="name">Ｓｈｉｎｗａ　Ｗｉｓｅ　Ｈｏｌｄｉｎｇｓ</td>
+            <td class="number">309円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.4倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-7.7%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3777.T" target="_blank">3777.T</a></td>
+            <td class="name">環境フレンドリーホールディングス</td>
+            <td class="number">43円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.3倍</td>
+            <td class="number count-high">10回</td>
+            <td class="number">-5.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4073.T" target="_blank">4073.T</a></td>
+            <td class="name">ジィ・シィ企画</td>
+            <td class="number">577円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.3倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-7.5%</td>
+            <td class="vol-ng">△</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/1491.T" target="_blank">1491.T</a></td>
+            <td class="name">中外鉱業</td>
+            <td class="number">721円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.3倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-8.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500-1000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/5028.T" target="_blank">5028.T</a></td>
+            <td class="name">セカンドサイトアナリティカ</td>
+            <td class="number">366円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.3倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3113.T" target="_blank">3113.T</a></td>
+            <td class="name">ＵＮＩＶＡ・Ｏａｋホールディングス</td>
+            <td class="number">62円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-8.9%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6648.T" target="_blank">6648.T</a></td>
+            <td class="name">かわでん</td>
+            <td class="number">9,370円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.2倍</td>
+            <td class="number count-low">4回</td>
+            <td class="number">-6.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>5000円以上</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4586.T" target="_blank">4586.T</a></td>
+            <td class="name">メドレックス</td>
+            <td class="number">115円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-high">17回</td>
+            <td class="number">-9.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3491.T" target="_blank">3491.T</a></td>
+            <td class="name">ＧＡ　ｔｅｃｈｎｏｌｏｇｉｅｓ</td>
+            <td class="number">2,037円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.8%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/3840.T" target="_blank">3840.T</a></td>
+            <td class="name">パス</td>
+            <td class="number">60円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-7.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4379.T" target="_blank">4379.T</a></td>
+            <td class="name">Ｐｈｏｔｏｓｙｎｔｈ</td>
+            <td class="number">356円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-6.7%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4287.T" target="_blank">4287.T</a></td>
+            <td class="name">ジャストプランニング</td>
+            <td class="number">447円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.1倍</td>
+            <td class="number count-low">3回</td>
+            <td class="number">-5.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/276A.T" target="_blank">276A.T</a></td>
+            <td class="name">ククレブ・アドバイザーズ</td>
+            <td class="number">2,686円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.0倍</td>
+            <td class="number count-mid">9回</td>
+            <td class="number">-9.0%</td>
+            <td class="vol-ok">✓</td>
+            <td>2000-5000円</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/6775.T" target="_blank">6775.T</a></td>
+            <td class="name">ＴＢグループ</td>
+            <td class="number">115円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.0倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-9.1%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/9704.T" target="_blank">9704.T</a></td>
+            <td class="name">アゴーラ　ホスピタリティー　グループ</td>
+            <td class="number">52円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.0倍</td>
+            <td class="number count-mid">5回</td>
+            <td class="number">-5.6%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+        <tr class="">
+            <td><a href="https://finance.yahoo.co.jp/quote/4576.T" target="_blank">4576.T</a></td>
+            <td class="name">デ・ウエスタン・セラピテクス研究所</td>
+            <td class="number">99円</td>
+            <td class="number vol-mid"><span class="badge vol-mid">注目</span> 2.0倍</td>
+            <td class="number count-mid">6回</td>
+            <td class="number">-11.2%</td>
+            <td class="vol-ok">✓</td>
+            <td>500円未満</td>
+        </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p><strong>データソース:</strong> surge_candidates_5m.parquet → morning_peak_watchlist.parquet</p>
+            <p><strong>常習犯定義:</strong> 日中高値 → 終値-5%以上が3回以上</p>
+            <p><strong>出来高フィルタ:</strong> ✓=価格帯別第1四分位超、△=第1四分位以下（流動性注意）</p>
+        </div>
+    </div>
+</body>
+</html>

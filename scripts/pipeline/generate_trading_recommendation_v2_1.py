@@ -474,6 +474,13 @@ def main():
         # v3戦略を適用
         v3_action, v3_holding_days, v3_label, v3_reason = apply_v3_strategy(v2_1_action, prev_close)
 
+        # 時価総額（grok_trending.parquetから取得、なければNone）
+        market_cap = row.get('market_cap', None)
+        if pd.notna(market_cap):
+            market_cap = float(market_cap)
+        else:
+            market_cap = None
+
         recommendations.append({
             'ticker': ticker,
             'stock_name': row.get('stock_name', ''),
@@ -481,6 +488,7 @@ def main():
             'prev_day_close': prev_close,
             'prev_day_change_pct': price_data.get('dailyChangePct', 0),
             'atr_pct': price_data.get('atrPct', 0),
+            'market_cap': market_cap,
             'v2_0_3_action': v2_0_3_action,
             'v2_0_3_score': v2_0_3_score,
             'v2_0_3_reasons': ' / '.join(v2_0_3_reasons),

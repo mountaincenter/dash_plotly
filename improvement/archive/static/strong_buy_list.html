@@ -1,0 +1,2888 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRONG_BUY シグナル一覧（寄付買い・大引売り）</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 20px; background: #f5f5f5;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        
+        .summary {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px; margin-bottom: 30px;
+        }
+        .summary-card {
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
+        }
+        .summary-card .value { font-size: 28px; font-weight: bold; color: #333; }
+        .summary-card .label { font-size: 12px; color: #666; margin-top: 5px; }
+        .summary-card.profit .value { color: #16a34a; }
+        .summary-card.loss .value { color: #dc2626; }
+        
+        .filters {
+            background: white; padding: 15px; border-radius: 10px;
+            margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;
+            align-items: center;
+        }
+        .filters label { font-weight: 500; color: #555; }
+        .filters select, .filters input {
+            padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%; border-collapse: collapse; background: white;
+            border-radius: 10px; overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #1e293b; color: white; padding: 12px 8px;
+            text-align: left; font-size: 12px; position: sticky; top: 0;
+            white-space: nowrap;
+        }
+        th.sortable { cursor: pointer; }
+        th.sortable:hover { background: #334155; }
+        td { padding: 10px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+        tr:hover { background: #f8fafc; }
+        
+        .win { color: #16a34a; font-weight: 600; }
+        .lose { color: #dc2626; font-weight: 600; }
+        .ticker { font-weight: 600; color: #1e40af; }
+        .stock-name { font-size: 12px; color: #555; }
+        .market-red { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        .market-yellow { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        .market-green { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        
+        .cumulative { font-size: 11px; color: #666; }
+        
+        @media (max-width: 768px) {
+            table { font-size: 11px; }
+            th, td { padding: 8px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>STRONG_BUY シグナル一覧</h1>
+        <p class="subtitle">寄付買い → 大引売り（デイトレード）| 1年間バックテスト結果</p>
+        
+        <div class="summary">
+            <div class="summary-card">
+                <div class="value">190</div>
+                <div class="label">総取引数</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">57.9%</div>
+                <div class="label">勝率</div>
+            </div>
+            <div class="summary-card profit">
+                <div class="value">¥1,074,741</div>
+                <div class="label">100株合計利益</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">¥5,656</div>
+                <div class="label">100株平均利益</div>
+            </div>
+            <div class="summary-card profit">
+                <div class="value">¥132,012</div>
+                <div class="label">最大利益</div>
+            </div>
+            <div class="summary-card loss">
+                <div class="value">¥-65,000</div>
+                <div class="label">最大損失</div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <label>フィルター:</label>
+            <select id="marketFilter" onchange="filterTable()">
+                <option value="">全市場環境</option>
+                <option value="RED">RED</option>
+                <option value="YELLOW">YELLOW</option>
+                <option value="GREEN">GREEN</option>
+            </select>
+            <select id="resultFilter" onchange="filterTable()">
+                <option value="">勝敗すべて</option>
+                <option value="win">勝ちのみ</option>
+                <option value="lose">負けのみ</option>
+            </select>
+            <select id="tickerFilter" onchange="filterTable()">
+                <option value="">全銘柄</option>
+                <option value="1605.T">1605.T INPEX</option>
+                <option value="1801.T">1801.T 大成建設</option>
+                <option value="1803.T">1803.T 清水建設</option>
+                <option value="3382.T">3382.T セブン&アイ</option>
+                <option value="4063.T">4063.T 信越化学</option>
+                <option value="4307.T">4307.T 野村総研</option>
+                <option value="4502.T">4502.T 武田薬品</option>
+                <option value="4568.T">4568.T 第一三共</option>
+                <option value="5020.T">5020.T ENEOS</option>
+                <option value="5631.T">5631.T 日本製鋼所</option>
+                <option value="6098.T">6098.T リクルート</option>
+                <option value="6367.T">6367.T ダイキン</option>
+                <option value="6501.T">6501.T 日立製作所</option>
+                <option value="6503.T">6503.T 三菱電機</option>
+                <option value="6701.T">6701.T NEC</option>
+                <option value="6702.T">6702.T 富士通</option>
+                <option value="6723.T">6723.T ルネサス</option>
+                <option value="6758.T">6758.T ソニーG</option>
+                <option value="6762.T">6762.T TDK</option>
+                <option value="6857.T">6857.T アドバンテスト</option>
+                <option value="6861.T">6861.T キーエンス</option>
+                <option value="6920.T">6920.T レーザーテック</option>
+                <option value="6946.T">6946.T 日本アビオニクス</option>
+                <option value="6981.T">6981.T 村田製作所</option>
+                <option value="7011.T">7011.T 三菱重工</option>
+                <option value="7012.T">7012.T 川崎重工</option>
+                <option value="7013.T">7013.T IHI</option>
+                <option value="7203.T">7203.T トヨタ</option>
+                <option value="7267.T">7267.T ホンダ</option>
+                <option value="7735.T">7735.T SCREEN</option>
+                <option value="7741.T">7741.T HOYA</option>
+                <option value="7974.T">7974.T 任天堂</option>
+                <option value="8001.T">8001.T 伊藤忠</option>
+                <option value="8031.T">8031.T 三井物産</option>
+                <option value="8035.T">8035.T 東京エレクトロン</option>
+                <option value="8316.T">8316.T 三井住友FG</option>
+                <option value="8411.T">8411.T みずほFG</option>
+                <option value="9005.T">9005.T 東急</option>
+                <option value="9022.T">9022.T JR東海</option>
+                <option value="9501.T">9501.T 東京電力</option>
+                <option value="9503.T">9503.T 関西電力</option>
+                <option value="9984.T">9984.T ソフトバンクG</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterTable()">
+        </div>
+        
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th class="sortable" onclick="sortTable(0)">#</th>
+                    <th class="sortable" onclick="sortTable(1)">シグナル日</th>
+                    <th class="sortable" onclick="sortTable(2)">Ticker</th>
+                    <th>銘柄名</th>
+                    <th>セクター</th>
+                    <th class="sortable" onclick="sortTable(5)">スコア</th>
+                    <th>市場</th>
+                    <th class="sortable" onclick="sortTable(7)">寄付</th>
+                    <th class="sortable" onclick="sortTable(8)">大引</th>
+                    <th class="sortable" onclick="sortTable(9)">リターン</th>
+                    <th class="sortable" onclick="sortTable(10)">100株利益</th>
+                    <th>累計</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>1</td>
+                    <td>2025-01-27</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,085</td>
+                    <td>¥2,118</td>
+                    <td class="win">+1.58%</td>
+                    <td class="win">¥+3,292</td>
+                    <td class="cumulative win">¥+3,292</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>2</td>
+                    <td>2025-01-29</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,112</td>
+                    <td>¥2,080</td>
+                    <td class="lose">-1.51%</td>
+                    <td class="lose">¥-3,192</td>
+                    <td class="cumulative win">¥+100</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>3</td>
+                    <td>2025-01-30</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥2,105</td>
+                    <td>¥2,178</td>
+                    <td class="win">+3.46%</td>
+                    <td class="win">¥+7,283</td>
+                    <td class="cumulative win">¥+7,383</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>4</td>
+                    <td>2025-02-03</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,051</td>
+                    <td>¥2,022</td>
+                    <td class="lose">-1.41%</td>
+                    <td class="lose">¥-2,893</td>
+                    <td class="cumulative win">¥+4,490</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>5</td>
+                    <td>2025-02-04</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,032</td>
+                    <td>¥2,137</td>
+                    <td class="win">+5.15%</td>
+                    <td class="win">¥+10,476</td>
+                    <td class="cumulative win">¥+14,966</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>6</td>
+                    <td>2025-02-06</td>
+                    <td class="ticker">6367.T</td>
+                    <td class="stock-name">ダイキン</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥16,313</td>
+                    <td>¥16,068</td>
+                    <td class="lose">-1.51%</td>
+                    <td class="lose">¥-24,554</td>
+                    <td class="cumulative lose">¥-9,588</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>7</td>
+                    <td>2025-02-07</td>
+                    <td class="ticker">6367.T</td>
+                    <td class="stock-name">ダイキン</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥16,068</td>
+                    <td>¥16,087</td>
+                    <td class="win">+0.12%</td>
+                    <td class="win">¥+1,964</td>
+                    <td class="cumulative lose">¥-7,624</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>8</td>
+                    <td>2025-02-10</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,515</td>
+                    <td>¥3,458</td>
+                    <td class="lose">-1.62%</td>
+                    <td class="lose">¥-5,686</td>
+                    <td class="cumulative lose">¥-13,310</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>9</td>
+                    <td>2025-02-10</td>
+                    <td class="ticker">6367.T</td>
+                    <td class="stock-name">ダイキン</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥16,009</td>
+                    <td>¥15,906</td>
+                    <td class="lose">-0.64%</td>
+                    <td class="lose">¥-10,312</td>
+                    <td class="cumulative lose">¥-23,622</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>10</td>
+                    <td>2025-02-12</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>80</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,480</td>
+                    <td>¥3,664</td>
+                    <td class="win">+5.30%</td>
+                    <td class="win">¥+18,431</td>
+                    <td class="cumulative lose">¥-5,191</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>11</td>
+                    <td>2025-02-12</td>
+                    <td class="ticker">6367.T</td>
+                    <td class="stock-name">ダイキン</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥16,097</td>
+                    <td>¥16,264</td>
+                    <td class="win">+1.04%</td>
+                    <td class="win">¥+16,696</td>
+                    <td class="cumulative win">¥+11,505</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>12</td>
+                    <td>2025-02-13</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥10,020</td>
+                    <td>¥10,000</td>
+                    <td class="lose">-0.20%</td>
+                    <td class="lose">¥-1,994</td>
+                    <td class="cumulative win">¥+9,511</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>13</td>
+                    <td>2025-02-14</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,574</td>
+                    <td>¥3,565</td>
+                    <td class="lose">-0.25%</td>
+                    <td class="lose">¥-882</td>
+                    <td class="cumulative win">¥+8,629</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>14</td>
+                    <td>2025-02-18</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥3,499</td>
+                    <td>¥3,433</td>
+                    <td class="lose">-1.88%</td>
+                    <td class="lose">¥-6,568</td>
+                    <td class="cumulative win">¥+2,061</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>15</td>
+                    <td>2025-02-19</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>80</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,385</td>
+                    <td>¥3,350</td>
+                    <td class="lose">-1.04%</td>
+                    <td class="lose">¥-3,529</td>
+                    <td class="cumulative lose">¥-1,468</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>16</td>
+                    <td>2025-02-19</td>
+                    <td class="ticker">8001.T</td>
+                    <td class="stock-name">伊藤忠</td>
+                    <td>卸売業</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥5,994</td>
+                    <td>¥5,949</td>
+                    <td class="lose">-0.75%</td>
+                    <td class="lose">¥-4,483</td>
+                    <td class="cumulative lose">¥-5,951</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>17</td>
+                    <td>2025-02-19</td>
+                    <td class="ticker">6367.T</td>
+                    <td class="stock-name">ダイキン</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥15,537</td>
+                    <td>¥15,665</td>
+                    <td class="win">+0.82%</td>
+                    <td class="win">¥+12,768</td>
+                    <td class="cumulative win">¥+6,817</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>18</td>
+                    <td>2025-02-20</td>
+                    <td class="ticker">6762.T</td>
+                    <td class="stock-name">TDK</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,643</td>
+                    <td>¥1,646</td>
+                    <td class="win">+0.18%</td>
+                    <td class="win">¥+294</td>
+                    <td class="cumulative win">¥+7,111</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>19</td>
+                    <td>2025-02-20</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,371</td>
+                    <td>¥3,361</td>
+                    <td class="lose">-0.29%</td>
+                    <td class="lose">¥-980</td>
+                    <td class="cumulative win">¥+6,131</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>20</td>
+                    <td>2025-02-21</td>
+                    <td class="ticker">8001.T</td>
+                    <td class="stock-name">伊藤忠</td>
+                    <td>卸売業</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥6,276</td>
+                    <td>¥6,385</td>
+                    <td class="win">+1.74%</td>
+                    <td class="win">¥+10,917</td>
+                    <td class="cumulative win">¥+17,048</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>21</td>
+                    <td>2025-02-21</td>
+                    <td class="ticker">7741.T</td>
+                    <td class="stock-name">HOYA</td>
+                    <td>精密機器</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥17,101</td>
+                    <td>¥17,748</td>
+                    <td class="win">+3.78%</td>
+                    <td class="win">¥+64,675</td>
+                    <td class="cumulative win">¥+81,723</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>22</td>
+                    <td>2025-02-21</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,152</td>
+                    <td>¥9,085</td>
+                    <td class="lose">-0.74%</td>
+                    <td class="lose">¥-6,779</td>
+                    <td class="cumulative win">¥+74,944</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>23</td>
+                    <td>2025-02-21</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,321</td>
+                    <td>¥3,383</td>
+                    <td class="win">+1.86%</td>
+                    <td class="win">¥+6,176</td>
+                    <td class="cumulative win">¥+81,120</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>24</td>
+                    <td>2025-02-25</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥9,026</td>
+                    <td>¥9,153</td>
+                    <td class="win">+1.41%</td>
+                    <td class="win">¥+12,762</td>
+                    <td class="cumulative win">¥+93,882</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>25</td>
+                    <td>2025-02-25</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,392</td>
+                    <td>¥3,460</td>
+                    <td class="win">+2.02%</td>
+                    <td class="win">¥+6,862</td>
+                    <td class="cumulative win">¥+100,744</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>26</td>
+                    <td>2025-02-26</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥9,114</td>
+                    <td>¥9,237</td>
+                    <td class="win">+1.35%</td>
+                    <td class="win">¥+12,263</td>
+                    <td class="cumulative win">¥+113,007</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>27</td>
+                    <td>2025-02-26</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥22,778</td>
+                    <td>¥22,588</td>
+                    <td class="lose">-0.84%</td>
+                    <td class="lose">¥-19,022</td>
+                    <td class="cumulative win">¥+93,985</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>28</td>
+                    <td>2025-02-27</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,382</td>
+                    <td>¥3,379</td>
+                    <td class="lose">-0.09%</td>
+                    <td class="lose">¥-294</td>
+                    <td class="cumulative win">¥+93,691</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>29</td>
+                    <td>2025-02-27</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,023</td>
+                    <td>¥8,773</td>
+                    <td class="lose">-2.76%</td>
+                    <td class="lose">¥-24,925</td>
+                    <td class="cumulative win">¥+68,766</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>30</td>
+                    <td>2025-02-27</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,102</td>
+                    <td>¥2,116</td>
+                    <td class="win">+0.66%</td>
+                    <td class="win">¥+1,382</td>
+                    <td class="cumulative win">¥+70,148</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>31</td>
+                    <td>2025-02-28</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥13,329</td>
+                    <td>¥13,127</td>
+                    <td class="lose">-1.52%</td>
+                    <td class="lose">¥-20,271</td>
+                    <td class="cumulative win">¥+49,877</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>32</td>
+                    <td>2025-02-28</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥8,347</td>
+                    <td>¥8,297</td>
+                    <td class="lose">-0.60%</td>
+                    <td class="lose">¥-4,980</td>
+                    <td class="cumulative win">¥+44,897</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>33</td>
+                    <td>2025-02-28</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥9,073</td>
+                    <td>¥9,382</td>
+                    <td class="win">+3.41%</td>
+                    <td class="win">¥+30,908</td>
+                    <td class="cumulative win">¥+75,805</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>34</td>
+                    <td>2025-02-28</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥21,915</td>
+                    <td>¥21,832</td>
+                    <td class="lose">-0.38%</td>
+                    <td class="lose">¥-8,292</td>
+                    <td class="cumulative win">¥+67,513</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>35</td>
+                    <td>2025-02-28</td>
+                    <td class="ticker">7203.T</td>
+                    <td class="stock-name">トヨタ</td>
+                    <td>輸送用機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,655</td>
+                    <td>¥2,703</td>
+                    <td class="win">+1.84%</td>
+                    <td class="win">¥+4,885</td>
+                    <td class="cumulative win">¥+72,398</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>36</td>
+                    <td>2025-03-03</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,869</td>
+                    <td>¥7,901</td>
+                    <td class="win">+0.41%</td>
+                    <td class="win">¥+3,187</td>
+                    <td class="cumulative win">¥+75,585</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>37</td>
+                    <td>2025-03-03</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥12,632</td>
+                    <td>¥12,845</td>
+                    <td class="win">+1.68%</td>
+                    <td class="win">¥+21,260</td>
+                    <td class="cumulative win">¥+96,845</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>38</td>
+                    <td>2025-03-03</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥21,198</td>
+                    <td>¥21,900</td>
+                    <td class="win">+3.31%</td>
+                    <td class="win">¥+70,238</td>
+                    <td class="cumulative win">¥+167,083</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>39</td>
+                    <td>2025-03-04</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>75</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,977</td>
+                    <td>¥7,965</td>
+                    <td class="lose">-0.15%</td>
+                    <td class="lose">¥-1,195</td>
+                    <td class="cumulative win">¥+165,888</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>40</td>
+                    <td>2025-03-04</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,018</td>
+                    <td>¥1,972</td>
+                    <td class="lose">-2.27%</td>
+                    <td class="lose">¥-4,590</td>
+                    <td class="cumulative win">¥+161,298</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>41</td>
+                    <td>2025-03-05</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,991</td>
+                    <td>¥2,092</td>
+                    <td class="win">+5.11%</td>
+                    <td class="win">¥+10,168</td>
+                    <td class="cumulative win">¥+171,466</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>42</td>
+                    <td>2025-03-05</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,025</td>
+                    <td>¥8,154</td>
+                    <td class="win">+1.60%</td>
+                    <td class="win">¥+12,849</td>
+                    <td class="cumulative win">¥+184,315</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>43</td>
+                    <td>2025-03-05</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥21,647</td>
+                    <td>¥21,247</td>
+                    <td class="lose">-1.85%</td>
+                    <td class="lose">¥-39,996</td>
+                    <td class="cumulative win">¥+144,319</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>44</td>
+                    <td>2025-03-07</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥13,720</td>
+                    <td>¥15,040</td>
+                    <td class="win">+9.62%</td>
+                    <td class="win">¥+132,012</td>
+                    <td class="cumulative win">¥+276,331</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>45</td>
+                    <td>2025-03-07</td>
+                    <td class="ticker">6501.T</td>
+                    <td class="stock-name">日立製作所</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,721</td>
+                    <td>¥3,659</td>
+                    <td class="lose">-1.67%</td>
+                    <td class="lose">¥-6,226</td>
+                    <td class="cumulative win">¥+270,105</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>46</td>
+                    <td>2025-03-07</td>
+                    <td class="ticker">6857.T</td>
+                    <td class="stock-name">アドバンテスト</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,513</td>
+                    <td>¥7,751</td>
+                    <td class="win">+3.17%</td>
+                    <td class="win">¥+23,785</td>
+                    <td class="cumulative win">¥+293,890</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>47</td>
+                    <td>2025-03-07</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>75</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥20,486</td>
+                    <td>¥20,949</td>
+                    <td class="win">+2.26%</td>
+                    <td class="win">¥+46,337</td>
+                    <td class="cumulative win">¥+340,227</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>48</td>
+                    <td>2025-03-10</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥20,491</td>
+                    <td>¥20,847</td>
+                    <td class="win">+1.74%</td>
+                    <td class="win">¥+35,606</td>
+                    <td class="cumulative win">¥+375,833</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>49</td>
+                    <td>2025-03-10</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,679</td>
+                    <td>¥7,814</td>
+                    <td class="win">+1.75%</td>
+                    <td class="win">¥+13,447</td>
+                    <td class="cumulative win">¥+389,280</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>50</td>
+                    <td>2025-03-10</td>
+                    <td class="ticker">7974.T</td>
+                    <td class="stock-name">任天堂</td>
+                    <td>その他製品</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,599</td>
+                    <td>¥9,945</td>
+                    <td class="win">+3.61%</td>
+                    <td class="win">¥+34,618</td>
+                    <td class="cumulative win">¥+423,898</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>51</td>
+                    <td>2025-03-11</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥7,809</td>
+                    <td>¥7,750</td>
+                    <td class="lose">-0.75%</td>
+                    <td class="lose">¥-5,876</td>
+                    <td class="cumulative win">¥+418,022</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>52</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">6501.T</td>
+                    <td class="stock-name">日立製作所</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,712</td>
+                    <td>¥3,623</td>
+                    <td class="lose">-2.40%</td>
+                    <td class="lose">¥-8,894</td>
+                    <td class="cumulative win">¥+409,128</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>53</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥21,164</td>
+                    <td>¥20,798</td>
+                    <td class="lose">-1.73%</td>
+                    <td class="lose">¥-36,582</td>
+                    <td class="cumulative win">¥+372,546</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>54</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">6857.T</td>
+                    <td class="stock-name">アドバンテスト</td>
+                    <td>電気機器</td>
+                    <td>75</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,762</td>
+                    <td>¥7,792</td>
+                    <td class="win">+0.38%</td>
+                    <td class="win">¥+2,985</td>
+                    <td class="cumulative win">¥+375,531</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>55</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,823</td>
+                    <td>¥8,700</td>
+                    <td class="lose">-1.40%</td>
+                    <td class="lose">¥-12,363</td>
+                    <td class="cumulative win">¥+363,168</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>56</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">7974.T</td>
+                    <td class="stock-name">任天堂</td>
+                    <td>その他製品</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥10,281</td>
+                    <td>¥10,068</td>
+                    <td class="lose">-2.07%</td>
+                    <td class="lose">¥-21,265</td>
+                    <td class="cumulative win">¥+341,903</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>57</td>
+                    <td>2025-03-12</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,900</td>
+                    <td>¥7,725</td>
+                    <td class="lose">-2.21%</td>
+                    <td class="lose">¥-17,431</td>
+                    <td class="cumulative win">¥+324,472</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>58</td>
+                    <td>2025-03-13</td>
+                    <td class="ticker">7974.T</td>
+                    <td class="stock-name">任天堂</td>
+                    <td>その他製品</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,974</td>
+                    <td>¥10,152</td>
+                    <td class="win">+1.78%</td>
+                    <td class="win">¥+17,803</td>
+                    <td class="cumulative win">¥+342,275</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>59</td>
+                    <td>2025-03-13</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,576</td>
+                    <td>¥7,805</td>
+                    <td class="win">+3.02%</td>
+                    <td class="win">¥+22,910</td>
+                    <td class="cumulative win">¥+365,185</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>60</td>
+                    <td>2025-03-13</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥20,500</td>
+                    <td>¥20,954</td>
+                    <td class="win">+2.21%</td>
+                    <td class="win">¥+45,362</td>
+                    <td class="cumulative win">¥+410,547</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>61</td>
+                    <td>2025-03-13</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,243</td>
+                    <td>¥2,260</td>
+                    <td class="win">+0.78%</td>
+                    <td class="win">¥+1,750</td>
+                    <td class="cumulative win">¥+412,297</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>62</td>
+                    <td>2025-03-14</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,948</td>
+                    <td>¥7,947</td>
+                    <td class="lose">-0.01%</td>
+                    <td class="lose">¥-99</td>
+                    <td class="cumulative win">¥+412,198</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>63</td>
+                    <td>2025-03-14</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,315</td>
+                    <td>¥21,417</td>
+                    <td class="win">+0.48%</td>
+                    <td class="win">¥+10,243</td>
+                    <td class="cumulative win">¥+422,441</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>64</td>
+                    <td>2025-03-14</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥2,291</td>
+                    <td>¥2,302</td>
+                    <td class="win">+0.48%</td>
+                    <td class="win">¥+1,100</td>
+                    <td class="cumulative win">¥+423,541</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>65</td>
+                    <td>2025-03-17</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,107</td>
+                    <td>¥7,976</td>
+                    <td class="lose">-1.62%</td>
+                    <td class="lose">¥-13,160</td>
+                    <td class="cumulative win">¥+410,381</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>66</td>
+                    <td>2025-03-31</td>
+                    <td class="ticker">6981.T</td>
+                    <td class="stock-name">村田製作所</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,302</td>
+                    <td>¥2,308</td>
+                    <td class="win">+0.26%</td>
+                    <td class="win">¥+593</td>
+                    <td class="cumulative win">¥+410,974</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>67</td>
+                    <td>2025-03-31</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥12,627</td>
+                    <td>¥12,731</td>
+                    <td class="win">+0.82%</td>
+                    <td class="win">¥+10,382</td>
+                    <td class="cumulative win">¥+421,356</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>68</td>
+                    <td>2025-03-31</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥7,690</td>
+                    <td>¥7,779</td>
+                    <td class="win">+1.16%</td>
+                    <td class="win">¥+8,886</td>
+                    <td class="cumulative win">¥+430,242</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>69</td>
+                    <td>2025-03-31</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,010</td>
+                    <td>¥2,010</td>
+                    <td class="lose">+0.00%</td>
+                    <td class="lose">¥+0</td>
+                    <td class="cumulative win">¥+430,242</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>70</td>
+                    <td>2025-04-03</td>
+                    <td class="ticker">5631.T</td>
+                    <td class="stock-name">日本製鋼所</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥4,726</td>
+                    <td>¥4,543</td>
+                    <td class="lose">-3.87%</td>
+                    <td class="lose">¥-18,308</td>
+                    <td class="cumulative win">¥+411,934</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>71</td>
+                    <td>2025-04-03</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,788</td>
+                    <td>¥1,656</td>
+                    <td class="lose">-7.38%</td>
+                    <td class="lose">¥-13,200</td>
+                    <td class="cumulative win">¥+398,734</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>72</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">7735.T</td>
+                    <td class="stock-name">SCREEN</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥8,003</td>
+                    <td>¥7,836</td>
+                    <td class="lose">-2.09%</td>
+                    <td class="lose">¥-16,746</td>
+                    <td class="cumulative win">¥+381,988</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>73</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6762.T</td>
+                    <td class="stock-name">TDK</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,172</td>
+                    <td>¥1,173</td>
+                    <td class="win">+0.08%</td>
+                    <td class="win">¥+99</td>
+                    <td class="cumulative win">¥+382,087</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>74</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">7267.T</td>
+                    <td class="stock-name">ホンダ</td>
+                    <td>輸送用機器</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,142</td>
+                    <td>¥1,179</td>
+                    <td class="win">+3.26%</td>
+                    <td class="win">¥+3,719</td>
+                    <td class="cumulative win">¥+385,806</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>75</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,409</td>
+                    <td>¥3,509</td>
+                    <td class="win">+2.93%</td>
+                    <td class="win">¥+9,988</td>
+                    <td class="cumulative win">¥+395,794</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>76</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6857.T</td>
+                    <td class="stock-name">アドバンテスト</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥4,734</td>
+                    <td>¥5,023</td>
+                    <td class="win">+6.11%</td>
+                    <td class="win">¥+28,941</td>
+                    <td class="cumulative win">¥+424,735</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>77</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥5,803</td>
+                    <td>¥5,828</td>
+                    <td class="win">+0.43%</td>
+                    <td class="win">¥+2,497</td>
+                    <td class="cumulative win">¥+427,232</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>78</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">8411.T</td>
+                    <td class="stock-name">みずほFG</td>
+                    <td>銀行業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,658</td>
+                    <td>¥2,883</td>
+                    <td class="win">+8.45%</td>
+                    <td class="win">¥+22,474</td>
+                    <td class="cumulative win">¥+449,706</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>79</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6981.T</td>
+                    <td class="stock-name">村田製作所</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,871</td>
+                    <td>¥1,843</td>
+                    <td class="lose">-1.51%</td>
+                    <td class="lose">¥-2,819</td>
+                    <td class="cumulative win">¥+446,887</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>80</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,346</td>
+                    <td>¥1,380</td>
+                    <td class="win">+2.53%</td>
+                    <td class="win">¥+3,400</td>
+                    <td class="cumulative win">¥+450,287</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>81</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥10,229</td>
+                    <td>¥10,467</td>
+                    <td class="win">+2.32%</td>
+                    <td class="win">¥+23,732</td>
+                    <td class="cumulative win">¥+474,019</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>82</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">5020.T</td>
+                    <td class="stock-name">ENEOS</td>
+                    <td>石油・石炭製品</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥589</td>
+                    <td>¥602</td>
+                    <td class="win">+2.17%</td>
+                    <td class="win">¥+1,277</td>
+                    <td class="cumulative win">¥+475,296</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>83</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">8316.T</td>
+                    <td class="stock-name">三井住友FG</td>
+                    <td>銀行業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,537</td>
+                    <td>¥2,816</td>
+                    <td class="win">+11.01%</td>
+                    <td class="win">¥+27,926</td>
+                    <td class="cumulative win">¥+503,222</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>84</td>
+                    <td>2025-04-04</td>
+                    <td class="ticker">6501.T</td>
+                    <td class="stock-name">日立製作所</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,609</td>
+                    <td>¥2,677</td>
+                    <td class="win">+2.61%</td>
+                    <td class="win">¥+6,810</td>
+                    <td class="cumulative win">¥+510,032</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>85</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">7741.T</td>
+                    <td class="stock-name">HOYA</td>
+                    <td>精密機器</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥14,823</td>
+                    <td>¥14,972</td>
+                    <td class="win">+1.01%</td>
+                    <td class="win">¥+14,908</td>
+                    <td class="cumulative win">¥+524,940</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>86</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥17,543</td>
+                    <td>¥18,365</td>
+                    <td class="win">+4.68%</td>
+                    <td class="win">¥+82,174</td>
+                    <td class="cumulative win">¥+607,114</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>87</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6981.T</td>
+                    <td class="stock-name">村田製作所</td>
+                    <td>電気機器</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,922</td>
+                    <td>¥1,981</td>
+                    <td class="win">+3.04%</td>
+                    <td class="win">¥+5,836</td>
+                    <td class="cumulative win">¥+612,950</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>88</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">7011.T</td>
+                    <td class="stock-name">三菱重工</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,308</td>
+                    <td>¥2,304</td>
+                    <td class="lose">-0.15%</td>
+                    <td class="lose">¥-348</td>
+                    <td class="cumulative win">¥+612,602</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>89</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">8316.T</td>
+                    <td class="stock-name">三井住友FG</td>
+                    <td>銀行業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,998</td>
+                    <td>¥3,123</td>
+                    <td class="win">+4.16%</td>
+                    <td class="win">¥+12,466</td>
+                    <td class="cumulative win">¥+625,068</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>90</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">7267.T</td>
+                    <td class="stock-name">ホンダ</td>
+                    <td>輸送用機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,208</td>
+                    <td>¥1,256</td>
+                    <td class="win">+3.97%</td>
+                    <td class="win">¥+4,796</td>
+                    <td class="cumulative win">¥+629,864</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>91</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">7203.T</td>
+                    <td class="stock-name">トヨタ</td>
+                    <td>輸送用機器</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,321</td>
+                    <td>¥2,391</td>
+                    <td class="win">+3.01%</td>
+                    <td class="win">¥+6,992</td>
+                    <td class="cumulative win">¥+636,856</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>92</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">8411.T</td>
+                    <td class="stock-name">みずほFG</td>
+                    <td>銀行業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,188</td>
+                    <td>¥3,272</td>
+                    <td class="win">+2.63%</td>
+                    <td class="win">¥+8,378</td>
+                    <td class="cumulative win">¥+645,234</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>93</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">7735.T</td>
+                    <td class="stock-name">SCREEN</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥8,430</td>
+                    <td>¥8,690</td>
+                    <td class="win">+3.08%</td>
+                    <td class="win">¥+25,961</td>
+                    <td class="cumulative win">¥+671,195</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>94</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥6,427</td>
+                    <td>¥6,534</td>
+                    <td class="win">+1.66%</td>
+                    <td class="win">¥+10,687</td>
+                    <td class="cumulative win">¥+681,882</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>95</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">1605.T</td>
+                    <td class="stock-name">INPEX</td>
+                    <td>鉱業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,725</td>
+                    <td>¥1,737</td>
+                    <td class="win">+0.71%</td>
+                    <td class="win">¥+1,219</td>
+                    <td class="cumulative win">¥+683,101</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>96</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6501.T</td>
+                    <td class="stock-name">日立製作所</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,062</td>
+                    <td>¥3,054</td>
+                    <td class="lose">-0.26%</td>
+                    <td class="lose">¥-795</td>
+                    <td class="cumulative win">¥+682,306</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>97</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6503.T</td>
+                    <td class="stock-name">三菱電機</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,409</td>
+                    <td>¥2,463</td>
+                    <td class="win">+2.27%</td>
+                    <td class="win">¥+5,463</td>
+                    <td class="cumulative win">¥+687,769</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>98</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6701.T</td>
+                    <td class="stock-name">NEC</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,810</td>
+                    <td>¥2,797</td>
+                    <td class="lose">-0.46%</td>
+                    <td class="lose">¥-1,295</td>
+                    <td class="cumulative win">¥+686,474</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>99</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6702.T</td>
+                    <td class="stock-name">富士通</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,664</td>
+                    <td>¥2,648</td>
+                    <td class="lose">-0.60%</td>
+                    <td class="lose">¥-1,593</td>
+                    <td class="cumulative win">¥+684,881</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>100</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,648</td>
+                    <td>¥3,836</td>
+                    <td class="win">+5.15%</td>
+                    <td class="win">¥+18,790</td>
+                    <td class="cumulative win">¥+703,671</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>101</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6758.T</td>
+                    <td class="stock-name">ソニーG</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,069</td>
+                    <td>¥3,208</td>
+                    <td class="win">+4.51%</td>
+                    <td class="win">¥+13,858</td>
+                    <td class="cumulative win">¥+717,529</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>102</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">5020.T</td>
+                    <td class="stock-name">ENEOS</td>
+                    <td>石油・石炭製品</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥650</td>
+                    <td>¥648</td>
+                    <td class="lose">-0.35%</td>
+                    <td class="lose">¥-225</td>
+                    <td class="cumulative win">¥+717,304</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>103</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,879</td>
+                    <td>¥1,911</td>
+                    <td class="win">+1.68%</td>
+                    <td class="win">¥+3,159</td>
+                    <td class="cumulative win">¥+720,463</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>104</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6861.T</td>
+                    <td class="stock-name">キーエンス</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥52,900</td>
+                    <td>¥53,368</td>
+                    <td class="win">+0.88%</td>
+                    <td class="win">¥+46,770</td>
+                    <td class="cumulative win">¥+767,233</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>105</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6762.T</td>
+                    <td class="stock-name">TDK</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,255</td>
+                    <td>¥1,307</td>
+                    <td class="win">+4.19%</td>
+                    <td class="win">¥+5,260</td>
+                    <td class="cumulative win">¥+772,493</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>106</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥10,763</td>
+                    <td>¥11,332</td>
+                    <td class="win">+5.28%</td>
+                    <td class="win">¥+56,859</td>
+                    <td class="cumulative win">¥+829,352</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>107</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">1803.T</td>
+                    <td class="stock-name">清水建設</td>
+                    <td>建設業</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,230</td>
+                    <td>¥1,242</td>
+                    <td class="win">+1.01%</td>
+                    <td class="win">¥+1,236</td>
+                    <td class="cumulative win">¥+830,588</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>108</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">1801.T</td>
+                    <td class="stock-name">大成建設</td>
+                    <td>建設業</td>
+                    <td>60</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥5,991</td>
+                    <td>¥6,123</td>
+                    <td class="win">+2.19%</td>
+                    <td class="win">¥+13,139</td>
+                    <td class="cumulative win">¥+843,727</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>109</td>
+                    <td>2025-04-07</td>
+                    <td class="ticker">9503.T</td>
+                    <td class="stock-name">関西電力</td>
+                    <td>電気・ガス業</td>
+                    <td>65</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,562</td>
+                    <td>¥1,575</td>
+                    <td class="win">+0.82%</td>
+                    <td class="win">¥+1,282</td>
+                    <td class="cumulative win">¥+845,009</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>110</td>
+                    <td>2025-04-08</td>
+                    <td class="ticker">9503.T</td>
+                    <td class="stock-name">関西電力</td>
+                    <td>電気・ガス業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,553</td>
+                    <td>¥1,544</td>
+                    <td class="lose">-0.60%</td>
+                    <td class="lose">¥-937</td>
+                    <td class="cumulative win">¥+844,072</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>111</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥11,989</td>
+                    <td>¥11,979</td>
+                    <td class="lose">-0.08%</td>
+                    <td class="lose">¥-988</td>
+                    <td class="cumulative win">¥+843,084</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>112</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,952</td>
+                    <td>¥2,004</td>
+                    <td class="win">+2.65%</td>
+                    <td class="win">¥+5,182</td>
+                    <td class="cumulative win">¥+848,266</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>113</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">7741.T</td>
+                    <td class="stock-name">HOYA</td>
+                    <td>精密機器</td>
+                    <td>70</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥15,434</td>
+                    <td>¥15,504</td>
+                    <td class="win">+0.45%</td>
+                    <td class="win">¥+6,957</td>
+                    <td class="cumulative win">¥+855,223</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>114</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥4,104</td>
+                    <td>¥4,017</td>
+                    <td class="lose">-2.12%</td>
+                    <td class="lose">¥-8,702</td>
+                    <td class="cumulative win">¥+846,521</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>115</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">6701.T</td>
+                    <td class="stock-name">NEC</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,039</td>
+                    <td>¥3,041</td>
+                    <td class="win">+0.07%</td>
+                    <td class="win">¥+199</td>
+                    <td class="cumulative win">¥+846,720</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>116</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">1605.T</td>
+                    <td class="stock-name">INPEX</td>
+                    <td>鉱業</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,794</td>
+                    <td>¥1,748</td>
+                    <td class="lose">-2.58%</td>
+                    <td class="lose">¥-4,632</td>
+                    <td class="cumulative win">¥+842,088</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>117</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">8031.T</td>
+                    <td class="stock-name">三井物産</td>
+                    <td>卸売業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥2,723</td>
+                    <td>¥2,666</td>
+                    <td class="lose">-2.08%</td>
+                    <td class="lose">¥-5,667</td>
+                    <td class="cumulative win">¥+836,421</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>118</td>
+                    <td>2025-04-09</td>
+                    <td class="ticker">9503.T</td>
+                    <td class="stock-name">関西電力</td>
+                    <td>電気・ガス業</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥1,617</td>
+                    <td>¥1,627</td>
+                    <td class="win">+0.61%</td>
+                    <td class="win">¥+986</td>
+                    <td class="cumulative win">¥+837,407</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>119</td>
+                    <td>2025-04-11</td>
+                    <td class="ticker">7741.T</td>
+                    <td class="stock-name">HOYA</td>
+                    <td>精密機器</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥14,868</td>
+                    <td>¥15,101</td>
+                    <td class="win">+1.57%</td>
+                    <td class="win">¥+23,356</td>
+                    <td class="cumulative win">¥+860,763</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>120</td>
+                    <td>2025-04-11</td>
+                    <td class="ticker">4502.T</td>
+                    <td class="stock-name">武田薬品</td>
+                    <td>医薬品</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,910</td>
+                    <td>¥3,973</td>
+                    <td class="win">+1.60%</td>
+                    <td class="win">¥+6,255</td>
+                    <td class="cumulative win">¥+867,018</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>121</td>
+                    <td>2025-04-11</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,091</td>
+                    <td>¥3,137</td>
+                    <td class="win">+1.47%</td>
+                    <td class="win">¥+4,546</td>
+                    <td class="cumulative win">¥+871,564</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>122</td>
+                    <td>2025-04-16</td>
+                    <td class="ticker">6723.T</td>
+                    <td class="stock-name">ルネサス</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,611</td>
+                    <td>¥1,626</td>
+                    <td class="win">+0.93%</td>
+                    <td class="win">¥+1,500</td>
+                    <td class="cumulative win">¥+873,064</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>123</td>
+                    <td>2025-04-16</td>
+                    <td class="ticker">9503.T</td>
+                    <td class="stock-name">関西電力</td>
+                    <td>電気・ガス業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,593</td>
+                    <td>¥1,595</td>
+                    <td class="win">+0.12%</td>
+                    <td class="win">¥+197</td>
+                    <td class="cumulative win">¥+873,261</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>124</td>
+                    <td>2025-07-10</td>
+                    <td class="ticker">4307.T</td>
+                    <td class="stock-name">野村総研</td>
+                    <td>情報・通信業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥5,347</td>
+                    <td>¥5,260</td>
+                    <td class="lose">-1.64%</td>
+                    <td class="lose">¥-8,747</td>
+                    <td class="cumulative win">¥+864,514</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>125</td>
+                    <td>2025-07-11</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,830</td>
+                    <td>¥3,855</td>
+                    <td class="win">+0.65%</td>
+                    <td class="win">¥+2,500</td>
+                    <td class="cumulative win">¥+867,014</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>126</td>
+                    <td>2025-07-17</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,929</td>
+                    <td>¥1,908</td>
+                    <td class="lose">-1.10%</td>
+                    <td class="lose">¥-2,122</td>
+                    <td class="cumulative win">¥+864,892</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>127</td>
+                    <td>2025-07-18</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,921</td>
+                    <td>¥1,917</td>
+                    <td class="lose">-0.21%</td>
+                    <td class="lose">¥-394</td>
+                    <td class="cumulative win">¥+864,498</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>128</td>
+                    <td>2025-07-22</td>
+                    <td class="ticker">3382.T</td>
+                    <td class="stock-name">セブン&アイ</td>
+                    <td>小売業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,928</td>
+                    <td>¥1,945</td>
+                    <td class="win">+0.90%</td>
+                    <td class="win">¥+1,727</td>
+                    <td class="cumulative win">¥+866,225</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>129</td>
+                    <td>2025-07-25</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥16,180</td>
+                    <td>¥16,195</td>
+                    <td class="win">+0.09%</td>
+                    <td class="win">¥+1,500</td>
+                    <td class="cumulative win">¥+867,725</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>130</td>
+                    <td>2025-07-28</td>
+                    <td class="ticker">7735.T</td>
+                    <td class="stock-name">SCREEN</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥10,964</td>
+                    <td>¥11,098</td>
+                    <td class="win">+1.22%</td>
+                    <td class="win">¥+13,377</td>
+                    <td class="cumulative win">¥+881,102</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>131</td>
+                    <td>2025-07-28</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥15,500</td>
+                    <td>¥14,850</td>
+                    <td class="lose">-4.19%</td>
+                    <td class="lose">¥-65,000</td>
+                    <td class="cumulative win">¥+816,102</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>132</td>
+                    <td>2025-07-30</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥15,010</td>
+                    <td>¥15,520</td>
+                    <td class="win">+3.40%</td>
+                    <td class="win">¥+51,000</td>
+                    <td class="cumulative win">¥+867,102</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>133</td>
+                    <td>2025-07-31</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥14,765</td>
+                    <td>¥14,620</td>
+                    <td class="lose">-0.98%</td>
+                    <td class="lose">¥-14,500</td>
+                    <td class="cumulative win">¥+852,602</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>134</td>
+                    <td>2025-08-01</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥14,090</td>
+                    <td>¥14,490</td>
+                    <td class="win">+2.84%</td>
+                    <td class="win">¥+40,000</td>
+                    <td class="cumulative win">¥+892,602</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>135</td>
+                    <td>2025-08-01</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥21,256</td>
+                    <td>¥22,261</td>
+                    <td class="win">+4.73%</td>
+                    <td class="win">¥+100,490</td>
+                    <td class="cumulative win">¥+993,092</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>136</td>
+                    <td>2025-08-05</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥21,533</td>
+                    <td>¥21,335</td>
+                    <td class="lose">-0.92%</td>
+                    <td class="lose">¥-19,801</td>
+                    <td class="cumulative win">¥+973,291</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>137</td>
+                    <td>2025-08-05</td>
+                    <td class="ticker">6857.T</td>
+                    <td class="stock-name">アドバンテスト</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,880</td>
+                    <td>¥10,059</td>
+                    <td class="win">+1.82%</td>
+                    <td class="win">¥+17,963</td>
+                    <td class="cumulative win">¥+991,254</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>138</td>
+                    <td>2025-08-05</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥14,205</td>
+                    <td>¥14,255</td>
+                    <td class="win">+0.35%</td>
+                    <td class="win">¥+5,000</td>
+                    <td class="cumulative win">¥+996,254</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>139</td>
+                    <td>2025-08-06</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>85</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥20,345</td>
+                    <td>¥20,810</td>
+                    <td class="win">+2.29%</td>
+                    <td class="win">¥+46,532</td>
+                    <td class="cumulative win">¥+1,042,786</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>140</td>
+                    <td>2025-08-06</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥14,065</td>
+                    <td>¥14,295</td>
+                    <td class="win">+1.64%</td>
+                    <td class="win">¥+23,000</td>
+                    <td class="cumulative win">¥+1,065,786</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>141</td>
+                    <td>2025-08-06</td>
+                    <td class="ticker">6857.T</td>
+                    <td class="stock-name">アドバンテスト</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,787</td>
+                    <td>¥10,089</td>
+                    <td class="win">+3.09%</td>
+                    <td class="win">¥+30,239</td>
+                    <td class="cumulative win">¥+1,096,025</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>142</td>
+                    <td>2025-08-08</td>
+                    <td class="ticker">6920.T</td>
+                    <td class="stock-name">レーザーテック</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥14,800</td>
+                    <td>¥15,485</td>
+                    <td class="win">+4.63%</td>
+                    <td class="win">¥+68,500</td>
+                    <td class="cumulative win">¥+1,164,525</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>143</td>
+                    <td>2025-08-08</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,187</td>
+                    <td>¥21,305</td>
+                    <td class="win">+0.56%</td>
+                    <td class="win">¥+11,880</td>
+                    <td class="cumulative win">¥+1,176,405</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>144</td>
+                    <td>2025-08-12</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,489</td>
+                    <td>¥21,474</td>
+                    <td class="lose">-0.07%</td>
+                    <td class="lose">¥-1,485</td>
+                    <td class="cumulative win">¥+1,174,920</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>145</td>
+                    <td>2025-08-13</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,281</td>
+                    <td>¥21,043</td>
+                    <td class="lose">-1.12%</td>
+                    <td class="lose">¥-23,761</td>
+                    <td class="cumulative win">¥+1,151,159</td>
+                </tr>
+                <tr data-market="GREEN" data-result="win">
+                    <td>146</td>
+                    <td>2025-08-14</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥20,820</td>
+                    <td>¥21,291</td>
+                    <td class="win">+2.26%</td>
+                    <td class="win">¥+47,027</td>
+                    <td class="cumulative win">¥+1,198,186</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>147</td>
+                    <td>2025-08-15</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,216</td>
+                    <td>¥20,835</td>
+                    <td class="lose">-1.80%</td>
+                    <td class="lose">¥-38,117</td>
+                    <td class="cumulative win">¥+1,160,069</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>148</td>
+                    <td>2025-08-18</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥21,018</td>
+                    <td>¥21,008</td>
+                    <td class="lose">-0.05%</td>
+                    <td class="lose">¥-990</td>
+                    <td class="cumulative win">¥+1,159,079</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>149</td>
+                    <td>2025-08-19</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥20,870</td>
+                    <td>¥20,716</td>
+                    <td class="lose">-0.74%</td>
+                    <td class="lose">¥-15,345</td>
+                    <td class="cumulative win">¥+1,143,734</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>150</td>
+                    <td>2025-08-20</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥20,246</td>
+                    <td>¥20,216</td>
+                    <td class="lose">-0.15%</td>
+                    <td class="lose">¥-2,970</td>
+                    <td class="cumulative win">¥+1,140,764</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>151</td>
+                    <td>2025-08-20</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,555</td>
+                    <td>¥9,385</td>
+                    <td class="lose">-1.79%</td>
+                    <td class="lose">¥-17,067</td>
+                    <td class="cumulative win">¥+1,123,697</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>152</td>
+                    <td>2025-08-21</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥20,236</td>
+                    <td>¥19,895</td>
+                    <td class="lose">-1.69%</td>
+                    <td class="lose">¥-34,156</td>
+                    <td class="cumulative win">¥+1,089,541</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>153</td>
+                    <td>2025-08-21</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥9,446</td>
+                    <td>¥9,426</td>
+                    <td class="lose">-0.21%</td>
+                    <td class="lose">¥-1,984</td>
+                    <td class="cumulative win">¥+1,087,557</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>154</td>
+                    <td>2025-08-22</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥19,939</td>
+                    <td>¥20,023</td>
+                    <td class="win">+0.42%</td>
+                    <td class="win">¥+8,415</td>
+                    <td class="cumulative win">¥+1,095,972</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>155</td>
+                    <td>2025-08-25</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,434</td>
+                    <td>¥9,292</td>
+                    <td class="lose">-1.50%</td>
+                    <td class="lose">¥-14,189</td>
+                    <td class="cumulative win">¥+1,081,783</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>156</td>
+                    <td>2025-08-25</td>
+                    <td class="ticker">8035.T</td>
+                    <td class="stock-name">東京エレクトロン</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥19,919</td>
+                    <td>¥20,043</td>
+                    <td class="win">+0.62%</td>
+                    <td class="win">¥+12,375</td>
+                    <td class="cumulative win">¥+1,094,158</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>157</td>
+                    <td>2025-08-26</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,406</td>
+                    <td>¥9,090</td>
+                    <td class="lose">-3.36%</td>
+                    <td class="lose">¥-31,653</td>
+                    <td class="cumulative win">¥+1,062,505</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>158</td>
+                    <td>2025-08-27</td>
+                    <td class="ticker">7013.T</td>
+                    <td class="stock-name">IHI</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,154</td>
+                    <td>¥2,201</td>
+                    <td class="win">+2.18%</td>
+                    <td class="win">¥+4,695</td>
+                    <td class="cumulative win">¥+1,067,200</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>159</td>
+                    <td>2025-08-27</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,058</td>
+                    <td>¥9,233</td>
+                    <td class="win">+1.93%</td>
+                    <td class="win">¥+17,464</td>
+                    <td class="cumulative win">¥+1,084,664</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>160</td>
+                    <td>2025-08-28</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥9,129</td>
+                    <td>¥8,955</td>
+                    <td class="lose">-1.90%</td>
+                    <td class="lose">¥-17,365</td>
+                    <td class="cumulative win">¥+1,067,299</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>161</td>
+                    <td>2025-08-29</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>75</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,806</td>
+                    <td>¥8,821</td>
+                    <td class="win">+0.17%</td>
+                    <td class="win">¥+1,488</td>
+                    <td class="cumulative win">¥+1,068,787</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>162</td>
+                    <td>2025-09-01</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,862</td>
+                    <td>¥8,765</td>
+                    <td class="lose">-1.09%</td>
+                    <td class="lose">¥-9,625</td>
+                    <td class="cumulative win">¥+1,059,162</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>163</td>
+                    <td>2025-09-02</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,813</td>
+                    <td>¥8,652</td>
+                    <td class="lose">-1.82%</td>
+                    <td class="lose">¥-16,075</td>
+                    <td class="cumulative win">¥+1,043,087</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>164</td>
+                    <td>2025-09-04</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,928</td>
+                    <td>¥8,842</td>
+                    <td class="lose">-0.97%</td>
+                    <td class="lose">¥-8,632</td>
+                    <td class="cumulative win">¥+1,034,455</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>165</td>
+                    <td>2025-09-05</td>
+                    <td class="ticker">6946.T</td>
+                    <td class="stock-name">日本アビオニクス</td>
+                    <td>電気機器</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥4,235</td>
+                    <td>¥4,145</td>
+                    <td class="lose">-2.13%</td>
+                    <td class="lose">¥-9,000</td>
+                    <td class="cumulative win">¥+1,025,455</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>166</td>
+                    <td>2025-09-18</td>
+                    <td class="ticker">9501.T</td>
+                    <td class="stock-name">東京電力</td>
+                    <td>電気・ガス業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥645</td>
+                    <td>¥685</td>
+                    <td class="win">+6.29%</td>
+                    <td class="win">¥+4,059</td>
+                    <td class="cumulative win">¥+1,029,514</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>167</td>
+                    <td>2025-09-19</td>
+                    <td class="ticker">6098.T</td>
+                    <td class="stock-name">リクルート</td>
+                    <td>サービス業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥7,803</td>
+                    <td>¥7,958</td>
+                    <td class="win">+2.00%</td>
+                    <td class="win">¥+15,576</td>
+                    <td class="cumulative win">¥+1,045,090</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>168</td>
+                    <td>2025-09-24</td>
+                    <td class="ticker">9501.T</td>
+                    <td class="stock-name">東京電力</td>
+                    <td>電気・ガス業</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥633</td>
+                    <td>¥660</td>
+                    <td class="win">+4.33%</td>
+                    <td class="win">¥+2,740</td>
+                    <td class="cumulative win">¥+1,047,830</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>169</td>
+                    <td>2025-10-15</td>
+                    <td class="ticker">9005.T</td>
+                    <td class="stock-name">東急</td>
+                    <td>陸運業</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥1,716</td>
+                    <td>¥1,719</td>
+                    <td class="win">+0.17%</td>
+                    <td class="win">¥+300</td>
+                    <td class="cumulative win">¥+1,048,130</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>170</td>
+                    <td>2025-10-29</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥4,620</td>
+                    <td>¥4,599</td>
+                    <td class="lose">-0.45%</td>
+                    <td class="lose">¥-2,100</td>
+                    <td class="cumulative win">¥+1,046,030</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>171</td>
+                    <td>2025-10-30</td>
+                    <td class="ticker">9022.T</td>
+                    <td class="stock-name">JR東海</td>
+                    <td>陸運業</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,794</td>
+                    <td>¥3,766</td>
+                    <td class="lose">-0.74%</td>
+                    <td class="lose">¥-2,800</td>
+                    <td class="cumulative win">¥+1,043,230</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>172</td>
+                    <td>2025-10-31</td>
+                    <td class="ticker">9022.T</td>
+                    <td class="stock-name">JR東海</td>
+                    <td>陸運業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,818</td>
+                    <td>¥3,761</td>
+                    <td class="lose">-1.49%</td>
+                    <td class="lose">¥-5,700</td>
+                    <td class="cumulative win">¥+1,037,530</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>173</td>
+                    <td>2025-11-04</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,438</td>
+                    <td>¥3,369</td>
+                    <td class="lose">-2.01%</td>
+                    <td class="lose">¥-6,900</td>
+                    <td class="cumulative win">¥+1,030,630</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>174</td>
+                    <td>2025-11-05</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥4,570</td>
+                    <td>¥4,506</td>
+                    <td class="lose">-1.40%</td>
+                    <td class="lose">¥-6,400</td>
+                    <td class="cumulative win">¥+1,024,230</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>175</td>
+                    <td>2025-11-05</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,400</td>
+                    <td>¥3,411</td>
+                    <td class="win">+0.32%</td>
+                    <td class="win">¥+1,100</td>
+                    <td class="cumulative win">¥+1,025,330</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>176</td>
+                    <td>2025-11-06</td>
+                    <td class="ticker">4063.T</td>
+                    <td class="stock-name">信越化学</td>
+                    <td>化学</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥4,505</td>
+                    <td>¥4,529</td>
+                    <td class="win">+0.53%</td>
+                    <td class="win">¥+2,400</td>
+                    <td class="cumulative win">¥+1,027,730</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>177</td>
+                    <td>2025-11-06</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,403</td>
+                    <td>¥3,368</td>
+                    <td class="lose">-1.03%</td>
+                    <td class="lose">¥-3,500</td>
+                    <td class="cumulative win">¥+1,024,230</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>178</td>
+                    <td>2025-11-07</td>
+                    <td class="ticker">5631.T</td>
+                    <td class="stock-name">日本製鋼所</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥8,784</td>
+                    <td>¥8,872</td>
+                    <td class="win">+1.00%</td>
+                    <td class="win">¥+8,800</td>
+                    <td class="cumulative win">¥+1,033,030</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>179</td>
+                    <td>2025-11-07</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,370</td>
+                    <td>¥3,305</td>
+                    <td class="lose">-1.93%</td>
+                    <td class="lose">¥-6,500</td>
+                    <td class="cumulative win">¥+1,026,530</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>180</td>
+                    <td>2025-11-10</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>65</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,295</td>
+                    <td>¥3,392</td>
+                    <td class="win">+2.94%</td>
+                    <td class="win">¥+9,700</td>
+                    <td class="cumulative win">¥+1,036,230</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>181</td>
+                    <td>2025-11-11</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥3,484</td>
+                    <td>¥3,465</td>
+                    <td class="lose">-0.55%</td>
+                    <td class="lose">¥-1,900</td>
+                    <td class="cumulative win">¥+1,034,330</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>182</td>
+                    <td>2025-11-13</td>
+                    <td class="ticker">4568.T</td>
+                    <td class="stock-name">第一三共</td>
+                    <td>医薬品</td>
+                    <td>55</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥3,505</td>
+                    <td>¥3,505</td>
+                    <td class="lose">+0.00%</td>
+                    <td class="lose">¥+0</td>
+                    <td class="cumulative win">¥+1,034,330</td>
+                </tr>
+                <tr data-market="RED" data-result="lose">
+                    <td>183</td>
+                    <td>2025-11-18</td>
+                    <td class="ticker">6861.T</td>
+                    <td class="stock-name">キーエンス</td>
+                    <td>電気機器</td>
+                    <td>50</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥53,630</td>
+                    <td>¥53,350</td>
+                    <td class="lose">-0.52%</td>
+                    <td class="lose">¥-28,000</td>
+                    <td class="cumulative win">¥+1,006,330</td>
+                </tr>
+                <tr data-market="RED" data-result="win">
+                    <td>184</td>
+                    <td>2025-11-21</td>
+                    <td class="ticker">7011.T</td>
+                    <td class="stock-name">三菱重工</td>
+                    <td>機械</td>
+                    <td>55</td>
+                    <td><span class="market-red">RED</span></td>
+                    <td>¥3,850</td>
+                    <td>¥3,877</td>
+                    <td class="win">+0.70%</td>
+                    <td class="win">¥+2,700</td>
+                    <td class="cumulative win">¥+1,009,030</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>185</td>
+                    <td>2025-11-25</td>
+                    <td class="ticker">9984.T</td>
+                    <td class="stock-name">ソフトバンクG</td>
+                    <td>情報･通信業</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥15,640</td>
+                    <td>¥16,260</td>
+                    <td class="win">+3.96%</td>
+                    <td class="win">¥+62,000</td>
+                    <td class="cumulative win">¥+1,071,030</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>186</td>
+                    <td>2025-11-25</td>
+                    <td class="ticker">7013.T</td>
+                    <td class="stock-name">IHI</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥2,685</td>
+                    <td>¥2,740</td>
+                    <td class="win">+2.05%</td>
+                    <td class="win">¥+5,500</td>
+                    <td class="cumulative win">¥+1,076,530</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="lose">
+                    <td>187</td>
+                    <td>2025-11-25</td>
+                    <td class="ticker">7011.T</td>
+                    <td class="stock-name">三菱重工</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥3,947</td>
+                    <td>¥3,931</td>
+                    <td class="lose">-0.41%</td>
+                    <td class="lose">¥-1,600</td>
+                    <td class="cumulative win">¥+1,074,930</td>
+                </tr>
+                <tr data-market="YELLOW" data-result="win">
+                    <td>188</td>
+                    <td>2025-11-25</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>70</td>
+                    <td><span class="market-yellow">YELLOW</span></td>
+                    <td>¥9,855</td>
+                    <td>¥9,991</td>
+                    <td class="win">+1.38%</td>
+                    <td class="win">¥+13,600</td>
+                    <td class="cumulative win">¥+1,088,530</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>189</td>
+                    <td>2025-11-26</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>50</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥10,020</td>
+                    <td>¥9,935</td>
+                    <td class="lose">-0.85%</td>
+                    <td class="lose">¥-8,500</td>
+                    <td class="cumulative win">¥+1,080,030</td>
+                </tr>
+                <tr data-market="GREEN" data-result="lose">
+                    <td>190</td>
+                    <td>2025-11-27</td>
+                    <td class="ticker">7012.T</td>
+                    <td class="stock-name">川崎重工</td>
+                    <td>機械</td>
+                    <td>60</td>
+                    <td><span class="market-green">GREEN</span></td>
+                    <td>¥9,935</td>
+                    <td>¥9,882</td>
+                    <td class="lose">-0.53%</td>
+                    <td class="lose">¥-5,300</td>
+                    <td class="cumulative win">¥+1,074,730</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        function filterTable() {
+            const market = document.getElementById('marketFilter').value;
+            const result = document.getElementById('resultFilter').value;
+            const ticker = document.getElementById('tickerFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            
+            const rows = document.querySelectorAll('#dataTable tbody tr');
+            rows.forEach(row => {
+                const matchMarket = !market || row.dataset.market === market;
+                const matchResult = !result || row.dataset.result === result;
+                const matchTicker = !ticker || row.cells[2].textContent === ticker;
+                const matchSearch = !search || row.textContent.toLowerCase().includes(search);
+                
+                row.style.display = (matchMarket && matchResult && matchTicker && matchSearch) ? '' : 'none';
+            });
+        }
+        
+        let sortDirection = {};
+        function sortTable(colIndex) {
+            const table = document.getElementById('dataTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            sortDirection[colIndex] = !sortDirection[colIndex];
+            const dir = sortDirection[colIndex] ? 1 : -1;
+            
+            rows.sort((a, b) => {
+                let aVal = a.cells[colIndex].textContent.replace(/[¥,%+,]/g, '');
+                let bVal = b.cells[colIndex].textContent.replace(/[¥,%+,]/g, '');
+                
+                if (!isNaN(aVal) && !isNaN(bVal)) {
+                    return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+                }
+                return aVal.localeCompare(bVal) * dir;
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+</body>
+</html>

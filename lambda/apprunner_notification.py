@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime
 
 SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
-SERVICE_URL = os.environ.get('SERVICE_URL', 'https://saafdwsins.ap-northeast-1.awsapprunner.com')
+SERVICE_URL = os.environ.get('SERVICE_URL', 'https://muuq3bv2n2.ap-northeast-1.awsapprunner.com')
 
 
 def lambda_handler(event, context):

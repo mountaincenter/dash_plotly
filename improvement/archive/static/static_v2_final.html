@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static v2 Analysis - Final</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #4ade80; margin-bottom: 10px; }
+        h2 { color: #60a5fa; margin: 30px 0 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .subtitle { color: #888; margin-bottom: 30px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0; }
+        .card { background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; }
+        .card h3 { color: #888; font-size: 14px; margin-bottom: 8px; }
+        .card .value { font-size: 32px; font-weight: bold; }
+        .card .value.green { color: #4ade80; }
+        .card .value.blue { color: #60a5fa; }
+        .card .value.yellow { color: #fbbf24; }
+        .card .detail { color: #888; font-size: 14px; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; background: #1a1a1a; border-radius: 8px; overflow: hidden; }
+        th { background: #252525; color: #888; font-weight: 500; text-align: left; padding: 12px; font-size: 13px; }
+        td { padding: 12px; border-top: 1px solid #2a2a2a; font-size: 14px; }
+        tr:hover { background: #252525; }
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
+        .comparison-box { background: linear-gradient(135deg, #1a2e1a 0%, #1a1a2e 100%); border: 1px solid #4ade80; border-radius: 12px; padding: 25px; margin: 20px 0; }
+        .comparison-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: center; }
+        .comparison-item { text-align: center; }
+        .comparison-item h4 { color: #888; margin-bottom: 10px; }
+        .comparison-item .big { font-size: 36px; font-weight: bold; }
+        .comparison-vs { font-size: 24px; color: #666; }
+        .winner { background: rgba(74, 222, 128, 0.1); border-radius: 8px; padding: 15px; }
+        .rules-box { background: #1a2e1a; border: 1px solid #4ade80; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .rules-box h3 { color: #4ade80; margin-bottom: 15px; }
+        .rules-box ul { list-style: none; }
+        .rules-box li { padding: 5px 0; color: #a0a0a0; }
+        .rules-box li::before { content: "✓ "; color: #4ade80; }
+        .exclude-box { background: #2e1a1a; border: 1px solid #f87171; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .exclude-box h3 { color: #f87171; margin-bottom: 15px; }
+        .exclude-box li::before { content: "✗ "; color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Static銘柄 v2 Analysis</h1>
+        <p class="subtitle">最終ルール適用版 | 生成日時: 2025-11-30 01:29</p>
+
+        <h2>1日保有 vs 5日保有 比較</h2>
+        <div class="comparison-box">
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <h4>1日保有</h4>
+                    <div class="big green">+1.22%</div>
+                    <div style="color:#888; margin-top:10px;">勝率 52.3%</div>
+                    <div style="color:#888;">利益 ¥571,061</div>
+                </div>
+                <div class="comparison-vs">vs</div>
+                <div class="comparison-item winner">
+                    <h4>5日保有 👑</h4>
+                    <div class="big green">+5.82%</div>
+                    <div style="color:#888; margin-top:10px;">勝率 77.3%</div>
+                    <div style="color:#888;">利益 ¥2,772,488</div>
+                </div>
+            </div>
+            <div style="text-align:center; margin-top:20px; padding-top:15px; border-top:1px solid #333;">
+                <span style="color:#888;">5日保有の優位性:</span>
+                <span class="positive" style="font-size:20px; margin-left:10px;">
+                    +4.59%
+                </span>
+                <span style="color:#888; margin-left:20px;">利益差:</span>
+                <span class="positive" style="font-size:20px; margin-left:10px;">
+                    ¥+2,201,427
+                </span>
+            </div>
+        </div>
+
+        <div class="rules-box">
+            <h3>適用ルール</h3>
+            <ul>
+                <li>Score ≥ 50 (STRONG_BUY)</li>
+                <li>RSI ≥ 12 (落ちるナイフ回避)</li>
+                <li>株価 < 20,000円 (信用余力効率化)</li>
+                <li>前回-7%以下の銘柄はスキップ</li>
+            </ul>
+        </div>
+
+        <div class="exclude-box">
+            <h3>除外対象</h3>
+            <ul>
+                <li>電気・ガス業セクター (東京電力、関西電力、電源開発)</li>
+                <li>7012.T 川崎重工</li>
+                <li>6367.T ダイキン</li>
+                <li>6723.T ルネサス</li>
+            </ul>
+        </div>
+
+        <h2>パフォーマンス詳細</h2>
+        <table>
+            <tr>
+                <th>保有日数</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均リターン</th>
+                <th>合計利益</th>
+                <th>1シグナルあたり</th>
+            </tr>
+
+            <tr>
+                <td>1日</td>
+                <td>88</td>
+                <td>52.3%</td>
+                <td class="positive">+1.22%</td>
+                <td class="positive">¥571,061</td>
+                <td>¥6,489</td>
+            </tr>
+
+            <tr>
+                <td>5日</td>
+                <td>85</td>
+                <td>80.0%</td>
+                <td class="positive">+5.82%</td>
+                <td class="positive">¥2,772,488</td>
+                <td>¥32,618</td>
+            </tr>
+
+        </table>
+
+        <h2>銘柄別パフォーマンス (5日保有)</h2>
+        <table>
+            <tr>
+                <th>銘柄</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>平均リターン</th>
+                <th>合計利益</th>
+            </tr>
+
+            <tr>
+                <td>6920.T レーザーテック</td>
+                <td>7</td>
+                <td>86%</td>
+                <td class="positive">+10.0%</td>
+                <td class="positive">¥+923,624</td>
+            </tr>
+
+            <tr>
+                <td>8035.T 東京エレクトロン</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+12.8%</td>
+                <td class="positive">¥+224,742</td>
+            </tr>
+
+            <tr>
+                <td>7741.T HOYA</td>
+                <td>4</td>
+                <td>75%</td>
+                <td class="positive">+3.3%</td>
+                <td class="positive">¥+202,779</td>
+            </tr>
+
+            <tr>
+                <td>9984.T ソフトバンクG</td>
+                <td>10</td>
+                <td>45%</td>
+                <td class="positive">+2.6%</td>
+                <td class="positive">¥+147,642</td>
+            </tr>
+
+            <tr>
+                <td>6857.T アドバンテスト</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+14.2%</td>
+                <td class="positive">¥+145,924</td>
+            </tr>
+
+            <tr>
+                <td>7735.T SCREEN</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+17.5%</td>
+                <td class="positive">¥+139,717</td>
+            </tr>
+
+            <tr>
+                <td>6946.T 日本アビオニクス</td>
+                <td>6</td>
+                <td>83%</td>
+                <td class="positive">+7.6%</td>
+                <td class="positive">¥+118,948</td>
+            </tr>
+
+            <tr>
+                <td>8001.T 伊藤忠</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+7.4%</td>
+                <td class="positive">¥+90,067</td>
+            </tr>
+
+            <tr>
+                <td>4568.T 第一三共</td>
+                <td>12</td>
+                <td>75%</td>
+                <td class="positive">+2.2%</td>
+                <td class="positive">¥+89,461</td>
+            </tr>
+
+            <tr>
+                <td>5631.T 日本製鋼所</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+17.2%</td>
+                <td class="positive">¥+81,097</td>
+            </tr>
+
+            <tr>
+                <td>6501.T 日立製作所</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+14.8%</td>
+                <td class="positive">¥+80,328</td>
+            </tr>
+
+            <tr>
+                <td>8411.T みずほFG</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+13.2%</td>
+                <td class="positive">¥+72,649</td>
+            </tr>
+
+            <tr>
+                <td>8316.T 三井住友FG</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+13.1%</td>
+                <td class="positive">¥+68,909</td>
+            </tr>
+
+            <tr>
+                <td>7974.T 任天堂</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+5.8%</td>
+                <td class="positive">¥+55,883</td>
+            </tr>
+
+            <tr>
+                <td>1801.T 大成建設</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+8.6%</td>
+                <td class="positive">¥+51,473</td>
+            </tr>
+
+            <tr>
+                <td>6098.T リクルート</td>
+                <td>6</td>
+                <td>83%</td>
+                <td class="positive">+0.6%</td>
+                <td class="positive">¥+34,501</td>
+            </tr>
+
+            <tr>
+                <td>9022.T JR東海</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+8.8%</td>
+                <td class="positive">¥+33,400</td>
+            </tr>
+
+            <tr>
+                <td>6701.T NEC</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+5.2%</td>
+                <td class="positive">¥+30,396</td>
+            </tr>
+
+            <tr>
+                <td>6762.T TDK</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+12.5%</td>
+                <td class="positive">¥+30,023</td>
+            </tr>
+
+            <tr>
+                <td>6758.T ソニーG</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+9.3%</td>
+                <td class="positive">¥+28,615</td>
+            </tr>
+
+            <tr>
+                <td>7011.T 三菱重工</td>
+                <td>1</td>
+                <td>33%</td>
+                <td class="positive">+10.6%</td>
+                <td class="positive">¥+24,474</td>
+            </tr>
+
+            <tr>
+                <td>3382.T セブン&アイ</td>
+                <td>5</td>
+                <td>60%</td>
+                <td class="positive">+2.3%</td>
+                <td class="positive">¥+22,410</td>
+            </tr>
+
+            <tr>
+                <td>6702.T 富士通</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+6.8%</td>
+                <td class="positive">¥+18,024</td>
+            </tr>
+
+            <tr>
+                <td>7267.T ホンダ</td>
+                <td>2</td>
+                <td>100%</td>
+                <td class="positive">+5.9%</td>
+                <td class="positive">¥+14,339</td>
+            </tr>
+
+            <tr>
+                <td>6503.T 三菱電機</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+5.9%</td>
+                <td class="positive">¥+14,306</td>
+            </tr>
+
+            <tr>
+                <td>7203.T トヨタ</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+6.0%</td>
+                <td class="positive">¥+13,936</td>
+            </tr>
+
+            <tr>
+                <td>6981.T 村田製作所</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+5.3%</td>
+                <td class="positive">¥+10,289</td>
+            </tr>
+
+            <tr>
+                <td>1803.T 清水建設</td>
+                <td>1</td>
+                <td>100%</td>
+                <td class="positive">+7.2%</td>
+                <td class="positive">¥+8,906</td>
+            </tr>
+
+            <tr>
+                <td>5020.T ENEOS</td>
+                <td>2</td>
+                <td>50%</td>
+                <td class="positive">+2.5%</td>
+                <td class="positive">¥+2,328</td>
+            </tr>
+
+            <tr>
+                <td>1605.T INPEX</td>
+                <td>2</td>
+                <td>50%</td>
+                <td class="negative">-0.4%</td>
+                <td class="negative">¥-1,560</td>
+            </tr>
+
+            <tr>
+                <td>4063.T 信越化学</td>
+                <td>2</td>
+                <td>50%</td>
+                <td class="negative">-0.3%</td>
+                <td class="negative">¥-5,143</td>
+            </tr>
+
+        </table>
+
+        <h2>直近シグナル一覧</h2>
+        <table>
+            <tr>
+                <th>日付</th>
+                <th>銘柄</th>
+                <th>スコア</th>
+                <th>1日リターン</th>
+                <th>5日リターン</th>
+                <th>5日損益</th>
+            </tr>
+
+            <tr>
+                <td>2025-11-25</td>
+                <td>9984.T ソフトバンクG</td>
+                <td>60</td>
+                <td class="positive">+7.7%</td>
+                <td class="">-</td>
+                <td class="">-</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-25</td>
+                <td>7011.T 三菱重工</td>
+                <td>55</td>
+                <td class="negative">-1.6%</td>
+                <td class="">-</td>
+                <td class="">-</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-21</td>
+                <td>7011.T 三菱重工</td>
+                <td>55</td>
+                <td class="positive">+2.1%</td>
+                <td class="">-</td>
+                <td class="">-</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-13</td>
+                <td>4568.T 第一三共</td>
+                <td>55</td>
+                <td class="negative">-0.7%</td>
+                <td class="positive">+5.6%</td>
+                <td class="positive">¥+19,500</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-11</td>
+                <td>4568.T 第一三共</td>
+                <td>55</td>
+                <td class="negative">-1.7%</td>
+                <td class="positive">+1.2%</td>
+                <td class="positive">¥+4,200</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-07</td>
+                <td>4568.T 第一三共</td>
+                <td>50</td>
+                <td class="positive">+0.7%</td>
+                <td class="positive">+3.3%</td>
+                <td class="positive">¥+11,100</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-06</td>
+                <td>4568.T 第一三共</td>
+                <td>65</td>
+                <td class="negative">-2.9%</td>
+                <td class="positive">+3.0%</td>
+                <td class="positive">¥+10,200</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-05</td>
+                <td>4568.T 第一三共</td>
+                <td>50</td>
+                <td class="negative">-0.9%</td>
+                <td class="positive">+0.7%</td>
+                <td class="positive">¥+2,500</td>
+            </tr>
+
+            <tr>
+                <td>2025-11-04</td>
+                <td>4568.T 第一三共</td>
+                <td>60</td>
+                <td class="negative">-0.8%</td>
+                <td class="positive">+0.8%</td>
+                <td class="positive">¥+2,700</td>
+            </tr>
+
+            <tr>
+                <td>2025-10-30</td>
+                <td>9022.T JR東海</td>
+                <td>60</td>
+                <td class="negative">-0.9%</td>
+                <td class="positive">+8.8%</td>
+                <td class="positive">¥+33,400</td>
+            </tr>
+
+            <tr>
+                <td>2025-09-19</td>
+                <td>6098.T リクルート</td>
+                <td>50</td>
+                <td class="negative">-0.6%</td>
+                <td class="positive">+2.0%</td>
+                <td class="positive">¥+15,985</td>
+            </tr>
+
+            <tr>
+                <td>2025-09-05</td>
+                <td>6946.T 日本アビオニクス</td>
+                <td>55</td>
+                <td class="negative">+0.0%</td>
+                <td class="positive">+1.4%</td>
+                <td class="positive">¥+6,000</td>
+            </tr>
+
+            <tr>
+                <td>2025-08-06</td>
+                <td>6920.T レーザーテック</td>
+                <td>55</td>
+                <td class="positive">+2.8%</td>
+                <td class="positive">+23.7%</td>
+                <td class="positive">¥+334,000</td>
+            </tr>
+
+            <tr>
+                <td>2025-08-05</td>
+                <td>6920.T レーザーテック</td>
+                <td>55</td>
+                <td class="positive">+0.6%</td>
+                <td class="positive">+13.1%</td>
+                <td class="positive">¥+186,500</td>
+            </tr>
+
+            <tr>
+                <td>2025-08-01</td>
+                <td>6920.T レーザーテック</td>
+                <td>70</td>
+                <td class="positive">+3.1%</td>
+                <td class="positive">+9.9%</td>
+                <td class="positive">¥+139,500</td>
+            </tr>
+
+            <tr>
+                <td>2025-07-25</td>
+                <td>6920.T レーザーテック</td>
+                <td>50</td>
+                <td class="negative">-8.2%</td>
+                <td class="negative">-10.4%</td>
+                <td class="negative">¥-169,000</td>
+            </tr>
+
+            <tr>
+                <td>2025-07-18</td>
+                <td>3382.T セブン&アイ</td>
+                <td>60</td>
+                <td class="positive">+1.3%</td>
+                <td class="positive">+1.9%</td>
+                <td class="positive">¥+3,653</td>
+            </tr>
+
+            <tr>
+                <td>2025-07-17</td>
+                <td>3382.T セブン&アイ</td>
+                <td>50</td>
+                <td class="negative">-0.6%</td>
+                <td class="positive">+2.5%</td>
+                <td class="positive">¥+4,788</td>
+            </tr>
+
+            <tr>
+                <td>2025-07-11</td>
+                <td>6946.T 日本アビオニクス</td>
+                <td>50</td>
+                <td class="positive">+3.1%</td>
+                <td class="positive">+12.1%</td>
+                <td class="positive">¥+46,500</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-11</td>
+                <td>4568.T 第一三共</td>
+                <td>50</td>
+                <td class="positive">+2.8%</td>
+                <td class="positive">+1.8%</td>
+                <td class="positive">¥+5,535</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-11</td>
+                <td>7741.T HOYA</td>
+                <td>60</td>
+                <td class="positive">+4.8%</td>
+                <td class="positive">+4.3%</td>
+                <td class="positive">¥+64,105</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>5020.T ENEOS</td>
+                <td>55</td>
+                <td class="negative">-8.0%</td>
+                <td class="negative">-5.2%</td>
+                <td class="negative">¥-3,655</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>6701.T NEC</td>
+                <td>55</td>
+                <td class="negative">-3.1%</td>
+                <td class="positive">+3.9%</td>
+                <td class="positive">¥+11,760</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>6920.T レーザーテック</td>
+                <td>55</td>
+                <td class="negative">-1.4%</td>
+                <td class="positive">+2.2%</td>
+                <td class="positive">¥+26,699</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>1605.T INPEX</td>
+                <td>55</td>
+                <td class="negative">-3.6%</td>
+                <td class="negative">-2.0%</td>
+                <td class="negative">¥-3,560</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>3382.T セブン&アイ</td>
+                <td>55</td>
+                <td class="negative">-0.2%</td>
+                <td class="negative">-0.5%</td>
+                <td class="negative">¥-1,037</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>7267.T ホンダ</td>
+                <td>55</td>
+                <td class="negative">-3.8%</td>
+                <td class="positive">+1.1%</td>
+                <td class="positive">¥+1,419</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>7741.T HOYA</td>
+                <td>65</td>
+                <td class="negative">-4.1%</td>
+                <td class="negative">-0.6%</td>
+                <td class="negative">¥-8,945</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-09</td>
+                <td>4063.T 信越化学</td>
+                <td>55</td>
+                <td class="negative">-6.7%</td>
+                <td class="negative">-7.0%</td>
+                <td class="negative">¥-28,581</td>
+            </tr>
+
+            <tr>
+                <td>2025-04-07</td>
+                <td>8411.T みずほFG</td>
+                <td>55</td>
+                <td class="negative">-1.7%</td>
+                <td class="positive">+4.4%</td>
+                <td class="positive">¥+13,998</td>
+            </tr>
+
+        </table>
+
+        <h2>最適戦略</h2>
+        <div class="rules-box">
+            <h3>推奨トレード</h3>
+            <ul>
+                <li><strong>エントリー:</strong> STRONG_BUYシグナル翌日の寄付成行買い</li>
+                <li><strong>エグジット:</strong> 5営業日後の大引け成行売り</li>
+                <li><strong>損切り:</strong> なし（5日間ホールド）</li>
+                <li><strong>利確:</strong> なし（5日間ホールド）</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

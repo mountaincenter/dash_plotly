@@ -1,0 +1,2832 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>バックテスト結果 - 前日高値崩れ戦略</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        h2 { color: #6bcb77; margin-top: 30px; }
+        .summary { background: #16213e; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
+        .summary-item { background: #1f1f3d; padding: 15px; border-radius: 8px; text-align: center; }
+        .summary-item .value { font-size: 2em; font-weight: bold; color: #00d4ff; }
+        .summary-item .label { color: #888; font-size: 0.9em; }
+        .positive { color: #6bcb77; }
+        .negative { color: #ff6b6b; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 8px 12px; text-align: left; }
+        th { background: #16213e; color: #00d4ff; position: sticky; top: 0; cursor: pointer; }
+        th:hover { background: #1e3a5f; }
+        tr:nth-child(even) { background: #1f1f3d; }
+        tr:hover { background: #2a2a5a; }
+        .win { color: #6bcb77; }
+        .lose { color: #ff6b6b; }
+        .stop { color: #ffd93d; }
+        .filter { margin: 15px 0; }
+        select, input { padding: 8px; margin-right: 10px; background: #2a2a5a; border: 1px solid #444; color: #eee; border-radius: 4px; }
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.85em; }
+        .tag-seido { background: #22c55e; color: #000; }
+        .tag-ichinichi { background: #3b82f6; color: #fff; }
+        .tag-ng { background: #ef4444; color: #fff; }
+        .tag-unknown { background: #666; color: #fff; }
+        .margin-summary { display: flex; gap: 20px; margin: 20px 0; }
+        .margin-card { background: #1f1f3d; padding: 15px; border-radius: 8px; flex: 1; }
+        .margin-card h3 { margin: 0 0 10px 0; }
+        .num-col { text-align: right; }
+    </style>
+</head>
+<body>
+    <h1>バックテスト結果 - 前日高値崩れ戦略</h1>
+    
+    <div class="summary">
+        <strong>戦略:</strong> 常習犯リスト × 前日高値崩れ → 寄付売り → 14時買戻し（損切り-3%）<br>
+        <strong>期間:</strong> 2025-09-10 〜 2025-12-05<br>
+        <strong>最終更新:</strong> 2025-12-14
+        
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="value">240</div>
+                <div class="label">トレード数</div>
+            </div>
+            <div class="summary-item">
+                <div class="value">63.7%</div>
+                <div class="label">勝率</div>
+            </div>
+            <div class="summary-item">
+                <div class="value positive">+1.33%</div>
+                <div class="label">平均損益</div>
+            </div>
+            <div class="summary-item">
+                <div class="value positive">+318.2%</div>
+                <div class="label">合計損益</div>
+            </div>
+        </div>
+    </div>
+    
+    <h2>信用区分別サマリー</h2>
+    <div class="margin-summary">
+
+        <div class="margin-card">
+            <h3><span class="tag tag-ichinichi">いちにち</span></h3>
+            <div>件数: 192件</div>
+            <div>勝率: 65.1%</div>
+            <div>平均: <span class="positive">+1.39%</span></div>
+            <div>合計: <span class="positive">+266.8%</span></div>
+        </div>
+    
+        <div class="margin-card">
+            <h3><span class="tag tag-seido">制度</span></h3>
+            <div>件数: 48件</div>
+            <div>勝率: 58.3%</div>
+            <div>平均: <span class="positive">+1.07%</span></div>
+            <div>合計: <span class="positive">+51.4%</span></div>
+        </div>
+    
+    </div>
+    
+    <h2>トレード一覧</h2>
+    <div class="filter">
+        <select id="marginFilter" onchange="filterTable()">
+            <option value="">全て</option>
+            <option value="制度">制度信用のみ</option>
+            <option value="いちにち">いちにち信用のみ</option>
+            <option value="不可">不可</option>
+        </select>
+        <select id="resultFilter" onchange="filterTable()">
+            <option value="">全結果</option>
+            <option value="勝ち">勝ちのみ</option>
+            <option value="負け">負けのみ</option>
+            <option value="損切り">損切りのみ</option>
+        </select>
+        <input type="text" id="search" placeholder="銘柄検索" onkeyup="filterTable()">
+    </div>
+    
+    <table id="tradeTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">日付</th>
+                <th onclick="sortTable(1)">コード</th>
+                <th onclick="sortTable(2)">銘柄名</th>
+                <th onclick="sortTable(3)">信用</th>
+                <th onclick="sortTable(4)">寄付</th>
+                <th onclick="sortTable(5)">14時</th>
+                <th onclick="sortTable(6)">損益</th>
+                <th onclick="sortTable(7)">結果</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-12-05</td>
+                <td>155A</td>
+                <td>情報戦略テクノロジー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,392</td>
+                <td class="num-col">1,333</td>
+                <td class="num-col positive">+4.24%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-12-05</td>
+                <td>4420</td>
+                <td>イーソル</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">512</td>
+                <td class="num-col">505</td>
+                <td class="num-col positive">+1.37%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-05</td>
+                <td>5027</td>
+                <td>ＡｎｙＭｉｎｄ　Ｇｒｏｕｐ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">552</td>
+                <td class="num-col">540</td>
+                <td class="num-col positive">+2.17%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-12-05</td>
+                <td>9553</td>
+                <td>マイクロアド</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">574</td>
+                <td class="num-col">554</td>
+                <td class="num-col positive">+3.48%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-12-04</td>
+                <td>155A</td>
+                <td>情報戦略テクノロジー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,470</td>
+                <td class="num-col">1,385</td>
+                <td class="num-col positive">+5.78%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-12-04</td>
+                <td>218A</td>
+                <td>Ｌｉｂｅｒａｗａｒｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,368</td>
+                <td class="num-col">1,387</td>
+                <td class="num-col negative">-1.39%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-03</td>
+                <td>8995</td>
+                <td>誠建設工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">860</td>
+                <td class="num-col">855</td>
+                <td class="num-col positive">+0.58%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-02</td>
+                <td>168A</td>
+                <td>イタミアート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,286</td>
+                <td class="num-col">1,265</td>
+                <td class="num-col positive">+1.63%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-02</td>
+                <td>330A</td>
+                <td>ＴａｌｅｎｔＸ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">937</td>
+                <td class="num-col">910</td>
+                <td class="num-col positive">+2.88%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-12-02</td>
+                <td>3913</td>
+                <td>ＧｒｅｅｎＢｅｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,187</td>
+                <td class="num-col">1,200</td>
+                <td class="num-col negative">-1.10%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-02</td>
+                <td>438A</td>
+                <td>インフキュリオン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,441</td>
+                <td class="num-col">1,401</td>
+                <td class="num-col positive">+2.78%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-12-02</td>
+                <td>5243</td>
+                <td>ｎｏｔｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,566</td>
+                <td class="num-col">1,610</td>
+                <td class="num-col negative">-2.81%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-12-02</td>
+                <td>5599</td>
+                <td>Ｓ＆Ｊ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,767</td>
+                <td class="num-col">1,804</td>
+                <td class="num-col negative">-2.09%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-01</td>
+                <td>254A</td>
+                <td>ＡＩフュージョンキャピタルグループ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">922</td>
+                <td class="num-col">903</td>
+                <td class="num-col positive">+2.06%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-01</td>
+                <td>438A</td>
+                <td>インフキュリオン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,564</td>
+                <td class="num-col">1,447</td>
+                <td class="num-col positive">+7.48%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-12-01</td>
+                <td>7111</td>
+                <td>ＩＮＥＳＴ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">625</td>
+                <td class="num-col">617</td>
+                <td class="num-col positive">+1.28%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-28</td>
+                <td>6521</td>
+                <td>オキサイド</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,538</td>
+                <td class="num-col">1,567</td>
+                <td class="num-col negative">-1.89%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-26</td>
+                <td>2158</td>
+                <td>ＦＲＯＮＴＥＯ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">918</td>
+                <td class="num-col">941</td>
+                <td class="num-col negative">-2.51%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-26</td>
+                <td>4412</td>
+                <td>サイエンスアーツ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,537</td>
+                <td class="num-col">1,545</td>
+                <td class="num-col negative">-0.52%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>194A</td>
+                <td>ＷＯＬＶＥＳ　ＨＡＮＤ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,185</td>
+                <td class="num-col">2,046</td>
+                <td class="num-col positive">+6.36%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">709</td>
+                <td class="num-col">701</td>
+                <td class="num-col positive">+1.13%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>4222</td>
+                <td>児玉化学工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">730</td>
+                <td class="num-col">706</td>
+                <td class="num-col positive">+3.29%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>4316</td>
+                <td>ビーマップ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">876</td>
+                <td class="num-col">823</td>
+                <td class="num-col positive">+6.05%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>4664</td>
+                <td>アール・エス・シー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">716</td>
+                <td class="num-col">706</td>
+                <td class="num-col positive">+1.40%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="損切り">
+                <td>2025-11-25</td>
+                <td>5985</td>
+                <td>サンコール</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,192</td>
+                <td class="num-col">1,230</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-25</td>
+                <td>6521</td>
+                <td>オキサイド</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,654</td>
+                <td class="num-col">1,563</td>
+                <td class="num-col positive">+5.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-21</td>
+                <td>2998</td>
+                <td>クリアル</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">799</td>
+                <td class="num-col">822</td>
+                <td class="num-col negative">-2.88%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-21</td>
+                <td>4165</td>
+                <td>プレイド</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">812</td>
+                <td class="num-col">828</td>
+                <td class="num-col negative">-1.97%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-21</td>
+                <td>4493</td>
+                <td>サイバーセキュリティクラウド</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,873</td>
+                <td class="num-col">1,894</td>
+                <td class="num-col negative">-1.12%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-21</td>
+                <td>5027</td>
+                <td>ＡｎｙＭｉｎｄ　Ｇｒｏｕｐ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">599</td>
+                <td class="num-col">596</td>
+                <td class="num-col positive">+0.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-21</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,509</td>
+                <td class="num-col">1,455</td>
+                <td class="num-col positive">+3.58%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-11-21</td>
+                <td>9211</td>
+                <td>エフ・コード</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,544</td>
+                <td class="num-col">1,593</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-20</td>
+                <td>142A</td>
+                <td>ジンジブ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">754</td>
+                <td class="num-col">719</td>
+                <td class="num-col positive">+4.64%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-20</td>
+                <td>5027</td>
+                <td>ＡｎｙＭｉｎｄ　Ｇｒｏｕｐ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">643</td>
+                <td class="num-col">603</td>
+                <td class="num-col positive">+6.22%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-20</td>
+                <td>8995</td>
+                <td>誠建設工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">850</td>
+                <td class="num-col">842</td>
+                <td class="num-col positive">+0.94%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-11-19</td>
+                <td>3691</td>
+                <td>デジタルプラス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,423</td>
+                <td class="num-col">1,499</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-19</td>
+                <td>7352</td>
+                <td>ＴＷＯＳＴＯＮＥ＆Ｓｏｎｓ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">676</td>
+                <td class="num-col">660</td>
+                <td class="num-col positive">+2.37%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-19</td>
+                <td>7375</td>
+                <td>リファインバースグループ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">789</td>
+                <td class="num-col">786</td>
+                <td class="num-col positive">+0.38%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-11-18</td>
+                <td>4019</td>
+                <td>スタメン</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">945</td>
+                <td class="num-col">928</td>
+                <td class="num-col positive">+1.80%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-18</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,635</td>
+                <td class="num-col">1,529</td>
+                <td class="num-col positive">+6.48%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-18</td>
+                <td>5858</td>
+                <td>ＳＴＧ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,552</td>
+                <td class="num-col">1,583</td>
+                <td class="num-col negative">-2.00%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-18</td>
+                <td>6190</td>
+                <td>フェニックスバイオ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">443</td>
+                <td class="num-col">420</td>
+                <td class="num-col positive">+5.19%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-17</td>
+                <td>147A</td>
+                <td>ソラコム</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,056</td>
+                <td class="num-col">1,066</td>
+                <td class="num-col negative">-0.95%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-17</td>
+                <td>155A</td>
+                <td>情報戦略テクノロジー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,157</td>
+                <td class="num-col">1,176</td>
+                <td class="num-col negative">-1.64%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>218A</td>
+                <td>Ｌｉｂｅｒａｗａｒｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,607</td>
+                <td class="num-col">1,544</td>
+                <td class="num-col positive">+3.92%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>2216</td>
+                <td>カンロ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,566</td>
+                <td class="num-col">1,563</td>
+                <td class="num-col positive">+0.19%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-17</td>
+                <td>3195</td>
+                <td>ジェネレーションパス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">554</td>
+                <td class="num-col">562</td>
+                <td class="num-col negative">-1.44%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>4419</td>
+                <td>Ｆｉｎａｔｅｘｔホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">941</td>
+                <td class="num-col">927</td>
+                <td class="num-col positive">+1.49%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>6433</td>
+                <td>ヒーハイスト</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">364</td>
+                <td class="num-col">357</td>
+                <td class="num-col positive">+1.92%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-17</td>
+                <td>6597</td>
+                <td>ＨＰＣシステムズ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,810</td>
+                <td class="num-col">1,818</td>
+                <td class="num-col negative">-0.44%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>7072</td>
+                <td>インティメート・マージャー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,346</td>
+                <td class="num-col">1,302</td>
+                <td class="num-col positive">+3.27%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>7111</td>
+                <td>ＩＮＥＳＴ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">653</td>
+                <td class="num-col">617</td>
+                <td class="num-col positive">+5.51%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-17</td>
+                <td>7320</td>
+                <td>Ｓｏｌｖｖｙ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,560</td>
+                <td class="num-col">1,565</td>
+                <td class="num-col negative">-0.32%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,236</td>
+                <td class="num-col">1,204</td>
+                <td class="num-col positive">+2.59%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>9227</td>
+                <td>マイクロ波化学</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">767</td>
+                <td class="num-col">760</td>
+                <td class="num-col positive">+0.91%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-17</td>
+                <td>9271</td>
+                <td>和心</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">805</td>
+                <td class="num-col">784</td>
+                <td class="num-col positive">+2.61%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-11-14</td>
+                <td>3446</td>
+                <td>ジェイテックコーポレーション</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,385</td>
+                <td class="num-col">1,342</td>
+                <td class="num-col positive">+3.10%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-14</td>
+                <td>7375</td>
+                <td>リファインバースグループ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">994</td>
+                <td class="num-col">1,020</td>
+                <td class="num-col negative">-2.62%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-12</td>
+                <td>438A</td>
+                <td>インフキュリオン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,180</td>
+                <td class="num-col">1,190</td>
+                <td class="num-col negative">-0.85%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-12</td>
+                <td>6307</td>
+                <td>サンセイ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">558</td>
+                <td class="num-col">549</td>
+                <td class="num-col positive">+1.61%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-11</td>
+                <td>6228</td>
+                <td>ジェイ・イー・ティ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">771</td>
+                <td class="num-col">765</td>
+                <td class="num-col positive">+0.78%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-10</td>
+                <td>3195</td>
+                <td>ジェネレーションパス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">605</td>
+                <td class="num-col">581</td>
+                <td class="num-col positive">+3.97%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-10</td>
+                <td>4592</td>
+                <td>サンバイオ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,478</td>
+                <td class="num-col">2,487</td>
+                <td class="num-col negative">-0.36%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-10</td>
+                <td>5243</td>
+                <td>ｎｏｔｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,472</td>
+                <td class="num-col">1,470</td>
+                <td class="num-col positive">+0.14%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-10</td>
+                <td>6836</td>
+                <td>ぷらっとホーム</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,209</td>
+                <td class="num-col">1,165</td>
+                <td class="num-col positive">+3.64%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-10</td>
+                <td>7093</td>
+                <td>アディッシュ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">622</td>
+                <td class="num-col">622</td>
+                <td class="num-col negative">+0.00%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-07</td>
+                <td>3079</td>
+                <td>ディーブイエックス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,213</td>
+                <td class="num-col">1,225</td>
+                <td class="num-col negative">-0.99%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-07</td>
+                <td>4222</td>
+                <td>児玉化学工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">754</td>
+                <td class="num-col">737</td>
+                <td class="num-col positive">+2.25%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-11-07</td>
+                <td>6262</td>
+                <td>ＰＥＧＡＳＵＳ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">948</td>
+                <td class="num-col">850</td>
+                <td class="num-col positive">+10.34%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-07</td>
+                <td>8995</td>
+                <td>誠建設工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">906</td>
+                <td class="num-col">903</td>
+                <td class="num-col positive">+0.33%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-05</td>
+                <td>265A</td>
+                <td>Ｈｍｃｏｍｍ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,022</td>
+                <td class="num-col">1,000</td>
+                <td class="num-col positive">+2.15%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-05</td>
+                <td>9271</td>
+                <td>和心</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,030</td>
+                <td class="num-col">1,017</td>
+                <td class="num-col positive">+1.26%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-11-04</td>
+                <td>1407</td>
+                <td>ウエストホールディングス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,451</td>
+                <td class="num-col">1,464</td>
+                <td class="num-col negative">-0.90%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-04</td>
+                <td>1850</td>
+                <td>南海辰村建設</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">590</td>
+                <td class="num-col">603</td>
+                <td class="num-col negative">-2.20%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-11-04</td>
+                <td>3446</td>
+                <td>ジェイテックコーポレーション</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,465</td>
+                <td class="num-col">1,463</td>
+                <td class="num-col positive">+0.14%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-04</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">726</td>
+                <td class="num-col">711</td>
+                <td class="num-col positive">+2.07%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-04</td>
+                <td>4316</td>
+                <td>ビーマップ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">998</td>
+                <td class="num-col">965</td>
+                <td class="num-col positive">+3.31%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-11-04</td>
+                <td>6232</td>
+                <td>ＡＣＳＬ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,014</td>
+                <td class="num-col">1,006</td>
+                <td class="num-col positive">+0.79%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-11-04</td>
+                <td>6433</td>
+                <td>ヒーハイスト</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">626</td>
+                <td class="num-col">639</td>
+                <td class="num-col negative">-2.08%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-31</td>
+                <td>7072</td>
+                <td>インティメート・マージャー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,342</td>
+                <td class="num-col">1,348</td>
+                <td class="num-col negative">-0.45%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-30</td>
+                <td>2216</td>
+                <td>カンロ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,529</td>
+                <td class="num-col">1,462</td>
+                <td class="num-col positive">+4.38%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-30</td>
+                <td>264A</td>
+                <td>Ｓｃｈｏｏ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">638</td>
+                <td class="num-col">638</td>
+                <td class="num-col negative">+0.00%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-30</td>
+                <td>6356</td>
+                <td>日本ギア工業</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">857</td>
+                <td class="num-col">878</td>
+                <td class="num-col negative">-2.45%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-30</td>
+                <td>9227</td>
+                <td>マイクロ波化学</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">755</td>
+                <td class="num-col">728</td>
+                <td class="num-col positive">+3.58%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>194A</td>
+                <td>ＷＯＬＶＥＳ　ＨＡＮＤ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,405</td>
+                <td class="num-col">1,357</td>
+                <td class="num-col positive">+3.42%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-29</td>
+                <td>350A</td>
+                <td>デジタルグリッド</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">908</td>
+                <td class="num-col">918</td>
+                <td class="num-col negative">-1.10%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>438A</td>
+                <td>インフキュリオン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,271</td>
+                <td class="num-col">1,255</td>
+                <td class="num-col positive">+1.26%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>5287</td>
+                <td>イトーヨーギョー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,408</td>
+                <td class="num-col">1,341</td>
+                <td class="num-col positive">+4.76%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>6203</td>
+                <td>豊和工業</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,512</td>
+                <td class="num-col">1,430</td>
+                <td class="num-col positive">+5.42%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>6366</td>
+                <td>千代田化工建設</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">419</td>
+                <td class="num-col">406</td>
+                <td class="num-col positive">+3.10%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>6378</td>
+                <td>木村化工機</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,123</td>
+                <td class="num-col">1,073</td>
+                <td class="num-col positive">+4.45%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>6493</td>
+                <td>ＮＩＴＴＡＮ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">637</td>
+                <td class="num-col">631</td>
+                <td class="num-col positive">+0.94%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-29</td>
+                <td>7318</td>
+                <td>セレンディップ・ホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,582</td>
+                <td class="num-col">1,522</td>
+                <td class="num-col positive">+3.79%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-28</td>
+                <td>1407</td>
+                <td>ウエストホールディングス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,620</td>
+                <td class="num-col">1,575</td>
+                <td class="num-col positive">+2.78%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-28</td>
+                <td>3927</td>
+                <td>フーバーブレイン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">779</td>
+                <td class="num-col">774</td>
+                <td class="num-col positive">+0.64%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-28</td>
+                <td>4889</td>
+                <td>レナサイエンス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,925</td>
+                <td class="num-col">1,901</td>
+                <td class="num-col positive">+1.25%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-28</td>
+                <td>5599</td>
+                <td>Ｓ＆Ｊ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,600</td>
+                <td class="num-col">1,560</td>
+                <td class="num-col positive">+2.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-28</td>
+                <td>8995</td>
+                <td>誠建設工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,035</td>
+                <td class="num-col">1,009</td>
+                <td class="num-col positive">+2.51%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-27</td>
+                <td>3079</td>
+                <td>ディーブイエックス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,332</td>
+                <td class="num-col">1,269</td>
+                <td class="num-col positive">+4.73%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-27</td>
+                <td>4418</td>
+                <td>ＪＤＳＣ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,612</td>
+                <td class="num-col">1,570</td>
+                <td class="num-col positive">+2.61%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-27</td>
+                <td>9240</td>
+                <td>デリバリーコンサルティング</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">649</td>
+                <td class="num-col">645</td>
+                <td class="num-col positive">+0.62%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-24</td>
+                <td>168A</td>
+                <td>イタミアート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,267</td>
+                <td class="num-col">1,248</td>
+                <td class="num-col positive">+1.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-24</td>
+                <td>4592</td>
+                <td>サンバイオ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,756</td>
+                <td class="num-col">2,687</td>
+                <td class="num-col positive">+2.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-24</td>
+                <td>9240</td>
+                <td>デリバリーコンサルティング</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">640</td>
+                <td class="num-col">634</td>
+                <td class="num-col positive">+0.94%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-23</td>
+                <td>168A</td>
+                <td>イタミアート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,310</td>
+                <td class="num-col">1,270</td>
+                <td class="num-col positive">+3.05%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-21</td>
+                <td>142A</td>
+                <td>ジンジブ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">824</td>
+                <td class="num-col">830</td>
+                <td class="num-col negative">-0.73%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-21</td>
+                <td>3134</td>
+                <td>Ｈａｍｅｅ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,276</td>
+                <td class="num-col">1,265</td>
+                <td class="num-col positive">+0.86%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-21</td>
+                <td>5817</td>
+                <td>ＪＭＡＣＳ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">512</td>
+                <td class="num-col">507</td>
+                <td class="num-col positive">+0.98%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-21</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,265</td>
+                <td class="num-col">1,330</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-20</td>
+                <td>1844</td>
+                <td>大盛工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">726</td>
+                <td class="num-col">723</td>
+                <td class="num-col positive">+0.41%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-20</td>
+                <td>2934</td>
+                <td>ジェイフロンティア</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,721</td>
+                <td class="num-col">1,700</td>
+                <td class="num-col positive">+1.22%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-20</td>
+                <td>4412</td>
+                <td>サイエンスアーツ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,347</td>
+                <td class="num-col">1,349</td>
+                <td class="num-col negative">-0.15%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-20</td>
+                <td>4592</td>
+                <td>サンバイオ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,560</td>
+                <td class="num-col">2,643</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-20</td>
+                <td>5817</td>
+                <td>ＪＭＡＣＳ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">514</td>
+                <td class="num-col">513</td>
+                <td class="num-col positive">+0.19%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-20</td>
+                <td>6190</td>
+                <td>フェニックスバイオ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">599</td>
+                <td class="num-col">604</td>
+                <td class="num-col negative">-0.83%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-20</td>
+                <td>9213</td>
+                <td>セイファート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">908</td>
+                <td class="num-col">910</td>
+                <td class="num-col negative">-0.22%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-17</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">938</td>
+                <td class="num-col">910</td>
+                <td class="num-col positive">+2.99%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-17</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,313</td>
+                <td class="num-col">1,250</td>
+                <td class="num-col positive">+4.80%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-17</td>
+                <td>9240</td>
+                <td>デリバリーコンサルティング</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">725</td>
+                <td class="num-col">692</td>
+                <td class="num-col positive">+4.55%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-16</td>
+                <td>6521</td>
+                <td>オキサイド</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,845</td>
+                <td class="num-col">1,825</td>
+                <td class="num-col positive">+1.08%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>155A</td>
+                <td>情報戦略テクノロジー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">953</td>
+                <td class="num-col">1,008</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>3698</td>
+                <td>ＣＲＩ・ミドルウェア</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,249</td>
+                <td class="num-col">1,294</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-15</td>
+                <td>4013</td>
+                <td>勤次郎</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,294</td>
+                <td class="num-col">1,316</td>
+                <td class="num-col negative">-1.70%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-15</td>
+                <td>4288</td>
+                <td>アズジェント</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">512</td>
+                <td class="num-col">519</td>
+                <td class="num-col negative">-1.37%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>4316</td>
+                <td>ビーマップ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,072</td>
+                <td class="num-col">1,146</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>4412</td>
+                <td>サイエンスアーツ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,510</td>
+                <td class="num-col">1,580</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>5243</td>
+                <td>ｎｏｔｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,415</td>
+                <td class="num-col">1,499</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-15</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,979</td>
+                <td class="num-col">2,031</td>
+                <td class="num-col negative">-2.63%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>5998</td>
+                <td>アドバネクス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,460</td>
+                <td class="num-col">1,540</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-15</td>
+                <td>6224</td>
+                <td>ＪＲＣ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,630</td>
+                <td class="num-col">1,665</td>
+                <td class="num-col negative">-2.15%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>6232</td>
+                <td>ＡＣＳＬ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,078</td>
+                <td class="num-col">1,144</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-15</td>
+                <td>6836</td>
+                <td>ぷらっとホーム</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,019</td>
+                <td class="num-col">1,046</td>
+                <td class="num-col negative">-2.65%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-15</td>
+                <td>7111</td>
+                <td>ＩＮＥＳＴ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">626</td>
+                <td class="num-col">628</td>
+                <td class="num-col negative">-0.32%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>7318</td>
+                <td>セレンディップ・ホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,250</td>
+                <td class="num-col">1,295</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-15</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,250</td>
+                <td class="num-col">1,310</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-15</td>
+                <td>9270</td>
+                <td>バリュエンスホールディングス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">955</td>
+                <td class="num-col">910</td>
+                <td class="num-col positive">+4.71%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-14</td>
+                <td>218A</td>
+                <td>Ｌｉｂｅｒａｗａｒｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,663</td>
+                <td class="num-col">1,734</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-14</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">835</td>
+                <td class="num-col">824</td>
+                <td class="num-col positive">+1.32%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-14</td>
+                <td>4588</td>
+                <td>オンコリスバイオファーマ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">802</td>
+                <td class="num-col">780</td>
+                <td class="num-col positive">+2.74%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-14</td>
+                <td>5243</td>
+                <td>ｎｏｔｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,520</td>
+                <td class="num-col">1,422</td>
+                <td class="num-col positive">+6.45%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-14</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,024</td>
+                <td class="num-col">1,972</td>
+                <td class="num-col positive">+2.57%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-14</td>
+                <td>6232</td>
+                <td>ＡＣＳＬ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,126</td>
+                <td class="num-col">1,072</td>
+                <td class="num-col positive">+4.80%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-14</td>
+                <td>6255</td>
+                <td>エヌ・ピー・シー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">598</td>
+                <td class="num-col">602</td>
+                <td class="num-col negative">-0.67%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-10</td>
+                <td>194A</td>
+                <td>ＷＯＬＶＥＳ　ＨＡＮＤ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,098</td>
+                <td class="num-col">1,084</td>
+                <td class="num-col positive">+1.28%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-10</td>
+                <td>290A</td>
+                <td>Ｓｙｎｓｐｅｃｔｉｖｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">952</td>
+                <td class="num-col">904</td>
+                <td class="num-col positive">+5.04%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="損切り">
+                <td>2025-10-10</td>
+                <td>3747</td>
+                <td>インタートレード</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">641</td>
+                <td class="num-col">673</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-10</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,391</td>
+                <td class="num-col">1,280</td>
+                <td class="num-col positive">+7.98%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-10</td>
+                <td>9240</td>
+                <td>デリバリーコンサルティング</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">790</td>
+                <td class="num-col">785</td>
+                <td class="num-col positive">+0.63%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-09</td>
+                <td>3913</td>
+                <td>ＧｒｅｅｎＢｅｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,038</td>
+                <td class="num-col">1,189</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-09</td>
+                <td>3927</td>
+                <td>フーバーブレイン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">795</td>
+                <td class="num-col">778</td>
+                <td class="num-col positive">+2.14%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-09</td>
+                <td>4575</td>
+                <td>キャンバス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,046</td>
+                <td class="num-col">1,026</td>
+                <td class="num-col positive">+1.91%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-09</td>
+                <td>9082</td>
+                <td>大和自動車交通</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,464</td>
+                <td class="num-col">1,401</td>
+                <td class="num-col positive">+4.30%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-08</td>
+                <td>2998</td>
+                <td>クリアル</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,292</td>
+                <td class="num-col">1,279</td>
+                <td class="num-col positive">+1.01%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-08</td>
+                <td>3446</td>
+                <td>ジェイテックコーポレーション</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,400</td>
+                <td class="num-col">1,391</td>
+                <td class="num-col positive">+0.64%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-08</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,270</td>
+                <td class="num-col">2,255</td>
+                <td class="num-col positive">+0.66%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-07</td>
+                <td>1407</td>
+                <td>ウエストホールディングス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,781</td>
+                <td class="num-col">1,822</td>
+                <td class="num-col negative">-2.30%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-07</td>
+                <td>147A</td>
+                <td>ソラコム</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,003</td>
+                <td class="num-col">990</td>
+                <td class="num-col positive">+1.30%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-07</td>
+                <td>2323</td>
+                <td>ｆｏｎｆｕｎ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">803</td>
+                <td class="num-col">816</td>
+                <td class="num-col negative">-1.62%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-07</td>
+                <td>3691</td>
+                <td>デジタルプラス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,194</td>
+                <td class="num-col">1,194</td>
+                <td class="num-col negative">+0.00%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-07</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">905</td>
+                <td class="num-col">902</td>
+                <td class="num-col positive">+0.33%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-07</td>
+                <td>4412</td>
+                <td>サイエンスアーツ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,343</td>
+                <td class="num-col">1,345</td>
+                <td class="num-col negative">-0.15%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-10-07</td>
+                <td>7273</td>
+                <td>イクヨ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">770</td>
+                <td class="num-col">824</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-07</td>
+                <td>9213</td>
+                <td>セイファート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,084</td>
+                <td class="num-col">1,027</td>
+                <td class="num-col positive">+5.26%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-06</td>
+                <td>145A</td>
+                <td>Ｌ　ｉｓ　Ｂ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,095</td>
+                <td class="num-col">1,092</td>
+                <td class="num-col positive">+0.27%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-06</td>
+                <td>3083</td>
+                <td>スターシーズ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">819</td>
+                <td class="num-col">802</td>
+                <td class="num-col positive">+2.08%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-06</td>
+                <td>3542</td>
+                <td>ベガコーポレーション</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,838</td>
+                <td class="num-col">1,756</td>
+                <td class="num-col positive">+4.46%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-06</td>
+                <td>3747</td>
+                <td>インタートレード</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">630</td>
+                <td class="num-col">625</td>
+                <td class="num-col positive">+0.79%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-06</td>
+                <td>4055</td>
+                <td>ティアンドエスグループ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,219</td>
+                <td class="num-col">1,226</td>
+                <td class="num-col negative">-0.57%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-06</td>
+                <td>6433</td>
+                <td>ヒーハイスト</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">490</td>
+                <td class="num-col">503</td>
+                <td class="num-col negative">-2.65%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-06</td>
+                <td>7273</td>
+                <td>イクヨ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">802</td>
+                <td class="num-col">771</td>
+                <td class="num-col positive">+3.87%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-10-06</td>
+                <td>9145</td>
+                <td>ビーイングホールディングス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">905</td>
+                <td class="num-col">912</td>
+                <td class="num-col negative">-0.77%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-06</td>
+                <td>9271</td>
+                <td>和心</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">840</td>
+                <td class="num-col">848</td>
+                <td class="num-col negative">-0.95%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-03</td>
+                <td>334A</td>
+                <td>ビジュアル・プロセッシング・ジャパン</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,707</td>
+                <td class="num-col">1,721</td>
+                <td class="num-col negative">-0.82%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-10-03</td>
+                <td>3542</td>
+                <td>ベガコーポレーション</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,837</td>
+                <td class="num-col">1,791</td>
+                <td class="num-col positive">+2.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-03</td>
+                <td>6836</td>
+                <td>ぷらっとホーム</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,147</td>
+                <td class="num-col">1,143</td>
+                <td class="num-col positive">+0.35%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-02</td>
+                <td>189A</td>
+                <td>Ｄ＆Ｍカンパニー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,215</td>
+                <td class="num-col">1,228</td>
+                <td class="num-col negative">-1.07%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-02</td>
+                <td>2158</td>
+                <td>ＦＲＯＮＴＥＯ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,014</td>
+                <td class="num-col">1,003</td>
+                <td class="num-col positive">+1.08%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-02</td>
+                <td>290A</td>
+                <td>Ｓｙｎｓｐｅｃｔｉｖｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">889</td>
+                <td class="num-col">873</td>
+                <td class="num-col positive">+1.80%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-02</td>
+                <td>3691</td>
+                <td>デジタルプラス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,166</td>
+                <td class="num-col">1,174</td>
+                <td class="num-col negative">-0.69%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-10-01</td>
+                <td>3798</td>
+                <td>ＵＬＳグループ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">756</td>
+                <td class="num-col">764</td>
+                <td class="num-col negative">-1.06%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-01</td>
+                <td>5287</td>
+                <td>イトーヨーギョー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,345</td>
+                <td class="num-col">1,281</td>
+                <td class="num-col positive">+4.76%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-10-01</td>
+                <td>5817</td>
+                <td>ＪＭＡＣＳ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">492</td>
+                <td class="num-col">473</td>
+                <td class="num-col positive">+3.86%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-30</td>
+                <td>1491</td>
+                <td>中外鉱業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,006</td>
+                <td class="num-col">994</td>
+                <td class="num-col positive">+1.19%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-30</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">867</td>
+                <td class="num-col">879</td>
+                <td class="num-col negative">-1.38%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-30</td>
+                <td>4498</td>
+                <td>サイバートラスト</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,428</td>
+                <td class="num-col">1,412</td>
+                <td class="num-col positive">+1.12%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-29</td>
+                <td>1382</td>
+                <td>ホーブ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,649</td>
+                <td class="num-col">2,450</td>
+                <td class="num-col positive">+7.51%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-29</td>
+                <td>175A</td>
+                <td>Ｗｉｌｌ　Ｓｍａｒｔ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,240</td>
+                <td class="num-col">1,187</td>
+                <td class="num-col positive">+4.27%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-29</td>
+                <td>1844</td>
+                <td>大盛工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">826</td>
+                <td class="num-col">832</td>
+                <td class="num-col negative">-0.73%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-29</td>
+                <td>3723</td>
+                <td>日本ファルコム</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,495</td>
+                <td class="num-col">1,505</td>
+                <td class="num-col negative">-0.67%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-29</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">888</td>
+                <td class="num-col">889</td>
+                <td class="num-col negative">-0.11%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-29</td>
+                <td>4498</td>
+                <td>サイバートラスト</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,540</td>
+                <td class="num-col">1,483</td>
+                <td class="num-col positive">+3.70%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-09-29</td>
+                <td>5858</td>
+                <td>ＳＴＧ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,196</td>
+                <td class="num-col">2,335</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-29</td>
+                <td>5994</td>
+                <td>ファインシンター</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,283</td>
+                <td class="num-col">1,262</td>
+                <td class="num-col positive">+1.64%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-29</td>
+                <td>6327</td>
+                <td>北川精機</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">832</td>
+                <td class="num-col">840</td>
+                <td class="num-col negative">-0.96%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-29</td>
+                <td>6493</td>
+                <td>ＮＩＴＴＡＮ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">586</td>
+                <td class="num-col">592</td>
+                <td class="num-col negative">-1.02%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-29</td>
+                <td>7093</td>
+                <td>アディッシュ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">668</td>
+                <td class="num-col">630</td>
+                <td class="num-col positive">+5.69%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-26</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,033</td>
+                <td class="num-col">1,014</td>
+                <td class="num-col positive">+1.84%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-09-26</td>
+                <td>5590</td>
+                <td>ネットスターズ</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,310</td>
+                <td class="num-col">1,322</td>
+                <td class="num-col negative">-0.92%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-26</td>
+                <td>6493</td>
+                <td>ＮＩＴＴＡＮ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">593</td>
+                <td class="num-col">594</td>
+                <td class="num-col negative">-0.17%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-26</td>
+                <td>7273</td>
+                <td>イクヨ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">995</td>
+                <td class="num-col">989</td>
+                <td class="num-col positive">+0.60%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-26</td>
+                <td>9171</td>
+                <td>栗林商船</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,630</td>
+                <td class="num-col">1,526</td>
+                <td class="num-col positive">+6.38%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-26</td>
+                <td>9213</td>
+                <td>セイファート</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,213</td>
+                <td class="num-col">1,243</td>
+                <td class="num-col negative">-2.47%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-25</td>
+                <td>153A</td>
+                <td>カウリス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">2,390</td>
+                <td class="num-col">2,340</td>
+                <td class="num-col positive">+2.09%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-09-24</td>
+                <td>215A</td>
+                <td>タイミー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,439</td>
+                <td class="num-col">1,472</td>
+                <td class="num-col negative">-2.29%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-24</td>
+                <td>350A</td>
+                <td>デジタルグリッド</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,010</td>
+                <td class="num-col">963</td>
+                <td class="num-col positive">+4.62%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-09-24</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,070</td>
+                <td class="num-col">1,118</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-24</td>
+                <td>5597</td>
+                <td>ブルーイノベーション</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,315</td>
+                <td class="num-col">2,306</td>
+                <td class="num-col positive">+0.39%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-24</td>
+                <td>5998</td>
+                <td>アドバネクス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,746</td>
+                <td class="num-col">1,738</td>
+                <td class="num-col positive">+0.46%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-24</td>
+                <td>7072</td>
+                <td>インティメート・マージャー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,541</td>
+                <td class="num-col">1,505</td>
+                <td class="num-col positive">+2.34%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-24</td>
+                <td>9271</td>
+                <td>和心</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">911</td>
+                <td class="num-col">838</td>
+                <td class="num-col positive">+8.01%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-22</td>
+                <td>1844</td>
+                <td>大盛工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,055</td>
+                <td class="num-col">1,005</td>
+                <td class="num-col positive">+4.74%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-22</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,044</td>
+                <td class="num-col">1,010</td>
+                <td class="num-col positive">+3.26%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-22</td>
+                <td>3935</td>
+                <td>エディア</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,247</td>
+                <td class="num-col">1,205</td>
+                <td class="num-col positive">+3.37%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-19</td>
+                <td>330A</td>
+                <td>ＴａｌｅｎｔＸ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,036</td>
+                <td class="num-col">1,018</td>
+                <td class="num-col positive">+1.74%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-19</td>
+                <td>3913</td>
+                <td>ＧｒｅｅｎＢｅｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,067</td>
+                <td class="num-col">1,076</td>
+                <td class="num-col negative">-0.84%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-19</td>
+                <td>5817</td>
+                <td>ＪＭＡＣＳ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">467</td>
+                <td class="num-col">453</td>
+                <td class="num-col positive">+3.00%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-19</td>
+                <td>7273</td>
+                <td>イクヨ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,071</td>
+                <td class="num-col">1,031</td>
+                <td class="num-col positive">+3.73%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-18</td>
+                <td>189A</td>
+                <td>Ｄ＆Ｍカンパニー</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,066</td>
+                <td class="num-col">1,073</td>
+                <td class="num-col negative">-0.66%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-18</td>
+                <td>247A</td>
+                <td>Ａｉロボティクス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,570</td>
+                <td class="num-col">1,590</td>
+                <td class="num-col negative">-1.27%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="損切り">
+                <td>2025-09-18</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,033</td>
+                <td class="num-col">1,078</td>
+                <td class="num-col negative">-3.00%</td>
+                <td class="stop">損切り</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-18</td>
+                <td>4935</td>
+                <td>リベルタ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,296</td>
+                <td class="num-col">2,261</td>
+                <td class="num-col positive">+1.52%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-17</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,100</td>
+                <td class="num-col">1,069</td>
+                <td class="num-col positive">+2.82%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-17</td>
+                <td>3856</td>
+                <td>Ａｂａｌａｎｃｅ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,232</td>
+                <td class="num-col">1,231</td>
+                <td class="num-col positive">+0.08%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>155A</td>
+                <td>情報戦略テクノロジー</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,011</td>
+                <td class="num-col">935</td>
+                <td class="num-col positive">+7.52%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>3691</td>
+                <td>デジタルプラス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,378</td>
+                <td class="num-col">1,342</td>
+                <td class="num-col positive">+2.61%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>3803</td>
+                <td>イメージ情報開発</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,595</td>
+                <td class="num-col">1,211</td>
+                <td class="num-col positive">+24.08%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>5268</td>
+                <td>旭コンクリート工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,007</td>
+                <td class="num-col">962</td>
+                <td class="num-col positive">+4.47%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>5998</td>
+                <td>アドバネクス</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">1,524</td>
+                <td class="num-col">1,509</td>
+                <td class="num-col positive">+0.98%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-12</td>
+                <td>6228</td>
+                <td>ジェイ・イー・ティ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,042</td>
+                <td class="num-col">1,019</td>
+                <td class="num-col positive">+2.21%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-11</td>
+                <td>6327</td>
+                <td>北川精機</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">885</td>
+                <td class="num-col">842</td>
+                <td class="num-col positive">+4.86%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-11</td>
+                <td>7093</td>
+                <td>アディッシュ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">640</td>
+                <td class="num-col">624</td>
+                <td class="num-col positive">+2.50%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-11</td>
+                <td>7318</td>
+                <td>セレンディップ・ホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,430</td>
+                <td class="num-col">1,340</td>
+                <td class="num-col positive">+6.29%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-11</td>
+                <td>8995</td>
+                <td>誠建設工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,211</td>
+                <td class="num-col">1,111</td>
+                <td class="num-col positive">+8.26%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="制度" data-result="負け">
+                <td>2025-09-10</td>
+                <td>3747</td>
+                <td>インタートレード</td>
+                <td><span class="tag tag-seido">制度</span></td>
+                <td class="num-col">862</td>
+                <td class="num-col">869</td>
+                <td class="num-col negative">-0.81%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-10</td>
+                <td>4935</td>
+                <td>リベルタ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,143</td>
+                <td class="num-col">2,135</td>
+                <td class="num-col positive">+0.37%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-10</td>
+                <td>5268</td>
+                <td>旭コンクリート工業</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,100</td>
+                <td class="num-col">1,036</td>
+                <td class="num-col positive">+5.82%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="負け">
+                <td>2025-09-10</td>
+                <td>6597</td>
+                <td>ＨＰＣシステムズ</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,898</td>
+                <td class="num-col">1,909</td>
+                <td class="num-col negative">-0.58%</td>
+                <td class="lose">負け</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-10</td>
+                <td>6838</td>
+                <td>多摩川ホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">850</td>
+                <td class="num-col">823</td>
+                <td class="num-col positive">+3.18%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-10</td>
+                <td>7318</td>
+                <td>セレンディップ・ホールディングス</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">1,468</td>
+                <td class="num-col">1,425</td>
+                <td class="num-col positive">+2.90%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+            <tr data-margin="いちにち" data-result="勝ち">
+                <td>2025-09-10</td>
+                <td>9211</td>
+                <td>エフ・コード</td>
+                <td><span class="tag tag-ichinichi">いちにち</span></td>
+                <td class="num-col">2,164</td>
+                <td class="num-col">2,153</td>
+                <td class="num-col positive">+0.51%</td>
+                <td class="win">勝ち</td>
+            </tr>
+    
+        </tbody>
+    </table>
+    
+    <script>
+        function filterTable() {
+            const margin = document.getElementById('marginFilter').value;
+            const result = document.getElementById('resultFilter').value;
+            const search = document.getElementById('search').value.toLowerCase();
+            
+            document.querySelectorAll('#tradeTable tbody tr').forEach(row => {
+                const rowMargin = row.dataset.margin;
+                const rowResult = row.dataset.result;
+                const text = row.textContent.toLowerCase();
+                
+                let show = true;
+                if (margin && rowMargin !== margin) show = false;
+                if (result && rowResult !== result) show = false;
+                if (search && !text.includes(search)) show = false;
+                
+                row.style.display = show ? '' : 'none';
+            });
+            
+            updateStats();
+        }
+        
+        function updateStats() {
+            const visible = document.querySelectorAll('#tradeTable tbody tr:not([style*="display: none"])');
+            let total = 0, wins = 0, pnlSum = 0;
+            
+            visible.forEach(row => {
+                total++;
+                const result = row.dataset.result;
+                if (result === '勝ち') wins++;
+                const pnl = parseFloat(row.cells[6].textContent);
+                pnlSum += pnl;
+            });
+            
+            if (total > 0) {
+                console.log(`Filtered: ${total}件, 勝率${(wins/total*100).toFixed(1)}%, 合計${pnlSum.toFixed(1)}%`);
+            }
+        }
+        
+        let sortDirection = {};
+        function sortTable(col) {
+            const table = document.getElementById('tradeTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            
+            sortDirection[col] = !sortDirection[col];
+            const dir = sortDirection[col] ? 1 : -1;
+            
+            rows.sort((a, b) => {
+                let aVal = a.cells[col].textContent;
+                let bVal = b.cells[col].textContent;
+                
+                if (col === 4 || col === 5) {
+                    aVal = parseFloat(aVal.replace(/,/g, ''));
+                    bVal = parseFloat(bVal.replace(/,/g, ''));
+                } else if (col === 6) {
+                    aVal = parseFloat(aVal);
+                    bVal = parseFloat(bVal);
+                }
+                
+                if (aVal < bVal) return -1 * dir;
+                if (aVal > bVal) return 1 * dir;
+                return 0;
+            });
+            
+            const tbody = table.querySelector('tbody');
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+</body>
+</html>

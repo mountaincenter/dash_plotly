@@ -1,0 +1,569 @@
+#!/usr/bin/env python3
+"""
+247A Aiロボティクス 投資分析レポート生成スクリプト
+"""
+
+import datetime
+
+def generate_html_report():
+    """HTMLレポートを生成"""
+
+    html_content = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>247A Aiロボティクス - 投資分析レポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #161b22;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #58a6ff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #58a6ff;
+            padding-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #58a6ff;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid #58a6ff;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #79c0ff;
+            font-size: 1.4em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #a5d6ff;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p, li {
+            margin-bottom: 12px;
+            color: #c9d1d9;
+        }
+
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background-color: #1c2128;
+            border-left: 4px solid #58a6ff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background-color: #2d1e0f;
+            border-left: 4px solid #f85149;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background-color: #0f2d1e;
+            border-left: 4px solid #3fb950;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .highlight {
+            background-color: #1f6feb;
+            color: #ffffff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .price-up {
+            color: #3fb950;
+            font-weight: bold;
+        }
+
+        .price-down {
+            color: #f85149;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #1c2128;
+        }
+
+        th {
+            background-color: #21262d;
+            color: #58a6ff;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #30363d;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        tr:hover {
+            background-color: #21262d;
+        }
+
+        .timestamp {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-top: 40px;
+            text-align: right;
+        }
+
+        code {
+            background-color: #1c2128;
+            color: #79c0ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .chart-pattern {
+            background-color: #1c2128;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+        }
+
+        .strategy-point {
+            background-color: #0f2d1e;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #3fb950;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>247A Aiロボティクス - 投資分析レポート</h1>
+        <p class="subtitle">チャートパターン分析とエントリー戦略の検討</p>
+
+        <!-- 銘柄概要 -->
+        <h2>1. 銘柄概要</h2>
+
+        <div class="info-box">
+            <h3>基本情報</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>内容</th>
+                </tr>
+                <tr>
+                    <td>銘柄コード</td>
+                    <td><span class="highlight">247A</span></td>
+                </tr>
+                <tr>
+                    <td>市場</td>
+                    <td>東証グロース</td>
+                </tr>
+                <tr>
+                    <td>株価（2025/12/18）</td>
+                    <td><span class="price-up">1,597円（+152円、+10.52%）</span></td>
+                </tr>
+                <tr>
+                    <td>時価総額</td>
+                    <td>988億円</td>
+                </tr>
+                <tr>
+                    <td>PER（予想）</td>
+                    <td>28.3倍</td>
+                </tr>
+                <tr>
+                    <td>PBR（実績）</td>
+                    <td>25.77倍</td>
+                </tr>
+                <tr>
+                    <td>ROE（実績）</td>
+                    <td>76.75%</td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>事業内容</h3>
+        <p>Aiロボティクスは、自社開発のAI自動分析システム<span class="highlight">「SELL（セル）」</span>を活用したD2Cブランド事業を展開する企業です。</p>
+
+        <ul>
+            <li><strong>主力ブランド「Yunth（ユンス）」</strong>: スキンケア商品
+                <ul>
+                    <li>生VC美白美容液</li>
+                    <li>生VC美白化粧水</li>
+                    <li>生VCホワイトクリアフォーム</li>
+                    <li>美白ハンドセラム</li>
+                </ul>
+            </li>
+            <li><strong>美容家電ブランド「Brighte」</strong>
+                <ul>
+                    <li>ELEKIBRUSH（好調）</li>
+                </ul>
+            </li>
+            <li><strong>販路</strong>: 自社EC、ECモール、店頭卸の3チャネル</li>
+        </ul>
+
+        <div class="success-box">
+            <h4>Yunth「楽天ベストコスメ2024」受賞</h4>
+            <p><strong>総合大賞</strong>および<strong>美容液部門 第1位</strong>を受賞。ブランド認知度の向上と販売拡大が期待される材料。</p>
+        </div>
+
+        <h3>直近決算（2026年3月期 2Q）</h3>
+        <div class="info-box">
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>金額</th>
+                    <th>前年同期比</th>
+                </tr>
+                <tr>
+                    <td>売上高</td>
+                    <td>105.42億円</td>
+                    <td><span class="price-up">+66.4%</span></td>
+                </tr>
+                <tr>
+                    <td>営業利益</td>
+                    <td>7.01億円</td>
+                    <td><span class="price-down">-41.7%</span></td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="background-color: #21262d;"><strong>通期予想</strong></td>
+                </tr>
+                <tr>
+                    <td>売上高（通期）</td>
+                    <td>280億円</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>営業利益（通期）</td>
+                    <td>48億円</td>
+                    <td>-</td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px;"><strong>分析</strong>: 売上は大幅増だが、新ブランドへの先行投資により利益は減少。成長期にある企業特有のパターン。</p>
+        </div>
+
+        <!-- ニュース・材料 -->
+        <h2>2. ニュース・材料</h2>
+
+        <h3>2024年9月: 東証グロース上場</h3>
+        <p>2024年9月27日付で東証グロース市場に新規上場。IPO銘柄として注目度が高い。</p>
+
+        <h3>2025年11月: 2Q決算発表</h3>
+        <p>売上高66.4%増と高成長を維持。ROE 76.75%、ROA 29.56%と高い収益性を示す。</p>
+
+        <h3>株価変動の材料</h3>
+        <ul>
+            <li><strong>成長期待</strong>: 前年比66.4%増の売上成長率</li>
+            <li><strong>ブランド力強化</strong>: 楽天ベストコスメ総合大賞受賞</li>
+            <li><strong>新製品投入</strong>: 継続的な商品ラインナップ拡大</li>
+            <li><strong>IPO効果</strong>: 上場から1年超、流動性が徐々に増加</li>
+            <li><strong>AI活用</strong>: SELL（セル）によるデータドリブンな商品開発</li>
+        </ul>
+
+        <div class="warning-box">
+            <h4>リスク要因</h4>
+            <ul>
+                <li>先行投資による一時的な利益減少</li>
+                <li>グロース市場特有のボラティリティ</li>
+                <li>PER 28.3倍、PBR 25.77倍と高バリュエーション</li>
+                <li>D2C市場の競争激化</li>
+            </ul>
+        </div>
+
+        <!-- チャートパターン分析 -->
+        <h2>3. チャートパターン分析</h2>
+
+        <div class="info-box">
+            <h3>観察された特徴</h3>
+            <p><strong>常習回数: <span class="highlight">10回</span></strong> - 高い信頼性を持つパターン</p>
+            <p><strong>基本パターン</strong>: 前場にピークが来ることが多い</p>
+        </div>
+
+        <h3>2025年12月16日（月）のチャート</h3>
+        <div class="chart-pattern">
+            <h4>特殊な動き</h4>
+            <ol>
+                <li><strong>10時台</strong>: 一度下落</li>
+                <li><strong>持ち直し</strong>: 下落後に反発</li>
+                <li><strong>11時台〜後場始まり</strong>: もう一山形成（ダブルトップ的な動き）</li>
+            </ol>
+            <p><strong>解釈</strong>: 利益確定売りが出た後、押し目買いが入り再度上昇。後場でも買い圧力が継続。</p>
+        </div>
+
+        <h3>2025年12月18日（水）のチャート</h3>
+        <div class="chart-pattern">
+            <h4>トレード実績</h4>
+            <table>
+                <tr>
+                    <th>時刻</th>
+                    <th>RSI</th>
+                    <th>アクション</th>
+                    <th>備考</th>
+                </tr>
+                <tr>
+                    <td>9:45</td>
+                    <td><span class="highlight">85.98</span></td>
+                    <td><span class="price-down">ショートエントリー</span></td>
+                    <td>陰線2本目で確認</td>
+                </tr>
+                <tr>
+                    <td>10:45</td>
+                    <td><span class="highlight">29.20</span></td>
+                    <td><span class="price-up">イグジット</span></td>
+                    <td>利益確保</td>
+                </tr>
+            </table>
+            <p><strong>結果</strong>: <span class="price-up">利益確保に成功</span></p>
+            <p><strong>RSI変動幅</strong>: 85.98 → 29.20（<span class="highlight">56.78ポイント下落</span>）</p>
+            <p><strong>時間</strong>: 約1時間のポジション保有</p>
+        </div>
+
+        <h3>チャートの特性</h3>
+        <div class="warning-box">
+            <h4>チャートがわかりづらい点</h4>
+            <ul>
+                <li><strong>不規則な動き</strong>: 12/16のような二山形成など、単純な前場ピークパターンから外れることがある</li>
+                <li><strong>ボラティリティが高い</strong>: グロース銘柄特有の大きな値動き</li>
+                <li><strong>流動性</strong>: IPO後間もないため、板が薄い時間帯がある可能性</li>
+                <li><strong>材料反応</strong>: ニュースやSNSでの話題により急変動する可能性</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h4>パターンの信頼性</h4>
+            <p><strong>常習回数10回</strong>という実績は、統計的に十分な信頼性を持つ。ただし:</p>
+            <ul>
+                <li>全ての日で同じパターンになるわけではない（12/16の例）</li>
+                <li>RSI極値での反転傾向は観察される（12/18の例）</li>
+                <li>前場ピークの基本パターンは有効と推定</li>
+            </ul>
+        </div>
+
+        <!-- エントリー戦略 -->
+        <h2>4. エントリー戦略</h2>
+
+        <h3>RSIベース戦略（実績あり）</h3>
+        <div class="strategy-point">
+            <h4>ショート戦略（12/18実証済み）</h4>
+            <p><strong>エントリー条件</strong>:</p>
+            <ul>
+                <li>RSI <span class="highlight">85超え</span></li>
+                <li><span class="highlight">陰線2本目</span>で確認（ダマシ回避）</li>
+                <li>時間帯: 9:30〜10:00が推奨</li>
+            </ul>
+            <p><strong>イグジット条件</strong>:</p>
+            <ul>
+                <li>RSI <span class="highlight">30以下</span>（12/18では29.20で決済）</li>
+                <li>または時間ベース: 11:00〜11:30で利益確定</li>
+            </ul>
+            <p><strong>リスク管理</strong>:</p>
+            <ul>
+                <li>損切りライン: エントリー価格から<span class="highlight">+3%</span></li>
+                <li>12/16のような二山パターンに注意（一度下落後に再上昇）</li>
+            </ul>
+        </div>
+
+        <h3>前場ピーク戦略</h3>
+        <div class="strategy-point">
+            <h4>基本アプローチ</h4>
+            <p><strong>前提</strong>: 常習回数10回のパターン「前場にピークが来ることが多い」</p>
+            <p><strong>エントリー</strong>:</p>
+            <ul>
+                <li>9:30〜10:30の高値圏でショート</li>
+                <li>RSIが80超えを確認</li>
+                <li>出来高が急増した後の陰転を待つ</li>
+            </ul>
+            <p><strong>イグジット</strong>:</p>
+            <ul>
+                <li>11:00〜11:30の安値圏</li>
+                <li>または後場始値で決済（12:30）</li>
+            </ul>
+        </div>
+
+        <h3>注意点・リスク要因</h3>
+        <div class="warning-box">
+            <h4>例外パターンへの対応</h4>
+            <p><strong>12/16型の二山パターン</strong>:</p>
+            <ul>
+                <li>10時台の下落で利益確定したくなるが、11時台に再上昇する可能性</li>
+                <li>対策: 部分利確（50%）+ 残りは後場まで保有</li>
+            </ul>
+
+            <h4>その他のリスク</h4>
+            <ul>
+                <li><strong>材料発表</strong>: IR発表や決算で急騰・急落</li>
+                <li><strong>板が薄い</strong>: 希望価格で約定しない可能性</li>
+                <li><strong>ストップ高/安</strong>: グロース銘柄は制限値幅が大きい</li>
+                <li><strong>空売り規制</strong>: 直近IPO銘柄のため、制度信用での空売りが制限される可能性</li>
+            </ul>
+        </div>
+
+        <h3>推奨戦略まとめ</h3>
+        <div class="success-box">
+            <h4>実践的アプローチ</h4>
+            <ol>
+                <li><strong>メイン戦略</strong>: RSI 85超え + 陰線2本確認でショート</li>
+                <li><strong>イグジット</strong>: RSI 30以下、または10:45〜11:00で利確</li>
+                <li><strong>損切り</strong>: +3%で機械的に損切り</li>
+                <li><strong>ポジションサイズ</strong>: ボラティリティが高いため、通常の50%程度に抑える</li>
+                <li><strong>二山パターン対策</strong>: 部分利確を活用</li>
+            </ol>
+        </div>
+
+        <!-- 結論 -->
+        <h2>5. 結論</h2>
+
+        <div class="success-box">
+            <h3>チャレンジの可否: <span class="highlight">条件付きでOK</span></h3>
+
+            <h4>推奨理由</h4>
+            <ul>
+                <li><strong>高い信頼性</strong>: 常習回数10回のパターン</li>
+                <li><strong>実証済み</strong>: 12/18にRSI戦略で利益確保</li>
+                <li><strong>明確なシグナル</strong>: RSI 85超え + 陰線2本目</li>
+                <li><strong>短期決戦</strong>: 1時間程度で完結（リスク限定）</li>
+            </ul>
+
+            <h4>条件・注意点</h4>
+            <ul>
+                <li><span class="highlight">小ロットから開始</span>: ボラティリティが高いため</li>
+                <li><span class="highlight">損切りを徹底</span>: +3%で機械的に実行</li>
+                <li><span class="highlight">例外パターンを認識</span>: 12/16型の二山に注意</li>
+                <li><span class="highlight">空売り可能性を確認</span>: 制度信用の制限に注意</li>
+                <li><span class="highlight">材料チェック</span>: エントリー前に最新IRを確認</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>実践プラン</h3>
+            <table>
+                <tr>
+                    <th>フェーズ</th>
+                    <th>内容</th>
+                </tr>
+                <tr>
+                    <td>準備</td>
+                    <td>
+                        - 空売り可能性確認<br>
+                        - 直近5日間のチャート確認<br>
+                        - IR・ニュースチェック
+                    </td>
+                </tr>
+                <tr>
+                    <td>監視（9:00〜9:30）</td>
+                    <td>
+                        - 寄り付きの勢い確認<br>
+                        - 前日比+5%以上で上昇している場合は注目<br>
+                        - RSIの上昇を監視
+                    </td>
+                </tr>
+                <tr>
+                    <td>エントリー（9:30〜10:00）</td>
+                    <td>
+                        - RSI 85超え確認<br>
+                        - 陰線2本目でショート<br>
+                        - 損切り注文を同時発注（+3%）
+                    </td>
+                </tr>
+                <tr>
+                    <td>イグジット（10:30〜11:00）</td>
+                    <td>
+                        - RSI 30以下で利確<br>
+                        - または時間で機械的に決済
+                    </td>
+                </tr>
+                <tr>
+                    <td>振り返り</td>
+                    <td>
+                        - パターンの再確認<br>
+                        - 次回への改善点を記録
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="warning-box">
+            <h3>最終警告</h3>
+            <p><strong>この銘柄は以下の特性を持つため、上級者向けです:</strong></p>
+            <ul>
+                <li>グロース市場の高ボラティリティ</li>
+                <li>IPO後1年超でまだ値動きが不安定</li>
+                <li>高PER・高PBRで調整リスクあり</li>
+                <li>チャートがわかりづらい（二山パターン等）</li>
+            </ul>
+            <p><span class="highlight">必ず小ロットから開始し、損切りを徹底してください。</span></p>
+        </div>
+
+        <h3>参考情報源</h3>
+        <ul>
+            <li><a href="https://minkabu.jp/stock/247A" target="_blank" style="color: #58a6ff;">みんかぶ - Aiロボティクス (247A)</a></li>
+            <li><a href="https://finance.yahoo.co.jp/quote/247A.T" target="_blank" style="color: #58a6ff;">Yahoo!ファイナンス - Aiロボティクス(株)</a></li>
+            <li><a href="https://kabutan.jp/stock/?code=247A" target="_blank" style="color: #58a6ff;">株探 - Ａｉロボティクス【247A】</a></li>
+            <li><a href="https://www.nikkei.com/nkd/company/?scode=247A" target="_blank" style="color: #58a6ff;">日本経済新聞 - Aiロボティクス</a></li>
+        </ul>
+
+        <p class="timestamp">レポート生成日時: """ + datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M:%S") + """</p>
+    </div>
+</body>
+</html>
+"""
+
+    # HTMLファイルを保存
+    output_path = "/Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly/improvement/output/analysis_247A_airobo.html"
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    print(f"HTMLレポートを生成しました: {output_path}")
+    return output_path
+
+if __name__ == "__main__":
+    output_path = generate_html_report()
+    print(f"\n✅ 完了: {output_path}")

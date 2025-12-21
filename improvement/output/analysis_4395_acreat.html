@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクリート（4395）投資分析レポート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Meiryo, 'ヒラギノ角ゴ ProN W3', sans-serif;
+            background-color: #0d1117;
+            color: #e6edf3;
+            line-height: 1.8;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #161b22;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1f6feb 0%, #0969da 100%);
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            color: #c9d1d9;
+            margin-top: 10px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #21262d;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #58a6ff;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #1f6feb;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: "▶";
+            color: #1f6feb;
+        }
+
+        .subsection {
+            margin-bottom: 30px;
+        }
+
+        .subsection-title {
+            font-size: 1.4em;
+            color: #79c0ff;
+            margin-bottom: 15px;
+            padding-left: 15px;
+            border-left: 4px solid #1f6feb;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(31, 111, 235, 0.2);
+        }
+
+        .info-card h3 {
+            color: #58a6ff;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .info-card .unit {
+            font-size: 0.9em;
+            color: #8b949e;
+            margin-left: 5px;
+        }
+
+        .text-content {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            line-height: 1.9;
+        }
+
+        .text-content p {
+            margin-bottom: 15px;
+        }
+
+        .text-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlight-box {
+            background-color: #1c2128;
+            border-left: 4px solid #1f6feb;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background-color: #1c2128;
+            border-left: 4px solid #f85149;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background-color: #1c2128;
+            border-left: 4px solid #3fb950;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .bullet-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .bullet-list li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .bullet-list li:last-child {
+            border-bottom: none;
+        }
+
+        .bullet-list li::before {
+            content: "•";
+            color: #1f6feb;
+            font-size: 1.5em;
+            position: absolute;
+            left: 10px;
+            top: 8px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 30px 0;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #1f6feb, #58a6ff);
+        }
+
+        .timeline-item {
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            left: -24px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #1f6feb;
+            border: 3px solid #0d1117;
+        }
+
+        .timeline-date {
+            color: #58a6ff;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .timeline-content {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 5px 5px 5px 0;
+            background-color: #1f6feb;
+            color: #ffffff;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .tag.red {
+            background-color: #f85149;
+        }
+
+        .tag.green {
+            background-color: #3fb950;
+        }
+
+        .tag.yellow {
+            background-color: #d29922;
+        }
+
+        .tag.purple {
+            background-color: #bc8cff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #0d1117;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table thead {
+            background-color: #1f6feb;
+        }
+
+        table th {
+            padding: 15px;
+            text-align: left;
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        table td {
+            padding: 15px;
+            border-bottom: 1px solid #21262d;
+        }
+
+        table tbody tr:hover {
+            background-color: #161b22;
+        }
+
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .footer {
+            background-color: #0d1117;
+            padding: 30px;
+            text-align: center;
+            color: #8b949e;
+            border-top: 1px solid #21262d;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .risk-indicator {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .risk-high {
+            background-color: #da3633;
+            color: #ffffff;
+        }
+
+        .risk-medium {
+            background-color: #d29922;
+            color: #ffffff;
+        }
+
+        .risk-low {
+            background-color: #3fb950;
+            color: #ffffff;
+        }
+
+        .chart-placeholder {
+            background-color: #0d1117;
+            border: 2px dashed #30363d;
+            border-radius: 8px;
+            padding: 60px;
+            text-align: center;
+            color: #8b949e;
+            margin: 20px 0;
+        }
+
+        .sources {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+        }
+
+        .sources h3 {
+            color: #58a6ff;
+            margin-bottom: 15px;
+        }
+
+        .sources a {
+            color: #58a6ff;
+            text-decoration: none;
+            display: block;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .sources a:hover {
+            color: #79c0ff;
+            text-decoration: underline;
+        }
+
+        .sources a:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 アクリート（4395）投資分析レポート</h1>
+            <div class="subtitle">量子セキュリティ×SMS配信大手の成長ストーリー</div>
+            <div class="subtitle">作成日: 2024年12月18日</div>
+        </div>
+
+        <div class="content">
+            <!-- セクション1: 銘柄概要 -->
+            <section class="section">
+                <h2 class="section-title">銘柄概要</h2>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h3>証券コード</h3>
+                        <div class="value">4395</div>
+                    </div>
+                    <div class="info-card">
+                        <h3>市場</h3>
+                        <div class="value">東証グロース</div>
+                    </div>
+                    <div class="info-card">
+                        <h3>時価総額</h3>
+                        <div class="value">44<span class="unit">億円</span></div>
+                    </div>
+                    <div class="info-card">
+                        <h3>PER（予想）</h3>
+                        <div class="value">18.85<span class="unit">倍</span></div>
+                    </div>
+                    <div class="info-card">
+                        <h3>PBR</h3>
+                        <div class="value">2.34<span class="unit">倍</span></div>
+                    </div>
+                    <div class="info-card">
+                        <h3>業種</h3>
+                        <div class="value">情報・通信業</div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">事業内容</h3>
+                    <div class="text-content">
+                        <p><strong>主力事業：SMS配信サービス国内最大手</strong></p>
+                        <p>アクリートは、法人向けSMS（ショートメッセージサービス）配信事業のパイオニアとして、2010年の事業開始以降15年間にわたり日本のSMS配信市場を牽引してきました。現在では5,000社を超えるグローバルIT企業や国内大手企業に利用されており、国内SMS配信市場でトップシェアを競う地位を確立しています。</p>
+
+                        <p><strong>3つの事業セグメント（2024年7月より再編）</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>コミュニケーション事業：</strong>従来の国内・海外メッセージングサービス事業を統合。SMS配信サービス「絶対リーチ！SMS」を主力製品として、学校安心メール、防犯・防災危機管理緊急連絡システム「自治体安心メール」なども展開</li>
+                            <li><strong>ソリューション事業：</strong>2024年7月に新設。子会社・ズノー・メディアソリューション（ZMS社）を通じてSMS配信の新たな収益機会を開拓</li>
+                            <li><strong>投資インキュベーション事業：</strong>2024年7月に新設。量子セキュリティ分野への戦略的進出を推進</li>
+                        </ul>
+
+                        <p><strong>市場環境：</strong>SMS配信サービスの市場は、2024年度から2029年度まで年平均成長率24.8%の高成長が見込まれており、同社の主力事業は引き続き拡大基調にあります。</p>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">2024年12月期 業績見通し</h3>
+                    <div class="text-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>指標</th>
+                                    <th>金額</th>
+                                    <th>備考</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>売上総利益</td>
+                                    <td>1,562百万円</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>営業利益</td>
+                                    <td>332百万円</td>
+                                    <td>営業利益率 5.2%</td>
+                                </tr>
+                                <tr>
+                                    <td>経常利益（Q3累計）</td>
+                                    <td>194百万円</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>純利益（Q3単独）</td>
+                                    <td>72百万円</td>
+                                    <td>前四半期比 +144.45%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- セクション2: ニュース・材料 -->
+            <section class="section">
+                <h2 class="section-title">ニュース・材料</h2>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">🚀 2024年12月11日：量子セキュリティ関連の大型材料</h3>
+                    <div class="highlight-box">
+                        <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 15px;">
+                            合弁先Forward Edge-AI社が米ミサイル防衛局から上限1510億米ドルの大型契約獲得
+                        </p>
+                        <p><strong>概要：</strong></p>
+                        <p>アクリートが2024年10月16日に合弁契約を締結した米Forward Edge-AI, Inc.が、米ミサイル防衛局（MDA）の「SHIELD契約」において、プロジェクトの主導企業（元請け）に選定されました。この契約の上限額は<strong style="color: #3fb950;">1510億米ドル（約21兆円規模）</strong>という超大型案件です。</p>
+
+                        <p><strong>アクリートへの影響：</strong></p>
+                        <ul class="bullet-list">
+                            <li>合弁会社「フォワードエッジAIジャパン株式会社」（資本金9,375万円、アクリート出資比率60%）が、Forward Edge-AI社の量子耐性型暗号ソリューション「Isidore Quantum」を日本国内で総代理店として展開</li>
+                            <li>MDAの大型契約獲得は、同社の量子セキュリティ技術の高さを裏付けるもので、日本市場での事業展開に弾みがつくと期待される</li>
+                            <li>合弁会社の事業開始は2025年12月を予定</li>
+                        </ul>
+
+                        <p><strong>株価反応：</strong></p>
+                        <p>12月11日の発表を受けて、アクリート株は<span class="tag red">ストップ高買い気配</span>となり、投資家の期待が一気に高まりました。</p>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">🔐 量子セキュリティ事業の戦略的背景</h3>
+                    <div class="text-content">
+                        <p><strong>Forward Edge-AI社について：</strong></p>
+                        <p>米国テキサス州を拠点とし、人工知能（AI）、国家安全保障、ネットワークセキュリティを展開する企業。先端的な量子暗号通信技術の分野でグローバルに事業展開を進めており、公共の安全と国家安全保障のための人工知能開発を専門としています。</p>
+
+                        <p><strong>PQC（量子耐性型暗号）の重要性：</strong></p>
+                        <p>超情報化社会における情報漏洩やサイバー攻撃のリスク増大を背景に、暗号技術の安全性確保が急務となっています。特にPQCは以下の特長から、今後の標準暗号技術として期待されています：</p>
+                        <ul class="bullet-list">
+                            <li>既存通信インフラへの実装が容易</li>
+                            <li>コスト効率に優れる</li>
+                            <li>量子コンピュータの脅威に対する耐性を持つ</li>
+                        </ul>
+
+                        <p><strong>アクリートの戦略：</strong></p>
+                        <p>SMS配信事業で培った5,000社を超える販売チャネルを活用し、Forward Edge-AI社のPQCソリューションを日本市場に展開することで、新たな収益の柱を構築する狙いがあります。</p>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📅 2024年の主なIRイベント</h3>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-date">2024年7月12日</div>
+                            <div class="timeline-content">
+                                <strong>中期経営計画の修正を発表</strong>
+                                <p>ソリューション事業及び投資インキュベーション事業を新設し、報告セグメントを3区分に変更。子会社ZMS社を新規取得、Xoxzo社は全株式譲渡。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-date">2024年8月22日</div>
+                            <div class="timeline-content">
+                                <strong>Forward Edge-AI社との資本業務提携に向けた基本合意</strong>
+                                <p>量子セキュリティ分野への本格進出を発表。株価は買い気配→ストップ高。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-date">2024年9月13日</div>
+                            <div class="timeline-content">
+                                <strong>第４回新株予約権発行</strong>
+                                <p>資金調達を実施。成長投資のための資金を確保。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-date">2024年10月16日</div>
+                            <div class="timeline-content">
+                                <strong>Forward Edge-AI社と合弁会社設立に関する合弁契約締結</strong>
+                                <p>フォワードエッジAIジャパン株式会社の設立を正式発表（11月設立予定）。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-date">2024年12月9日</div>
+                            <div class="timeline-content">
+                                <strong>合弁先が米ミサイル防衛局から大型契約獲得を発表</strong>
+                                <p>Forward Edge-AI社がMDA「SHIELD契約」の元請けに選定。上限1510億米ドル。株価ストップ高。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📈 出来高増加の背景</h3>
+                    <div class="text-content">
+                        <p><strong>2024年8月以降、出来高が急増：</strong></p>
+                        <p>普段は数千～数万株程度の出来高だったアクリート株が、2024年8月22日のForward Edge-AI社との資本業務提携発表以降、出来高が100万株前後まで急増する日が見られるようになりました。</p>
+
+                        <p><strong>出来高増加の主な要因：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>量子セキュリティへの期待：</strong>次世代暗号技術という成長テーマへの投資家の注目</li>
+                            <li><strong>米国防関連の大型契約：</strong>21兆円規模の契約という具体的な材料</li>
+                            <li><strong>新規投資家の参入：</strong>テーマ株としての認知度向上により、新たな買い手が市場に参入</li>
+                            <li><strong>ボラティリティの高まり：</strong>短期トレーダーの参加増加</li>
+                        </ul>
+
+                        <p>掲示板では「会社からアナウンスが何もなくこれだけ出来高増やせたのは凄い」との声も上がっており、材料に対する市場の反応の強さが伺えます。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- セクション3: チャート分析 -->
+            <section class="section">
+                <h2 class="section-title">チャート分析</h2>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📊 2024年8月：ストップ高からの急落</h3>
+                    <div class="warning-box">
+                        <p><strong>8月の値動きパターン：</strong></p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>値動き</th>
+                                    <th>解説</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>8月6日</td>
+                                    <td><span class="tag red">上場来安値 437円</span></td>
+                                    <td>日経平均の大暴落（ブラックマンデー再来）の影響を受けて史上最安値を記録</td>
+                                </tr>
+                                <tr>
+                                    <td>8月22日</td>
+                                    <td><span class="tag green">ストップ高</span></td>
+                                    <td>Forward Edge-AI社との資本業務提携発表。量子セキュリティへの期待で急騰</td>
+                                </tr>
+                                <tr>
+                                    <td>8月25日</td>
+                                    <td><span class="tag green">ストップ高継続</span></td>
+                                    <td>材料への期待が継続し、2日連続のストップ高</td>
+                                </tr>
+                                <tr>
+                                    <td>8月26日</td>
+                                    <td><span class="tag red">急落</span></td>
+                                    <td>利益確定売りが殺到し、急激な下落。出来高も急増</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p style="margin-top: 20px;"><strong>分析：</strong></p>
+                        <p>8月22日・25日の2日連続ストップ高は、量子セキュリティという成長テーマへの期待と、米国防関連企業との提携という具体的な材料によるものでした。しかし、8月26日には「材料出尽くし」感から利益確定売りが殺到し、急落しました。</p>
+
+                        <p>この急落は、グロース株特有の<strong>「期待先行→材料出尽くし→利確売り」</strong>というパターンを示しており、短期的な値動きのボラティリティが非常に高いことを物語っています。</p>
+
+                        <div style="margin-top: 20px; padding: 15px; background-color: #da3633; color: #ffffff; border-radius: 8px;">
+                            <strong>⚠️ 教訓：</strong>ストップ高後の急落は、グロース株・テーマ株でよく見られるパターン。2日連続ストップ高後の3日目は特に警戒が必要。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📊 2024年9月：出来高急騰と新株予約権発行</h3>
+                    <div class="text-content">
+                        <p><strong>9月5日の出来高急騰：</strong></p>
+                        <p>9月5日に出来高が急増しましたが、この時期は8月の資本業務提携発表の余韻が残っており、量子セキュリティテーマへの関心が継続していたと考えられます。具体的な材料としては、9月13日に第４回新株予約権の発行が発表されており、この前後で需給の変化や思惑買いがあった可能性があります。</p>
+
+                        <p><strong>新株予約権発行の影響：</strong></p>
+                        <p>新株予約権の発行は、将来的な株式の希薄化懸念を生む一方で、成長投資のための資金確保というポジティブな側面もあります。9月の出来高急騰は、この材料をめぐる投資家の思惑が交錯した結果と考えられます。</p>
+
+                        <div style="margin-top: 20px; padding: 15px; background-color: #d29922; color: #ffffff; border-radius: 8px;">
+                            <strong>📌 ポイント：</strong>新株予約権発行前後は需給が不安定になりやすく、短期的なボラティリティが高まる傾向があります。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📊 2024年12月：ボラティリティ急増</h3>
+                    <div class="highlight-box">
+                        <p><strong>12月10日以降の値動き：</strong></p>
+                        <p>12月9日の「合弁先が米ミサイル防衛局から大型契約獲得」のニュース発表により、アクリート株は<span class="tag red">ストップ高買い気配</span>となりました。この材料は、8月の資本業務提携発表以上のインパクトを持つものであり、以下の特徴が見られます：</p>
+
+                        <ul class="bullet-list">
+                            <li><strong>出来高の急増：</strong>12月5日時点で出来高27,200株（前日比+73.25%）、材料発表後はさらに増加</li>
+                            <li><strong>値幅の拡大：</strong>ストップ高後の日中値動きも激しく、5分足チャートで見ると大きな上下動が見られる</li>
+                            <li><strong>高値圏での推移：</strong>材料の具体性（21兆円規模の契約）から、単なる思惑買いではなく実需の期待が強い</li>
+                        </ul>
+
+                        <p><strong>12月10日以降の5分足パターン（推測）：</strong></p>
+                        <p>具体的な5分足データは入手できていませんが、以下のようなパターンが想定されます：</p>
+                        <ul class="bullet-list">
+                            <li><strong>寄り付き：</strong>ストップ高買い気配からスタート、買い注文が殺到</li>
+                            <li><strong>午前中：</strong>ストップ高で張り付くか、やや売りが入り高値圏で推移</li>
+                            <li><strong>午後：</strong>利益確定売りとさらなる買いが交錯し、ボラティリティ拡大</li>
+                            <li><strong>大引け：</strong>高値圏を維持するも、翌日以降は調整の動きも</li>
+                        </ul>
+
+                        <div style="margin-top: 20px; padding: 15px; background-color: #3fb950; color: #ffffff; border-radius: 8px;">
+                            <strong>✅ 投資家心理：</strong>21兆円規模の契約という超大型材料により、「本物の成長ストーリー」として認識され始めている可能性が高い。ただし短期的な過熱感にも注意が必要。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📈 長期チャート（2022年〜2024年）からの考察</h3>
+                    <div class="text-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>期間</th>
+                                    <th>株価水準</th>
+                                    <th>主なイベント</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2022年12月14日</td>
+                                    <td><span class="tag green">上場来高値 4,130円</span></td>
+                                    <td>SMS配信事業の成長期待がピーク</td>
+                                </tr>
+                                <tr>
+                                    <td>2023年〜2024年前半</td>
+                                    <td>下落トレンド</td>
+                                    <td>成長期待の後退、業績の伸び悩み</td>
+                                </tr>
+                                <tr>
+                                    <td>2024年8月6日</td>
+                                    <td><span class="tag red">上場来安値 437円</span></td>
+                                    <td>日経平均大暴落の影響、最安値を記録</td>
+                                </tr>
+                                <tr>
+                                    <td>2024年8月22日〜</td>
+                                    <td>反発開始</td>
+                                    <td>量子セキュリティ事業への転換、新たな成長ストーリー</td>
+                                </tr>
+                                <tr>
+                                    <td>2024年12月〜</td>
+                                    <td>急騰局面</td>
+                                    <td>21兆円規模の契約、具体的な材料で再評価</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p style="margin-top: 20px;"><strong>考察：</strong></p>
+                        <p>アクリートは2022年の高値4,130円から2024年8月の安値437円まで、実に<strong>約90%の下落</strong>を経験しました。これはSMS配信事業の成長期待が一巡し、新たな成長ドライバーが見えなかったことが主因です。</p>
+
+                        <p>しかし、2024年8月以降の量子セキュリティ事業への参入は、同社に<strong>「第二の成長ストーリー」</strong>をもたらしました。特に12月の21兆円規模の契約獲得は、単なる思惑ではなく実際のビジネスチャンスとして市場に評価され始めています。</p>
+
+                        <p>現在の株価水準（700円前後）は、上場来高値の約17%、上場来安値からは約+60%の位置にあり、<strong>中期的な上昇余地がある</strong>と見ることもできますが、同時に短期的な過熱感にも注意が必要です。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- セクション4: エントリー戦略 -->
+            <section class="section">
+                <h2 class="section-title">エントリー戦略</h2>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">🎯 ロング（買い）エントリー戦略</h3>
+                    <div class="success-box">
+                        <p><strong>推奨エントリータイミング：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>押し目待ち：</strong>ストップ高後の調整局面（-5%〜-10%の押し目）を狙う</li>
+                            <li><strong>出来高確認：</strong>調整局面でも出来高が減少しすぎない（買い手が残っている）ことを確認</li>
+                            <li><strong>サポートライン：</strong>直近の安値や移動平均線（5日線、25日線）でのサポートを確認</li>
+                        </ul>
+
+                        <p><strong>具体的なエントリー水準（12月18日時点の想定）：</strong></p>
+                        <table style="margin-top: 15px;">
+                            <thead>
+                                <tr>
+                                    <th>エントリー水準</th>
+                                    <th>根拠</th>
+                                    <th>期待リターン</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>650〜680円</td>
+                                    <td>ストップ高後の5〜10%押し目、5日移動平均線サポート</td>
+                                    <td>+15%〜+30%（目標800〜900円）</td>
+                                </tr>
+                                <tr>
+                                    <td>600〜630円</td>
+                                    <td>さらなる調整局面、25日移動平均線サポート</td>
+                                    <td>+20%〜+40%（目標800〜1,000円）</td>
+                                </tr>
+                                <tr>
+                                    <td>550〜580円</td>
+                                    <td>深押し局面、8月高値圏サポート</td>
+                                    <td>+30%〜+50%（目標800〜1,200円）</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p style="margin-top: 20px;"><strong>損切りライン：</strong></p>
+                        <p>エントリー価格から<strong>-10%</strong>を目安に損切り設定。例：650円でエントリーなら585円で損切り。</p>
+
+                        <p><strong>利益確定目標：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>第一目標：</strong>+15%〜+20%（800円前後）で半分利確</li>
+                            <li><strong>第二目標：</strong>+30%〜+50%（1,000円〜1,200円）で残り利確</li>
+                            <li><strong>長期保有：</strong>量子セキュリティ事業の本格展開を見据え、一部を長期保有（目標2,000円以上）</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📉 ショート（空売り）エントリー戦略</h3>
+                    <div class="warning-box">
+                        <p><strong>ショートエントリーに適したタイミング：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>ストップ高後の翌日〜2日後：</strong>材料出尽くし感から利益確定売りが出やすいタイミング</li>
+                            <li><strong>高値圏での出来高急減：</strong>買い手が枯渇し始めたサイン</li>
+                            <li><strong>5分足での上ヒゲ連発：</strong>高値で売り圧力が強まっている証拠</li>
+                            <li><strong>移動平均線のデッドクロス：</strong>短期線が長期線を下抜けた場合</li>
+                        </ul>
+
+                        <p><strong>12月10日以降の5分足でのショートポイント（推測）：</strong></p>
+                        <table style="margin-top: 15px;">
+                            <thead>
+                                <tr>
+                                    <th>時間帯</th>
+                                    <th>ショートポイント</th>
+                                    <th>根拠</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>寄り付き直後</td>
+                                    <td>ストップ高からの反落開始</td>
+                                    <td>買い気配が解消され、最初の売りが入るタイミング</td>
+                                </tr>
+                                <tr>
+                                    <td>午前10:00〜11:00</td>
+                                    <td>高値圏での上ヒゲ連発</td>
+                                    <td>高値での売り圧力が強まり、反落の兆候</td>
+                                </tr>
+                                <tr>
+                                    <td>午後13:30〜14:00</td>
+                                    <td>前場高値を超えられず反落</td>
+                                    <td>上値の重さが明確になり、下落トレンド入りのサイン</td>
+                                </tr>
+                                <tr>
+                                    <td>大引け前</td>
+                                    <td>終値が安値圏で引ける</td>
+                                    <td>翌日続落の可能性が高まる</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p style="margin-top: 20px;"><strong>ショートエントリー価格（想定）：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>第一候補：</strong>750〜800円（ストップ高後の高値圏）</li>
+                            <li><strong>第二候補：</strong>700〜730円（調整が始まったことが明確になった水準）</li>
+                        </ul>
+
+                        <p><strong>損切りライン（ショート）：</strong></p>
+                        <p>エントリー価格から<strong>+8%〜+10%</strong>で損切り。例：750円でショートエントリーなら810〜825円で損切り。</p>
+
+                        <p><strong>利益確定目標（ショート）：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>第一目標：</strong>-10%〜-15%（650〜680円）で半分利確</li>
+                            <li><strong>第二目標：</strong>-20%〜-30%（550〜600円）で残り利確</li>
+                        </ul>
+
+                        <div style="margin-top: 20px; padding: 15px; background-color: #da3633; color: #ffffff; border-radius: 8px;">
+                            <strong>⚠️ ショートの注意点：</strong>
+                            <ul style="list-style: none; padding-left: 0; margin-top: 10px;">
+                                <li>• グロース株は材料次第で再度急騰するリスクが高い</li>
+                                <li>• 損切りラインを厳守し、追加の好材料が出たら即撤退</li>
+                                <li>• 出来高が急増した場合は買い戻しを検討</li>
+                                <li>• ショートは短期決戦（1〜3日以内）が基本</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">⚖️ ロング vs ショート：どちらが有利か</h3>
+                    <div class="text-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>戦略</th>
+                                    <th>有利な点</th>
+                                    <th>不利な点</th>
+                                    <th>推奨度</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>ロング（買い）</strong></td>
+                                    <td>
+                                        • 21兆円規模の契約という具体的材料<br>
+                                        • 量子セキュリティという成長テーマ<br>
+                                        • 2025年12月の事業開始に向けた期待<br>
+                                        • 上場来安値からの反発途上
+                                    </td>
+                                    <td>
+                                        • 短期的な過熱感<br>
+                                        • グロース株特有のボラティリティ<br>
+                                        • 業績への反映は2025年以降
+                                    </td>
+                                    <td><span class="risk-indicator risk-medium">中期保有向け ★★★★☆</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ショート（空売り）</strong></td>
+                                    <td>
+                                        • ストップ高後の調整は必然<br>
+                                        • 短期的な過熱感<br>
+                                        • 材料出尽くしパターン<br>
+                                        • 8月の急落パターンが参考になる
+                                    </td>
+                                    <td>
+                                        • 材料の具体性が高く、再度急騰リスク<br>
+                                        • テーマ株は予想外の動きが多い<br>
+                                        • 損切りタイミングが難しい
+                                    </td>
+                                    <td><span class="risk-indicator risk-high">短期決戦のみ ★★☆☆☆</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p style="margin-top: 20px;"><strong>総合判断：</strong></p>
+                        <p>12月18日時点では、<strong>ロング（押し目買い）の方が有利</strong>と考えます。理由は以下の通りです：</p>
+                        <ul class="bullet-list">
+                            <li>21兆円規模の米国防契約という<strong>具体的な材料</strong>があり、単なる思惑買いではない</li>
+                            <li>量子セキュリティという<strong>中長期的な成長テーマ</strong>に乗っている</li>
+                            <li>2025年12月の事業開始に向けて、今後も継続的な材料が出る可能性が高い</li>
+                            <li>現在の株価（700円前後）は上場来高値4,130円の約17%に過ぎず、<strong>中期的な上昇余地</strong>がある</li>
+                        </ul>
+
+                        <p>ただし、短期的にはストップ高後の調整が入る可能性が高いため、<strong>慌てて高値掴みせず、押し目を待つ</strong>ことが重要です。</p>
+
+                        <p>ショートは、8月26日のような「2日連続ストップ高→3日目急落」パターンを狙う短期決戦に限定すべきです。材料の具体性が高いため、長期間のショートポジション保有はリスクが高すぎます。</p>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">🛡️ リスク管理</h3>
+                    <div class="warning-box">
+                        <p><strong>主なリスク要因：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>ボラティリティの高さ：</strong>グロース株・テーマ株特有の激しい値動き</li>
+                            <li><strong>材料の不確実性：</strong>合弁会社の事業開始は2025年12月予定だが、計画通り進むとは限らない</li>
+                            <li><strong>希薄化リスク：</strong>新株予約権の行使により株式数が増加する可能性</li>
+                            <li><strong>競合リスク：</strong>量子セキュリティ分野は大手企業も参入しており、競争が激化する可能性</li>
+                            <li><strong>市況リスク：</strong>地政学リスクや金利動向により、グロース株全体が売られる可能性</li>
+                        </ul>
+
+                        <p style="margin-top: 20px;"><strong>リスク管理のポイント：</strong></p>
+                        <div class="info-grid" style="margin-top: 15px;">
+                            <div class="info-card">
+                                <h3>損切りの徹底</h3>
+                                <div class="value" style="font-size: 1.2em;">-10%</div>
+                                <p style="margin-top: 10px; font-size: 0.9em;">エントリー価格から-10%で必ず損切り。感情に流されない</p>
+                            </div>
+                            <div class="info-card">
+                                <h3>分散投資</h3>
+                                <div class="value" style="font-size: 1.2em;">5〜10%</div>
+                                <p style="margin-top: 10px; font-size: 0.9em;">ポートフォリオの5〜10%以内に抑える</p>
+                            </div>
+                            <div class="info-card">
+                                <h3>段階的エントリー</h3>
+                                <div class="value" style="font-size: 1.2em;">3回</div>
+                                <p style="margin-top: 10px; font-size: 0.9em;">一度に全額投入せず、3回に分けてエントリー</p>
+                            </div>
+                            <div class="info-card">
+                                <h3>利益確定</h3>
+                                <div class="value" style="font-size: 1.2em;">段階的</div>
+                                <p style="margin-top: 10px; font-size: 0.9em;">+15%で半分、+30%で残り半分など段階的に利確</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- セクション5: 結論 -->
+            <section class="section">
+                <h2 class="section-title">結論</h2>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">📊 総合評価</h3>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <h3>投資魅力度</h3>
+                            <div class="value" style="color: #3fb950;">★★★★☆</div>
+                            <p style="margin-top: 10px; font-size: 0.9em;">4.0 / 5.0</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>成長性</h3>
+                            <div class="value" style="color: #3fb950;">★★★★★</div>
+                            <p style="margin-top: 10px; font-size: 0.9em;">5.0 / 5.0</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>リスク</h3>
+                            <div class="value" style="color: #d29922;">★★★★☆</div>
+                            <p style="margin-top: 10px; font-size: 0.9em;">4.0 / 5.0（高い）</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>推奨投資期間</h3>
+                            <div class="value" style="font-size: 1.2em;">中期</div>
+                            <p style="margin-top: 10px; font-size: 0.9em;">6ヶ月〜1年</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">✅ 投資推奨ポイント</h3>
+                    <div class="success-box">
+                        <ul class="bullet-list">
+                            <li><strong>具体的な成長材料：</strong>Forward Edge-AI社が米ミサイル防衛局から上限1510億米ドル（約21兆円）の大型契約を獲得。単なる思惑ではなく、実際のビジネスチャンスとして評価できる</li>
+                            <li><strong>成長テーマへの乗り換え：</strong>SMS配信事業から量子セキュリティ事業への転換により、新たな成長ストーリーが始まっている</li>
+                            <li><strong>既存顧客基盤の活用：</strong>5,000社を超える既存の販売チャネルを活用して、PQCソリューションを展開可能</li>
+                            <li><strong>時流に乗ったテーマ：</strong>量子コンピュータの脅威に対する暗号技術の需要は今後急増すると予想される</li>
+                            <li><strong>割安感：</strong>現在の株価は上場来高値の約17%に過ぎず、中期的な上昇余地がある</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">⚠️ 注意すべきリスク</h3>
+                    <div class="warning-box">
+                        <ul class="bullet-list">
+                            <li><strong>短期的な過熱感：</strong>12月9日の材料発表でストップ高となり、短期的には調整が入る可能性が高い</li>
+                            <li><strong>事業化の不確実性：</strong>合弁会社の事業開始は2025年12月予定だが、計画通り進むかは不透明</li>
+                            <li><strong>希薄化リスク：</strong>新株予約権の行使により、株式が希薄化する可能性がある</li>
+                            <li><strong>競合の激化：</strong>量子セキュリティ分野は大手企業も参入しており、競争が激化する可能性</li>
+                            <li><strong>グロース株特有のリスク：</strong>業績が期待に届かなければ、株価が急落するリスクがある</li>
+                            <li><strong>市況リスク：</strong>金利上昇や地政学リスクにより、グロース株全体が売られる可能性</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">🎯 最終推奨戦略</h3>
+                    <div class="highlight-box">
+                        <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 20px;">
+                            <span class="tag green">推奨</span> ロング（押し目買い）戦略 - 中期保有
+                        </p>
+
+                        <p><strong>エントリータイミング：</strong></p>
+                        <ol style="list-style: decimal; padding-left: 25px; margin: 15px 0;">
+                            <li style="margin: 10px 0;">ストップ高後の調整を待ち、<strong>650〜680円</strong>の押し目で1/3エントリー</li>
+                            <li style="margin: 10px 0;">さらに調整が進めば、<strong>600〜630円</strong>で1/3エントリー</li>
+                            <li style="margin: 10px 0;">深押し局面（<strong>550〜580円</strong>）があれば、残り1/3エントリー</li>
+                        </ol>
+
+                        <p><strong>目標価格：</strong></p>
+                        <ul class="bullet-list">
+                            <li><strong>短期目標（3〜6ヶ月）：</strong>800〜1,000円（+15%〜+50%）</li>
+                            <li><strong>中期目標（6ヶ月〜1年）：</strong>1,200〜1,500円（+80%〜+130%）</li>
+                            <li><strong>長期目標（1年以上）：</strong>2,000円以上（上場来高値4,130円の半値）</li>
+                        </ul>
+
+                        <p><strong>損切りライン：</strong></p>
+                        <p>各エントリー価格から<strong>-10%</strong>で機械的に損切り。例：650円でエントリーなら585円で損切り。</p>
+
+                        <p><strong>ポートフォリオ配分：</strong></p>
+                        <p>全体の<strong>5〜10%</strong>以内に抑え、他の銘柄とバランスを取る。</p>
+
+                        <div style="margin-top: 25px; padding: 20px; background-color: #1f6feb; color: #ffffff; border-radius: 8px;">
+                            <strong>📌 重要：</strong>
+                            <p style="margin-top: 10px; line-height: 1.8;">
+                                アクリートは「SMS配信大手」から「量子セキュリティ企業」への転換期にあり、21兆円規模の契約という具体的な材料が追い風となっています。短期的な過熱感はありますが、中期的には大きな成長余地があると判断します。<br><br>
+                                ただし、グロース株特有のボラティリティの高さを考慮し、<strong>慌てて高値掴みせず、押し目を待つこと</strong>、そして<strong>損切りラインを厳守すること</strong>が成功の鍵です。<br><br>
+                                2025年12月の合弁会社の事業開始に向けて、今後も継続的な材料が出る可能性が高く、中期保有で臨むことを推奨します。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 情報源 -->
+            <div class="sources">
+                <h3>📚 情報源（Sources）</h3>
+                <a href="https://finance.yahoo.co.jp/news/detail/d3a65ab67753dbd408519f0568a6a30f98380687" target="_blank">アクリート－ストップ高買い気配 合弁先が米ミサイル防衛局から大型契約獲得 - Yahoo!ファイナンス</a>
+                <a href="https://kabuyoho.jp/sp/reportTop?bcode=4395" target="_blank">アクリート(4395) : 株式・株価、企業概要 - 株予報Pro</a>
+                <a href="https://irbank.net/4395/ir" target="_blank">4395 アクリート | IR情報 - IRバンク</a>
+                <a href="https://www.accrete-inc.com/company/ir/library.html" target="_blank">IRライブラリー | IR情報 | アクリート</a>
+                <a href="https://www.marr.jp/genre/other/press/entry/62835" target="_blank">アクリート、量子耐性型暗号ソリューション提供の米Forward Edge-AIと資本業務提携へ - M&A Online</a>
+                <a href="https://kabu-ir.com/article/518612576.html" target="_blank">アクリート、米Ｆｏｒｗａｒｄ Ｅｄｇｅ−ＡＩ社と合弁契約を締結 - 株IR</a>
+                <a href="https://minkabu.jp/stock/4395" target="_blank">アクリート (4395) : 株価/予想・目標株価 - みんかぶ</a>
+                <a href="https://www.nikkei.com/nkd/company/?scode=4395" target="_blank">【アクリート】株価・日経最新ニュース[4395] - 日本経済新聞</a>
+                <a href="https://kabutan.jp/stock/?code=4395" target="_blank">アクリート【4395】株の基本情報 - 株探（かぶたん）</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>本レポートは投資判断の参考情報として作成されたものであり、投資を推奨するものではありません。</p>
+            <p>投資にあたってはご自身の判断と責任において行ってください。</p>
+            <p>作成日: 2024年12月18日 | 作成者: Claude Code Investment Research Team</p>
+        </div>
+    </div>
+</body>
+</html>

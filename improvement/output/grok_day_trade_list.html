@@ -1,0 +1,4704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Grok デイトレ銘柄リスト</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0a0f; color: #e0e0e0; padding: 20px; }
+.container { max-width: 1400px; margin: 0 auto; }
+h1 { color: #fff; margin-bottom: 20px; }
+.stats { display: flex; gap: 20px; margin-bottom: 20px; color: #888; font-size: 14px; }
+.stat { background: #1a1a2e; padding: 10px 15px; border-radius: 5px; }
+.stat strong { color: #fff; }
+.controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; background: #1a1a2e; border: none; color: #888; cursor: pointer; border-radius: 5px; font-size: 13px; }
+.btn.active { background: #3b82f6; color: #fff; }
+.btn-export { background: #10b981; color: #fff; }
+table { width: 100%; border-collapse: collapse; background: #1a1a2e; border-radius: 8px; overflow: hidden; }
+th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #2a2a3e; font-size: 13px; }
+th { background: #252540; color: #888; font-size: 11px; position: sticky; top: 0; cursor: pointer; }
+th:hover { background: #303050; }
+td:first-child, th:first-child { text-align: left; }
+.positive { color: #4ade80; }
+.negative { color: #f87171; }
+input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+.unchecked { background: #2a1a1a; }
+.new-badge { background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 5px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Grok デイトレ銘柄リスト（チェック用）</h1>
+
+<div class="stats">
+  <div class="stat">全銘柄: <strong>377</strong></div>
+  <div class="stat">制度信用: <strong>165</strong></div>
+  <div class="stat">いちにち信用: <strong>344</strong></div>
+  <div class="stat">不可: <strong>21</strong></div>
+  <div class="stat">未チェック: <strong>5</strong></div>
+</div>
+
+<div class="controls">
+  <button class="btn active" onclick="filterRows('all')">全て</button>
+  <button class="btn" onclick="filterRows('unchecked')">未チェック</button>
+  <button class="btn" onclick="filterRows('shortable')">制度信用</button>
+  <button class="btn" onclick="filterRows('day_trade')">いちにち信用</button>
+  <button class="btn" onclick="filterRows('ng')">不可</button>
+  <button class="btn btn-export" onclick="exportCSV()">CSVエクスポート</button>
+</div>
+
+<table id="stockTable">
+<thead>
+<tr>
+  <th onclick="sortTable(0)">コード</th>
+  <th onclick="sortTable(1)">銘柄名</th>
+  <th onclick="sortTable(2)">回数</th>
+  <th onclick="sortTable(3)">勝敗</th>
+  <th onclick="sortTable(4)">勝率</th>
+  <th onclick="sortTable(5)">平均収益率</th>
+  <th onclick="sortTable(6)">株価</th>
+  <th>制度</th>
+  <th>いちにち</th>
+  <th>不可</th>
+</tr>
+</thead>
+<tbody>
+<tr class="" data-ticker="1433.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>1433</td>
+  <td>ベステラ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.35%</td>
+  <td>1,181</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1436.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>1436</td>
+  <td>グリーンエナジー＆カンパ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.20%</td>
+  <td>2,344</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="153A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>153A</td>
+  <td>カウリス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.36%</td>
+  <td>1,386</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="155A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>155A</td>
+  <td>情報戦略テクノロジー</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+6.27%</td>
+  <td>1,340</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1605.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>1605</td>
+  <td>ＩＮＰＥＸ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.28%</td>
+  <td>3,217</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="166A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>166A</td>
+  <td>タスキホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.76%</td>
+  <td>654</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1798.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>1798</td>
+  <td>守谷商会</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-10.68%</td>
+  <td>6,720</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1802.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>1802</td>
+  <td>大林組</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.41%</td>
+  <td>3,114</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1803.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>1803</td>
+  <td>清水建設</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.36%</td>
+  <td>2,760</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1844.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>1844</td>
+  <td>大盛工業</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="positive">+0.44%</td>
+  <td>514</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1909.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>1909</td>
+  <td>日本ドライケミカル</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.97%</td>
+  <td>8,720</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1944.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>1944</td>
+  <td>きんでん</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.83%</td>
+  <td>6,255</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="1950.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>1950</td>
+  <td>日本電設工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.84%</td>
+  <td>2,857</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="198A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>198A</td>
+  <td>ＰｏｓｔＰｒｉｍｅ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-19.80%</td>
+  <td>202</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="202A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>202A</td>
+  <td>豆蔵ホールディングス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.56%</td>
+  <td>3,315</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="205A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>205A</td>
+  <td>ロゴスホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.94%</td>
+  <td>1,647</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="206A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>206A</td>
+  <td>ＰＲＩＳＭ　ＢｉｏＬａｂ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+19.01%</td>
+  <td>242</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="212A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>212A</td>
+  <td>フィットイージー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.04%</td>
+  <td>2,760</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2134.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>2134</td>
+  <td>北浜キャピタルパートナー</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="negative">-3.54%</td>
+  <td>35</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2160.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2160</td>
+  <td>ジーエヌアイグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.32%</td>
+  <td>2,499</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2164.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>2164</td>
+  <td>地域新聞社</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+7.01%</td>
+  <td>314</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="218A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>218A</td>
+  <td>Liberaware</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-5.59%</td>
+  <td>1,270</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="218A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>218A</td>
+  <td>Ｌｉｂｅｒａｗａｒｅ</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.24%</td>
+  <td>1,352</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="219A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>219A</td>
+  <td>Heartseed(株)</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.37%</td>
+  <td>1,900</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="219A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>219A</td>
+  <td>Ｈｅａｒｔｓｅｅｄ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.02%</td>
+  <td>2,120</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2291.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2291</td>
+  <td>福留ハム</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.33%</td>
+  <td>606</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2334.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2334</td>
+  <td>イオレ</td>
+  <td>4</td>
+  <td>2勝2敗</td>
+  <td>50.0%</td>
+  <td class="negative">-1.03%</td>
+  <td>416</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2338.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2338</td>
+  <td>クオンタムソリューション</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.61%</td>
+  <td>415</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2342.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2342</td>
+  <td>トランスジェニックグルー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+15.12%</td>
+  <td>377</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2371.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2371</td>
+  <td>カカクコム</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.93%</td>
+  <td>2,208</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2375.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2375</td>
+  <td>ギグワークス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+10.27%</td>
+  <td>263</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2378.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2378</td>
+  <td>セントケア・ホールディン</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.48%</td>
+  <td>1,043</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2385.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2385</td>
+  <td>総医研ホールディングス</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+7.89%</td>
+  <td>256</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="241A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>241A</td>
+  <td>ROXX</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.72%</td>
+  <td>635</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2436.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2436</td>
+  <td>共同ピーアール</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.19%</td>
+  <td>1,010</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2437.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2437</td>
+  <td>Ｓｈｉｎｗａ　Ｗｉｓｅ　</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-9.72%</td>
+  <td>319</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2438.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2438</td>
+  <td>アスカネット</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.70%</td>
+  <td>351</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2445.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2445</td>
+  <td>タカミヤ</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.72%</td>
+  <td>410</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2459.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2459</td>
+  <td>アウンコンサルティング</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.58%</td>
+  <td>303</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2462.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2462</td>
+  <td>ライク</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>1,500</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="247A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>247A</td>
+  <td>Ａｉロボティクス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>1,178</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2492.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2492</td>
+  <td>インフォマート</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.58%</td>
+  <td>347</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2586.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2586</td>
+  <td>フルッタフルッタ</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>124</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="265A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>265A</td>
+  <td>Hmcomm</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.23%</td>
+  <td>1,033</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2700.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2700</td>
+  <td>木徳神糧</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.50%</td>
+  <td>3,025</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2730.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>2730</td>
+  <td>エディオン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.44%</td>
+  <td>2,043</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2743.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>2743</td>
+  <td>ピクセル</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.33%</td>
+  <td>75</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2743.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>2743</td>
+  <td>ピクセルカンパニーズ</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+14.75%</td>
+  <td>61</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2776.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2776</td>
+  <td>新都ホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+11.81%</td>
+  <td>144</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="277A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>277A</td>
+  <td>グロービング</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.28%</td>
+  <td>2,425</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="281A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>281A</td>
+  <td>インフォメティス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.62%</td>
+  <td>420</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2876.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2876</td>
+  <td>デルソーレ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.89%</td>
+  <td>448</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2901.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2901</td>
+  <td>ウェルディッシュ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.32%</td>
+  <td>602</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="290A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>290A</td>
+  <td>Ｓｙｎｓｐｅｃｔｉｖｅ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.42%</td>
+  <td>1,108</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2934.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2934</td>
+  <td>ジェイフロンティア</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.89%</td>
+  <td>1,800</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2962.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2962</td>
+  <td>テクニスコ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+18.53%</td>
+  <td>572</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2981.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2981</td>
+  <td>ランディックス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.41%</td>
+  <td>2,711</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2983.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2983</td>
+  <td>アールプランナー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.92%</td>
+  <td>2,920</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="2998.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>2998</td>
+  <td>クリアル</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.32%</td>
+  <td>813</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="302A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>302A</td>
+  <td>ビースタイルホールディン</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.71%</td>
+  <td>1,189</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3031.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3031</td>
+  <td>ラクーンホールディングス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.49%</td>
+  <td>616</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3038.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3038</td>
+  <td>神戸物産</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.43%</td>
+  <td>3,734</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="303A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>303A</td>
+  <td>visumo</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.10%</td>
+  <td>1,000</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="303A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>303A</td>
+  <td>ｖｉｓｕｍｏ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.98%</td>
+  <td>1,226</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3077.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3077</td>
+  <td>ホリイフードサービス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.54%</td>
+  <td>595</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="unchecked" data-ticker="3079.T" data-shortable="false" data-day_trade="false" data-ng="false">
+  <td>3079<span class="new-badge">NEW</span></td>
+  <td>ディーブイエックス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.68%</td>
+  <td>1,250</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3082.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3082</td>
+  <td>(株)きちりホールディン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>920</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3103.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3103</td>
+  <td>日東紡績</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-25.38%</td>
+  <td>197</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3110.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3110</td>
+  <td>日東紡績</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.98%</td>
+  <td>11,700</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3168.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3168</td>
+  <td>MERF</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>562</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="319A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>319A</td>
+  <td>技術承継機構</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-0.24%</td>
+  <td>10,700</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3201.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3201</td>
+  <td>ニッケ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.07%</td>
+  <td>1,822</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="323A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>323A</td>
+  <td>フライヤー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.42%</td>
+  <td>423</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3245.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3245</td>
+  <td>ディアライフ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.36%</td>
+  <td>1,109</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="325A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>325A</td>
+  <td>TENTIAL</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.75%</td>
+  <td>4,275</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3321.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3321</td>
+  <td>ミタチ産業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.21%</td>
+  <td>1,718</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3333.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3333</td>
+  <td>あさひ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.76%</td>
+  <td>1,314</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3350.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3350</td>
+  <td>メタプラネット</td>
+  <td>6</td>
+  <td>2勝4敗</td>
+  <td>33.3%</td>
+  <td class="positive">+0.87%</td>
+  <td>430</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3409.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>3409</td>
+  <td>北紡</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.60%</td>
+  <td>125</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="341A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>341A</td>
+  <td>トヨコー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.22%</td>
+  <td>2,119</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3440.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3440</td>
+  <td>日創グループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.54%</td>
+  <td>927</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3444.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3444</td>
+  <td>菊池製作所</td>
+  <td>3</td>
+  <td>1勝2敗</td>
+  <td>33.3%</td>
+  <td class="negative">-4.52%</td>
+  <td>593</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3449.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3449</td>
+  <td>テクノフレックス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.39%</td>
+  <td>1,726</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3480.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3480</td>
+  <td>ジェイ・エス・ビー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.29%</td>
+  <td>3,480</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3494.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3494</td>
+  <td>マリオン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.04%</td>
+  <td>393</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3512.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3512</td>
+  <td>日本フエルト</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.52%</td>
+  <td>634</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3553.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3553</td>
+  <td>共和レザー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.42%</td>
+  <td>962</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3557.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3557</td>
+  <td>ユナイテッド＆コレクティ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.41%</td>
+  <td>979</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3577.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3577</td>
+  <td>東海染工</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>890</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3649.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3649</td>
+  <td>ファインデックス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-5.41%</td>
+  <td>942</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3652.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3652</td>
+  <td>ディジタルメディアプロフ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.51%</td>
+  <td>2,453</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3655.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3655</td>
+  <td>ブレインパッド</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.40%</td>
+  <td>1,358</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3656.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3656</td>
+  <td>ＫＬａｂ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-9.46%</td>
+  <td>370</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="365A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>365A</td>
+  <td>伊澤タオル</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.50%</td>
+  <td>600</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3660.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3660</td>
+  <td>アイスタイル</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.35%</td>
+  <td>446</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3664.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>3664</td>
+  <td>モブキャスト</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+6.78%</td>
+  <td>59</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="unchecked" data-ticker="3671.T" data-shortable="false" data-day_trade="false" data-ng="false">
+  <td>3671<span class="new-badge">NEW</span></td>
+  <td>ソフトマックス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.29%</td>
+  <td>350</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="367A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>367A</td>
+  <td>プリモグローバルホールデ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.69%</td>
+  <td>1,860</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3683.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3683</td>
+  <td>サイバーリンクス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.30%</td>
+  <td>1,330</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3696.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3696</td>
+  <td>セレス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.30%</td>
+  <td>2,023</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3708.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3708</td>
+  <td>特種東海製紙</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.31%</td>
+  <td>1,527</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="unchecked" data-ticker="3719.T" data-shortable="false" data-day_trade="false" data-ng="false">
+  <td>3719<span class="new-badge">NEW</span></td>
+  <td>ＡＩストーム</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.27%</td>
+  <td>214</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3744.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3744</td>
+  <td>サイオス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.69%</td>
+  <td>554</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3747.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3747</td>
+  <td>インタートレード</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.65%</td>
+  <td>829</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3758.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3758</td>
+  <td>アエリア</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.33%</td>
+  <td>300</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3766.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3766</td>
+  <td>システムズ・デザイン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.27%</td>
+  <td>1,258</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3798.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3798</td>
+  <td>ULSグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.65%</td>
+  <td>718</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3823.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>3823</td>
+  <td>ＴＨＥ　ＷＨＹ　ＨＯＷ　</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-0.02%</td>
+  <td>53</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3825.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3825</td>
+  <td>リミックスポイント</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.86%</td>
+  <td>310</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3826.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3826</td>
+  <td>システムインテグレータ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.90%</td>
+  <td>446</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3842.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3842</td>
+  <td>ネクストジェン</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.10%</td>
+  <td>1,009</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3856.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3856</td>
+  <td>Abalance</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.50%</td>
+  <td>893</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3856.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3856</td>
+  <td>Ａｂａｌａｎｃｅ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>453</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3895.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3895</td>
+  <td>ハビックス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>403</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3900.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3900</td>
+  <td>クラウドワークス</td>
+  <td>3</td>
+  <td>3勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.52%</td>
+  <td>827</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3914.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3914</td>
+  <td>JIG-SA</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-5.88%</td>
+  <td>3,230</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3914.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3914</td>
+  <td>JIG-SAW</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+1.24%</td>
+  <td>3,920</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3914.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3914</td>
+  <td>ＪＩＧ−ＳＡＷ</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-2.28%</td>
+  <td>2,976</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3930.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3930</td>
+  <td>はてな</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.59%</td>
+  <td>851</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3940.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3940</td>
+  <td>ノムラシステムコーポレー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.26%</td>
+  <td>133</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3951.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3951</td>
+  <td>朝日印刷</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.12%</td>
+  <td>861</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3985.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3985</td>
+  <td>テモナ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.12%</td>
+  <td>234</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3989.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>3989</td>
+  <td>シェアリングテクノロジー</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.52%</td>
+  <td>1,050</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="3997.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>3997</td>
+  <td>トレードワークス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.37%</td>
+  <td>338</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4015.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4015</td>
+  <td>ペイクラウドホールディン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.78%</td>
+  <td>506</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4053.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4053</td>
+  <td>Ｓｕｎ　Ａｓｔｅｒｉｓｋ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.72%</td>
+  <td>464</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4056.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4056</td>
+  <td>ニューラルグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.25%</td>
+  <td>408</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4061.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4061</td>
+  <td>デンカ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.62%</td>
+  <td>2,433</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4062.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4062</td>
+  <td>イビデン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.49%</td>
+  <td>12,740</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4069.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4069</td>
+  <td>ＢｌｕｅＭｅｍｅ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.47%</td>
+  <td>1,429</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4082.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4082</td>
+  <td>第一稀元素化学工業</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="negative">-3.79%</td>
+  <td>1,360</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4082.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4082</td>
+  <td>第一稀元素化学工業(株)</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+13.52%</td>
+  <td>1,420</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4113.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4113</td>
+  <td>田岡化学工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.77%</td>
+  <td>1,162</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4165.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4165</td>
+  <td>プレイド</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.54%</td>
+  <td>995</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4175.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4175</td>
+  <td>ｃｏｌｙ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.19%</td>
+  <td>1,977</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4176.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4176</td>
+  <td>ココナラ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.44%</td>
+  <td>328</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4179.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4179</td>
+  <td>ジーネクスト</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.02%</td>
+  <td>295</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4237.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4237</td>
+  <td>フジプレアム(株)</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.64%</td>
+  <td>311</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4251.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4251</td>
+  <td>JSP</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.98%</td>
+  <td>1,160</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4259.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4259</td>
+  <td>エクサウィザーズ</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-0.57%</td>
+  <td>725</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4318.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4318</td>
+  <td>クイック</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.01%</td>
+  <td>880</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4334.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4334</td>
+  <td>ユークス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.06%</td>
+  <td>379</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4347.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4347</td>
+  <td>ブロードメディア</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.06%</td>
+  <td>1,700</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4371.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4371</td>
+  <td>コアコンセプト・テクノロ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.96%</td>
+  <td>1,070</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4372.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4372</td>
+  <td>ユミルリンク</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.70%</td>
+  <td>1,419</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4393.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4393</td>
+  <td>バンク・オブ・イノベーシ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>5,750</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4395.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4395</td>
+  <td>アクリート</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="positive">+4.64%</td>
+  <td>1,468</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4397.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4397</td>
+  <td>チームスピリット</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.18%</td>
+  <td>504</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4418.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4418</td>
+  <td>ＪＤＳＣ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.53%</td>
+  <td>1,303</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4420.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4420</td>
+  <td>イーソル</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+12.18%</td>
+  <td>657</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4424.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4424</td>
+  <td>Amazia</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>455</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4424.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4424</td>
+  <td>Ａｍａｚｉａ</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.49%</td>
+  <td>331</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4425.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4425</td>
+  <td>Ｋｕｄａｎ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-6.86%</td>
+  <td>1,268</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="442A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>442A</td>
+  <td>クラシコ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.04%</td>
+  <td>2,300</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4436.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4436</td>
+  <td>ミンカブ・ジ・インフォノ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.22%</td>
+  <td>466</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4446.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4446</td>
+  <td>Link-Uグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.84%</td>
+  <td>1,068</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4446.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4446</td>
+  <td>Ｌｉｎｋ−Ｕグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.17%</td>
+  <td>1,071</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4464.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4464</td>
+  <td>ソフト99</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.25%</td>
+  <td>4,010</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="446A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>446A</td>
+  <td>ノースサンド</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+6.80%</td>
+  <td>1,367</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4477.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4477</td>
+  <td>ＢＡＳＥ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.57%</td>
+  <td>318</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="unchecked" data-ticker="4479.T" data-shortable="false" data-day_trade="false" data-ng="false">
+  <td>4479<span class="new-badge">NEW</span></td>
+  <td>マクアケ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.75%</td>
+  <td>874</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4494.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4494</td>
+  <td>バリオセキュア</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>764</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4499.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4499</td>
+  <td>SPEEE</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.44%</td>
+  <td>2,648</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4516.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4516</td>
+  <td>日本新薬</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+7.16%</td>
+  <td>6,160</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4527.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4527</td>
+  <td>ロート製薬</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.65%</td>
+  <td>2,551</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4563.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>4563</td>
+  <td>アンジェス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.33%</td>
+  <td>60</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4564.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>4564</td>
+  <td>オンコセラピー・サイエン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>21</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="456A.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>456A</td>
+  <td>ＨＵＭＡＮ　ＭＡＤＥ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.27%</td>
+  <td>4,650</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4570.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4570</td>
+  <td>(株)免疫生物研究所</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.00%</td>
+  <td>580</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4570.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4570</td>
+  <td>免疫生物研究所</td>
+  <td>10</td>
+  <td>3勝7敗</td>
+  <td>30.0%</td>
+  <td class="negative">-0.01%</td>
+  <td>1,660</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4572.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4572</td>
+  <td>カルナバイオサイエンス</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.89%</td>
+  <td>415</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4575.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4575</td>
+  <td>海洋ファーマ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.37%</td>
+  <td>815</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4579.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4579</td>
+  <td>ラクオリア創薬</td>
+  <td>8</td>
+  <td>5勝3敗</td>
+  <td>62.5%</td>
+  <td class="positive">+2.53%</td>
+  <td>1,155</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4584.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4584</td>
+  <td>キッズウェル・バイオ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.91%</td>
+  <td>206</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4588.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4588</td>
+  <td>オンコリスバイオファーマ</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.15%</td>
+  <td>901</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4591.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4591</td>
+  <td>リボミック</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.25%</td>
+  <td>89</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4592.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4592</td>
+  <td>サンバイオ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+11.17%</td>
+  <td>1,916</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4598.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4598</td>
+  <td>DELTA-P</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.99%</td>
+  <td>523</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4598.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4598</td>
+  <td>WELBY</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.18%</td>
+  <td>505</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4616.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4616</td>
+  <td>川上塗料</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.06%</td>
+  <td>2,264</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4617.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4617</td>
+  <td>中国塗料</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.43%</td>
+  <td>4,200</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4631.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4631</td>
+  <td>ＤＩＣ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.61%</td>
+  <td>3,726</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="464A.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>464A</td>
+  <td>ＱＰＳホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.63%</td>
+  <td>1,818</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4651.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4651</td>
+  <td>サニックスホールディング</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.40%</td>
+  <td>215</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4664.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4664</td>
+  <td>アール・エス・シー</td>
+  <td>4</td>
+  <td>2勝2敗</td>
+  <td>50.0%</td>
+  <td class="positive">+9.89%</td>
+  <td>1,136</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4680.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>4680</td>
+  <td>ラウンドワン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.11%</td>
+  <td>965</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4743.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4743</td>
+  <td>アイティフォー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.47%</td>
+  <td>1,489</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4777.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4777</td>
+  <td>ガーラ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+15.56%</td>
+  <td>270</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4814.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4814</td>
+  <td>ネクストウェア</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.09%</td>
+  <td>183</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4875.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>4875</td>
+  <td>メディシノバ</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="negative">-4.98%</td>
+  <td>233</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4880.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4880</td>
+  <td>セルソース</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.33%</td>
+  <td>450</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4882.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4882</td>
+  <td>ペルセウスプロテオミクス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.54%</td>
+  <td>328</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4911.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>4911</td>
+  <td>資生堂</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.09%</td>
+  <td>2,695</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4935.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>4935</td>
+  <td>リベルタ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.34%</td>
+  <td>1,841</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4936.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4936</td>
+  <td>アクシージア</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.65%</td>
+  <td>424</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4975.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4975</td>
+  <td>ＪＣＵ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.58%</td>
+  <td>5,150</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4980.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4980</td>
+  <td>デクセリアルズ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.07%</td>
+  <td>3,047</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="4996.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>4996</td>
+  <td>クミアイ化学工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.44%</td>
+  <td>679</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5016.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5016</td>
+  <td>ＪＸ金属</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="positive">+0.20%</td>
+  <td>1,770</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5029.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5029</td>
+  <td>サークレイス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.64%</td>
+  <td>1,089</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5071.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5071</td>
+  <td>ヴィス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.97%</td>
+  <td>1,368</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5074.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5074</td>
+  <td>テスホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.60%</td>
+  <td>346</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5136.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5136</td>
+  <td>ｔｒｉｐｌａ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.37%</td>
+  <td>1,867</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5138.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5138</td>
+  <td>Ｒｅｂａｓｅ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-6.08%</td>
+  <td>790</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5189.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5189</td>
+  <td>櫻護謨</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.09%</td>
+  <td>2,333</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5216.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5216</td>
+  <td>倉元製作所</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.43%</td>
+  <td>190</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5242.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5242</td>
+  <td>アイズ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.25%</td>
+  <td>1,191</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5243.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5243</td>
+  <td>ｎｏｔｅ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+5.66%</td>
+  <td>1,590</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5244.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5244</td>
+  <td>ｊｉｇ．ｊｐ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.98%</td>
+  <td>235</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5248.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5248</td>
+  <td>テクノロジーズ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.18%</td>
+  <td>557</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5250.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5250</td>
+  <td>プライム・ストラテジー</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.97%</td>
+  <td>1,550</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5253.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5253</td>
+  <td>カバー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.32%</td>
+  <td>1,567</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5255.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5255</td>
+  <td>モンスターラボ</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="positive">+0.05%</td>
+  <td>170</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5351.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5351</td>
+  <td>品川リフラ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.18%</td>
+  <td>1,985</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5406.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5406</td>
+  <td>神戸製鋼所</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.01%</td>
+  <td>1,846</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5535.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5535</td>
+  <td>ミガロホールディングス</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.42%</td>
+  <td>347</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5574.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5574</td>
+  <td>ABEJA</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.35%</td>
+  <td>2,750</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5574.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5574</td>
+  <td>ＡＢＥＪＡ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.22%</td>
+  <td>2,700</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5575.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5575</td>
+  <td>Ｇｌｏｂｅｅ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.15%</td>
+  <td>670</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5597.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5597</td>
+  <td>ブルーイノベーション</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.24%</td>
+  <td>1,635</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5706.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5706</td>
+  <td>三井金属</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.38%</td>
+  <td>17,740</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5706.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5706</td>
+  <td>三井金属鉱業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-7.14%</td>
+  <td>18,200</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5711.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5711</td>
+  <td>三菱マテリアル</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.13%</td>
+  <td>3,050</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5721.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>5721</td>
+  <td>エス・サイエンス</td>
+  <td>11</td>
+  <td>6勝5敗</td>
+  <td>54.5%</td>
+  <td class="positive">+1.31%</td>
+  <td>197</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5724.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5724</td>
+  <td>アサカ理研</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-10.07%</td>
+  <td>3,000</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5741.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5741</td>
+  <td>ＵＡＣＪ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.83%</td>
+  <td>1,829</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5801.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5801</td>
+  <td>古河電気工業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.67%</td>
+  <td>9,500</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5803.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5803</td>
+  <td>フジクラ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+7.38%</td>
+  <td>19,300</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5817.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5817</td>
+  <td>ＪＭＡＣＳ</td>
+  <td>4</td>
+  <td>2勝2敗</td>
+  <td>50.0%</td>
+  <td class="positive">+4.31%</td>
+  <td>753</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5843.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5843</td>
+  <td>ニッポンインシュア</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+6.18%</td>
+  <td>2,878</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5923.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5923</td>
+  <td>高田機工</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.36%</td>
+  <td>1,100</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5941.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5941</td>
+  <td>中西製作所</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.38%</td>
+  <td>2,379</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5952.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5952</td>
+  <td>アマテイ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>201</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5985.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>5985</td>
+  <td>サンコール</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+7.99%</td>
+  <td>1,376</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="5994.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>5994</td>
+  <td>ファインシンター</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.59%</td>
+  <td>1,531</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6022.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6022</td>
+  <td>赤阪鐵工所(株)</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.88%</td>
+  <td>5,860</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6027.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6027</td>
+  <td>弁護士ドットコム</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.56%</td>
+  <td>2,893</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6035.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6035</td>
+  <td>IRジャパン</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.13%</td>
+  <td>786</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6035.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6035</td>
+  <td>アイ・アールジャパンホー</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.57%</td>
+  <td>803</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6049.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6049</td>
+  <td>イトクロ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.78%</td>
+  <td>281</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6081.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6081</td>
+  <td>アライドアーキテクツ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.81%</td>
+  <td>246</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="unchecked" data-ticker="6083.T" data-shortable="false" data-day_trade="false" data-ng="false">
+  <td>6083<span class="new-badge">NEW</span></td>
+  <td>ＥＲＩホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.37%</td>
+  <td>4,860</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6087.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>6087</td>
+  <td>ネットスターズ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.31%</td>
+  <td>3,185</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6090.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6090</td>
+  <td>ヒューマン・メタボローム</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.29%</td>
+  <td>697</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6134.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6134</td>
+  <td>ＦＵＪＩ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.01%</td>
+  <td>3,390</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6141.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6141</td>
+  <td>ＤＭＧ森精機</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.88%</td>
+  <td>2,740</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6177.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6177</td>
+  <td>ＡｐｐＢａｎｋ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.20%</td>
+  <td>119</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6200.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6200</td>
+  <td>インソース</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.54%</td>
+  <td>844</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6232.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6232</td>
+  <td>ACSL</td>
+  <td>4</td>
+  <td>3勝1敗</td>
+  <td>75.0%</td>
+  <td class="positive">+1.21%</td>
+  <td>985</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6238.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6238</td>
+  <td>フリュー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.73%</td>
+  <td>1,041</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6240.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6240</td>
+  <td>ヤマシンフィルタ(株)</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.38%</td>
+  <td>654</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6269.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6269</td>
+  <td>三井海洋開発</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.45%</td>
+  <td>13,770</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6291.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6291</td>
+  <td>日本エアーテック</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.16%</td>
+  <td>1,222</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6309.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6309</td>
+  <td>海洋建設</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.66%</td>
+  <td>1,624</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6328.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6328</td>
+  <td>荏原実業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.25%</td>
+  <td>4,395</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6366.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6366</td>
+  <td>千代田化工建設</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.96%</td>
+  <td>624</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6366.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6366</td>
+  <td>千代田化工建設(株)</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-5.45%</td>
+  <td>477</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6432.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6432</td>
+  <td>竹内製作所</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.46%</td>
+  <td>6,500</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6433.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6433</td>
+  <td>ヒーハイスト</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>510</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6436.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6436</td>
+  <td>アマノ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.74%</td>
+  <td>4,133</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6495.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6495</td>
+  <td>宮入バルブ製作所</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.45%</td>
+  <td>116</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6496.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6496</td>
+  <td>中北製作所</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.63%</td>
+  <td>6,060</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6524.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6524</td>
+  <td>湖北工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.30%</td>
+  <td>3,280</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6525.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6525</td>
+  <td>コクサイエレクトリック</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.25%</td>
+  <td>4,250</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6525.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6525</td>
+  <td>ＫＯＫＵＳＡＩ　ＥＬＥＣ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.35%</td>
+  <td>4,820</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6526.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6526</td>
+  <td>ソシオネクスト</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-7.38%</td>
+  <td>3,251</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6535.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6535</td>
+  <td>アイモバイル</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.50%</td>
+  <td>533</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6538.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6538</td>
+  <td>ディスラプターズ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.78%</td>
+  <td>324</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6577.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6577</td>
+  <td>ベストワンドットコム</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.56%</td>
+  <td>1,993</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6590.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6590</td>
+  <td>芝浦メカトロニクス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.56%</td>
+  <td>17,600</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6594.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6594</td>
+  <td>ニデック</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.89%</td>
+  <td>2,079</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6613.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6613</td>
+  <td>QDレーザ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.82%</td>
+  <td>355</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6615.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6615</td>
+  <td>ユー・エム・シー・エレク</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+3.04%</td>
+  <td>411</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6617.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6617</td>
+  <td>トレックス・セミコンダク</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.74%</td>
+  <td>3,470</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6629.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6629</td>
+  <td>テクノホライゾン</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+1.70%</td>
+  <td>800</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6630.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6630</td>
+  <td>ヤーマン</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.62%</td>
+  <td>806</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6664.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6664</td>
+  <td>オプトエレクトロニクス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.43%</td>
+  <td>329</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6666.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6666</td>
+  <td>リバーエレテック</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+1.24%</td>
+  <td>533</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6677.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6677</td>
+  <td>エスケーエレクトロニクス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.16%</td>
+  <td>3,035</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6696.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6696</td>
+  <td>トラース・オン・プロダク</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+14.68%</td>
+  <td>361</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6721.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6721</td>
+  <td>ウインテスト</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="positive">+0.49%</td>
+  <td>102</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6794.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6794</td>
+  <td>フォスター電機</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.28%</td>
+  <td>2,525</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6800.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6800</td>
+  <td>ヨコオ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-7.09%</td>
+  <td>1,848</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6803.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6803</td>
+  <td>TOA</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-7.37%</td>
+  <td>95</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6803.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6803</td>
+  <td>ティアック</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.94%</td>
+  <td>102</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6814.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6814</td>
+  <td>古野電気</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.10%</td>
+  <td>9,040</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6834.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6834</td>
+  <td>精工技研</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.30%</td>
+  <td>14,190</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6857.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>6857</td>
+  <td>アドバンテスト</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.69%</td>
+  <td>19,785</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6862.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>6862</td>
+  <td>ミナトホールディングス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.81%</td>
+  <td>1,390</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6875.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6875</td>
+  <td>メガチップス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.11%</td>
+  <td>8,140</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6890.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6890</td>
+  <td>フェローテック</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.53%</td>
+  <td>4,890</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6927.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>6927</td>
+  <td>ヘリオステクノHD</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.03%</td>
+  <td>967</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6951.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6951</td>
+  <td>日本電子</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.72%</td>
+  <td>5,075</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6986.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6986</td>
+  <td>双葉電子工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.92%</td>
+  <td>654</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6989.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6989</td>
+  <td>北陸電気工業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.73%</td>
+  <td>2,540</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6993.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>6993</td>
+  <td>大黒屋HD</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>76</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6993.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>6993</td>
+  <td>大黒屋ホールディングス</td>
+  <td>10</td>
+  <td>7勝3敗</td>
+  <td>70.0%</td>
+  <td class="positive">+3.81%</td>
+  <td>85</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6993.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>6993</td>
+  <td>大黒屋ホールディングス(</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+11.76%</td>
+  <td>51</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="6994.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>6994</td>
+  <td>指月電機製作(株)</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.13%</td>
+  <td>762</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7003.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7003</td>
+  <td>三井Ｅ＆Ｓ</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.31%</td>
+  <td>6,351</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7014.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7014</td>
+  <td>名村造船所</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.81%</td>
+  <td>4,455</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7018.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7018</td>
+  <td>内海造船</td>
+  <td>3</td>
+  <td>2勝1敗</td>
+  <td>66.7%</td>
+  <td class="positive">+4.86%</td>
+  <td>16,560</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7050.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7050</td>
+  <td>フロンティアインターナシ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.55%</td>
+  <td>2,844</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7065.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7065</td>
+  <td>ユーピーアール</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.40%</td>
+  <td>787</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7069.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7069</td>
+  <td>(株)サイバー・バズ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>914</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7092.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7092</td>
+  <td>Ｆａｓｔ　Ｆｉｔｎｅｓｓ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.09%</td>
+  <td>2,308</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7095.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7095</td>
+  <td>Ｍａｃｂｅｅ　Ｐｌａｎｅ</td>
+  <td>3</td>
+  <td>0勝3敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.81%</td>
+  <td>1,533</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7115.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7115</td>
+  <td>アルファパーチェス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.13%</td>
+  <td>2,349</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7198.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7198</td>
+  <td>SBIアルヒ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.12%</td>
+  <td>841</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7255.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7255</td>
+  <td>桜井製作所</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.35%</td>
+  <td>575</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7261.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7261</td>
+  <td>マツダ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.41%</td>
+  <td>1,208</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7271.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7271</td>
+  <td>安永</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.63%</td>
+  <td>1,075</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7294.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7294</td>
+  <td>ヨロズ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.82%</td>
+  <td>972</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7320.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7320</td>
+  <td>Solvvy</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.36%</td>
+  <td>2,131</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7356.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7356</td>
+  <td>Ｒｅｔｔｙ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+8.74%</td>
+  <td>183</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7438.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7438</td>
+  <td>コンドーテック</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.25%</td>
+  <td>1,574</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7453.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7453</td>
+  <td>良品計画</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.30%</td>
+  <td>3,051</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7527.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>7527</td>
+  <td>システムソフト</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>63</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7538.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7538</td>
+  <td>大水</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.83%</td>
+  <td>360</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7561.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7561</td>
+  <td>ハークスレイ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.31%</td>
+  <td>651</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7564.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7564</td>
+  <td>ワークマン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.75%</td>
+  <td>6,700</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7593.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7593</td>
+  <td>ＶＴホールディングス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.32%</td>
+  <td>517</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7596.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7596</td>
+  <td>魚力</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.34%</td>
+  <td>2,385</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7603.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7603</td>
+  <td>ジーイエット</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-3.00%</td>
+  <td>153</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7614.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7614</td>
+  <td>オーエムツーネットワーク</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.26%</td>
+  <td>1,532</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7673.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7673</td>
+  <td>ダイコー通産</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.06%</td>
+  <td>1,619</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7695.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7695</td>
+  <td>交換できるくん</td>
+  <td>2</td>
+  <td>0勝2敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.48%</td>
+  <td>862</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7711.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7711</td>
+  <td>助川電気工業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.17%</td>
+  <td>6,470</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7721.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7721</td>
+  <td>東京計器</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.70%</td>
+  <td>5,710</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7729.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7729</td>
+  <td>(株)東京精密</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.68%</td>
+  <td>11,275</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7746.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7746</td>
+  <td>岡本硝子</td>
+  <td>5</td>
+  <td>4勝1敗</td>
+  <td>80.0%</td>
+  <td class="positive">+3.17%</td>
+  <td>377</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7777.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7777</td>
+  <td>スリー・ディー・マトリッ</td>
+  <td>3</td>
+  <td>3勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.85%</td>
+  <td>330</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7794.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7794</td>
+  <td>イーディーピー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.02%</td>
+  <td>545</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7818.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7818</td>
+  <td>トランザクション</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.05%</td>
+  <td>1,048</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7826.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7826</td>
+  <td>フルヤ金属</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.88%</td>
+  <td>3,225</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7859.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7859</td>
+  <td>アルメディオ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.11%</td>
+  <td>180</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7893.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7893</td>
+  <td>プロネクサス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.35%</td>
+  <td>1,155</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7896.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7896</td>
+  <td>セブン工業</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>496</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7937.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>7937</td>
+  <td>ツツミ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.03%</td>
+  <td>2,362</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="7983.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>7983</td>
+  <td>ミロク</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.17%</td>
+  <td>1,484</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8014.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8014</td>
+  <td>蝶理</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.38%</td>
+  <td>3,905</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8061.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8061</td>
+  <td>西華産業</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.05%</td>
+  <td>2,155</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8105.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8105</td>
+  <td>Bitcoin Japa</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-2.00%</td>
+  <td>414</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8105.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8105</td>
+  <td>堀田丸正</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.67%</td>
+  <td>654</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8105.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8105</td>
+  <td>Ｂｉｔｃｏｉｎ　Ｊａｐａ</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+6.22%</td>
+  <td>305</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8136.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8136</td>
+  <td>サンリオ</td>
+  <td>5</td>
+  <td>2勝3敗</td>
+  <td>40.0%</td>
+  <td class="positive">+0.57%</td>
+  <td>5,139</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8267.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8267</td>
+  <td>イオン</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.83%</td>
+  <td>2,339</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8746.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8746</td>
+  <td>unbanked</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.55%</td>
+  <td>453</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8850.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8850</td>
+  <td>スターツコーポレーション</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.89%</td>
+  <td>4,765</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8892.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>8892</td>
+  <td>エスコン</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.77%</td>
+  <td>1,042</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8894.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>8894</td>
+  <td>REVOLUTION</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-10.91%</td>
+  <td>55</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8894.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>8894</td>
+  <td>ＲＥＶＯＬＵＴＩＯＮ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.39%</td>
+  <td>59</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8912.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8912</td>
+  <td>エリアクエスト</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.63%</td>
+  <td>159</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="8929.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>8929</td>
+  <td>青山財産ネットワークス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.07%</td>
+  <td>1,680</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9051.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9051</td>
+  <td>センコン物流</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>1,414</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9101.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9101</td>
+  <td>日本郵船</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.04%</td>
+  <td>4,875</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9158.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9158</td>
+  <td>シーユーシー</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.86%</td>
+  <td>967</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9166.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9166</td>
+  <td>ＧＥＮＤＡ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+15.74%</td>
+  <td>718</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9242.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9242</td>
+  <td>メディア総研</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="positive">+0.00%</td>
+  <td>2,167</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9271.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9271</td>
+  <td>和心</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-4.13%</td>
+  <td>848</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9302.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9302</td>
+  <td>三井倉庫ホールディングス</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.19%</td>
+  <td>3,752</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9343.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9343</td>
+  <td>アイビス</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.39%</td>
+  <td>710</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9344.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9344</td>
+  <td>アクシスコンサルティング</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.31%</td>
+  <td>910</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9348.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9348</td>
+  <td>ispace</td>
+  <td>2</td>
+  <td>2勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+2.66%</td>
+  <td>456</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9424.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9424</td>
+  <td>日本通信</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.03%</td>
+  <td>149</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9449.T" data-shortable="true" data-day_trade="false" data-ng="false">
+  <td>9449</td>
+  <td>ＧＭＯインターネットグル</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.13%</td>
+  <td>3,878</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9501.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9501</td>
+  <td>東京電力HD</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+3.52%</td>
+  <td>910</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9552.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9552</td>
+  <td>M&A総研ホールディング</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-6.17%</td>
+  <td>1,265</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9556.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9556</td>
+  <td>ＩＮＴＬＯＯＰ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.45%</td>
+  <td>3,870</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9560.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9560</td>
+  <td>プログリット</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+0.21%</td>
+  <td>951</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9561.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9561</td>
+  <td>グラッドキューブ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+4.58%</td>
+  <td>480</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9610.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9610</td>
+  <td>ウィルソン・ラーニング　</td>
+  <td>4</td>
+  <td>0勝4敗</td>
+  <td>0.0%</td>
+  <td class="negative">-5.93%</td>
+  <td>219</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9704.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>9704</td>
+  <td>アゴーラ　ホスピタリティ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-1.85%</td>
+  <td>54</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9709.T" data-shortable="false" data-day_trade="true" data-ng="false">
+  <td>9709</td>
+  <td>NCS&A</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-2.54%</td>
+  <td>1,693</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9828.T" data-shortable="true" data-day_trade="true" data-ng="false">
+  <td>9828</td>
+  <td>Ｇｅｎｋｉ　Ｇｌｏｂａｌ</td>
+  <td>1</td>
+  <td>0勝1敗</td>
+  <td>0.0%</td>
+  <td class="negative">-0.65%</td>
+  <td>3,055</td>
+  <td><input type="checkbox" class="cb-shortable" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade" checked onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng"  onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9973.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>9973</td>
+  <td>ＫＯＺＯホールディングス</td>
+  <td>2</td>
+  <td>1勝1敗</td>
+  <td>50.0%</td>
+  <td class="negative">-0.45%</td>
+  <td>36</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+<tr class="" data-ticker="9984.T" data-shortable="false" data-day_trade="false" data-ng="true">
+  <td>9984</td>
+  <td>ソフトバンクグループ</td>
+  <td>1</td>
+  <td>1勝0敗</td>
+  <td>100.0%</td>
+  <td class="positive">+1.00%</td>
+  <td>17,000</td>
+  <td><input type="checkbox" class="cb-shortable"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-day_trade"  onchange="updateCheck(this)"></td>
+  <td><input type="checkbox" class="cb-ng" checked onchange="updateCheck(this)"></td>
+</tr>
+</tbody>
+</table>
+
+<script>
+let currentFilter = 'all';
+let sortCol = -1;
+let sortAsc = true;
+
+function filterRows(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.querySelectorAll('#stockTable tbody tr').forEach(row => {
+    if (filter === 'all') {
+      row.style.display = '';
+    } else if (filter === 'unchecked') {
+      const s = row.dataset.shortable === 'true';
+      const d = row.dataset.day_trade === 'true';
+      const n = row.dataset.ng === 'true';
+      row.style.display = (!s && !d && !n) ? '' : 'none';
+    } else {
+      row.style.display = row.dataset[filter] === 'true' ? '' : 'none';
+    }
+  });
+  updateStats();
+}
+
+function updateCheck(cb) {
+  const row = cb.closest('tr');
+  const type = cb.className.replace('cb-', '');
+  row.dataset[type] = cb.checked;
+  
+  const s = row.dataset.shortable === 'true';
+  const d = row.dataset.day_trade === 'true';
+  const n = row.dataset.ng === 'true';
+  row.classList.toggle('unchecked', !s && !d && !n);
+  updateStats();
+}
+
+function updateStats() {
+  let total = 0, shortable = 0, day_trade = 0, ng = 0, unchecked = 0;
+  document.querySelectorAll('#stockTable tbody tr').forEach(row => {
+    total++;
+    if (row.dataset.shortable === 'true') shortable++;
+    if (row.dataset.day_trade === 'true') day_trade++;
+    if (row.dataset.ng === 'true') ng++;
+    const s = row.dataset.shortable === 'true';
+    const d = row.dataset.day_trade === 'true';
+    const n = row.dataset.ng === 'true';
+    if (!s && !d && !n) unchecked++;
+  });
+  document.querySelectorAll('.stat strong')[0].textContent = total;
+  document.querySelectorAll('.stat strong')[1].textContent = shortable;
+  document.querySelectorAll('.stat strong')[2].textContent = day_trade;
+  document.querySelectorAll('.stat strong')[3].textContent = ng;
+  document.querySelectorAll('.stat strong')[4].textContent = unchecked;
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  
+  const tbody = document.querySelector('#stockTable tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  
+  rows.sort((a, b) => {
+    let aVal = a.cells[col].textContent;
+    let bVal = b.cells[col].textContent;
+    
+    // 数値変換
+    if (col >= 2 && col <= 6) {
+      aVal = parseFloat(aVal.replace(/[^0-9.-]/g, '')) || 0;
+      bVal = parseFloat(bVal.replace(/[^0-9.-]/g, '')) || 0;
+    }
+    
+    if (aVal < bVal) return sortAsc ? -1 : 1;
+    if (aVal > bVal) return sortAsc ? 1 : -1;
+    return 0;
+  });
+  
+  rows.forEach(row => tbody.appendChild(row));
+}
+
+function exportCSV() {
+  let csv = 'ticker,stock_name,trade_count,win_count,lose_count,win_rate,avg_return,price,first_date,last_date,shortable,day_trade,ng\n';
+  document.querySelectorAll('#stockTable tbody tr').forEach(row => {
+    const ticker = row.dataset.ticker;
+    const cells = row.cells;
+    const name = cells[1].textContent;
+    const count = cells[2].textContent;
+    const wr = cells[3].textContent;
+    const wins = wr.split('勝')[0];
+    const losses = wr.split('勝')[1].replace('敗', '');
+    const winRate = cells[4].textContent.replace('%', '');
+    const avgReturn = cells[5].textContent.replace('%', '').replace('+', '');
+    const price = cells[6].textContent.replace(',', '');
+    const shortable = row.dataset.shortable === 'true' ? 'True' : 'False';
+    const day_trade = row.dataset.day_trade === 'true' ? 'True' : 'False';
+    const ng = row.dataset.ng === 'true' ? 'True' : 'False';
+    csv += `${ticker},${name},${count},${wins},${losses},${winRate},${avgReturn},${price},,,,${shortable},${day_trade},${ng}\n`;
+  });
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'grok_day_trade_list.csv';
+  a.click();
+}
+</script>
+</div>
+</body>
+</html>

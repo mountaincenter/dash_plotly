@@ -1,0 +1,235 @@
+{
+  "generated_at": "2025-11-27T14:10:37.493400",
+  "strategy_version": "v2.1",
+  "dataSource": {
+    "backtestCount": 13,
+    "technicalDataDate": "2025-11-28"
+  },
+  "total_stocks": 10,
+  "buy_count": 4,
+  "hold_count": 1,
+  "sell_count": 5,
+  "stocks": [
+    {
+      "ticker": "4424.T",
+      "company_name": "Amazia",
+      "grok_rank": 3,
+      "prev_day_close": 555.0,
+      "prev_day_change_pct": -21.27659574468085,
+      "atr_pct": 3.5907335907335907,
+      "v2_0_3_action": "買い",
+      "v2_0_3_score": 30,
+      "v2_0_3_reasons": "Grokランク3/10（過去勝率36.4%） / ROE -41.0%（赤字） / 前日-21.3%下落（リバウンド期待） / 25日線から+5%以上乖離",
+      "v2_1_action": "買い",
+      "v2_1_score": 55,
+      "v2_1_reasons": [
+        "Grokランク上位25%（強化）",
+        "RSI 72.2（買われすぎ）",
+        "5日線押し目-0.7%"
+      ],
+      "rsi_14d": 72.15189873417722,
+      "volume_change_20d": 0.09807823151084123,
+      "price_vs_sma5_pct": -0.7155635062611807,
+      "stop_loss_pct": 0.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "5721.T",
+      "company_name": "エス・サイエンス",
+      "grok_rank": 1,
+      "prev_day_close": 120.0,
+      "prev_day_change_pct": 5.263157894736842,
+      "atr_pct": 6.488095238095239,
+      "v2_0_3_action": "静観",
+      "v2_0_3_score": -5,
+      "v2_0_3_reasons": "Grokランク1/10（過去勝率18.2%） / ROE -6.1%（赤字） / 営業利益成長-58.8%（減益） / 25日線から-5%以上乖離（割安）",
+      "v2_1_action": "買い",
+      "v2_1_score": 50,
+      "v2_1_reasons": [
+        "Grokランク上位25%（強化）"
+      ],
+      "rsi_14d": 35.08771929824562,
+      "volume_change_20d": 0.6410546211308397,
+      "price_vs_sma5_pct": 2.564102564102564,
+      "stop_loss_pct": 0.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "4570.T",
+      "company_name": "免疫生物研究所",
+      "grok_rank": 2,
+      "prev_day_close": 2619.0,
+      "prev_day_change_pct": 23.596035865974514,
+      "atr_pct": 5.9046528118693065,
+      "v2_0_3_action": "買い",
+      "v2_0_3_score": 25,
+      "v2_0_3_reasons": "Grokランク2/10（過去勝率9.1%） / 営業利益成長+163.0% / 前日+23.6%急騰（過熱感） / 25日線から+5%以上乖離",
+      "v2_1_action": "買い",
+      "v2_1_score": 40,
+      "v2_1_reasons": [
+        "Grokランク上位25%（強化）",
+        "RSI 97.5（買われすぎ）"
+      ],
+      "rsi_14d": 97.51838235294117,
+      "volume_change_20d": 1.283784200559669,
+      "price_vs_sma5_pct": 40.62499999999999,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "8105.T",
+      "company_name": "Bitcoin Japan",
+      "grok_rank": 5,
+      "prev_day_close": 415.0,
+      "prev_day_change_pct": 0.48426150121065376,
+      "atr_pct": 21.927710843373493,
+      "v2_0_3_action": "静観",
+      "v2_0_3_score": 0,
+      "v2_0_3_reasons": "Grokランク5/10（過去勝率45.5%） / ROE -9.9%（赤字） / 高ボラ（リスク大） / 25日線から-5%以上乖離（割安）",
+      "v2_1_action": "買い",
+      "v2_1_score": 30,
+      "v2_1_reasons": [
+        "Grokランク上位50%"
+      ],
+      "rsi_14d": 38.94107600341589,
+      "volume_change_20d": 0.6440221235740903,
+      "price_vs_sma5_pct": -9.704090513489996,
+      "stop_loss_pct": 0.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "5250.T",
+      "company_name": "プライム・ストラテジー",
+      "grok_rank": 4,
+      "prev_day_close": 1321.0,
+      "prev_day_change_pct": 29.38295788442703,
+      "atr_pct": 1.2079863525557308,
+      "v2_0_3_action": "静観",
+      "v2_0_3_score": -10,
+      "v2_0_3_reasons": "Grokランク4/10（過去勝率18.2%） / 前日+29.4%急騰（過熱感） / 低ボラ（安定） / 25日線から+5%以上乖離",
+      "v2_1_action": "静観",
+      "v2_1_score": 20,
+      "v2_1_reasons": [
+        "Grokランク上位50%",
+        "RSI 80.8（買われすぎ）"
+      ],
+      "rsi_14d": 80.77469826082981,
+      "volume_change_20d": 1.0901162790697674,
+      "price_vs_sma5_pct": 32.53295663072181,
+      "stop_loss_pct": 3.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "202A.T",
+      "company_name": "豆蔵ホールディングス",
+      "grok_rank": 7,
+      "prev_day_close": 3455.0,
+      "prev_day_change_pct": 15.24349566377585,
+      "atr_pct": 5.216043001860657,
+      "v2_0_3_action": "売り",
+      "v2_0_3_score": -40,
+      "v2_0_3_reasons": "Grokランク7/10（過去勝率45.5%） / 営業利益成長-100.0%（減益） / 前日+15.2%急騰（過熱感） / 25日線から+5%以上乖離",
+      "v2_1_action": "売り",
+      "v2_1_score": 15,
+      "v2_1_reasons": [
+        "出来高3.9倍（注目急増）",
+        "【v2.0.3売り判定を保持】"
+      ],
+      "rsi_14d": 66.09605325725155,
+      "volume_change_20d": 3.8546337515176043,
+      "price_vs_sma5_pct": 16.009670270633276,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "6993.T",
+      "company_name": "大黒屋ホールディングス",
+      "grok_rank": 6,
+      "prev_day_close": 100.0,
+      "prev_day_change_pct": 31.57894736842105,
+      "atr_pct": 8.357142857142858,
+      "v2_0_3_action": "売り",
+      "v2_0_3_score": -30,
+      "v2_0_3_reasons": "Grokランク6/10（過去勝率63.6%） / ROE -26.0%（赤字） / 前日+31.6%急騰（過熱感） / 高ボラ（リスク大） / 25日線から+5%以上乖離",
+      "v2_1_action": "売り",
+      "v2_1_score": 5,
+      "v2_1_reasons": [
+        "RSI 81.6（買われすぎ）",
+        "出来高4.1倍（注目急増）",
+        "【v2.0.3売り判定を保持】"
+      ],
+      "rsi_14d": 81.60919540229885,
+      "volume_change_20d": 4.112732353521391,
+      "price_vs_sma5_pct": 32.275132275132286,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "6721.T",
+      "company_name": "ウインテスト",
+      "grok_rank": 8,
+      "prev_day_close": 102.0,
+      "prev_day_change_pct": 2.0,
+      "atr_pct": 3.9915966386554618,
+      "v2_0_3_action": "売り",
+      "v2_0_3_score": -25,
+      "v2_0_3_reasons": "Grokランク8/10（過去勝率60.0%） / ROE -88.7%（赤字） / 営業利益成長-65.7%（減益）",
+      "v2_1_action": "売り",
+      "v2_1_score": -10,
+      "v2_1_reasons": [
+        "Grokランク下位25%（減点強化）",
+        "RSI 26.1（売られすぎ）",
+        "【v2.0.3売り判定を保持】"
+      ],
+      "rsi_14d": 26.08695652173914,
+      "volume_change_20d": 0.7335819191842325,
+      "price_vs_sma5_pct": 1.7964071856287396,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "7746.T",
+      "company_name": "岡本硝子",
+      "grok_rank": 10,
+      "prev_day_close": 380.0,
+      "prev_day_change_pct": 26.666666666666668,
+      "atr_pct": 9.868421052631579,
+      "v2_0_3_action": "売り",
+      "v2_0_3_score": -100,
+      "v2_0_3_reasons": "Grokランク10/10（過去勝率22.2%） / ROE -8.8%（赤字） / 営業利益成長-112.8%（減益） / 前日+26.7%急騰（過熱感） / 高ボラ（リスク大） / 25日線から+5%以上乖離",
+      "v2_1_action": "売り",
+      "v2_1_score": -15,
+      "v2_1_reasons": [
+        "Grokランク下位25%（減点強化）",
+        "出来高2.1倍（注目急増）",
+        "【v2.0.3売り判定を保持】"
+      ],
+      "rsi_14d": 44.23676012461059,
+      "volume_change_20d": 2.143090777071274,
+      "price_vs_sma5_pct": 18.45386533665835,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    },
+    {
+      "ticker": "2134.T",
+      "company_name": "北浜キャピタルパートナーズ",
+      "grok_rank": 9,
+      "prev_day_close": 30.0,
+      "prev_day_change_pct": 7.142857142857142,
+      "atr_pct": 12.85714285714286,
+      "v2_0_3_action": "静観",
+      "v2_0_3_score": -10,
+      "v2_0_3_reasons": "Grokランク9/10（過去勝率60.0%） / ROE -10.0%（赤字） / 高ボラ（リスク大） / 25日線から-5%以上乖離（割安）",
+      "v2_1_action": "売り",
+      "v2_1_score": -30,
+      "v2_1_reasons": [
+        "Grokランク下位25%（減点強化）"
+      ],
+      "rsi_14d": 34.09090909090909,
+      "volume_change_20d": 1.1410703002478348,
+      "price_vs_sma5_pct": 1.3513513513513467,
+      "stop_loss_pct": 5.0,
+      "settlement_timing": "大引け"
+    }
+  ]
+}
