@@ -306,6 +306,22 @@ jobs:
           fi
           echo "✅ Downloaded grok_trending.parquet"
 
+          # 時価総額カラムを追加（選定日終値ベース）
+          echo "📊 Adding market_cap to grok_trending.parquet..."
+          python3 scripts/pipeline/add_market_cap_to_grok_trending.py
+          if [ $? -eq 0 ]; then
+            echo "✅ Added market_cap column"
+            # 更新されたgrok_trending.parquetをS3にアップロード
+            aws s3 cp \
+              data/parquet/grok_trending.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
+              --region ${{ env.AWS_REGION }} \
+              --only-show-errors
+            echo "✅ Uploaded updated grok_trending.parquet to S3"
+          else
+            echo "⚠️ Warning: Failed to add market_cap (continuing anyway)"
+          fi
+
           # trading_recommendation.json を生成（v2.1ロジック - 2階建てアーキテクチャ）
           echo "📊 Generating trading_recommendation.json (v2.1 - 2階建てアーキテクチャ)..."
           python3 scripts/pipeline/generate_trading_recommendation_v2_1.py

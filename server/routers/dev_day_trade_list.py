@@ -156,14 +156,15 @@ async def get_day_trade_list():
     day_trade_df = load_day_trade_list()
     recommendation_stocks = load_trading_recommendation()
 
-    # day_trade_listをdictに変換（stock_nameでルックアップ）
+    # day_trade_listをdictに変換（tickerでルックアップ）
     dtl_map = {row["ticker"]: row for _, row in day_trade_df.iterrows()}
 
     # マージ
     stocks = []
     for rec in recommendation_stocks:
         stock_name = rec.get("stock_name", "")
-        dtl = dtl_map.get(stock_name, {})
+        ticker = rec.get("ticker", "")
+        dtl = dtl_map.get(ticker, {})
 
         # デフォルト値
         shortable = bool(dtl.get("shortable", False))

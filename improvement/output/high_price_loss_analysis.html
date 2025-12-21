@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10,000円超え銘柄 損失分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container { height: 250px; margin-top: 15px; background: #0f0f1a; border-radius: 8px; padding: 10px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #fff; margin-bottom: 10px; font-size: 1.4rem; }
+        h2 { color: #fff; margin: 30px 0 15px 0; font-size: 1.2rem; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 30px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px; }
+        .summary-card { background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 15px; text-align: center; }
+        .summary-label { color: #888; font-size: 0.8rem; margin-bottom: 5px; }
+        .summary-value { font-size: 1.3rem; font-weight: bold; }
+        .summary-value.negative { color: #f87171; }
+        .summary-value.positive { color: #4ade80; }
+        .stock-card { background: #1a1a2e; border: 1px solid #333; border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+        .stock-header { background: #222244; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .stock-title { font-weight: bold; color: #fff; font-size: 1.1rem; }
+        .stock-date { color: #888; font-size: 0.9rem; margin-left: 15px; }
+        .stock-loss { font-weight: bold; font-size: 1.2rem; color: #f87171; }
+        .stock-body { padding: 20px; }
+        .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; }
+        .info-item { background: #0f0f1a; border-radius: 8px; padding: 12px; }
+        .info-label { color: #888; font-size: 0.75rem; margin-bottom: 3px; }
+        .info-value { font-size: 1rem; font-weight: bold; color: #fff; }
+        .info-value.up { color: #4ade80; }
+        .info-value.down { color: #f87171; }
+        .pattern-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+        .pattern-yorisoko { background: #dc262633; color: #f87171; }
+        .pattern-途中 { background: #f59e0b33; color: #fbbf24; }
+        .pattern-高値 { background: #22c55e33; color: #4ade80; }
+        .analysis { background: #0f0f1a; border-radius: 8px; padding: 15px; margin-top: 15px; }
+        .analysis h4 { color: #fff; font-size: 0.9rem; margin-bottom: 10px; }
+        .analysis p { color: #aaa; font-size: 0.85rem; line-height: 1.6; }
+        .comparison-section { background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 20px; margin: 30px 0; }
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .comparison-table th, .comparison-table td { padding: 12px; text-align: center; border-bottom: 1px solid #333; }
+        .comparison-table th { background: #222244; color: #fff; font-size: 0.85rem; }
+        .comparison-table td { color: #ccc; font-size: 0.9rem; }
+        .comparison-table td.win { color: #4ade80; font-weight: bold; }
+        .comparison-table td.loss { color: #f87171; font-weight: bold; }
+        .conclusion { background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4e 100%); border: 1px solid #4a90d9; border-radius: 12px; padding: 20px; margin-top: 30px; }
+        .conclusion h3 { color: #4a90d9; margin-bottom: 15px; }
+        .conclusion ul { list-style: none; padding-left: 0; }
+        .conclusion li { color: #ccc; font-size: 0.9rem; padding: 8px 0; border-bottom: 1px solid #333; }
+        .conclusion li:last-child { border-bottom: none; }
+        .conclusion li strong { color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>10,000円超え銘柄 損益分析レポート</h1>
+        <p class="subtitle">寄付ショート戦略における高価格帯銘柄のパターン分析（RSI・前日終値・選定理由）</p>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">分析対象</div>
+                <div class="summary-value">16件</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">勝ち</div>
+                <div class="summary-value positive">10件</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">負け</div>
+                <div class="summary-value negative">6件</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">勝率</div>
+                <div class="summary-value">62%</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">合計損益</div>
+                <div class="summary-value positive">+278,500円</div>
+            </div>
+        </div>
+
+        
+    <div class="comparison-section">
+        <h2>勝ち vs 負け パターン比較</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>指標</th>
+                    <th class="win">勝ち (10件)</th>
+                    <th class="loss">負け (6件)</th>
+                    <th>差異</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>平均RSI</td>
+                    <td class="win">60.6</td>
+                    <td class="loss">64.1</td>
+                    <td>負けの方が高い</td>
+                </tr>
+                <tr>
+                    <td>前日騰落率</td>
+                    <td class="win">+2.01%</td>
+                    <td class="loss">+1.94%</td>
+                    <td>勝ちの方が上昇</td>
+                </tr>
+                <tr>
+                    <td>平均ギャップ</td>
+                    <td class="win">-2.25%</td>
+                    <td class="loss">+0.60%</td>
+                    <td>勝ちがGD</td>
+                </tr>
+                <tr>
+                    <td>前日陽線率</td>
+                    <td class="win">70%</td>
+                    <td class="loss">83%</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>合計損益</td>
+                    <td class="win">+563,000円</td>
+                    <td class="loss">-284,500円</td>
+                    <td>-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+
+        <h2>負け銘柄 詳細分析</h2>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">三井金属鉱業 (5706.T)</span>
+                    <span class="stock-date">2025-11-14</span>
+                </div>
+                <div class="stock-loss">-130,000円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">19,400円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value up">+1.31%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value up">76.7</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value down">-6.19%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">18,200円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">19,500円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">12:50:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">09:05:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-yorisoko">寄底→上昇型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_0"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>【@kabuchenko が言及】[x_search: @kabuchenko]2025年11月13日 06:48投稿「銀価格良い感じ」(Likes=14, Reposts=0)。[web_search: finance.yahoo.co.jp]時価総額約250億円確認。[web_search: kabutan.jp]2025年11月13日出来高20日平均の3.1倍、日次売買代金6500万円、AT...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">精工技研 (6834.T)</span>
+                    <span class="stock-date">2025-12-01</span>
+                </div>
+                <div class="stock-loss">-61,000円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">14,220円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value up">+8.97%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value up">70.8</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value down">-0.21%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">14,190円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">14,800円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">14:40:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">10:10:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-途中">途中安値型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_1"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>[x_search: 精工技研 since:2025-11-28]X言及55件。[web_search: nikkei.com]2025年11月28日 工具関連IR。[web_search: Yahoo!ファイナンス]時価総額210億円。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、上場廃止なし。[web_search: kabutan.j...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">芝浦メカトロニクス (6590.T)</span>
+                    <span class="stock-date">2025-12-08</span>
+                </div>
+                <div class="stock-loss">-45,000円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">17,600円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value up">+2.27%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value ">56.8</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value down">+0.00%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">17,600円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">18,050円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">13:30:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">09:45:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-途中">途中安値型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_2"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>[x_semantic_search: 12月8日寄付]X投稿「半導体装置注目」(2025-12-06 08:00、RT90)。[web_search: nikkei.com]ニュース確認(2025-12-05)。[web_search: kabutan.jp]出来高2.5倍、ATR 4.0%。[web_search: finance.yahoo.co.jp]時価総額400億円。[web_sear...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">三井金属 (5706.T)</span>
+                    <span class="stock-date">2025-12-05</span>
+                </div>
+                <div class="stock-loss">-24,500円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">17,525円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value down">-1.41%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value ">42.3</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value up">+1.23%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">17,740円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">17,985円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">12:35:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">09:05:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-yorisoko">寄底→上昇型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_3"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>[x_search: 三井金属] since:2025-12-04 で言及35件。[web_search: finance.yahoo.co.jp]時価総額280億円確認。[web_search: kabutan.jp]出来高2.5倍、ATR 4.0%。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">イビデン (4062.T)</span>
+                    <span class="stock-date">2025-12-09</span>
+                </div>
+                <div class="stock-loss">-19,000円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">12,740円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value up">+0.28%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value ">46.5</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value down">+0.00%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">12,740円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">12,930円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">11:20:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">09:15:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-途中">途中安値型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_4"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>[x_search: イビデン 【4062】]2025-12-08投稿で買い増し言及120件。[web_search: finance.yahoo.co.jp]時価総額1,794,563百万円だが小型扱い調整。[web_search: nikkei.com]ニュース確認(2025-12-08)。[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stock-card">
+            <div class="stock-header">
+                <div>
+                    <span class="stock-title">内海造船 (7018.T)</span>
+                    <span class="stock-date">2025-10-29</span>
+                </div>
+                <div class="stock-loss">-5,000円</div>
+            </div>
+            <div class="stock-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">前日終値</div>
+                        <div class="info-value">16,920円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日騰落</div>
+                        <div class="info-value up">+0.24%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">前日RSI</div>
+                        <div class="info-value up">91.7</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ギャップ</div>
+                        <div class="info-value up">+8.75%</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">始値（空売り価格）</div>
+                        <div class="info-value">18,400円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">終値</div>
+                        <div class="info-value">18,450円</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">高値時刻</div>
+                        <div class="info-value">09:15:00</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">安値時刻</div>
+                        <div class="info-value">10:15:00</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="pattern-badge pattern-途中">途中安値型</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart_5"></canvas>
+                </div>
+                <div class="analysis">
+                    <h4>選定理由</h4>
+                    <p>[x_search: @kabu_328 ツイート]2025-10-28 02:49投稿、前場の寄付からの上昇率+9.8%。[x_search: @513_yami ツイート]2025-10-28 14:55投稿、10月29日の注目短期銘柄おすすめ。[web_search: kabutan.jp]時価総額250億円確認。除外確認: Core30リスト照合済み、時価総額500億円未満OK。[web_...</p>
+                </div>
+            </div>
+        </div>
+        
+
+        
+    <div class="conclusion">
+        <h3>フィルタリング提案</h3>
+        <ul>
+            <li><strong>RSI &lt; 50:</strong> 過熱感がなく、空売りリスク高い → スキップ検討</li>
+            <li><strong>前日陰線:</strong> 下落トレンド継続の可能性 → エントリー優先</li>
+            <li><strong>ギャップアップ &gt; 1%:</strong> 強い買い圧力 → スキップ検討</li>
+            <li><strong>連騰3日以上:</strong> 過熱感高い → エントリー優先（ただし損切り厳格に）</li>
+        </ul>
+        <p style="color: #888; font-size: 0.85rem; margin-top: 15px;">
+            ※ 10,000円超え銘柄は1ティックの損益が大きいため、フィルタリングで損失回避を優先
+        </p>
+    </div>
+    
+
+        <p style="color: #666; font-size: 0.75rem; margin-top: 30px; text-align: center;">
+            生成日時: 2025-12-21 00:44:32
+        </p>
+    </div>
+    <script>
+    
+            (function() {
+                const ctx = document.getElementById('chart_0').getContext('2d');
+                const data = [{"time": "09:05", "open": 18200.0, "high": 18845.0, "low": 18200.0, "close": 18815.0}, {"time": "09:10", "open": 18810.0, "high": 19050.0, "low": 18530.0, "close": 19025.0}, {"time": "09:15", "open": 19025.0, "high": 19265.0, "low": 18975.0, "close": 19055.0}, {"time": "09:20", "open": 19050.0, "high": 19245.0, "low": 18950.0, "close": 19210.0}, {"time": "09:25", "open": 19220.0, "high": 19630.0, "low": 19205.0, "close": 19475.0}, {"time": "09:30", "open": 19475.0, "high": 19650.0, "low": 19400.0, "close": 19635.0}, {"time": "09:35", "open": 19650.0, "high": 19760.0, "low": 19450.0, "close": 19470.0}, {"time": "09:40", "open": 19455.0, "high": 19615.0, "low": 19440.0, "close": 19485.0}, {"time": "09:45", "open": 19470.0, "high": 19565.0, "low": 19400.0, "close": 19435.0}, {"time": "09:50", "open": 19445.0, "high": 19520.0, "low": 19430.0, "close": 19450.0}, {"time": "09:55", "open": 19460.0, "high": 19495.0, "low": 19430.0, "close": 19470.0}, {"time": "10:00", "open": 19470.0, "high": 19530.0, "low": 19435.0, "close": 19465.0}, {"time": "10:05", "open": 19465.0, "high": 19515.0, "low": 19365.0, "close": 19515.0}, {"time": "10:10", "open": 19485.0, "high": 19755.0, "low": 19395.0, "close": 19670.0}, {"time": "10:15", "open": 19680.0, "high": 19745.0, "low": 19515.0, "close": 19630.0}, {"time": "10:20", "open": 19630.0, "high": 19680.0, "low": 19550.0, "close": 19570.0}, {"time": "10:25", "open": 19570.0, "high": 19590.0, "low": 19370.0, "close": 19370.0}, {"time": "10:30", "open": 19365.0, "high": 19440.0, "low": 19315.0, "close": 19420.0}, {"time": "10:35", "open": 19435.0, "high": 19575.0, "low": 19410.0, "close": 19425.0}, {"time": "10:40", "open": 19420.0, "high": 19465.0, "low": 19355.0, "close": 19465.0}, {"time": "10:45", "open": 19455.0, "high": 19470.0, "low": 19370.0, "close": 19470.0}, {"time": "10:50", "open": 19470.0, "high": 19555.0, "low": 19420.0, "close": 19465.0}, {"time": "10:55", "open": 19455.0, "high": 19460.0, "low": 19365.0, "close": 19365.0}, {"time": "11:00", "open": 19360.0, "high": 19415.0, "low": 19290.0, "close": 19385.0}, {"time": "11:05", "open": 19385.0, "high": 19435.0, "low": 19280.0, "close": 19300.0}, {"time": "11:10", "open": 19295.0, "high": 19380.0, "low": 19265.0, "close": 19320.0}, {"time": "11:15", "open": 19320.0, "high": 19370.0, "low": 19280.0, "close": 19280.0}, {"time": "11:20", "open": 19290.0, "high": 19410.0, "low": 19280.0, "close": 19350.0}, {"time": "11:25", "open": 19345.0, "high": 19480.0, "low": 19330.0, "close": 19375.0}, {"time": "11:30", "open": 19365.0, "high": 19365.0, "low": 19350.0, "close": 19350.0}, {"time": "12:30", "open": 19360.0, "high": 19665.0, "low": 19360.0, "close": 19640.0}, {"time": "12:35", "open": 19645.0, "high": 19750.0, "low": 19635.0, "close": 19685.0}, {"time": "12:40", "open": 19685.0, "high": 19855.0, "low": 19685.0, "close": 19800.0}, {"time": "12:45", "open": 19800.0, "high": 19870.0, "low": 19775.0, "close": 19815.0}, {"time": "12:50", "open": 19815.0, "high": 19950.0, "low": 19815.0, "close": 19820.0}, {"time": "12:55", "open": 19820.0, "high": 19875.0, "low": 19720.0, "close": 19735.0}, {"time": "13:00", "open": 19730.0, "high": 19760.0, "low": 19560.0, "close": 19600.0}, {"time": "13:05", "open": 19600.0, "high": 19615.0, "low": 19515.0, "close": 19590.0}, {"time": "13:10", "open": 19590.0, "high": 19590.0, "low": 19475.0, "close": 19545.0}, {"time": "13:15", "open": 19545.0, "high": 19570.0, "low": 19265.0, "close": 19325.0}, {"time": "13:20", "open": 19310.0, "high": 19415.0, "low": 19300.0, "close": 19415.0}, {"time": "13:25", "open": 19410.0, "high": 19470.0, "low": 19350.0, "close": 19455.0}, {"time": "13:30", "open": 19455.0, "high": 19535.0, "low": 19375.0, "close": 19530.0}, {"time": "13:35", "open": 19530.0, "high": 19570.0, "low": 19395.0, "close": 19425.0}, {"time": "13:40", "open": 19410.0, "high": 19460.0, "low": 19370.0, "close": 19450.0}, {"time": "13:45", "open": 19450.0, "high": 19460.0, "low": 19310.0, "close": 19330.0}, {"time": "13:50", "open": 19345.0, "high": 19380.0, "low": 19260.0, "close": 19340.0}, {"time": "13:55", "open": 19340.0, "high": 19450.0, "low": 19330.0, "close": 19425.0}, {"time": "14:00", "open": 19430.0, "high": 19430.0, "low": 19320.0, "close": 19360.0}, {"time": "14:05", "open": 19355.0, "high": 19405.0, "low": 19350.0, "close": 19390.0}, {"time": "14:10", "open": 19385.0, "high": 19390.0, "low": 19345.0, "close": 19355.0}, {"time": "14:15", "open": 19340.0, "high": 19350.0, "low": 19120.0, "close": 19245.0}, {"time": "14:20", "open": 19245.0, "high": 19360.0, "low": 19230.0, "close": 19355.0}, {"time": "14:25", "open": 19360.0, "high": 19380.0, "low": 19255.0, "close": 19355.0}, {"time": "14:30", "open": 19360.0, "high": 19360.0, "low": 19165.0, "close": 19230.0}, {"time": "14:35", "open": 19225.0, "high": 19270.0, "low": 19160.0, "close": 19270.0}, {"time": "14:40", "open": 19270.0, "high": 19280.0, "low": 19210.0, "close": 19215.0}, {"time": "14:45", "open": 19210.0, "high": 19250.0, "low": 19160.0, "close": 19205.0}, {"time": "14:50", "open": 19185.0, "high": 19230.0, "low": 19160.0, "close": 19220.0}, {"time": "14:55", "open": 19225.0, "high": 19330.0, "low": 19205.0, "close": 19330.0}, {"time": "15:00", "open": 19325.0, "high": 19410.0, "low": 19320.0, "close": 19390.0}, {"time": "15:05", "open": 19385.0, "high": 19440.0, "low": 19340.0, "close": 19375.0}, {"time": "15:10", "open": 19375.0, "high": 19405.0, "low": 19340.0, "close": 19380.0}, {"time": "15:15", "open": 19370.0, "high": 19485.0, "low": 19345.0, "close": 19475.0}, {"time": "15:20", "open": 19480.0, "high": 19515.0, "low": 19340.0, "close": 19395.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (18,200円)',
+                                data: Array(labels.length).fill(18200.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+            (function() {
+                const ctx = document.getElementById('chart_1').getContext('2d');
+                const data = [{"time": "09:00", "open": 14190.0, "high": 14490.0, "low": 14130.0, "close": 14160.0}, {"time": "09:05", "open": 14180.0, "high": 14360.0, "low": 14180.0, "close": 14220.0}, {"time": "09:10", "open": 14230.0, "high": 14390.0, "low": 14190.0, "close": 14250.0}, {"time": "09:15", "open": 14260.0, "high": 14300.0, "low": 14010.0, "close": 14050.0}, {"time": "09:20", "open": 14020.0, "high": 14020.0, "low": 13770.0, "close": 13810.0}, {"time": "09:25", "open": 13800.0, "high": 13950.0, "low": 13770.0, "close": 13890.0}, {"time": "09:30", "open": 13890.0, "high": 13940.0, "low": 13780.0, "close": 13780.0}, {"time": "09:35", "open": 13780.0, "high": 13800.0, "low": 13660.0, "close": 13730.0}, {"time": "09:40", "open": 13750.0, "high": 13780.0, "low": 13720.0, "close": 13720.0}, {"time": "09:45", "open": 13720.0, "high": 13720.0, "low": 13680.0, "close": 13680.0}, {"time": "09:50", "open": 13710.0, "high": 13730.0, "low": 13650.0, "close": 13700.0}, {"time": "09:55", "open": 13730.0, "high": 13770.0, "low": 13700.0, "close": 13770.0}, {"time": "10:00", "open": 13770.0, "high": 13810.0, "low": 13750.0, "close": 13810.0}, {"time": "10:05", "open": 13780.0, "high": 13780.0, "low": 13560.0, "close": 13610.0}, {"time": "10:10", "open": 13590.0, "high": 13620.0, "low": 13540.0, "close": 13590.0}, {"time": "10:15", "open": 13620.0, "high": 13720.0, "low": 13600.0, "close": 13720.0}, {"time": "10:20", "open": 13690.0, "high": 13750.0, "low": 13690.0, "close": 13690.0}, {"time": "10:25", "open": 13730.0, "high": 13730.0, "low": 13680.0, "close": 13680.0}, {"time": "10:30", "open": 13710.0, "high": 13870.0, "low": 13710.0, "close": 13830.0}, {"time": "10:35", "open": 13840.0, "high": 13880.0, "low": 13840.0, "close": 13840.0}, {"time": "10:40", "open": 13880.0, "high": 13910.0, "low": 13870.0, "close": 13910.0}, {"time": "10:45", "open": 13900.0, "high": 14000.0, "low": 13890.0, "close": 14000.0}, {"time": "10:50", "open": 14000.0, "high": 14000.0, "low": 13960.0, "close": 13960.0}, {"time": "10:55", "open": 13970.0, "high": 13970.0, "low": 13900.0, "close": 13900.0}, {"time": "11:00", "open": 13880.0, "high": 14000.0, "low": 13860.0, "close": 13940.0}, {"time": "11:05", "open": 13930.0, "high": 14010.0, "low": 13900.0, "close": 14010.0}, {"time": "11:10", "open": 14010.0, "high": 14060.0, "low": 14000.0, "close": 14030.0}, {"time": "11:15", "open": 14020.0, "high": 14020.0, "low": 13980.0, "close": 14020.0}, {"time": "11:20", "open": 14020.0, "high": 14040.0, "low": 14000.0, "close": 14040.0}, {"time": "11:25", "open": 14000.0, "high": 14000.0, "low": 13980.0, "close": 13990.0}, {"time": "12:30", "open": 13940.0, "high": 13980.0, "low": 13890.0, "close": 13950.0}, {"time": "12:35", "open": 14020.0, "high": 14050.0, "low": 14020.0, "close": 14050.0}, {"time": "12:40", "open": 14050.0, "high": 14070.0, "low": 14050.0, "close": 14070.0}, {"time": "12:45", "open": 14070.0, "high": 14180.0, "low": 14070.0, "close": 14180.0}, {"time": "12:50", "open": 14200.0, "high": 14290.0, "low": 14200.0, "close": 14260.0}, {"time": "12:55", "open": 14270.0, "high": 14490.0, "low": 14270.0, "close": 14450.0}, {"time": "13:00", "open": 14390.0, "high": 14400.0, "low": 14310.0, "close": 14310.0}, {"time": "13:05", "open": 14320.0, "high": 14350.0, "low": 14320.0, "close": 14350.0}, {"time": "13:10", "open": 14350.0, "high": 14450.0, "low": 14350.0, "close": 14450.0}, {"time": "13:15", "open": 14430.0, "high": 14490.0, "low": 14430.0, "close": 14480.0}, {"time": "13:20", "open": 14480.0, "high": 14620.0, "low": 14480.0, "close": 14620.0}, {"time": "13:25", "open": 14600.0, "high": 14680.0, "low": 14550.0, "close": 14550.0}, {"time": "13:30", "open": 14560.0, "high": 14580.0, "low": 14530.0, "close": 14580.0}, {"time": "13:35", "open": 14570.0, "high": 14580.0, "low": 14540.0, "close": 14550.0}, {"time": "13:40", "open": 14580.0, "high": 14620.0, "low": 14580.0, "close": 14620.0}, {"time": "13:45", "open": 14620.0, "high": 14700.0, "low": 14590.0, "close": 14610.0}, {"time": "13:50", "open": 14620.0, "high": 14710.0, "low": 14620.0, "close": 14650.0}, {"time": "13:55", "open": 14640.0, "high": 14650.0, "low": 14580.0, "close": 14600.0}, {"time": "14:00", "open": 14600.0, "high": 14600.0, "low": 14530.0, "close": 14540.0}, {"time": "14:05", "open": 14540.0, "high": 14540.0, "low": 14520.0, "close": 14540.0}, {"time": "14:10", "open": 14540.0, "high": 14580.0, "low": 14540.0, "close": 14570.0}, {"time": "14:15", "open": 14570.0, "high": 14710.0, "low": 14570.0, "close": 14690.0}, {"time": "14:20", "open": 14660.0, "high": 14660.0, "low": 14580.0, "close": 14580.0}, {"time": "14:25", "open": 14600.0, "high": 14610.0, "low": 14580.0, "close": 14610.0}, {"time": "14:30", "open": 14620.0, "high": 14690.0, "low": 14620.0, "close": 14690.0}, {"time": "14:35", "open": 14690.0, "high": 14900.0, "low": 14650.0, "close": 14850.0}, {"time": "14:40", "open": 14880.0, "high": 15000.0, "low": 14820.0, "close": 14820.0}, {"time": "14:45", "open": 14830.0, "high": 14850.0, "low": 14780.0, "close": 14820.0}, {"time": "14:50", "open": 14820.0, "high": 14860.0, "low": 14810.0, "close": 14850.0}, {"time": "14:55", "open": 14880.0, "high": 14900.0, "low": 14820.0, "close": 14860.0}, {"time": "15:00", "open": 14860.0, "high": 14880.0, "low": 14740.0, "close": 14790.0}, {"time": "15:05", "open": 14790.0, "high": 14890.0, "low": 14770.0, "close": 14840.0}, {"time": "15:10", "open": 14800.0, "high": 14840.0, "low": 14790.0, "close": 14830.0}, {"time": "15:15", "open": 14820.0, "high": 14820.0, "low": 14740.0, "close": 14740.0}, {"time": "15:20", "open": 14740.0, "high": 14760.0, "low": 14720.0, "close": 14750.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (14,190円)',
+                                data: Array(labels.length).fill(14190.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+            (function() {
+                const ctx = document.getElementById('chart_2').getContext('2d');
+                const data = [{"time": "09:00", "open": 17600.0, "high": 17670.0, "low": 17300.0, "close": 17310.0}, {"time": "09:05", "open": 17300.0, "high": 17400.0, "low": 17260.0, "close": 17400.0}, {"time": "09:10", "open": 17380.0, "high": 17380.0, "low": 17310.0, "close": 17330.0}, {"time": "09:15", "open": 17310.0, "high": 17310.0, "low": 17230.0, "close": 17280.0}, {"time": "09:20", "open": 17280.0, "high": 17330.0, "low": 17260.0, "close": 17330.0}, {"time": "09:25", "open": 17310.0, "high": 17320.0, "low": 17210.0, "close": 17270.0}, {"time": "09:30", "open": 17250.0, "high": 17250.0, "low": 17230.0, "close": 17230.0}, {"time": "09:35", "open": 17250.0, "high": 17250.0, "low": 17220.0, "close": 17250.0}, {"time": "09:40", "open": 17230.0, "high": 17230.0, "low": 17190.0, "close": 17190.0}, {"time": "09:45", "open": 17190.0, "high": 17230.0, "low": 17160.0, "close": 17230.0}, {"time": "09:50", "open": 17220.0, "high": 17250.0, "low": 17220.0, "close": 17230.0}, {"time": "09:55", "open": 17240.0, "high": 17320.0, "low": 17240.0, "close": 17290.0}, {"time": "10:00", "open": 17290.0, "high": 17360.0, "low": 17290.0, "close": 17340.0}, {"time": "10:05", "open": 17320.0, "high": 17370.0, "low": 17320.0, "close": 17350.0}, {"time": "10:10", "open": 17350.0, "high": 17360.0, "low": 17310.0, "close": 17310.0}, {"time": "10:15", "open": 17320.0, "high": 17340.0, "low": 17290.0, "close": 17340.0}, {"time": "10:20", "open": 17350.0, "high": 17370.0, "low": 17340.0, "close": 17360.0}, {"time": "10:25", "open": 17350.0, "high": 17370.0, "low": 17340.0, "close": 17340.0}, {"time": "10:30", "open": 17340.0, "high": 17410.0, "low": 17330.0, "close": 17410.0}, {"time": "10:35", "open": 17410.0, "high": 17480.0, "low": 17410.0, "close": 17450.0}, {"time": "10:40", "open": 17470.0, "high": 17500.0, "low": 17470.0, "close": 17480.0}, {"time": "10:45", "open": 17480.0, "high": 17480.0, "low": 17470.0, "close": 17480.0}, {"time": "10:50", "open": 17460.0, "high": 17470.0, "low": 17460.0, "close": 17470.0}, {"time": "10:55", "open": 17470.0, "high": 17480.0, "low": 17470.0, "close": 17480.0}, {"time": "11:00", "open": 17480.0, "high": 17510.0, "low": 17470.0, "close": 17510.0}, {"time": "11:05", "open": 17500.0, "high": 17570.0, "low": 17500.0, "close": 17550.0}, {"time": "11:10", "open": 17530.0, "high": 17530.0, "low": 17500.0, "close": 17500.0}, {"time": "11:15", "open": 17500.0, "high": 17520.0, "low": 17500.0, "close": 17520.0}, {"time": "11:20", "open": 17530.0, "high": 17530.0, "low": 17530.0, "close": 17530.0}, {"time": "11:25", "open": 17530.0, "high": 17550.0, "low": 17500.0, "close": 17500.0}, {"time": "11:30", "open": 17490.0, "high": 17490.0, "low": 17490.0, "close": 17490.0}, {"time": "12:30", "open": 17470.0, "high": 17520.0, "low": 17460.0, "close": 17520.0}, {"time": "12:35", "open": 17510.0, "high": 17520.0, "low": 17510.0, "close": 17520.0}, {"time": "12:40", "open": 17530.0, "high": 17530.0, "low": 17510.0, "close": 17520.0}, {"time": "12:45", "open": 17520.0, "high": 17540.0, "low": 17520.0, "close": 17530.0}, {"time": "12:50", "open": 17540.0, "high": 17750.0, "low": 17540.0, "close": 17730.0}, {"time": "12:55", "open": 17730.0, "high": 17740.0, "low": 17690.0, "close": 17710.0}, {"time": "13:00", "open": 17710.0, "high": 17790.0, "low": 17710.0, "close": 17760.0}, {"time": "13:05", "open": 17770.0, "high": 17820.0, "low": 17710.0, "close": 17780.0}, {"time": "13:10", "open": 17790.0, "high": 17840.0, "low": 17760.0, "close": 17840.0}, {"time": "13:15", "open": 17840.0, "high": 17850.0, "low": 17770.0, "close": 17810.0}, {"time": "13:20", "open": 17810.0, "high": 17950.0, "low": 17790.0, "close": 17930.0}, {"time": "13:25", "open": 17900.0, "high": 18000.0, "low": 17900.0, "close": 17970.0}, {"time": "13:30", "open": 17990.0, "high": 18120.0, "low": 17990.0, "close": 18030.0}, {"time": "13:35", "open": 18020.0, "high": 18020.0, "low": 17940.0, "close": 17980.0}, {"time": "13:40", "open": 17980.0, "high": 18010.0, "low": 17960.0, "close": 18010.0}, {"time": "13:45", "open": 18020.0, "high": 18020.0, "low": 17990.0, "close": 17990.0}, {"time": "13:50", "open": 17970.0, "high": 17970.0, "low": 17920.0, "close": 17960.0}, {"time": "13:55", "open": 17990.0, "high": 18040.0, "low": 17960.0, "close": 18040.0}, {"time": "14:00", "open": 18020.0, "high": 18030.0, "low": 18000.0, "close": 18030.0}, {"time": "14:05", "open": 18040.0, "high": 18060.0, "low": 18000.0, "close": 18060.0}, {"time": "14:10", "open": 18060.0, "high": 18070.0, "low": 18040.0, "close": 18060.0}, {"time": "14:15", "open": 18050.0, "high": 18050.0, "low": 17990.0, "close": 18050.0}, {"time": "14:20", "open": 18030.0, "high": 18040.0, "low": 17950.0, "close": 17950.0}, {"time": "14:25", "open": 17980.0, "high": 18020.0, "low": 17980.0, "close": 17980.0}, {"time": "14:30", "open": 17990.0, "high": 18000.0, "low": 17960.0, "close": 17980.0}, {"time": "14:35", "open": 17990.0, "high": 17990.0, "low": 17980.0, "close": 17980.0}, {"time": "14:40", "open": 17990.0, "high": 17990.0, "low": 17940.0, "close": 17940.0}, {"time": "14:45", "open": 17940.0, "high": 17980.0, "low": 17940.0, "close": 17950.0}, {"time": "14:50", "open": 17970.0, "high": 17970.0, "low": 17940.0, "close": 17940.0}, {"time": "14:55", "open": 17950.0, "high": 18030.0, "low": 17950.0, "close": 18030.0}, {"time": "15:00", "open": 18010.0, "high": 18010.0, "low": 17980.0, "close": 17990.0}, {"time": "15:05", "open": 18000.0, "high": 18000.0, "low": 17920.0, "close": 17920.0}, {"time": "15:10", "open": 17920.0, "high": 17930.0, "low": 17860.0, "close": 17930.0}, {"time": "15:15", "open": 17930.0, "high": 17980.0, "low": 17910.0, "close": 17980.0}, {"time": "15:20", "open": 17980.0, "high": 18020.0, "low": 17950.0, "close": 18020.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (17,600円)',
+                                data: Array(labels.length).fill(17600.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+            (function() {
+                const ctx = document.getElementById('chart_3').getContext('2d');
+                const data = [{"time": "09:05", "open": 17440.0, "high": 17485.0, "low": 17335.0, "close": 17480.0}, {"time": "09:10", "open": 17500.0, "high": 17520.0, "low": 17400.0, "close": 17470.0}, {"time": "09:15", "open": 17470.0, "high": 17535.0, "low": 17445.0, "close": 17470.0}, {"time": "09:20", "open": 17460.0, "high": 17470.0, "low": 17420.0, "close": 17450.0}, {"time": "09:25", "open": 17455.0, "high": 17480.0, "low": 17440.0, "close": 17455.0}, {"time": "09:30", "open": 17450.0, "high": 17510.0, "low": 17390.0, "close": 17495.0}, {"time": "09:35", "open": 17495.0, "high": 17635.0, "low": 17440.0, "close": 17635.0}, {"time": "09:40", "open": 17625.0, "high": 17640.0, "low": 17520.0, "close": 17555.0}, {"time": "09:45", "open": 17555.0, "high": 17595.0, "low": 17510.0, "close": 17595.0}, {"time": "09:50", "open": 17595.0, "high": 17605.0, "low": 17560.0, "close": 17590.0}, {"time": "09:55", "open": 17590.0, "high": 17710.0, "low": 17590.0, "close": 17630.0}, {"time": "10:00", "open": 17620.0, "high": 17625.0, "low": 17545.0, "close": 17580.0}, {"time": "10:05", "open": 17565.0, "high": 17600.0, "low": 17520.0, "close": 17560.0}, {"time": "10:10", "open": 17565.0, "high": 17600.0, "low": 17545.0, "close": 17600.0}, {"time": "10:15", "open": 17605.0, "high": 17605.0, "low": 17490.0, "close": 17530.0}, {"time": "10:20", "open": 17530.0, "high": 17625.0, "low": 17525.0, "close": 17625.0}, {"time": "10:25", "open": 17630.0, "high": 17685.0, "low": 17615.0, "close": 17655.0}, {"time": "10:30", "open": 17650.0, "high": 17685.0, "low": 17600.0, "close": 17630.0}, {"time": "10:35", "open": 17635.0, "high": 17685.0, "low": 17630.0, "close": 17660.0}, {"time": "10:40", "open": 17660.0, "high": 17680.0, "low": 17630.0, "close": 17680.0}, {"time": "10:45", "open": 17680.0, "high": 17715.0, "low": 17675.0, "close": 17695.0}, {"time": "10:50", "open": 17690.0, "high": 17700.0, "low": 17650.0, "close": 17660.0}, {"time": "10:55", "open": 17660.0, "high": 17690.0, "low": 17660.0, "close": 17675.0}, {"time": "11:00", "open": 17675.0, "high": 17705.0, "low": 17660.0, "close": 17685.0}, {"time": "11:05", "open": 17690.0, "high": 17690.0, "low": 17655.0, "close": 17665.0}, {"time": "11:10", "open": 17680.0, "high": 17710.0, "low": 17675.0, "close": 17700.0}, {"time": "11:15", "open": 17710.0, "high": 17775.0, "low": 17710.0, "close": 17735.0}, {"time": "11:20", "open": 17730.0, "high": 17730.0, "low": 17680.0, "close": 17700.0}, {"time": "11:25", "open": 17710.0, "high": 17740.0, "low": 17705.0, "close": 17735.0}, {"time": "11:30", "open": 17745.0, "high": 17745.0, "low": 17745.0, "close": 17745.0}, {"time": "12:30", "open": 17750.0, "high": 17990.0, "low": 17725.0, "close": 17980.0}, {"time": "12:35", "open": 17990.0, "high": 18120.0, "low": 17855.0, "close": 17895.0}, {"time": "12:40", "open": 17895.0, "high": 17920.0, "low": 17825.0, "close": 17915.0}, {"time": "12:45", "open": 17905.0, "high": 17905.0, "low": 17765.0, "close": 17785.0}, {"time": "12:50", "open": 17790.0, "high": 17855.0, "low": 17785.0, "close": 17855.0}, {"time": "12:55", "open": 17855.0, "high": 17930.0, "low": 17855.0, "close": 17925.0}, {"time": "13:00", "open": 17925.0, "high": 18000.0, "low": 17925.0, "close": 17945.0}, {"time": "13:05", "open": 17945.0, "high": 17945.0, "low": 17880.0, "close": 17900.0}, {"time": "13:10", "open": 17895.0, "high": 17960.0, "low": 17895.0, "close": 17955.0}, {"time": "13:15", "open": 17955.0, "high": 17955.0, "low": 17865.0, "close": 17880.0}, {"time": "13:20", "open": 17875.0, "high": 17900.0, "low": 17830.0, "close": 17830.0}, {"time": "13:25", "open": 17835.0, "high": 17845.0, "low": 17815.0, "close": 17825.0}, {"time": "13:30", "open": 17820.0, "high": 17885.0, "low": 17805.0, "close": 17865.0}, {"time": "13:35", "open": 17865.0, "high": 17890.0, "low": 17835.0, "close": 17885.0}, {"time": "13:40", "open": 17880.0, "high": 17880.0, "low": 17855.0, "close": 17865.0}, {"time": "13:45", "open": 17865.0, "high": 17875.0, "low": 17855.0, "close": 17875.0}, {"time": "13:50", "open": 17870.0, "high": 17890.0, "low": 17830.0, "close": 17875.0}, {"time": "13:55", "open": 17875.0, "high": 17885.0, "low": 17845.0, "close": 17860.0}, {"time": "14:00", "open": 17865.0, "high": 17875.0, "low": 17835.0, "close": 17860.0}, {"time": "14:05", "open": 17860.0, "high": 17920.0, "low": 17860.0, "close": 17895.0}, {"time": "14:10", "open": 17890.0, "high": 17895.0, "low": 17880.0, "close": 17885.0}, {"time": "14:15", "open": 17890.0, "high": 17900.0, "low": 17850.0, "close": 17860.0}, {"time": "14:20", "open": 17865.0, "high": 17870.0, "low": 17855.0, "close": 17860.0}, {"time": "14:25", "open": 17855.0, "high": 17860.0, "low": 17830.0, "close": 17840.0}, {"time": "14:30", "open": 17845.0, "high": 17850.0, "low": 17810.0, "close": 17820.0}, {"time": "14:35", "open": 17820.0, "high": 17820.0, "low": 17805.0, "close": 17815.0}, {"time": "14:40", "open": 17810.0, "high": 17855.0, "low": 17810.0, "close": 17830.0}, {"time": "14:45", "open": 17830.0, "high": 17850.0, "low": 17810.0, "close": 17830.0}, {"time": "14:50", "open": 17825.0, "high": 17885.0, "low": 17815.0, "close": 17885.0}, {"time": "14:55", "open": 17895.0, "high": 17960.0, "low": 17890.0, "close": 17960.0}, {"time": "15:00", "open": 17955.0, "high": 18040.0, "low": 17930.0, "close": 17985.0}, {"time": "15:05", "open": 17990.0, "high": 18035.0, "low": 17990.0, "close": 18025.0}, {"time": "15:10", "open": 18020.0, "high": 18080.0, "low": 18020.0, "close": 18075.0}, {"time": "15:15", "open": 18070.0, "high": 18080.0, "low": 18030.0, "close": 18040.0}, {"time": "15:20", "open": 18030.0, "high": 18030.0, "low": 17890.0, "close": 17915.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (17,740円)',
+                                data: Array(labels.length).fill(17740.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+            (function() {
+                const ctx = document.getElementById('chart_4').getContext('2d');
+                const data = [{"time": "09:05", "open": 12875.0, "high": 12960.0, "low": 12815.0, "close": 12920.0}, {"time": "09:10", "open": 12935.0, "high": 12995.0, "low": 12840.0, "close": 12850.0}, {"time": "09:15", "open": 12860.0, "high": 12920.0, "low": 12775.0, "close": 12795.0}, {"time": "09:20", "open": 12790.0, "high": 12905.0, "low": 12785.0, "close": 12905.0}, {"time": "09:25", "open": 12910.0, "high": 12950.0, "low": 12905.0, "close": 12910.0}, {"time": "09:30", "open": 12915.0, "high": 12955.0, "low": 12905.0, "close": 12950.0}, {"time": "09:35", "open": 12950.0, "high": 12980.0, "low": 12930.0, "close": 12970.0}, {"time": "09:40", "open": 12970.0, "high": 12980.0, "low": 12930.0, "close": 12955.0}, {"time": "09:45", "open": 12950.0, "high": 12990.0, "low": 12835.0, "close": 12925.0}, {"time": "09:50", "open": 12930.0, "high": 13055.0, "low": 12930.0, "close": 13035.0}, {"time": "09:55", "open": 13030.0, "high": 13105.0, "low": 13020.0, "close": 13090.0}, {"time": "10:00", "open": 13090.0, "high": 13125.0, "low": 13075.0, "close": 13125.0}, {"time": "10:05", "open": 13125.0, "high": 13175.0, "low": 13090.0, "close": 13175.0}, {"time": "10:10", "open": 13175.0, "high": 13245.0, "low": 13165.0, "close": 13195.0}, {"time": "10:15", "open": 13200.0, "high": 13205.0, "low": 13110.0, "close": 13110.0}, {"time": "10:20", "open": 13115.0, "high": 13160.0, "low": 13115.0, "close": 13120.0}, {"time": "10:25", "open": 13115.0, "high": 13115.0, "low": 13080.0, "close": 13115.0}, {"time": "10:30", "open": 13115.0, "high": 13145.0, "low": 13040.0, "close": 13055.0}, {"time": "10:35", "open": 13060.0, "high": 13100.0, "low": 13060.0, "close": 13080.0}, {"time": "10:40", "open": 13080.0, "high": 13090.0, "low": 13045.0, "close": 13045.0}, {"time": "10:45", "open": 13060.0, "high": 13070.0, "low": 13030.0, "close": 13065.0}, {"time": "10:50", "open": 13060.0, "high": 13065.0, "low": 13005.0, "close": 13030.0}, {"time": "10:55", "open": 13030.0, "high": 13060.0, "low": 13020.0, "close": 13050.0}, {"time": "11:00", "open": 13050.0, "high": 13080.0, "low": 13035.0, "close": 13075.0}, {"time": "11:05", "open": 13075.0, "high": 13205.0, "low": 13075.0, "close": 13200.0}, {"time": "11:10", "open": 13195.0, "high": 13240.0, "low": 13185.0, "close": 13220.0}, {"time": "11:15", "open": 13220.0, "high": 13280.0, "low": 13215.0, "close": 13270.0}, {"time": "11:20", "open": 13270.0, "high": 13330.0, "low": 13270.0, "close": 13285.0}, {"time": "11:25", "open": 13280.0, "high": 13300.0, "low": 13240.0, "close": 13250.0}, {"time": "11:30", "open": 13265.0, "high": 13265.0, "low": 13265.0, "close": 13265.0}, {"time": "12:30", "open": 13275.0, "high": 13330.0, "low": 13210.0, "close": 13270.0}, {"time": "12:35", "open": 13270.0, "high": 13275.0, "low": 13220.0, "close": 13255.0}, {"time": "12:40", "open": 13245.0, "high": 13250.0, "low": 13205.0, "close": 13225.0}, {"time": "12:45", "open": 13230.0, "high": 13240.0, "low": 13175.0, "close": 13190.0}, {"time": "12:50", "open": 13190.0, "high": 13195.0, "low": 13115.0, "close": 13130.0}, {"time": "12:55", "open": 13130.0, "high": 13140.0, "low": 13100.0, "close": 13105.0}, {"time": "13:00", "open": 13105.0, "high": 13110.0, "low": 13075.0, "close": 13095.0}, {"time": "13:05", "open": 13095.0, "high": 13180.0, "low": 13080.0, "close": 13080.0}, {"time": "13:10", "open": 13075.0, "high": 13075.0, "low": 13030.0, "close": 13055.0}, {"time": "13:15", "open": 13055.0, "high": 13115.0, "low": 13035.0, "close": 13110.0}, {"time": "13:20", "open": 13115.0, "high": 13135.0, "low": 13095.0, "close": 13100.0}, {"time": "13:25", "open": 13100.0, "high": 13115.0, "low": 13095.0, "close": 13105.0}, {"time": "13:30", "open": 13105.0, "high": 13105.0, "low": 13010.0, "close": 13030.0}, {"time": "13:35", "open": 13030.0, "high": 13050.0, "low": 13025.0, "close": 13045.0}, {"time": "13:40", "open": 13040.0, "high": 13040.0, "low": 12985.0, "close": 12995.0}, {"time": "13:45", "open": 12985.0, "high": 12985.0, "low": 12915.0, "close": 12915.0}, {"time": "13:50", "open": 12910.0, "high": 12930.0, "low": 12890.0, "close": 12920.0}, {"time": "13:55", "open": 12915.0, "high": 12960.0, "low": 12905.0, "close": 12925.0}, {"time": "14:00", "open": 12930.0, "high": 12935.0, "low": 12890.0, "close": 12915.0}, {"time": "14:05", "open": 12915.0, "high": 12940.0, "low": 12860.0, "close": 12930.0}, {"time": "14:10", "open": 12940.0, "high": 12970.0, "low": 12920.0, "close": 12950.0}, {"time": "14:15", "open": 12950.0, "high": 12970.0, "low": 12935.0, "close": 12940.0}, {"time": "14:20", "open": 12940.0, "high": 12950.0, "low": 12915.0, "close": 12935.0}, {"time": "14:25", "open": 12935.0, "high": 12950.0, "low": 12925.0, "close": 12925.0}, {"time": "14:30", "open": 12925.0, "high": 12925.0, "low": 12900.0, "close": 12905.0}, {"time": "14:35", "open": 12905.0, "high": 12940.0, "low": 12900.0, "close": 12920.0}, {"time": "14:40", "open": 12925.0, "high": 12960.0, "low": 12920.0, "close": 12960.0}, {"time": "14:45", "open": 12965.0, "high": 13000.0, "low": 12950.0, "close": 12980.0}, {"time": "14:50", "open": 12980.0, "high": 13005.0, "low": 12975.0, "close": 12995.0}, {"time": "14:55", "open": 13000.0, "high": 13005.0, "low": 12955.0, "close": 12980.0}, {"time": "15:00", "open": 12980.0, "high": 12990.0, "low": 12955.0, "close": 12965.0}, {"time": "15:05", "open": 12965.0, "high": 12985.0, "low": 12950.0, "close": 12950.0}, {"time": "15:10", "open": 12950.0, "high": 12990.0, "low": 12940.0, "close": 12990.0}, {"time": "15:15", "open": 12985.0, "high": 12985.0, "low": 12955.0, "close": 12970.0}, {"time": "15:20", "open": 12970.0, "high": 12975.0, "low": 12910.0, "close": 12960.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (12,740円)',
+                                data: Array(labels.length).fill(12740.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+            (function() {
+                const ctx = document.getElementById('chart_5').getContext('2d');
+                const data = [{"time": "09:05", "open": 18400.0, "high": 18650.0, "low": 18110.0, "close": 18490.0}, {"time": "09:10", "open": 18490.0, "high": 18990.0, "low": 18380.0, "close": 18530.0}, {"time": "09:15", "open": 18640.0, "high": 19100.0, "low": 18390.0, "close": 18760.0}, {"time": "09:20", "open": 18780.0, "high": 18830.0, "low": 17600.0, "close": 17720.0}, {"time": "09:25", "open": 17680.0, "high": 18010.0, "low": 17620.0, "close": 17840.0}, {"time": "09:30", "open": 17850.0, "high": 17860.0, "low": 17400.0, "close": 17590.0}, {"time": "09:35", "open": 17600.0, "high": 17650.0, "low": 17190.0, "close": 17410.0}, {"time": "09:40", "open": 17380.0, "high": 17570.0, "low": 17280.0, "close": 17450.0}, {"time": "09:45", "open": 17480.0, "high": 17550.0, "low": 17150.0, "close": 17400.0}, {"time": "09:50", "open": 17290.0, "high": 17590.0, "low": 17290.0, "close": 17530.0}, {"time": "09:55", "open": 17580.0, "high": 17850.0, "low": 17540.0, "close": 17740.0}, {"time": "10:00", "open": 17740.0, "high": 17750.0, "low": 17410.0, "close": 17470.0}, {"time": "10:05", "open": 17470.0, "high": 17470.0, "low": 17230.0, "close": 17310.0}, {"time": "10:10", "open": 17350.0, "high": 17350.0, "low": 17000.0, "close": 17000.0}, {"time": "10:15", "open": 17000.0, "high": 17080.0, "low": 16880.0, "close": 16920.0}, {"time": "10:20", "open": 16960.0, "high": 17090.0, "low": 16950.0, "close": 17000.0}, {"time": "10:25", "open": 17000.0, "high": 17220.0, "low": 17000.0, "close": 17200.0}, {"time": "10:30", "open": 17170.0, "high": 17440.0, "low": 17120.0, "close": 17440.0}, {"time": "10:35", "open": 17440.0, "high": 17550.0, "low": 17340.0, "close": 17530.0}, {"time": "10:40", "open": 17520.0, "high": 17770.0, "low": 17480.0, "close": 17480.0}, {"time": "10:45", "open": 17480.0, "high": 17500.0, "low": 17290.0, "close": 17390.0}, {"time": "10:50", "open": 17390.0, "high": 17390.0, "low": 17220.0, "close": 17380.0}, {"time": "10:55", "open": 17390.0, "high": 17610.0, "low": 17380.0, "close": 17450.0}, {"time": "11:00", "open": 17450.0, "high": 17530.0, "low": 17380.0, "close": 17450.0}, {"time": "11:05", "open": 17430.0, "high": 17430.0, "low": 17100.0, "close": 17190.0}, {"time": "11:10", "open": 17210.0, "high": 17290.0, "low": 17150.0, "close": 17150.0}, {"time": "11:15", "open": 17150.0, "high": 17250.0, "low": 17150.0, "close": 17250.0}, {"time": "11:20", "open": 17270.0, "high": 17330.0, "low": 17170.0, "close": 17170.0}, {"time": "11:25", "open": 17180.0, "high": 17230.0, "low": 17150.0, "close": 17150.0}, {"time": "11:30", "open": 17140.0, "high": 17140.0, "low": 17140.0, "close": 17140.0}, {"time": "12:30", "open": 17140.0, "high": 17550.0, "low": 17140.0, "close": 17450.0}, {"time": "12:35", "open": 17440.0, "high": 17600.0, "low": 17280.0, "close": 17350.0}, {"time": "12:40", "open": 17300.0, "high": 17310.0, "low": 17140.0, "close": 17250.0}, {"time": "12:45", "open": 17270.0, "high": 17370.0, "low": 17150.0, "close": 17320.0}, {"time": "12:50", "open": 17340.0, "high": 17460.0, "low": 17300.0, "close": 17460.0}, {"time": "12:55", "open": 17430.0, "high": 17780.0, "low": 17430.0, "close": 17550.0}, {"time": "13:00", "open": 17550.0, "high": 17700.0, "low": 17500.0, "close": 17540.0}, {"time": "13:05", "open": 17540.0, "high": 17600.0, "low": 17540.0, "close": 17570.0}, {"time": "13:10", "open": 17570.0, "high": 17760.0, "low": 17480.0, "close": 17710.0}, {"time": "13:15", "open": 17760.0, "high": 18160.0, "low": 17630.0, "close": 18130.0}, {"time": "13:20", "open": 18140.0, "high": 18320.0, "low": 17850.0, "close": 17880.0}, {"time": "13:25", "open": 17880.0, "high": 17880.0, "low": 17590.0, "close": 17740.0}, {"time": "13:30", "open": 17780.0, "high": 18000.0, "low": 17670.0, "close": 17860.0}, {"time": "13:35", "open": 17850.0, "high": 17990.0, "low": 17850.0, "close": 17880.0}, {"time": "13:40", "open": 17850.0, "high": 17920.0, "low": 17790.0, "close": 17910.0}, {"time": "13:45", "open": 17880.0, "high": 17880.0, "low": 17660.0, "close": 17730.0}, {"time": "13:50", "open": 17750.0, "high": 17830.0, "low": 17650.0, "close": 17830.0}, {"time": "13:55", "open": 17810.0, "high": 17890.0, "low": 17790.0, "close": 17890.0}, {"time": "14:00", "open": 17850.0, "high": 18100.0, "low": 17850.0, "close": 18100.0}, {"time": "14:05", "open": 18020.0, "high": 18090.0, "low": 17950.0, "close": 18070.0}, {"time": "14:10", "open": 18070.0, "high": 18070.0, "low": 17960.0, "close": 18000.0}, {"time": "14:15", "open": 18050.0, "high": 18240.0, "low": 17900.0, "close": 17960.0}, {"time": "14:20", "open": 17970.0, "high": 18090.0, "low": 17810.0, "close": 17810.0}, {"time": "14:25", "open": 17800.0, "high": 17890.0, "low": 17760.0, "close": 17840.0}, {"time": "14:30", "open": 17800.0, "high": 17830.0, "low": 17790.0, "close": 17810.0}, {"time": "14:35", "open": 17810.0, "high": 17860.0, "low": 17720.0, "close": 17850.0}, {"time": "14:40", "open": 17810.0, "high": 17960.0, "low": 17800.0, "close": 17860.0}, {"time": "14:45", "open": 17850.0, "high": 17920.0, "low": 17810.0, "close": 17870.0}, {"time": "14:50", "open": 17840.0, "high": 17930.0, "low": 17830.0, "close": 17930.0}, {"time": "14:55", "open": 17860.0, "high": 17970.0, "low": 17800.0, "close": 17850.0}, {"time": "15:00", "open": 17850.0, "high": 17870.0, "low": 17820.0, "close": 17870.0}, {"time": "15:05", "open": 17840.0, "high": 18320.0, "low": 17840.0, "close": 18260.0}, {"time": "15:10", "open": 18230.0, "high": 18260.0, "low": 18080.0, "close": 18130.0}, {"time": "15:15", "open": 18150.0, "high": 18480.0, "low": 18120.0, "close": 18270.0}, {"time": "15:20", "open": 18270.0, "high": 18650.0, "low": 18270.0, "close": 18450.0}];
+                const labels = data.map(d => d.time);
+                const closeData = data.map(d => d.close);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '株価',
+                                data: closeData,
+                                borderColor: '#60a5fa',
+                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: '空売り価格 (18,400円)',
+                                data: Array(labels.length).fill(18400.0),
+                                borderColor: '#f87171',
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#888', maxRotation: 45, font: { size: 10 } },
+                                grid: { color: '#333' },
+                            },
+                            y: {
+                                ticks: { color: '#888', font: { size: 10 } },
+                                grid: { color: '#333' },
+                            }
+                        }
+                    }
+                });
+            })();
+            
+    </script>
+</body>
+</html>

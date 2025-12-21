@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>投資効率比較 v2 vs v3</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        h2 { color: #ff6b6b; border-bottom: 1px solid #444; padding-bottom: 8px; margin-top: 40px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 12px 16px; }
+        th { background: #2d2d44; color: #00d4ff; text-align: center; }
+        td { text-align: right; }
+        td:first-child { text-align: left; }
+        tr:nth-child(even) { background: #242438; }
+        tr:hover { background: #3d3d5c; }
+        .winner { background: #1a4d1a !important; color: #00ff88; font-weight: bold; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .highlight { background: #4a3d1a !important; }
+        .version-tag { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .v2-tag { background: #4a90d9; }
+        .v3-tag { background: #d94a90; }
+        .conclusion-box { background: linear-gradient(135deg, #1a4d1a 0%, #2d2d44 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border: 2px solid #00ff88; }
+        .conclusion-box h3 { color: #00ff88; margin-top: 0; font-size: 20px; }
+        .big-number { font-size: 32px; font-weight: bold; color: #00d4ff; }
+        .metric-card { display: inline-block; background: #2d2d44; padding: 20px; border-radius: 8px; margin: 10px; text-align: center; min-width: 180px; }
+        .metric-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .metric-value { font-size: 24px; font-weight: bold; }
+        .metric-v2 { color: #4a90d9; }
+        .metric-v3 { color: #d94a90; }
+    </style>
+</head>
+<body>
+    <h1>💰 投資効率比較 - STRONG_BUYのみ</h1>
+    <p>生成日時: 2025-11-29 23:36</p>
+    <p>目的: <strong>少ない投資額でお金を増やす</strong></p>
+
+    <div style="text-align:center; margin: 30px 0;">
+        <div class="metric-card">
+            <div class="metric-label">v2 平均ROI (5日)</div>
+            <div class="metric-value metric-v2">4.05%</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">v3 平均ROI (5日)</div>
+            <div class="metric-value metric-v3">2.42%</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">差</div>
+            <div class="metric-value positive">+1.64%</div>
+        </div>
+    </div>
+
+    <h2>5日保有 パフォーマンス</h2>
+    <table>
+        <tr>
+            <th style="text-align:left">指標</th>
+            <th><span class="version-tag v2-tag">v2</span></th>
+            <th><span class="version-tag v3-tag">v3</span></th>
+            <th>優位</th>
+        </tr>
+        <tr>
+            <td>シグナル数</td>
+            <td>121</td>
+            <td>434</td>
+            <td>-</td>
+        </tr>
+        <tr class="highlight">
+            <td><strong>平均ROI</strong></td>
+            <td class="winner">4.05%</td>
+            <td class="">2.42%</td>
+            <td class="positive">v2</td>
+        </tr>
+        <tr class="highlight">
+            <td><strong>1シグナルあたり利益</strong></td>
+            <td class="winner">21,797円</td>
+            <td class="">10,919円</td>
+            <td class="positive">v2</td>
+        </tr>
+        <tr>
+            <td>平均投資額 (100株)</td>
+            <td>580,676円</td>
+            <td>484,322円</td>
+            <td class="positive">v3</td>
+        </tr>
+        <tr>
+            <td>総投資額</td>
+            <td>72,584,502円</td>
+            <td>212,132,980円</td>
+            <td>-</td>
+        </tr>
+        <tr>
+            <td>総ROI</td>
+            <td class="winner">3.63%</td>
+            <td class="">2.23%</td>
+            <td class="positive">v2</td>
+        </tr>
+        <tr>
+            <td>合計利益</td>
+            <td>2,637,442円</td>
+            <td class="winner">4,738,685円</td>
+            <td class="positive">v3</td>
+        </tr>
+    </table>
+
+    <h2>1日保有 パフォーマンス</h2>
+    <table>
+        <tr>
+            <th style="text-align:left">指標</th>
+            <th><span class="version-tag v2-tag">v2</span></th>
+            <th><span class="version-tag v3-tag">v3</span></th>
+            <th>優位</th>
+        </tr>
+        <tr class="highlight">
+            <td><strong>平均ROI</strong></td>
+            <td class="winner">0.59%</td>
+            <td class="">0.34%</td>
+            <td class="positive">v2</td>
+        </tr>
+        <tr class="highlight">
+            <td><strong>1シグナルあたり利益</strong></td>
+            <td class="winner">3,174円</td>
+            <td class="">1,690円</td>
+            <td class="positive">v2</td>
+        </tr>
+        <tr>
+            <td>合計利益</td>
+            <td>396,733円</td>
+            <td class="winner">740,008円</td>
+            <td class="positive">v3</td>
+        </tr>
+    </table>
+
+    <div class="conclusion-box">
+        <h3>💡 結論</h3>
+        <p><strong>少ない投資でお金を増やすなら → v2</strong></p>
+        <ul>
+            <li>平均ROI: <span class="big-number">4.05%</span> (5日保有)</li>
+            <li>1シグナルあたり: <strong>21,797円</strong></li>
+            <li>v2はシグナル数が少ないが、1回あたりの利益効率が高い</li>
+        </ul>
+        
+        <h4 style="margin-top:20px;">運用提案</h4>
+        <ul>
+            <li><strong>資金が限られている場合:</strong> v2 (高ROI、少ないシグナル)</li>
+            <li><strong>資金に余裕がある場合:</strong> v3 (合計利益最大化)</li>
+            <li><strong>ハイブリッド:</strong> v3でシグナル発生 + v2条件も満たす銘柄のみトレード</li>
+        </ul>
+    </div>
+</body>
+</html>

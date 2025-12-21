@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Static銘柄 v3分析 (テクニカル+財務+空売り)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        h2 { color: #ff6b6b; border-bottom: 1px solid #444; padding-bottom: 8px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #444; padding: 8px 12px; text-align: left; }
+        th { background: #2d2d44; color: #00d4ff; }
+        tr:nth-child(even) { background: #242438; }
+        tr:hover { background: #3d3d5c; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .strong-buy { background: #1a4d1a !important; }
+        .buy { background: #2d4d2d !important; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-tech { background: #4a90d9; }
+        .badge-fin { background: #d94a90; }
+        .badge-margin { background: #90d94a; }
+        .score-detail { font-size: 11px; color: #aaa; }
+        .summary-card { background: #2d2d44; padding: 20px; border-radius: 8px; margin: 10px 0; display: inline-block; min-width: 200px; }
+        .summary-value { font-size: 24px; font-weight: bold; color: #00d4ff; }
+        .r { text-align: right; }
+        .c { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Static銘柄 v3分析レポート</h1>
+    <p>生成日時: 2025-11-29 23:25</p>
+    <p>期間: 2024-12-09 〜 2025-11-26</p>
+
+    <h2>サマリー</h2>
+    <div>
+        <div class="summary-card">
+            <div>総シグナル数</div>
+            <div class="summary-value">3,995</div>
+        </div>
+        <div class="summary-card">
+            <div>STRONG_BUY数</div>
+            <div class="summary-value">438</div>
+        </div>
+        <div class="summary-card">
+            <div>BUY数</div>
+            <div class="summary-value">3,557</div>
+        </div>
+    </div>
+
+    <h2>シグナル別パフォーマンス</h2>
+    <table>
+        <tr>
+            <th>シグナル</th>
+            <th>保有期間</th>
+            <th class="r">件数</th>
+            <th class="r">勝率</th>
+            <th class="r">平均リターン</th>
+            <th class="r">合計利益(100株)</th>
+        </tr>
+        <tr>
+            <td>STRONG_BUY</td>
+            <td>1日</td>
+            <td class="r">438</td>
+            <td class="negative r">48.9%</td>
+            <td class="positive r">+0.34%</td>
+            <td class="r">740,008円</td>
+        </tr>
+        <tr>
+            <td>STRONG_BUY</td>
+            <td>5日</td>
+            <td class="r">434</td>
+            <td class="positive r">64.5%</td>
+            <td class="positive r">+2.42%</td>
+            <td class="r">4,738,685円</td>
+        </tr>
+        <tr>
+            <td>BUY</td>
+            <td>1日</td>
+            <td class="r">3557</td>
+            <td class="r">52.2%</td>
+            <td class="positive r">+0.27%</td>
+            <td class="r">3,241,568円</td>
+        </tr>
+        <tr>
+            <td>BUY</td>
+            <td>5日</td>
+            <td class="r">3501</td>
+            <td class="r">58.9%</td>
+            <td class="positive r">+1.32%</td>
+            <td class="r">19,470,536円</td>
+        </tr>
+    </table>
+
+    <h2>スコア分解（平均）</h2>
+    <table>
+        <tr>
+            <th>シグナル</th>
+            <th class="r"><span class="badge badge-tech">Tech</span></th>
+            <th class="r"><span class="badge badge-fin">Fin</span></th>
+            <th class="r"><span class="badge badge-margin">Margin</span></th>
+            <th class="r">Total</th>
+        </tr>
+        <tr>
+            <td>BUY</td>
+            <td class="r">12.2</td>
+            <td class="r">23.6</td>
+            <td class="r">3.1</td>
+            <td class="r"><strong>38.9</strong></td>
+        </tr>
+        <tr>
+            <td>STRONG_BUY</td>
+            <td class="r">41.9</td>
+            <td class="r">23.5</td>
+            <td class="r">3.0</td>
+            <td class="r"><strong>68.4</strong></td>
+        </tr>
+    </table>
+
+    <h2>直近STRONG_BUYシグナル (30件)</h2>
+    <table>
+        <tr>
+            <th>日付</th>
+            <th>銘柄</th>
+            <th class="r">Total</th>
+            <th class="r">始値</th>
+            <th class="r">終値(1日)</th>
+            <th class="r">1日利益</th>
+            <th class="c">1日</th>
+            <th class="r">終値(5日)</th>
+            <th class="r">5日利益</th>
+            <th class="c">5日</th>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>9984.T ソフトバンクG</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">15,640円</td>
+            <td class="r">16,840円</td>
+            <td class="r positive">+120,000円</td>
+            <td class="c positive">○</td>
+            <td class="r">-</td>
+            <td class="r">-</td>
+            <td class="c">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>7013.T IHI</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">2,685円</td>
+            <td class="r">2,770円</td>
+            <td class="r positive">+8,550円</td>
+            <td class="c positive">○</td>
+            <td class="r">-</td>
+            <td class="r">-</td>
+            <td class="c">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-25</td>
+            <td>7012.T 川崎重工</td>
+            <td class="r"><strong>75</strong></td>
+            <td class="r">9,855円</td>
+            <td class="r">9,935円</td>
+            <td class="r positive">+8,000円</td>
+            <td class="c positive">○</td>
+            <td class="r">-</td>
+            <td class="r">-</td>
+            <td class="c">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-21</td>
+            <td>7013.T IHI</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">2,678円</td>
+            <td class="r">2,740円</td>
+            <td class="r positive">+6,150円</td>
+            <td class="c positive">○</td>
+            <td class="r">-</td>
+            <td class="r">-</td>
+            <td class="c">-</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-18</td>
+            <td>7013.T IHI</td>
+            <td class="r"><strong>65</strong></td>
+            <td class="r">2,747円</td>
+            <td class="r">2,811円</td>
+            <td class="r positive">+6,400円</td>
+            <td class="c positive">○</td>
+            <td class="r">2,770円</td>
+            <td class="r positive">+2,350円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-18</td>
+            <td>7012.T 川崎重工</td>
+            <td class="r"><strong>65</strong></td>
+            <td class="r">10,100円</td>
+            <td class="r">10,235円</td>
+            <td class="r positive">+13,500円</td>
+            <td class="c positive">○</td>
+            <td class="r">9,935円</td>
+            <td class="r negative">-16,500円</td>
+            <td class="c negative">×</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-17</td>
+            <td>9021.T JR西日本</td>
+            <td class="r"><strong>65</strong></td>
+            <td class="r">3,058円</td>
+            <td class="r">3,062円</td>
+            <td class="r positive">+400円</td>
+            <td class="c positive">○</td>
+            <td class="r">3,170円</td>
+            <td class="r positive">+11,200円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-17</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">3,463円</td>
+            <td class="r">3,526円</td>
+            <td class="r positive">+6,300円</td>
+            <td class="c positive">○</td>
+            <td class="r">3,862円</td>
+            <td class="r positive">+39,900円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-13</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">3,505円</td>
+            <td class="r">3,481円</td>
+            <td class="r negative">-2,400円</td>
+            <td class="c negative">×</td>
+            <td class="r">3,700円</td>
+            <td class="r positive">+19,500円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-12</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">3,451円</td>
+            <td class="r">3,505円</td>
+            <td class="r positive">+5,400円</td>
+            <td class="c positive">○</td>
+            <td class="r">3,627円</td>
+            <td class="r positive">+17,600円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-11</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">3,484円</td>
+            <td class="r">3,425円</td>
+            <td class="r negative">-5,900円</td>
+            <td class="c negative">×</td>
+            <td class="r">3,526円</td>
+            <td class="r positive">+4,200円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-10</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">3,295円</td>
+            <td class="r">3,465円</td>
+            <td class="r positive">+17,000円</td>
+            <td class="c positive">○</td>
+            <td class="r">3,443円</td>
+            <td class="r positive">+14,800円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-07</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>75</strong></td>
+            <td class="r">3,370円</td>
+            <td class="r">3,392円</td>
+            <td class="r positive">+2,200円</td>
+            <td class="c positive">○</td>
+            <td class="r">3,481円</td>
+            <td class="r positive">+11,100円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-06</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>90</strong></td>
+            <td class="r">3,403円</td>
+            <td class="r">3,305円</td>
+            <td class="r negative">-9,800円</td>
+            <td class="c negative">×</td>
+            <td class="r">3,505円</td>
+            <td class="r positive">+10,200円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-06</td>
+            <td>4063.T 信越化学</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">4,505円</td>
+            <td class="r">4,551円</td>
+            <td class="r positive">+4,600円</td>
+            <td class="c positive">○</td>
+            <td class="r">4,641円</td>
+            <td class="r positive">+13,600円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-05</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>75</strong></td>
+            <td class="r">3,400円</td>
+            <td class="r">3,368円</td>
+            <td class="r negative">-3,200円</td>
+            <td class="c negative">×</td>
+            <td class="r">3,425円</td>
+            <td class="r positive">+2,500円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-04</td>
+            <td>9022.T JR東海</td>
+            <td class="r"><strong>85</strong></td>
+            <td class="r">3,841円</td>
+            <td class="r">3,990円</td>
+            <td class="r positive">+14,900円</td>
+            <td class="c positive">○</td>
+            <td class="r">4,028円</td>
+            <td class="r positive">+18,700円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-04</td>
+            <td>4568.T 第一三共</td>
+            <td class="r"><strong>75</strong></td>
+            <td class="r">3,438円</td>
+            <td class="r">3,411円</td>
+            <td class="r negative">-2,700円</td>
+            <td class="c negative">×</td>
+            <td class="r">3,465円</td>
+            <td class="r positive">+2,700円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-11-04</td>
+            <td>4307.T 野村総研</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">5,566円</td>
+            <td class="r">5,712円</td>
+            <td class="r positive">+14,600円</td>
+            <td class="c positive">○</td>
+            <td class="r">6,195円</td>
+            <td class="r positive">+62,900円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-30</td>
+            <td>9022.T JR東海</td>
+            <td class="r"><strong>80</strong></td>
+            <td class="r">3,794円</td>
+            <td class="r">3,761円</td>
+            <td class="r negative">-3,300円</td>
+            <td class="c negative">×</td>
+            <td class="r">4,128円</td>
+            <td class="r positive">+33,400円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-30</td>
+            <td>4063.T 信越化学</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">4,668円</td>
+            <td class="r">4,644円</td>
+            <td class="r negative">-2,400円</td>
+            <td class="c negative">×</td>
+            <td class="r">4,551円</td>
+            <td class="r negative">-11,700円</td>
+            <td class="c negative">×</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-29</td>
+            <td>4063.T 信越化学</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">4,620円</td>
+            <td class="r">4,655円</td>
+            <td class="r positive">+3,500円</td>
+            <td class="c positive">○</td>
+            <td class="r">4,529円</td>
+            <td class="r negative">-9,100円</td>
+            <td class="c negative">×</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-23</td>
+            <td>6723.T ルネサス</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">1,888円</td>
+            <td class="r">1,890円</td>
+            <td class="r positive">+200円</td>
+            <td class="c positive">○</td>
+            <td class="r">1,911円</td>
+            <td class="r positive">+2,300円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-17</td>
+            <td>7735.T SCREEN</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">13,810円</td>
+            <td class="r">13,800円</td>
+            <td class="r negative">-1,000円</td>
+            <td class="c negative">×</td>
+            <td class="r">13,750円</td>
+            <td class="r negative">-6,000円</td>
+            <td class="c negative">×</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-17</td>
+            <td>6098.T リクルート</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">7,610円</td>
+            <td class="r">7,910円</td>
+            <td class="r positive">+30,000円</td>
+            <td class="c positive">○</td>
+            <td class="r">7,905円</td>
+            <td class="r positive">+29,500円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-17</td>
+            <td>9005.T 東急</td>
+            <td class="r"><strong>80</strong></td>
+            <td class="r">1,726円</td>
+            <td class="r">1,728円</td>
+            <td class="r positive">+150円</td>
+            <td class="c positive">○</td>
+            <td class="r">1,732円</td>
+            <td class="r positive">+650円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-16</td>
+            <td>9005.T 東急</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">1,724円</td>
+            <td class="r">1,717円</td>
+            <td class="r negative">-750円</td>
+            <td class="c negative">×</td>
+            <td class="r">1,732円</td>
+            <td class="r positive">+700円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-15</td>
+            <td>9005.T 東急</td>
+            <td class="r"><strong>70</strong></td>
+            <td class="r">1,716円</td>
+            <td class="r">1,708円</td>
+            <td class="r negative">-850円</td>
+            <td class="c negative">×</td>
+            <td class="r">1,736円</td>
+            <td class="r positive">+2,000円</td>
+            <td class="c positive">○</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-09</td>
+            <td>9005.T 東急</td>
+            <td class="r"><strong>75</strong></td>
+            <td class="r">1,730円</td>
+            <td class="r">1,714円</td>
+            <td class="r negative">-1,600円</td>
+            <td class="c negative">×</td>
+            <td class="r">1,717円</td>
+            <td class="r negative">-1,350円</td>
+            <td class="c negative">×</td>
+        </tr>
+        <tr class="strong-buy">
+            <td>2025-10-08</td>
+            <td>9005.T 東急</td>
+            <td class="r"><strong>60</strong></td>
+            <td class="r">1,742円</td>
+            <td class="r">1,737円</td>
+            <td class="r negative">-500円</td>
+            <td class="c negative">×</td>
+            <td class="r">1,708円</td>
+            <td class="r negative">-3,450円</td>
+            <td class="c negative">×</td>
+        </tr>
+    </table>
+</body>
+</html>

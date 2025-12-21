@@ -134,6 +134,84 @@ def load_trading_restrictions() -> Tuple[dict, dict, set]:
     return _margin_code_map, _margin_name_map, _jsf_stop_codes
 
 
+def load_day_trade_list() -> pd.DataFrame:
+    """
+    grok_day_trade_list.parquet を読み込み（シングルトン）
+
+    Returns:
+        pd.DataFrame: デイトレードリスト
+    """
+    global _day_trade_list
+
+    if _day_trade_list is not None:
+        return _day_trade_list
+
+    # S3からダウンロード
+    cfg = load_s3_config()
+    if cfg:
+        local_path = PARQUET_DIR / "grok_day_trade_list.parquet"
+        s3_key = "grok_day_trade_list.parquet"
+        if download_file(cfg, s3_key, local_path):
+            _day_trade_list = pd.read_parquet(local_path)
+            print(f"[INFO] Day trade list loaded: {len(_day_trade_list)} stocks from S3")
+            return _day_trade_list
+
+    # ローカルファイルをチェック
+    local_path = PARQUET_DIR / "grok_day_trade_list.parquet"
+    if local_path.exists():
+        _day_trade_list = pd.read_parquet(local_path)
+        print(f"[INFO] Day trade list loaded: {len(_day_trade_list)} stocks from local")
+        return _day_trade_list
+
+    print("[WARN] grok_day_trade_list.parquet not found")
+    _day_trade_list = pd.DataFrame()
+    return _day_trade_list
+
+
+def get_day_trade_info(ticker: str) -> dict:
+    """
+    銘柄のデイトレード情報を取得
+
+    Args:
+        ticker: 銘柄コード (例: "7203.T")
+
+    Returns:
+        dict with shortable, day_trade, ng, day_trade_available_shares
+    """
+    df = load_day_trade_list()
+
+    if df.empty:
+        return {
+            'shortable': False,
+            'day_trade': True,
+            'ng': False,
+            'day_trade_available_shares': None,
+        }
+
+    match = df[df['ticker'] == ticker]
+    if match.empty:
+        return {
+            'shortable': False,
+            'day_trade': True,
+            'ng': False,
+            'day_trade_available_shares': None,
+        }
+
+    row = match.iloc[0]
+    shares = row.get('day_trade_available_shares')
+    if pd.isna(shares):
+        shares = None
+    else:
+        shares = int(shares)
+
+    return {
+        'shortable': bool(row.get('shortable', False)),
+        'day_trade': bool(row.get('day_trade', True)),
+        'ng': bool(row.get('ng', False)),
+        'day_trade_available_shares': shares,
+    }
+
+
 def get_trading_restriction_info(ticker: str) -> dict:
     """
     銘柄の取引制限情報を取得
@@ -572,6 +650,9 @@ def run_backtest() -> pd.DataFrame:
         # 取引制限情報を取得
         trading_restrictions = get_trading_restriction_info(ticker)
 
+        # デイトレード情報を取得（grok_day_trade_list.parquet）
+        day_trade_info = get_day_trade_info(ticker)
+
         result = {
             "selection_date": selection_date.strftime("%Y-%m-%d"),
             "backtest_date": backtest_date.strftime("%Y-%m-%d"),
@@ -583,11 +664,16 @@ def run_backtest() -> pd.DataFrame:
             "selection_score": row.get("selection_score", 0),
             **backtest_data,
             "prompt_version": row.get("prompt_version", "v1_1_web_search"),
-            # 取引制限カラム
+            # 取引制限カラム（margin_code_master.parquet）
             "margin_code": trading_restrictions['margin_code'],
             "margin_code_name": trading_restrictions['margin_code_name'],
             "jsf_restricted": trading_restrictions['jsf_restricted'],
             "is_shortable": trading_restrictions['is_shortable'],
+            # デイトレード情報（grok_day_trade_list.parquet）
+            "shortable": day_trade_info['shortable'],
+            "day_trade": day_trade_info['day_trade'],
+            "ng": day_trade_info['ng'],
+            "day_trade_available_shares": day_trade_info['day_trade_available_shares'],
         }
 
         results.append(result)

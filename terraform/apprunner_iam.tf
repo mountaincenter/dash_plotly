@@ -52,9 +52,9 @@ resource "aws_iam_role" "apprunner_instance" {
   }
 }
 
-# S3 read policy for App Runner instance
-resource "aws_iam_role_policy" "apprunner_s3_read" {
-  name = "S3ReadPolicy"
+# S3 read/write policy for App Runner instance
+resource "aws_iam_role_policy" "apprunner_s3_access" {
+  name = "S3AccessPolicy"
   role = aws_iam_role.apprunner_instance.id
 
   policy = jsonencode({
@@ -64,6 +64,7 @@ resource "aws_iam_role_policy" "apprunner_s3_read" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
+          "s3:PutObject",
           "s3:ListBucket"
         ]
         Resource = [

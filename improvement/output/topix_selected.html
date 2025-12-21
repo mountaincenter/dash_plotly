@@ -1,0 +1,3494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOPIX Selected - STRONG_BUY厳選銘柄</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1a2332;
+            --bg-card: #0d1421;
+            --border-color: #1e3a5f;
+            --text-primary: #e8f4f8;
+            --text-secondary: #8899a6;
+            --text-muted: #4a5568;
+            --accent-cyan: #00d4aa;
+            --accent-magenta: #ff6b9d;
+            --accent-purple: #a855f7;
+            --accent-blue: #54a0ff;
+            --accent-orange: #ff9f43;
+            --positive: #00d4aa;
+            --negative: #ff6b9d;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(0,212,170,0.01) 0px, rgba(0,212,170,0.01) 1px, transparent 1px, transparent 3px);
+            z-index: 9999;
+        }
+        
+        .container { max-width: 1800px; margin: 0 auto; padding: 20px; }
+        
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 32px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple), var(--accent-magenta));
+        }
+        
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2em;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header .subtitle { color: var(--text-secondary); margin-top: 8px; }
+        .header .meta { color: var(--text-muted); font-size: 0.85em; margin-top: 16px; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        
+        .stat-card .label {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+        
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2em;
+            color: var(--accent-cyan);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title::before { content: '◆'; font-size: 0.7em; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+        }
+        
+        th, td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+        }
+        
+        .number { text-align: right; font-variant-numeric: tabular-nums; }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+        
+        .badge.core30 { background: rgba(168,85,247,0.2); color: var(--accent-purple); }
+        .badge.large70 { background: rgba(84,160,255,0.2); color: var(--accent-blue); }
+        .badge.mid400 { background: rgba(255,159,67,0.2); color: var(--accent-orange); }
+        
+        tr:hover { background: rgba(0,212,170,0.05); }
+        
+        .highlight { background: rgba(0,212,170,0.1); }
+        
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85em;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>TOPIX Selected</h1>
+            <div class="subtitle">STRONG_BUY 厳選214銘柄（2年バックテスト）</div>
+            <div class="meta">
+                生成日時: 2025-12-02 01:56 | 条件: STRONG_BUY 3回以上、翌日勝率55%以上、期待値プラス
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="value">214</div>
+                <div class="label">厳選銘柄数</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">15</div>
+                <div class="label">Core30</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">39</div>
+                <div class="label">Large70</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">160</div>
+                <div class="label">Mid400</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">+2.2%</div>
+                <div class="label">平均翌日リターン</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">72%</div>
+                <div class="label">平均翌日勝率</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3 class="section-title">銘柄一覧（100株あたりの期待利益）</h3>
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="filterTable('all')">全て</button>
+                <button class="filter-btn" onclick="filterTable('Core')">Core30</button>
+                <button class="filter-btn" onclick="filterTable('Large')">Large70</button>
+                <button class="filter-btn" onclick="filterTable('Mid')">Mid400</button>
+            </div>
+            <div style="overflow-x: auto; max-height: 70vh;">
+            <table id="mainTable">
+                <thead>
+                    <tr>
+                        <th>コード</th>
+                        <th>銘柄名</th>
+                        <th>区分</th>
+                        <th>セクター</th>
+                        <th class="number">件数</th>
+                        <th class="number">平均株価</th>
+                        <th class="number">翌日リターン</th>
+                        <th class="number">翌日勝率</th>
+                        <th class="number">翌日利益/100株</th>
+                        <th class="number">5日リターン</th>
+                        <th class="number">5日勝率</th>
+                        <th class="number">5日利益/100株</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td>7003.T</td>
+            <td>三井Ｅ＆Ｓ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">5</td>
+            <td class="number">¥1,203</td>
+            <td class="number positive">+9.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥11,455</td>
+            <td class="number positive">+15.4%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥18,530</td>
+        </tr>
+        
+        <tr>
+            <td>3402.T</td>
+            <td>東レ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>繊維製品</td>
+            <td class="number">3</td>
+            <td class="number">¥779</td>
+            <td class="number positive">+8.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,731</td>
+            <td class="number positive">+7.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,648</td>
+        </tr>
+        
+        <tr>
+            <td>8012.T</td>
+            <td>長瀬産業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">4</td>
+            <td class="number">¥2,321</td>
+            <td class="number positive">+7.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥17,897</td>
+            <td class="number positive">+7.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥17,966</td>
+        </tr>
+        
+        <tr>
+            <td>7181.T</td>
+            <td>かんぽ生命保険</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>保険業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,470</td>
+            <td class="number positive">+7.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥18,700</td>
+            <td class="number positive">+5.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥12,672</td>
+        </tr>
+        
+        <tr>
+            <td>3407.T</td>
+            <td>旭化成</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>化学</td>
+            <td class="number">3</td>
+            <td class="number">¥883</td>
+            <td class="number positive">+6.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,916</td>
+            <td class="number positive">+6.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,448</td>
+        </tr>
+        
+        <tr>
+            <td>1928.T</td>
+            <td>積水ハウス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>建設業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,891</td>
+            <td class="number positive">+6.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥18,875</td>
+            <td class="number positive">+7.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥22,258</td>
+        </tr>
+        
+        <tr>
+            <td>8801.T</td>
+            <td>三井不動産</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>不動産業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,300</td>
+            <td class="number positive">+6.3%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥8,152</td>
+            <td class="number positive">+6.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥8,438</td>
+        </tr>
+        
+        <tr>
+            <td>9101.T</td>
+            <td>日本郵船</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>海運業</td>
+            <td class="number">3</td>
+            <td class="number">¥4,151</td>
+            <td class="number positive">+6.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥25,694</td>
+            <td class="number positive">+6.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥27,604</td>
+        </tr>
+        
+        <tr>
+            <td>7011.T</td>
+            <td>三菱重工業</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>機械</td>
+            <td class="number">9</td>
+            <td class="number">¥2,301</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">89%</td>
+            <td class="number positive">¥13,987</td>
+            <td class="number positive">+13.1%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥30,136</td>
+        </tr>
+        
+        <tr>
+            <td>9104.T</td>
+            <td>商船三井</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>海運業</td>
+            <td class="number">5</td>
+            <td class="number">¥4,338</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥26,373</td>
+            <td class="number positive">+8.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥37,261</td>
+        </tr>
+        
+        <tr>
+            <td>4088.T</td>
+            <td>エア・ウォーター</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">4</td>
+            <td class="number">¥1,876</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥11,389</td>
+            <td class="number positive">+9.0%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥16,849</td>
+        </tr>
+        
+        <tr>
+            <td>4205.T</td>
+            <td>日本ゼオン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">3</td>
+            <td class="number">¥1,180</td>
+            <td class="number positive">+5.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,608</td>
+            <td class="number positive">+5.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,832</td>
+        </tr>
+        
+        <tr>
+            <td>8377.T</td>
+            <td>ほくほくフィナンシャルグ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,722</td>
+            <td class="number positive">+5.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥9,606</td>
+            <td class="number positive">+14.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥25,410</td>
+        </tr>
+        
+        <tr>
+            <td>5832.T</td>
+            <td>ちゅうぎんフィナンシャル</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,286</td>
+            <td class="number positive">+5.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥6,726</td>
+            <td class="number positive">+9.4%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥12,090</td>
+        </tr>
+        
+        <tr>
+            <td>2784.T</td>
+            <td>アルフレッサ　ホールディ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,054</td>
+            <td class="number positive">+5.0%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥10,270</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥8,339</td>
+        </tr>
+        
+        <tr>
+            <td>7013.T</td>
+            <td>ＩＨＩ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">6</td>
+            <td class="number">¥1,347</td>
+            <td class="number positive">+4.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,224</td>
+            <td class="number positive">+10.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥13,674</td>
+        </tr>
+        
+        <tr>
+            <td>4732.T</td>
+            <td>ユー・エス・エス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,359</td>
+            <td class="number positive">+4.4%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,018</td>
+            <td class="number positive">+5.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥7,050</td>
+        </tr>
+        
+        <tr>
+            <td>5830.T</td>
+            <td>いよぎんホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,280</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥5,493</td>
+            <td class="number positive">+10.4%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥13,355</td>
+        </tr>
+        
+        <tr>
+            <td>6702.T</td>
+            <td>富士通</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">5</td>
+            <td class="number">¥2,513</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥10,730</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥15,279</td>
+        </tr>
+        
+        <tr>
+            <td>6448.T</td>
+            <td>ブラザー工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">4</td>
+            <td class="number">¥2,298</td>
+            <td class="number positive">+4.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥9,743</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥5,262</td>
+        </tr>
+        
+        <tr>
+            <td>6501.T</td>
+            <td>日立製作所</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>電気機器</td>
+            <td class="number">8</td>
+            <td class="number">¥3,040</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥12,374</td>
+            <td class="number positive">+10.9%</td>
+            <td class="number">88%</td>
+            <td class="number positive">¥33,018</td>
+        </tr>
+        
+        <tr>
+            <td>5831.T</td>
+            <td>しずおかフィナンシャルグ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,251</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥5,092</td>
+            <td class="number positive">+8.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥10,660</td>
+        </tr>
+        
+        <tr>
+            <td>8572.T</td>
+            <td>アコム</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他金融業</td>
+            <td class="number">4</td>
+            <td class="number">¥323</td>
+            <td class="number positive">+4.0%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥1,298</td>
+            <td class="number positive">+7.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥2,334</td>
+        </tr>
+        
+        <tr>
+            <td>3941.T</td>
+            <td>レンゴー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>パルプ・紙</td>
+            <td class="number">3</td>
+            <td class="number">¥822</td>
+            <td class="number positive">+4.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥3,270</td>
+            <td class="number positive">+5.2%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥4,289</td>
+        </tr>
+        
+        <tr>
+            <td>6762.T</td>
+            <td>ＴＤＫ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">7</td>
+            <td class="number">¥1,496</td>
+            <td class="number positive">+4.0%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥5,939</td>
+            <td class="number positive">+9.7%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥14,495</td>
+        </tr>
+        
+        <tr>
+            <td>8035.T</td>
+            <td>東京エレクトロン</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>電気機器</td>
+            <td class="number">3</td>
+            <td class="number">¥17,636</td>
+            <td class="number positive">+3.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥68,251</td>
+            <td class="number positive">+11.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥195,761</td>
+        </tr>
+        
+        <tr>
+            <td>5214.T</td>
+            <td>日本電気硝子</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ガラス･土石製品</td>
+            <td class="number">3</td>
+            <td class="number">¥3,002</td>
+            <td class="number positive">+3.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥11,616</td>
+            <td class="number positive">+5.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥15,038</td>
+        </tr>
+        
+        <tr>
+            <td>8253.T</td>
+            <td>クレディセゾン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他金融業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,931</td>
+            <td class="number positive">+3.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥11,314</td>
+            <td class="number positive">+7.0%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥20,605</td>
+        </tr>
+        
+        <tr>
+            <td>5110.T</td>
+            <td>住友ゴム工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ゴム製品</td>
+            <td class="number">5</td>
+            <td class="number">¥1,391</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥5,328</td>
+            <td class="number positive">+7.8%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥10,906</td>
+        </tr>
+        
+        <tr>
+            <td>6701.T</td>
+            <td>日本電気</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">6</td>
+            <td class="number">¥2,417</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥9,233</td>
+            <td class="number positive">+11.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥26,807</td>
+        </tr>
+        
+        <tr>
+            <td>8418.T</td>
+            <td>山口フィナンシャルグルー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,346</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥5,060</td>
+            <td class="number positive">+9.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥12,342</td>
+        </tr>
+        
+        <tr>
+            <td>7752.T</td>
+            <td>リコー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">7</td>
+            <td class="number">¥1,317</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥4,953</td>
+            <td class="number positive">+7.9%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥10,446</td>
+        </tr>
+        
+        <tr>
+            <td>8309.T</td>
+            <td>三井住友トラストグループ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥2,985</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥11,192</td>
+            <td class="number positive">+7.4%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥22,235</td>
+        </tr>
+        
+        <tr>
+            <td>4043.T</td>
+            <td>トクヤマ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">6</td>
+            <td class="number">¥2,427</td>
+            <td class="number positive">+3.7%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥8,979</td>
+            <td class="number positive">+5.9%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥14,343</td>
+        </tr>
+        
+        <tr>
+            <td>5105.T</td>
+            <td>ＴＯＹＯ　ＴＩＲＥ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ゴム製品</td>
+            <td class="number">4</td>
+            <td class="number">¥2,070</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥7,473</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥7,866</td>
+        </tr>
+        
+        <tr>
+            <td>7936.T</td>
+            <td>アシックス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>その他製品</td>
+            <td class="number">5</td>
+            <td class="number">¥2,778</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥10,001</td>
+            <td class="number positive">+9.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥26,392</td>
+        </tr>
+        
+        <tr>
+            <td>4063.T</td>
+            <td>信越化学工業</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>化学</td>
+            <td class="number">7</td>
+            <td class="number">¥4,392</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥15,811</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥25,211</td>
+        </tr>
+        
+        <tr>
+            <td>2579.T</td>
+            <td>コカ・コーラ　ボトラーズ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">3</td>
+            <td class="number">¥1,791</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,376</td>
+            <td class="number positive">+7.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥14,168</td>
+        </tr>
+        
+        <tr>
+            <td>8359.T</td>
+            <td>八十二銀行</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥804</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥2,837</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥442</td>
+        </tr>
+        
+        <tr>
+            <td>8591.T</td>
+            <td>オリックス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>その他金融業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,659</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥9,360</td>
+            <td class="number positive">+8.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥22,895</td>
+        </tr>
+        
+        <tr>
+            <td>1417.T</td>
+            <td>ミライト・ワン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>建設業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,736</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,091</td>
+            <td class="number positive">+6.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥11,645</td>
+        </tr>
+        
+        <tr>
+            <td>5938.T</td>
+            <td>ＬＩＸＩＬ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>金属製品</td>
+            <td class="number">3</td>
+            <td class="number">¥1,499</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,230</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,680</td>
+        </tr>
+        
+        <tr>
+            <td>7832.T</td>
+            <td>バンダイナムコホールディ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>その他製品</td>
+            <td class="number">4</td>
+            <td class="number">¥3,120</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥10,824</td>
+            <td class="number positive">+6.8%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥21,212</td>
+        </tr>
+        
+        <tr>
+            <td>9003.T</td>
+            <td>相鉄ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">4</td>
+            <td class="number">¥2,095</td>
+            <td class="number positive">+3.4%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥7,186</td>
+            <td class="number positive">+5.0%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥10,413</td>
+        </tr>
+        
+        <tr>
+            <td>4452.T</td>
+            <td>花王</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>化学</td>
+            <td class="number">3</td>
+            <td class="number">¥5,997</td>
+            <td class="number positive">+3.4%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥20,510</td>
+            <td class="number positive">+2.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥13,373</td>
+        </tr>
+        
+        <tr>
+            <td>6113.T</td>
+            <td>アマダ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">6</td>
+            <td class="number">¥1,349</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥4,492</td>
+            <td class="number positive">+4.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,017</td>
+        </tr>
+        
+        <tr>
+            <td>7337.T</td>
+            <td>ひろぎんホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">5</td>
+            <td class="number">¥965</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,203</td>
+            <td class="number positive">+9.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥9,350</td>
+        </tr>
+        
+        <tr>
+            <td>4681.T</td>
+            <td>リゾートトラスト</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,249</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥4,145</td>
+            <td class="number positive">+7.8%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥9,765</td>
+        </tr>
+        
+        <tr>
+            <td>1803.T</td>
+            <td>清水建設</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>建設業</td>
+            <td class="number">5</td>
+            <td class="number">¥891</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,958</td>
+            <td class="number positive">+4.4%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,902</td>
+        </tr>
+        
+        <tr>
+            <td>7741.T</td>
+            <td>ＨＯＹＡ</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>精密機器</td>
+            <td class="number">9</td>
+            <td class="number">¥15,791</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥52,268</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥68,690</td>
+        </tr>
+        
+        <tr>
+            <td>7186.T</td>
+            <td>横浜フィナンシャルグルー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">4</td>
+            <td class="number">¥730</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥2,400</td>
+            <td class="number positive">+8.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥6,004</td>
+        </tr>
+        
+        <tr>
+            <td>8354.T</td>
+            <td>ふくおかフィナンシャルグ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">5</td>
+            <td class="number">¥3,184</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥10,443</td>
+            <td class="number positive">+8.8%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥27,955</td>
+        </tr>
+        
+        <tr>
+            <td>5301.T</td>
+            <td>東海カーボン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ガラス･土石製品</td>
+            <td class="number">3</td>
+            <td class="number">¥786</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,569</td>
+            <td class="number positive">+7.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,555</td>
+        </tr>
+        
+        <tr>
+            <td>5802.T</td>
+            <td>住友電気工業</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>非鉄金属</td>
+            <td class="number">7</td>
+            <td class="number">¥2,027</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥6,609</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥11,474</td>
+        </tr>
+        
+        <tr>
+            <td>3105.T</td>
+            <td>日清紡ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">5</td>
+            <td class="number">¥807</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,631</td>
+            <td class="number positive">+4.8%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥3,906</td>
+        </tr>
+        
+        <tr>
+            <td>4307.T</td>
+            <td>野村総合研究所</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>情報･通信業</td>
+            <td class="number">3</td>
+            <td class="number">¥4,385</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥14,251</td>
+            <td class="number positive">+5.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥24,248</td>
+        </tr>
+        
+        <tr>
+            <td>7189.T</td>
+            <td>西日本フィナンシャルホー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">5</td>
+            <td class="number">¥1,560</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥5,055</td>
+            <td class="number positive">+8.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥13,418</td>
+        </tr>
+        
+        <tr>
+            <td>1969.T</td>
+            <td>高砂熱学工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>建設業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,435</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥7,720</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥13,784</td>
+        </tr>
+        
+        <tr>
+            <td>3291.T</td>
+            <td>飯田グループホールディン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>不動産業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,805</td>
+            <td class="number positive">+3.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥5,686</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥3,213</td>
+        </tr>
+        
+        <tr>
+            <td>2222.T</td>
+            <td>寿スピリッツ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">5</td>
+            <td class="number">¥1,658</td>
+            <td class="number positive">+3.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥5,173</td>
+            <td class="number positive">+5.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥9,551</td>
+        </tr>
+        
+        <tr>
+            <td>4061.T</td>
+            <td>デンカ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">7</td>
+            <td class="number">¥1,858</td>
+            <td class="number positive">+3.1%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥5,684</td>
+            <td class="number positive">+5.5%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥10,125</td>
+        </tr>
+        
+        <tr>
+            <td>7458.T</td>
+            <td>第一興商</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,554</td>
+            <td class="number positive">+3.0%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥4,740</td>
+            <td class="number positive">+3.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,719</td>
+        </tr>
+        
+        <tr>
+            <td>4751.T</td>
+            <td>サイバーエージェント</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,047</td>
+            <td class="number positive">+3.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥3,152</td>
+            <td class="number positive">+5.9%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,209</td>
+        </tr>
+        
+        <tr>
+            <td>4091.T</td>
+            <td>日本酸素ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">12</td>
+            <td class="number">¥4,267</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">58%</td>
+            <td class="number positive">¥12,119</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥18,477</td>
+        </tr>
+        
+        <tr>
+            <td>5201.T</td>
+            <td>ＡＧＣ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ガラス･土石製品</td>
+            <td class="number">6</td>
+            <td class="number">¥4,185</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥11,842</td>
+            <td class="number positive">+5.5%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥22,889</td>
+        </tr>
+        
+        <tr>
+            <td>6178.T</td>
+            <td>日本郵政</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>サービス業</td>
+            <td class="number">5</td>
+            <td class="number">¥1,261</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,569</td>
+            <td class="number positive">+2.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,430</td>
+        </tr>
+        
+        <tr>
+            <td>3591.T</td>
+            <td>ワコールホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>繊維製品</td>
+            <td class="number">3</td>
+            <td class="number">¥4,481</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥12,457</td>
+            <td class="number positive">+4.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥20,658</td>
+        </tr>
+        
+        <tr>
+            <td>3401.T</td>
+            <td>帝人</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>繊維製品</td>
+            <td class="number">5</td>
+            <td class="number">¥1,120</td>
+            <td class="number positive">+2.7%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥3,013</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,878</td>
+        </tr>
+        
+        <tr>
+            <td>4114.T</td>
+            <td>日本触媒</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">4</td>
+            <td class="number">¥1,486</td>
+            <td class="number positive">+2.7%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,982</td>
+            <td class="number positive">+5.0%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥7,475</td>
+        </tr>
+        
+        <tr>
+            <td>5838.T</td>
+            <td>楽天銀行</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">16</td>
+            <td class="number">¥4,303</td>
+            <td class="number positive">+2.7%</td>
+            <td class="number">81%</td>
+            <td class="number positive">¥11,446</td>
+            <td class="number positive">+8.3%</td>
+            <td class="number">94%</td>
+            <td class="number positive">¥35,846</td>
+        </tr>
+        
+        <tr>
+            <td>5803.T</td>
+            <td>フジクラ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>非鉄金属</td>
+            <td class="number">5</td>
+            <td class="number">¥3,323</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥8,605</td>
+            <td class="number positive">+23.3%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥77,485</td>
+        </tr>
+        
+        <tr>
+            <td>4544.T</td>
+            <td>Ｈ．Ｕ．グループホールデ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,266</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥5,869</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥8,271</td>
+        </tr>
+        
+        <tr>
+            <td>7313.T</td>
+            <td>テイ・エス　テック</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>輸送用機器</td>
+            <td class="number">6</td>
+            <td class="number">¥1,540</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥3,973</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥5,590</td>
+        </tr>
+        
+        <tr>
+            <td>4528.T</td>
+            <td>小野薬品工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>医薬品</td>
+            <td class="number">3</td>
+            <td class="number">¥1,709</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥4,290</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">33%</td>
+            <td class="number positive">¥871</td>
+        </tr>
+        
+        <tr>
+            <td>9744.T</td>
+            <td>メイテックグループホール</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,693</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,732</td>
+            <td class="number positive">+5.6%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥15,187</td>
+        </tr>
+        
+        <tr>
+            <td>4676.T</td>
+            <td>フジ・メディア・ホールデ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">6</td>
+            <td class="number">¥2,218</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,544</td>
+            <td class="number positive">+3.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥7,606</td>
+        </tr>
+        
+        <tr>
+            <td>7550.T</td>
+            <td>ゼンショーホールディング</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">4</td>
+            <td class="number">¥6,076</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥15,068</td>
+            <td class="number positive">+9.9%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥60,032</td>
+        </tr>
+        
+        <tr>
+            <td>8283.T</td>
+            <td>ＰＡＬＴＡＣ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">3</td>
+            <td class="number">¥3,813</td>
+            <td class="number positive">+2.4%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥8,960</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥14,336</td>
+        </tr>
+        
+        <tr>
+            <td>8439.T</td>
+            <td>東京センチュリー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他金融業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,294</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,026</td>
+            <td class="number positive">+6.0%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥7,800</td>
+        </tr>
+        
+        <tr>
+            <td>6436.T</td>
+            <td>アマノ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">3</td>
+            <td class="number">¥3,406</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥7,936</td>
+            <td class="number positive">+6.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥22,073</td>
+        </tr>
+        
+        <tr>
+            <td>6503.T</td>
+            <td>三菱電機</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>電気機器</td>
+            <td class="number">7</td>
+            <td class="number">¥2,200</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥5,125</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥9,085</td>
+        </tr>
+        
+        <tr>
+            <td>6481.T</td>
+            <td>ＴＨＫ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">8</td>
+            <td class="number">¥2,831</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥6,455</td>
+            <td class="number positive">+5.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥14,383</td>
+        </tr>
+        
+        <tr>
+            <td>3635.T</td>
+            <td>コーエーテクモホールディ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">3</td>
+            <td class="number">¥1,311</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,975</td>
+            <td class="number positive">+5.3%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥7,012</td>
+        </tr>
+        
+        <tr>
+            <td>4507.T</td>
+            <td>塩野義製薬</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>医薬品</td>
+            <td class="number">3</td>
+            <td class="number">¥2,020</td>
+            <td class="number positive">+2.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,464</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,312</td>
+        </tr>
+        
+        <tr>
+            <td>3382.T</td>
+            <td>セブン＆アイ・ホールディ</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>小売業</td>
+            <td class="number">10</td>
+            <td class="number">¥1,886</td>
+            <td class="number positive">+2.2%</td>
+            <td class="number">70%</td>
+            <td class="number positive">¥4,167</td>
+            <td class="number positive">+3.6%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥6,845</td>
+        </tr>
+        
+        <tr>
+            <td>4887.T</td>
+            <td>サワイグループホールディ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>医薬品</td>
+            <td class="number">8</td>
+            <td class="number">¥1,776</td>
+            <td class="number positive">+2.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,906</td>
+            <td class="number positive">+4.2%</td>
+            <td class="number">88%</td>
+            <td class="number positive">¥7,439</td>
+        </tr>
+        
+        <tr>
+            <td>6806.T</td>
+            <td>ヒロセ電機</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">7</td>
+            <td class="number">¥14,977</td>
+            <td class="number positive">+2.1%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥32,051</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥23,514</td>
+        </tr>
+        
+        <tr>
+            <td>2587.T</td>
+            <td>サントリー食品インターナ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">3</td>
+            <td class="number">¥4,783</td>
+            <td class="number positive">+2.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥9,900</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥8,274</td>
+        </tr>
+        
+        <tr>
+            <td>8331.T</td>
+            <td>千葉銀行</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">6</td>
+            <td class="number">¥1,053</td>
+            <td class="number positive">+2.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,169</td>
+            <td class="number positive">+9.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥10,153</td>
+        </tr>
+        
+        <tr>
+            <td>5401.T</td>
+            <td>日本製鉄</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>鉄鋼</td>
+            <td class="number">3</td>
+            <td class="number">¥513</td>
+            <td class="number positive">+2.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,052</td>
+            <td class="number positive">+4.8%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,464</td>
+        </tr>
+        
+        <tr>
+            <td>4503.T</td>
+            <td>アステラス製薬</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>医薬品</td>
+            <td class="number">5</td>
+            <td class="number">¥1,362</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,765</td>
+            <td class="number positive">+2.3%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥3,133</td>
+        </tr>
+        
+        <tr>
+            <td>5232.T</td>
+            <td>住友大阪セメント</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ガラス･土石製品</td>
+            <td class="number">5</td>
+            <td class="number">¥3,175</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥6,413</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥5,936</td>
+        </tr>
+        
+        <tr>
+            <td>9147.T</td>
+            <td>ＮＩＰＰＯＮ　ＥＸＰＲＥ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,320</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,685</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,775</td>
+        </tr>
+        
+        <tr>
+            <td>8766.T</td>
+            <td>東京海上ホールディングス</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>保険業</td>
+            <td class="number">5</td>
+            <td class="number">¥4,625</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥9,203</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥28,256</td>
+        </tr>
+        
+        <tr>
+            <td>4536.T</td>
+            <td>参天製薬</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>医薬品</td>
+            <td class="number">7</td>
+            <td class="number">¥1,434</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥2,825</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥8,161</td>
+        </tr>
+        
+        <tr>
+            <td>7751.T</td>
+            <td>キヤノン</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">6</td>
+            <td class="number">¥3,954</td>
+            <td class="number positive">+2.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥7,789</td>
+            <td class="number positive">+6.6%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥26,097</td>
+        </tr>
+        
+        <tr>
+            <td>6361.T</td>
+            <td>荏原製作所</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">15</td>
+            <td class="number">¥1,970</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">73%</td>
+            <td class="number positive">¥3,821</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,230</td>
+        </tr>
+        
+        <tr>
+            <td>7701.T</td>
+            <td>島津製作所</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>精密機器</td>
+            <td class="number">5</td>
+            <td class="number">¥3,434</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥6,593</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥11,366</td>
+        </tr>
+        
+        <tr>
+            <td>8242.T</td>
+            <td>エイチ・ツー・オー　リテ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">6</td>
+            <td class="number">¥1,923</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥3,652</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥7,920</td>
+        </tr>
+        
+        <tr>
+            <td>4689.T</td>
+            <td>ＬＩＮＥヤフー</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>情報･通信業</td>
+            <td class="number">6</td>
+            <td class="number">¥371</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥700</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,516</td>
+        </tr>
+        
+        <tr>
+            <td>6471.T</td>
+            <td>日本精工</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">5</td>
+            <td class="number">¥624</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥1,173</td>
+            <td class="number positive">+3.0%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥1,903</td>
+        </tr>
+        
+        <tr>
+            <td>3360.T</td>
+            <td>シップヘルスケアホールデ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">7</td>
+            <td class="number">¥1,839</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥3,254</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥5,866</td>
+        </tr>
+        
+        <tr>
+            <td>3549.T</td>
+            <td>クスリのアオキホールディ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">6</td>
+            <td class="number">¥2,974</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥5,145</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥3,361</td>
+        </tr>
+        
+        <tr>
+            <td>7974.T</td>
+            <td>任天堂</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>その他製品</td>
+            <td class="number">3</td>
+            <td class="number">¥9,014</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥15,593</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥26,230</td>
+        </tr>
+        
+        <tr>
+            <td>8424.T</td>
+            <td>芙蓉総合リース</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他金融業</td>
+            <td class="number">3</td>
+            <td class="number">¥3,341</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,746</td>
+            <td class="number positive">+6.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥20,013</td>
+        </tr>
+        
+        <tr>
+            <td>9024.T</td>
+            <td>西武ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">16</td>
+            <td class="number">¥3,647</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">69%</td>
+            <td class="number positive">¥6,235</td>
+            <td class="number positive">+5.8%</td>
+            <td class="number">88%</td>
+            <td class="number positive">¥21,260</td>
+        </tr>
+        
+        <tr>
+            <td>8111.T</td>
+            <td>ゴールドウイン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>繊維製品</td>
+            <td class="number">10</td>
+            <td class="number">¥2,596</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥4,439</td>
+            <td class="number positive">+2.2%</td>
+            <td class="number">70%</td>
+            <td class="number positive">¥5,815</td>
+        </tr>
+        
+        <tr>
+            <td>4912.T</td>
+            <td>ライオン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">3</td>
+            <td class="number">¥1,481</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,518</td>
+            <td class="number positive">+7.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥10,917</td>
+        </tr>
+        
+        <tr>
+            <td>7203.T</td>
+            <td>トヨタ自動車</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>輸送用機器</td>
+            <td class="number">5</td>
+            <td class="number">¥2,421</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥4,116</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥3,656</td>
+        </tr>
+        
+        <tr>
+            <td>4118.T</td>
+            <td>カネカ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">6</td>
+            <td class="number">¥3,316</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥5,637</td>
+            <td class="number positive">+4.8%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥15,849</td>
+        </tr>
+        
+        <tr>
+            <td>9962.T</td>
+            <td>ミスミグループ本社</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">11</td>
+            <td class="number">¥2,025</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥3,381</td>
+            <td class="number positive">+5.9%</td>
+            <td class="number">73%</td>
+            <td class="number positive">¥11,988</td>
+        </tr>
+        
+        <tr>
+            <td>8308.T</td>
+            <td>りそなホールディングス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>銀行業</td>
+            <td class="number">7</td>
+            <td class="number">¥1,050</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥1,700</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥3,065</td>
+        </tr>
+        
+        <tr>
+            <td>3197.T</td>
+            <td>すかいらーくホールディン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,261</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,662</td>
+            <td class="number positive">+5.3%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥12,072</td>
+        </tr>
+        
+        <tr>
+            <td>7984.T</td>
+            <td>コクヨ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他製品</td>
+            <td class="number">5</td>
+            <td class="number">¥563</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥884</td>
+            <td class="number positive">+5.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,866</td>
+        </tr>
+        
+        <tr>
+            <td>8001.T</td>
+            <td>伊藤忠商事</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>卸売業</td>
+            <td class="number">7</td>
+            <td class="number">¥6,051</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥9,257</td>
+            <td class="number positive">+9.6%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥57,784</td>
+        </tr>
+        
+        <tr>
+            <td>9861.T</td>
+            <td>吉野家ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,795</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥4,193</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥3,913</td>
+        </tr>
+        
+        <tr>
+            <td>6269.T</td>
+            <td>三井海洋開発</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">4</td>
+            <td class="number">¥2,473</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,709</td>
+            <td class="number positive">+21.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥53,124</td>
+        </tr>
+        
+        <tr>
+            <td>6849.T</td>
+            <td>日本光電工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">12</td>
+            <td class="number">¥1,719</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,543</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">58%</td>
+            <td class="number positive">¥2,852</td>
+        </tr>
+        
+        <tr>
+            <td>3092.T</td>
+            <td>ＺＯＺＯ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">4</td>
+            <td class="number">¥1,351</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥1,958</td>
+            <td class="number positive">+3.9%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥5,254</td>
+        </tr>
+        
+        <tr>
+            <td>7276.T</td>
+            <td>小糸製作所</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">9</td>
+            <td class="number">¥1,733</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥2,512</td>
+            <td class="number positive">+2.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,193</td>
+        </tr>
+        
+        <tr>
+            <td>5233.T</td>
+            <td>太平洋セメント</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ガラス･土石製品</td>
+            <td class="number">3</td>
+            <td class="number">¥3,295</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,711</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥11,499</td>
+        </tr>
+        
+        <tr>
+            <td>7282.T</td>
+            <td>豊田合成</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>輸送用機器</td>
+            <td class="number">4</td>
+            <td class="number">¥2,229</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,187</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥6,419</td>
+        </tr>
+        
+        <tr>
+            <td>6954.T</td>
+            <td>ファナック</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">5</td>
+            <td class="number">¥3,310</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥4,699</td>
+            <td class="number positive">+4.9%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥16,249</td>
+        </tr>
+        
+        <tr>
+            <td>6902.T</td>
+            <td>デンソー</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>輸送用機器</td>
+            <td class="number">7</td>
+            <td class="number">¥1,823</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥2,533</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥5,796</td>
+        </tr>
+        
+        <tr>
+            <td>9007.T</td>
+            <td>小田急電鉄</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">7</td>
+            <td class="number">¥1,683</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥2,305</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥2,961</td>
+        </tr>
+        
+        <tr>
+            <td>6326.T</td>
+            <td>クボタ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>機械</td>
+            <td class="number">9</td>
+            <td class="number">¥1,754</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥2,386</td>
+            <td class="number positive">+5.6%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥9,825</td>
+        </tr>
+        
+        <tr>
+            <td>2875.T</td>
+            <td>東洋水産</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">11</td>
+            <td class="number">¥8,818</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥11,992</td>
+            <td class="number positive">+2.4%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥21,074</td>
+        </tr>
+        
+        <tr>
+            <td>8056.T</td>
+            <td>ＢＩＰＲＯＧＹ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">9</td>
+            <td class="number">¥3,793</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,158</td>
+            <td class="number positive">+4.7%</td>
+            <td class="number">89%</td>
+            <td class="number positive">¥17,939</td>
+        </tr>
+        
+        <tr>
+            <td>2802.T</td>
+            <td>味の素</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>食料品</td>
+            <td class="number">9</td>
+            <td class="number">¥2,922</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥3,944</td>
+            <td class="number positive">+5.1%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥14,903</td>
+        </tr>
+        
+        <tr>
+            <td>5947.T</td>
+            <td>リンナイ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>金属製品</td>
+            <td class="number">5</td>
+            <td class="number">¥3,045</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥4,110</td>
+            <td class="number negative">-0.5%</td>
+            <td class="number">60%</td>
+            <td class="number negative">¥-1,461</td>
+        </tr>
+        
+        <tr>
+            <td>2371.T</td>
+            <td>カカクコム</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,130</td>
+            <td class="number positive">+1.3%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥2,833</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥6,114</td>
+        </tr>
+        
+        <tr>
+            <td>3116.T</td>
+            <td>トヨタ紡織</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>輸送用機器</td>
+            <td class="number">5</td>
+            <td class="number">¥1,836</td>
+            <td class="number positive">+1.3%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥2,387</td>
+            <td class="number positive">+0.3%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥550</td>
+        </tr>
+        
+        <tr>
+            <td>9627.T</td>
+            <td>アインホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">6</td>
+            <td class="number">¥4,336</td>
+            <td class="number positive">+1.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,462</td>
+            <td class="number positive">+2.7%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥11,575</td>
+        </tr>
+        
+        <tr>
+            <td>7988.T</td>
+            <td>ニフコ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">4</td>
+            <td class="number">¥3,129</td>
+            <td class="number positive">+1.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,879</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥13,391</td>
+        </tr>
+        
+        <tr>
+            <td>2531.T</td>
+            <td>宝ホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">8</td>
+            <td class="number">¥1,331</td>
+            <td class="number positive">+1.2%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,583</td>
+            <td class="number positive">+1.3%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,729</td>
+        </tr>
+        
+        <tr>
+            <td>7731.T</td>
+            <td>ニコン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>精密機器</td>
+            <td class="number">7</td>
+            <td class="number">¥1,455</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥1,673</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥1,556</td>
+        </tr>
+        
+        <tr>
+            <td>3289.T</td>
+            <td>東急不動産ホールディング</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>不動産業</td>
+            <td class="number">3</td>
+            <td class="number">¥864</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥984</td>
+            <td class="number positive">+6.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥5,284</td>
+        </tr>
+        
+        <tr>
+            <td>7733.T</td>
+            <td>オリンパス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>精密機器</td>
+            <td class="number">11</td>
+            <td class="number">¥1,937</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥2,189</td>
+            <td class="number positive">+3.3%</td>
+            <td class="number">91%</td>
+            <td class="number positive">¥6,316</td>
+        </tr>
+        
+        <tr>
+            <td>9697.T</td>
+            <td>カプコン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">4</td>
+            <td class="number">¥2,857</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,199</td>
+            <td class="number positive">+8.7%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥24,881</td>
+        </tr>
+        
+        <tr>
+            <td>9041.T</td>
+            <td>近鉄グループホールディン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">9</td>
+            <td class="number">¥3,092</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥3,462</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥8,750</td>
+        </tr>
+        
+        <tr>
+            <td>6465.T</td>
+            <td>ホシザキ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">10</td>
+            <td class="number">¥4,798</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">70%</td>
+            <td class="number positive">¥5,373</td>
+            <td class="number positive">+4.0%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥19,095</td>
+        </tr>
+        
+        <tr>
+            <td>8795.T</td>
+            <td>Ｔ＆Ｄホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>保険業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,385</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥2,576</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥13,692</td>
+        </tr>
+        
+        <tr>
+            <td>9301.T</td>
+            <td>三菱倉庫</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>倉庫･運輸関連業</td>
+            <td class="number">8</td>
+            <td class="number">¥856</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥916</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,528</td>
+        </tr>
+        
+        <tr>
+            <td>8802.T</td>
+            <td>三菱地所</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>不動産業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,150</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,278</td>
+            <td class="number positive">+3.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥8,319</td>
+        </tr>
+        
+        <tr>
+            <td>5444.T</td>
+            <td>大和工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>鉄鋼</td>
+            <td class="number">3</td>
+            <td class="number">¥6,366</td>
+            <td class="number positive">+1.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥6,683</td>
+            <td class="number positive">+7.3%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥46,659</td>
+        </tr>
+        
+        <tr>
+            <td>6976.T</td>
+            <td>太陽誘電</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">27</td>
+            <td class="number">¥2,554</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">59%</td>
+            <td class="number positive">¥2,605</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥4,240</td>
+        </tr>
+        
+        <tr>
+            <td>4927.T</td>
+            <td>ポーラ・オルビスホールデ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">3</td>
+            <td class="number">¥1,227</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,214</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥1,853</td>
+        </tr>
+        
+        <tr>
+            <td>6370.T</td>
+            <td>栗田工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">8</td>
+            <td class="number">¥4,888</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥4,790</td>
+            <td class="number positive">+9.8%</td>
+            <td class="number">88%</td>
+            <td class="number positive">¥48,001</td>
+        </tr>
+        
+        <tr>
+            <td>5021.T</td>
+            <td>コスモエネルギーホールデ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>石油･石炭製品</td>
+            <td class="number">10</td>
+            <td class="number">¥2,988</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">70%</td>
+            <td class="number positive">¥2,927</td>
+            <td class="number positive">+4.1%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥12,338</td>
+        </tr>
+        
+        <tr>
+            <td>6707.T</td>
+            <td>サンケン電気</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">23</td>
+            <td class="number">¥6,015</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">61%</td>
+            <td class="number positive">¥5,894</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">61%</td>
+            <td class="number positive">¥17,081</td>
+        </tr>
+        
+        <tr>
+            <td>6965.T</td>
+            <td>浜松ホトニクス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">24</td>
+            <td class="number">¥1,629</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥1,580</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">79%</td>
+            <td class="number positive">¥3,079</td>
+        </tr>
+        
+        <tr>
+            <td>3391.T</td>
+            <td>ツルハホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">8</td>
+            <td class="number">¥1,979</td>
+            <td class="number positive">+1.0%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,919</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥1,761</td>
+        </tr>
+        
+        <tr>
+            <td>9201.T</td>
+            <td>日本航空</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>空運業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,158</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥2,049</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥7,638</td>
+        </tr>
+        
+        <tr>
+            <td>4385.T</td>
+            <td>メルカリ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">25</td>
+            <td class="number">¥1,982</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">72%</td>
+            <td class="number positive">¥1,862</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥3,527</td>
+        </tr>
+        
+        <tr>
+            <td>7956.T</td>
+            <td>ピジョン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他製品</td>
+            <td class="number">8</td>
+            <td class="number">¥1,384</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,273</td>
+            <td class="number positive">+1.9%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥2,699</td>
+        </tr>
+        
+        <tr>
+            <td>4519.T</td>
+            <td>中外製薬</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>医薬品</td>
+            <td class="number">10</td>
+            <td class="number">¥5,797</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥5,159</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥9,912</td>
+        </tr>
+        
+        <tr>
+            <td>4523.T</td>
+            <td>エーザイ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>医薬品</td>
+            <td class="number">15</td>
+            <td class="number">¥4,737</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,216</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥8,479</td>
+        </tr>
+        
+        <tr>
+            <td>7846.T</td>
+            <td>パイロットコーポレーショ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他製品</td>
+            <td class="number">5</td>
+            <td class="number">¥3,834</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,412</td>
+            <td class="number positive">+3.8%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥14,684</td>
+        </tr>
+        
+        <tr>
+            <td>4194.T</td>
+            <td>ビジョナル</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">13</td>
+            <td class="number">¥7,636</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">69%</td>
+            <td class="number positive">¥6,567</td>
+            <td class="number positive">+6.0%</td>
+            <td class="number">100%</td>
+            <td class="number positive">¥45,818</td>
+        </tr>
+        
+        <tr>
+            <td>4578.T</td>
+            <td>大塚ホールディングス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>医薬品</td>
+            <td class="number">9</td>
+            <td class="number">¥6,670</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥5,736</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">44%</td>
+            <td class="number positive">¥2,401</td>
+        </tr>
+        
+        <tr>
+            <td>4704.T</td>
+            <td>トレンドマイクロ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">16</td>
+            <td class="number">¥7,627</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥6,482</td>
+            <td class="number positive">+3.0%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥23,261</td>
+        </tr>
+        
+        <tr>
+            <td>2413.T</td>
+            <td>エムスリー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">23</td>
+            <td class="number">¥1,479</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥1,242</td>
+            <td class="number positive">+4.5%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥6,581</td>
+        </tr>
+        
+        <tr>
+            <td>8015.T</td>
+            <td>豊田通商</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>卸売業</td>
+            <td class="number">7</td>
+            <td class="number">¥2,428</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥2,015</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥7,114</td>
+        </tr>
+        
+        <tr>
+            <td>7267.T</td>
+            <td>本田技研工業</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>輸送用機器</td>
+            <td class="number">10</td>
+            <td class="number">¥1,277</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥1,021</td>
+            <td class="number positive">+3.1%</td>
+            <td class="number">70%</td>
+            <td class="number positive">¥3,998</td>
+        </tr>
+        
+        <tr>
+            <td>6301.T</td>
+            <td>小松製作所</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>機械</td>
+            <td class="number">7</td>
+            <td class="number">¥3,865</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥2,937</td>
+            <td class="number positive">+1.8%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥7,150</td>
+        </tr>
+        
+        <tr>
+            <td>4967.T</td>
+            <td>小林製薬</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">9</td>
+            <td class="number">¥4,918</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥3,737</td>
+            <td class="number positive">+5.7%</td>
+            <td class="number">89%</td>
+            <td class="number positive">¥27,982</td>
+        </tr>
+        
+        <tr>
+            <td>4587.T</td>
+            <td>ペプチドリーム</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>医薬品</td>
+            <td class="number">22</td>
+            <td class="number">¥1,934</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">59%</td>
+            <td class="number positive">¥1,469</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">59%</td>
+            <td class="number positive">¥1,682</td>
+        </tr>
+        
+        <tr>
+            <td>6869.T</td>
+            <td>シスメックス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">16</td>
+            <td class="number">¥1,901</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥1,425</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥3,212</td>
+        </tr>
+        
+        <tr>
+            <td>9449.T</td>
+            <td>ＧＭＯインターネットグル</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">6</td>
+            <td class="number">¥2,482</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥1,811</td>
+            <td class="number positive">+6.6%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥16,405</td>
+        </tr>
+        
+        <tr>
+            <td>5101.T</td>
+            <td>横浜ゴム</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>ゴム製品</td>
+            <td class="number">8</td>
+            <td class="number">¥3,196</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥2,269</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥9,108</td>
+        </tr>
+        
+        <tr>
+            <td>4680.T</td>
+            <td>ラウンドワン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">29</td>
+            <td class="number">¥1,028</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">55%</td>
+            <td class="number positive">¥730</td>
+            <td class="number positive">+0.9%</td>
+            <td class="number">66%</td>
+            <td class="number positive">¥945</td>
+        </tr>
+        
+        <tr>
+            <td>7476.T</td>
+            <td>アズワン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">11</td>
+            <td class="number">¥2,441</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">73%</td>
+            <td class="number positive">¥1,708</td>
+            <td class="number positive">+3.4%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥8,298</td>
+        </tr>
+        
+        <tr>
+            <td>6723.T</td>
+            <td>ルネサスエレクトロニクス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">22</td>
+            <td class="number">¥2,026</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥1,377</td>
+            <td class="number positive">+1.5%</td>
+            <td class="number">59%</td>
+            <td class="number positive">¥3,018</td>
+        </tr>
+        
+        <tr>
+            <td>1605.T</td>
+            <td>ＩＮＰＥＸ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>鉱業</td>
+            <td class="number">6</td>
+            <td class="number">¥1,747</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,188</td>
+            <td class="number positive">+5.0%</td>
+            <td class="number">83%</td>
+            <td class="number positive">¥8,666</td>
+        </tr>
+        
+        <tr>
+            <td>9031.T</td>
+            <td>西日本鉄道</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">3</td>
+            <td class="number">¥2,086</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,397</td>
+            <td class="number positive">+5.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥11,576</td>
+        </tr>
+        
+        <tr>
+            <td>6457.T</td>
+            <td>グローリー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">9</td>
+            <td class="number">¥2,246</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,504</td>
+            <td class="number positive">+4.9%</td>
+            <td class="number">89%</td>
+            <td class="number positive">¥10,939</td>
+        </tr>
+        
+        <tr>
+            <td>4021.T</td>
+            <td>日産化学</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>化学</td>
+            <td class="number">15</td>
+            <td class="number">¥4,260</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥2,811</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥7,327</td>
+        </tr>
+        
+        <tr>
+            <td>6770.T</td>
+            <td>アルプスアルパイン</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">16</td>
+            <td class="number">¥1,055</td>
+            <td class="number positive">+0.7%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥696</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥2,627</td>
+        </tr>
+        
+        <tr>
+            <td>6925.T</td>
+            <td>ウシオ電機</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">12</td>
+            <td class="number">¥1,663</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,047</td>
+            <td class="number negative">-0.2%</td>
+            <td class="number">58%</td>
+            <td class="number negative">¥-382</td>
+        </tr>
+        
+        <tr>
+            <td>5108.T</td>
+            <td>ブリヂストン</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>ゴム製品</td>
+            <td class="number">5</td>
+            <td class="number">¥5,226</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,187</td>
+            <td class="number positive">+2.9%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥15,101</td>
+        </tr>
+        
+        <tr>
+            <td>2607.T</td>
+            <td>不二製油</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">14</td>
+            <td class="number">¥2,580</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥1,548</td>
+            <td class="number positive">+3.2%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥8,204</td>
+        </tr>
+        
+        <tr>
+            <td>6367.T</td>
+            <td>ダイキン工業</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>機械</td>
+            <td class="number">9</td>
+            <td class="number">¥16,574</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥9,612</td>
+            <td class="number negative">-0.8%</td>
+            <td class="number">44%</td>
+            <td class="number negative">¥-12,430</td>
+        </tr>
+        
+        <tr>
+            <td>7912.T</td>
+            <td>大日本印刷</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他製品</td>
+            <td class="number">4</td>
+            <td class="number">¥2,103</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥1,198</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥9,126</td>
+        </tr>
+        
+        <tr>
+            <td>3626.T</td>
+            <td>ＴＩＳ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,978</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">80%</td>
+            <td class="number positive">¥1,638</td>
+            <td class="number positive">+1.2%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,544</td>
+        </tr>
+        
+        <tr>
+            <td>9044.T</td>
+            <td>南海電気鉄道</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">5</td>
+            <td class="number">¥2,308</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥1,222</td>
+            <td class="number positive">+1.7%</td>
+            <td class="number">60%</td>
+            <td class="number positive">¥3,992</td>
+        </tr>
+        
+        <tr>
+            <td>3697.T</td>
+            <td>ＳＨＩＦＴ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>情報･通信業</td>
+            <td class="number">29</td>
+            <td class="number">¥1,241</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥657</td>
+            <td class="number negative">-0.2%</td>
+            <td class="number">48%</td>
+            <td class="number negative">¥-210</td>
+        </tr>
+        
+        <tr>
+            <td>4661.T</td>
+            <td>オリエンタルランド</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>サービス業</td>
+            <td class="number">9</td>
+            <td class="number">¥3,374</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥1,754</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">44%</td>
+            <td class="number positive">¥1,484</td>
+        </tr>
+        
+        <tr>
+            <td>9009.T</td>
+            <td>京成電鉄</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">19</td>
+            <td class="number">¥1,614</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">74%</td>
+            <td class="number positive">¥839</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">68%</td>
+            <td class="number positive">¥1,274</td>
+        </tr>
+        
+        <tr>
+            <td>8316.T</td>
+            <td>三井住友フィナンシャルグ</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>銀行業</td>
+            <td class="number">7</td>
+            <td class="number">¥2,861</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥1,458</td>
+            <td class="number positive">+5.8%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥16,476</td>
+        </tr>
+        
+        <tr>
+            <td>8410.T</td>
+            <td>セブン銀行</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>銀行業</td>
+            <td class="number">3</td>
+            <td class="number">¥239</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥119</td>
+            <td class="number positive">+2.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥562</td>
+        </tr>
+        
+        <tr>
+            <td>1911.T</td>
+            <td>住友林業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>建設業</td>
+            <td class="number">12</td>
+            <td class="number">¥1,440</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">58%</td>
+            <td class="number positive">¥705</td>
+            <td class="number positive">+2.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥3,051</td>
+        </tr>
+        
+        <tr>
+            <td>6856.T</td>
+            <td>堀場製作所</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">23</td>
+            <td class="number">¥9,608</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">65%</td>
+            <td class="number positive">¥4,707</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">65%</td>
+            <td class="number positive">¥13,451</td>
+        </tr>
+        
+        <tr>
+            <td>9064.T</td>
+            <td>ヤマトホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">14</td>
+            <td class="number">¥1,644</td>
+            <td class="number positive">+0.5%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥789</td>
+            <td class="number positive">+0.3%</td>
+            <td class="number">43%</td>
+            <td class="number positive">¥460</td>
+        </tr>
+        
+        <tr>
+            <td>5706.T</td>
+            <td>三井金属</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>非鉄金属</td>
+            <td class="number">6</td>
+            <td class="number">¥3,564</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥1,603</td>
+            <td class="number positive">+6.5%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥23,021</td>
+        </tr>
+        
+        <tr>
+            <td>6971.T</td>
+            <td>京セラ</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>電気機器</td>
+            <td class="number">8</td>
+            <td class="number">¥1,527</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥641</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥3,969</td>
+        </tr>
+        
+        <tr>
+            <td>5991.T</td>
+            <td>日本発條</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>金属製品</td>
+            <td class="number">14</td>
+            <td class="number">¥1,509</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">64%</td>
+            <td class="number positive">¥618</td>
+            <td class="number positive">+4.3%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥6,474</td>
+        </tr>
+        
+        <tr>
+            <td>6460.T</td>
+            <td>セガサミーホールディング</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>機械</td>
+            <td class="number">18</td>
+            <td class="number">¥2,165</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥865</td>
+            <td class="number positive">+4.2%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥9,071</td>
+        </tr>
+        
+        <tr>
+            <td>3349.T</td>
+            <td>コスモス薬品</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">8</td>
+            <td class="number">¥7,009</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥2,803</td>
+            <td class="number positive">+1.2%</td>
+            <td class="number">50%</td>
+            <td class="number positive">¥8,271</td>
+        </tr>
+        
+        <tr>
+            <td>4324.T</td>
+            <td>電通グループ</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>サービス業</td>
+            <td class="number">24</td>
+            <td class="number">¥3,310</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,158</td>
+            <td class="number positive">+2.5%</td>
+            <td class="number">88%</td>
+            <td class="number positive">¥8,340</td>
+        </tr>
+        
+        <tr>
+            <td>7453.T</td>
+            <td>良品計画</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">9</td>
+            <td class="number">¥2,325</td>
+            <td class="number positive">+0.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥813</td>
+            <td class="number positive">+8.2%</td>
+            <td class="number">89%</td>
+            <td class="number positive">¥19,089</td>
+        </tr>
+        
+        <tr>
+            <td>3132.T</td>
+            <td>マクニカホールディングス</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>卸売業</td>
+            <td class="number">12</td>
+            <td class="number">¥1,821</td>
+            <td class="number positive">+0.3%</td>
+            <td class="number">58%</td>
+            <td class="number positive">¥601</td>
+            <td class="number positive">+2.6%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,808</td>
+        </tr>
+        
+        <tr>
+            <td>7012.T</td>
+            <td>川崎重工業</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>輸送用機器</td>
+            <td class="number">14</td>
+            <td class="number">¥6,941</td>
+            <td class="number positive">+0.3%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥2,082</td>
+            <td class="number positive">+6.8%</td>
+            <td class="number">79%</td>
+            <td class="number positive">¥46,854</td>
+        </tr>
+        
+        <tr>
+            <td>8570.T</td>
+            <td>イオンフィナンシャルサー</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>その他金融業</td>
+            <td class="number">8</td>
+            <td class="number">¥1,112</td>
+            <td class="number positive">+0.3%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥322</td>
+            <td class="number positive">+1.6%</td>
+            <td class="number">62%</td>
+            <td class="number positive">¥1,823</td>
+        </tr>
+        
+        <tr>
+            <td>7729.T</td>
+            <td>東京精密</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>精密機器</td>
+            <td class="number">16</td>
+            <td class="number">¥7,318</td>
+            <td class="number positive">+0.2%</td>
+            <td class="number">56%</td>
+            <td class="number positive">¥1,829</td>
+            <td class="number positive">+3.5%</td>
+            <td class="number">81%</td>
+            <td class="number positive">¥25,246</td>
+        </tr>
+        
+        <tr>
+            <td>8604.T</td>
+            <td>野村ホールディングス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>証券･商品先物取</td>
+            <td class="number">8</td>
+            <td class="number">¥718</td>
+            <td class="number positive">+0.2%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥165</td>
+            <td class="number positive">+5.9%</td>
+            <td class="number">75%</td>
+            <td class="number positive">¥4,247</td>
+        </tr>
+        
+        <tr>
+            <td>2593.T</td>
+            <td>伊藤園</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>食料品</td>
+            <td class="number">3</td>
+            <td class="number">¥3,262</td>
+            <td class="number positive">+0.2%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥521</td>
+            <td class="number positive">+1.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥4,533</td>
+        </tr>
+        
+        <tr>
+            <td>6951.T</td>
+            <td>日本電子</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>電気機器</td>
+            <td class="number">17</td>
+            <td class="number">¥5,034</td>
+            <td class="number positive">+0.2%</td>
+            <td class="number">59%</td>
+            <td class="number positive">¥805</td>
+            <td class="number positive">+0.6%</td>
+            <td class="number">53%</td>
+            <td class="number positive">¥2,970</td>
+        </tr>
+        
+        <tr>
+            <td>8411.T</td>
+            <td>みずほフィナンシャルグル</td>
+            <td><span class="badge core30">Core30</span></td>
+            <td>銀行業</td>
+            <td class="number">7</td>
+            <td class="number">¥3,071</td>
+            <td class="number positive">+0.1%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥337</td>
+            <td class="number positive">+5.5%</td>
+            <td class="number">71%</td>
+            <td class="number positive">¥17,013</td>
+        </tr>
+        
+        <tr>
+            <td>8750.T</td>
+            <td>第一生命ホールディングス</td>
+            <td><span class="badge large70">Large70</span></td>
+            <td>保険業</td>
+            <td class="number">9</td>
+            <td class="number">¥893</td>
+            <td class="number positive">+0.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥98</td>
+            <td class="number positive">+2.8%</td>
+            <td class="number">78%</td>
+            <td class="number positive">¥2,456</td>
+        </tr>
+        
+        <tr>
+            <td>8227.T</td>
+            <td>しまむら</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">3</td>
+            <td class="number">¥9,797</td>
+            <td class="number positive">+0.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥979</td>
+            <td class="number negative">-1.4%</td>
+            <td class="number">0%</td>
+            <td class="number negative">¥-13,617</td>
+        </tr>
+        
+        <tr>
+            <td>9001.T</td>
+            <td>東武鉄道</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>陸運業</td>
+            <td class="number">14</td>
+            <td class="number">¥2,806</td>
+            <td class="number positive">+0.1%</td>
+            <td class="number">57%</td>
+            <td class="number positive">¥224</td>
+            <td class="number negative">-2.6%</td>
+            <td class="number">21%</td>
+            <td class="number negative">¥-7,351</td>
+        </tr>
+        
+        <tr>
+            <td>1959.T</td>
+            <td>クラフティア</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>建設業</td>
+            <td class="number">6</td>
+            <td class="number">¥5,271</td>
+            <td class="number positive">+0.1%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥263</td>
+            <td class="number negative">-0.2%</td>
+            <td class="number">50%</td>
+            <td class="number negative">¥-1,107</td>
+        </tr>
+        
+        <tr>
+            <td>3563.T</td>
+            <td>ＦＯＯＤ　＆　ＬＩＦＥ　</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>小売業</td>
+            <td class="number">7</td>
+            <td class="number">¥4,551</td>
+            <td class="number positive">+0.0%</td>
+            <td class="number">86%</td>
+            <td class="number positive">¥136</td>
+            <td class="number positive">+0.8%</td>
+            <td class="number">29%</td>
+            <td class="number positive">¥3,504</td>
+        </tr>
+        
+        <tr>
+            <td>5463.T</td>
+            <td>丸一鋼管</td>
+            <td><span class="badge mid400">Mid400</span></td>
+            <td>鉄鋼</td>
+            <td class="number">3</td>
+            <td class="number">¥1,016</td>
+            <td class="number positive">+0.0%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥10</td>
+            <td class="number positive">+3.4%</td>
+            <td class="number">67%</td>
+            <td class="number positive">¥3,424</td>
+        </tr>
+        
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    function filterTable(category) {
+        const rows = document.querySelectorAll('#mainTable tbody tr');
+        const buttons = document.querySelectorAll('.filter-btn');
+        
+        buttons.forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        rows.forEach(row => {
+            if (category === 'all') {
+                row.style.display = '';
+            } else {
+                const badge = row.querySelector('.badge');
+                if (badge && badge.textContent.includes(category)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
+    }
+    </script>
+</body>
+</html>

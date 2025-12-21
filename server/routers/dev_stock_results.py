@@ -380,3 +380,117 @@ async def refresh_stock_results():
         "count": len(df),
         "updated_at": datetime.now().isoformat(),
     }
+
+
+# Review用5分足データディレクトリ
+REVIEW_DIR = ROOT / "review"
+
+# ticker名とファイル名のマッピング
+TICKER_FILE_MAP = {
+    "3683": "3683_T_5m_60d.parquet",
+    "4393": "4393_T_5m_60d.parquet",
+    "4564": "4564_T_5m_60d.parquet",
+    "kudan": "kudan_5m_60d.parquet",
+    "meneki": "meneki_5m_60d.parquet",
+}
+
+
+@router.get("/api/dev/stock-results/review/prices")
+async def get_review_prices(ticker: str):
+    """
+    Review用5分足価格データを取得
+
+    Parameters:
+    - ticker: 銘柄コード（例: 3683, 4393, kudan）
+
+    Returns:
+    - List[PriceRow]: date, Open, High, Low, Close, Volume
+    """
+    # tickerからファイル名を決定
+    # まずマップから検索
+    file_name = TICKER_FILE_MAP.get(ticker)
+
+    if not file_name:
+        # マップにない場合は {ticker}_T_5m_60d.parquet または {ticker}_5m_60d.parquet を試す
+        candidates = [
+            f"{ticker}_T_5m_60d.parquet",
+            f"{ticker}_5m_60d.parquet",
+        ]
+        for candidate in candidates:
+            if (REVIEW_DIR / candidate).exists():
+                file_name = candidate
+                break
+
+    if not file_name:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Review data not found for ticker: {ticker}"
+        )
+
+    file_path = REVIEW_DIR / file_name
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"File not found: {file_name}"
+        )
+
+    try:
+        df = pd.read_parquet(file_path)
+
+        # インデックスがDatetimeの場合、カラムに変換
+        if df.index.name == "Datetime" or isinstance(df.index, pd.DatetimeIndex):
+            df = df.reset_index()
+            df.rename(columns={"Datetime": "date", "index": "date"}, inplace=True)
+
+        # date列がない場合はインデックスから作成
+        if "date" not in df.columns and df.index.dtype == "datetime64[ns, Asia/Tokyo]":
+            df["date"] = df.index.strftime("%Y-%m-%d %H:%M:%S")
+            df = df.reset_index(drop=True)
+
+        # datetime型を文字列に変換
+        if "date" in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df["date"]):
+                df["date"] = df["date"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # 必要なカラムのみ抽出
+        result = []
+        for _, row in df.iterrows():
+            price_row = {
+                "date": str(row.get("date", "")),
+                "Open": float(row["Open"]),
+                "High": float(row["High"]),
+                "Low": float(row["Low"]),
+                "Close": float(row["Close"]),
+                "Volume": int(row["Volume"]) if pd.notna(row.get("Volume")) else None,
+            }
+            result.append(price_row)
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading parquet file: {str(e)}"
+        )
+
+
+@router.get("/api/dev/stock-results/review/tickers")
+async def get_review_tickers():
+    """
+    利用可能なReview用ticker一覧を取得
+    """
+    if not REVIEW_DIR.exists():
+        return {"tickers": []}
+
+    tickers = []
+    for file_path in REVIEW_DIR.glob("*_5m_60d.parquet"):
+        file_name = file_path.stem  # 拡張子を除いたファイル名
+        # {ticker}_T_5m_60d または {ticker}_5m_60d からtickerを抽出
+        if "_T_5m_60d" in file_name:
+            ticker = file_name.replace("_T_5m_60d", "")
+        else:
+            ticker = file_name.replace("_5m_60d", "")
+        tickers.append(ticker)
+
+    return {"tickers": sorted(tickers)}

@@ -1,0 +1,204 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サイバーリンクス (3683.T) - 2025-12-17 トレードレビュー</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        .chart-container {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .signals-table {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th { color: #888; }
+        .entry { color: #ff6b6b; }
+        .exit { color: #4ecdc4; }
+        .trade-info {
+            background: #2a2a4e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .trade-info h3 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>サイバーリンクス (3683.T) - 2025-12-17</h1>
+
+    
+        <div class="trade-info">
+            <h3>実際のトレード</h3>
+            <table>
+                <tr><th>エントリー</th><td>1337円 @ 10:18頃</td></tr>
+                <tr><th>イグジット</th><td>1334.8円 @ 13:30頃</td></tr>
+                <tr><th>損益</th><td>+220円</td></tr>
+            </table>
+        </div>
+        
+
+    <div class="chart-container">
+        <div id="candlestick-chart"></div>
+    </div>
+
+    <div class="chart-container">
+        <div id="rsi-chart"></div>
+    </div>
+
+    <div class="signals-table">
+        <h3 style="color: #fff; margin-bottom: 15px;">機械判定シグナル</h3>
+        <table>
+            <tr>
+                <th>時刻</th>
+                <th>タイプ</th>
+                <th>価格</th>
+                <th>RSI</th>
+            </tr>
+            <tr class="exit"><td>09:20</td><td>イグジット</td><td>1328円</td><td>18.6</td></tr><tr class="entry"><td>09:50</td><td>エントリー</td><td>1332円</td><td>60.7</td></tr><tr class="entry"><td>10:10</td><td>エントリー</td><td>1337円</td><td>61.7</td></tr><tr class="exit"><td>11:25</td><td>イグジット</td><td>1329円</td><td>21.3</td></tr>
+        </table>
+    </div>
+
+    <script>
+        // OHLCデータ
+        const ohlcData = [{"x": "2025-12-17 09:00", "open": 1331.0, "high": 1331.0, "low": 1331.0, "close": 1331.0}, {"x": "2025-12-17 09:05", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 09:10", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 09:15", "open": 1331.0, "high": 1331.0, "low": 1328.0, "close": 1331.0}, {"x": "2025-12-17 09:20", "open": 1328.0, "high": 1328.0, "low": 1327.0, "close": 1328.0}, {"x": "2025-12-17 09:25", "open": 1327.0, "high": 1327.0, "low": 1326.0, "close": 1326.0}, {"x": "2025-12-17 09:30", "open": 1326.0, "high": 1326.0, "low": 1326.0, "close": 1326.0}, {"x": "2025-12-17 09:35", "open": 1329.0, "high": 1329.0, "low": 1327.0, "close": 1327.0}, {"x": "2025-12-17 09:40", "open": 1328.0, "high": 1333.0, "low": 1328.0, "close": 1332.0}, {"x": "2025-12-17 09:45", "open": 1334.0, "high": 1334.0, "low": 1334.0, "close": 1334.0}, {"x": "2025-12-17 09:50", "open": 1332.0, "high": 1332.0, "low": 1332.0, "close": 1332.0}, {"x": "2025-12-17 09:55", "open": 1336.0, "high": 1336.0, "low": 1336.0, "close": 1336.0}, {"x": "2025-12-17 10:00", "open": 1336.0, "high": 1338.0, "low": 1336.0, "close": 1338.0}, {"x": "2025-12-17 10:05", "open": 1338.0, "high": 1340.0, "low": 1338.0, "close": 1340.0}, {"x": "2025-12-17 10:10", "open": 1339.0, "high": 1339.0, "low": 1337.0, "close": 1337.0}, {"x": "2025-12-17 10:15", "open": 1337.0, "high": 1337.0, "low": 1336.0, "close": 1336.0}, {"x": "2025-12-17 10:20", "open": 1337.0, "high": 1338.0, "low": 1337.0, "close": 1338.0}, {"x": "2025-12-17 10:35", "open": 1334.0, "high": 1334.0, "low": 1333.0, "close": 1334.0}, {"x": "2025-12-17 10:45", "open": 1333.0, "high": 1334.0, "low": 1333.0, "close": 1334.0}, {"x": "2025-12-17 10:50", "open": 1333.0, "high": 1333.0, "low": 1333.0, "close": 1333.0}, {"x": "2025-12-17 10:55", "open": 1333.0, "high": 1334.0, "low": 1333.0, "close": 1334.0}, {"x": "2025-12-17 11:05", "open": 1335.0, "high": 1335.0, "low": 1334.0, "close": 1334.0}, {"x": "2025-12-17 11:20", "open": 1333.0, "high": 1333.0, "low": 1333.0, "close": 1333.0}, {"x": "2025-12-17 11:25", "open": 1331.0, "high": 1331.0, "low": 1329.0, "close": 1329.0}, {"x": "2025-12-17 11:30", "open": 1332.0, "high": 1332.0, "low": 1332.0, "close": 1332.0}, {"x": "2025-12-17 12:30", "open": 1331.0, "high": 1331.0, "low": 1330.0, "close": 1331.0}, {"x": "2025-12-17 12:35", "open": 1330.0, "high": 1331.0, "low": 1330.0, "close": 1331.0}, {"x": "2025-12-17 12:50", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 13:00", "open": 1330.0, "high": 1331.0, "low": 1330.0, "close": 1331.0}, {"x": "2025-12-17 13:10", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 13:25", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 13:30", "open": 1329.0, "high": 1331.0, "low": 1329.0, "close": 1331.0}, {"x": "2025-12-17 13:35", "open": 1330.0, "high": 1330.0, "low": 1330.0, "close": 1330.0}, {"x": "2025-12-17 13:40", "open": 1329.0, "high": 1329.0, "low": 1329.0, "close": 1329.0}, {"x": "2025-12-17 13:50", "open": 1331.0, "high": 1331.0, "low": 1331.0, "close": 1331.0}];
+        const rsiData = [{"x": "2025-12-17 09:05", "y": 0.0}, {"x": "2025-12-17 09:10", "y": 0.0}, {"x": "2025-12-17 09:15", "y": 60.97560975609756}, {"x": "2025-12-17 09:20", "y": 18.552875695732837}, {"x": "2025-12-17 09:25", "y": 11.743981209630064}, {"x": "2025-12-17 09:30", "y": 11.743981209630064}, {"x": "2025-12-17 09:35", "y": 31.409991300751557}, {"x": "2025-12-17 09:40", "y": 71.33341975744625}, {"x": "2025-12-17 09:45", "y": 77.79556486075195}, {"x": "2025-12-17 09:50", "y": 60.69336283190821}, {"x": "2025-12-17 09:55", "y": 74.63413603071828}, {"x": "2025-12-17 10:00", "y": 79.23667861532022}, {"x": "2025-12-17 10:05", "y": 83.07532788416967}, {"x": "2025-12-17 10:10", "y": 61.69066783379029}, {"x": "2025-12-17 10:15", "y": 55.71494120628283}, {"x": "2025-12-17 10:20", "y": 64.34848743161366}, {"x": "2025-12-17 10:35", "y": 43.26283717264052}, {"x": "2025-12-17 10:45", "y": 43.26283717264052}, {"x": "2025-12-17 10:50", "y": 38.35359187200361}, {"x": "2025-12-17 10:55", "y": 46.01151325860899}, {"x": "2025-12-17 11:05", "y": 46.01151325860899}, {"x": "2025-12-17 11:20", "y": 38.5324129420978}, {"x": "2025-12-17 11:25", "y": 21.2564210857779}, {"x": "2025-12-17 11:30", "y": 44.55957154037112}, {"x": "2025-12-17 12:30", "y": 39.66819910154156}, {"x": "2025-12-17 12:35", "y": 39.66819910154156}, {"x": "2025-12-17 12:50", "y": 33.860511285385584}, {"x": "2025-12-17 13:00", "y": 44.09211787457571}, {"x": "2025-12-17 13:10", "y": 36.947512894096526}, {"x": "2025-12-17 13:25", "y": 36.947512894096526}, {"x": "2025-12-17 13:30", "y": 49.68619384294745}, {"x": "2025-12-17 13:35", "y": 39.668310769200346}, {"x": "2025-12-17 13:40", "y": 31.683224438493923}, {"x": "2025-12-17 13:50", "y": 54.55367384356172}];
+        const entryMarkers = [{"x": "2025-12-17 09:50", "price": 1332.0, "rsi": 60.69336283190821}, {"x": "2025-12-17 10:10", "price": 1337.0, "rsi": 61.69066783379029}];
+        const exitMarkers = [{"x": "2025-12-17 09:20", "price": 1328.0, "rsi": 18.552875695732837}, {"x": "2025-12-17 11:25", "price": 1329.0, "rsi": 21.2564210857779}];
+
+        // ローソク足チャート
+        const candlestickTrace = {
+            x: ohlcData.map(d => d.x),
+            open: ohlcData.map(d => d.open),
+            high: ohlcData.map(d => d.high),
+            low: ohlcData.map(d => d.low),
+            close: ohlcData.map(d => d.close),
+            type: 'candlestick',
+            increasing: { line: { color: '#4ecdc4' } },
+            decreasing: { line: { color: '#ff6b6b' } }
+        };
+
+        // エントリーマーカー
+        const entryTrace = {
+            x: entryMarkers.map(d => d.x),
+            y: entryMarkers.map(d => d.price),
+            mode: 'markers',
+            marker: {
+                symbol: 'triangle-down',
+                size: 15,
+                color: '#ff6b6b'
+            },
+            name: 'Entry (RSI>70下落)'
+        };
+
+        // イグジットマーカー
+        const exitTrace = {
+            x: exitMarkers.map(d => d.x),
+            y: exitMarkers.map(d => d.price),
+            mode: 'markers',
+            marker: {
+                symbol: 'triangle-up',
+                size: 15,
+                color: '#4ecdc4'
+            },
+            name: 'Exit (RSI<30)'
+        };
+
+        const candlestickLayout = {
+            title: '5分足チャート',
+            paper_bgcolor: '#1a1a2e',
+            plot_bgcolor: '#1a1a2e',
+            font: { color: '#e0e0e0' },
+            xaxis: {
+                gridcolor: '#333',
+                rangeslider: { visible: false }
+            },
+            yaxis: {
+                gridcolor: '#333',
+                title: '価格 (円)'
+            },
+            showlegend: true,
+            legend: { x: 0, y: 1.1, orientation: 'h' }
+        };
+
+        Plotly.newPlot('candlestick-chart', [candlestickTrace, entryTrace, exitTrace], candlestickLayout);
+
+        // RSIチャート
+        const rsiTrace = {
+            x: rsiData.map(d => d.x),
+            y: rsiData.map(d => d.y),
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#ffd93d', width: 2 },
+            name: 'RSI(14)'
+        };
+
+        // RSI 70/30ライン
+        const rsi70 = {
+            x: [rsiData[0]?.x, rsiData[rsiData.length-1]?.x],
+            y: [70, 70],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#ff6b6b', dash: 'dash', width: 1 },
+            name: 'RSI 70'
+        };
+
+        const rsi30 = {
+            x: [rsiData[0]?.x, rsiData[rsiData.length-1]?.x],
+            y: [30, 30],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#4ecdc4', dash: 'dash', width: 1 },
+            name: 'RSI 30'
+        };
+
+        const rsiLayout = {
+            title: 'RSI (14)',
+            paper_bgcolor: '#1a1a2e',
+            plot_bgcolor: '#1a1a2e',
+            font: { color: '#e0e0e0' },
+            xaxis: { gridcolor: '#333' },
+            yaxis: {
+                gridcolor: '#333',
+                range: [0, 100],
+                title: 'RSI'
+            },
+            showlegend: true,
+            legend: { x: 0, y: 1.15, orientation: 'h' }
+        };
+
+        Plotly.newPlot('rsi-chart', [rsiTrace, rsi70, rsi30], rsiLayout);
+    </script>
+</body>
+</html>

@@ -22,7 +22,7 @@ resource "aws_cognito_user_pool" "main" {
 
   # WebAuthn/パスキー設定
   web_authn_configuration {
-    relying_party_id  = "stock.porque-and-because.work"
+    relying_party_id  = "ymnk.jp"
     user_verification = "preferred"  # "required" or "preferred"
   }
 
@@ -122,12 +122,14 @@ resource "aws_cognito_user_pool_client" "nextjs" {
   callback_urls = [
     "http://localhost:3000/login",
     "https://stock.porque-and-because.work/login",
+    "https://www.ymnk.jp/login",
   ]
 
   # ログアウトURL
   logout_urls = [
     "http://localhost:3000/dev",
     "https://stock.porque-and-because.work/dev",
+    "https://www.ymnk.jp/dev",
   ]
 
   # OAuth設定

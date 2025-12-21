@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空売り候補 深掘り分析 (2025/12/18)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background-color: #161b22;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px 20px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tab-btn:hover {
+            background-color: #21262d;
+            color: #c9d1d9;
+        }
+
+        .tab-btn.active {
+            color: #58a6ff;
+            border-bottom-color: #58a6ff;
+            background-color: #0d1117;
+        }
+
+        .tab-btn .ticker {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .tab-btn .name {
+            font-size: 0.85em;
+        }
+
+        .tab-btn .verdict {
+            font-size: 0.75em;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-top: 4px;
+        }
+
+        .tab-btn .verdict.ok {
+            background-color: #238636;
+            color: #fff;
+        }
+
+        .tab-btn .verdict.ng {
+            background-color: #da3633;
+            color: #fff;
+        }
+
+        .tab-btn .verdict.hold {
+            background-color: #d29922;
+            color: #000;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Common Styles */
+        h1 {
+            color: #58a6ff;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #58a6ff;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #79c0ff;
+            font-size: 1.7em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid #58a6ff;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #a5d6ff;
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #c9d1d9;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Info Cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .info-card .label {
+            color: #8b949e;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .info-card .value {
+            color: #58a6ff;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        /* Boxes */
+        .info-box {
+            background-color: #1c2128;
+            border-left: 4px solid #58a6ff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background-color: #1c1917;
+            border-left: 4px solid #f85149;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box h3, .warning-box h4 {
+            color: #ff7b72;
+            margin-top: 0;
+        }
+
+        .success-box {
+            background-color: #0f2d1e;
+            border-left: 4px solid #3fb950;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box h3, .success-box h4 {
+            color: #56d364;
+            margin-top: 0;
+        }
+
+        .caution-box {
+            background-color: #1c1917;
+            border-left: 4px solid #d29922;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .caution-box h3 {
+            color: #e3b341;
+            margin-top: 0;
+        }
+
+        /* Highlight */
+        .highlight {
+            background-color: #1f6feb;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .price-up {
+            color: #3fb950;
+            font-weight: bold;
+        }
+
+        .price-down {
+            color: #f85149;
+            font-weight: bold;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #161b22;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: #21262d;
+            color: #58a6ff;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #30363d;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        tr:hover {
+            background-color: #21262d;
+        }
+
+        /* Metrics */
+        .metric {
+            display: inline-block;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+
+        .metric-label {
+            color: #8b949e;
+            font-size: 0.85em;
+        }
+
+        .metric-value {
+            color: #58a6ff;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #58a6ff, #1f6feb);
+        }
+
+        .timeline-item {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            left: -24px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #58a6ff;
+            border: 3px solid #0d1117;
+        }
+
+        .timeline-date {
+            color: #58a6ff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .timeline-content {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        /* Strategy Points */
+        .strategy-point {
+            background-color: #0f2d1e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            border-left: 3px solid #3fb950;
+        }
+
+        /* Chart Pattern */
+        .chart-pattern {
+            background-color: #1c2128;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+        }
+
+        /* Conclusion Box */
+        .conclusion {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            border: 2px solid #374151;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .conclusion h2 {
+            color: #fbbf24;
+            margin-top: 0;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            margin: 3px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .tag.green { background-color: #238636; color: #fff; }
+        .tag.red { background-color: #da3633; color: #fff; }
+        .tag.yellow { background-color: #d29922; color: #000; }
+        .tag.blue { background-color: #1f6feb; color: #fff; }
+
+        /* Links */
+        a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #30363d;
+            text-align: center;
+            color: #8b949e;
+            font-size: 0.9em;
+        }
+
+        /* Summary Header */
+        .summary-header {
+            background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 1px solid #30363d;
+        }
+
+        .summary-header h1 {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 20px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-card.recommended {
+            border-color: #3fb950;
+            background-color: rgba(63, 185, 80, 0.1);
+        }
+
+        .summary-card.not-recommended {
+            border-color: #f85149;
+            background-color: rgba(248, 81, 73, 0.1);
+        }
+
+        .summary-card .ticker {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+
+        .summary-card .name {
+            font-size: 0.9em;
+            color: #8b949e;
+            margin: 5px 0;
+        }
+
+        .summary-card .verdict-large {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .summary-card .reason {
+            font-size: 0.85em;
+            color: #8b949e;
+        }
+
+        @media (max-width: 768px) {
+            .tab-btn {
+                padding: 12px 10px;
+                font-size: 0.9em;
+            }
+
+            .tab-btn .ticker {
+                font-size: 1em;
+            }
+
+            .tab-btn .name {
+                font-size: 0.75em;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('summary')">
+            <span class="ticker">まとめ</span>
+            <span class="name">3銘柄比較</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('airobo')">
+            <span class="ticker">247A</span>
+            <span class="name">Aiロボティクス</span>
+            <span class="verdict ok">チャレンジOK</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('acreat')">
+            <span class="ticker">4395</span>
+            <span class="name">アクリート</span>
+            <span class="verdict hold">ロング推奨</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('jesco')">
+            <span class="ticker">1434</span>
+            <span class="name">JESCO HD</span>
+            <span class="verdict ng">見送り</span>
+        </button>
+        <button class="tab-btn" onclick="showTab('makuake')">
+            <span class="ticker">4479</span>
+            <span class="name">マクアケ</span>
+            <span class="verdict hold">崩れ待ち</span>
+        </button>
+    </nav>
+
+    <!-- Summary Tab -->
+    <div id="summary" class="tab-content active">
+        <div class="summary-header">
+            <h1>空売り候補 深掘り分析</h1>
+            <p class="subtitle">2025年12月18日 - 明日の戦略</p>
+
+            <div class="summary-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="summary-card recommended">
+                    <div class="ticker">247A</div>
+                    <div class="name">Aiロボティクス</div>
+                    <div class="verdict-large price-up">チャレンジOK</div>
+                    <div class="reason">常習10回・12/18実証済み</div>
+                </div>
+                <div class="summary-card" style="border-color: #d29922; background-color: rgba(210, 153, 34, 0.1);">
+                    <div class="ticker">4479</div>
+                    <div class="name">マクアケ</div>
+                    <div class="verdict-large" style="color: #d29922;">崩れ待ち</div>
+                    <div class="reason">出来高26.5x・高値パターン待ち</div>
+                </div>
+                <div class="summary-card not-recommended">
+                    <div class="ticker">4395</div>
+                    <div class="name">アクリート</div>
+                    <div class="verdict-large" style="color: #d29922;">ショート非推奨</div>
+                    <div class="reason">21兆円材料でロング優位</div>
+                </div>
+                <div class="summary-card not-recommended">
+                    <div class="ticker">1434</div>
+                    <div class="name">JESCO HD</div>
+                    <div class="verdict-large price-down">見送り</div>
+                    <div class="reason">RSI 15.38で反発リスク</div>
+                </div>
+            </div>
+        </div>
+
+        <h2>明日の優先順位</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>順位</th>
+                    <th>銘柄</th>
+                    <th>判断</th>
+                    <th>理由</th>
+                    <th>信用区分</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background-color: rgba(63, 185, 80, 0.1);">
+                    <td><span class="highlight">1</span></td>
+                    <td><strong>247A Aiロボティクス</strong></td>
+                    <td><span class="tag green">チャレンジ</span></td>
+                    <td>常習10回、12/18で実証済み、RSI戦略が有効</td>
+                    <td>いちにち信用</td>
+                </tr>
+                <tr style="background-color: rgba(210, 153, 34, 0.1);">
+                    <td><span class="highlight">2</span></td>
+                    <td><strong>4479 マクアケ</strong></td>
+                    <td><span class="tag yellow">崩れ待ち</span></td>
+                    <td>出来高26.5倍、高値パターン不規則（9時台 or 後場）</td>
+                    <td>いちにち信用</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>4395 アクリート</td>
+                    <td><span class="tag yellow">見送り</span></td>
+                    <td>21兆円材料が強すぎ、ロング推奨</td>
+                    <td>いちにち信用</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>1434 JESCO HD</td>
+                    <td><span class="tag red">見送り</span></td>
+                    <td>RSI 15.38で反発リスク極大</td>
+                    <td>制度信用可</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>247A 戦略サマリー</h2>
+        <div class="success-box">
+            <h3>RSIベースのショート戦略（バックテスト検証済み）</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>内容</th>
+                </tr>
+                <tr>
+                    <td>時間帯</td>
+                    <td><span class="highlight">9時台</span>（9:00〜9:59）</td>
+                </tr>
+                <tr>
+                    <td>RSI条件</td>
+                    <td>RSI <span class="highlight">92超え</span>（できれば95超え）</td>
+                </tr>
+                <tr>
+                    <td>補助条件</td>
+                    <td>高値からの反落確認</td>
+                </tr>
+                <tr>
+                    <td>イグジット</td>
+                    <td>RSI 30以下、または 10:45〜11:00</td>
+                </tr>
+                <tr>
+                    <td>損切り</td>
+                    <td>エントリー価格 <span class="price-down">+3%</span></td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px;"><strong>バックテスト結果:</strong> 9時台+RSI92超え → 勝率67%、9時台+RSI95超え → 勝率71%</p>
+        </div>
+
+        <h2>4479 マクアケ 戦略サマリー</h2>
+        <div class="caution-box">
+            <h3>崩れ待ちのショート戦略</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>内容</th>
+                </tr>
+                <tr>
+                    <td>状況</td>
+                    <td>出来高 <span class="highlight">26.5倍</span>、12/18は+14.9%で引け</td>
+                </tr>
+                <tr>
+                    <td>高値時刻</td>
+                    <td>不規則（9時台 61.7% / 後場 33.3%）</td>
+                </tr>
+                <tr>
+                    <td>エントリー条件</td>
+                    <td>RSI 85超え + 明確な反転シグナル</td>
+                </tr>
+                <tr>
+                    <td>注意点</td>
+                    <td>出来高急騰日は高値時刻が不規則</td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px;"><strong>戦略:</strong> 急騰継続なら見送り、RSI過熱+反転で初めてエントリー検討</p>
+        </div>
+
+        <div class="warning-box">
+            <h3>注意点</h3>
+            <ul>
+                <li><strong>12/16型の二山パターン</strong>: 10時台に一度下落後、11時台に再上昇する可能性</li>
+                <li><strong>小ロットから開始</strong>: ボラティリティが高い</li>
+                <li><strong>損切り徹底</strong>: +3%で機械的に実行</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>各銘柄の詳細は上部のタブをクリックしてください</p>
+            <p>作成日: 2025年12月18日</p>
+        </div>
+    </div>
+
+    <!-- 247A Aiロボティクス Tab -->
+    <div id="airobo" class="tab-content">
+        <h1>247A Aiロボティクス - 投資分析レポート</h1>
+        <p class="subtitle">AI×D2C美容ブランドの急騰分析</p>
+
+        <h2>1. 銘柄概要</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">銘柄コード</div>
+                <div class="value">247A</div>
+            </div>
+            <div class="info-card">
+                <div class="label">市場</div>
+                <div class="value">東証グロース</div>
+            </div>
+            <div class="info-card">
+                <div class="label">株価（12/18）</div>
+                <div class="value price-up">1,595円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">時価総額</div>
+                <div class="value">約988億円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PER</div>
+                <div class="value">28.3倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PBR</div>
+                <div class="value">21.65倍</div>
+            </div>
+        </div>
+
+        <h3>事業内容</h3>
+        <ul>
+            <li><strong>主力:</strong> 自社開発AIシステム「SELL」を活用したD2Cブランド事業</li>
+            <li><strong>スキンケア「Yunth」</strong>: 楽天ベストコスメ2024 総合大賞受賞</li>
+            <li><strong>美容家電「Brighte」</strong>: ELEKIBRUSH等</li>
+            <li>2024年9月27日IPO（上場から約3ヶ月）</li>
+        </ul>
+
+        <h2>2. ファンダメンタルズ</h2>
+        <div class="success-box">
+            <h3>2026年3月期 2Q決算</h3>
+            <table>
+                <tr>
+                    <th>指標</th>
+                    <th>実績</th>
+                    <th>前年比</th>
+                </tr>
+                <tr>
+                    <td>売上高</td>
+                    <td>105.42億円</td>
+                    <td><span class="price-up">+66.4%</span></td>
+                </tr>
+                <tr>
+                    <td>営業利益</td>
+                    <td>7.01億円</td>
+                    <td><span class="price-down">-41.7%</span></td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>注目ポイント:</strong> 売上急成長、利益減は新ブランドへの先行投資による</p>
+        </div>
+
+        <div class="info-box">
+            <h3>通期見通し</h3>
+            <ul>
+                <li><strong>売上高:</strong> 280億円（前年比大幅増）</li>
+                <li><strong>営業利益:</strong> 48億円</li>
+                <li><strong>ROE:</strong> 87.15%（予想）</li>
+                <li><strong>Yunth定期会員:</strong> 11.62万人</li>
+            </ul>
+        </div>
+
+        <div class="caution-box">
+            <h3>株主優待（新設）</h3>
+            <ul>
+                <li>2025年3月・9月の年2回</li>
+                <li>100株以上保有で自社製品（約9,000円相当）</li>
+                <li>初回: Yunth 生VC美白美容液 + 生VAダーマ美容液</li>
+            </ul>
+        </div>
+
+        <h2>3. 12/18の動き</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">出来高倍率</div>
+                <div class="value price-up">3.9倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">終値</div>
+                <div class="value">1,595円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">高値</div>
+                <div class="value">1,699円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">高値時刻</div>
+                <div class="value">9:40</div>
+            </div>
+            <div class="info-card">
+                <div class="label">騰落率</div>
+                <div class="value price-up">+3.2%</div>
+            </div>
+            <div class="info-card">
+                <div class="label">出来高</div>
+                <div class="value">1,005万株</div>
+            </div>
+        </div>
+
+        <div class="success-box">
+            <h3>12/18の特徴（典型的な前場ピーク）</h3>
+            <ul>
+                <li><strong>9:40に高値1,699円:</strong> 前場早い時間にピーク</li>
+                <li><strong>その後下落:</strong> 高値から約6%下落して引け</li>
+                <li><strong>RSI戦略が機能:</strong> 9:45 RSI 85.98 → 10:45 RSI 29.20</li>
+            </ul>
+            <p><strong>示唆:</strong> 典型的な前場ピーク型、ショート戦略が有効だった日</p>
+        </div>
+
+        <h2>4. 高値時刻パターン分析</h2>
+        <div class="info-box">
+            <h3>過去60日間の5分足分析</h3>
+            <table>
+                <tr>
+                    <th>区分</th>
+                    <th>回数</th>
+                    <th>割合</th>
+                </tr>
+                <tr>
+                    <td>前場高値</td>
+                    <td>46回</td>
+                    <td><span class="highlight">76.7%</span></td>
+                </tr>
+                <tr>
+                    <td>　うち9時台</td>
+                    <td>36回</td>
+                    <td>60.0%</td>
+                </tr>
+                <tr>
+                    <td>　うち10時台</td>
+                    <td>5回</td>
+                    <td>8.3%</td>
+                </tr>
+                <tr>
+                    <td>　うち11時台</td>
+                    <td>5回</td>
+                    <td>8.3%</td>
+                </tr>
+                <tr>
+                    <td>後場高値</td>
+                    <td>14回</td>
+                    <td>23.3%</td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>マクアケとの比較:</strong> 247Aの方が前場ピーク率が高い（76.7% vs 66.7%）</p>
+        </div>
+
+        <div class="success-box">
+            <h3>出来高急騰日（1.5倍以上）の高値パターン</h3>
+            <p>出来高が通常の1.5倍以上の日: <span class="highlight">7日間</span></p>
+            <ul>
+                <li>前場高値: 6回（<span class="highlight">85.7%</span>）</li>
+                <li>後場高値: 1回（14.3%）</li>
+            </ul>
+            <table>
+                <tr>
+                    <th>日付</th>
+                    <th>出来高倍率</th>
+                    <th>高値時刻</th>
+                    <th>騰落率</th>
+                </tr>
+                <tr>
+                    <td>10/29</td>
+                    <td>2.1倍</td>
+                    <td>9時台（前場）</td>
+                    <td>+0.6%</td>
+                </tr>
+                <tr>
+                    <td>11/14</td>
+                    <td>2.0倍</td>
+                    <td>9時台（前場）</td>
+                    <td><span class="price-down">-5.7%</span></td>
+                </tr>
+                <tr>
+                    <td>11/17</td>
+                    <td>2.6倍</td>
+                    <td>9時台（前場）</td>
+                    <td><span class="price-down">-9.8%</span></td>
+                </tr>
+                <tr>
+                    <td>11/18</td>
+                    <td>2.8倍</td>
+                    <td>9時台（前場）</td>
+                    <td><span class="price-down">-1.3%</span></td>
+                </tr>
+                <tr>
+                    <td>12/15</td>
+                    <td>1.6倍</td>
+                    <td>13時台（後場）</td>
+                    <td><span class="price-up">+13.0%</span></td>
+                </tr>
+                <tr>
+                    <td>12/17</td>
+                    <td>1.6倍</td>
+                    <td>11時台（前場）</td>
+                    <td><span class="price-up">+7.5%</span></td>
+                </tr>
+                <tr style="background-color: rgba(63, 185, 80, 0.1);">
+                    <td>12/18</td>
+                    <td>3.9倍</td>
+                    <td>9時台（前場）</td>
+                    <td><span class="price-up">+3.2%</span></td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>結論:</strong> 出来高急騰日でも<span class="highlight">85.7%が前場ピーク</span>（マクアケより予測しやすい）</p>
+        </div>
+
+        <h2>5. 12/18のトレード実績</h2>
+        <div class="chart-pattern">
+            <h4>RSI戦略の実証</h4>
+            <table>
+                <tr>
+                    <th>時刻</th>
+                    <th>RSI</th>
+                    <th>アクション</th>
+                </tr>
+                <tr>
+                    <td>9:45</td>
+                    <td><span class="highlight">85.98</span></td>
+                    <td><span class="price-down">ショートエントリー</span>（陰線2本目）</td>
+                </tr>
+                <tr>
+                    <td>10:45</td>
+                    <td><span class="highlight">29.20</span></td>
+                    <td><span class="price-up">イグジット</span>（利益確保）</td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>RSI変動幅:</strong> 56.78ポイント下落（約1時間で完結）</p>
+        </div>
+
+        <h3>12/16の特殊パターン（二山）</h3>
+        <div class="caution-box">
+            <ol>
+                <li>10時台: 一度下落</li>
+                <li>持ち直し: 下落後に反発</li>
+                <li>11時台〜後場: もう一山形成</li>
+            </ol>
+            <p><strong>対策:</strong> 部分利確（50%）+ 残りは後場まで保有</p>
+        </div>
+
+        <h2>6. PTS状況</h2>
+        <div class="info-box">
+            <h3>12/18 PTS</h3>
+            <ul>
+                <li><strong>現在値:</strong> 1,613.9円（終値比 +18.9円）</li>
+                <li><strong>傾向:</strong> やや上昇</li>
+            </ul>
+            <p><strong>示唆:</strong> GUスタートの可能性、9:30〜10:00の動きに注目</p>
+        </div>
+
+        <h2>7. ショート戦略</h2>
+        <div class="warning-box">
+            <h3>RSI閾値別バックテスト結果（42日間）</h3>
+            <table>
+                <tr>
+                    <th>条件</th>
+                    <th>日数</th>
+                    <th>勝率</th>
+                    <th>最大利益</th>
+                    <th>リスク</th>
+                    <th>引け損益</th>
+                </tr>
+                <tr>
+                    <td>全時間 RSI>85</td>
+                    <td>42日</td>
+                    <td>57%</td>
+                    <td>+2.2%</td>
+                    <td>-2.3%</td>
+                    <td>±0.0%</td>
+                </tr>
+                <tr>
+                    <td>前場 RSI>92</td>
+                    <td>22日</td>
+                    <td>64%</td>
+                    <td>+2.8%</td>
+                    <td>-2.2%</td>
+                    <td>+0.7%</td>
+                </tr>
+                <tr style="background-color: rgba(63, 185, 80, 0.15);">
+                    <td><strong>9時台 RSI>92</strong></td>
+                    <td>12日</td>
+                    <td><span class="price-up">67%</span></td>
+                    <td>+3.1%</td>
+                    <td>-2.9%</td>
+                    <td>+0.5%</td>
+                </tr>
+                <tr style="background-color: rgba(63, 185, 80, 0.25);">
+                    <td><strong>9時台 RSI>95</strong></td>
+                    <td>7日</td>
+                    <td><span class="highlight">71%</span></td>
+                    <td>+3.5%</td>
+                    <td>-2.7%</td>
+                    <td><span class="price-up">+1.4%</span></td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>結論:</strong> RSI 85超えだけでは微妙。<span class="highlight">9時台 + RSI 92超え</span>が有効。</p>
+        </div>
+
+        <div class="strategy-point">
+            <h3>推奨エントリー条件</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>内容</th>
+                </tr>
+                <tr>
+                    <td>時間帯</td>
+                    <td><span class="highlight">9時台</span>（9:00〜9:59）</td>
+                </tr>
+                <tr>
+                    <td>RSI条件</td>
+                    <td>RSI <span class="highlight">92超え</span>（できれば95超え）</td>
+                </tr>
+                <tr>
+                    <td>補助条件</td>
+                    <td>高値からの反落確認</td>
+                </tr>
+                <tr>
+                    <td>イグジット</td>
+                    <td>RSI 30以下、または 10:45〜11:00</td>
+                </tr>
+                <tr>
+                    <td>損切り</td>
+                    <td>エントリー価格 <span class="price-down">+3%</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <h2>8. 結論</h2>
+        <div class="conclusion">
+            <h2>判定: <span class="price-up">チャレンジOK（最優先）</span></h2>
+            <h4>推奨理由</h4>
+            <ul>
+                <li><strong>常習回数10回</strong>の高い信頼性</li>
+                <li><strong>前場ピーク率76.7%</strong>（マクアケより高い）</li>
+                <li><strong>出来高急騰日でも85.7%が前場ピーク</strong>（予測しやすい）</li>
+                <li><strong>12/18にRSI戦略で実証済み</strong></li>
+                <li>明確なシグナル（RSI 85超え + 陰線2本目）</li>
+                <li>短期決戦（1時間程度で完結）</li>
+            </ul>
+            <h4>明日（12/19）の対応</h4>
+            <table>
+                <tr>
+                    <th>シナリオ</th>
+                    <th>対応</th>
+                </tr>
+                <tr>
+                    <td>GUで寄り付き、9時台に急騰</td>
+                    <td>RSI 85超え + 陰線2本目でショート</td>
+                </tr>
+                <tr>
+                    <td>GUで寄り付き、そのまま上昇継続</td>
+                    <td>RSI過熱を待つ、無理に追わない</td>
+                </tr>
+                <tr>
+                    <td>GDで寄り付き</td>
+                    <td>反発を待ってからショート検討</td>
+                </tr>
+            </table>
+            <h4>注意点</h4>
+            <ul>
+                <li>小ロットから開始</li>
+                <li>損切り +3% を徹底</li>
+                <li>12/16型の二山パターンに注意</li>
+                <li><span class="tag blue">いちにち信用で空売り可能</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 4395 アクリート Tab -->
+    <div id="acreat" class="tab-content">
+        <h1>4395 アクリート - 投資分析レポート</h1>
+        <p class="subtitle">量子セキュリティ×SMS配信大手の成長ストーリー</p>
+
+        <h2>1. 銘柄概要</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">銘柄コード</div>
+                <div class="value">4395</div>
+            </div>
+            <div class="info-card">
+                <div class="label">市場</div>
+                <div class="value">東証グロース</div>
+            </div>
+            <div class="info-card">
+                <div class="label">時価総額</div>
+                <div class="value">44億円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PER</div>
+                <div class="value">18.85倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PBR</div>
+                <div class="value">2.34倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">業種</div>
+                <div class="value">情報・通信</div>
+            </div>
+        </div>
+
+        <h3>事業内容</h3>
+        <ul>
+            <li><strong>主力:</strong> SMS配信サービス国内最大手（5,000社超の顧客基盤）</li>
+            <li><strong>新規:</strong> 量子セキュリティ事業への転換中</li>
+        </ul>
+
+        <h2>2. 超大型材料（12/11発表）</h2>
+        <div class="success-box">
+            <h3>合弁先Forward Edge-AIが米ミサイル防衛局から大型契約獲得</h3>
+            <p style="font-size: 1.3em; margin: 15px 0;">
+                契約上限: <span class="highlight">1,510億米ドル（約21兆円）</span>
+            </p>
+            <ul>
+                <li>「SHIELD契約」の主導企業（元請け）に選定</li>
+                <li>合弁会社「フォワードエッジAIジャパン」（アクリート出資比率60%）</li>
+                <li>量子耐性型暗号ソリューション「Isidore Quantum」を日本展開</li>
+                <li>事業開始: 2025年12月予定</li>
+            </ul>
+        </div>
+
+        <h2>3. チャート分析</h2>
+        <h3>2024年8月: ストップ高→急落パターン</h3>
+        <div class="warning-box">
+            <table>
+                <tr>
+                    <td>8/6</td>
+                    <td><span class="tag red">上場来安値 437円</span></td>
+                </tr>
+                <tr>
+                    <td>8/22-25</td>
+                    <td><span class="tag green">2日連続ストップ高</span>（Forward Edge-AI提携発表）</td>
+                </tr>
+                <tr>
+                    <td>8/26</td>
+                    <td><span class="tag red">急落</span>（材料出尽くし）</td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>2024年12月: ボラティリティ急増</h3>
+        <div class="info-box">
+            <p>12/9の21兆円契約発表で<span class="tag red">ストップ高買い気配</span></p>
+            <p>材料の具体性が高く、8月とは異なり「本物の成長ストーリー」として認識</p>
+        </div>
+
+        <h2>4. ショート戦略の検討</h2>
+        <div class="warning-box">
+            <h3>ショートは非推奨</h3>
+            <ul>
+                <li><strong>材料が強すぎる:</strong> 21兆円規模の具体的な契約</li>
+                <li><strong>成長テーマ:</strong> 量子セキュリティは中長期で期待大</li>
+                <li><strong>上昇余地:</strong> 現在700円前後は上場来高値4,130円の17%</li>
+                <li><strong>追加材料の可能性:</strong> 2025年12月の事業開始に向けてIR続出</li>
+            </ul>
+        </div>
+
+        <h2>5. 結論</h2>
+        <div class="conclusion">
+            <h2>判定: <span style="color: #d29922;">ショート非推奨 → ロング推奨</span></h2>
+            <h4>ショートが危険な理由</h4>
+            <ul>
+                <li>21兆円材料で再度急騰のリスク</li>
+                <li>テーマ株は予想外の動きが多い</li>
+                <li>8月の急落パターンは「材料出尽くし」だったが、今回は「具体的なビジネス」</li>
+            </ul>
+            <h4>もしショートするなら</h4>
+            <ul>
+                <li>2日連続ストップ高後の3日目を狙う（超短期）</li>
+                <li>損切り +8-10% を厳守</li>
+                <li>1-3日以内の決戦のみ</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 1434 JESCO Tab -->
+    <div id="jesco" class="tab-content">
+        <h1>1434 JESCOホールディングス - 投資分析レポート</h1>
+        <p class="subtitle">空売り戦略のリスク評価</p>
+
+        <h2>1. 銘柄概要</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">銘柄コード</div>
+                <div class="value">1434</div>
+            </div>
+            <div class="info-card">
+                <div class="label">市場</div>
+                <div class="value">東証スタンダード</div>
+            </div>
+            <div class="info-card">
+                <div class="label">時価総額</div>
+                <div class="value">約90億円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">予想PER</div>
+                <div class="value">7.62倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PBR</div>
+                <div class="value">1.12倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">配当利回り</div>
+                <div class="value">3.97%</div>
+            </div>
+        </div>
+
+        <h3>事業内容</h3>
+        <ul>
+            <li><strong>主力:</strong> 再生可能エネルギー設備工事（太陽光発電設備）</li>
+            <li>電気設備工事、無線通信設備工事（5G基地局）</li>
+            <li>海外: ベトナムでのEPC事業（20年以上の実績）</li>
+        </ul>
+
+        <div class="success-box">
+            <h4>直近業績（2025年8月期）</h4>
+            <ul>
+                <li>売上高: 190.7億円（<span class="price-up">+28.8%</span>）</li>
+                <li>営業利益: 17.2億円（<span class="price-up">+50.6%</span>）</li>
+                <li>第3四半期で経常利益が前年比2.1倍</li>
+            </ul>
+        </div>
+
+        <h2>2. 本日の値動き（12/18）</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">パターン</div>
+                <div class="value">寄底→急騰</div>
+            </div>
+            <div class="info-card">
+                <div class="label">終値RSI</div>
+                <div class="value price-down">15.38</div>
+            </div>
+        </div>
+
+        <h2>3. ショート戦略のリスク評価</h2>
+        <div class="warning-box">
+            <h3>現時点でのショートは極めて高リスク</h3>
+
+            <h4>リスク要因1: RSIが異常に低い</h4>
+            <ul>
+                <li>RSI 15.38 = <span class="highlight">異常な売られすぎ</span></li>
+                <li>通常RSI 30以下が「売られすぎ」、15は極端</li>
+                <li>ショート直後に急反発（ショートスクイーズ）のリスク大</li>
+            </ul>
+
+            <h4>リスク要因2: 上昇トレンド中</h4>
+            <ul>
+                <li>日足で比較的上昇基調 = トレンドに逆らう取引</li>
+                <li>上昇トレンド中のショートは勝率が低い</li>
+            </ul>
+
+            <h4>リスク要因3: ファンダメンタルズが良好</h4>
+            <ul>
+                <li>大幅増収増益（売上+28.8%、営業利益+50.6%）</li>
+                <li>低PER（7.62倍）で割安</li>
+                <li>再エネ関連は政策支援で中長期的に追い風</li>
+            </ul>
+        </div>
+
+        <h2>4. ショートを検討できる条件</h2>
+        <div class="caution-box">
+            <h3>以下の条件が揃うまで待機</h3>
+            <ol>
+                <li><strong>RSIの回復:</strong> RSI 50〜70台まで上昇</li>
+                <li><strong>天井形成:</strong> ダブルトップ、H&S等のパターン</li>
+                <li><strong>トレンド転換:</strong> 移動平均線のデッドクロス</li>
+                <li><strong>ネガティブ材料:</strong> 業績下方修正等</li>
+            </ol>
+        </div>
+
+        <h2>5. 結論</h2>
+        <div class="conclusion">
+            <h2>判定: <span class="price-down">ショート非推奨（見送り）</span></h2>
+            <h4>理由</h4>
+            <ol>
+                <li><strong>RSI 15.38という異常な売られすぎ</strong> → 急反発リスク極大</li>
+                <li><strong>上昇トレンド中</strong> → トレンドに逆らう</li>
+                <li><strong>ファンダが良好</strong> → 業績好調な銘柄のショートは不利</li>
+                <li><strong>低PER・高配当</strong> → 下値は堅い可能性</li>
+            </ol>
+            <h4>推奨アクション</h4>
+            <p>RSIが60-70台に回復し、明確な天井形成が確認できるまで静観。</p>
+        </div>
+    </div>
+
+    <!-- 4479 マクアケ Tab -->
+    <div id="makuake" class="tab-content">
+        <h1>4479 マクアケ - 投資分析レポート</h1>
+        <p class="subtitle">クラウドファンディング大手の急騰分析</p>
+
+        <h2>1. 銘柄概要</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">銘柄コード</div>
+                <div class="value">4479</div>
+            </div>
+            <div class="info-card">
+                <div class="label">市場</div>
+                <div class="value">東証グロース</div>
+            </div>
+            <div class="info-card">
+                <div class="label">株価（12/18）</div>
+                <div class="value price-up">1,046円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">時価総額</div>
+                <div class="value">約190億円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PER</div>
+                <div class="value">25.8倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">PBR</div>
+                <div class="value">1.70倍</div>
+            </div>
+        </div>
+
+        <h3>事業内容</h3>
+        <ul>
+            <li><strong>主力:</strong> クラウドファンディングプラットフォーム「Makuake」運営</li>
+            <li>応援購入（購入型クラウドファンディング）のパイオニア</li>
+            <li>メーカー・ブランドの新商品開発・テストマーケティング支援</li>
+            <li>サイバーエージェントグループ</li>
+        </ul>
+
+        <h2>2. ファンダメンタルズ</h2>
+        <div class="success-box">
+            <h3>2024年9月期 通期決算</h3>
+            <table>
+                <tr>
+                    <th>指標</th>
+                    <th>実績</th>
+                    <th>前年比</th>
+                </tr>
+                <tr>
+                    <td>売上高</td>
+                    <td>45.77億円</td>
+                    <td><span class="price-up">+25.3%</span></td>
+                </tr>
+                <tr>
+                    <td>営業利益</td>
+                    <td>4.47億円</td>
+                    <td><span class="price-up">黒字転換</span></td>
+                </tr>
+                <tr>
+                    <td>経常利益</td>
+                    <td>4.52億円</td>
+                    <td><span class="price-up">黒字転換</span></td>
+                </tr>
+                <tr>
+                    <td>純利益</td>
+                    <td>3.15億円</td>
+                    <td><span class="price-up">黒字転換</span></td>
+                </tr>
+            </table>
+            <p style="margin-top: 10px;"><strong>注目ポイント:</strong> 2期ぶりの黒字転換、売上高は過去最高</p>
+        </div>
+
+        <div class="info-box">
+            <h3>バリュエーション</h3>
+            <ul>
+                <li><strong>PER 25.8倍:</strong> グロース株としては妥当な水準</li>
+                <li><strong>PBR 1.70倍:</strong> 純資産ベースでは割安感あり</li>
+                <li><strong>自己資本比率:</strong> 70%超で財務健全</li>
+            </ul>
+        </div>
+
+        <h2>3. 12/18の動き</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">出来高倍率</div>
+                <div class="value price-up">26.5倍</div>
+            </div>
+            <div class="info-card">
+                <div class="label">終値</div>
+                <div class="value">1,046円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">高値</div>
+                <div class="value">1,053円</div>
+            </div>
+            <div class="info-card">
+                <div class="label">高値時刻</div>
+                <div class="value">15:10</div>
+            </div>
+            <div class="info-card">
+                <div class="label">騰落率</div>
+                <div class="value price-up">+14.9%</div>
+            </div>
+            <div class="info-card">
+                <div class="label">出来高</div>
+                <div class="value">1,576万株</div>
+            </div>
+        </div>
+
+        <div class="caution-box">
+            <h3>12/18の特徴</h3>
+            <ul>
+                <li><strong>後場引け間際に高値:</strong> 15:10に1,053円を記録</li>
+                <li><strong>じりじり上昇:</strong> 前場から後場にかけて段階的に上昇</li>
+                <li><strong>出来高急増:</strong> 通常の26.5倍の出来高</li>
+            </ul>
+            <p><strong>示唆:</strong> 典型的な前場ピーク型ではなく、終日買い優勢だった</p>
+        </div>
+
+        <h2>4. 高値時刻パターン分析</h2>
+        <div class="info-box">
+            <h3>過去60日間の5分足分析</h3>
+            <table>
+                <tr>
+                    <th>区分</th>
+                    <th>回数</th>
+                    <th>割合</th>
+                </tr>
+                <tr>
+                    <td>前場高値</td>
+                    <td>40回</td>
+                    <td><span class="highlight">66.7%</span></td>
+                </tr>
+                <tr>
+                    <td>　うち9時台</td>
+                    <td>37回</td>
+                    <td>61.7%</td>
+                </tr>
+                <tr>
+                    <td>　うち10時台</td>
+                    <td>3回</td>
+                    <td>5.0%</td>
+                </tr>
+                <tr>
+                    <td>後場高値</td>
+                    <td>20回</td>
+                    <td>33.3%</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="warning-box">
+            <h3>出来高急騰日の高値パターン（重要）</h3>
+            <p>出来高が通常の3倍以上の日の高値時刻は<span class="highlight">不規則</span></p>
+            <ul>
+                <li>9時台に高値をつけるケースあり</li>
+                <li>後場に高値をつけるケースもあり（12/18のように）</li>
+                <li><strong>材料の性質</strong>によって異なる</li>
+            </ul>
+            <p style="margin-top: 10px;"><strong>結論:</strong> 出来高急騰日は「普段の前場ピークパターン」が通用しない可能性</p>
+        </div>
+
+        <h2>5. 過去の急騰後パターン</h2>
+        <div class="chart-pattern">
+            <h4>典型的な崩れパターン</h4>
+            <table>
+                <tr>
+                    <th>パターン</th>
+                    <th>特徴</th>
+                    <th>対応</th>
+                </tr>
+                <tr>
+                    <td>翌日寄り天</td>
+                    <td>GUで寄り付き後即下落</td>
+                    <td>9:00〜9:05でショート</td>
+                </tr>
+                <tr>
+                    <td>二日目崩れ</td>
+                    <td>翌日は持続、2日目に崩れ</td>
+                    <td>RSI過熱確認後にショート</td>
+                </tr>
+                <tr>
+                    <td>じり下げ</td>
+                    <td>数日かけてゆっくり下落</td>
+                    <td>スイングショート向き</td>
+                </tr>
+            </table>
+        </div>
+
+        <h2>6. ショート戦略</h2>
+        <div class="caution-box">
+            <h3>崩れ待ちの戦略</h3>
+            <h4>現状の判断</h4>
+            <ul>
+                <li>12/18は<strong>後場引け高値</strong>で買い優勢継続</li>
+                <li>出来高26.5倍は<strong>過熱感あり</strong>だが、まだ崩れていない</li>
+                <li>翌日（12/19）の寄り付き・前場の動きを見てから判断</li>
+            </ul>
+
+            <h4>エントリー条件</h4>
+            <ol>
+                <li>RSI 85超え（5分足ベース）</li>
+                <li>明確な陰線2本以上出現</li>
+                <li>高値から3-5%下落でブレイク確認</li>
+            </ol>
+
+            <h4>損切り</h4>
+            <p>エントリー価格の<span class="price-down">+3%</span>で機械的に実行</p>
+        </div>
+
+        <h2>7. 結論</h2>
+        <div class="conclusion">
+            <h2>判定: <span style="color: #d29922;">崩れ待ち（様子見）</span></h2>
+            <h4>理由</h4>
+            <ul>
+                <li>出来高26.5倍の急騰は<strong>過熱感あり</strong></li>
+                <li>ただし12/18は後場引け高値で<strong>まだ崩れていない</strong></li>
+                <li>高値時刻パターンが不規則（出来高急騰日は特に）</li>
+                <li>ファンダは黒字転換で悪くない</li>
+            </ul>
+            <h4>明日（12/19）の対応</h4>
+            <table>
+                <tr>
+                    <th>シナリオ</th>
+                    <th>対応</th>
+                </tr>
+                <tr>
+                    <td>GUで寄り付き後、即反落</td>
+                    <td>RSI確認してショート検討</td>
+                </tr>
+                <tr>
+                    <td>続伸してさらに上昇</td>
+                    <td>見送り（追わない）</td>
+                </tr>
+                <tr>
+                    <td>GDで寄り付き</td>
+                    <td>反発確認してからショート</td>
+                </tr>
+            </table>
+            <h4>いちにち信用</h4>
+            <p>マクアケは<span class="tag blue">いちにち信用で空売り可能</span></p>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Find and activate the button
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                if (tabId === 'summary' && btn.querySelector('.ticker').textContent === 'まとめ') {
+                    btn.classList.add('active');
+                } else if (tabId === 'airobo' && btn.querySelector('.ticker').textContent === '247A') {
+                    btn.classList.add('active');
+                } else if (tabId === 'acreat' && btn.querySelector('.ticker').textContent === '4395') {
+                    btn.classList.add('active');
+                } else if (tabId === 'jesco' && btn.querySelector('.ticker').textContent === '1434') {
+                    btn.classList.add('active');
+                } else if (tabId === 'makuake' && btn.querySelector('.ticker').textContent === '4479') {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>
