@@ -55,30 +55,28 @@ def load_day_trade_list() -> pd.DataFrame:
 
 
 def save_day_trade_list(df: pd.DataFrame) -> None:
-    """ローカルとS3にデイトレードリストを保存"""
+    """ローカルとS3にデイトレードリストを保存
+
+    S3保存は必須。失敗した場合は例外を発生させる。
+    """
     import io
+    import boto3
 
     # ローカルに保存（Dockerの場合はマウントされている）
     LOCAL_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(LOCAL_PATH, index=False)
 
-    # S3にも保存
-    try:
-        import boto3
+    # S3にも保存（必須）
+    bucket = os.getenv("S3_BUCKET", "stock-api-data")
+    key = f"parquet/{FILENAME}"
+    region = os.getenv("AWS_REGION", "ap-northeast-1")
 
-        bucket = os.getenv("S3_BUCKET", "stock-api-data")
-        key = f"parquet/{FILENAME}"
-        region = os.getenv("AWS_REGION", "ap-northeast-1")
+    s3_client = boto3.client("s3", region_name=region)
 
-        s3_client = boto3.client("s3", region_name=region)
-
-        buffer = io.BytesIO()
-        df.to_parquet(buffer, index=False)
-        buffer.seek(0)
-        s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
-    except Exception as e:
-        # S3保存失敗はログに出すが、ローカル保存は成功しているのでエラーにしない
-        print(f"Warning: S3保存失敗（ローカルには保存済み）: {str(e)}")
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
 
 
 class DayTradeUpdateRequest(BaseModel):
