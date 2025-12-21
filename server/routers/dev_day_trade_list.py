@@ -89,15 +89,14 @@ class DayTradeUpdateRequest(BaseModel):
     day_trade_available_shares: Optional[int] = None  # 1人当たり売り可能株数
 
 
-def load_trading_recommendation() -> list[dict]:
-    """trading_recommendation.jsonを読み込み"""
+def load_trading_recommendation_full() -> dict:
+    """trading_recommendation.json全体を読み込み"""
     import json
 
     local_path = Path(__file__).resolve().parents[2] / "data" / "parquet" / "backtest" / "trading_recommendation.json"
     if local_path.exists():
         with open(local_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("stocks", [])
+            return json.load(f)
 
     try:
         import boto3
@@ -107,10 +106,41 @@ def load_trading_recommendation() -> list[dict]:
         s3_client = boto3.client("s3", region_name=region)
 
         response = s3_client.get_object(Bucket=bucket, Key=key)
-        data = json.loads(response["Body"].read().decode("utf-8"))
-        return data.get("stocks", [])
+        return json.loads(response["Body"].read().decode("utf-8"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"trading_recommendation読み込みエラー: {str(e)}")
+
+
+def load_trading_recommendation() -> list[dict]:
+    """trading_recommendation.jsonを読み込み（stocks部分のみ）"""
+    data = load_trading_recommendation_full()
+    return data.get("stocks", [])
+
+
+def save_trading_recommendation(data: dict) -> None:
+    """trading_recommendation.jsonを保存（ローカルとS3）"""
+    import json
+
+    local_path = Path(__file__).resolve().parents[2] / "data" / "parquet" / "backtest" / "trading_recommendation.json"
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(local_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    try:
+        import boto3
+        bucket = os.getenv("S3_BUCKET", "stock-api-data")
+        key = "parquet/backtest/trading_recommendation.json"
+        region = os.getenv("AWS_REGION", "ap-northeast-1")
+        s3_client = boto3.client("s3", region_name=region)
+
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+            ContentType="application/json"
+        )
+    except Exception as e:
+        print(f"Warning: S3保存失敗（ローカルには保存済み）: {str(e)}")
 
 
 @router.get("/dev/day-trade-list")
@@ -224,6 +254,7 @@ async def update_day_trade_item(ticker: str, request: DayTradeUpdateRequest):
 
     Note:
     - 指定されたフィールドのみ更新（None は無視）
+    - grok_day_trade_list.parquet と trading_recommendation.json の両方を更新
     """
     df = load_day_trade_list()
 
@@ -244,8 +275,31 @@ async def update_day_trade_item(ticker: str, request: DayTradeUpdateRequest):
     if request.day_trade_available_shares is not None:
         df.loc[mask, "day_trade_available_shares"] = request.day_trade_available_shares
 
-    # S3に保存
+    # grok_day_trade_list.parquet を保存
     save_day_trade_list(df)
+
+    # trading_recommendation.json も更新
+    try:
+        rec_data = load_trading_recommendation_full()
+        stocks = rec_data.get("stocks", [])
+
+        # stock_name（銘柄コード）で検索して更新
+        for stock in stocks:
+            if stock.get("stock_name") == ticker_str or stock.get("ticker") == ticker_str:
+                if request.shortable is not None:
+                    stock["shortable"] = request.shortable
+                if request.day_trade is not None:
+                    stock["day_trade"] = request.day_trade
+                if request.ng is not None:
+                    stock["ng"] = request.ng
+                if request.day_trade_available_shares is not None:
+                    stock["day_trade_available_shares"] = request.day_trade_available_shares
+                break
+
+        rec_data["stocks"] = stocks
+        save_trading_recommendation(rec_data)
+    except Exception as e:
+        print(f"Warning: trading_recommendation.json更新失敗: {str(e)}")
 
     # 更新後のデータを返す
     updated = df[mask].iloc[0].to_dict()
@@ -266,11 +320,15 @@ async def bulk_update_day_trade_list(updates: list[dict]):
     Returns:
     - updated: 更新された銘柄数
     - errors: エラーがあった銘柄
+
+    Note:
+    - grok_day_trade_list.parquet と trading_recommendation.json の両方を更新
     """
     df = load_day_trade_list()
 
     updated_count = 0
     errors = []
+    updated_tickers = []
 
     for item in updates:
         ticker = str(item.get("ticker", ""))
@@ -290,9 +348,33 @@ async def bulk_update_day_trade_list(updates: list[dict]):
             df.loc[mask, "day_trade_available_shares"] = item["day_trade_available_shares"]
 
         updated_count += 1
+        updated_tickers.append((ticker, item))
 
-    # S3に保存
+    # grok_day_trade_list.parquet を保存
     save_day_trade_list(df)
+
+    # trading_recommendation.json も更新
+    try:
+        rec_data = load_trading_recommendation_full()
+        stocks = rec_data.get("stocks", [])
+
+        for ticker, item in updated_tickers:
+            for stock in stocks:
+                if stock.get("stock_name") == ticker or stock.get("ticker") == ticker:
+                    if "shortable" in item:
+                        stock["shortable"] = item["shortable"]
+                    if "day_trade" in item:
+                        stock["day_trade"] = item["day_trade"]
+                    if "ng" in item:
+                        stock["ng"] = item["ng"]
+                    if "day_trade_available_shares" in item:
+                        stock["day_trade_available_shares"] = item["day_trade_available_shares"]
+                    break
+
+        rec_data["stocks"] = stocks
+        save_trading_recommendation(rec_data)
+    except Exception as e:
+        print(f"Warning: trading_recommendation.json更新失敗: {str(e)}")
 
     return JSONResponse(content={
         "updated": updated_count,
