@@ -34,11 +34,16 @@ EXPECTED_COLUMNS = ['ticker', 'stock_name', 'shortable', 'day_trade', 'ng', 'day
 
 def download_from_s3(s3_client, key: str) -> pd.DataFrame | None:
     """S3からparquetファイルをダウンロード"""
+    from botocore.exceptions import ClientError
     try:
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
         return pd.read_parquet(BytesIO(response["Body"].read()))
-    except s3_client.exceptions.NoSuchKey:
-        print(f"  ⚠️ ファイルが存在しません: s3://{S3_BUCKET}/{key}")
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        if error_code == 'NoSuchKey':
+            print(f"  ⚠️ ファイルが存在しません: s3://{S3_BUCKET}/{key}")
+        else:
+            print(f"  ❌ S3エラー ({error_code}): {e}")
         return None
     except Exception as e:
         print(f"  ❌ ダウンロードエラー: {e}")
