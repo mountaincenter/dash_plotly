@@ -62,6 +62,9 @@ _margin_code_map: Optional[dict] = None
 _margin_name_map: Optional[dict] = None
 _jsf_stop_codes: Optional[set] = None
 
+# デイトレードリスト（グローバルキャッシュ）
+_day_trade_list: Optional[pd.DataFrame] = None
+
 # J-Quants クライアント（グローバル）
 _jquants_client: Optional[JQuantsClient] = None
 

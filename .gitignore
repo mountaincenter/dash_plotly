@@ -38,6 +38,9 @@ data/csv/*.csv
 # 例) !data/csv/sample.csv
 yfinance-smoke-test-*.parquet
 
+# ---- Parquet files (all directories) ----
+*.parquet
+
 # ---- ログ ----
 *.log
 logs/
