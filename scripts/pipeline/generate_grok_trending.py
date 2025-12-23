@@ -754,6 +754,110 @@ def add_trading_restrictions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    prices_max_1d.parquetから価格データをマージ（Close, change_pct, Volume, atr14_pct）
+
+    Args:
+        df: grok_trending DataFrame
+
+    Returns:
+        価格データを追加したDataFrame
+    """
+    import os
+    import boto3
+    from io import BytesIO
+    import numpy as np
+
+    if df.empty:
+        return df
+
+    # prices_max_1d.parquetを読み込み（S3から）
+    try:
+        bucket = os.getenv('S3_BUCKET', 'stock-api-data')
+        key = 'parquet/prices_max_1d.parquet'
+
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        prices_df = pd.read_parquet(BytesIO(response['Body'].read()))
+        print(f"[INFO] Loaded prices_max_1d.parquet from S3: {len(prices_df)} rows")
+
+    except Exception as e:
+        # S3失敗時はローカルファイルを試行
+        local_path = PARQUET_DIR / "prices_max_1d.parquet"
+        if local_path.exists():
+            prices_df = pd.read_parquet(local_path)
+            print(f"[INFO] Loaded prices_max_1d.parquet from local: {len(prices_df)} rows")
+        else:
+            print(f"[WARN] Failed to load prices_max_1d.parquet: {e}")
+            return df
+
+    # 最新日付のデータのみ抽出
+    latest_date = prices_df['date'].max()
+    latest_prices = prices_df[prices_df['date'] == latest_date].copy()
+    print(f"[INFO] Latest price date: {latest_date}, {len(latest_prices)} stocks")
+
+    # 前日データ取得（change_pct計算用）
+    prev_date = prices_df[prices_df['date'] < latest_date]['date'].max()
+    prev_prices = prices_df[prices_df['date'] == prev_date][['ticker', 'Close']].copy()
+    prev_prices.columns = ['ticker', 'prev_close']
+
+    # change_pct計算
+    latest_prices = latest_prices.merge(prev_prices, on='ticker', how='left')
+    latest_prices['change_pct'] = ((latest_prices['Close'] - latest_prices['prev_close']) / latest_prices['prev_close'] * 100).round(2)
+
+    # ATR14計算（過去14日のTRの平均）
+    def calc_atr14(ticker_df):
+        if len(ticker_df) < 14:
+            return None
+        ticker_df = ticker_df.sort_values('date')
+        # True Range = max(High-Low, abs(High-prev_close), abs(Low-prev_close))
+        ticker_df['prev_close'] = ticker_df['Close'].shift(1)
+        ticker_df['tr1'] = ticker_df['High'] - ticker_df['Low']
+        ticker_df['tr2'] = (ticker_df['High'] - ticker_df['prev_close']).abs()
+        ticker_df['tr3'] = (ticker_df['Low'] - ticker_df['prev_close']).abs()
+        ticker_df['tr'] = ticker_df[['tr1', 'tr2', 'tr3']].max(axis=1)
+        atr14 = ticker_df['tr'].tail(14).mean()
+        latest_close = ticker_df['Close'].iloc[-1]
+        if latest_close and latest_close > 0:
+            return round(atr14 / latest_close * 100, 2)
+        return None
+
+    # 各銘柄のATR14%を計算
+    tickers_in_grok = df['ticker'].unique()
+    atr_data = {}
+    for ticker in tickers_in_grok:
+        ticker_prices = prices_df[prices_df['ticker'] == ticker].copy()
+        if len(ticker_prices) >= 14:
+            atr_data[ticker] = calc_atr14(ticker_prices)
+
+    # マージ用のマップ作成
+    price_map = latest_prices.set_index('ticker')[['Close', 'change_pct', 'Volume']].to_dict('index')
+
+    # grok_trendingにマージ
+    df = df.copy()
+    for idx, row in df.iterrows():
+        ticker = row['ticker']
+        if ticker in price_map:
+            p = price_map[ticker]
+            df.at[idx, 'Close'] = p.get('Close')
+            df.at[idx, 'change_pct'] = p.get('change_pct')
+            df.at[idx, 'Volume'] = p.get('Volume')
+        if ticker in atr_data:
+            df.at[idx, 'atr14_pct'] = atr_data[ticker]
+
+    # サマリー表示
+    has_close = df['Close'].notna().sum()
+    has_change = df['change_pct'].notna().sum()
+    has_atr = df['atr14_pct'].notna().sum()
+    print(f"[INFO] Price data enriched:")
+    print(f"       Close: {has_close}/{len(df)}")
+    print(f"       change_pct: {has_change}/{len(df)}")
+    print(f"       atr14_pct: {has_atr}/{len(df)}")
+
+    return df
+
+
 def add_day_trade_flags(df: pd.DataFrame) -> pd.DataFrame:
     """
     grok_day_trade_list.parquet から信用区分（shortable, day_trade, ng, day_trade_available_shares）をJOIN
@@ -855,6 +959,9 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
             except Exception as e:
                 print(f"[WARN] Failed to download from S3: {e}")
                 print(f"[WARN] Will create new file instead of merging")
+
+    # 価格データをマージ（Close, change_pct, Volume, atr14_pct）
+    df = enrich_with_price_data(df)
 
     # 取引制限カラムを追加
     df = add_trading_restrictions(df)
