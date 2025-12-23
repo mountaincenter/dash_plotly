@@ -1,0 +1,450 @@
+"""
+開発用: Grok分析API
+
+grok_trending_archive.parquet を使用した分析
+- GET /dev/analysis/day-trade-summary: 分析サマリー（ショート/ロング/曜日別戦略）
+"""
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
+from pathlib import Path
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import os
+import tempfile
+
+router = APIRouter()
+
+# ファイルパス
+BASE_DIR = Path(__file__).resolve().parents[2]
+ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+
+S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+
+# 価格帯定義
+PRICE_RANGES = [
+    {"label": "~1,000円", "min": 0, "max": 1000},
+    {"label": "1,000~3,000円", "min": 1000, "max": 3000},
+    {"label": "3,000~5,000円", "min": 3000, "max": 5000},
+    {"label": "5,000~10,000円", "min": 5000, "max": 10000},
+    {"label": "10,000円~", "min": 10000, "max": float("inf")},
+]
+
+# 曜日名
+WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
+
+
+def load_archive() -> pd.DataFrame:
+    """grok_trending_archive.parquetを読み込み"""
+    if ARCHIVE_PATH.exists():
+        return pd.read_parquet(ARCHIVE_PATH)
+
+    try:
+        import boto3
+        s3_client = boto3.client("s3", region_name=AWS_REGION)
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+            s3_client.download_fileobj(
+                S3_BUCKET,
+                "parquet/backtest/grok_trending_archive.parquet",
+                tmp_file
+            )
+            tmp_path = tmp_file.name
+
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return df
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {str(e)}")
+
+
+def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> pd.DataFrame:
+    """
+    データ前処理
+
+    mode:
+    - "short": 空売り（符号反転）
+    - "long": ロング（そのまま）
+    - "weekday_strategy": 曜日別戦略（weekday_positionsで指定）
+
+    weekday_positions:
+    - 長さ5のリスト ["S", "S", "S", "S", "L"] など
+    - 月〜金のポジション（S=ショート, L=ロング）
+    - デフォルト: ["S", "S", "S", "S", "L"]（月-木ショート、金ロング）
+    """
+    # フィルタ: buy_priceがあるもののみ
+    df = df[df["buy_price"].notna()].copy()
+
+    # 日付カラム正規化
+    if "selection_date" in df.columns:
+        df["date"] = pd.to_datetime(df["selection_date"])
+    elif "backtest_date" in df.columns:
+        df["date"] = pd.to_datetime(df["backtest_date"])
+    else:
+        raise HTTPException(status_code=500, detail="日付カラムが見つかりません")
+
+    # 2025-11-04以降のみ（データ品質問題）
+    df = df[df["date"] >= "2025-11-04"]
+
+    # 制度信用 or いちにち信用のみ
+    df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
+
+    # 曜日
+    df["weekday"] = df["date"].dt.weekday  # 0=月, 4=金
+    df["weekday_name"] = df["weekday"].map(lambda x: WEEKDAY_NAMES[x] if x < 5 else "")
+
+    # 損益計算（modeに応じて）
+    if mode == "short":
+        # 空売り（符号反転）
+        df["calc_p1"] = -df["profit_per_100_shares_phase1"].fillna(0)
+        df["calc_p2"] = -df["profit_per_100_shares_phase2"].fillna(0)
+        df["calc_win1"] = ~df["phase1_win"].fillna(True)
+        df["calc_win2"] = ~df["phase2_win"].fillna(True)
+    elif mode == "long":
+        # ロング（そのまま）
+        df["calc_p1"] = df["profit_per_100_shares_phase1"].fillna(0)
+        df["calc_p2"] = df["profit_per_100_shares_phase2"].fillna(0)
+        df["calc_win1"] = df["phase1_win"].fillna(False)
+        df["calc_win2"] = df["phase2_win"].fillna(False)
+    elif mode == "weekday_strategy":
+        # 曜日別戦略（デフォルト: 月-木ショート、金ロング）
+        if weekday_positions is None:
+            weekday_positions = ["S", "S", "S", "S", "L"]
+
+        # 曜日ごとにロングかどうか判定
+        is_long = df["weekday"].map(lambda wd: weekday_positions[wd] == "L" if wd < 5 else False)
+
+        df["calc_p1"] = np.where(
+            is_long,
+            df["profit_per_100_shares_phase1"].fillna(0),
+            -df["profit_per_100_shares_phase1"].fillna(0)
+        )
+        df["calc_p2"] = np.where(
+            is_long,
+            df["profit_per_100_shares_phase2"].fillna(0),
+            -df["profit_per_100_shares_phase2"].fillna(0)
+        )
+        df["calc_win1"] = np.where(
+            is_long,
+            df["phase1_win"].fillna(False),
+            ~df["phase1_win"].fillna(True)
+        )
+        df["calc_win2"] = np.where(
+            is_long,
+            df["phase2_win"].fillna(False),
+            ~df["phase2_win"].fillna(True)
+        )
+
+    # 信用区分
+    df["margin_type"] = df.apply(lambda r: "制度信用" if r["shortable"] else "いちにち信用", axis=1)
+
+    # 除0株フラグ（0株のみ除外、NaNは含む）
+    df["is_ex0"] = df.apply(
+        lambda r: True if r["shortable"] else (
+            pd.isna(r.get("day_trade_available_shares")) or r.get("day_trade_available_shares", 0) > 0
+        ),
+        axis=1
+    )
+
+    # 価格帯
+    def get_price_range(price):
+        for pr in PRICE_RANGES:
+            if pr["min"] <= price < pr["max"]:
+                return pr["label"]
+        return PRICE_RANGES[-1]["label"]
+
+    df["price_range"] = df["buy_price"].apply(get_price_range)
+
+    return df
+
+
+def calc_stats(df: pd.DataFrame) -> dict:
+    """統計計算"""
+    if len(df) == 0:
+        return {
+            "count": 0,
+            "seidoCount": 0,
+            "ichinichiCount": 0,
+            "p1": 0,
+            "p2": 0,
+            "win1": 0,
+            "win2": 0,
+        }
+
+    return {
+        "count": len(df),
+        "seidoCount": int((df["margin_type"] == "制度信用").sum()),
+        "ichinichiCount": int((df["margin_type"] == "いちにち信用").sum()),
+        "p1": int(df["calc_p1"].sum()),
+        "p2": int(df["calc_p2"].sum()),
+        "win1": round(df["calc_win1"].mean() * 100, 1) if len(df) > 0 else 0,
+        "win2": round(df["calc_win2"].mean() * 100, 1) if len(df) > 0 else 0,
+    }
+
+
+def calc_period_stats(df: pd.DataFrame, period: str) -> dict:
+    """期間別統計"""
+    if len(df) == 0:
+        empty_stats = calc_stats(pd.DataFrame())
+        return {"all": empty_stats, "ex0": empty_stats}
+
+    max_date = df["date"].max()
+    unique_dates = sorted(df["date"].unique(), reverse=True)
+
+    if period == "daily":
+        filtered = df[df["date"] == max_date]
+    elif period == "weekly":
+        recent_5 = unique_dates[:5]
+        filtered = df[df["date"].isin(recent_5)]
+    elif period == "monthly":
+        max_month = max_date.strftime("%Y-%m")
+        filtered = df[df["date"].dt.strftime("%Y-%m") == max_month]
+    else:  # all
+        filtered = df
+
+    return {
+        "all": calc_stats(filtered),
+        "ex0": calc_stats(filtered[filtered["is_ex0"]]),
+    }
+
+
+def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
+    """曜日別データ"""
+    result = []
+
+    if weekday_positions is None:
+        weekday_positions = ["S", "S", "S", "S", "L"]
+
+    for wd in range(5):  # 月〜金
+        wd_df = df[df["weekday"] == wd]
+        wd_name = WEEKDAY_NAMES[wd]
+
+        # 曜日別戦略の場合、曜日ごとのポジション表示
+        if mode == "weekday_strategy":
+            position = "ロング" if weekday_positions[wd] == "L" else "ショート"
+        else:
+            position = "ロング" if mode == "long" else "ショート"
+
+        # 制度信用
+        seido_df = wd_df[wd_df["margin_type"] == "制度信用"]
+        seido_data = {
+            "type": "制度信用",
+            "count": len(seido_df),
+            "p1Total": int(seido_df["calc_p1"].sum()),
+            "p2Total": int(seido_df["calc_p2"].sum()),
+            "priceRanges": [],
+            "position": position,
+        }
+        for pr in PRICE_RANGES:
+            pr_df = seido_df[seido_df["price_range"] == pr["label"]]
+            seido_data["priceRanges"].append({
+                "label": pr["label"],
+                "count": len(pr_df),
+                "p1": int(pr_df["calc_p1"].sum()),
+                "p2": int(pr_df["calc_p2"].sum()),
+                "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+            })
+
+        # いちにち信用
+        ichinichi_df = wd_df[wd_df["margin_type"] == "いちにち信用"]
+        ichinichi_ex0_df = ichinichi_df[ichinichi_df["is_ex0"]]
+
+        ichinichi_data = {
+            "type": "いちにち信用",
+            "count": {"all": len(ichinichi_df), "ex0": len(ichinichi_ex0_df)},
+            "p1Total": {"all": int(ichinichi_df["calc_p1"].sum()), "ex0": int(ichinichi_ex0_df["calc_p1"].sum())},
+            "p2Total": {"all": int(ichinichi_df["calc_p2"].sum()), "ex0": int(ichinichi_ex0_df["calc_p2"].sum())},
+            "priceRanges": {"all": [], "ex0": []},
+            "position": position,
+        }
+
+        for pr in PRICE_RANGES:
+            pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
+            pr_ex0_df = pr_df[pr_df["is_ex0"]]
+
+            # 株数合計
+            shares_all = pr_df["day_trade_available_shares"].fillna(0).sum()
+            shares_ex0 = pr_ex0_df["day_trade_available_shares"].fillna(0).sum()
+
+            ichinichi_data["priceRanges"]["all"].append({
+                "label": pr["label"],
+                "count": len(pr_df),
+                "shares": int(shares_all),
+                "p1": int(pr_df["calc_p1"].sum()),
+                "p2": int(pr_df["calc_p2"].sum()),
+                "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+            })
+            ichinichi_data["priceRanges"]["ex0"].append({
+                "label": pr["label"],
+                "count": len(pr_ex0_df),
+                "shares": int(shares_ex0),
+                "p1": int(pr_ex0_df["calc_p1"].sum()),
+                "p2": int(pr_ex0_df["calc_p2"].sum()),
+                "win1": round(pr_ex0_df["calc_win1"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+                "win2": round(pr_ex0_df["calc_win2"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+            })
+
+        result.append({
+            "weekday": wd_name,
+            "seido": seido_data,
+            "ichinichi": ichinichi_data,
+            "position": position,
+        })
+
+    return result
+
+
+def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
+    """日別詳細データ"""
+    result = []
+    dates = sorted(df["date"].unique(), reverse=True)
+
+    if weekday_positions is None:
+        weekday_positions = ["S", "S", "S", "S", "L"]
+
+    for date in dates[:30]:  # 直近30日分
+        day_df = df[df["date"] == date]
+        day_ex0_df = day_df[day_df["is_ex0"]]
+
+        # 曜日別戦略の場合、曜日ごとのポジション表示
+        weekday = date.weekday()
+        if mode == "weekday_strategy":
+            position = "ロング" if weekday_positions[weekday] == "L" else "ショート"
+        else:
+            position = "ロング" if mode == "long" else "ショート"
+
+        stocks = []
+        for _, row in day_df.iterrows():
+            shares = row.get("day_trade_available_shares")
+            stocks.append({
+                "ticker": row["ticker"],
+                "stockName": row.get("stock_name", ""),
+                "marginType": row["margin_type"],
+                "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
+                "shares": int(shares) if pd.notna(shares) else None,
+                "p1": int(row["calc_p1"]),
+                "p2": int(row["calc_p2"]),
+                "win1": bool(row["calc_win1"]),
+                "win2": bool(row["calc_win2"]),
+            })
+
+        result.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "count": {"all": len(day_df), "ex0": len(day_ex0_df)},
+            "p1": {"all": int(day_df["calc_p1"].sum()), "ex0": int(day_ex0_df["calc_p1"].sum())},
+            "p2": {"all": int(day_df["calc_p2"].sum()), "ex0": int(day_ex0_df["calc_p2"].sum())},
+            "stocks": stocks,
+            "position": position,
+        })
+
+    return result
+
+
+def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None) -> dict:
+    """指定モードで分析データを計算"""
+    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
+
+    if len(df) == 0:
+        return None
+
+    # 期間別統計
+    period_stats = {
+        "daily": calc_period_stats(df, "daily"),
+        "weekly": calc_period_stats(df, "weekly"),
+        "monthly": calc_period_stats(df, "monthly"),
+        "all": calc_period_stats(df, "all"),
+    }
+
+    # 曜日別データ
+    weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions)
+
+    # 日別詳細
+    daily_details = calc_daily_details(df, mode=mode, weekday_positions=weekday_positions)
+
+    # メタ情報
+    meta = {
+        "generatedAt": datetime.now().isoformat(),
+        "dateRange": {
+            "start": df["date"].min().strftime("%Y-%m-%d"),
+            "end": df["date"].max().strftime("%Y-%m-%d"),
+        },
+        "totalRecords": len(df),
+        "mode": mode,
+    }
+
+    return {
+        "periodStats": period_stats,
+        "weekdayData": weekday_data,
+        "dailyDetails": daily_details,
+        "meta": meta,
+    }
+
+
+@router.get("/dev/analysis/day-trade-summary")
+async def get_day_trade_summary():
+    """
+    Grok分析サマリー
+
+    Returns:
+    - short: ショート戦略の分析
+    - long: ロング戦略の分析
+    - weekdayStrategy: 曜日別戦略（月-木ショート、金ロング）の分析
+
+    各戦略に含まれる項目:
+    - periodStats: 期間別統計（daily/weekly/monthly/all × all/ex0）
+    - weekdayData: 曜日別データ（月〜金 × 制度/いちにち × 価格帯）
+    - dailyDetails: 日別詳細（直近30日）
+    - meta: メタ情報
+    """
+    df_raw = load_archive()
+
+    # 3パターン計算
+    short_data = calc_analysis_for_mode(df_raw, "short")
+    long_data = calc_analysis_for_mode(df_raw, "long")
+    weekday_strategy_data = calc_analysis_for_mode(df_raw, "weekday_strategy")
+
+    if not short_data:
+        raise HTTPException(status_code=404, detail="分析対象データがありません")
+
+    return JSONResponse(content={
+        "short": short_data,
+        "long": long_data,
+        "weekdayStrategy": weekday_strategy_data,
+    })
+
+
+@router.get("/dev/analysis/custom-weekday")
+async def get_custom_weekday_strategy(
+    mon: str = "S",
+    tue: str = "S",
+    wed: str = "S",
+    thu: str = "S",
+    fri: str = "L",
+):
+    """
+    カスタム曜日別戦略
+
+    Query params:
+    - mon, tue, wed, thu, fri: 各曜日のポジション（S=ショート, L=ロング）
+
+    デフォルト: 月-木ショート、金ロング
+    """
+    # バリデーション
+    positions = [mon.upper(), tue.upper(), wed.upper(), thu.upper(), fri.upper()]
+    for p in positions:
+        if p not in ("S", "L"):
+            raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
+
+    df_raw = load_archive()
+    data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions)
+
+    if not data:
+        raise HTTPException(status_code=404, detail="分析対象データがありません")
+
+    # メタ情報にポジション設定を追加
+    data["meta"]["weekdayPositions"] = positions
+
+    return JSONResponse(content=data)
