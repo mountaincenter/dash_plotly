@@ -28,6 +28,15 @@ if str(ROOT) not in sys.path:
 
 from scripts.lib.jquants_client import JQuantsClient
 
+# 2025-2026 年末年始スキップ日（翌営業日として判定される日）
+# データ汚染防止のため、特殊相場日を除外
+SKIP_DATES_YEAR_END = [
+    "2025-12-26",  # 権利確定日（特殊需給）
+    "2025-12-29",  # 閑散相場
+    "2025-12-30",  # 大納会
+    "2026-01-05",  # 大発会
+]
+
 
 def check_next_day_is_trading() -> tuple[bool, str]:
     """
@@ -114,6 +123,11 @@ def check_next_day_is_trading() -> tuple[bool, str]:
         # "0": 休業日（土日祝）
         # "2": 特別休業日（年末年始など）
         if holiday_division == "1":
+            # 年末年始スキップ日チェック
+            if tomorrow_date_str in SKIP_DATES_YEAR_END:
+                print(f"⏭️ Tomorrow is in SKIP_DATES_YEAR_END: {tomorrow_date_str}")
+                print("❌ Skipping due to special market conditions (year-end/new-year)")
+                return False, tomorrow_date_str
             print("✅ Tomorrow is a TRADING day")
             return True, tomorrow_date_str
         elif holiday_division == "0":
