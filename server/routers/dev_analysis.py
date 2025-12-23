@@ -448,3 +448,110 @@ async def get_custom_weekday_strategy(
     data["meta"]["weekdayPositions"] = positions
 
     return JSONResponse(content=data)
+
+
+def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
+    """
+    日別/週別/月別でグルーピングした詳細データ
+
+    view:
+    - "daily": 日別 (YYYY-MM-DD)
+    - "weekly": 週別 (YYYY/W##)
+    - "monthly": 月別 (YYYY/MM)
+    """
+    if weekday_positions is None:
+        weekday_positions = ["S", "S", "S", "S", "L"]
+
+    # グルーピングキーを追加
+    if view == "weekly":
+        df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
+    elif view == "monthly":
+        df["group_key"] = df["date"].dt.strftime("%Y/%m")
+    else:  # daily
+        df["group_key"] = df["date"].dt.strftime("%Y-%m-%d")
+
+    result = []
+    group_keys = sorted(df["group_key"].unique(), reverse=True)
+
+    for key in group_keys[:30]:  # 直近30グループ
+        group_df = df[df["group_key"] == key]
+        group_ex0_df = group_df[group_df["is_ex0"]]
+
+        # 銘柄リスト
+        stocks = []
+        for _, row in group_df.iterrows():
+            shares = row.get("day_trade_available_shares")
+            weekday = row["date"].weekday()
+            if mode == "weekday_strategy":
+                position = "ロング" if weekday_positions[weekday] == "L" else "ショート"
+            else:
+                position = "ロング" if mode == "long" else "ショート"
+
+            stocks.append({
+                "date": row["date"].strftime("%Y-%m-%d"),
+                "ticker": row["ticker"],
+                "stockName": row.get("stock_name", ""),
+                "marginType": row["margin_type"],
+                "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
+                "shares": int(shares) if pd.notna(shares) else None,
+                "p1": int(row["calc_p1"]),
+                "p2": int(row["calc_p2"]),
+                "win1": bool(row["calc_win1"]),
+                "win2": bool(row["calc_win2"]),
+                "position": position,
+            })
+
+        result.append({
+            "key": key,
+            "count": {"all": len(group_df), "ex0": len(group_ex0_df)},
+            "p1": {"all": int(group_df["calc_p1"].sum()), "ex0": int(group_ex0_df["calc_p1"].sum())},
+            "p2": {"all": int(group_df["calc_p2"].sum()), "ex0": int(group_ex0_df["calc_p2"].sum())},
+            "stocks": stocks,
+        })
+
+    return result
+
+
+@router.get("/dev/analysis/details")
+async def get_analysis_details(
+    view: str = "daily",
+    mode: str = "short",
+    mon: str = "S",
+    tue: str = "S",
+    wed: str = "S",
+    thu: str = "S",
+    fri: str = "L",
+):
+    """
+    詳細（除0株損益）データ
+
+    Query params:
+    - view: "daily" | "weekly" | "monthly"
+    - mode: "short" | "long" | "weekday_strategy"
+    - mon, tue, wed, thu, fri: 曜日別戦略のポジション（mode=weekday_strategyの場合のみ有効）
+    """
+    if view not in ("daily", "weekly", "monthly"):
+        raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthlyのいずれかを指定してください")
+    if mode not in ("short", "long", "weekday_strategy"):
+        raise HTTPException(status_code=400, detail="modeはshort/long/weekday_strategyのいずれかを指定してください")
+
+    weekday_positions = None
+    if mode == "weekday_strategy":
+        weekday_positions = [mon.upper(), tue.upper(), wed.upper(), thu.upper(), fri.upper()]
+        for p in weekday_positions:
+            if p not in ("S", "L"):
+                raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
+
+    df_raw = load_archive()
+    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
+
+    if len(df) == 0:
+        raise HTTPException(status_code=404, detail="分析対象データがありません")
+
+    details = calc_grouped_details(df, view=view, mode=mode, weekday_positions=weekday_positions)
+
+    return JSONResponse(content={
+        "view": view,
+        "mode": mode,
+        "results": details,
+    })
