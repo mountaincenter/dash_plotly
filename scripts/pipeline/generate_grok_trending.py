@@ -754,6 +754,69 @@ def add_trading_restrictions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_day_trade_flags(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    grok_day_trade_list.parquet から信用区分（shortable, day_trade, ng, day_trade_available_shares）をJOIN
+
+    Args:
+        df: grok_trending DataFrame
+
+    Returns:
+        信用区分カラムを追加したDataFrame
+    """
+    import os
+    import boto3
+    from io import BytesIO
+
+    if df.empty:
+        return df
+
+    # grok_day_trade_list.parquet を読み込み（ローカル優先、なければS3）
+    local_path = PARQUET_DIR / "grok_day_trade_list.parquet"
+    day_trade_df = None
+
+    if local_path.exists():
+        day_trade_df = pd.read_parquet(local_path)
+        print(f"[INFO] Day trade list loaded from local: {len(day_trade_df)} stocks")
+    else:
+        try:
+            s3_client = boto3.client('s3')
+            bucket = os.getenv('S3_BUCKET', 'stock-api-data')
+            key = 'parquet/grok_day_trade_list.parquet'
+
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+            day_trade_df = pd.read_parquet(BytesIO(response['Body'].read()))
+            print(f"[INFO] Day trade list loaded from S3: {len(day_trade_df)} stocks")
+        except Exception as e:
+            print(f"[WARN] Failed to load grok_day_trade_list.parquet: {e}")
+            # デフォルト値で初期化
+            df['shortable'] = False
+            df['day_trade'] = False
+            df['ng'] = False
+            df['day_trade_available_shares'] = None
+            return df
+
+    # tickerでJOIN用のマップを作成
+    dtl_map = day_trade_df.set_index('ticker')[['shortable', 'day_trade', 'ng', 'day_trade_available_shares']].to_dict('index')
+
+    # カラム追加（既存銘柄はマスタから、新規銘柄はデフォルト値）
+    df = df.copy()
+    df['shortable'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('shortable', False))
+    df['day_trade'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('day_trade', False))
+    df['ng'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('ng', False))
+    df['day_trade_available_shares'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('day_trade_available_shares', None))
+
+    # サマリー表示
+    print(f"[INFO] Day trade flags added:")
+    print(f"       Shortable: {df['shortable'].sum()}/{len(df)}")
+    print(f"       Day trade: {df['day_trade'].sum()}/{len(df)}")
+    print(f"       NG: {df['ng'].sum()}/{len(df)}")
+    unchecked = len(df) - df['shortable'].sum() - df['day_trade'].sum() - df['ng'].sum()
+    print(f"       Unchecked (new): {unchecked}/{len(df)}")
+
+    return df
+
+
 def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool = False) -> None:
     """
     Save to grok_trending.parquet
@@ -796,6 +859,9 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
     # 取引制限カラムを追加
     df = add_trading_restrictions(df)
 
+    # 信用区分カラムを追加（grok_day_trade_list.parquetからJOIN）
+    df = add_day_trade_flags(df)
+
     if should_merge and GROK_TRENDING_PATH.exists():
         # 既存データとマージ（26時更新時）
         try:
@@ -810,6 +876,10 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
             # 既存データにも取引制限カラムがない場合は追加
             if 'margin_code' not in existing_df.columns:
                 existing_df = add_trading_restrictions(existing_df)
+
+            # 既存データにも信用区分カラムがない場合は追加
+            if 'shortable' not in existing_df.columns:
+                existing_df = add_day_trade_flags(existing_df)
 
             # 新データと結合
             df_merged = pd.concat([existing_df, df], ignore_index=True)
