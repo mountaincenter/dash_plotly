@@ -122,7 +122,7 @@ def load_grok_archive() -> pd.DataFrame:
         import boto3
         from botocore.exceptions import ClientError
 
-        bucket = os.getenv("S3_BUCKET", "python-stock-yfinance")
+        bucket = os.getenv("S3_BUCKET", "stock-api-data")
         key = "parquet/backtest/grok_trending_archive.parquet"
         region = os.getenv("AWS_REGION", "ap-northeast-1")
 
