@@ -494,6 +494,12 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
 
         daily_row = hist_daily.loc[backtest_date_obj]
 
+        # 前日終値を取得
+        prev_date_obj = (backtest_date - timedelta(days=1)).date()
+        prev_close = None
+        if prev_date_obj in hist_daily.index:
+            prev_close = float(hist_daily.loc[prev_date_obj]['Close'])
+
         buy_price = float(daily_row['Open'])
         sell_price = float(daily_row['Close'])  # Phase1用（前場引け値として近似）
         daily_close = float(daily_row['Close'])
@@ -550,6 +556,7 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
             }
 
         return {
+            "prev_close": prev_close,
             "buy_price": buy_price,
             "sell_price": sell_price,
             "daily_close": daily_close,
