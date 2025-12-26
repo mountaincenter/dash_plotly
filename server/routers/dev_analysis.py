@@ -452,12 +452,13 @@ async def get_custom_weekday_strategy(
 
 def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
     """
-    日別/週別/月別でグルーピングした詳細データ
+    日別/週別/月別/曜日別でグルーピングした詳細データ
 
     view:
     - "daily": 日別 (YYYY-MM-DD)
     - "weekly": 週別 (YYYY/W##)
     - "monthly": 月別 (YYYY/MM)
+    - "weekday": 曜日別 (月/火/水/木/金)
     """
     if weekday_positions is None:
         weekday_positions = ["S", "S", "S", "S", "L"]
@@ -467,13 +468,19 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
         df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
     elif view == "monthly":
         df["group_key"] = df["date"].dt.strftime("%Y/%m")
+    elif view == "weekday":
+        df["group_key"] = df["weekday"].map(lambda x: WEEKDAY_NAMES[x] if x < 5 else "")
     else:  # daily
         df["group_key"] = df["date"].dt.strftime("%Y-%m-%d")
 
     result = []
-    group_keys = sorted(df["group_key"].unique(), reverse=True)
+    if view == "weekday":
+        # 曜日別は月〜金の順序で固定
+        group_keys = WEEKDAY_NAMES
+    else:
+        group_keys = sorted(df["group_key"].unique(), reverse=True)[:30]  # 直近30グループ
 
-    for key in group_keys[:30]:  # 直近30グループ
+    for key in group_keys:
         group_df = df[df["group_key"] == key]
         group_ex0_df = group_df[group_df["is_ex0"]]
 
@@ -523,15 +530,15 @@ async def get_analysis_details(
     fri: str = "L",
 ):
     """
-    詳細（除0株損益）データ
+    詳細データ
 
     Query params:
-    - view: "daily" | "weekly" | "monthly"
+    - view: "daily" | "weekly" | "monthly" | "weekday"
     - mode: "short" | "long" | "weekday_strategy"
     - mon, tue, wed, thu, fri: 曜日別戦略のポジション（mode=weekday_strategyの場合のみ有効）
     """
-    if view not in ("daily", "weekly", "monthly"):
-        raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthlyのいずれかを指定してください")
+    if view not in ("daily", "weekly", "monthly", "weekday"):
+        raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定してください")
     if mode not in ("short", "long", "weekday_strategy"):
         raise HTTPException(status_code=400, detail="modeはshort/long/weekday_strategyのいずれかを指定してください")
 
