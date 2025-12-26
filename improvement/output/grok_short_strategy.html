@@ -3,684 +3,1228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grok空売り戦略（信用区分別）</title>
+    <title>Grok空売り（前場引け vs 大引け）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; padding: 15px; }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 800px; margin: 0 auto; }
         h1 { color: #fff; margin-bottom: 15px; font-size: 1.2rem; }
-        h2 { color: #fff; margin: 25px 0 15px; font-size: 1rem; border-left: 4px solid #4a90d9; padding-left: 10px; }
-        h3 { color: #aaa; margin: 20px 0 10px; font-size: 0.9rem; }
-        .note { background: #1a1a2e; border: 1px solid #f59e0b33; border-radius: 6px; padding: 10px; margin-bottom: 15px; font-size: 0.8rem; color: #f59e0b; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 12px; text-align: center; }
-        .stat-card.seido { border-color: #2563eb55; }
-        .stat-card.ichi { border-color: #7c3aed55; }
-        .stat-card.total { border-color: #10b98155; }
+        .filters { display: flex; gap: 8px; margin-bottom: 15px; }
+        .filter { padding: 6px 12px; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; cursor: pointer; color: #aaa; font-size: 0.8rem; }
+        .filter.active { background: #2a2a4e; color: #fff; border-color: #4a90d9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 10px; text-align: center; }
+        .stat-card.p1 { border-color: #f59e0b55; }
+        .stat-card.p2 { border-color: #10b98155; }
         .stat-label { color: #888; font-size: 0.75rem; margin-bottom: 3px; }
-        .stat-value { font-size: 1.3rem; font-weight: bold; }
+        .stat-value { font-size: 1.1rem; font-weight: bold; }
         .stat-value.positive { color: #4ade80; }
         .stat-value.negative { color: #f87171; }
-        .stat-sub { font-size: 0.7rem; color: #666; margin-top: 3px; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.85rem; }
-        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #222; }
-        th { background: #1a1a2e; color: #888; font-weight: normal; font-size: 0.75rem; }
-        td { color: #e0e0e0; }
-        .num { text-align: right; font-family: monospace; }
-        .positive { color: #4ade80; }
-        .negative { color: #f87171; }
-        tr.best { background: #10b98122; }
-        tr.warn { background: #f8717122; }
-        .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .daily-card { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+        .daily-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; cursor: pointer; }
+        .daily-header:hover { background: #222244; }
+        .daily-date { font-weight: bold; color: #fff; font-size: 0.9rem; }
+        .daily-stats { display: flex; gap: 15px; font-size: 0.85rem; align-items: center; }
+        .daily-profit { font-weight: bold; }
+        .daily-profit.positive { color: #4ade80; }
+        .daily-profit.negative { color: #f87171; }
+        .daily-details { display: none; border-top: 1px solid #333; }
+        .daily-details.open { display: block; }
+        .stock-row { display: grid; grid-template-columns: 50px 1fr 70px 80px 80px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #222; font-size: 0.8rem; align-items: center; }
+        .stock-row:last-child { border-bottom: none; }
+        .stock-row:hover { background: #222244; }
+        .stock-row.hidden { display: none; }
+        .stock-rank { color: #888; font-size: 0.75rem; }
+        .stock-name { color: #fff; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stock-ticker { color: #666; font-size: 0.7rem; }
+        .stock-price { text-align: right; font-size: 0.75rem; color: #aaa; }
+        .stock-profit { text-align: right; font-weight: bold; font-size: 0.8rem; }
+        .stock-profit.positive { color: #4ade80; }
+        .stock-profit.negative { color: #f87171; }
+        .stock-type { text-align: center; }
+        .badge { padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; }
         .badge-seido { background: #2563eb33; color: #60a5fa; }
-        .badge-ichi { background: #7c3aed33; color: #a78bfa; }
+        .badge-ichinichi { background: #7c3aed33; color: #a78bfa; }
         .badge-ng { background: #dc262633; color: #f87171; }
-        .insight { background: #1a1a2e; border: 1px solid #4ade8033; border-radius: 6px; padding: 12px; margin: 15px 0; font-size: 0.85rem; line-height: 1.6; }
-        .insight strong { color: #4ade80; }
-        details { margin: 8px 0; }
-        summary { cursor: pointer; padding: 10px 12px; background: #1a1a2e; border: 1px solid #333; border-radius: 6px; font-size: 0.85rem; color: #fff; }
-        summary:hover { background: #222244; }
-        .detail-table { margin-top: 8px; }
-        .detail-table th { background: #12121a; }
-        @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } }
+        .toggle-icon { color: #666; font-size: 0.8rem; }
+        .profit-compare { display: flex; gap: 10px; }
+        .profit-compare span { font-size: 0.75rem; }
+        .profit-compare .p1 { color: #f59e0b; }
+        .profit-compare .p2 { color: #10b981; }
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stock-row { grid-template-columns: 40px 1fr 60px 60px; }
+            .stock-row > *:nth-child(5), .stock-row > *:nth-child(6) { display: none; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Grok空売り戦略（信用区分別）</h1>
-        <p style="color:#888;font-size:0.8rem;margin-bottom:15px">期間: 2025-10-29 ～ 2025-12-19（7.3週間）</p>
-        
-        <div class="note">
-            ※ 制度信用 かつ いちにち信用 → 制度信用として算出<br>
-            ※ いちにち信用のみは在庫次第で取引できない場合あり
+    <h1>Grok空売り（前場引け vs 大引け）</h1>
+    <div class="filters">
+        <div class="filter active" data-filter="all" onclick="setFilter('all')">全体</div>
+        <div class="filter" data-filter="seido" onclick="setFilter('seido')">制度信用</div>
+        <div class="filter" data-filter="ichinichi" onclick="setFilter('ichinichi')">いちにち</div>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">期間</div>
+            <div class="stat-value" style="font-size:0.8rem">2025-11-04<br>~2025-11-19</div>
         </div>
-
-        <div class="stats-grid">
-            <div class="stat-card seido">
-                <div class="stat-label">制度信用</div>
-                <div class="stat-value positive">+190,180円/月</div>
-                <div class="stat-sub">187件 / +347,079円</div>
-            </div>
-            <div class="stat-card ichi">
-                <div class="stat-label">いちにち信用のみ</div>
-                <div class="stat-value positive">+427,397円/月</div>
-                <div class="stat-sub">274件 / +780,000円</div>
-            </div>
-            <div class="stat-card total">
-                <div class="stat-label">合計</div>
-                <div class="stat-value positive">+617,577円/月</div>
-                <div class="stat-sub">461件</div>
+        <div class="stat-card">
+            <div class="stat-label">件数</div>
+            <div class="stat-value">127</div>
+        </div>
+        <div class="stat-card p1">
+            <div class="stat-label">前場引け</div>
+            <div class="stat-value positive">+21.3万</div>
+            <div style="font-size:0.7rem;color:#888">勝率56%</div>
+        </div>
+        <div class="stat-card p2">
+            <div class="stat-label">大引け</div>
+            <div class="stat-value positive">+40.6万</div>
+            <div style="font-size:0.7rem;color:#888">勝率56%</div>
+        </div>
+    </div>
+<div class="daily-card" data-seido-p1="-11300.0" data-seido-p2="-6200.0" data-seido-count="5" data-ichi-p1="11900.0" data-ichi-p2="16600.0" data-ichi-count="6">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-04 (Tue)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">+600</span>
+                    <span class="p2">+10,400</span>
+                </div>
+                <span>55%</span>
+                <span class="toggle-icon">▼</span>
             </div>
         </div>
-
-        <h2>制度信用（確実に取引可能）</h2>
-        <table>
-            <tr><th>株価帯</th><th class="num">件数</th><th class="num">大引損益</th><th class="num">勝率</th><th class="num">平均</th><th class="num">月間</th></tr>
-            <tr><td>~500円</td><td class="num">28</td><td class="num negative">-3,300</td><td class="num">64%</td><td class="num negative">-118</td><td class="num negative">-1,808</td></tr>
-            <tr><td>500-1000円</td><td class="num">39</td><td class="num positive">+31,429</td><td class="num">46%</td><td class="num positive">+806</td><td class="num positive">+17,221</td></tr>
-            <tr><td>1000-2000円</td><td class="num">40</td><td class="num positive">+33,600</td><td class="num">52%</td><td class="num positive">+840</td><td class="num positive">+18,410</td></tr>
-            <tr><td>2000-3000円</td><td class="num">22</td><td class="num positive">+42,400</td><td class="num">55%</td><td class="num positive">+1,927</td><td class="num positive">+23,232</td></tr>
-            <tr><td>3000-5000円</td><td class="num">27</td><td class="num positive">+35,750</td><td class="num">48%</td><td class="num positive">+1,324</td><td class="num positive">+19,589</td></tr>
-            <tr class="best"><td>5000-10000円</td><td class="num">21</td><td class="num positive">+136,200</td><td class="num">52%</td><td class="num positive">+6,486</td><td class="num positive">+80,787</td></tr>
-            <tr><td>10000~円</td><td class="num">10</td><td class="num positive">+71,000</td><td class="num">50%</td><td class="num positive">+7,100</td><td class="num positive">+42,114</td></tr>
-            <tr style="background:#1a1a2e;font-weight:bold"><td>合計</td><td class="num">187</td><td class="num positive">+347,079</td><td class="num">52%</td><td class="num">+1,856</td><td class="num">+190,180</td></tr>
-        </table>
-
-        <h2>いちにち信用のみ（在庫次第）</h2>
-        <table>
-            <tr><th>株価帯</th><th class="num">件数</th><th class="num">大引損益</th><th class="num">勝率</th><th class="num">平均</th><th class="num">月間</th></tr>
-            <tr class="best"><td>~500円</td><td class="num">88</td><td class="num positive">+112,600</td><td class="num">57%</td><td class="num positive">+1,280</td><td class="num positive">+61,698</td></tr>
-            <tr><td>500-1000円</td><td class="num">56</td><td class="num positive">+61,700</td><td class="num">46%</td><td class="num positive">+1,102</td><td class="num positive">+33,808</td></tr>
-            <tr class="best"><td>1000-2000円</td><td class="num">76</td><td class="num positive">+360,500</td><td class="num">62%</td><td class="num positive">+4,743</td><td class="num positive">+197,534</td></tr>
-            <tr><td>2000-3000円</td><td class="num">26</td><td class="num negative">-3,500</td><td class="num">65%</td><td class="num negative">-135</td><td class="num negative">-1,917</td></tr>
-            <tr class="warn"><td>3000-5000円</td><td class="num">17</td><td class="num negative">-81,800</td><td class="num">29%</td><td class="num negative">-4,812</td><td class="num negative">-44,821</td></tr>
-            <tr class="warn"><td>5000-10000円</td><td class="num">6</td><td class="num negative">-149,001</td><td class="num">50%</td><td class="num negative">-24,834</td><td class="num negative">-88,380</td></tr>
-            <tr class="best"><td>10000~円</td><td class="num">5</td><td class="num positive">+479,499</td><td class="num">80%</td><td class="num positive">+95,900</td><td class="num positive">+284,415</td></tr>
-            <tr style="background:#1a1a2e;font-weight:bold"><td>合計</td><td class="num">274</td><td class="num positive">+780,000</td><td class="num">55%</td><td class="num">+2,847</td><td class="num">+427,397</td></tr>
-        </table>
-
-        <h2>曜日別分析</h2>
-
-        <h3>制度信用</h3>
-        <table>
-            <tr><th>曜日</th><th class="num">件数</th><th class="num">大引損益</th><th class="num">勝率</th><th>判定</th></tr>
-            <tr class="best"><td>月曜</td><td class="num">44</td><td class="num positive">+198,950</td><td class="num">50%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-            <tr class="best"><td>火曜</td><td class="num">37</td><td class="num positive">+320,600</td><td class="num">65%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-            <tr><td>水曜</td><td class="num">25</td><td class="num positive">+12,349</td><td class="num">64%</td><td>○</td></tr>
-            <tr class="best"><td>木曜</td><td class="num">54</td><td class="num positive">+160,819</td><td class="num">44%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-            <tr class="warn"><td>金曜</td><td class="num">27</td><td class="num negative">-345,640</td><td class="num">44%</td><td><span class="badge badge-ng">✕非推奨</span></td></tr>
-        </table>
-
-        <h3>いちにち信用のみ</h3>
-        <table>
-            <tr><th>曜日</th><th class="num">件数</th><th class="num">大引損益</th><th class="num">勝率</th><th>判定</th></tr>
-            <tr class="best"><td>月曜</td><td class="num">37</td><td class="num positive">+91,200</td><td class="num">54%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-            <tr class="best"><td>火曜</td><td class="num">57</td><td class="num positive">+456,200</td><td class="num">70%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-            <tr><td>水曜</td><td class="num">60</td><td class="num positive">+8,100</td><td class="num">48%</td><td>○</td></tr>
-            <tr><td>木曜</td><td class="num">58</td><td class="num positive">+32,599</td><td class="num">55%</td><td>○</td></tr>
-            <tr class="best"><td>金曜</td><td class="num">62</td><td class="num positive">+191,900</td><td class="num">50%</td><td><span class="badge badge-seido">◎推奨</span></td></tr>
-        </table>
-
-        <div class="insight">
-            <strong>■ 制度信用（確実に取引可能）</strong><br>
-            • 月間+約19万円（187件）<br>
-            • 5000-10000円帯が効率的（+80,787円/月、平均+6,486円/件）<br>
-            <br>
-            <strong>■ いちにち信用のみ（在庫次第）</strong><br>
-            • 月間+約42万円（274件）<br>
-            • 10000円以上が最強（+284,415円/月、勝率80%）<br>
-            • 1000-2000円帯も好成績（+197,534円/月、勝率62%）
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">M&A総研ホールディングス</div><div class="stock-ticker">9552.T</div></div>
+                <div class="stock-price">1,265</div>
+                <div class="stock-profit negative">-8,700</div>
+                <div class="stock-profit negative">-7,800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ng" style="display:none;">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">メディシノバ</div><div class="stock-ticker">4875.T</div></div>
+                <div class="stock-price">209</div>
+                <div class="stock-profit negative">-100</div>
+                <div class="stock-profit positive">+900</div>
+                <div class="stock-type"><span class="badge badge-ng">不可</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">JIG-SAW</div><div class="stock-ticker">3914.T</div></div>
+                <div class="stock-price">3,920</div>
+                <div class="stock-profit positive">+39,500</div>
+                <div class="stock-profit positive">+45,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">タカミヤ</div><div class="stock-ticker">2445.T</div></div>
+                <div class="stock-price">410</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">トレードワークス</div><div class="stock-ticker">3997.T</div></div>
+                <div class="stock-price">338</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit negative">-800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">岡本硝子</div><div class="stock-ticker">7746.T</div></div>
+                <div class="stock-price">433</div>
+                <div class="stock-profit positive">+800</div>
+                <div class="stock-profit positive">+4,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">第一稀元素化学工業</div><div class="stock-ticker">4082.T</div></div>
+                <div class="stock-price">1,381</div>
+                <div class="stock-profit negative">-1,400</div>
+                <div class="stock-profit positive">+1,600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">守谷商会</div><div class="stock-ticker">1798.T</div></div>
+                <div class="stock-price">6,720</div>
+                <div class="stock-profit negative">-30,000</div>
+                <div class="stock-profit negative">-34,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ng" style="display:none;">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">ピクセルカンパニーズ</div><div class="stock-ticker">2743.T</div></div>
+                <div class="stock-price">122</div>
+                <div class="stock-profit positive">+600</div>
+                <div class="stock-profit positive">+1,000</div>
+                <div class="stock-type"><span class="badge badge-ng">不可</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">ミンカブ・ジ・インフォノイド</div><div class="stock-ticker">4436.T</div></div>
+                <div class="stock-price">466</div>
+                <div class="stock-profit negative">-1,200</div>
+                <div class="stock-profit negative">-1,500</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">蝶理</div><div class="stock-ticker">8014.T</div></div>
+                <div class="stock-price">3,905</div>
+                <div class="stock-profit negative">-1,500</div>
+                <div class="stock-profit positive">+1,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#12</div>
+                <div><div class="stock-name">大盛工業</div><div class="stock-ticker">1844.T</div></div>
+                <div class="stock-price">640</div>
+                <div class="stock-profit positive">+1,800</div>
+                <div class="stock-profit positive">+1,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#13</div>
+                <div><div class="stock-name">エクサウィザーズ</div><div class="stock-ticker">4259.T</div></div>
+                <div class="stock-price">675</div>
+                <div class="stock-profit positive">+1,000</div>
+                <div class="stock-profit positive">+900</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="13000.0" data-seido-p2="4200.0" data-seido-count="4" data-ichi-p1="12800.0" data-ichi-p2="100.0" data-ichi-count="6">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-05 (Wed)</div>
+            <div class="daily-stats">
+                <span class="daily-count">10件</span>
+                <div class="profit-compare">
+                    <span class="p1">+25,800</span>
+                    <span class="p2">+4,300</span>
+                </div>
+                <span>70%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
         </div>
-
-        <h2>個別銘柄詳細</h2>
-        <h3>制度信用</h3>
-        <details>
-            <summary>▶ 1000-2000円（40件）<span class="positive">+33,600円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/30</td><td>3449.T</td><td>テクノフレックス</td><td class="num">1,726</td><td class="num">1,736</td><td class="num negative">-3,400</td></tr>
-                <tr><td>10/30</td><td>4743.T</td><td>アイティフォー</td><td class="num">1,489</td><td class="num">1,486</td><td class="num negative">-400</td></tr>
-                <tr><td>10/31</td><td>4082.T</td><td>第一稀元素化学工業</td><td class="num">1,135</td><td class="num">1,288</td><td class="num negative">-32,600</td></tr>
-                <tr><td>10/31</td><td>6800.T</td><td>ヨコオ</td><td class="num">1,848</td><td class="num">1,855</td><td class="num negative">-13,800</td></tr>
-                <tr><td>11/04</td><td>4082.T</td><td>第一稀元素化学工業</td><td class="num">1,381</td><td class="num">1,395</td><td class="num positive">+199</td></tr>
-                <tr><td>11/04</td><td>9552.T</td><td>M&A総研ホールディ</td><td class="num">1,265</td><td class="num">1,352</td><td class="num negative">-16,500</td></tr>
-                <tr><td>11/06</td><td>4082.T</td><td>第一稀元素化学工業(</td><td class="num">1,420</td><td class="num">1,319</td><td class="num positive">+29,300</td></tr>
-                <tr><td>11/06</td><td>219A.T</td><td>Heartseed(</td><td class="num">1,900</td><td class="num">1,831</td><td class="num positive">+15,200</td></tr>
-                <tr><td>11/12</td><td>7438.T</td><td>コンドーテック</td><td class="num">1,574</td><td class="num">1,583</td><td class="num negative">-499</td></tr>
-                <tr><td>11/13</td><td>5071.T</td><td>ヴィス</td><td class="num">1,368</td><td class="num">1,389</td><td class="num negative">-4,800</td></tr>
-                <tr><td>11/13</td><td>2378.T</td><td>セントケア・ホールデ</td><td class="num">1,043</td><td class="num">1,042</td><td class="num positive">+600</td></tr>
-                <tr><td>11/13</td><td>4251.T</td><td>JSP</td><td class="num">1,160</td><td class="num">1,175</td><td class="num negative">-3,800</td></tr>
-                <tr><td>11/14</td><td>5406.T</td><td>神戸製鋼所</td><td class="num">1,846</td><td class="num">1,882</td><td class="num negative">-9,150</td></tr>
-                <tr><td>11/17</td><td>2462.T</td><td>ライク</td><td class="num">1,500</td><td class="num">1,498</td><td class="num positive">+200</td></tr>
-                <tr><td>11/19</td><td>5985.T</td><td>サンコール</td><td class="num">1,376</td><td class="num">1,323</td><td class="num positive">+16,300</td></tr>
-                <tr><td>11/19</td><td>4082.T</td><td>第一稀元素化学工業</td><td class="num">1,360</td><td class="num">1,318</td><td class="num positive">+7,900</td></tr>
-                <tr><td>11/25</td><td>3321.T</td><td>ミタチ産業</td><td class="num">1,718</td><td class="num">1,694</td><td class="num positive">+6,200</td></tr>
-                <tr><td>11/25</td><td>3201.T</td><td>ニッケ</td><td class="num">1,822</td><td class="num">1,764</td><td class="num positive">+11,400</td></tr>
-                <tr><td>11/26</td><td>8892.T</td><td>エスコン</td><td class="num">1,042</td><td class="num">1,031</td><td class="num positive">+1,900</td></tr>
-                <tr><td>11/27</td><td>3245.T</td><td>ディアライフ</td><td class="num">1,109</td><td class="num">1,111</td><td class="num negative">-599</td></tr>
-                <tr><td>11/27</td><td>155A.T</td><td>情報戦略テクノロジー</td><td class="num">1,703</td><td class="num">1,630</td><td class="num positive">+28,900</td></tr>
-                <tr><td>12/01</td><td>5016.T</td><td>ＪＸ金属</td><td class="num">1,698</td><td class="num">1,668</td><td class="num positive">+7,750</td></tr>
-                <tr><td>12/01</td><td>4371.T</td><td>コアコンセプト・テク</td><td class="num">1,070</td><td class="num">1,048</td><td class="num positive">+4,299</td></tr>
-                <tr><td>12/01</td><td>6862.T</td><td>ミナトホールディング</td><td class="num">1,390</td><td class="num">1,325</td><td class="num positive">+11,800</td></tr>
-                <tr><td>12/01</td><td>3708.T</td><td>特種東海製紙</td><td class="num">1,527</td><td class="num">1,507</td><td class="num positive">+4,000</td></tr>
-                <tr><td>12/02</td><td>153A.T</td><td>カウリス</td><td class="num">1,386</td><td class="num">1,372</td><td class="num positive">+1,900</td></tr>
-                <tr><td>12/04</td><td>6238.T</td><td>フリュー</td><td class="num">1,041</td><td class="num">1,047</td><td class="num negative">-2,400</td></tr>
-                <tr><td>12/04</td><td>5741.T</td><td>ＵＡＣＪ</td><td class="num">1,829</td><td class="num">1,859</td><td class="num negative">-10,000</td></tr>
-                <tr><td>12/05</td><td>5016.T</td><td>ＪＸ金属</td><td class="num">1,700</td><td class="num">1,740</td><td class="num negative">-11,699</td></tr>
-                <tr><td>12/08</td><td>7893.T</td><td>プロネクサス</td><td class="num">1,155</td><td class="num">1,150</td><td class="num positive">+900</td></tr>
-                <tr><td>12/08</td><td>155A.T</td><td>情報戦略テクノロジー</td><td class="num">1,340</td><td class="num">1,335</td><td class="num positive">+299</td></tr>
-                <tr><td>12/08</td><td>7818.T</td><td>トランザクション</td><td class="num">1,048</td><td class="num">1,060</td><td class="num negative">-2,300</td></tr>
-                <tr><td>12/08</td><td>464A.T</td><td>ＱＰＳホールディング</td><td class="num">1,818</td><td class="num">1,755</td><td class="num positive">+12,900</td></tr>
-                <tr><td>12/09</td><td>5016.T</td><td>ＪＸ金属</td><td class="num">1,770</td><td class="num">1,734</td><td class="num positive">+7,700</td></tr>
-                <tr><td>12/10</td><td>5253.T</td><td>カバー</td><td class="num">1,567</td><td class="num">1,608</td><td class="num negative">-9,300</td></tr>
-                <tr><td>12/11</td><td>1433.T</td><td>ベステラ</td><td class="num">1,181</td><td class="num">1,155</td><td class="num positive">+4,200</td></tr>
-                <tr><td>12/12</td><td>5351.T</td><td>品川リフラ</td><td class="num">1,985</td><td class="num">2,068</td><td class="num negative">-16,600</td></tr>
-                <tr><td>12/15</td><td>7261.T</td><td>マツダ</td><td class="num">1,208</td><td class="num">1,206</td><td class="num negative">-300</td></tr>
-                <tr><td>12/16</td><td>3333.T</td><td>あさひ</td><td class="num">1,314</td><td class="num">1,319</td><td class="num negative">-1,500</td></tr>
-                <tr><td>12/17</td><td>3683.T</td><td>サイバーリンクス</td><td class="num">1,330</td><td class="num">1,332</td><td class="num negative">-600</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 2000-3000円（22件）<span class="positive">+42,400円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/31</td><td>1950.T</td><td>日本電設工業</td><td class="num">2,857</td><td class="num">2,838</td><td class="num negative">-500</td></tr>
-                <tr><td>11/05</td><td>2160.T</td><td>ジーエヌアイグループ</td><td class="num">2,499</td><td class="num">2,408</td><td class="num positive">+12,400</td></tr>
-                <tr><td>11/10</td><td>4318.T</td><td>クイック</td><td class="num">2,370</td><td class="num">2,393</td><td class="num negative">-3,600</td></tr>
-                <tr><td>11/10</td><td>7937.T</td><td>ツツミ</td><td class="num">2,362</td><td class="num">2,306</td><td class="num positive">+10,400</td></tr>
-                <tr><td>11/11</td><td>6794.T</td><td>フォスター電機</td><td class="num">2,525</td><td class="num">2,462</td><td class="num positive">+7,000</td></tr>
-                <tr><td>11/13</td><td>4499.T</td><td>SPEEE</td><td class="num">2,648</td><td class="num">2,579</td><td class="num positive">+10,700</td></tr>
-                <tr><td>11/14</td><td>4061.T</td><td>デンカ</td><td class="num">2,433</td><td class="num">2,454</td><td class="num negative">-3,550</td></tr>
-                <tr><td>11/14</td><td>4911.T</td><td>資生堂</td><td class="num">2,695</td><td class="num">2,678</td><td class="num positive">+4,700</td></tr>
-                <tr><td>11/17</td><td>6594.T</td><td>ニデック</td><td class="num">2,151</td><td class="num">2,076</td><td class="num positive">+16,200</td></tr>
-                <tr><td>11/18</td><td>7453.T</td><td>良品計画</td><td class="num">2,993</td><td class="num">2,978</td><td class="num positive">+6,999</td></tr>
-                <tr><td>11/18</td><td>6594.T</td><td>ニデック</td><td class="num">2,079</td><td class="num">2,043</td><td class="num positive">+7,200</td></tr>
-                <tr><td>11/19</td><td>8061.T</td><td>西華産業</td><td class="num">2,155</td><td class="num">2,163</td><td class="num negative">-700</td></tr>
-                <tr><td>11/19</td><td>6989.T</td><td>北陸電気工業</td><td class="num">2,540</td><td class="num">2,547</td><td class="num positive">+3,700</td></tr>
-                <tr><td>12/01</td><td>1803.T</td><td>清水建設</td><td class="num">2,760</td><td class="num">2,728</td><td class="num positive">+2,099</td></tr>
-                <tr><td>12/04</td><td>6027.T</td><td>弁護士ドットコム</td><td class="num">2,893</td><td class="num">2,974</td><td class="num negative">-18,400</td></tr>
-                <tr><td>12/10</td><td>6141.T</td><td>ＤＭＧ森精機</td><td class="num">2,740</td><td class="num">2,726</td><td class="num positive">+3,750</td></tr>
-                <tr><td>12/10</td><td>219A.T</td><td>Ｈｅａｒｔｓｅｅｄ</td><td class="num">2,120</td><td class="num">2,082</td><td class="num positive">+10,200</td></tr>
-                <tr><td>12/12</td><td>2730.T</td><td>エディオン</td><td class="num">2,043</td><td class="num">2,048</td><td class="num negative">-1,400</td></tr>
-                <tr><td>12/15</td><td>4527.T</td><td>ロート製薬</td><td class="num">2,551</td><td class="num">2,556</td><td class="num negative">-2,200</td></tr>
-                <tr><td>12/15</td><td>8267.T</td><td>イオン</td><td class="num">2,339</td><td class="num">2,410</td><td class="num negative">-18,350</td></tr>
-                <tr><td>12/18</td><td>2371.T</td><td>カカクコム</td><td class="num">2,208</td><td class="num">2,220</td><td class="num negative">-3,150</td></tr>
-                <tr><td>12/18</td><td>3696.T</td><td>セレス</td><td class="num">2,023</td><td class="num">2,028</td><td class="num negative">-1,100</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 5000-10000円（21件）<span class="positive">+136,200円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>11/07</td><td>3110.T</td><td>日東紡績</td><td class="num">9,780</td><td class="num">9,780</td><td class="num ">+0</td></tr>
-                <tr><td>11/11</td><td>1944.T</td><td>きんでん</td><td class="num">6,255</td><td class="num">6,164</td><td class="num positive">+14,300</td></tr>
-                <tr><td>11/12</td><td>6496.T</td><td>中北製作所</td><td class="num">6,060</td><td class="num">6,260</td><td class="num negative">-42,000</td></tr>
-                <tr><td>11/14</td><td>8136.T</td><td>サンリオ</td><td class="num">5,800</td><td class="num">5,919</td><td class="num negative">-13,200</td></tr>
-                <tr><td>11/17</td><td>6432.T</td><td>竹内製作所</td><td class="num">6,500</td><td class="num">6,520</td><td class="num negative">-5,000</td></tr>
-                <tr><td>11/18</td><td>8136.T</td><td>サンリオ</td><td class="num">5,400</td><td class="num">5,476</td><td class="num negative">-21,500</td></tr>
-                <tr><td>11/19</td><td>7564.T</td><td>ワークマン</td><td class="num">6,700</td><td class="num">6,750</td><td class="num negative">-10,000</td></tr>
-                <tr><td>11/20</td><td>7721.T</td><td>東京計器</td><td class="num">5,710</td><td class="num">5,730</td><td class="num negative">-6,000</td></tr>
-                <tr><td>12/01</td><td>8136.T</td><td>サンリオ</td><td class="num">5,595</td><td class="num">5,395</td><td class="num positive">+44,400</td></tr>
-                <tr><td>12/01</td><td>7003.T</td><td>三井Ｅ＆Ｓ</td><td class="num">6,850</td><td class="num">6,467</td><td class="num positive">+76,900</td></tr>
-                <tr><td>12/01</td><td>6814.T</td><td>古野電気</td><td class="num">9,040</td><td class="num">8,810</td><td class="num positive">+51,000</td></tr>
-                <tr><td>12/04</td><td>1909.T</td><td>日本ドライケミカル</td><td class="num">8,790</td><td class="num">8,760</td><td class="num positive">+14,000</td></tr>
-                <tr><td>12/05</td><td>7003.T</td><td>三井Ｅ＆Ｓ</td><td class="num">6,351</td><td class="num">6,391</td><td class="num positive">+2,300</td></tr>
-                <tr><td>12/05</td><td>1909.T</td><td>日本ドライケミカル</td><td class="num">8,720</td><td class="num">8,760</td><td class="num positive">+2,000</td></tr>
-                <tr><td>12/08</td><td>4516.T</td><td>日本新薬</td><td class="num">6,160</td><td class="num">6,119</td><td class="num positive">+48,200</td></tr>
-                <tr><td>12/08</td><td>6951.T</td><td>日本電子</td><td class="num">5,075</td><td class="num">5,205</td><td class="num negative">-26,800</td></tr>
-                <tr><td>12/11</td><td>4975.T</td><td>ＪＣＵ</td><td class="num">5,150</td><td class="num">5,190</td><td class="num negative">-7,000</td></tr>
-                <tr><td>12/15</td><td>8136.T</td><td>サンリオ</td><td class="num">5,085</td><td class="num">5,174</td><td class="num negative">-14,300</td></tr>
-                <tr><td>12/15</td><td>5801.T</td><td>古河電気工業</td><td class="num">9,500</td><td class="num">9,440</td><td class="num positive">+12,400</td></tr>
-                <tr><td>12/16</td><td>8136.T</td><td>サンリオ</td><td class="num">5,139</td><td class="num">5,115</td><td class="num positive">+14,500</td></tr>
-                <tr><td>12/17</td><td>4393.T</td><td>バンク・オブ・イノベ</td><td class="num">5,750</td><td class="num">5,730</td><td class="num positive">+2,000</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 10000~円（10件）<span class="positive">+71,000円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>11/06</td><td>7729.T</td><td>(株)東京精密</td><td class="num">11,275</td><td class="num">10,815</td><td class="num positive">+87,500</td></tr>
-                <tr><td>11/14</td><td>5706.T</td><td>三井金属鉱業</td><td class="num">18,200</td><td class="num">19,350</td><td class="num negative">-245,000</td></tr>
-                <tr><td>11/18</td><td>6269.T</td><td>三井海洋開発</td><td class="num">14,375</td><td class="num">14,385</td><td class="num positive">+36,499</td></tr>
-                <tr><td>11/18</td><td>5803.T</td><td>フジクラ</td><td class="num">19,300</td><td class="num">18,750</td><td class="num positive">+197,500</td></tr>
-                <tr><td>12/01</td><td>6834.T</td><td>精工技研</td><td class="num">14,190</td><td class="num">13,990</td><td class="num negative">-40,999</td></tr>
-                <tr><td>12/05</td><td>6269.T</td><td>三井海洋開発</td><td class="num">13,770</td><td class="num">13,905</td><td class="num negative">-9,500</td></tr>
-                <tr><td>12/05</td><td>5706.T</td><td>三井金属</td><td class="num">17,740</td><td class="num">17,745</td><td class="num negative">-25,000</td></tr>
-                <tr><td>12/08</td><td>6590.T</td><td>芝浦メカトロニクス</td><td class="num">17,600</td><td class="num">17,490</td><td class="num negative">-34,000</td></tr>
-                <tr><td>12/11</td><td>3110.T</td><td>日東紡績</td><td class="num">11,700</td><td class="num">11,430</td><td class="num positive">+50,000</td></tr>
-                <tr><td>12/15</td><td>6857.T</td><td>アドバンテスト</td><td class="num">19,785</td><td class="num">19,580</td><td class="num positive">+54,000</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 500-1000円（39件）<span class="positive">+31,429円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>7561.T</td><td>ハークスレイ</td><td class="num">651</td><td class="num">650</td><td class="num negative">-100</td></tr>
-                <tr><td>10/30</td><td>3747.T</td><td>インタートレード</td><td class="num">829</td><td class="num">814</td><td class="num positive">+3,700</td></tr>
-                <tr><td>10/31</td><td>166A.T</td><td>タスキホールディング</td><td class="num">654</td><td class="num">651</td><td class="num positive">+800</td></tr>
-                <tr><td>11/05</td><td>6035.T</td><td>IRジャパン</td><td class="num">786</td><td class="num">765</td><td class="num positive">+2,200</td></tr>
-                <tr><td>11/06</td><td>6240.T</td><td>ヤマシンフィルタ(株</td><td class="num">654</td><td class="num">647</td><td class="num negative">-200</td></tr>
-                <tr><td>11/06</td><td>6994.T</td><td>指月電機製作(株)</td><td class="num">762</td><td class="num">747</td><td class="num positive">+1,400</td></tr>
-                <tr><td>11/06</td><td>3082.T</td><td>(株)きちりホールデ</td><td class="num">920</td><td class="num">922</td><td class="num negative">-200</td></tr>
-                <tr><td>11/10</td><td>6986.T</td><td>双葉電子工業</td><td class="num">654</td><td class="num">657</td><td class="num negative">-900</td></tr>
-                <tr><td>11/10</td><td>3744.T</td><td>サイオス</td><td class="num">554</td><td class="num">521</td><td class="num positive">+5,900</td></tr>
-                <tr><td>11/11</td><td>9158.T</td><td>シーユーシー</td><td class="num">967</td><td class="num">979</td><td class="num negative">-3,000</td></tr>
-                <tr><td>11/13</td><td>4165.T</td><td>プレイド</td><td class="num">995</td><td class="num">925</td><td class="num positive">+15,500</td></tr>
-                <tr><td>11/13</td><td>7294.T</td><td>ヨロズ</td><td class="num">972</td><td class="num">992</td><td class="num negative">-2,800</td></tr>
-                <tr><td>11/13</td><td>241A.T</td><td>ROXX</td><td class="num">635</td><td class="num">603</td><td class="num positive">+6,200</td></tr>
-                <tr><td>11/14</td><td>9501.T</td><td>東京電力HD</td><td class="num">910</td><td class="num">915</td><td class="num positive">+2,659</td></tr>
-                <tr><td>11/19</td><td>6366.T</td><td>千代田化工建設</td><td class="num">624</td><td class="num">592</td><td class="num positive">+3,800</td></tr>
-                <tr><td>11/20</td><td>3900.T</td><td>クラウドワークス</td><td class="num">865</td><td class="num">857</td><td class="num positive">+3,200</td></tr>
-                <tr><td>11/20</td><td>9560.T</td><td>プログリット</td><td class="num">951</td><td class="num">957</td><td class="num negative">-400</td></tr>
-                <tr><td>11/20</td><td>4680.T</td><td>ラウンドワン</td><td class="num">965</td><td class="num">976</td><td class="num negative">-2,130</td></tr>
-                <tr><td>11/25</td><td>7198.T</td><td>SBIアルヒ</td><td class="num">841</td><td class="num">834</td><td class="num positive">+799</td></tr>
-                <tr><td>11/26</td><td>3649.T</td><td>ファインデックス</td><td class="num">942</td><td class="num">990</td><td class="num negative">-9,900</td></tr>
-                <tr><td>11/26</td><td>3900.T</td><td>クラウドワークス</td><td class="num">855</td><td class="num">857</td><td class="num positive">+200</td></tr>
-                <tr><td>11/27</td><td>6200.T</td><td>インソース</td><td class="num">844</td><td class="num">850</td><td class="num negative">-1,900</td></tr>
-                <tr><td>11/27</td><td>3168.T</td><td>MERF</td><td class="num">562</td><td class="num">563</td><td class="num negative">-100</td></tr>
-                <tr><td>12/01</td><td>4420.T</td><td>イーソル</td><td class="num">657</td><td class="num">636</td><td class="num positive">+10,100</td></tr>
-                <tr><td>12/02</td><td>3900.T</td><td>クラウドワークス</td><td class="num">827</td><td class="num">817</td><td class="num positive">+2,099</td></tr>
-                <tr><td>12/03</td><td>3553.T</td><td>共和レザー</td><td class="num">962</td><td class="num">963</td><td class="num positive">+300</td></tr>
-                <tr><td>12/04</td><td>6535.T</td><td>アイモバイル</td><td class="num">533</td><td class="num">541</td><td class="num negative">-1,600</td></tr>
-                <tr><td>12/08</td><td>6035.T</td><td>アイ・アールジャパン</td><td class="num">793</td><td class="num">800</td><td class="num negative">-2,000</td></tr>
-                <tr><td>12/09</td><td>2291.T</td><td>福留ハム</td><td class="num">606</td><td class="num">610</td><td class="num negative">-600</td></tr>
-                <tr><td>12/10</td><td>6629.T</td><td>テクノホライゾン</td><td class="num">825</td><td class="num">820</td><td class="num ">+0</td></tr>
-                <tr><td>12/11</td><td>6629.T</td><td>テクノホライゾン</td><td class="num">800</td><td class="num">775</td><td class="num positive">+5,700</td></tr>
-                <tr><td>12/11</td><td>6630.T</td><td>ヤーマン</td><td class="num">806</td><td class="num">803</td><td class="num positive">+800</td></tr>
-                <tr><td>12/15</td><td>6035.T</td><td>アイ・アールジャパン</td><td class="num">803</td><td class="num">805</td><td class="num negative">-1,400</td></tr>
-                <tr><td>12/15</td><td>7065.T</td><td>ユーピーアール</td><td class="num">787</td><td class="num">789</td><td class="num negative">-1,300</td></tr>
-                <tr><td>12/15</td><td>7593.T</td><td>ＶＴホールディングス</td><td class="num">517</td><td class="num">524</td><td class="num negative">-1,900</td></tr>
-                <tr><td>12/15</td><td>4318.T</td><td>クイック</td><td class="num">880</td><td class="num">886</td><td class="num negative">-1,900</td></tr>
-                <tr><td>12/15</td><td>3031.T</td><td>ラクーンホールディン</td><td class="num">616</td><td class="num">618</td><td class="num negative">-499</td></tr>
-                <tr><td>12/16</td><td>4996.T</td><td>クミアイ化学工業</td><td class="num">679</td><td class="num">688</td><td class="num negative">-1,200</td></tr>
-                <tr><td>12/18</td><td>3951.T</td><td>朝日印刷</td><td class="num">861</td><td class="num">859</td><td class="num positive">+100</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 3000-5000円（27件）<span class="positive">+35,750円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/31</td><td>6526.T</td><td>ソシオネクスト</td><td class="num">3,251</td><td class="num">3,410</td><td class="num negative">-39,900</td></tr>
-                <tr><td>10/31</td><td>4617.T</td><td>中国塗料</td><td class="num">4,200</td><td class="num">4,100</td><td class="num positive">+15,999</td></tr>
-                <tr><td>11/04</td><td>8014.T</td><td>蝶理</td><td class="num">3,905</td><td class="num">3,920</td><td class="num ">+0</td></tr>
-                <tr><td>11/07</td><td>6328.T</td><td>荏原実業</td><td class="num">4,395</td><td class="num">4,400</td><td class="num positive">+5,000</td></tr>
-                <tr><td>11/07</td><td>7826.T</td><td>フルヤ金属</td><td class="num">3,225</td><td class="num">3,185</td><td class="num positive">+16,500</td></tr>
-                <tr><td>11/07</td><td>6524.T</td><td>湖北工業</td><td class="num">3,280</td><td class="num">3,245</td><td class="num positive">+2,500</td></tr>
-                <tr><td>11/11</td><td>7014.T</td><td>名村造船所</td><td class="num">4,455</td><td class="num">4,270</td><td class="num positive">+31,000</td></tr>
-                <tr><td>11/11</td><td>9302.T</td><td>三井倉庫ホールディン</td><td class="num">3,752</td><td class="num">3,777</td><td class="num negative">-3,200</td></tr>
-                <tr><td>11/11</td><td>8850.T</td><td>スターツコーポレーシ</td><td class="num">4,765</td><td class="num">4,680</td><td class="num positive">+17,500</td></tr>
-                <tr><td>11/13</td><td>325A.T</td><td>TENTIAL</td><td class="num">4,275</td><td class="num">4,220</td><td class="num positive">+13,000</td></tr>
-                <tr><td>11/14</td><td>6525.T</td><td>コクサイエレクトリッ</td><td class="num">4,250</td><td class="num">4,097</td><td class="num positive">+29,100</td></tr>
-                <tr><td>11/14</td><td>5711.T</td><td>三菱マテリアル</td><td class="num">3,050</td><td class="num">3,081</td><td class="num negative">-9,600</td></tr>
-                <tr><td>11/18</td><td>9101.T</td><td>日本郵船</td><td class="num">4,875</td><td class="num">4,887</td><td class="num negative">-1,400</td></tr>
-                <tr><td>11/20</td><td>6617.T</td><td>トレックス・セミコン</td><td class="num">3,470</td><td class="num">3,455</td><td class="num negative">-8,000</td></tr>
-                <tr><td>12/04</td><td>6890.T</td><td>フェローテック</td><td class="num">4,890</td><td class="num">4,895</td><td class="num positive">+7,000</td></tr>
-                <tr><td>12/04</td><td>9449.T</td><td>ＧＭＯインターネット</td><td class="num">3,878</td><td class="num">3,931</td><td class="num negative">-9,700</td></tr>
-                <tr><td>12/04</td><td>6134.T</td><td>ＦＵＪＩ</td><td class="num">3,390</td><td class="num">3,481</td><td class="num negative">-15,900</td></tr>
-                <tr><td>12/04</td><td>6436.T</td><td>アマノ</td><td class="num">4,133</td><td class="num">4,192</td><td class="num negative">-13,100</td></tr>
-                <tr><td>12/04</td><td>3480.T</td><td>ジェイ・エス・ビー</td><td class="num">3,480</td><td class="num">3,545</td><td class="num negative">-11,000</td></tr>
-                <tr><td>12/04</td><td>3038.T</td><td>神戸物産</td><td class="num">3,734</td><td class="num">3,752</td><td class="num negative">-3,400</td></tr>
-                <tr><td>12/08</td><td>1802.T</td><td>大林組</td><td class="num">3,114</td><td class="num">3,145</td><td class="num negative">-7,499</td></tr>
-                <tr><td>12/10</td><td>6525.T</td><td>ＫＯＫＵＳＡＩ　ＥＬ</td><td class="num">4,820</td><td class="num">4,708</td><td class="num positive">+17,700</td></tr>
-                <tr><td>12/15</td><td>4980.T</td><td>デクセリアルズ</td><td class="num">3,047</td><td class="num">2,992</td><td class="num positive">+5,250</td></tr>
-                <tr><td>12/15</td><td>4631.T</td><td>ＤＩＣ</td><td class="num">3,726</td><td class="num">3,765</td><td class="num negative">-9,900</td></tr>
-                <tr><td>12/15</td><td>1605.T</td><td>ＩＮＰＥＸ</td><td class="num">3,217</td><td class="num">3,202</td><td class="num positive">+599</td></tr>
-                <tr><td>12/15</td><td>9828.T</td><td>Ｇｅｎｋｉ　Ｇｌｏｂ</td><td class="num">3,055</td><td class="num">3,085</td><td class="num negative">-5,000</td></tr>
-                <tr><td>12/16</td><td>7453.T</td><td>良品計画</td><td class="num">3,051</td><td class="num">3,014</td><td class="num positive">+12,200</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ ~500円（28件）<span class="negative">-3,300円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>6803.T</td><td>ティアック</td><td class="num">102</td><td class="num">100</td><td class="num positive">+500</td></tr>
-                <tr><td>10/30</td><td>2445.T</td><td>タカミヤ</td><td class="num">347</td><td class="num">355</td><td class="num negative">-1,400</td></tr>
-                <tr><td>10/30</td><td>3940.T</td><td>ノムラシステムコーポ</td><td class="num">133</td><td class="num">134</td><td class="num negative">-400</td></tr>
-                <tr><td>10/30</td><td>4651.T</td><td>サニックスホールディ</td><td class="num">215</td><td class="num">214</td><td class="num positive">+400</td></tr>
-                <tr><td>11/04</td><td>2445.T</td><td>タカミヤ</td><td class="num">410</td><td class="num">409</td><td class="num negative">-600</td></tr>
-                <tr><td>11/04</td><td>3997.T</td><td>トレードワークス</td><td class="num">338</td><td class="num">336</td><td class="num negative">-600</td></tr>
-                <tr><td>11/05</td><td>3660.T</td><td>アイスタイル</td><td class="num">446</td><td class="num">430</td><td class="num positive">+2,200</td></tr>
-                <tr><td>11/05</td><td>7859.T</td><td>アルメディオ</td><td class="num">180</td><td class="num">178</td><td class="num positive">+400</td></tr>
-                <tr><td>11/06</td><td>6366.T</td><td>千代田化工建設(株)</td><td class="num">477</td><td class="num">506</td><td class="num negative">-5,500</td></tr>
-                <tr><td>11/06</td><td>4237.T</td><td>フジプレアム(株)</td><td class="num">311</td><td class="num">311</td><td class="num positive">+200</td></tr>
-                <tr><td>11/10</td><td>6803.T</td><td>TOA</td><td class="num">95</td><td class="num">99</td><td class="num negative">-1,100</td></tr>
-                <tr><td>11/11</td><td>3103.T</td><td>日東紡績</td><td class="num">197</td><td class="num">236</td><td class="num negative">-8,900</td></tr>
-                <tr><td>11/17</td><td>2492.T</td><td>インフォマート</td><td class="num">347</td><td class="num">343</td><td class="num positive">+599</td></tr>
-                <tr><td>11/18</td><td>9424.T</td><td>日本通信</td><td class="num">149</td><td class="num">144</td><td class="num positive">+1,100</td></tr>
-                <tr><td>11/20</td><td>5074.T</td><td>テスホールディングス</td><td class="num">346</td><td class="num">342</td><td class="num positive">+1,300</td></tr>
-                <tr><td>11/20</td><td>6538.T</td><td>ディスラプターズ</td><td class="num">324</td><td class="num">331</td><td class="num negative">-1,600</td></tr>
-                <tr><td>11/25</td><td>4936.T</td><td>アクシージア</td><td class="num">424</td><td class="num">425</td><td class="num positive">+600</td></tr>
-                <tr><td>11/25</td><td>2438.T</td><td>アスカネット</td><td class="num">351</td><td class="num">370</td><td class="num negative">-3,199</td></tr>
-                <tr><td>12/02</td><td>6664.T</td><td>オプトエレクトロニク</td><td class="num">329</td><td class="num">333</td><td class="num positive">+400</td></tr>
-                <tr><td>12/02</td><td>4477.T</td><td>ＢＡＳＥ</td><td class="num">318</td><td class="num">317</td><td class="num positive">+600</td></tr>
-                <tr><td>12/05</td><td>4176.T</td><td>ココナラ</td><td class="num">328</td><td class="num">322</td><td class="num positive">+1,399</td></tr>
-                <tr><td>12/08</td><td>6615.T</td><td>ユー・エム・シー・エ</td><td class="num">435</td><td class="num">435</td><td class="num ">+0</td></tr>
-                <tr><td>12/09</td><td>6615.T</td><td>ユー・エム・シー・エ</td><td class="num">411</td><td class="num">396</td><td class="num positive">+4,000</td></tr>
-                <tr><td>12/11</td><td>5244.T</td><td>ｊｉｇ．ｊｐ</td><td class="num">235</td><td class="num">228</td><td class="num positive">+1,400</td></tr>
-                <tr><td>12/11</td><td>4053.T</td><td>Ｓｕｎ　Ａｓｔｅｒｉ</td><td class="num">464</td><td class="num">463</td><td class="num positive">+900</td></tr>
-                <tr><td>12/12</td><td>4880.T</td><td>セルソース</td><td class="num">450</td><td class="num">436</td><td class="num positive">+2,900</td></tr>
-                <tr><td>12/16</td><td>3826.T</td><td>システムインテグレー</td><td class="num">446</td><td class="num">445</td><td class="num positive">+500</td></tr>
-                <tr><td>12/16</td><td>3758.T</td><td>アエリア</td><td class="num">300</td><td class="num">298</td><td class="num positive">+600</td></tr>
-            </table>
-        </details>
-        <h3>いちにち信用のみ</h3>
-        <details>
-            <summary>▶ 1000-2000円（76件）<span class="positive">+360,500円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>303A.T</td><td>visumo</td><td class="num">1,000</td><td class="num">990</td><td class="num positive">+2,099</td></tr>
-                <tr><td>10/29</td><td>2934.T</td><td>ジェイフロンティア</td><td class="num">1,800</td><td class="num">1,760</td><td class="num positive">+9,200</td></tr>
-                <tr><td>10/30</td><td>3655.T</td><td>ブレインパッド</td><td class="num">1,358</td><td class="num">1,355</td><td class="num negative">-1,600</td></tr>
-                <tr><td>10/30</td><td>9709.T</td><td>NCS&A</td><td class="num">1,693</td><td class="num">1,691</td><td class="num negative">-4,100</td></tr>
-                <tr><td>10/31</td><td>4446.T</td><td>Link-Uグループ</td><td class="num">1,068</td><td class="num">1,054</td><td class="num positive">+2,300</td></tr>
-                <tr><td>11/05</td><td>6232.T</td><td>ACSL</td><td class="num">1,041</td><td class="num">993</td><td class="num positive">+6,800</td></tr>
-                <tr><td>11/05</td><td>7983.T</td><td>ミロク</td><td class="num">1,484</td><td class="num">1,418</td><td class="num positive">+11,299</td></tr>
-                <tr><td>11/05</td><td>5994.T</td><td>ファインシンター</td><td class="num">1,531</td><td class="num">1,530</td><td class="num negative">-5,400</td></tr>
-                <tr><td>11/10</td><td>6232.T</td><td>ACSL</td><td class="num">1,048</td><td class="num">1,034</td><td class="num positive">+3,699</td></tr>
-                <tr><td>11/11</td><td>3766.T</td><td>システムズ・デザイン</td><td class="num">1,258</td><td class="num">1,259</td><td class="num negative">-1,700</td></tr>
-                <tr><td>11/13</td><td>5029.T</td><td>サークレイス</td><td class="num">1,089</td><td class="num">1,095</td><td class="num negative">-1,300</td></tr>
-                <tr><td>11/14</td><td>6309.T</td><td>海洋建設</td><td class="num">1,624</td><td class="num">1,633</td><td class="num negative">-3,600</td></tr>
-                <tr><td>11/17</td><td>5597.T</td><td>ブルーイノベーション</td><td class="num">1,681</td><td class="num">1,652</td><td class="num positive">+7,500</td></tr>
-                <tr><td>11/17</td><td>302A.T</td><td>ビースタイルホールデ</td><td class="num">1,189</td><td class="num">1,160</td><td class="num positive">+8,500</td></tr>
-                <tr><td>11/17</td><td>265A.T</td><td>Hmcomm</td><td class="num">1,033</td><td class="num">1,036</td><td class="num positive">+2,000</td></tr>
-                <tr><td>11/18</td><td>3989.T</td><td>シェアリングテクノロ</td><td class="num">1,036</td><td class="num">1,063</td><td class="num negative">-3,700</td></tr>
-                <tr><td>11/18</td><td>5597.T</td><td>ブルーイノベーション</td><td class="num">1,635</td><td class="num">1,536</td><td class="num positive">+19,300</td></tr>
-                <tr><td>11/19</td><td>9051.T</td><td>センコン物流</td><td class="num">1,414</td><td class="num">1,414</td><td class="num ">+0</td></tr>
-                <tr><td>11/19</td><td>7271.T</td><td>安永</td><td class="num">1,075</td><td class="num">1,055</td><td class="num positive">+5,899</td></tr>
-                <tr><td>11/20</td><td>6232.T</td><td>ACSL</td><td class="num">1,018</td><td class="num">1,009</td><td class="num positive">+3,100</td></tr>
-                <tr><td>11/20</td><td>3989.T</td><td>シェアリングテクノロ</td><td class="num">1,050</td><td class="num">1,040</td><td class="num positive">+3,100</td></tr>
-                <tr><td>11/26</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">1,880</td><td class="num">1,960</td><td class="num negative">-31,900</td></tr>
-                <tr><td>11/26</td><td>218A.T</td><td>Liberaware</td><td class="num">1,270</td><td class="num">1,339</td><td class="num negative">-14,000</td></tr>
-                <tr><td>11/26</td><td>205A.T</td><td>ロゴスホールディング</td><td class="num">1,647</td><td class="num">1,620</td><td class="num positive">+5,900</td></tr>
-                <tr><td>11/26</td><td>5923.T</td><td>高田機工</td><td class="num">1,100</td><td class="num">1,113</td><td class="num negative">-900</td></tr>
-                <tr><td>11/27</td><td>446A.T</td><td>ノースサンド</td><td class="num">1,367</td><td class="num">1,279</td><td class="num positive">+18,099</td></tr>
-                <tr><td>11/28</td><td>5250.T</td><td>プライム・ストラテジ</td><td class="num">1,550</td><td class="num">1,543</td><td class="num positive">+2,200</td></tr>
-                <tr><td>12/01</td><td>5242.T</td><td>アイズ</td><td class="num">1,191</td><td class="num">1,169</td><td class="num positive">+2,500</td></tr>
-                <tr><td>12/01</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,054</td><td class="num">1,054</td><td class="num ">+0</td></tr>
-                <tr><td>12/02</td><td>290A.T</td><td>Ｓｙｎｓｐｅｃｔｉｖ</td><td class="num">1,108</td><td class="num">1,078</td><td class="num positive">+7,900</td></tr>
-                <tr><td>12/02</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,281</td><td class="num">1,134</td><td class="num positive">+32,300</td></tr>
-                <tr><td>12/03</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,225</td><td class="num">1,405</td><td class="num negative">-36,000</td></tr>
-                <tr><td>12/03</td><td>4664.T</td><td>アール・エス・シー</td><td class="num">1,025</td><td class="num">1,025</td><td class="num ">+0</td></tr>
-                <tr><td>12/03</td><td>218A.T</td><td>Ｌｉｂｅｒａｗａｒｅ</td><td class="num">1,430</td><td class="num">1,385</td><td class="num positive">+10,700</td></tr>
-                <tr><td>12/03</td><td>3842.T</td><td>ネクストジェン</td><td class="num">1,008</td><td class="num">1,010</td><td class="num negative">-200</td></tr>
-                <tr><td>12/04</td><td>4069.T</td><td>ＢｌｕｅＭｅｍｅ</td><td class="num">1,429</td><td class="num">1,396</td><td class="num positive">+5,400</td></tr>
-                <tr><td>12/04</td><td>4425.T</td><td>Ｋｕｄａｎ</td><td class="num">1,268</td><td class="num">1,448</td><td class="num negative">-26,700</td></tr>
-                <tr><td>12/04</td><td>4418.T</td><td>ＪＤＳＣ</td><td class="num">1,303</td><td class="num">1,297</td><td class="num positive">+3,900</td></tr>
-                <tr><td>12/04</td><td>218A.T</td><td>Ｌｉｂｅｒａｗａｒｅ</td><td class="num">1,352</td><td class="num">1,390</td><td class="num negative">-9,000</td></tr>
-                <tr><td>12/04</td><td>3842.T</td><td>ネクストジェン</td><td class="num">1,009</td><td class="num">1,012</td><td class="num negative">-500</td></tr>
-                <tr><td>12/05</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,201</td><td class="num">1,152</td><td class="num positive">+12,100</td></tr>
-                <tr><td>12/05</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">1,621</td><td class="num">1,320</td><td class="num positive">+52,700</td></tr>
-                <tr><td>12/05</td><td>4113.T</td><td>田岡化学工業</td><td class="num">1,162</td><td class="num">1,172</td><td class="num negative">-1,900</td></tr>
-                <tr><td>12/08</td><td>4664.T</td><td>アール・エス・シー</td><td class="num">1,761</td><td class="num">1,537</td><td class="num positive">+82,000</td></tr>
-                <tr><td>12/08</td><td>303A.T</td><td>ｖｉｓｕｍｏ</td><td class="num">1,226</td><td class="num">1,250</td><td class="num positive">+3,700</td></tr>
-                <tr><td>12/09</td><td>2436.T</td><td>共同ピーアール</td><td class="num">1,010</td><td class="num">993</td><td class="num positive">+2,900</td></tr>
-                <tr><td>12/09</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,411</td><td class="num">1,327</td><td class="num positive">+19,400</td></tr>
-                <tr><td>12/09</td><td>4347.T</td><td>ブロードメディア</td><td class="num">1,700</td><td class="num">1,700</td><td class="num positive">+99</td></tr>
-                <tr><td>12/09</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">1,895</td><td class="num">1,833</td><td class="num positive">+17,200</td></tr>
-                <tr><td>12/10</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">1,665</td><td class="num">1,734</td><td class="num negative">-10,400</td></tr>
-                <tr><td>12/10</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,271</td><td class="num">1,321</td><td class="num negative">-8,500</td></tr>
-                <tr><td>12/10</td><td>6291.T</td><td>日本エアーテック</td><td class="num">1,222</td><td class="num">1,219</td><td class="num positive">+500</td></tr>
-                <tr><td>12/10</td><td>247A.T</td><td>Ａｉロボティクス</td><td class="num">1,178</td><td class="num">1,170</td><td class="num positive">+800</td></tr>
-                <tr><td>12/10</td><td>5243.T</td><td>ｎｏｔｅ</td><td class="num">1,590</td><td class="num">1,513</td><td class="num positive">+16,700</td></tr>
-                <tr><td>12/10</td><td>8929.T</td><td>青山財産ネットワーク</td><td class="num">1,680</td><td class="num">1,672</td><td class="num negative">-1,000</td></tr>
-                <tr><td>12/11</td><td>7614.T</td><td>オーエムツーネットワ</td><td class="num">1,532</td><td class="num">1,533</td><td class="num positive">+300</td></tr>
-                <tr><td>12/11</td><td>6577.T</td><td>ベストワンドットコム</td><td class="num">1,993</td><td class="num">1,967</td><td class="num positive">+5,700</td></tr>
-                <tr><td>12/11</td><td>4372.T</td><td>ユミルリンク</td><td class="num">1,419</td><td class="num">1,407</td><td class="num positive">+2,200</td></tr>
-                <tr><td>12/11</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">1,660</td><td class="num">1,603</td><td class="num positive">+18,899</td></tr>
-                <tr><td>12/11</td><td>4664.T</td><td>アール・エス・シー</td><td class="num">1,431</td><td class="num">1,242</td><td class="num positive">+33,400</td></tr>
-                <tr><td>12/11</td><td>4592.T</td><td>サンバイオ</td><td class="num">1,916</td><td class="num">1,774</td><td class="num positive">+35,600</td></tr>
-                <tr><td>12/11</td><td>4395.T</td><td>アクリート</td><td class="num">1,240</td><td class="num">1,342</td><td class="num negative">-20,500</td></tr>
-                <tr><td>12/12</td><td>7095.T</td><td>Ｍａｃｂｅｅ　Ｐｌａ</td><td class="num">1,492</td><td class="num">1,503</td><td class="num negative">-1,200</td></tr>
-                <tr><td>12/12</td><td>4664.T</td><td>アール・エス・シー</td><td class="num">1,136</td><td class="num">1,190</td><td class="num negative">-10,399</td></tr>
-                <tr><td>12/12</td><td>7673.T</td><td>ダイコー通産</td><td class="num">1,619</td><td class="num">1,602</td><td class="num positive">+1,800</td></tr>
-                <tr><td>12/15</td><td>367A.T</td><td>プリモグローバルホー</td><td class="num">1,860</td><td class="num">1,879</td><td class="num negative">-6,900</td></tr>
-                <tr><td>12/16</td><td>4175.T</td><td>ｃｏｌｙ</td><td class="num">1,977</td><td class="num">1,926</td><td class="num positive">+11,400</td></tr>
-                <tr><td>12/16</td><td>4395.T</td><td>アクリート</td><td class="num">1,169</td><td class="num">1,061</td><td class="num positive">+24,200</td></tr>
-                <tr><td>12/16</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">1,155</td><td class="num">1,096</td><td class="num positive">+11,900</td></tr>
-                <tr><td>12/17</td><td>5136.T</td><td>ｔｒｉｐｌａ</td><td class="num">1,867</td><td class="num">1,818</td><td class="num positive">+5,600</td></tr>
-                <tr><td>12/17</td><td>7095.T</td><td>Ｍａｃｂｅｅ　Ｐｌａ</td><td class="num">1,475</td><td class="num">1,477</td><td class="num negative">-3,099</td></tr>
-                <tr><td>12/17</td><td>4935.T</td><td>リベルタ</td><td class="num">1,841</td><td class="num">1,800</td><td class="num positive">+8,400</td></tr>
-                <tr><td>12/18</td><td>7095.T</td><td>Ｍａｃｂｅｅ　Ｐｌａ</td><td class="num">1,533</td><td class="num">1,581</td><td class="num negative">-5,400</td></tr>
-                <tr><td>12/19</td><td>4395.T</td><td>アクリート</td><td class="num">1,468</td><td class="num">1,294</td><td class="num positive">+33,200</td></tr>
-                <tr><td>12/19</td><td>4446.T</td><td>Ｌｉｎｋ−Ｕグループ</td><td class="num">1,071</td><td class="num">1,081</td><td class="num positive">+2,399</td></tr>
-                <tr><td>12/19</td><td>3079.T</td><td>ディーブイエックス</td><td class="num">1,250</td><td class="num">1,293</td><td class="num negative">-6,399</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 2000-3000円（26件）<span class="negative">-3,500円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>4616.T</td><td>川上塗料</td><td class="num">2,264</td><td class="num">2,253</td><td class="num positive">+3,500</td></tr>
-                <tr><td>11/10</td><td>5189.T</td><td>櫻護謨</td><td class="num">2,333</td><td class="num">2,349</td><td class="num negative">-1,400</td></tr>
-                <tr><td>11/11</td><td>5941.T</td><td>中西製作所</td><td class="num">2,379</td><td class="num">2,369</td><td class="num positive">+1,900</td></tr>
-                <tr><td>11/11</td><td>7320.T</td><td>Solvvy</td><td class="num">2,129</td><td class="num">2,131</td><td class="num negative">-2,000</td></tr>
-                <tr><td>11/12</td><td>7320.T</td><td>Solvvy</td><td class="num">2,131</td><td class="num">2,142</td><td class="num negative">-5,100</td></tr>
-                <tr><td>11/17</td><td>5574.T</td><td>ABEJA</td><td class="num">2,750</td><td class="num">2,691</td><td class="num positive">+15,100</td></tr>
-                <tr><td>11/19</td><td>5724.T</td><td>アサカ理研</td><td class="num">2,160</td><td class="num">2,624</td><td class="num negative">-89,200</td></tr>
-                <tr><td>11/25</td><td>9242.T</td><td>メディア総研</td><td class="num">2,167</td><td class="num">2,167</td><td class="num ">+0</td></tr>
-                <tr><td>11/27</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">2,319</td><td class="num">2,619</td><td class="num negative">-60,000</td></tr>
-                <tr><td>12/01</td><td>5843.T</td><td>ニッポンインシュア</td><td class="num">2,878</td><td class="num">2,716</td><td class="num positive">+34,000</td></tr>
-                <tr><td>12/02</td><td>7092.T</td><td>Ｆａｓｔ　Ｆｉｔｎｅ</td><td class="num">2,308</td><td class="num">2,307</td><td class="num positive">+299</td></tr>
-                <tr><td>12/03</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">2,420</td><td class="num">2,420</td><td class="num ">+0</td></tr>
-                <tr><td>12/04</td><td>277A.T</td><td>グロービング</td><td class="num">2,425</td><td class="num">2,475</td><td class="num negative">-8,100</td></tr>
-                <tr><td>12/04</td><td>3652.T</td><td>ディジタルメディアプ</td><td class="num">2,453</td><td class="num">2,475</td><td class="num positive">+1,500</td></tr>
-                <tr><td>12/04</td><td>3914.T</td><td>ＪＩＧ−ＳＡＷ</td><td class="num">2,825</td><td class="num">2,823</td><td class="num negative">-14,300</td></tr>
-                <tr><td>12/08</td><td>341A.T</td><td>トヨコー</td><td class="num">2,119</td><td class="num">2,082</td><td class="num positive">+8,400</td></tr>
-                <tr><td>12/10</td><td>3914.T</td><td>ＪＩＧ−ＳＡＷ</td><td class="num">2,976</td><td class="num">2,944</td><td class="num positive">+4,900</td></tr>
-                <tr><td>12/11</td><td>1436.T</td><td>グリーンエナジー＆カ</td><td class="num">2,344</td><td class="num">2,314</td><td class="num positive">+10,500</td></tr>
-                <tr><td>12/11</td><td>7596.T</td><td>魚力</td><td class="num">2,385</td><td class="num">2,367</td><td class="num positive">+4,999</td></tr>
-                <tr><td>12/11</td><td>2983.T</td><td>アールプランナー</td><td class="num">2,920</td><td class="num">2,875</td><td class="num positive">+10,099</td></tr>
-                <tr><td>12/16</td><td>5574.T</td><td>ＡＢＥＪＡ</td><td class="num">2,700</td><td class="num">2,605</td><td class="num positive">+18,200</td></tr>
-                <tr><td>12/16</td><td>442A.T</td><td>クラシコ</td><td class="num">2,300</td><td class="num">2,244</td><td class="num positive">+14,899</td></tr>
-                <tr><td>12/16</td><td>7115.T</td><td>アルファパーチェス</td><td class="num">2,349</td><td class="num">2,279</td><td class="num positive">+16,700</td></tr>
-                <tr><td>12/17</td><td>7050.T</td><td>フロンティアインター</td><td class="num">2,844</td><td class="num">2,777</td><td class="num positive">+11,100</td></tr>
-                <tr><td>12/17</td><td>212A.T</td><td>フィットイージー</td><td class="num">2,760</td><td class="num">2,709</td><td class="num positive">+19,000</td></tr>
-                <tr><td>12/17</td><td>2981.T</td><td>ランディックス</td><td class="num">2,711</td><td class="num">2,707</td><td class="num positive">+1,500</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 5000-10000円（6件）<span class="negative">-149,001円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/31</td><td>1798.T</td><td>守谷商会</td><td class="num">5,520</td><td class="num">5,520</td><td class="num negative">-90,000</td></tr>
-                <tr><td>11/04</td><td>1798.T</td><td>守谷商会</td><td class="num">6,720</td><td class="num">7,020</td><td class="num negative">-64,000</td></tr>
-                <tr><td>11/06</td><td>6022.T</td><td>赤阪鐵工所(株)</td><td class="num">5,860</td><td class="num">5,810</td><td class="num positive">+16,000</td></tr>
-                <tr><td>11/07</td><td>7711.T</td><td>助川電気工業</td><td class="num">6,470</td><td class="num">6,130</td><td class="num positive">+61,000</td></tr>
-                <tr><td>11/20</td><td>319A.T</td><td>技術承継機構</td><td class="num">9,400</td><td class="num">9,960</td><td class="num negative">-78,000</td></tr>
-                <tr><td>12/01</td><td>6875.T</td><td>メガチップス</td><td class="num">8,140</td><td class="num">8,170</td><td class="num positive">+5,999</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 10000~円（5件）<span class="positive">+479,499円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>7018.T</td><td>内海造船</td><td class="num">18,400</td><td class="num">17,140</td><td class="num positive">+121,000</td></tr>
-                <tr><td>11/07</td><td>7018.T</td><td>内海造船</td><td class="num">16,280</td><td class="num">15,550</td><td class="num positive">+176,000</td></tr>
-                <tr><td>11/18</td><td>7018.T</td><td>内海造船</td><td class="num">16,560</td><td class="num">15,660</td><td class="num positive">+231,000</td></tr>
-                <tr><td>12/04</td><td>319A.T</td><td>技術承継機構</td><td class="num">10,700</td><td class="num">10,670</td><td class="num positive">+22,999</td></tr>
-                <tr><td>12/09</td><td>4062.T</td><td>イビデン</td><td class="num">12,740</td><td class="num">13,265</td><td class="num negative">-71,500</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 500-1000円（56件）<span class="positive">+61,700円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>2962.T</td><td>テクニスコ</td><td class="num">572</td><td class="num">488</td><td class="num positive">+19,000</td></tr>
-                <tr><td>10/29</td><td>7794.T</td><td>イーディーピー</td><td class="num">545</td><td class="num">530</td><td class="num positive">+400</td></tr>
-                <tr><td>10/30</td><td>6090.T</td><td>ヒューマン・メタボロ</td><td class="num">697</td><td class="num">695</td><td class="num positive">+400</td></tr>
-                <tr><td>10/30</td><td>3856.T</td><td>Abalance</td><td class="num">893</td><td class="num">897</td><td class="num negative">-1,800</td></tr>
-                <tr><td>10/31</td><td>3856.T</td><td>Abalance</td><td class="num">907</td><td class="num">920</td><td class="num negative">-2,600</td></tr>
-                <tr><td>11/04</td><td>4259.T</td><td>エクサウィザーズ</td><td class="num">675</td><td class="num">665</td><td class="num positive">+1,900</td></tr>
-                <tr><td>11/04</td><td>1844.T</td><td>大盛工業</td><td class="num">640</td><td class="num">622</td><td class="num positive">+3,400</td></tr>
-                <tr><td>11/05</td><td>7255.T</td><td>桜井製作所</td><td class="num">575</td><td class="num">573</td><td class="num positive">+400</td></tr>
-                <tr><td>11/06</td><td>7069.T</td><td>(株)サイバー・バズ</td><td class="num">914</td><td class="num">914</td><td class="num ">+0</td></tr>
-                <tr><td>11/06</td><td>4570.T</td><td>(株)免疫生物研究所</td><td class="num">580</td><td class="num">561</td><td class="num positive">+4,800</td></tr>
-                <tr><td>11/07</td><td>8105.T</td><td>堀田丸正</td><td class="num">654</td><td class="num">625</td><td class="num positive">+5,300</td></tr>
-                <tr><td>11/07</td><td>3798.T</td><td>ULSグループ</td><td class="num">718</td><td class="num">698</td><td class="num positive">+3,900</td></tr>
-                <tr><td>11/10</td><td>6927.T</td><td>ヘリオステクノHD</td><td class="num">967</td><td class="num">974</td><td class="num negative">-1,700</td></tr>
-                <tr><td>11/10</td><td>4598.T</td><td>DELTA-P</td><td class="num">523</td><td class="num">466</td><td class="num positive">+10,400</td></tr>
-                <tr><td>11/10</td><td>3077.T</td><td>ホリイフードサービス</td><td class="num">595</td><td class="num">571</td><td class="num positive">+5,100</td></tr>
-                <tr><td>11/12</td><td>4259.T</td><td>エクサウィザーズ</td><td class="num">725</td><td class="num">743</td><td class="num negative">-3,600</td></tr>
-                <tr><td>11/12</td><td>8105.T</td><td>Bitcoin Ja</td><td class="num">849</td><td class="num">924</td><td class="num negative">-15,000</td></tr>
-                <tr><td>11/13</td><td>4598.T</td><td>WELBY</td><td class="num">505</td><td class="num">490</td><td class="num positive">+2,600</td></tr>
-                <tr><td>11/14</td><td>4575.T</td><td>海洋ファーマ</td><td class="num">815</td><td class="num">813</td><td class="num negative">-99</td></tr>
-                <tr><td>11/14</td><td>1844.T</td><td>大盛工業</td><td class="num">634</td><td class="num">656</td><td class="num negative">-4,800</td></tr>
-                <tr><td>11/20</td><td>4494.T</td><td>バリオセキュア</td><td class="num">764</td><td class="num">764</td><td class="num ">+0</td></tr>
-                <tr><td>11/21</td><td>6232.T</td><td>ACSL</td><td class="num">985</td><td class="num">999</td><td class="num negative">-2,800</td></tr>
-                <tr><td>11/21</td><td>4397.T</td><td>チームスピリット</td><td class="num">504</td><td class="num">518</td><td class="num negative">-2,500</td></tr>
-                <tr><td>11/21</td><td>7695.T</td><td>交換できるくん</td><td class="num">793</td><td class="num">794</td><td class="num negative">-7,200</td></tr>
-                <tr><td>11/25</td><td>4579.T</td><td>ラクオリア創薬</td><td class="num">725</td><td class="num">690</td><td class="num positive">+7,100</td></tr>
-                <tr><td>11/25</td><td>7695.T</td><td>交換できるくん</td><td class="num">862</td><td class="num">848</td><td class="num positive">+1,400</td></tr>
-                <tr><td>11/25</td><td>9344.T</td><td>アクシスコンサルティ</td><td class="num">910</td><td class="num">946</td><td class="num negative">-5,700</td></tr>
-                <tr><td>11/26</td><td>4424.T</td><td>Amazia</td><td class="num">705</td><td class="num">705</td><td class="num ">+0</td></tr>
-                <tr><td>11/27</td><td>9343.T</td><td>アイビス</td><td class="num">710</td><td class="num">698</td><td class="num positive">+2,900</td></tr>
-                <tr><td>12/02</td><td>2901.T</td><td>ウェルディッシュ</td><td class="num">602</td><td class="num">577</td><td class="num positive">+5,700</td></tr>
-                <tr><td>12/03</td><td>6433.T</td><td>ヒーハイスト</td><td class="num">510</td><td class="num">510</td><td class="num ">+0</td></tr>
-                <tr><td>12/04</td><td>4015.T</td><td>ペイクラウドホールデ</td><td class="num">506</td><td class="num">513</td><td class="num negative">-1,599</td></tr>
-                <tr><td>12/04</td><td>2998.T</td><td>クリアル</td><td class="num">813</td><td class="num">792</td><td class="num positive">+4,800</td></tr>
-                <tr><td>12/04</td><td>3512.T</td><td>日本フエルト</td><td class="num">634</td><td class="num">636</td><td class="num negative">-1,800</td></tr>
-                <tr><td>12/05</td><td>3440.T</td><td>日創グループ</td><td class="num">927</td><td class="num">925</td><td class="num positive">+700</td></tr>
-                <tr><td>12/05</td><td>5138.T</td><td>Ｒｅｂａｓｅ</td><td class="num">790</td><td class="num">817</td><td class="num negative">-7,500</td></tr>
-                <tr><td>12/05</td><td>3577.T</td><td>東海染工</td><td class="num">890</td><td class="num">896</td><td class="num negative">-600</td></tr>
-                <tr><td>12/08</td><td>3444.T</td><td>菊池製作所</td><td class="num">616</td><td class="num">677</td><td class="num negative">-600</td></tr>
-                <tr><td>12/08</td><td>5248.T</td><td>テクノロジーズ</td><td class="num">557</td><td class="num">559</td><td class="num negative">-100</td></tr>
-                <tr><td>12/08</td><td>5817.T</td><td>ＪＭＡＣＳ</td><td class="num">778</td><td class="num">739</td><td class="num positive">+9,900</td></tr>
-                <tr><td>12/08</td><td>9271.T</td><td>和心</td><td class="num">848</td><td class="num">861</td><td class="num negative">-4,800</td></tr>
-                <tr><td>12/09</td><td>3444.T</td><td>菊池製作所</td><td class="num">551</td><td class="num">651</td><td class="num negative">-21,000</td></tr>
-                <tr><td>12/09</td><td>5817.T</td><td>ＪＭＡＣＳ</td><td class="num">703</td><td class="num">704</td><td class="num negative">-1,499</td></tr>
-                <tr><td>12/10</td><td>4588.T</td><td>オンコリスバイオファ</td><td class="num">941</td><td class="num">947</td><td class="num negative">-199</td></tr>
-                <tr><td>12/11</td><td>5817.T</td><td>ＪＭＡＣＳ</td><td class="num">942</td><td class="num">853</td><td class="num positive">+31,400</td></tr>
-                <tr><td>12/11</td><td>1844.T</td><td>大盛工業</td><td class="num">514</td><td class="num">506</td><td class="num positive">+2,300</td></tr>
-                <tr><td>12/12</td><td>3444.T</td><td>菊池製作所</td><td class="num">593</td><td class="num">581</td><td class="num negative">-300</td></tr>
-                <tr><td>12/12</td><td>6666.T</td><td>リバーエレテック</td><td class="num">533</td><td class="num">533</td><td class="num ">+0</td></tr>
-                <tr><td>12/12</td><td>5575.T</td><td>Ｇｌｏｂｅｅ</td><td class="num">670</td><td class="num">670</td><td class="num positive">+100</td></tr>
-                <tr><td>12/15</td><td>365A.T</td><td>伊澤タオル</td><td class="num">600</td><td class="num">608</td><td class="num negative">-2,300</td></tr>
-                <tr><td>12/16</td><td>4588.T</td><td>オンコリスバイオファ</td><td class="num">901</td><td class="num">796</td><td class="num positive">+17,599</td></tr>
-                <tr><td>12/16</td><td>9166.T</td><td>ＧＥＮＤＡ</td><td class="num">718</td><td class="num">624</td><td class="num positive">+20,699</td></tr>
-                <tr><td>12/18</td><td>3557.T</td><td>ユナイテッド＆コレク</td><td class="num">979</td><td class="num">975</td><td class="num positive">+800</td></tr>
-                <tr><td>12/18</td><td>5817.T</td><td>ＪＭＡＣＳ</td><td class="num">753</td><td class="num">786</td><td class="num negative">-12,600</td></tr>
-                <tr><td>12/18</td><td>3930.T</td><td>はてな</td><td class="num">851</td><td class="num">864</td><td class="num negative">-3,500</td></tr>
-                <tr><td>12/19</td><td>4479.T</td><td>マクアケ</td><td class="num">874</td><td class="num">849</td><td class="num positive">+4,900</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ 3000-5000円（17件）<span class="negative">-81,800円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/29</td><td>3914.T</td><td>JIG-SA</td><td class="num">3,230</td><td class="num">3,445</td><td class="num negative">-40,500</td></tr>
-                <tr><td>10/29</td><td>2334.T</td><td>イオレ</td><td class="num">3,040</td><td class="num">3,015</td><td class="num negative">-2,000</td></tr>
-                <tr><td>10/31</td><td>3914.T</td><td>JIG-SAW</td><td class="num">3,725</td><td class="num">4,010</td><td class="num negative">-62,000</td></tr>
-                <tr><td>11/04</td><td>3914.T</td><td>JIG-SAW</td><td class="num">3,920</td><td class="num">3,525</td><td class="num positive">+84,500</td></tr>
-                <tr><td>11/07</td><td>2700.T</td><td>木徳神糧</td><td class="num">4,220</td><td class="num">4,220</td><td class="num ">+0</td></tr>
-                <tr><td>11/10</td><td>2334.T</td><td>イオレ</td><td class="num">4,500</td><td class="num">4,950</td><td class="num negative">-103,000</td></tr>
-                <tr><td>11/25</td><td>4464.T</td><td>ソフト99</td><td class="num">4,010</td><td class="num">4,005</td><td class="num positive">+1,500</td></tr>
-                <tr><td>11/27</td><td>6677.T</td><td>エスケーエレクトロニ</td><td class="num">3,035</td><td class="num">3,050</td><td class="num negative">-2,000</td></tr>
-                <tr><td>11/27</td><td>5724.T</td><td>アサカ理研</td><td class="num">3,000</td><td class="num">2,998</td><td class="num negative">-800</td></tr>
-                <tr><td>11/28</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">3,120</td><td class="num">3,120</td><td class="num ">+0</td></tr>
-                <tr><td>11/28</td><td>202A.T</td><td>豆蔵ホールディングス</td><td class="num">3,315</td><td class="num">3,290</td><td class="num negative">-5,999</td></tr>
-                <tr><td>12/01</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">3,820</td><td class="num">3,820</td><td class="num ">+0</td></tr>
-                <tr><td>12/02</td><td>4570.T</td><td>免疫生物研究所</td><td class="num">3,120</td><td class="num">3,120</td><td class="num ">+0</td></tr>
-                <tr><td>12/04</td><td>9556.T</td><td>ＩＮＴＬＯＯＰ</td><td class="num">3,870</td><td class="num">3,985</td><td class="num negative">-21,000</td></tr>
-                <tr><td>12/04</td><td>456A.T</td><td>ＨＵＭＡＮ　ＭＡＤＥ</td><td class="num">4,650</td><td class="num">4,430</td><td class="num positive">+46,500</td></tr>
-                <tr><td>12/10</td><td>2700.T</td><td>木徳神糧</td><td class="num">3,025</td><td class="num">3,030</td><td class="num positive">+2,500</td></tr>
-                <tr><td>12/19</td><td>6083.T</td><td>ＥＲＩホールディング</td><td class="num">4,860</td><td class="num">4,770</td><td class="num positive">+20,500</td></tr>
-            </table>
-        </details>
-        <details>
-            <summary>▶ ~500円（88件）<span class="positive">+112,600円</span></summary>
-            <table class="detail-table">
-                <tr><th>日付</th><th>コード</th><th>銘柄</th><th class="num">始値</th><th class="num">終値</th><th class="num">損益</th></tr>
-                <tr><td>10/31</td><td>7746.T</td><td>岡本硝子</td><td class="num">425</td><td class="num">432</td><td class="num negative">-1,200</td></tr>
-                <tr><td>11/04</td><td>7746.T</td><td>岡本硝子</td><td class="num">433</td><td class="num">425</td><td class="num positive">+5,400</td></tr>
-                <tr><td>11/04</td><td>4436.T</td><td>ミンカブ・ジ・インフ</td><td class="num">466</td><td class="num">478</td><td class="num negative">-2,700</td></tr>
-                <tr><td>11/05</td><td>3350.T</td><td>メタプラネット</td><td class="num">429</td><td class="num">418</td><td class="num negative">-100</td></tr>
-                <tr><td>11/05</td><td>8912.T</td><td>エリアクエスト</td><td class="num">159</td><td class="num">159</td><td class="num negative">-100</td></tr>
-                <tr><td>11/07</td><td>7746.T</td><td>岡本硝子</td><td class="num">406</td><td class="num">393</td><td class="num positive">+2,500</td></tr>
-                <tr><td>11/10</td><td>8746.T</td><td>unbanked</td><td class="num">453</td><td class="num">461</td><td class="num negative">-1,500</td></tr>
-                <tr><td>11/11</td><td>3895.T</td><td>ハビックス</td><td class="num">403</td><td class="num">401</td><td class="num positive">+200</td></tr>
-                <tr><td>11/12</td><td>5952.T</td><td>アマテイ</td><td class="num">201</td><td class="num">200</td><td class="num positive">+100</td></tr>
-                <tr><td>11/12</td><td>4591.T</td><td>リボミック</td><td class="num">89</td><td class="num">91</td><td class="num negative">-400</td></tr>
-                <tr><td>11/13</td><td>5255.T</td><td>モンスターラボ</td><td class="num">179</td><td class="num">174</td><td class="num positive">+1,200</td></tr>
-                <tr><td>11/17</td><td>2586.T</td><td>フルッタフルッタ</td><td class="num">137</td><td class="num">137</td><td class="num ">+0</td></tr>
-                <tr><td>11/17</td><td>9348.T</td><td>ispace</td><td class="num">475</td><td class="num">459</td><td class="num positive">+3,400</td></tr>
-                <tr><td>11/17</td><td>6495.T</td><td>宮入バルブ製作所</td><td class="num">116</td><td class="num">112</td><td class="num positive">+800</td></tr>
-                <tr><td>11/18</td><td>6613.T</td><td>QDレーザ</td><td class="num">355</td><td class="num">353</td><td class="num positive">+1,200</td></tr>
-                <tr><td>11/18</td><td>9561.T</td><td>グラッドキューブ</td><td class="num">480</td><td class="num">477</td><td class="num positive">+2,499</td></tr>
-                <tr><td>11/19</td><td>7896.T</td><td>セブン工業</td><td class="num">496</td><td class="num">500</td><td class="num negative">-400</td></tr>
-                <tr><td>11/20</td><td>9348.T</td><td>ispace</td><td class="num">456</td><td class="num">446</td><td class="num positive">+1,700</td></tr>
-                <tr><td>11/21</td><td>3350.T</td><td>メタプラネット</td><td class="num">365</td><td class="num">361</td><td class="num positive">+1,200</td></tr>
-                <tr><td>11/21</td><td>7603.T</td><td>ジーイエット</td><td class="num">149</td><td class="num">154</td><td class="num negative">-1,200</td></tr>
-                <tr><td>11/25</td><td>2876.T</td><td>デルソーレ</td><td class="num">448</td><td class="num">450</td><td class="num negative">-600</td></tr>
-                <tr><td>11/26</td><td>5255.T</td><td>モンスターラボ</td><td class="num">203</td><td class="num">209</td><td class="num negative">-1,600</td></tr>
-                <tr><td>11/26</td><td>6721.T</td><td>ウインテスト</td><td class="num">100</td><td class="num">100</td><td class="num ">+0</td></tr>
-                <tr><td>11/27</td><td>3494.T</td><td>マリオン</td><td class="num">393</td><td class="num">388</td><td class="num negative">-300</td></tr>
-                <tr><td>11/28</td><td>4424.T</td><td>Amazia</td><td class="num">455</td><td class="num">455</td><td class="num ">+0</td></tr>
-                <tr><td>11/28</td><td>8105.T</td><td>Bitcoin Ja</td><td class="num">414</td><td class="num">390</td><td class="num positive">+4,400</td></tr>
-                <tr><td>11/28</td><td>6721.T</td><td>ウインテスト</td><td class="num">102</td><td class="num">103</td><td class="num ">+0</td></tr>
-                <tr><td>11/28</td><td>7746.T</td><td>岡本硝子</td><td class="num">385</td><td class="num">363</td><td class="num positive">+2,300</td></tr>
-                <tr><td>12/01</td><td>9610.T</td><td>ウィルソン・ラーニン</td><td class="num">228</td><td class="num">228</td><td class="num ">+0</td></tr>
-                <tr><td>12/01</td><td>4814.T</td><td>ネクストウェア</td><td class="num">183</td><td class="num">182</td><td class="num negative">-100</td></tr>
-                <tr><td>12/01</td><td>4424.T</td><td>Ａｍａｚｉａ</td><td class="num">391</td><td class="num">365</td><td class="num positive">+5,399</td></tr>
-                <tr><td>12/01</td><td>7746.T</td><td>岡本硝子</td><td class="num">377</td><td class="num">369</td><td class="num positive">+2,000</td></tr>
-                <tr><td>12/01</td><td>4179.T</td><td>ジーネクスト</td><td class="num">295</td><td class="num">285</td><td class="num positive">+1,300</td></tr>
-                <tr><td>12/02</td><td>2334.T</td><td>イオレ</td><td class="num">471</td><td class="num">448</td><td class="num positive">+6,100</td></tr>
-                <tr><td>12/02</td><td>2385.T</td><td>総医研ホールディング</td><td class="num">312</td><td class="num">267</td><td class="num positive">+9,300</td></tr>
-                <tr><td>12/02</td><td>5535.T</td><td>ミガロホールディング</td><td class="num">371</td><td class="num">358</td><td class="num positive">+2,999</td></tr>
-                <tr><td>12/02</td><td>206A.T</td><td>ＰＲＩＳＭ　ＢｉｏＬ</td><td class="num">242</td><td class="num">204</td><td class="num positive">+8,400</td></tr>
-                <tr><td>12/02</td><td>9610.T</td><td>ウィルソン・ラーニン</td><td class="num">222</td><td class="num">206</td><td class="num positive">+1,500</td></tr>
-                <tr><td>12/02</td><td>4777.T</td><td>ガーラ</td><td class="num">270</td><td class="num">231</td><td class="num positive">+8,100</td></tr>
-                <tr><td>12/02</td><td>4882.T</td><td>ペルセウスプロテオミ</td><td class="num">328</td><td class="num">302</td><td class="num positive">+5,400</td></tr>
-                <tr><td>12/03</td><td>2385.T</td><td>総医研ホールディング</td><td class="num">256</td><td class="num">258</td><td class="num negative">-100</td></tr>
-                <tr><td>12/03</td><td>7356.T</td><td>Ｒｅｔｔｙ</td><td class="num">183</td><td class="num">168</td><td class="num positive">+3,100</td></tr>
-                <tr><td>12/03</td><td>8105.T</td><td>Ｂｉｔｃｏｉｎ　Ｊａ</td><td class="num">340</td><td class="num">331</td><td class="num positive">+3,900</td></tr>
-                <tr><td>12/03</td><td>6666.T</td><td>リバーエレテック</td><td class="num">443</td><td class="num">444</td><td class="num positive">+999</td></tr>
-                <tr><td>12/05</td><td>5255.T</td><td>モンスターラボ</td><td class="num">170</td><td class="num">171</td><td class="num positive">+100</td></tr>
-                <tr><td>12/05</td><td>3350.T</td><td>メタプラネット</td><td class="num">392</td><td class="num">396</td><td class="num negative">-499</td></tr>
-                <tr><td>12/05</td><td>2334.T</td><td>イオレ</td><td class="num">416</td><td class="num">410</td><td class="num positive">+1,499</td></tr>
-                <tr><td>12/05</td><td>8105.T</td><td>Ｂｉｔｃｏｉｎ　Ｊａ</td><td class="num">305</td><td class="num">301</td><td class="num positive">+1,500</td></tr>
-                <tr><td>12/05</td><td>9610.T</td><td>ウィルソン・ラーニン</td><td class="num">207</td><td class="num">210</td><td class="num negative">-2,000</td></tr>
-                <tr><td>12/05</td><td>4424.T</td><td>Ａｍａｚｉａ</td><td class="num">331</td><td class="num">349</td><td class="num negative">-1,199</td></tr>
-                <tr><td>12/08</td><td>281A.T</td><td>インフォメティス</td><td class="num">420</td><td class="num">424</td><td class="num negative">-1,500</td></tr>
-                <tr><td>12/08</td><td>9610.T</td><td>ウィルソン・ラーニン</td><td class="num">219</td><td class="num">246</td><td class="num negative">-6,000</td></tr>
-                <tr><td>12/08</td><td>6696.T</td><td>トラース・オン・プロ</td><td class="num">361</td><td class="num">317</td><td class="num positive">+9,700</td></tr>
-                <tr><td>12/08</td><td>7603.T</td><td>ジーイエット</td><td class="num">153</td><td class="num">154</td><td class="num negative">-300</td></tr>
-                <tr><td>12/09</td><td>5216.T</td><td>倉元製作所</td><td class="num">200</td><td class="num">188</td><td class="num positive">+1,500</td></tr>
-                <tr><td>12/09</td><td>198A.T</td><td>ＰｏｓｔＰｒｉｍｅ</td><td class="num">202</td><td class="num">225</td><td class="num negative">-6,300</td></tr>
-                <tr><td>12/09</td><td>2342.T</td><td>トランスジェニックグ</td><td class="num">377</td><td class="num">327</td><td class="num positive">+10,700</td></tr>
-                <tr><td>12/09</td><td>3350.T</td><td>メタプラネット</td><td class="num">406</td><td class="num">415</td><td class="num negative">-2,300</td></tr>
-                <tr><td>12/09</td><td>6081.T</td><td>アライドアーキテクツ</td><td class="num">246</td><td class="num">244</td><td class="num positive">+400</td></tr>
-                <tr><td>12/09</td><td>2586.T</td><td>フルッタフルッタ</td><td class="num">124</td><td class="num">125</td><td class="num negative">-100</td></tr>
-                <tr><td>12/10</td><td>5535.T</td><td>ミガロホールディング</td><td class="num">347</td><td class="num">357</td><td class="num negative">-2,300</td></tr>
-                <tr><td>12/11</td><td>3825.T</td><td>リミックスポイント</td><td class="num">254</td><td class="num">243</td><td class="num positive">+1,699</td></tr>
-                <tr><td>12/11</td><td>6049.T</td><td>イトクロ</td><td class="num">281</td><td class="num">275</td><td class="num positive">+1,100</td></tr>
-                <tr><td>12/11</td><td>2338.T</td><td>クオンタムソリューシ</td><td class="num">415</td><td class="num">421</td><td class="num negative">-2,100</td></tr>
-                <tr><td>12/11</td><td>4056.T</td><td>ニューラルグループ</td><td class="num">408</td><td class="num">408</td><td class="num positive">+100</td></tr>
-                <tr><td>12/11</td><td>3350.T</td><td>メタプラネット</td><td class="num">479</td><td class="num">417</td><td class="num positive">+12,099</td></tr>
-                <tr><td>12/11</td><td>4572.T</td><td>カルナバイオサイエン</td><td class="num">384</td><td class="num">384</td><td class="num ">+0</td></tr>
-                <tr><td>12/12</td><td>7777.T</td><td>スリー・ディー・マト</td><td class="num">375</td><td class="num">366</td><td class="num positive">+1,300</td></tr>
-                <tr><td>12/12</td><td>3350.T</td><td>メタプラネット</td><td class="num">430</td><td class="num">435</td><td class="num negative">-1,700</td></tr>
-                <tr><td>12/12</td><td>2375.T</td><td>ギグワークス</td><td class="num">263</td><td class="num">230</td><td class="num positive">+6,000</td></tr>
-                <tr><td>12/12</td><td>2776.T</td><td>新都ホールディングス</td><td class="num">144</td><td class="num">135</td><td class="num positive">+2,600</td></tr>
-                <tr><td>12/12</td><td>3656.T</td><td>ＫＬａｂ</td><td class="num">370</td><td class="num">385</td><td class="num negative">-5,000</td></tr>
-                <tr><td>12/12</td><td>3985.T</td><td>テモナ</td><td class="num">234</td><td class="num">221</td><td class="num positive">+3,200</td></tr>
-                <tr><td>12/12</td><td>5216.T</td><td>倉元製作所</td><td class="num">190</td><td class="num">179</td><td class="num positive">+2,500</td></tr>
-                <tr><td>12/12</td><td>2459.T</td><td>アウンコンサルティン</td><td class="num">303</td><td class="num">284</td><td class="num positive">+4,500</td></tr>
-                <tr><td>12/16</td><td>2437.T</td><td>Ｓｈｉｎｗａ　Ｗｉｓ</td><td class="num">319</td><td class="num">318</td><td class="num negative">-2,999</td></tr>
-                <tr><td>12/16</td><td>3825.T</td><td>リミックスポイント</td><td class="num">310</td><td class="num">281</td><td class="num positive">+5,800</td></tr>
-                <tr><td>12/16</td><td>7538.T</td><td>大水</td><td class="num">360</td><td class="num">363</td><td class="num negative">-600</td></tr>
-                <tr><td>12/17</td><td>7777.T</td><td>スリー・ディー・マト</td><td class="num">352</td><td class="num">335</td><td class="num positive">+4,100</td></tr>
-                <tr><td>12/17</td><td>4584.T</td><td>キッズウェル・バイオ</td><td class="num">206</td><td class="num">201</td><td class="num positive">+1,100</td></tr>
-                <tr><td>12/17</td><td>323A.T</td><td>フライヤー</td><td class="num">423</td><td class="num">429</td><td class="num negative">-1,200</td></tr>
-                <tr><td>12/17</td><td>4334.T</td><td>ユークス</td><td class="num">379</td><td class="num">375</td><td class="num positive">+800</td></tr>
-                <tr><td>12/18</td><td>6177.T</td><td>ＡｐｐＢａｎｋ</td><td class="num">119</td><td class="num">120</td><td class="num negative">-600</td></tr>
-                <tr><td>12/19</td><td>3671.T</td><td>ソフトマックス</td><td class="num">350</td><td class="num">340</td><td class="num positive">+1,800</td></tr>
-                <tr><td>12/19</td><td>4572.T</td><td>カルナバイオサイエン</td><td class="num">415</td><td class="num">439</td><td class="num negative">-4,800</td></tr>
-                <tr><td>12/19</td><td>7777.T</td><td>スリー・ディー・マト</td><td class="num">330</td><td class="num">321</td><td class="num positive">+3,099</td></tr>
-                <tr><td>12/19</td><td>3719.T</td><td>ＡＩストーム</td><td class="num">214</td><td class="num">203</td><td class="num positive">+1,800</td></tr>
-                <tr><td>12/19</td><td>3856.T</td><td>Ａｂａｌａｎｃｅ</td><td class="num">453</td><td class="num">453</td><td class="num ">+0</td></tr>
-            </table>
-        </details>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">アイスタイル</div><div class="stock-ticker">3660.T</div></div>
+                <div class="stock-price">446</div>
+                <div class="stock-profit positive">+1,600</div>
+                <div class="stock-profit positive">+600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">ジーエヌアイグループ</div><div class="stock-ticker">2160.T</div></div>
+                <div class="stock-price">2,499</div>
+                <div class="stock-profit positive">+9,100</div>
+                <div class="stock-profit positive">+3,300</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">メタプラネット</div><div class="stock-ticker">3350.T</div></div>
+                <div class="stock-price">429</div>
+                <div class="stock-profit positive">+1,100</div>
+                <div class="stock-profit negative">-1,200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">ACSL</div><div class="stock-ticker">6232.T</div></div>
+                <div class="stock-price">1,041</div>
+                <div class="stock-profit positive">+4,800</div>
+                <div class="stock-profit positive">+2,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">ミロク</div><div class="stock-ticker">7983.T</div></div>
+                <div class="stock-price">1,484</div>
+                <div class="stock-profit positive">+6,600</div>
+                <div class="stock-profit positive">+4,700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">ファインシンター</div><div class="stock-ticker">5994.T</div></div>
+                <div class="stock-price">1,531</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-profit negative">-5,500</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">アルメディオ</div><div class="stock-ticker">7859.T</div></div>
+                <div class="stock-price">180</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">桜井製作所</div><div class="stock-ticker">7255.T</div></div>
+                <div class="stock-price">575</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">エリアクエスト</div><div class="stock-ticker">8912.T</div></div>
+                <div class="stock-price">159</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-100</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">IRジャパン</div><div class="stock-ticker">6035.T</div></div>
+                <div class="stock-price">786</div>
+                <div class="stock-profit positive">+2,100</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="62100.0" data-seido-p2="65600.0" data-seido-count="8" data-ichi-p1="6900.0" data-ichi-p2="13900.0" data-ichi-count="3">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-06 (Thu)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">+69,000</span>
+                    <span class="p2">+79,500</span>
+                </div>
+                <span>55%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">第一稀元素化学工業(株)</div><div class="stock-ticker">4082.T</div></div>
+                <div class="stock-price">1,420</div>
+                <div class="stock-profit positive">+10,100</div>
+                <div class="stock-profit positive">+19,200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">(株)サイバー・バズ</div><div class="stock-ticker">7069.T</div></div>
+                <div class="stock-price">914</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">(株)東京精密</div><div class="stock-ticker">7729.T</div></div>
+                <div class="stock-price">11,275</div>
+                <div class="stock-profit positive">+46,000</div>
+                <div class="stock-profit positive">+41,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">ヤマシンフィルタ(株)</div><div class="stock-ticker">6240.T</div></div>
+                <div class="stock-price">654</div>
+                <div class="stock-profit positive">+700</div>
+                <div class="stock-profit negative">-900</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">千代田化工建設(株)</div><div class="stock-ticker">6366.T</div></div>
+                <div class="stock-price">477</div>
+                <div class="stock-profit negative">-2,900</div>
+                <div class="stock-profit negative">-2,600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ng" style="display:none;">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">メディシノバ</div><div class="stock-ticker">4875.T</div></div>
+                <div class="stock-price">233</div>
+                <div class="stock-profit positive">+1,700</div>
+                <div class="stock-profit positive">+2,100</div>
+                <div class="stock-type"><span class="badge badge-ng">不可</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">(株)免疫生物研究所</div><div class="stock-ticker">4570.T</div></div>
+                <div class="stock-price">580</div>
+                <div class="stock-profit positive">+1,900</div>
+                <div class="stock-profit positive">+2,900</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">赤阪鐵工所(株)</div><div class="stock-ticker">6022.T</div></div>
+                <div class="stock-price">5,860</div>
+                <div class="stock-profit positive">+5,000</div>
+                <div class="stock-profit positive">+11,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">指月電機製作(株)</div><div class="stock-ticker">6994.T</div></div>
+                <div class="stock-price">762</div>
+                <div class="stock-profit positive">+1,500</div>
+                <div class="stock-profit negative">-100</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">Heartseed(株)</div><div class="stock-ticker">219A.T</div></div>
+                <div class="stock-price">1,900</div>
+                <div class="stock-profit positive">+6,900</div>
+                <div class="stock-profit positive">+8,300</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ng" style="display:none;">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">大黒屋ホールディングス(株)</div><div class="stock-ticker">6993.T</div></div>
+                <div class="stock-price">51</div>
+                <div class="stock-profit positive">+300</div>
+                <div class="stock-profit positive">+600</div>
+                <div class="stock-type"><span class="badge badge-ng">不可</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#12</div>
+                <div><div class="stock-name">(株)きちりホールディングス</div><div class="stock-ticker">3082.T</div></div>
+                <div class="stock-price">920</div>
+                <div class="stock-profit negative">-200</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#13</div>
+                <div><div class="stock-name">フジプレアム(株)</div><div class="stock-ticker">4237.T</div></div>
+                <div class="stock-price">311</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="7000.0" data-seido-p2="17000.0" data-seido-count="4" data-ichi-p1="113200.0" data-ichi-p2="135500.0" data-ichi-count="6">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-07 (Fri)</div>
+            <div class="daily-stats">
+                <span class="daily-count">10件</span>
+                <div class="profit-compare">
+                    <span class="p1">+120,200</span>
+                    <span class="p2">+152,500</span>
+                </div>
+                <span>70%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">フルヤ金属</div><div class="stock-ticker">7826.T</div></div>
+                <div class="stock-price">3,225</div>
+                <div class="stock-profit positive">+4,000</div>
+                <div class="stock-profit positive">+12,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">岡本硝子</div><div class="stock-ticker">7746.T</div></div>
+                <div class="stock-price">406</div>
+                <div class="stock-profit positive">+1,300</div>
+                <div class="stock-profit positive">+1,200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">堀田丸正</div><div class="stock-ticker">8105.T</div></div>
+                <div class="stock-price">654</div>
+                <div class="stock-profit positive">+2,900</div>
+                <div class="stock-profit positive">+2,400</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">日東紡績</div><div class="stock-ticker">3110.T</div></div>
+                <div class="stock-price">9,780</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">木徳神糧</div><div class="stock-ticker">2700.T</div></div>
+                <div class="stock-price">4,220</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">荏原実業</div><div class="stock-ticker">6328.T</div></div>
+                <div class="stock-price">4,395</div>
+                <div class="stock-profit negative">-500</div>
+                <div class="stock-profit positive">+5,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">ULSグループ</div><div class="stock-ticker">3798.T</div></div>
+                <div class="stock-price">718</div>
+                <div class="stock-profit positive">+2,000</div>
+                <div class="stock-profit positive">+1,900</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">内海造船</div><div class="stock-ticker">7018.T</div></div>
+                <div class="stock-price">16,280</div>
+                <div class="stock-profit positive">+73,000</div>
+                <div class="stock-profit positive">+103,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">助川電気工業</div><div class="stock-ticker">7711.T</div></div>
+                <div class="stock-price">6,470</div>
+                <div class="stock-profit positive">+34,000</div>
+                <div class="stock-profit positive">+27,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">湖北工業</div><div class="stock-ticker">6524.T</div></div>
+                <div class="stock-price">3,280</div>
+                <div class="stock-profit positive">+3,500</div>
+                <div class="stock-profit negative">-1,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="5900.0" data-seido-p2="4800.0" data-seido-count="5" data-ichi-p1="-38600.0" data-ichi-p2="-49800.0" data-ichi-count="7">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-10 (Mon)</div>
+            <div class="daily-stats">
+                <span class="daily-count">12件</span>
+                <div class="profit-compare">
+                    <span class="p1">-32,700</span>
+                    <span class="p2">-45,000</span>
+                </div>
+                <span>50%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">クイック</div><div class="stock-ticker">4318.T</div></div>
+                <div class="stock-price">2,370</div>
+                <div class="stock-profit negative">-2,300</div>
+                <div class="stock-profit negative">-1,300</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">unbanked</div><div class="stock-ticker">8746.T</div></div>
+                <div class="stock-price">453</div>
+                <div class="stock-profit negative">-800</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">ホリイフードサービス</div><div class="stock-ticker">3077.T</div></div>
+                <div class="stock-price">595</div>
+                <div class="stock-profit positive">+2,400</div>
+                <div class="stock-profit positive">+2,700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">ACSL</div><div class="stock-ticker">6232.T</div></div>
+                <div class="stock-price">1,048</div>
+                <div class="stock-profit positive">+1,400</div>
+                <div class="stock-profit positive">+2,300</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">DELTA-P</div><div class="stock-ticker">4598.T</div></div>
+                <div class="stock-price">523</div>
+                <div class="stock-profit positive">+5,700</div>
+                <div class="stock-profit positive">+4,700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">イオレ</div><div class="stock-ticker">2334.T</div></div>
+                <div class="stock-price">4,500</div>
+                <div class="stock-profit negative">-45,000</div>
+                <div class="stock-profit negative">-58,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">TOA</div><div class="stock-ticker">6803.T</div></div>
+                <div class="stock-price">95</div>
+                <div class="stock-profit negative">-400</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">ヘリオステクノHD</div><div class="stock-ticker">6927.T</div></div>
+                <div class="stock-price">967</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-profit negative">-1,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">双葉電子工業</div><div class="stock-ticker">6986.T</div></div>
+                <div class="stock-price">654</div>
+                <div class="stock-profit negative">-300</div>
+                <div class="stock-profit negative">-600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">櫻護謨</div><div class="stock-ticker">5189.T</div></div>
+                <div class="stock-price">2,333</div>
+                <div class="stock-profit negative">-1,600</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">ツツミ</div><div class="stock-ticker">7937.T</div></div>
+                <div class="stock-price">2,362</div>
+                <div class="stock-profit positive">+5,600</div>
+                <div class="stock-profit positive">+4,800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#12</div>
+                <div><div class="stock-name">サイオス</div><div class="stock-ticker">3744.T</div></div>
+                <div class="stock-price">554</div>
+                <div class="stock-profit positive">+3,300</div>
+                <div class="stock-profit positive">+2,600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="34800.0" data-seido-p2="19900.0" data-seido-count="7" data-ichi-p1="900.0" data-ichi-p2="-2500.0" data-ichi-count="4">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-11 (Tue)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">+35,700</span>
+                    <span class="p2">+17,400</span>
+                </div>
+                <span>45%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">スターツコーポレーション</div><div class="stock-ticker">8850.T</div></div>
+                <div class="stock-price">4,765</div>
+                <div class="stock-profit positive">+8,500</div>
+                <div class="stock-profit positive">+9,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">ハビックス</div><div class="stock-ticker">3895.T</div></div>
+                <div class="stock-price">403</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">システムズ・デザイン</div><div class="stock-ticker">3766.T</div></div>
+                <div class="stock-price">1,258</div>
+                <div class="stock-profit negative">-100</div>
+                <div class="stock-profit negative">-1,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">シーユーシー</div><div class="stock-ticker">9158.T</div></div>
+                <div class="stock-price">967</div>
+                <div class="stock-profit negative">-1,200</div>
+                <div class="stock-profit negative">-1,800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">Solvvy</div><div class="stock-ticker">7320.T</div></div>
+                <div class="stock-price">2,129</div>
+                <div class="stock-profit negative">-200</div>
+                <div class="stock-profit negative">-1,800</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">中西製作所</div><div class="stock-ticker">5941.T</div></div>
+                <div class="stock-price">2,379</div>
+                <div class="stock-profit positive">+1,000</div>
+                <div class="stock-profit positive">+900</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">フォスター電機</div><div class="stock-ticker">6794.T</div></div>
+                <div class="stock-price">2,525</div>
+                <div class="stock-profit positive">+6,300</div>
+                <div class="stock-profit positive">+700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">きんでん</div><div class="stock-ticker">1944.T</div></div>
+                <div class="stock-price">6,255</div>
+                <div class="stock-profit positive">+9,100</div>
+                <div class="stock-profit positive">+5,200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">名村造船所</div><div class="stock-ticker">7014.T</div></div>
+                <div class="stock-price">4,455</div>
+                <div class="stock-profit positive">+18,500</div>
+                <div class="stock-profit positive">+12,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">日東紡績</div><div class="stock-ticker">3103.T</div></div>
+                <div class="stock-price">197</div>
+                <div class="stock-profit negative">-3,900</div>
+                <div class="stock-profit negative">-5,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">三井倉庫ホールディングス</div><div class="stock-ticker">9302.T</div></div>
+                <div class="stock-price">3,752</div>
+                <div class="stock-profit negative">-2,500</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="-20900.0" data-seido-p2="-21600.0" data-seido-count="2" data-ichi-p1="-10500.0" data-ichi-p2="-13500.0" data-ichi-count="5">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-12 (Wed)</div>
+            <div class="daily-stats">
+                <span class="daily-count">7件</span>
+                <div class="profit-compare">
+                    <span class="p1">-31,400</span>
+                    <span class="p2">-35,100</span>
+                </div>
+                <span>14%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">アマテイ</div><div class="stock-ticker">5952.T</div></div>
+                <div class="stock-price">201</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">中北製作所</div><div class="stock-ticker">6496.T</div></div>
+                <div class="stock-price">6,060</div>
+                <div class="stock-profit negative">-20,000</div>
+                <div class="stock-profit negative">-22,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">Bitcoin Japan</div><div class="stock-ticker">8105.T</div></div>
+                <div class="stock-price">849</div>
+                <div class="stock-profit negative">-7,500</div>
+                <div class="stock-profit negative">-7,500</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">Solvvy</div><div class="stock-ticker">7320.T</div></div>
+                <div class="stock-price">2,131</div>
+                <div class="stock-profit negative">-1,100</div>
+                <div class="stock-profit negative">-4,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">リボミック</div><div class="stock-ticker">4591.T</div></div>
+                <div class="stock-price">89</div>
+                <div class="stock-profit negative">-200</div>
+                <div class="stock-profit negative">-200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">コンドーテック</div><div class="stock-ticker">7438.T</div></div>
+                <div class="stock-price">1,574</div>
+                <div class="stock-profit negative">-900</div>
+                <div class="stock-profit positive">+400</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">エクサウィザーズ</div><div class="stock-ticker">4259.T</div></div>
+                <div class="stock-price">725</div>
+                <div class="stock-profit negative">-1,800</div>
+                <div class="stock-profit negative">-1,800</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="17100.0" data-seido-p2="17500.0" data-seido-count="8" data-ichi-p1="1400.0" data-ichi-p2="1100.0" data-ichi-count="3">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-13 (Thu)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">+18,500</span>
+                    <span class="p2">+18,600</span>
+                </div>
+                <span>64%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">ヨロズ</div><div class="stock-ticker">7294.T</div></div>
+                <div class="stock-price">972</div>
+                <div class="stock-profit negative">-2,000</div>
+                <div class="stock-profit negative">-800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">SPEEE</div><div class="stock-ticker">4499.T</div></div>
+                <div class="stock-price">2,648</div>
+                <div class="stock-profit positive">+6,900</div>
+                <div class="stock-profit positive">+3,800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">TENTIAL</div><div class="stock-ticker">325A.T</div></div>
+                <div class="stock-price">4,275</div>
+                <div class="stock-profit positive">+5,500</div>
+                <div class="stock-profit positive">+7,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">WELBY</div><div class="stock-ticker">4598.T</div></div>
+                <div class="stock-price">505</div>
+                <div class="stock-profit positive">+1,500</div>
+                <div class="stock-profit positive">+1,100</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">セントケア・ホールディング</div><div class="stock-ticker">2378.T</div></div>
+                <div class="stock-price">1,043</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-profit positive">+500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">プレイド</div><div class="stock-ticker">4165.T</div></div>
+                <div class="stock-price">995</div>
+                <div class="stock-profit positive">+7,000</div>
+                <div class="stock-profit positive">+8,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">ヴィス</div><div class="stock-ticker">5071.T</div></div>
+                <div class="stock-price">1,368</div>
+                <div class="stock-profit negative">-2,100</div>
+                <div class="stock-profit negative">-2,700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">JSP</div><div class="stock-ticker">4251.T</div></div>
+                <div class="stock-price">1,160</div>
+                <div class="stock-profit negative">-1,500</div>
+                <div class="stock-profit negative">-2,300</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">モンスターラボ</div><div class="stock-ticker">5255.T</div></div>
+                <div class="stock-price">179</div>
+                <div class="stock-profit positive">+500</div>
+                <div class="stock-profit positive">+700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">サークレイス</div><div class="stock-ticker">5029.T</div></div>
+                <div class="stock-price">1,089</div>
+                <div class="stock-profit negative">-600</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">ROXX</div><div class="stock-ticker">241A.T</div></div>
+                <div class="stock-price">635</div>
+                <div class="stock-profit positive">+3,200</div>
+                <div class="stock-profit positive">+3,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="-119140.00244140625" data-seido-p2="-124900.0" data-seido-count="8" data-ichi-p1="-2900.0" data-ichi-p2="-5600.0" data-ichi-count="3">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-14 (Fri)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">-122,040</span>
+                    <span class="p2">-130,500</span>
+                </div>
+                <span>27%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="ng" style="display:none;">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">ネットスターズ</div><div class="stock-ticker">6087.T</div></div>
+                <div class="stock-price">3,185</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit positive">+1,000</div>
+                <div class="stock-type"><span class="badge badge-ng">不可</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">コクサイエレクトリック</div><div class="stock-ticker">6525.T</div></div>
+                <div class="stock-price">4,250</div>
+                <div class="stock-profit positive">+15,300</div>
+                <div class="stock-profit positive">+13,800</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">三井金属鉱業</div><div class="stock-ticker">5706.T</div></div>
+                <div class="stock-price">18,200</div>
+                <div class="stock-profit negative">-115,000</div>
+                <div class="stock-profit negative">-130,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">海洋ファーマ</div><div class="stock-ticker">4575.T</div></div>
+                <div class="stock-price">815</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit negative">-300</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">東京電力HD</div><div class="stock-ticker">9501.T</div></div>
+                <div class="stock-price">910</div>
+                <div class="stock-profit negative">-540</div>
+                <div class="stock-profit positive">+3,200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">デンカ</div><div class="stock-ticker">4061.T</div></div>
+                <div class="stock-price">2,433</div>
+                <div class="stock-profit negative">-2,050</div>
+                <div class="stock-profit negative">-1,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">海洋建設</div><div class="stock-ticker">6309.T</div></div>
+                <div class="stock-price">1,624</div>
+                <div class="stock-profit negative">-900</div>
+                <div class="stock-profit negative">-2,700</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">神戸製鋼所</div><div class="stock-ticker">5406.T</div></div>
+                <div class="stock-price">1,846</div>
+                <div class="stock-profit negative">-3,600</div>
+                <div class="stock-profit negative">-5,550</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">大盛工業</div><div class="stock-ticker">1844.T</div></div>
+                <div class="stock-price">634</div>
+                <div class="stock-profit negative">-2,200</div>
+                <div class="stock-profit negative">-2,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">三菱マテリアル</div><div class="stock-ticker">5711.T</div></div>
+                <div class="stock-price">3,050</div>
+                <div class="stock-profit negative">-3,100</div>
+                <div class="stock-profit negative">-6,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">サンリオ</div><div class="stock-ticker">8136.T</div></div>
+                <div class="stock-price">5,800</div>
+                <div class="stock-profit negative">-11,900</div>
+                <div class="stock-profit negative">-1,300</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#12</div>
+                <div><div class="stock-name">資生堂</div><div class="stock-ticker">4911.T</div></div>
+                <div class="stock-price">2,695</div>
+                <div class="stock-profit positive">+1,750</div>
+                <div class="stock-profit positive">+2,950</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="6100.0" data-seido-p2="5900.0" data-seido-count="4" data-ichi-p1="13400.0" data-ichi-p2="23900.0" data-ichi-count="7">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-17 (Mon)</div>
+            <div class="daily-stats">
+                <span class="daily-count">11件</span>
+                <div class="profit-compare">
+                    <span class="p1">+19,500</span>
+                    <span class="p2">+29,800</span>
+                </div>
+                <span>73%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">ispace</div><div class="stock-ticker">9348.T</div></div>
+                <div class="stock-price">475</div>
+                <div class="stock-profit positive">+1,600</div>
+                <div class="stock-profit positive">+1,800</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">フルッタフルッタ</div><div class="stock-ticker">2586.T</div></div>
+                <div class="stock-price">137</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">ブルーイノベーション</div><div class="stock-ticker">5597.T</div></div>
+                <div class="stock-price">1,681</div>
+                <div class="stock-profit positive">+2,900</div>
+                <div class="stock-profit positive">+4,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">ABEJA</div><div class="stock-ticker">5574.T</div></div>
+                <div class="stock-price">2,750</div>
+                <div class="stock-profit positive">+5,900</div>
+                <div class="stock-profit positive">+9,200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">ビースタイルホールディングス</div><div class="stock-ticker">302A.T</div></div>
+                <div class="stock-price">1,189</div>
+                <div class="stock-profit positive">+2,900</div>
+                <div class="stock-profit positive">+5,600</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">ニデック</div><div class="stock-ticker">6594.T</div></div>
+                <div class="stock-price">2,151</div>
+                <div class="stock-profit positive">+7,500</div>
+                <div class="stock-profit positive">+8,700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">宮入バルブ製作所</div><div class="stock-ticker">6495.T</div></div>
+                <div class="stock-price">116</div>
+                <div class="stock-profit positive">+400</div>
+                <div class="stock-profit positive">+400</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">Hmcomm</div><div class="stock-ticker">265A.T</div></div>
+                <div class="stock-price">1,033</div>
+                <div class="stock-profit negative">-300</div>
+                <div class="stock-profit positive">+2,300</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">インフォマート</div><div class="stock-ticker">2492.T</div></div>
+                <div class="stock-price">347</div>
+                <div class="stock-profit positive">+400</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">ライク</div><div class="stock-ticker">2462.T</div></div>
+                <div class="stock-price">1,500</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">竹内製作所</div><div class="stock-ticker">6432.T</div></div>
+                <div class="stock-price">6,500</div>
+                <div class="stock-profit negative">-2,000</div>
+                <div class="stock-profit negative">-3,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="50850.0" data-seido-p2="175550.0" data-seido-count="7" data-ichi-p1="97700.0" data-ichi-p2="152600.0" data-ichi-count="5">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-18 (Tue)</div>
+            <div class="daily-stats">
+                <span class="daily-count">12件</span>
+                <div class="profit-compare">
+                    <span class="p1">+148,550</span>
+                    <span class="p2">+328,150</span>
+                </div>
+                <span>75%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">日本郵船</div><div class="stock-ticker">9101.T</div></div>
+                <div class="stock-price">4,875</div>
+                <div class="stock-profit negative">-1,200</div>
+                <div class="stock-profit negative">-200</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">三井海洋開発</div><div class="stock-ticker">6269.T</div></div>
+                <div class="stock-price">14,375</div>
+                <div class="stock-profit negative">-1,000</div>
+                <div class="stock-profit positive">+37,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">内海造船</div><div class="stock-ticker">7018.T</div></div>
+                <div class="stock-price">16,560</div>
+                <div class="stock-profit positive">+90,000</div>
+                <div class="stock-profit positive">+141,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">日本通信</div><div class="stock-ticker">9424.T</div></div>
+                <div class="stock-price">149</div>
+                <div class="stock-profit positive">+500</div>
+                <div class="stock-profit positive">+600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">ニデック</div><div class="stock-ticker">6594.T</div></div>
+                <div class="stock-price">2,079</div>
+                <div class="stock-profit positive">+3,600</div>
+                <div class="stock-profit positive">+3,600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">サンリオ</div><div class="stock-ticker">8136.T</div></div>
+                <div class="stock-price">5,400</div>
+                <div class="stock-profit negative">-7,600</div>
+                <div class="stock-profit negative">-13,900</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">ブルーイノベーション</div><div class="stock-ticker">5597.T</div></div>
+                <div class="stock-price">1,635</div>
+                <div class="stock-profit positive">+9,900</div>
+                <div class="stock-profit positive">+9,400</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">QDレーザ</div><div class="stock-ticker">6613.T</div></div>
+                <div class="stock-price">355</div>
+                <div class="stock-profit positive">+200</div>
+                <div class="stock-profit positive">+1,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">シェアリングテクノロジー</div><div class="stock-ticker">3989.T</div></div>
+                <div class="stock-price">1,036</div>
+                <div class="stock-profit negative">-2,700</div>
+                <div class="stock-profit negative">-1,000</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">良品計画</div><div class="stock-ticker">7453.T</div></div>
+                <div class="stock-price">2,993</div>
+                <div class="stock-profit positive">+1,550</div>
+                <div class="stock-profit positive">+5,450</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#11</div>
+                <div><div class="stock-name">フジクラ</div><div class="stock-ticker">5803.T</div></div>
+                <div class="stock-price">19,300</div>
+                <div class="stock-profit positive">+55,000</div>
+                <div class="stock-profit positive">+142,500</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#12</div>
+                <div><div class="stock-name">グラッドキューブ</div><div class="stock-ticker">9561.T</div></div>
+                <div class="stock-price">480</div>
+                <div class="stock-profit positive">+300</div>
+                <div class="stock-profit positive">+2,200</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div></div></div>
+<div class="daily-card" data-seido-p1="6200.0" data-seido-p2="14800.0" data-seido-count="6" data-ichi-p1="-44800.0" data-ichi-p2="-38900.0" data-ichi-count="4">
+        <div class="daily-header" onclick="toggleDetails(this)">
+            <div class="daily-date">2025-11-19 (Wed)</div>
+            <div class="daily-stats">
+                <span class="daily-count">10件</span>
+                <div class="profit-compare">
+                    <span class="p1">-38,600</span>
+                    <span class="p2">-24,100</span>
+                </div>
+                <span>60%</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="daily-details"><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#1</div>
+                <div><div class="stock-name">北陸電気工業</div><div class="stock-ticker">6989.T</div></div>
+                <div class="stock-price">2,540</div>
+                <div class="stock-profit negative">-700</div>
+                <div class="stock-profit positive">+4,400</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#2</div>
+                <div><div class="stock-name">第一稀元素化学工業</div><div class="stock-ticker">4082.T</div></div>
+                <div class="stock-price">1,360</div>
+                <div class="stock-profit positive">+4,200</div>
+                <div class="stock-profit positive">+3,700</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#3</div>
+                <div><div class="stock-name">センコン物流</div><div class="stock-ticker">9051.T</div></div>
+                <div class="stock-price">1,414</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#4</div>
+                <div><div class="stock-name">ワークマン</div><div class="stock-ticker">7564.T</div></div>
+                <div class="stock-price">6,700</div>
+                <div class="stock-profit negative">-5,000</div>
+                <div class="stock-profit negative">-5,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#5</div>
+                <div><div class="stock-name">サンコール</div><div class="stock-ticker">5985.T</div></div>
+                <div class="stock-price">1,376</div>
+                <div class="stock-profit positive">+5,300</div>
+                <div class="stock-profit positive">+11,000</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#6</div>
+                <div><div class="stock-name">千代田化工建設</div><div class="stock-ticker">6366.T</div></div>
+                <div class="stock-price">624</div>
+                <div class="stock-profit positive">+3,200</div>
+                <div class="stock-profit positive">+600</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#7</div>
+                <div><div class="stock-name">セブン工業</div><div class="stock-ticker">7896.T</div></div>
+                <div class="stock-price">496</div>
+                <div class="stock-profit negative">-400</div>
+                <div class="stock-profit negative">-0</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="seido" style="">
+                <div class="stock-rank">#8</div>
+                <div><div class="stock-name">西華産業</div><div class="stock-ticker">8061.T</div></div>
+                <div class="stock-price">2,155</div>
+                <div class="stock-profit negative">-800</div>
+                <div class="stock-profit positive">+100</div>
+                <div class="stock-type"><span class="badge badge-seido">制度</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#9</div>
+                <div><div class="stock-name">安永</div><div class="stock-ticker">7271.T</div></div>
+                <div class="stock-price">1,075</div>
+                <div class="stock-profit positive">+2,000</div>
+                <div class="stock-profit positive">+3,900</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div><div class="stock-row" data-type="ichinichi" style="">
+                <div class="stock-rank">#10</div>
+                <div><div class="stock-name">アサカ理研</div><div class="stock-ticker">5724.T</div></div>
+                <div class="stock-price">2,160</div>
+                <div class="stock-profit negative">-46,400</div>
+                <div class="stock-profit negative">-42,800</div>
+                <div class="stock-type"><span class="badge badge-ichinichi">いち</span></div>
+            </div></div></div>
 
     </div>
+    <script>
+    function toggleDetails(header) {
+        const details = header.nextElementSibling;
+        details.classList.toggle('open');
+        const icon = header.querySelector('.toggle-icon');
+        icon.style.transform = details.classList.contains('open') ? 'rotate(180deg)' : '';
+    }
+    
+    function setFilter(filter) {
+        document.querySelectorAll('.filter').forEach(f => f.classList.remove('active'));
+        document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+        
+        document.querySelectorAll('.stock-row').forEach(row => {
+            const type = row.dataset.type;
+            if (filter === 'all') {
+                row.classList.toggle('hidden', type === 'ng');
+            } else {
+                row.classList.toggle('hidden', type !== filter);
+            }
+        });
+        
+        // 日別カードの表示更新
+        document.querySelectorAll('.daily-card').forEach(card => {
+            let count, p1, p2;
+            if (filter === 'seido') {
+                count = parseInt(card.dataset.seidoCount) || 0;
+                p1 = parseFloat(card.dataset.seidoP1) || 0;
+                p2 = parseFloat(card.dataset.seidoP2) || 0;
+            } else if (filter === 'ichinichi') {
+                count = parseInt(card.dataset.ichiCount) || 0;
+                p1 = parseFloat(card.dataset.ichiP1) || 0;
+                p2 = parseFloat(card.dataset.ichiP2) || 0;
+            } else {
+                count = (parseInt(card.dataset.seidoCount) || 0) + (parseInt(card.dataset.ichiCount) || 0);
+                p1 = (parseFloat(card.dataset.seidoP1) || 0) + (parseFloat(card.dataset.ichiP1) || 0);
+                p2 = (parseFloat(card.dataset.seidoP2) || 0) + (parseFloat(card.dataset.ichiP2) || 0);
+            }
+            
+            card.querySelector('.daily-count').textContent = count + '件';
+            const profitCompare = card.querySelector('.profit-compare');
+            profitCompare.innerHTML = `<span class="p1">${p1 >= 0 ? '+' : ''}${p1.toLocaleString()}</span><span class="p2">${p2 >= 0 ? '+' : ''}${p2.toLocaleString()}</span>`;
+            
+            card.style.display = count === 0 ? 'none' : '';
+        });
+    }
+    </script>
 </body>
 </html>
