@@ -39,6 +39,7 @@ from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
 from scripts.lib.jquants_client import JQuantsClient
+from scripts.lib.jquants_fetcher import JQuantsFetcher
 
 # パス定義
 BACKTEST_DIR = PARQUET_DIR / "backtest"
@@ -463,21 +464,30 @@ def calculate_phase3_return(
         return None, None, None
 
 
-def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
+def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: str | None = None) -> Optional[dict]:
     """
     バックテスト用の株価データを取得
 
     Args:
         ticker: 銘柄コード (例: "6526.T")
         backtest_date: バックテスト日（翌営業日）
+        prev_trading_day: 前営業日（YYYY-MM-DD形式）。Noneの場合はJ-Quantsから取得
 
     Returns:
         dict: バックテストデータ
     """
     try:
-        # 日次データを取得
+        # 前営業日が未指定の場合はJ-Quantsから取得
+        if prev_trading_day is None:
+            fetcher = JQuantsFetcher()
+            prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
+
+        # 日次データを取得（前営業日を含める）
         stock = yf.Ticker(ticker)
-        start_date = (backtest_date - timedelta(days=1)).strftime("%Y-%m-%d")
+        if prev_trading_day:
+            start_date = prev_trading_day
+        else:
+            start_date = (backtest_date - timedelta(days=5)).strftime("%Y-%m-%d")
         end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
 
         hist_daily = stock.history(start=start_date, end=end_date, interval="1d")
@@ -494,11 +504,12 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> Optional[dict]:
 
         daily_row = hist_daily.loc[backtest_date_obj]
 
-        # 前日終値を取得
-        prev_date_obj = (backtest_date - timedelta(days=1)).date()
+        # 前営業日終値を取得（J-Quantsカレンダーベース）
         prev_close = None
-        if prev_date_obj in hist_daily.index:
-            prev_close = float(hist_daily.loc[prev_date_obj]['Close'])
+        if prev_trading_day:
+            prev_date_obj = datetime.strptime(prev_trading_day, "%Y-%m-%d").date()
+            if prev_date_obj in hist_daily.index:
+                prev_close = float(hist_daily.loc[prev_date_obj]['Close'])
 
         buy_price = float(daily_row['Open'])
         sell_price = float(daily_row['Close'])  # Phase1用（前場引け値として近似）
@@ -641,14 +652,19 @@ def run_backtest() -> pd.DataFrame:
     backtest_date = selection_date
     print(f"[INFO] Backtest date: {backtest_date.date()}")
 
-    # 3. 各銘柄のバックテストを実行
+    # 3. 前営業日を取得（全銘柄共通なので1回だけ）
+    fetcher = JQuantsFetcher()
+    prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
+    print(f"[INFO] Previous trading day: {prev_trading_day}")
+
+    # 4. 各銘柄のバックテストを実行
     results = []
 
     for idx, row in df_grok.iterrows():
         ticker = row['ticker']
         print(f"[{idx+1}/{len(df_grok)}] Processing {ticker}...", end=" ", flush=True)
 
-        backtest_data = fetch_backtest_data(ticker, backtest_date)
+        backtest_data = fetch_backtest_data(ticker, backtest_date, prev_trading_day)
 
         if backtest_data is None:
             print("SKIP (no data)")

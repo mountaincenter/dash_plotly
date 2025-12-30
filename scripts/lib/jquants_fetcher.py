@@ -242,6 +242,51 @@ class JQuantsFetcher:
 
         return latest_trading_day
 
+    def get_previous_trading_day(self, target_date: str | date) -> str | None:
+        """
+        指定日の前営業日を取得
+
+        Args:
+            target_date: 基準日（YYYY-MM-DD形式の文字列またはdateオブジェクト）
+
+        Returns:
+            前営業日（YYYY-MM-DD形式）、見つからない場合はNone
+        """
+        target_date_str = str(target_date)[:10]  # YYYY-MM-DD形式に正規化
+
+        # 取引カレンダーを取得（前後30日）
+        from_date = (datetime.strptime(target_date_str, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y%m%d")
+        to_date = (datetime.strptime(target_date_str, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y%m%d")
+
+        try:
+            response = self.client.request(
+                "/markets/trading_calendar",
+                params={"from": from_date, "to": to_date}
+            )
+
+            if not response or "trading_calendar" not in response:
+                return None
+
+            calendar = pd.DataFrame(response["trading_calendar"])
+            # 営業日のみ抽出（HolidayDivision == "1"）
+            trading_days = calendar[calendar["HolidayDivision"] == "1"]["Date"].tolist()
+
+            if target_date_str in trading_days:
+                idx = trading_days.index(target_date_str)
+                if idx > 0:
+                    return trading_days[idx - 1]
+            else:
+                # target_dateが営業日でない場合、直前の営業日を返す
+                prev_days = [d for d in trading_days if d < target_date_str]
+                if prev_days:
+                    return max(prev_days)
+
+            return None
+
+        except Exception as e:
+            print(f"[WARN] Failed to get previous trading day for {target_date_str}: {e}")
+            return None
+
     def get_indices(
         self,
         code: str | None = None,
