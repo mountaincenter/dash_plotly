@@ -241,6 +241,9 @@ async def get_day_trade_list():
         if market_cap_oku and 500 <= market_cap_oku < 1000:
             skip_by_market_cap = True
 
+        # 最大必要資金（100株）
+        max_cost_100 = row.get("max_cost_100") if pd.notna(row.get("max_cost_100")) else None
+
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
@@ -255,6 +258,7 @@ async def get_day_trade_list():
             "ng": ng,
             "day_trade_available_shares": day_trade_available_shares,
             "appearance_count": appearance_counts.get(ticker, 0),
+            "max_cost_100": int(max_cost_100) if max_cost_100 is not None else None,
         })
 
     # ソート: 制度 → いちにち → NG → grok_rank
@@ -263,12 +267,50 @@ async def get_day_trade_list():
         s.get("grok_rank") or 999
     ))
 
+    # 必要資金集計
+    # 制度信用銘柄の合計
+    total_funds_shortable = sum(
+        s["max_cost_100"] for s in stocks
+        if s["shortable"] and s["max_cost_100"] is not None
+    )
+    # いちにち信用除0銘柄の合計（制度信用除く）
+    total_funds_day_trade_nonzero = sum(
+        s["max_cost_100"] for s in stocks
+        if s["day_trade"] and not s["shortable"]
+        and s["day_trade_available_shares"] is not None
+        and s["day_trade_available_shares"] > 0
+        and s["max_cost_100"] is not None
+    )
+    # 合計: 制度信用 + いちにち信用除0（NGを除く）
+    total_required_funds = sum(
+        s["max_cost_100"] for s in stocks
+        if not s["ng"]
+        and s["max_cost_100"] is not None
+        and (
+            s["shortable"]
+            or (
+                s["day_trade"]
+                and s["day_trade_available_shares"] is not None
+                and s["day_trade_available_shares"] > 0
+            )
+        )
+    )
+
     summary = {
         "unchecked": sum(1 for s in stocks if not s["shortable"] and not s["day_trade"] and not s["ng"]),
         "shortable": sum(1 for s in stocks if s["shortable"]),
         "day_trade": sum(1 for s in stocks if s["day_trade"] and not s["shortable"]),
+        "day_trade_nonzero": sum(
+            1 for s in stocks
+            if s["day_trade"] and not s["shortable"]
+            and s["day_trade_available_shares"] is not None
+            and s["day_trade_available_shares"] > 0
+        ),
         "ng": sum(1 for s in stocks if s["ng"]),
         "skip_by_market_cap": sum(1 for s in stocks if s["skip_by_market_cap"]),
+        "total_funds_shortable": total_funds_shortable,
+        "total_funds_day_trade_nonzero": total_funds_day_trade_nonzero,
+        "total_required_funds": total_required_funds,
     }
 
     return JSONResponse(content={
