@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Bash(docker compose:*)",
+      "Bash(pytest:*)",
+      "Edit(src/**)",
+      "Edit(scripts/**)"
+    ]
+  },
   "enabledPlugins": {
     "frontend-design@claude-code-plugins": true
   }
