@@ -30,6 +30,8 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
+from scripts.lib.price_limit import calc_price_limit, calc_upper_limit_price, calc_max_cost_100
+
 # .env.jquants 読み込み
 load_dotenv(ROOT / ".env.jquants")
 
@@ -249,6 +251,24 @@ def main():
     df['market_cap'] = market_caps
     print(f"\n3. market_capカラム追加完了")
     print(f"   成功: {success_count}/{len(df)} 銘柄")
+
+    # 3.5. 制限値幅・必要資金カラムを追加
+    print(f"\n3.5. 制限値幅・必要資金カラムを追加中...")
+    if 'Close' not in df.columns:
+        print("   ⚠️ Closeカラムが存在しません。制限値幅の計算をスキップします。")
+        df['price_limit'] = None
+        df['limit_price_upper'] = None
+        df['max_cost_100'] = None
+    else:
+        df['price_limit'] = df['Close'].apply(lambda x: calc_price_limit(x) if pd.notna(x) and x > 0 else None)
+        df['limit_price_upper'] = df.apply(
+            lambda r: calc_upper_limit_price(r['Close']) if pd.notna(r['Close']) and r['Close'] > 0 else None, axis=1
+        )
+        df['max_cost_100'] = df.apply(
+            lambda r: calc_max_cost_100(r['Close']) if pd.notna(r['Close']) and r['Close'] > 0 else None, axis=1
+        )
+        valid_costs = df[df['max_cost_100'].notna()]
+        print(f"   制限値幅: {len(valid_costs)}/{len(df)} 銘柄で計算完了")
 
     # 4. 保存
     print(f"\n4. 保存: {GROK_TRENDING_FILE}")
