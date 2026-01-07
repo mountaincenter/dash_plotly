@@ -18,6 +18,7 @@ from server.routers.dev_ifo import router as dev_ifo_router
 from server.routers.dev_stock_results import router as dev_stock_results_router
 from server.routers.dev_day_trade_list import router as dev_day_trade_list_router
 from server.routers.dev_analysis import router as dev_analysis_router
+from server.routers.dev_intraday import router as dev_intraday_router
 
 import os
 
@@ -97,3 +98,4 @@ app.include_router(dev_ifo_router, tags=["ifo"])
 app.include_router(dev_stock_results_router, tags=["stock-results"])
 app.include_router(dev_day_trade_list_router, tags=["day-trade-list"])
 app.include_router(dev_analysis_router, tags=["analysis"])
+app.include_router(dev_intraday_router, tags=["intraday"])
