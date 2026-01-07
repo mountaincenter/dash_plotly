@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+import os
+import tempfile
 
 router = APIRouter()
 
@@ -19,17 +21,39 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 PRICES_5M_PATH = BASE_DIR / "data" / "parquet" / "prices_60d_5m.parquet"
 PRICES_1D_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
 INDEX_5M_PATH = BASE_DIR / "data" / "parquet" / "index_prices_60d_5m.parquet"
+INDEX_1D_PATH = BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet"
+
+# S3設定
+S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 # 曜日名
 WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 
+def load_parquet_with_s3_fallback(local_path: Path, s3_key: str) -> pd.DataFrame:
+    """ローカルファイルがなければS3から取得"""
+    if local_path.exists():
+        return pd.read_parquet(local_path)
+
+    try:
+        import boto3
+        s3_client = boto3.client("s3", region_name=AWS_REGION)
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+            s3_client.download_fileobj(S3_BUCKET, s3_key, tmp_file)
+            tmp_path = tmp_file.name
+
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return df
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"データ読み込みエラー: {str(e)}")
+
+
 def load_5m_data(ticker: str) -> pd.DataFrame:
     """個別銘柄の5分足データを読み込み"""
-    if not PRICES_5M_PATH.exists():
-        raise HTTPException(status_code=500, detail="5分足データが見つかりません")
-
-    df = pd.read_parquet(PRICES_5M_PATH)
+    df = load_parquet_with_s3_fallback(PRICES_5M_PATH, "parquet/prices_60d_5m.parquet")
     df = df[df["ticker"] == ticker].copy()
 
     if len(df) == 0:
@@ -40,24 +64,29 @@ def load_5m_data(ticker: str) -> pd.DataFrame:
 
 def load_1d_data(ticker: str) -> pd.DataFrame:
     """個別銘柄の日足データを読み込み"""
-    if not PRICES_1D_PATH.exists():
-        raise HTTPException(status_code=500, detail="日足データが見つかりません")
-
-    df = pd.read_parquet(PRICES_1D_PATH)
+    df = load_parquet_with_s3_fallback(PRICES_1D_PATH, "parquet/prices_max_1d.parquet")
     df = df[df["ticker"] == ticker].copy()
-
     return df
 
 
 def load_index_5m_data(index_ticker: str) -> pd.DataFrame:
     """指数の5分足データを読み込み"""
-    if not INDEX_5M_PATH.exists():
+    try:
+        df = load_parquet_with_s3_fallback(INDEX_5M_PATH, "parquet/index_prices_60d_5m.parquet")
+        df = df[df["ticker"] == index_ticker].copy()
+        return df.dropna(subset=["Close"])
+    except:
         return pd.DataFrame()
 
-    df = pd.read_parquet(INDEX_5M_PATH)
-    df = df[df["ticker"] == index_ticker].copy()
 
-    return df.dropna(subset=["Close"])
+def load_index_1d_data(index_ticker: str) -> pd.DataFrame:
+    """指数の日足データを読み込み"""
+    try:
+        df = load_parquet_with_s3_fallback(INDEX_1D_PATH, "parquet/index_prices_max_1d.parquet")
+        df = df[df["ticker"] == index_ticker].copy()
+        return df
+    except:
+        return pd.DataFrame()
 
 
 def calc_intraday_table(df_5m: pd.DataFrame, df_1d: pd.DataFrame) -> list:
@@ -216,14 +245,12 @@ async def get_intraday_analysis(
 
     # 日経平均
     df_nikkei_5m = load_index_5m_data("^N225")
-    df_nikkei_1d = pd.read_parquet(BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet") if (BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet").exists() else pd.DataFrame()
-    df_nikkei_1d = df_nikkei_1d[df_nikkei_1d["ticker"] == "^N225"] if len(df_nikkei_1d) > 0 else pd.DataFrame()
+    df_nikkei_1d = load_index_1d_data("^N225")
     normalized_nikkei = calc_normalized_prices(df_nikkei_5m, df_nikkei_1d, date) if date and len(df_nikkei_5m) > 0 and len(df_nikkei_1d) > 0 else []
 
     # TOPIX (ETF)
     df_topix_5m = load_index_5m_data("1489.T")
-    df_topix_1d = pd.read_parquet(BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet") if (BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet").exists() else pd.DataFrame()
-    df_topix_1d = df_topix_1d[df_topix_1d["ticker"] == "1489.T"] if len(df_topix_1d) > 0 else pd.DataFrame()
+    df_topix_1d = load_index_1d_data("1489.T")
     normalized_topix = calc_normalized_prices(df_topix_5m, df_topix_1d, date) if date and len(df_topix_5m) > 0 and len(df_topix_1d) > 0 else []
 
     # サマリー
