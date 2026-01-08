@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-J-Quants API Client
-認証とトークン管理を行うクライアント
+J-Quants API Client (v2)
+APIキー認証によるシンプルなクライアント
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 
 class JQuantsClient:
-    """J-Quants API認証クライアント"""
+    """J-Quants API v2 認証クライアント"""
 
     def __init__(self, env_file: str | Path | None = None):
         """
@@ -31,78 +31,29 @@ class JQuantsClient:
         if Path(env_file).exists():
             load_dotenv(env_file)
 
-        self.refresh_token = os.getenv("JQUANTS_REFRESH_TOKEN")
-        self.mail_address = os.getenv("JQUANTS_MAIL_ADDRESS")
-        self.password = os.getenv("JQUANTS_PASSWORD")
-        self.plan = os.getenv("JQUANTS_PLAN", "free")
-        self.base_url = os.getenv("JQUANTS_API_BASE_URL", "https://api.jquants.com/v1")
+        # v2: APIキー認証
+        self.api_key = os.getenv("JQUANTS_API_KEY")
 
-        self._id_token: str | None = None
-        self._refresh_token_cache: str | None = None
-
-        # メールアドレス+パスワードまたはrefresh tokenのいずれかが必要
-        if not self.refresh_token and not (self.mail_address and self.password):
+        # v1互換: 旧環境変数も確認（移行期間中）
+        if not self.api_key:
+            # v1の認証情報があれば警告
+            if os.getenv("JQUANTS_REFRESH_TOKEN") or os.getenv("JQUANTS_MAIL_ADDRESS"):
+                print("[WARN] v1認証情報（REFRESH_TOKEN/MAIL_ADDRESS）は非推奨です。")
+                print("[WARN] JQUANTS_API_KEYを設定してください。")
+                print("[WARN] https://jpx-jquants.com/ でAPIキーを発行できます。")
             raise ValueError(
-                "Either JQUANTS_REFRESH_TOKEN or (JQUANTS_MAIL_ADDRESS + JQUANTS_PASSWORD) required. "
-                "Please set them in .env.jquants"
+                "JQUANTS_API_KEY is required. "
+                "Please set it in .env.jquants or as an environment variable. "
+                "Get your API key from: https://jpx-jquants.com/"
             )
 
-    def _get_refresh_token(self) -> str:
-        """Refresh tokenを取得（メールアドレス+パスワード認証）"""
-        if self._refresh_token_cache:
-            return self._refresh_token_cache
-
-        # 環境変数にrefresh tokenがある場合はそれを使用
-        if self.refresh_token:
-            self._refresh_token_cache = self.refresh_token
-            return self.refresh_token
-
-        # メールアドレス+パスワードでrefresh tokenを取得
-        url = f"{self.base_url}/token/auth_user"
-        data = {
-            "mailaddress": self.mail_address,
-            "password": self.password
-        }
-
-        # JSON形式で送信（form-dataではない）
-        response = requests.post(url, json=data, timeout=30)
-        response.raise_for_status()
-
-        result = response.json()
-        self._refresh_token_cache = result.get("refreshToken")
-
-        if not self._refresh_token_cache:
-            raise RuntimeError("Failed to retrieve refresh token from J-Quants API")
-
-        return self._refresh_token_cache
-
-    def _get_id_token(self) -> str:
-        """IDトークンを取得（キャッシュあり）"""
-        if self._id_token:
-            return self._id_token
-
-        # refresh tokenを取得（メールアドレス+パスワード or 環境変数から）
-        refresh_token = self._get_refresh_token()
-
-        url = f"{self.base_url}/token/auth_refresh"
-        params = {"refreshtoken": refresh_token}
-
-        response = requests.post(url, params=params, timeout=30)
-        response.raise_for_status()
-
-        data = response.json()
-        self._id_token = data.get("idToken")
-
-        if not self._id_token:
-            raise RuntimeError("Failed to retrieve ID token from J-Quants API")
-
-        return self._id_token
+        self.plan = os.getenv("JQUANTS_PLAN", "free")
+        self.base_url = os.getenv("JQUANTS_API_BASE_URL", "https://api.jquants.com/v2")
 
     def get_headers(self) -> Dict[str, str]:
         """API呼び出し用のヘッダーを取得"""
-        id_token = self._get_id_token()
         return {
-            "Authorization": f"Bearer {id_token}",
+            "x-api-key": self.api_key,
             "Content-Type": "application/json",
         }
 
@@ -117,7 +68,7 @@ class JQuantsClient:
         J-Quants APIへのリクエスト
 
         Args:
-            endpoint: APIエンドポイント（例: "/listed/info"）
+            endpoint: APIエンドポイント（例: "/equities/master"）
             method: HTTPメソッド
             params: クエリパラメータ
             **kwargs: requests.requestに渡す追加引数
@@ -139,3 +90,46 @@ class JQuantsClient:
         response.raise_for_status()
 
         return response.json()
+
+    def request_with_pagination(
+        self,
+        endpoint: str,
+        params: Dict[str, Any] | None = None,
+        data_key: str = "data",
+        max_pages: int = 100,
+        **kwargs,
+    ) -> list:
+        """
+        ページネーション対応のAPIリクエスト
+
+        Args:
+            endpoint: APIエンドポイント
+            params: クエリパラメータ
+            data_key: レスポンス内のデータキー
+            max_pages: 最大ページ数（無限ループ防止）
+            **kwargs: requests.requestに渡す追加引数
+
+        Returns:
+            全ページのデータを結合したリスト
+        """
+        all_data = []
+        params = params or {}
+        page = 0
+
+        while page < max_pages:
+            response = self.request(endpoint, params=params, **kwargs)
+
+            # データを取得
+            data = response.get(data_key, [])
+            all_data.extend(data)
+
+            # ページネーションキーを確認
+            pagination_key = response.get("pagination_key")
+            if not pagination_key:
+                break
+
+            # 次のページへ
+            params["pagination_key"] = pagination_key
+            page += 1
+
+        return all_data

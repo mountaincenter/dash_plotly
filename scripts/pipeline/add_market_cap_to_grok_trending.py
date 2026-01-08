@@ -42,40 +42,24 @@ GROK_TRENDING_FILE = Path(os.getenv(
 ))
 PRICES_FILE = ROOT / "data" / "parquet" / "prices_max_1d.parquet"
 
-# J-Quants認証情報
-JQUANTS_MAIL = os.getenv("JQUANTS_MAIL_ADDRESS")
-JQUANTS_PASSWORD = os.getenv("JQUANTS_PASSWORD")
-
-_id_token_cache = None
+# J-Quants v2 認証情報
+JQUANTS_API_KEY = os.getenv("JQUANTS_API_KEY")
+JQUANTS_BASE_URL = "https://api.jquants.com/v2"
 
 
-def get_id_token() -> str:
-    """J-Quants IDトークンを取得（キャッシュ付き）"""
-    global _id_token_cache
-    if _id_token_cache:
-        return _id_token_cache
-
-    # リフレッシュトークン取得
-    res = requests.post(
-        "https://api.jquants.com/v1/token/auth_user",
-        json={"mailaddress": JQUANTS_MAIL, "password": JQUANTS_PASSWORD}
-    )
-    res.raise_for_status()
-    refresh_token = res.json()["refreshToken"]
-
-    # IDトークン取得
-    res2 = requests.post(
-        "https://api.jquants.com/v1/token/auth_refresh",
-        params={"refreshtoken": refresh_token}
-    )
-    res2.raise_for_status()
-    _id_token_cache = res2.json()["idToken"]
-    return _id_token_cache
+def get_headers() -> dict:
+    """J-Quants v2 API用ヘッダーを取得"""
+    if not JQUANTS_API_KEY:
+        raise ValueError("JQUANTS_API_KEY is required")
+    return {
+        "x-api-key": JQUANTS_API_KEY,
+        "Content-Type": "application/json",
+    }
 
 
 def fetch_issued_shares(ticker: str) -> Optional[float]:
     """
-    J-Quants APIから発行済株式数を取得
+    J-Quants v2 APIから発行済株式数を取得
 
     Args:
         ticker: 銘柄コード (例: "7203.T")
@@ -85,12 +69,11 @@ def fetch_issued_shares(ticker: str) -> Optional[float]:
     """
     try:
         code = ticker.replace('.T', '').ljust(5, '0')
-        id_token = get_id_token()
-        headers = {"Authorization": f"Bearer {id_token}"}
+        headers = get_headers()
 
-        # 決算データから発行済株式数を取得
+        # v2: 決算データから発行済株式数を取得
         res = requests.get(
-            "https://api.jquants.com/v1/fins/statements",
+            f"{JQUANTS_BASE_URL}/fins/statements",
             headers=headers,
             params={"code": code},
             timeout=15
@@ -98,12 +81,14 @@ def fetch_issued_shares(ticker: str) -> Optional[float]:
         res.raise_for_status()
         data = res.json()
 
-        if 'statements' not in data or not data['statements']:
+        # v2: dataキーまたはstatementsキー（互換性）
+        statements_list = data.get("data") or data.get("statements", [])
+        if not statements_list:
             return None
 
         # 最新のデータを取得（日付順でソート）
         statements = sorted(
-            data['statements'],
+            statements_list,
             key=lambda x: x.get('DisclosedDate', ''),
             reverse=True
         )
@@ -122,7 +107,7 @@ def fetch_issued_shares(ticker: str) -> Optional[float]:
 
 def fetch_adjustment_factor(ticker: str, date_str: str) -> float:
     """
-    J-Quants APIから調整係数を取得
+    J-Quants v2 APIから調整係数を取得
 
     Args:
         ticker: 銘柄コード
@@ -133,11 +118,10 @@ def fetch_adjustment_factor(ticker: str, date_str: str) -> float:
     """
     try:
         code = ticker.replace('.T', '').ljust(5, '0')
-        id_token = get_id_token()
-        headers = {"Authorization": f"Bearer {id_token}"}
+        headers = get_headers()
 
         res = requests.get(
-            "https://api.jquants.com/v1/prices/daily_quotes",
+            f"{JQUANTS_BASE_URL}/equities/bars/daily",
             headers=headers,
             params={"code": code, "date": date_str},
             timeout=15
@@ -145,10 +129,12 @@ def fetch_adjustment_factor(ticker: str, date_str: str) -> float:
         res.raise_for_status()
         data = res.json()
 
-        if 'daily_quotes' not in data or not data['daily_quotes']:
+        # v2: dataキーまたはdaily_quotesキー（互換性）
+        quotes = data.get("data") or data.get("daily_quotes", [])
+        if not quotes:
             return 1.0
 
-        return float(data['daily_quotes'][0].get('AdjustmentFactor', 1.0))
+        return float(quotes[0].get('AdjustmentFactor', 1.0))
 
     except Exception:
         return 1.0

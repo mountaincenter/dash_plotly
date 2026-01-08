@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-J-Quants Data Fetcher
+J-Quants Data Fetcher (v2)
 株価データ・銘柄情報の取得
 """
 
@@ -15,8 +15,24 @@ import pandas as pd
 from scripts.lib.jquants_client import JQuantsClient
 
 
+# v2 カラム名マッピング（v2短縮名 → v1互換名）
+V2_COLUMN_MAP = {
+    "O": "Open",
+    "H": "High",
+    "L": "Low",
+    "C": "Close",
+    "Vo": "Volume",
+    "Va": "TurnoverValue",
+    "AdjO": "AdjustmentOpen",
+    "AdjH": "AdjustmentHigh",
+    "AdjL": "AdjustmentLow",
+    "AdjC": "AdjustmentClose",
+    "AdjVo": "AdjustmentVolume",
+}
+
+
 class JQuantsFetcher:
-    """J-Quants APIからデータを取得するクラス"""
+    """J-Quants API v2 からデータを取得するクラス"""
 
     def __init__(self, client: JQuantsClient | None = None):
         """
@@ -25,29 +41,11 @@ class JQuantsFetcher:
         """
         self.client = client or JQuantsClient()
 
-    @staticmethod
-    def _format_date_param(date_value: str | date | None, endpoint: str) -> str | None:
-        """
-        エンドポイントに応じて日付パラメータをフォーマット
-
-        Args:
-            date_value: 日付値（YYYY-MM-DD or YYYYMMDD or date object）
-            endpoint: エンドポイント名（例: "/indices", "/prices/daily_quotes"）
-
-        Returns:
-            フォーマットされた日付文字列、またはNone
-        """
-        if date_value is None:
-            return None
-
-        date_str = str(date_value)
-
-        # /indices エンドポイントは YYYYMMDD 形式が必要
-        if endpoint == "/indices":
-            return date_str.replace("-", "")
-
-        # その他のエンドポイント（/prices/daily_quotes等）は YYYY-MM-DD 形式
-        return date_str
+    def _normalize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """v2カラム名をv1互換形式に変換"""
+        if df.empty:
+            return df
+        return df.rename(columns=V2_COLUMN_MAP)
 
     def get_listed_info(self) -> pd.DataFrame:
         """
@@ -56,9 +54,9 @@ class JQuantsFetcher:
         Returns:
             銘柄情報のDataFrame
         """
-        print("[PROGRESS] Requesting /listed/info from J-Quants API...")
-        data = self.client.request("/listed/info")
-        info = data.get("info", [])
+        print("[PROGRESS] Requesting /equities/master from J-Quants API v2...")
+        data = self.client.request("/equities/master")
+        info = data.get("data", [])
 
         if not info:
             print("[PROGRESS] No data received from J-Quants API")
@@ -94,13 +92,16 @@ class JQuantsFetcher:
         if to_date:
             params["to"] = str(to_date)
 
-        data = self.client.request("/prices/daily_quotes", params=params)
-        prices = data.get("daily_quotes", [])
+        data = self.client.request("/equities/bars/daily", params=params)
+        prices = data.get("data", [])
 
         if not prices:
             return pd.DataFrame()
 
         df = pd.DataFrame(prices)
+
+        # v2カラム名をv1互換に変換
+        df = self._normalize_columns(df)
 
         # 日付列を変換
         if "Date" in df.columns:
@@ -135,7 +136,7 @@ class JQuantsFetcher:
         """
         frames = []
         total = len(codes)
-        print(f"[PROGRESS] Fetching prices for {total} stocks from J-Quants API...")
+        print(f"[PROGRESS] Fetching prices for {total} stocks from J-Quants API v2...")
 
         for i, code in enumerate(codes, 1):
             try:
@@ -206,16 +207,20 @@ class JQuantsFetcher:
             "to": str(to_date)
         }
 
-        response = self.client.request("/markets/trading_calendar", params=params)
+        # v2: /markets/calendar（v1は/markets/trading_calendar）
+        response = self.client.request("/markets/calendar", params=params)
 
-        if not response or "trading_calendar" not in response:
+        # v2: dataキー
+        calendar_data = response.get("data", [])
+        if not calendar_data:
             raise RuntimeError("Failed to fetch trading calendar from J-Quants")
 
-        calendar = pd.DataFrame(response["trading_calendar"])
+        calendar = pd.DataFrame(calendar_data)
 
-        # HolidayDivision が "1" (営業日) のレコードのみ
+        # HolDiv が "1" (営業日) のレコードのみ
         # 0: 非営業日、1: 営業日、2: 半日立会、3: 祝日取引のある非営業日
-        trading_days = calendar[calendar["HolidayDivision"] == "1"].copy()
+        # Note: v2では HolidayDivision → HolDiv に変更
+        trading_days = calendar[calendar["HolDiv"] == "1"].copy()
 
         if trading_days.empty:
             raise RuntimeError("No trading days found in the calendar")
@@ -255,21 +260,25 @@ class JQuantsFetcher:
         target_date_str = str(target_date)[:10]  # YYYY-MM-DD形式に正規化
 
         # 取引カレンダーを取得（前後30日）
-        from_date = (datetime.strptime(target_date_str, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y%m%d")
-        to_date = (datetime.strptime(target_date_str, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y%m%d")
+        from_date = (datetime.strptime(target_date_str, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+        to_date = (datetime.strptime(target_date_str, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
 
         try:
+            # v2: /markets/calendar（v1は/markets/trading_calendar）
             response = self.client.request(
-                "/markets/trading_calendar",
+                "/markets/calendar",
                 params={"from": from_date, "to": to_date}
             )
 
-            if not response or "trading_calendar" not in response:
+            # v2: dataキー
+            calendar_data = response.get("data", [])
+            if not calendar_data:
                 return None
 
-            calendar = pd.DataFrame(response["trading_calendar"])
-            # 営業日のみ抽出（HolidayDivision == "1"）
-            trading_days = calendar[calendar["HolidayDivision"] == "1"]["Date"].tolist()
+            calendar = pd.DataFrame(calendar_data)
+            # 営業日のみ抽出（HolDiv == "1"）
+            # Note: v2では HolidayDivision → HolDiv に変更
+            trading_days = calendar[calendar["HolDiv"] == "1"]["Date"].tolist()
 
             if target_date_str in trading_days:
                 idx = trading_days.index(target_date_str)
@@ -312,60 +321,16 @@ class JQuantsFetcher:
         if to_date:
             params["to"] = str(to_date)
 
-        data = self.client.request("/indices", params=params)
-        indices = data.get("indices", [])
+        data = self.client.request("/indices/bars/daily", params=params)
+        indices = data.get("data", [])
 
         if not indices:
             return pd.DataFrame()
 
         df = pd.DataFrame(indices)
 
-        # 日付列を変換
-        if "Date" in df.columns:
-            df["Date"] = pd.to_datetime(df["Date"])
-
-        # 数値列を変換
-        numeric_cols = ["Open", "High", "Low", "Close"]
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        return df
-
-    def get_indices(
-        self,
-        code: str | None = None,
-        from_date: str | date | None = None,
-        to_date: str | date | None = None,
-    ) -> pd.DataFrame:
-        """
-        指数データを取得（TOPIX, Prime, Standard, Growth, 33業種別など）
-
-        Args:
-            code: 指数コード（例: "0000"=TOPIX）。Noneの場合は全指数
-            from_date: 取得開始日（YYYY-MM-DD）
-            to_date: 取得終了日（YYYY-MM-DD）
-
-        Returns:
-            指数データのDataFrame
-        """
-        params = {}
-        if code:
-            params["code"] = code
-        if from_date:
-            # YYYY-MM-DD → YYYYMMDD
-            params["from"] = str(from_date).replace("-", "")
-        if to_date:
-            # YYYY-MM-DD → YYYYMMDD
-            params["to"] = str(to_date).replace("-", "")
-
-        data = self.client.request("/indices", params=params)
-        indices = data.get("indices", [])
-
-        if not indices:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(indices)
+        # v2カラム名をv1互換に変換
+        df = self._normalize_columns(df)
 
         # 日付列を変換
         if "Date" in df.columns:
@@ -385,7 +350,7 @@ class JQuantsFetcher:
         to_date: str | date | None = None,
     ) -> pd.DataFrame:
         """
-        TOPIX指数データを取得（互換性のため残す）
+        TOPIX指数データを取得
 
         Args:
             from_date: 取得開始日（YYYY-MM-DD）
@@ -394,32 +359,8 @@ class JQuantsFetcher:
         Returns:
             TOPIX指数データのDataFrame
         """
-        # /indices/topix を使用（Lightプランでも動作）
-        params = {}
-        if from_date:
-            params["from"] = str(from_date)
-        if to_date:
-            params["to"] = str(to_date)
-
-        data = self.client.request("/indices/topix", params=params)
-        topix = data.get("topix", [])
-
-        if not topix:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(topix)
-
-        # 日付列を変換
-        if "Date" in df.columns:
-            df["Date"] = pd.to_datetime(df["Date"])
-
-        # 数値列を変換
-        numeric_cols = ["Open", "High", "Low", "Close"]
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        return df
+        # v2: /indices/bars/daily でcode=0000を指定
+        return self.get_indices(code="0000", from_date=from_date, to_date=to_date)
 
     def get_index_options(
         self,
@@ -436,16 +377,19 @@ class JQuantsFetcher:
         """
         params = {}
         if date:
-            # YYYY-MM-DD → YYYYMMDD (options endpoint accepts both formats)
+            # YYYY-MM-DD → YYYYMMDD
             params["date"] = str(date).replace("-", "")
 
-        data = self.client.request("/option/index_option", params=params)
-        options = data.get("index_option", [])
+        data = self.client.request("/derivatives/options/bars/daily", params=params)
+        options = data.get("data", [])
 
         if not options:
             return pd.DataFrame()
 
         df = pd.DataFrame(options)
+
+        # v2カラム名をv1互換に変換
+        df = self._normalize_columns(df)
 
         # 日付列を変換
         if "Date" in df.columns:
