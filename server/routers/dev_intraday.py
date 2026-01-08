@@ -171,7 +171,10 @@ def calc_intraday_table(df_5m: pd.DataFrame, df_1d: pd.DataFrame) -> list:
 
 
 def calc_normalized_prices(df_5m: pd.DataFrame, df_1d: pd.DataFrame, date_str: str) -> list:
-    """指定日の前日終値=100の正規化価格を計算"""
+    """指定日の前日終値=100の正規化価格を計算（ベクトル化版）"""
+    if len(df_5m) == 0 or len(df_1d) == 0:
+        return []
+
     target_date = pd.Timestamp(date_str).date()
 
     # 前日終値を取得
@@ -189,16 +192,12 @@ def calc_normalized_prices(df_5m: pd.DataFrame, df_1d: pd.DataFrame, date_str: s
     if len(day_5m) == 0:
         return []
 
-    # 正規化
+    # ベクトル化で正規化
     day_5m = day_5m.sort_values("date")
+    day_5m["time"] = day_5m["date"].dt.strftime("%H:%M")
+    day_5m["value"] = (day_5m["Close"] / prev_close * 100).round(2)
 
-    return [
-        {
-            "time": row["date"].strftime("%H:%M"),
-            "value": round((row["Close"] / prev_close) * 100, 2),
-        }
-        for _, row in day_5m.iterrows()
-    ]
+    return day_5m[["time", "value"]].to_dict("records")
 
 
 def calc_summary(table: list) -> dict:
