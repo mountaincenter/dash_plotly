@@ -11,10 +11,15 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from functools import lru_cache
 import os
 import tempfile
+import hashlib
 
 router = APIRouter()
+
+# データキャッシュ（モジュールレベル）
+_data_cache: dict = {}
 
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -32,9 +37,17 @@ WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 
 def load_parquet_with_s3_fallback(local_path: Path, s3_key: str) -> pd.DataFrame:
-    """ローカルファイルがなければS3から取得"""
+    """ローカルファイルがなければS3から取得（キャッシュ付き）"""
+    cache_key = s3_key
+
+    # キャッシュにあればそれを返す
+    if cache_key in _data_cache:
+        return _data_cache[cache_key]
+
     if local_path.exists():
-        return pd.read_parquet(local_path)
+        df = pd.read_parquet(local_path)
+        _data_cache[cache_key] = df
+        return df
 
     try:
         import boto3
@@ -46,6 +59,9 @@ def load_parquet_with_s3_fallback(local_path: Path, s3_key: str) -> pd.DataFrame
 
         df = pd.read_parquet(tmp_path)
         os.unlink(tmp_path)
+
+        # キャッシュに保存
+        _data_cache[cache_key] = df
         return df
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"データ読み込みエラー: {str(e)}")
