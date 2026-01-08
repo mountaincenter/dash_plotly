@@ -348,26 +348,30 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
         print(f"  [INFO] {len(overlap_grok)} stocks overlap between meta and grok_trending")
 
     # 重複処理: categoriesを統合、tagsとテクニカル指標はスキャルピング/Grokから取得
+    # 注意: .locでリストを代入すると[list]がリストのリストになるため.atを使用
     for ticker in overlap_entry:
         meta_row = meta[meta["ticker"] == ticker].iloc[0]
         entry_row = scalping_entry[scalping_entry["ticker"] == ticker].iloc[0]
         combined_categories = list(set(meta_row["categories"] + entry_row["categories"]))
-        scalping_entry.loc[scalping_entry["ticker"] == ticker, "categories"] = [combined_categories]
-        scalping_entry.loc[scalping_entry["ticker"] == ticker, "tags"] = [meta_row["tags"]]
+        idx = scalping_entry[scalping_entry["ticker"] == ticker].index[0]
+        scalping_entry.at[idx, "categories"] = combined_categories
+        scalping_entry.at[idx, "tags"] = meta_row["tags"]
 
     for ticker in overlap_active:
         meta_row = meta[meta["ticker"] == ticker].iloc[0]
         active_row = scalping_active[scalping_active["ticker"] == ticker].iloc[0]
         combined_categories = list(set(meta_row["categories"] + active_row["categories"]))
-        scalping_active.loc[scalping_active["ticker"] == ticker, "categories"] = [combined_categories]
-        scalping_active.loc[scalping_active["ticker"] == ticker, "tags"] = [meta_row["tags"]]
+        idx = scalping_active[scalping_active["ticker"] == ticker].index[0]
+        scalping_active.at[idx, "categories"] = combined_categories
+        scalping_active.at[idx, "tags"] = meta_row["tags"]
 
     for ticker in overlap_grok:
         meta_row = meta[meta["ticker"] == ticker].iloc[0]
         grok_row = grok_trending[grok_trending["ticker"] == ticker].iloc[0]
         combined_categories = list(set(meta_row["categories"] + grok_row["categories"]))
         # Grokの場合、tagsはGrok自身のcategoryを保持（上書きしない）
-        grok_trending.loc[grok_trending["ticker"] == ticker, "categories"] = [combined_categories]
+        idx = grok_trending[grok_trending["ticker"] == ticker].index[0]
+        grok_trending.at[idx, "categories"] = combined_categories
 
     # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
     meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
