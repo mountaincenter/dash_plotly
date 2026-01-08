@@ -279,12 +279,14 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
     # 前日・前々日データ（JQuantsから営業日取得）
     fetcher = JQuantsFetcher()
     try:
-        response = fetcher.client.request("/markets/trading_calendar", params={
+        # v2: /markets/calendar（v1は/markets/trading_calendar）
+        response = fetcher.client.request("/markets/calendar", params={
             "from": (target_date - timedelta(days=7)).strftime("%Y-%m-%d"),
             "to": target_date.strftime("%Y-%m-%d")
         })
-        calendar = pd.DataFrame(response["trading_calendar"])
-        trading_days = calendar[calendar["HolidayDivision"] == "1"]["Date"].tolist()
+        calendar = pd.DataFrame(response["data"])
+        # v2: HolDiv == "1"（v1はHolidayDivision）
+        trading_days = calendar[calendar["HolDiv"] == "1"]["Date"].tolist()
 
         target_date_str = target_date.strftime("%Y-%m-%d")
         if target_date_str in trading_days:

@@ -257,22 +257,23 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
 
         client = get_jquants_client()
 
-        # 1. 発行済株式数を取得（最新の決算データ）
-        statements_response = client.request('/fins/statements', params={'code': code})
+        # v2: /fins/summary から発行済株式数を取得（v1は/fins/statements）
+        statements_response = client.request('/fins/summary', params={'code': code})
 
-        if 'statements' not in statements_response or not statements_response['statements']:
+        if 'data' not in statements_response or not statements_response['data']:
             return None
 
-        # 最新のデータを取得（日付順でソート）
+        # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
         statements = sorted(
-            statements_response['statements'],
-            key=lambda x: x.get('DisclosedDate', ''),
+            statements_response['data'],
+            key=lambda x: x.get('DiscDate', ''),
             reverse=True
         )
 
         issued_shares = None
         for statement in statements:
-            issued_shares = statement.get('NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
+            # v2: ShOutFY = 発行済株式数（期末）
+            issued_shares = statement.get('ShOutFY')
             if issued_shares:
                 issued_shares = float(issued_shares)  # 文字列からfloatに変換
                 break
@@ -280,14 +281,14 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         if not issued_shares:
             return None
 
-        # 2. 調整係数を取得
+        # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
         date_str = date.strftime('%Y-%m-%d')
-        quotes_response = client.request('/prices/daily_quotes', params={'code': code, 'date': date_str})
+        quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
 
-        if 'daily_quotes' not in quotes_response or not quotes_response['daily_quotes']:
+        if 'data' not in quotes_response or not quotes_response['data']:
             return None
 
-        adjustment_factor = float(quotes_response['daily_quotes'][0].get('AdjustmentFactor', 1.0))
+        adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
 
         # 3. 時価総額を計算
         # 時価総額 = 終値 × (発行済株式数 / 調整係数)

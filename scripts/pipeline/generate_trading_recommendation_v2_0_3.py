@@ -88,16 +88,16 @@ def fetch_jquants_fundamentals(ticker):
         client = get_jquants_client()
         code = ticker.replace('.T', '').ljust(5, '0')
 
-        # 財務情報取得
-        statements_response = client.request('/fins/statements', params={'code': code})
+        # v2: /fins/summary から財務情報取得（v1は/fins/statements）
+        statements_response = client.request('/fins/summary', params={'code': code})
 
-        if 'statements' not in statements_response or not statements_response['statements']:
+        if 'data' not in statements_response or not statements_response['data']:
             return None
 
-        # 最新の決算データ
+        # 最新の決算データ（v2: DiscDate、v1はDisclosedDate）
         statements = sorted(
-            statements_response['statements'],
-            key=lambda x: x.get('DisclosedDate', ''),
+            statements_response['data'],
+            key=lambda x: x.get('DiscDate', ''),
             reverse=True
         )
 

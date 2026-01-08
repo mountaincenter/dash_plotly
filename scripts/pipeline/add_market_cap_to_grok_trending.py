@@ -71,9 +71,9 @@ def fetch_issued_shares(ticker: str) -> Optional[float]:
         code = ticker.replace('.T', '').ljust(5, '0')
         headers = get_headers()
 
-        # v2: 決算データから発行済株式数を取得
+        # v2: /fins/summary から発行済株式数を取得
         res = requests.get(
-            f"{JQUANTS_BASE_URL}/fins/statements",
+            f"{JQUANTS_BASE_URL}/fins/summary",
             headers=headers,
             params={"code": code},
             timeout=15
@@ -81,20 +81,20 @@ def fetch_issued_shares(ticker: str) -> Optional[float]:
         res.raise_for_status()
         data = res.json()
 
-        # v2: dataキーまたはstatementsキー（互換性）
-        statements_list = data.get("data") or data.get("statements", [])
+        statements_list = data.get("data", [])
         if not statements_list:
             return None
 
-        # 最新のデータを取得（日付順でソート）
+        # 最新のデータを取得（DiscDate順でソート）
         statements = sorted(
             statements_list,
-            key=lambda x: x.get('DisclosedDate', ''),
+            key=lambda x: x.get('DiscDate', ''),
             reverse=True
         )
 
         for statement in statements:
-            issued_shares = statement.get('NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
+            # v2: ShOutFY = 発行済株式数（期末）
+            issued_shares = statement.get('ShOutFY')
             if issued_shares:
                 return float(issued_shares)
 

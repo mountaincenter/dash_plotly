@@ -30,6 +30,21 @@ V2_COLUMN_MAP = {
     "AdjVo": "AdjustmentVolume",
 }
 
+# v2 銘柄マスターカラム名マッピング（v2短縮名 → v1互換名）
+V2_MASTER_COLUMN_MAP = {
+    "CoName": "CompanyName",
+    "CoNameEn": "CompanyNameEnglish",
+    "S17": "Sector17Code",
+    "S17Nm": "Sector17CodeName",
+    "S33": "Sector33Code",
+    "S33Nm": "Sector33CodeName",
+    "ScaleCat": "ScaleCategory",
+    "Mkt": "MarketCode",
+    "MktNm": "MarketCodeName",
+    "Mrgn": "MarginCode",
+    "MrgnNm": "MarginCodeName",
+}
+
 
 class JQuantsFetcher:
     """J-Quants API v2 からデータを取得するクラス"""
@@ -52,7 +67,7 @@ class JQuantsFetcher:
         上場銘柄一覧を取得
 
         Returns:
-            銘柄情報のDataFrame
+            銘柄情報のDataFrame（v1互換カラム名）
         """
         print("[PROGRESS] Requesting /equities/master from J-Quants API v2...")
         data = self.client.request("/equities/master")
@@ -64,7 +79,11 @@ class JQuantsFetcher:
 
         print(f"[PROGRESS] Received {len(info)} stocks from J-Quants API")
         df = pd.DataFrame(info)
-        print("[PROGRESS] Converted to DataFrame")
+
+        # v2カラム名をv1互換に変換
+        df = df.rename(columns=V2_MASTER_COLUMN_MAP)
+
+        print("[PROGRESS] Converted to DataFrame with v1-compatible columns")
         return df
 
     def get_prices_daily(

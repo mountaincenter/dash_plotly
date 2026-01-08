@@ -207,11 +207,12 @@ def get_trading_context() -> dict[str, str]:
         "to": str(future_end)
     }
 
-    response = fetcher.client.request("/markets/trading_calendar", params=params)
-    calendar = pd.DataFrame(response["trading_calendar"])
+    # v2: /markets/calendar（v1は/markets/trading_calendar）
+    response = fetcher.client.request("/markets/calendar", params=params)
+    calendar = pd.DataFrame(response["data"])
 
-    # 営業日のみフィルタ（HolidayDivision == "1"）
-    trading_days = calendar[calendar["HolidayDivision"] == "1"].copy()
+    # 営業日のみフィルタ（v2: HolDiv == "1"、v1はHolidayDivision）
+    trading_days = calendar[calendar["HolDiv"] == "1"].copy()
     trading_days["Date"] = pd.to_datetime(trading_days["Date"]).dt.date
     trading_days = trading_days.sort_values("Date")
 

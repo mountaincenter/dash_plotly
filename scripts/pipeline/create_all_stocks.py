@@ -133,12 +133,28 @@ def add_missing_columns_to_scalping(df: pd.DataFrame, category_name: str, client
 
     print(f"  [INFO] Adding metadata to {len(df)} {category_name} stocks")
 
-    # J-Quantsから全銘柄情報を取得
-    response = client.request("/listed/info")
-    if not response or "info" not in response:
+    # v2: /equities/master からJ-Quants全銘柄情報を取得（v1は/listed/info）
+    response = client.request("/equities/master")
+    if not response or "data" not in response:
         raise RuntimeError("Failed to fetch listed info from J-Quants")
 
-    jq_df = pd.DataFrame(response["info"])
+    jq_df = pd.DataFrame(response["data"])
+
+    # v2 カラム名を v1 互換に変換
+    v2_column_map = {
+        "CoName": "CompanyName",
+        "CoNameEn": "CompanyNameEnglish",
+        "S17": "Sector17Code",
+        "S17Nm": "Sector17CodeName",
+        "S33": "Sector33Code",
+        "S33Nm": "Sector33CodeName",
+        "ScaleCat": "ScaleCategory",
+        "Mkt": "MarketCode",
+        "MktNm": "MarketCodeName",
+        "Mrgn": "MarginCode",
+        "MrgnNm": "MarginCodeName",
+    }
+    jq_df = jq_df.rename(columns=v2_column_map)
 
     # Code列を正規化（5桁目の0を削除）
     jq_df["code_normalized"] = jq_df["Code"].astype(str).str.replace(r'^(.{4})0$', r'\1', regex=True)

@@ -85,13 +85,14 @@ def check_next_day_is_trading() -> tuple[bool, str]:
             "from": from_date,
             "to": to_date
         }
-        response = client.request("/markets/trading_calendar", params=params)
+        # v2: /markets/calendar（v1は/markets/trading_calendar）
+        response = client.request("/markets/calendar", params=params)
 
-        if not response or 'trading_calendar' not in response:
+        if not response or 'data' not in response:
             print(f"ERROR: Invalid response from trading calendar API")
             return False, tomorrow_date_str
 
-        calendar_data = response['trading_calendar']
+        calendar_data = response['data']
 
         if not calendar_data:
             print(f"ERROR: Empty trading calendar data")
@@ -111,14 +112,14 @@ def check_next_day_is_trading() -> tuple[bool, str]:
             # データが見つからない場合は安全のためスキップ
             return False, tomorrow_date_str
 
-        # HolidayDivision を確認
-        holiday_division = tomorrow_record.get('HolidayDivision', '')
+        # v2: HolDiv を確認（v1はHolidayDivision）
+        holiday_division = tomorrow_record.get('HolDiv', '')
 
         print(f"\nTomorrow's calendar info:")
         print(f"  Date: {tomorrow_record.get('Date')}")
-        print(f"  HolidayDivision: {holiday_division}")
+        print(f"  HolDiv: {holiday_division}")
 
-        # HolidayDivision の判定
+        # HolDiv の判定
         # "1": 営業日
         # "0": 休業日（土日祝）
         # "2": 特別休業日（年末年始など）
@@ -137,7 +138,7 @@ def check_next_day_is_trading() -> tuple[bool, str]:
             print("❌ Tomorrow is a SPECIAL NON-TRADING day (year-end, etc.)")
             return False, tomorrow_date_str
         else:
-            print(f"⚠️ Unknown HolidayDivision: {holiday_division}")
+            print(f"⚠️ Unknown HolDiv: {holiday_division}")
             # 不明な場合は安全のためスキップ
             return False, tomorrow_date_str
 
