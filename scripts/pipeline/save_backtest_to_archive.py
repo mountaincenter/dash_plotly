@@ -410,6 +410,47 @@ def calculate_daily_metrics(
         return None, None, None, None
 
 
+def get_price_at_time(
+    df_5min: pd.DataFrame,
+    start_time: str,
+    end_time: str,
+    fallback_start_time: Optional[str] = None
+) -> Optional[float]:
+    """
+    指定時間帯の終値を取得。データがなければ次時間帯の最早Openを返す。
+
+    Args:
+        df_5min: 5分足データ
+        start_time: 開始時刻 (例: "09:00", "12:30")
+        end_time: 終了時刻 (例: "10:25", "13:55")
+        fallback_start_time: フォールバック開始時刻 (例: "10:30", "14:00")
+
+    Returns:
+        価格、またはデータなしの場合None
+    """
+    if df_5min is None or df_5min.empty:
+        return None
+
+    try:
+        # 指定時間帯のデータを取得
+        slot_data = df_5min.between_time(start_time, end_time)
+
+        if not slot_data.empty:
+            return float(slot_data.iloc[-1]['Close'])
+
+        # フォールバック: 次時間帯の最早Open
+        if fallback_start_time:
+            next_data = df_5min.between_time(fallback_start_time, "15:30")
+            if not next_data.empty:
+                return float(next_data.iloc[0]['Open'])
+
+        return None
+
+    except Exception as e:
+        print(f"[WARN] Failed to get price at {start_time}-{end_time}: {e}")
+        return None
+
+
 def calculate_phase3_return(
     df_5min: pd.DataFrame,
     open_price: float,
@@ -549,6 +590,20 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
         phase2_win = phase2_return > 0
         profit_per_100_shares_phase2 = (daily_close - buy_price) * 100
 
+        # 前場前半 (me): 10:25売却 (09:00-10:25)
+        me_price = get_price_at_time(df_5min, "09:00", "10:25", "10:30")
+        if me_price is not None and buy_price > 0:
+            profit_per_100_shares_morning_early = (me_price - buy_price) * 100
+        else:
+            profit_per_100_shares_morning_early = None
+
+        # 後場前半 (ae): 13:55売却 (12:30-13:55)
+        ae_price = get_price_at_time(df_5min, "12:30", "13:55", "14:00")
+        if ae_price is not None and buy_price > 0:
+            profit_per_100_shares_afternoon_early = (ae_price - buy_price) * 100
+        else:
+            profit_per_100_shares_afternoon_early = None
+
         # Phase3: ±1%/2%/3% 利確損切戦略
         phase3_results = {}
         for threshold_pct in [1, 2, 3]:
@@ -600,7 +655,9 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             "daily_max_gain_pct": daily_max_gain_pct,
             "daily_max_drawdown_pct": daily_max_drawdown_pct,
             "market_cap": market_cap,
-            "data_source": "5min" if df_5min is not None else "1d"
+            "data_source": "5min" if df_5min is not None else "1d",
+            "profit_per_100_shares_morning_early": profit_per_100_shares_morning_early,
+            "profit_per_100_shares_afternoon_early": profit_per_100_shares_afternoon_early,
         }
 
     except Exception as e:
