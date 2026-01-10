@@ -597,8 +597,8 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
         else:
             profit_per_100_shares_morning_early = None
 
-        # 後場前半 (ae): 13:55売却 (12:30-13:55)
-        ae_price = get_price_at_time(df_5min, "12:30", "13:55", "14:00")
+        # 後場前半 (ae): 14:45売却 (12:30-14:45)
+        ae_price = get_price_at_time(df_5min, "12:30", "14:45", "14:50")
         if ae_price is not None and buy_price > 0:
             profit_per_100_shares_afternoon_early = (ae_price - buy_price) * 100
         else:

@@ -5,7 +5,7 @@ profit_per_100_shares_morning_early, profit_per_100_shares_afternoon_early を�
 
 ルール:
 - morning_early (9:00-10:30): 10:25の終値。なければ次時間帯の最早Open
-- afternoon_early (12:30-14:00): 13:55の終値。なければ次時間帯の最早Open
+- afternoon_early (12:30-14:50): 14:45の終値。なければ次時間帯の最早Open
 - ストップ高安（5分足データなし）: NaN
 - 利益 = (exit_price - entry_price) * 100 （ロング基準）
 """
@@ -128,9 +128,9 @@ def calculate_profits(archive, prices_5m):
         else:
             morning_early_profits.append(np.nan)
 
-        # 後場前半 (12:30-14:00)
-        # 13:55の終値、なければ14:00以降の最早Open
-        afternoon_early_exit = get_exit_price(day_data, "12:30", "13:55", "14:00")
+        # 後場前半 (12:30-14:50)
+        # 14:45の終値、なければ14:50以降の最早Open
+        afternoon_early_exit = get_exit_price(day_data, "12:30", "14:45", "14:50")
         if afternoon_early_exit is not None:
             afternoon_early_exit_adj = afternoon_early_exit * adjustment
             profit_afternoon = (afternoon_early_exit_adj - entry_price) * 100
