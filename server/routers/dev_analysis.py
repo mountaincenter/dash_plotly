@@ -101,12 +101,22 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
         df["calc_p2"] = -df["profit_per_100_shares_phase2"].fillna(0)
         df["calc_win1"] = ~df["phase1_win"].fillna(True)
         df["calc_win2"] = ~df["phase2_win"].fillna(True)
+        # 4区分用
+        df["calc_me"] = -df["profit_per_100_shares_morning_early"].fillna(0)
+        df["calc_ae"] = -df["profit_per_100_shares_afternoon_early"].fillna(0)
+        df["calc_win_me"] = df["profit_per_100_shares_morning_early"].fillna(0) < 0
+        df["calc_win_ae"] = df["profit_per_100_shares_afternoon_early"].fillna(0) < 0
     elif mode == "long":
         # ロング（そのまま）
         df["calc_p1"] = df["profit_per_100_shares_phase1"].fillna(0)
         df["calc_p2"] = df["profit_per_100_shares_phase2"].fillna(0)
         df["calc_win1"] = df["phase1_win"].fillna(False)
         df["calc_win2"] = df["phase2_win"].fillna(False)
+        # 4区分用
+        df["calc_me"] = df["profit_per_100_shares_morning_early"].fillna(0)
+        df["calc_ae"] = df["profit_per_100_shares_afternoon_early"].fillna(0)
+        df["calc_win_me"] = df["profit_per_100_shares_morning_early"].fillna(0) > 0
+        df["calc_win_ae"] = df["profit_per_100_shares_afternoon_early"].fillna(0) > 0
     elif mode == "weekday_strategy":
         # 曜日別戦略（デフォルト: 月-木ショート、金ロング）
         if weekday_positions is None:
@@ -135,6 +145,27 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
             df["phase2_win"].fillna(False),
             ~df["phase2_win"].fillna(True)
         )
+        # 4区分用
+        df["calc_me"] = np.where(
+            is_long,
+            df["profit_per_100_shares_morning_early"].fillna(0),
+            -df["profit_per_100_shares_morning_early"].fillna(0)
+        )
+        df["calc_ae"] = np.where(
+            is_long,
+            df["profit_per_100_shares_afternoon_early"].fillna(0),
+            -df["profit_per_100_shares_afternoon_early"].fillna(0)
+        )
+        df["calc_win_me"] = np.where(
+            is_long,
+            df["profit_per_100_shares_morning_early"].fillna(0) > 0,
+            df["profit_per_100_shares_morning_early"].fillna(0) < 0
+        )
+        df["calc_win_ae"] = np.where(
+            is_long,
+            df["profit_per_100_shares_afternoon_early"].fillna(0) > 0,
+            df["profit_per_100_shares_afternoon_early"].fillna(0) < 0
+        )
 
     # 信用区分
     df["margin_type"] = df.apply(lambda r: "制度信用" if r["shortable"] else "いちにち信用", axis=1)
@@ -159,10 +190,10 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
     return df
 
 
-def calc_stats(df: pd.DataFrame) -> dict:
-    """統計計算"""
+def calc_stats(df: pd.DataFrame, segments: int = 2) -> dict:
+    """統計計算 (segments: 2 or 4)"""
     if len(df) == 0:
-        return {
+        base = {
             "count": 0,
             "seidoCount": 0,
             "ichinichiCount": 0,
@@ -171,8 +202,11 @@ def calc_stats(df: pd.DataFrame) -> dict:
             "win1": 0,
             "win2": 0,
         }
+        if segments == 4:
+            base.update({"me": 0, "ae": 0, "winMe": 0, "winAe": 0})
+        return base
 
-    return {
+    result = {
         "count": len(df),
         "seidoCount": int((df["margin_type"] == "制度信用").sum()),
         "ichinichiCount": int((df["margin_type"] == "いちにち信用").sum()),
@@ -182,11 +216,21 @@ def calc_stats(df: pd.DataFrame) -> dict:
         "win2": round(df["calc_win2"].mean() * 100, 1) if len(df) > 0 else 0,
     }
 
+    if segments == 4:
+        result.update({
+            "me": int(df["calc_me"].sum()),
+            "ae": int(df["calc_ae"].sum()),
+            "winMe": round(df["calc_win_me"].mean() * 100, 1) if len(df) > 0 else 0,
+            "winAe": round(df["calc_win_ae"].mean() * 100, 1) if len(df) > 0 else 0,
+        })
 
-def calc_period_stats(df: pd.DataFrame, period: str) -> dict:
-    """期間別統計"""
+    return result
+
+
+def calc_period_stats(df: pd.DataFrame, period: str, segments: int = 2) -> dict:
+    """期間別統計 (segments: 2 or 4)"""
     if len(df) == 0:
-        empty_stats = calc_stats(pd.DataFrame())
+        empty_stats = calc_stats(pd.DataFrame(), segments=segments)
         return {"all": empty_stats, "ex0": empty_stats}
 
     max_date = df["date"].max()
@@ -204,13 +248,13 @@ def calc_period_stats(df: pd.DataFrame, period: str) -> dict:
         filtered = df
 
     return {
-        "all": calc_stats(filtered),
-        "ex0": calc_stats(filtered[filtered["is_ex0"]]),
+        "all": calc_stats(filtered, segments=segments),
+        "ex0": calc_stats(filtered[filtered["is_ex0"]], segments=segments),
     }
 
 
-def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
-    """曜日別データ"""
+def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None, segments: int = 2) -> list:
+    """曜日別データ (segments: 2 or 4)"""
     result = []
 
     if weekday_positions is None:
@@ -236,16 +280,26 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             "priceRanges": [],
             "position": position,
         }
+        if segments == 4:
+            seido_data["meTotal"] = int(seido_df["calc_me"].sum())
+            seido_data["aeTotal"] = int(seido_df["calc_ae"].sum())
+
         for pr in PRICE_RANGES:
             pr_df = seido_df[seido_df["price_range"] == pr["label"]]
-            seido_data["priceRanges"].append({
+            pr_data = {
                 "label": pr["label"],
                 "count": len(pr_df),
                 "p1": int(pr_df["calc_p1"].sum()),
                 "p2": int(pr_df["calc_p2"].sum()),
                 "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
                 "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
-            })
+            }
+            if segments == 4:
+                pr_data["me"] = int(pr_df["calc_me"].sum())
+                pr_data["ae"] = int(pr_df["calc_ae"].sum())
+                pr_data["winMe"] = round(pr_df["calc_win_me"].mean() * 100, 0) if len(pr_df) > 0 else 0
+                pr_data["winAe"] = round(pr_df["calc_win_ae"].mean() * 100, 0) if len(pr_df) > 0 else 0
+            seido_data["priceRanges"].append(pr_data)
 
         # いちにち信用
         ichinichi_df = wd_df[wd_df["margin_type"] == "いちにち信用"]
@@ -259,6 +313,9 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             "priceRanges": {"all": [], "ex0": []},
             "position": position,
         }
+        if segments == 4:
+            ichinichi_data["meTotal"] = {"all": int(ichinichi_df["calc_me"].sum()), "ex0": int(ichinichi_ex0_df["calc_me"].sum())}
+            ichinichi_data["aeTotal"] = {"all": int(ichinichi_df["calc_ae"].sum()), "ex0": int(ichinichi_ex0_df["calc_ae"].sum())}
 
         for pr in PRICE_RANGES:
             pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
@@ -268,7 +325,7 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             shares_all = pr_df["day_trade_available_shares"].fillna(0).sum()
             shares_ex0 = pr_ex0_df["day_trade_available_shares"].fillna(0).sum()
 
-            ichinichi_data["priceRanges"]["all"].append({
+            pr_data_all = {
                 "label": pr["label"],
                 "count": len(pr_df),
                 "shares": int(shares_all),
@@ -276,8 +333,8 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
                 "p2": int(pr_df["calc_p2"].sum()),
                 "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
                 "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
-            })
-            ichinichi_data["priceRanges"]["ex0"].append({
+            }
+            pr_data_ex0 = {
                 "label": pr["label"],
                 "count": len(pr_ex0_df),
                 "shares": int(shares_ex0),
@@ -285,7 +342,18 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
                 "p2": int(pr_ex0_df["calc_p2"].sum()),
                 "win1": round(pr_ex0_df["calc_win1"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
                 "win2": round(pr_ex0_df["calc_win2"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
-            })
+            }
+            if segments == 4:
+                pr_data_all["me"] = int(pr_df["calc_me"].sum())
+                pr_data_all["ae"] = int(pr_df["calc_ae"].sum())
+                pr_data_all["winMe"] = round(pr_df["calc_win_me"].mean() * 100, 0) if len(pr_df) > 0 else 0
+                pr_data_all["winAe"] = round(pr_df["calc_win_ae"].mean() * 100, 0) if len(pr_df) > 0 else 0
+                pr_data_ex0["me"] = int(pr_ex0_df["calc_me"].sum())
+                pr_data_ex0["ae"] = int(pr_ex0_df["calc_ae"].sum())
+                pr_data_ex0["winMe"] = round(pr_ex0_df["calc_win_me"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0
+                pr_data_ex0["winAe"] = round(pr_ex0_df["calc_win_ae"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0
+            ichinichi_data["priceRanges"]["all"].append(pr_data_all)
+            ichinichi_data["priceRanges"]["ex0"].append(pr_data_ex0)
 
         result.append({
             "weekday": wd_name,
@@ -297,8 +365,8 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
     return result
 
 
-def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
-    """日別詳細データ"""
+def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None, segments: int = 2) -> list:
+    """日別詳細データ (segments: 2 or 4)"""
     result = []
     dates = sorted(df["date"].unique(), reverse=True)
 
@@ -319,7 +387,7 @@ def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions:
         stocks = []
         for _, row in day_df.iterrows():
             shares = row.get("day_trade_available_shares")
-            stocks.append({
+            stock_data = {
                 "ticker": row["ticker"],
                 "stockName": row.get("stock_name", ""),
                 "marginType": row["margin_type"],
@@ -329,22 +397,32 @@ def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions:
                 "p2": int(row["calc_p2"]),
                 "win1": bool(row["calc_win1"]),
                 "win2": bool(row["calc_win2"]),
-            })
+            }
+            if segments == 4:
+                stock_data["me"] = int(row["calc_me"])
+                stock_data["ae"] = int(row["calc_ae"])
+                stock_data["winMe"] = bool(row["calc_win_me"])
+                stock_data["winAe"] = bool(row["calc_win_ae"])
+            stocks.append(stock_data)
 
-        result.append({
+        day_data = {
             "date": date.strftime("%Y-%m-%d"),
             "count": {"all": len(day_df), "ex0": len(day_ex0_df)},
             "p1": {"all": int(day_df["calc_p1"].sum()), "ex0": int(day_ex0_df["calc_p1"].sum())},
             "p2": {"all": int(day_df["calc_p2"].sum()), "ex0": int(day_ex0_df["calc_p2"].sum())},
             "stocks": stocks,
             "position": position,
-        })
+        }
+        if segments == 4:
+            day_data["me"] = {"all": int(day_df["calc_me"].sum()), "ex0": int(day_ex0_df["calc_me"].sum())}
+            day_data["ae"] = {"all": int(day_df["calc_ae"].sum()), "ex0": int(day_ex0_df["calc_ae"].sum())}
+        result.append(day_data)
 
     return result
 
 
-def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None) -> dict:
-    """指定モードで分析データを計算"""
+def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None, segments: int = 2) -> dict:
+    """指定モードで分析データを計算 (segments: 2 or 4)"""
     df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
 
     if len(df) == 0:
@@ -352,17 +430,17 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
 
     # 期間別統計
     period_stats = {
-        "daily": calc_period_stats(df, "daily"),
-        "weekly": calc_period_stats(df, "weekly"),
-        "monthly": calc_period_stats(df, "monthly"),
-        "all": calc_period_stats(df, "all"),
+        "daily": calc_period_stats(df, "daily", segments=segments),
+        "weekly": calc_period_stats(df, "weekly", segments=segments),
+        "monthly": calc_period_stats(df, "monthly", segments=segments),
+        "all": calc_period_stats(df, "all", segments=segments),
     }
 
     # 曜日別データ
-    weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions)
+    weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
 
     # 日別詳細
-    daily_details = calc_daily_details(df, mode=mode, weekday_positions=weekday_positions)
+    daily_details = calc_daily_details(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
 
     # メタ情報
     meta = {
@@ -373,6 +451,7 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
         },
         "totalRecords": len(df),
         "mode": mode,
+        "segments": segments,
     }
 
     return {
@@ -384,9 +463,12 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
 
 
 @router.get("/dev/analysis/day-trade-summary")
-async def get_day_trade_summary():
+async def get_day_trade_summary(segments: int = 2):
     """
     Grok分析サマリー
+
+    Query params:
+    - segments: 2（簡易版: 前場引け/大引け）or 4（詳細版: 前場前半/前場引け/後場前半/大引け）
 
     Returns:
     - short: ショート戦略の分析
@@ -399,12 +481,15 @@ async def get_day_trade_summary():
     - dailyDetails: 日別詳細（直近30日）
     - meta: メタ情報
     """
+    if segments not in (2, 4):
+        raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
+
     df_raw = load_archive()
 
     # 3パターン計算
-    short_data = calc_analysis_for_mode(df_raw, "short")
-    long_data = calc_analysis_for_mode(df_raw, "long")
-    weekday_strategy_data = calc_analysis_for_mode(df_raw, "weekday_strategy")
+    short_data = calc_analysis_for_mode(df_raw, "short", segments=segments)
+    long_data = calc_analysis_for_mode(df_raw, "long", segments=segments)
+    weekday_strategy_data = calc_analysis_for_mode(df_raw, "weekday_strategy", segments=segments)
 
     if not short_data:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -423,23 +508,28 @@ async def get_custom_weekday_strategy(
     wed: str = "S",
     thu: str = "S",
     fri: str = "L",
+    segments: int = 2,
 ):
     """
     カスタム曜日別戦略
 
     Query params:
     - mon, tue, wed, thu, fri: 各曜日のポジション（S=ショート, L=ロング）
+    - segments: 2（簡易版）or 4（詳細版）
 
     デフォルト: 月-木ショート、金ロング
     """
     # バリデーション
+    if segments not in (2, 4):
+        raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
+
     positions = [mon.upper(), tue.upper(), wed.upper(), thu.upper(), fri.upper()]
     for p in positions:
         if p not in ("S", "L"):
             raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
 
     df_raw = load_archive()
-    data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions)
+    data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions, segments=segments)
 
     if not data:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -450,7 +540,7 @@ async def get_custom_weekday_strategy(
     return JSONResponse(content=data)
 
 
-def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekday_positions: list[str] | None = None) -> list:
+def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekday_positions: list[str] | None = None, segments: int = 2) -> list:
     """
     日別/週別/月別/曜日別でグルーピングした詳細データ
 
@@ -459,6 +549,10 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
     - "weekly": 週別 (YYYY/W##)
     - "monthly": 月別 (YYYY/MM)
     - "weekday": 曜日別 (月/火/水/木/金)
+
+    segments:
+    - 2: 簡易版（前場引け/大引け）
+    - 4: 詳細版（前場前半/前場引け/後場前半/大引け）
     """
     if weekday_positions is None:
         weekday_positions = ["S", "S", "S", "S", "L"]
@@ -494,7 +588,7 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
             else:
                 position = "ロング" if mode == "long" else "ショート"
 
-            stocks.append({
+            stock_data = {
                 "date": row["date"].strftime("%Y-%m-%d"),
                 "ticker": row["ticker"],
                 "stockName": row.get("stock_name", ""),
@@ -509,15 +603,25 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
                 "win1": bool(row["calc_win1"]),
                 "win2": bool(row["calc_win2"]),
                 "position": position,
-            })
+            }
+            if segments == 4:
+                stock_data["me"] = int(row["calc_me"])
+                stock_data["ae"] = int(row["calc_ae"])
+                stock_data["winMe"] = bool(row["calc_win_me"])
+                stock_data["winAe"] = bool(row["calc_win_ae"])
+            stocks.append(stock_data)
 
-        result.append({
+        group_data = {
             "key": key,
             "count": {"all": len(group_df), "ex0": len(group_ex0_df)},
             "p1": {"all": int(group_df["calc_p1"].sum()), "ex0": int(group_ex0_df["calc_p1"].sum())},
             "p2": {"all": int(group_df["calc_p2"].sum()), "ex0": int(group_ex0_df["calc_p2"].sum())},
             "stocks": stocks,
-        })
+        }
+        if segments == 4:
+            group_data["me"] = {"all": int(group_df["calc_me"].sum()), "ex0": int(group_ex0_df["calc_me"].sum())}
+            group_data["ae"] = {"all": int(group_df["calc_ae"].sum()), "ex0": int(group_ex0_df["calc_ae"].sum())}
+        result.append(group_data)
 
     return result
 
@@ -531,6 +635,7 @@ async def get_analysis_details(
     wed: str = "S",
     thu: str = "S",
     fri: str = "L",
+    segments: int = 2,
 ):
     """
     詳細データ
@@ -539,11 +644,14 @@ async def get_analysis_details(
     - view: "daily" | "weekly" | "monthly" | "weekday"
     - mode: "short" | "long" | "weekday_strategy"
     - mon, tue, wed, thu, fri: 曜日別戦略のポジション（mode=weekday_strategyの場合のみ有効）
+    - segments: 2（簡易版）or 4（詳細版）
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定してください")
     if mode not in ("short", "long", "weekday_strategy"):
         raise HTTPException(status_code=400, detail="modeはshort/long/weekday_strategyのいずれかを指定してください")
+    if segments not in (2, 4):
+        raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
 
     weekday_positions = None
     if mode == "weekday_strategy":
@@ -558,10 +666,11 @@ async def get_analysis_details(
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
 
-    details = calc_grouped_details(df, view=view, mode=mode, weekday_positions=weekday_positions)
+    details = calc_grouped_details(df, view=view, mode=mode, weekday_positions=weekday_positions, segments=segments)
 
     return JSONResponse(content={
         "view": view,
         "mode": mode,
+        "segments": segments,
         "results": details,
     })
