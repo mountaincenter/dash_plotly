@@ -755,6 +755,10 @@ def run_backtest() -> pd.DataFrame:
             "day_trade": day_trade_info['day_trade'],
             "ng": day_trade_info['ng'],
             "day_trade_available_shares": day_trade_info['day_trade_available_shares'],
+            # 価格制限・成行コスト（grok_trending.parquetから）
+            "price_limit": row.get("price_limit"),
+            "limit_price_upper": row.get("limit_price_upper"),
+            "max_cost_100": row.get("max_cost_100"),
         }
 
         results.append(result)
