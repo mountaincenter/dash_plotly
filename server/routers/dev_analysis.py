@@ -35,6 +35,16 @@ PRICE_RANGES = [
 WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
 
 
+def get_price_range_label(price: float | None) -> str:
+    """価格から価格帯ラベルを取得"""
+    if price is None or pd.isna(price):
+        return ""
+    for pr in PRICE_RANGES:
+        if pr["min"] <= price < pr["max"]:
+            return pr["label"]
+    return ""
+
+
 def load_archive() -> pd.DataFrame:
     """grok_trending_archive.parquetを読み込み"""
     if ARCHIVE_PATH.exists():
@@ -593,6 +603,7 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
                 "ticker": row["ticker"],
                 "stockName": row.get("stock_name", ""),
                 "marginType": row["margin_type"],
+                "priceRange": get_price_range_label(row.get("buy_price")),
                 "prevClose": int(row["prev_close"]) if pd.notna(row.get("prev_close")) else None,
                 "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
                 "sellPrice": int(row["sell_price"]) if pd.notna(row.get("sell_price")) else None,
