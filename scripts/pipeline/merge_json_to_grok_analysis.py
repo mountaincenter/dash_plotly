@@ -193,7 +193,7 @@ def calculate_backtest_metrics(ticker, backtest_date, prices_1d_df, prices_5m_df
     high_price = float(day_row['High'])
     low_price = float(day_row['Low'])
     close_price = float(day_row['Close'])
-    volume = int(day_row['Volume'])
+    volume = int(day_row['Volume']) if pd.notna(day_row['Volume']) else 0
 
     # buy_price は backtest_date の Open
     buy_price = open_price
