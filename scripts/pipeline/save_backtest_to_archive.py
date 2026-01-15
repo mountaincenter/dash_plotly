@@ -743,6 +743,7 @@ def run_backtest() -> pd.DataFrame:
             "reason": row.get("reason", ""),
             "grok_rank": row.get("grok_rank", idx + 1),
             "selection_score": row.get("selection_score", 0),
+            "change_pct": row.get("change_pct"),
             **backtest_data,
             "prompt_version": row.get("prompt_version", "v1_1_web_search"),
             # 取引制限カラム（margin_code_master.parquet）
