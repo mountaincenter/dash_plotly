@@ -832,7 +832,7 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
-    # RSI14計算
+    # RSI14計算 (RSI1方式: 楽天証券準拠、SMA)
     def calc_rsi14(ticker_df):
         if len(ticker_df) < 15:
             return None
@@ -841,9 +841,9 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
         delta = np.diff(close)
         gain = np.where(delta > 0, delta, 0)
         loss = np.where(delta < 0, -delta, 0)
-        # EMA方式
-        avg_gain = pd.Series(gain).ewm(alpha=1/14, adjust=False).mean().iloc[-1]
-        avg_loss = pd.Series(loss).ewm(alpha=1/14, adjust=False).mean().iloc[-1]
+        # SMA方式 (RSI1: 楽天証券準拠)
+        avg_gain = pd.Series(gain).tail(14).mean()
+        avg_loss = pd.Series(loss).tail(14).mean()
         if avg_loss == 0:
             return 100.0
         rs = avg_gain / avg_loss
