@@ -760,6 +760,11 @@ def run_backtest() -> pd.DataFrame:
             "price_limit": row.get("price_limit"),
             "limit_price_upper": row.get("limit_price_upper"),
             "max_cost_100": row.get("max_cost_100"),
+            # 指標カラム（generate_grok_trending.pyで計算）
+            "rsi14": row.get("rsi14"),
+            "atr14_pct": row.get("atr14_pct"),
+            "vol_ratio": row.get("vol_ratio"),
+            "weekday": row.get("weekday"),
         }
 
         results.append(result)

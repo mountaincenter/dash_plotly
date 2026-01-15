@@ -832,6 +832,49 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
+    # RSI14計算
+    def calc_rsi14(ticker_df):
+        if len(ticker_df) < 15:
+            return None
+        ticker_df = ticker_df.sort_values('date')
+        close = ticker_df['Close'].values
+        delta = np.diff(close)
+        gain = np.where(delta > 0, delta, 0)
+        loss = np.where(delta < 0, -delta, 0)
+        # EMA方式
+        avg_gain = pd.Series(gain).ewm(alpha=1/14, adjust=False).mean().iloc[-1]
+        avg_loss = pd.Series(loss).ewm(alpha=1/14, adjust=False).mean().iloc[-1]
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        return round(rsi, 1)
+
+    # 各銘柄のRSI14を計算
+    rsi_data = {}
+    for ticker in tickers_in_grok:
+        ticker_prices = prices_df[prices_df['ticker'] == ticker].copy()
+        if len(ticker_prices) >= 15:
+            rsi_data[ticker] = calc_rsi14(ticker_prices)
+
+    # vol_ratio計算（直近出来高 / 20日平均出来高）
+    def calc_vol_ratio(ticker_df):
+        if len(ticker_df) < 20:
+            return None
+        ticker_df = ticker_df.sort_values('date')
+        latest_vol = ticker_df['Volume'].iloc[-1]
+        avg_vol = ticker_df['Volume'].tail(20).mean()
+        if avg_vol == 0:
+            return None
+        return round(latest_vol / avg_vol, 2)
+
+    # 各銘柄のvol_ratioを計算
+    vol_data = {}
+    for ticker in tickers_in_grok:
+        ticker_prices = prices_df[prices_df['ticker'] == ticker].copy()
+        if len(ticker_prices) >= 20:
+            vol_data[ticker] = calc_vol_ratio(ticker_prices)
+
     # マージ用のマップ作成
     price_map = latest_prices.set_index('ticker')[['Close', 'change_pct', 'Volume']].to_dict('index')
 
@@ -846,15 +889,27 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
             df.at[idx, 'Volume'] = p.get('Volume')
         if ticker in atr_data:
             df.at[idx, 'atr14_pct'] = atr_data[ticker]
+        if ticker in rsi_data:
+            df.at[idx, 'rsi14'] = rsi_data[ticker]
+        if ticker in vol_data:
+            df.at[idx, 'vol_ratio'] = vol_data[ticker]
+
+    # weekday計算（date列から曜日を取得: 0=月, 1=火, ..., 6=日）
+    if 'date' in df.columns:
+        df['weekday'] = pd.to_datetime(df['date']).dt.dayofweek
 
     # サマリー表示
     has_close = df['Close'].notna().sum()
     has_change = df['change_pct'].notna().sum()
     has_atr = df['atr14_pct'].notna().sum()
+    has_rsi = df['rsi14'].notna().sum()
+    has_vol = df['vol_ratio'].notna().sum()
     print(f"[INFO] Price data enriched:")
     print(f"       Close: {has_close}/{len(df)}")
     print(f"       change_pct: {has_change}/{len(df)}")
     print(f"       atr14_pct: {has_atr}/{len(df)}")
+    print(f"       rsi14: {has_rsi}/{len(df)}")
+    print(f"       vol_ratio: {has_vol}/{len(df)}")
 
     return df
 
@@ -1124,7 +1179,7 @@ def main() -> int:
                 "ticker", "code", "stock_name", "market", "sectors", "series",
                 "topixnewindexseries", "categories", "tags", "reason",
                 "date", "Close", "change_pct", "Volume", "vol_ratio",
-                "atr14_pct", "rsi14", "score", "key_signal",
+                "atr14_pct", "rsi14", "weekday", "score", "key_signal",
                 "source", "selected_time", "updated_at"
             ])
 
@@ -1145,7 +1200,7 @@ def main() -> int:
             "ticker", "code", "stock_name", "market", "sectors", "series",
             "topixnewindexseries", "categories", "tags", "reason",
             "date", "Close", "change_pct", "Volume", "vol_ratio",
-            "atr14_pct", "rsi14", "score", "key_signal",
+            "atr14_pct", "rsi14", "weekday", "score", "key_signal",
             "source", "selected_time", "updated_at"
         ])
 
