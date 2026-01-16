@@ -761,7 +761,7 @@ def run_backtest() -> pd.DataFrame:
             "limit_price_upper": row.get("limit_price_upper"),
             "max_cost_100": row.get("max_cost_100"),
             # 指標カラム（generate_grok_trending.pyで計算）
-            "rsi14": row.get("rsi14"),
+            "rsi9": row.get("rsi9"),
             "atr14_pct": row.get("atr14_pct"),
             "vol_ratio": row.get("vol_ratio"),
             "weekday": row.get("weekday"),
@@ -871,6 +871,14 @@ def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
 
         # 同じbacktest_dateのデータを削除（上書き）
         df_archive = df_archive[df_archive['backtest_date'] != backtest_date]
+
+        # 型を統一（selection_date, backtest_dateを文字列に）
+        for date_col in ['selection_date', 'backtest_date']:
+            if date_col in df_archive.columns:
+                df_archive[date_col] = df_archive[date_col].astype(str)
+            if date_col in df.columns:
+                df[date_col] = df[date_col].astype(str)
+
         df_merged = pd.concat([df_archive, df], ignore_index=True)
         print(f"[INFO] Merged with existing archive: {len(df_archive)} + {len(df)} = {len(df_merged)} records")
     else:
