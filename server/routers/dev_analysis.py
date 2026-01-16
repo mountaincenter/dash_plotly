@@ -465,6 +465,47 @@ def calc_daily_details(df: pd.DataFrame, mode: str = "short", weekday_positions:
     return result
 
 
+def calc_rsi_band_data(df: pd.DataFrame, segments: int = 4) -> dict:
+    """
+    RSI帯別データ（制度/いちにち × RSI 10区切り × 4区分）
+
+    Returns:
+    {
+        "seido": [{"label": "0-10", "count": N, "me": X, "p1": X, "ae": X, "p2": X}, ...],
+        "ichinichi": [{"label": "0-10", "count": N, "me": X, "p1": X, "ae": X, "p2": X}, ...]
+    }
+    """
+    result = {"seido": [], "ichinichi": []}
+
+    # RSI帯: 0-10, 10-20, ..., 90-100
+    rsi_bands = [(i, i + 10) for i in range(0, 100, 10)]
+
+    for margin_type, key in [("制度信用", "seido"), ("いちにち信用", "ichinichi")]:
+        margin_df = df[df["margin_type"] == margin_type]
+
+        for rsi_min, rsi_max in rsi_bands:
+            # RSI9でフィルタ（NaN除外）
+            if "rsi9" not in df.columns:
+                band_df = pd.DataFrame()
+            else:
+                band_df = margin_df[
+                    (margin_df["rsi9"] >= rsi_min) &
+                    (margin_df["rsi9"] < rsi_max)
+                ]
+
+            band_data = {
+                "label": f"{rsi_min}-{rsi_max}",
+                "count": len(band_df),
+                "me": int(band_df["calc_me"].sum()) if len(band_df) > 0 else 0,
+                "p1": int(band_df["calc_p1"].sum()) if len(band_df) > 0 else 0,
+                "ae": int(band_df["calc_ae"].sum()) if len(band_df) > 0 else 0,
+                "p2": int(band_df["calc_p2"].sum()) if len(band_df) > 0 else 0,
+            }
+            result[key].append(band_data)
+
+    return result
+
+
 def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None, segments: int = 2) -> dict:
     """指定モードで分析データを計算 (segments: 2 or 4)"""
     df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
@@ -483,6 +524,9 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
     # 曜日別データ
     weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
 
+    # RSI帯別データ（4区分のみ）
+    rsi_band_data = calc_rsi_band_data(df, segments=4) if segments == 4 else None
+
     # 日別詳細
     daily_details = calc_daily_details(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
 
@@ -498,12 +542,18 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
         "segments": segments,
     }
 
-    return {
+    result = {
         "periodStats": period_stats,
         "weekdayData": weekday_data,
         "dailyDetails": daily_details,
         "meta": meta,
     }
+
+    # RSI帯別データ（4区分時のみ）
+    if rsi_band_data:
+        result["rsiBandData"] = rsi_band_data
+
+    return result
 
 
 @router.get("/dev/analysis/day-trade-summary")
