@@ -45,28 +45,62 @@ def get_price_range_label(price: float | None) -> str:
     return ""
 
 
-def load_archive() -> pd.DataFrame:
-    """grok_trending_archive.parquetを読み込み"""
+def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
+    """
+    grok_trending_archive.parquetを読み込み
+
+    Args:
+        exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
+    """
     if ARCHIVE_PATH.exists():
-        return pd.read_parquet(ARCHIVE_PATH)
+        df = pd.read_parquet(ARCHIVE_PATH)
+    else:
+        try:
+            import boto3
+            s3_client = boto3.client("s3", region_name=AWS_REGION)
 
-    try:
-        import boto3
-        s3_client = boto3.client("s3", region_name=AWS_REGION)
+            with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+                s3_client.download_fileobj(
+                    S3_BUCKET,
+                    "parquet/backtest/grok_trending_archive.parquet",
+                    tmp_file
+                )
+                tmp_path = tmp_file.name
 
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(
-                S3_BUCKET,
-                "parquet/backtest/grok_trending_archive.parquet",
-                tmp_file
-            )
-            tmp_path = tmp_file.name
+            df = pd.read_parquet(tmp_path)
+            os.unlink(tmp_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {str(e)}")
 
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return df
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {str(e)}")
+    # 極端相場除外
+    if exclude_extreme and "is_extreme_market" in df.columns:
+        df = df[df["is_extreme_market"] == False].copy()
+
+    return df
+
+
+def get_extreme_market_info(df: pd.DataFrame) -> dict:
+    """極端相場情報を取得"""
+    if "is_extreme_market" not in df.columns:
+        return {"available": False, "extremeDays": []}
+
+    extreme_df = df[df["is_extreme_market"] == True]
+    if len(extreme_df) == 0:
+        return {"available": True, "extremeDays": []}
+
+    days = []
+    for date in extreme_df["backtest_date"].unique():
+        day_df = extreme_df[extreme_df["backtest_date"] == date]
+        reason = day_df["extreme_market_reason"].iloc[0]
+        futures_pct = day_df["futures_change_pct"].iloc[0]
+        days.append({
+            "date": date,
+            "reason": reason,
+            "futuresChangePct": round(futures_pct, 2),
+            "count": len(day_df),
+        })
+
+    return {"available": True, "extremeDays": days}
 
 
 def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> pd.DataFrame:
@@ -473,17 +507,19 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
 
 
 @router.get("/dev/analysis/day-trade-summary")
-async def get_day_trade_summary(segments: int = 2):
+async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False):
     """
     Grok分析サマリー
 
     Query params:
     - segments: 2（簡易版: 前場引け/大引け）or 4（詳細版: 前場前半/前場引け/後場前半/大引け）
+    - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
 
     Returns:
     - short: ショート戦略の分析
     - long: ロング戦略の分析
     - weekdayStrategy: 曜日別戦略（月-木ショート、金ロング）の分析
+    - extremeMarket: 極端相場情報
 
     各戦略に含まれる項目:
     - periodStats: 期間別統計（daily/weekly/monthly/all × all/ex0）
@@ -494,7 +530,12 @@ async def get_day_trade_summary(segments: int = 2):
     if segments not in (2, 4):
         raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
 
-    df_raw = load_archive()
+    # 極端相場情報は除外前のデータから取得
+    df_all = load_archive(exclude_extreme=False)
+    extreme_info = get_extreme_market_info(df_all)
+
+    # 分析用データ（exclude_extremeに応じてフィルタ）
+    df_raw = load_archive(exclude_extreme=exclude_extreme)
 
     # 3パターン計算
     short_data = calc_analysis_for_mode(df_raw, "short", segments=segments)
@@ -508,6 +549,8 @@ async def get_day_trade_summary(segments: int = 2):
         "short": short_data,
         "long": long_data,
         "weekdayStrategy": weekday_strategy_data,
+        "extremeMarket": extreme_info,
+        "excludeExtreme": exclude_extreme,
     })
 
 
@@ -519,6 +562,7 @@ async def get_custom_weekday_strategy(
     thu: str = "S",
     fri: str = "L",
     segments: int = 2,
+    exclude_extreme: bool = False,
 ):
     """
     カスタム曜日別戦略
@@ -526,6 +570,7 @@ async def get_custom_weekday_strategy(
     Query params:
     - mon, tue, wed, thu, fri: 各曜日のポジション（S=ショート, L=ロング）
     - segments: 2（簡易版）or 4（詳細版）
+    - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
 
     デフォルト: 月-木ショート、金ロング
     """
@@ -538,7 +583,7 @@ async def get_custom_weekday_strategy(
         if p not in ("S", "L"):
             raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
 
-    df_raw = load_archive()
+    df_raw = load_archive(exclude_extreme=exclude_extreme)
     data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions, segments=segments)
 
     if not data:
@@ -546,6 +591,7 @@ async def get_custom_weekday_strategy(
 
     # メタ情報にポジション設定を追加
     data["meta"]["weekdayPositions"] = positions
+    data["meta"]["excludeExtreme"] = exclude_extreme
 
     return JSONResponse(content=data)
 
@@ -647,6 +693,7 @@ async def get_analysis_details(
     thu: str = "S",
     fri: str = "L",
     segments: int = 2,
+    exclude_extreme: bool = False,
 ):
     """
     詳細データ
@@ -656,6 +703,7 @@ async def get_analysis_details(
     - mode: "short" | "long" | "weekday_strategy"
     - mon, tue, wed, thu, fri: 曜日別戦略のポジション（mode=weekday_strategyの場合のみ有効）
     - segments: 2（簡易版）or 4（詳細版）
+    - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定してください")
@@ -671,7 +719,7 @@ async def get_analysis_details(
             if p not in ("S", "L"):
                 raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
 
-    df_raw = load_archive()
+    df_raw = load_archive(exclude_extreme=exclude_extreme)
     df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
 
     if len(df) == 0:
@@ -683,5 +731,82 @@ async def get_analysis_details(
         "view": view,
         "mode": mode,
         "segments": segments,
+        "excludeExtreme": exclude_extreme,
         "results": details,
     })
+
+
+# ============================================================
+# 市場騰落表示API
+# ============================================================
+
+FUTURES_PATH = BASE_DIR / "data" / "parquet" / "futures_prices_60d_5m.parquet"
+NIKKEI_PATH = BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet"
+
+
+@router.get("/dev/analysis/market-status")
+async def get_market_status():
+    """
+    市場騰落表示API
+
+    - 日経終値: 前日終値との比較%
+    - 先物: 前日23:00との比較%
+    """
+    result = {
+        "generatedAt": datetime.now().isoformat(),
+        "nikkei": None,
+        "futures": None,
+    }
+
+    # 日経終値
+    if NIKKEI_PATH.exists():
+        df = pd.read_parquet(NIKKEI_PATH)
+        df = df[df["ticker"] == "^N225"].copy()
+        df["date"] = pd.to_datetime(df["date"]).dt.normalize()
+        df = df.sort_values("date")
+
+        if len(df) >= 2:
+            latest = df.iloc[-1]
+            prev = df.iloc[-2]
+            change_pct = (latest["Close"] - prev["Close"]) / prev["Close"] * 100
+            result["nikkei"] = {
+                "date": latest["date"].strftime("%Y-%m-%d"),
+                "close": round(float(latest["Close"]), 2),
+                "prevClose": round(float(prev["Close"]), 2),
+                "changePct": round(change_pct, 2),
+            }
+
+    # 先物（23:00時点）
+    if FUTURES_PATH.exists():
+        df = pd.read_parquet(FUTURES_PATH)
+        df["date"] = pd.to_datetime(df["date"])
+        df["trade_date"] = df["date"].dt.date
+        df["hour"] = df["date"].dt.hour
+        df["minute"] = df["date"].dt.minute
+
+        # 22:55~23:05の範囲で最も23:00に近いデータ
+        df_2300 = df[((df["hour"] == 22) & (df["minute"] >= 55)) | ((df["hour"] == 23) & (df["minute"] <= 5))]
+
+        prices = []
+        for trade_date, group in df_2300.groupby("trade_date"):
+            group = group.copy()
+            group["diff_to_2300"] = abs(group["hour"] * 60 + group["minute"] - 23 * 60)
+            closest = group.loc[group["diff_to_2300"].idxmin()]
+            prices.append({
+                "date": pd.Timestamp(trade_date),
+                "price": closest["Close"],
+            })
+
+        if len(prices) >= 2:
+            df_prices = pd.DataFrame(prices).sort_values("date")
+            latest = df_prices.iloc[-1]
+            prev = df_prices.iloc[-2]
+            change_pct = (latest["price"] - prev["price"]) / prev["price"] * 100
+            result["futures"] = {
+                "date": latest["date"].strftime("%Y-%m-%d"),
+                "price": round(float(latest["price"]), 2),
+                "prevPrice": round(float(prev["price"]), 2),
+                "changePct": round(change_pct, 2),
+            }
+
+    return JSONResponse(content=result)
