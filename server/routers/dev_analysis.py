@@ -93,8 +93,9 @@ def get_extreme_market_info(df: pd.DataFrame) -> dict:
         day_df = extreme_df[extreme_df["backtest_date"] == date]
         reason = day_df["extreme_market_reason"].iloc[0]
         futures_pct = day_df["futures_change_pct"].iloc[0]
+        date_str = pd.to_datetime(date).strftime("%Y-%m-%d") if pd.notna(date) else None
         days.append({
-            "date": date,
+            "date": date_str,
             "reason": reason,
             "futuresChangePct": round(futures_pct, 2),
             "count": len(day_df),
@@ -506,6 +507,71 @@ def calc_rsi_band_data(df: pd.DataFrame, segments: int = 4) -> dict:
     return result
 
 
+def calc_atr_band_data(df: pd.DataFrame, segments: int = 4) -> dict:
+    """
+    ATR帯別データ（制度/いちにち × ATR区切り × 4区分）
+
+    Returns:
+    {
+        "seido": [{"label": "0-2", "count": N, "me": X, "p1": X, "ae": X, "p2": X}, ...],
+        "ichinichi": [{"label": "0-2", "count": N, "me": X, "p1": X, "ae": X, "p2": X}, ...]
+    }
+    """
+    result = {"seido": [], "ichinichi": []}
+
+    # ATR帯: 制度信用用
+    atr_bands_seido = [(0, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 10), (10, 15), (15, 100)]
+    atr_labels_seido = ['0-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-10', '10-15', '>15']
+
+    # ATR帯: いちにち信用用（8-9, 9-10を分ける）
+    atr_bands_ichi = [(0, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 15), (15, 100)]
+    atr_labels_ichi = ['0-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10', '10-15', '>15']
+
+    # 制度信用
+    margin_df = df[df["margin_type"] == "制度信用"]
+    for (atr_min, atr_max), label in zip(atr_bands_seido, atr_labels_seido):
+        if "atr14_pct" not in df.columns:
+            band_df = pd.DataFrame()
+        else:
+            band_df = margin_df[
+                (margin_df["atr14_pct"] >= atr_min) &
+                (margin_df["atr14_pct"] < atr_max)
+            ]
+
+        band_data = {
+            "label": label,
+            "count": len(band_df),
+            "me": int(band_df["calc_me"].sum()) if len(band_df) > 0 else 0,
+            "p1": int(band_df["calc_p1"].sum()) if len(band_df) > 0 else 0,
+            "ae": int(band_df["calc_ae"].sum()) if len(band_df) > 0 else 0,
+            "p2": int(band_df["calc_p2"].sum()) if len(band_df) > 0 else 0,
+        }
+        result["seido"].append(band_data)
+
+    # いちにち信用
+    margin_df = df[df["margin_type"] == "いちにち信用"]
+    for (atr_min, atr_max), label in zip(atr_bands_ichi, atr_labels_ichi):
+        if "atr14_pct" not in df.columns:
+            band_df = pd.DataFrame()
+        else:
+            band_df = margin_df[
+                (margin_df["atr14_pct"] >= atr_min) &
+                (margin_df["atr14_pct"] < atr_max)
+            ]
+
+        band_data = {
+            "label": label,
+            "count": len(band_df),
+            "me": int(band_df["calc_me"].sum()) if len(band_df) > 0 else 0,
+            "p1": int(band_df["calc_p1"].sum()) if len(band_df) > 0 else 0,
+            "ae": int(band_df["calc_ae"].sum()) if len(band_df) > 0 else 0,
+            "p2": int(band_df["calc_p2"].sum()) if len(band_df) > 0 else 0,
+        }
+        result["ichinichi"].append(band_data)
+
+    return result
+
+
 def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None, segments: int = 2) -> dict:
     """指定モードで分析データを計算 (segments: 2 or 4)"""
     df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
@@ -526,6 +592,9 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
 
     # RSI帯別データ（4区分のみ）
     rsi_band_data = calc_rsi_band_data(df, segments=4) if segments == 4 else None
+
+    # ATR帯別データ（4区分のみ）
+    atr_band_data = calc_atr_band_data(df, segments=4) if segments == 4 else None
 
     # 日別詳細
     daily_details = calc_daily_details(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
@@ -552,6 +621,10 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
     # RSI帯別データ（4区分時のみ）
     if rsi_band_data:
         result["rsiBandData"] = rsi_band_data
+
+    # ATR帯別データ（4区分時のみ）
+    if atr_band_data:
+        result["atrBandData"] = atr_band_data
 
     return result
 

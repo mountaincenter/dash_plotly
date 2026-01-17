@@ -126,7 +126,7 @@ def add_missing_columns_to_scalping(df: pd.DataFrame, category_name: str, client
         empty_df = pd.DataFrame(columns=[
             "ticker", "code", "stock_name", "market", "sectors", "series",
             "topixnewindexseries", "categories", "tags",
-            "date", "Close", "change_pct", "Volume", "vol_ratio",
+            "date", "Close", "price_diff", "Volume", "vol_ratio",
             "atr14_pct", "rsi14", "score", "key_signal"
         ])
         return empty_df
@@ -189,7 +189,7 @@ def add_missing_columns_to_scalping(df: pd.DataFrame, category_name: str, client
     cols = [
         "ticker", "code", "stock_name", "market", "sectors", "series",
         "topixnewindexseries", "categories", "tags",
-        "date", "Close", "change_pct", "Volume", "vol_ratio",
+        "date", "Close", "price_diff", "Volume", "vol_ratio",
         "atr14_pct", "rsi14", "score", "key_signal"
     ]
 
@@ -215,7 +215,7 @@ def add_technical_columns_to_meta(df: pd.DataFrame) -> pd.DataFrame:
     # テクニカル指標カラムを追加
     df["date"] = None
     df["Close"] = None
-    df["change_pct"] = None
+    df["price_diff"] = None
     df["Volume"] = None
     df["vol_ratio"] = None
     df["atr14_pct"] = None
@@ -226,7 +226,7 @@ def add_technical_columns_to_meta(df: pd.DataFrame) -> pd.DataFrame:
     cols = [
         "ticker", "code", "stock_name", "market", "sectors", "series",
         "topixnewindexseries", "categories", "tags",
-        "date", "Close", "change_pct", "Volume", "vol_ratio",
+        "date", "Close", "price_diff", "Volume", "vol_ratio",
         "atr14_pct", "rsi14", "score", "key_signal"
     ]
 
@@ -249,7 +249,7 @@ def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFra
         empty_df = pd.DataFrame(columns=[
             "ticker", "code", "stock_name", "market", "sectors", "series",
             "topixnewindexseries", "categories", "tags",
-            "date", "Close", "change_pct", "Volume", "vol_ratio",
+            "date", "Close", "price_diff", "Volume", "vol_ratio",
             "atr14_pct", "rsi14", "score", "key_signal"
         ])
         return empty_df
@@ -306,7 +306,7 @@ def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFra
     cols = [
         "ticker", "code", "stock_name", "market", "sectors", "series",
         "topixnewindexseries", "categories", "tags",
-        "date", "Close", "change_pct", "Volume", "vol_ratio",
+        "date", "Close", "price_diff", "Volume", "vol_ratio",
         "atr14_pct", "rsi14", "score", "key_signal"
     ]
 

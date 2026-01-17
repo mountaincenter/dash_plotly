@@ -64,6 +64,19 @@ def calc_atr14(ticker_df: pd.DataFrame) -> float | None:
     return None
 
 
+def calc_vol_ratio(ticker_df: pd.DataFrame) -> float | None:
+    """出来高倍率を計算（当日出来高 / 10日移動平均）"""
+    if len(ticker_df) < 10:
+        return None
+    ticker_df = ticker_df.sort_values("date")
+    latest_vol = ticker_df["Volume"].iloc[-1]
+    # 10日移動平均（当日を含む直近10日）
+    vol_ma10 = ticker_df["Volume"].tail(10).mean()
+    if vol_ma10 == 0 or pd.isna(vol_ma10):
+        return None
+    return round(latest_vol / vol_ma10, 2)
+
+
 def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
     """価格データをマージ"""
     if df.empty:
@@ -74,17 +87,16 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
     latest_prices = prices_df[prices_df["date"] == latest_date].copy()
     print(f"[INFO] Latest price date: {latest_date}, {len(latest_prices)} stocks")
 
-    # 前日データ取得（change_pct計算用）
+    # 前日データ取得（price_diff計算用）
     prev_date = prices_df[prices_df["date"] < latest_date]["date"].max()
     prev_prices = prices_df[prices_df["date"] == prev_date][["ticker", "Close"]].copy()
     prev_prices.columns = ["ticker", "prev_close"]
 
-    # change_pct計算
+    # price_diff計算（前日差の実額）
     latest_prices = latest_prices.merge(prev_prices, on="ticker", how="left")
-    latest_prices["change_pct"] = (
-        (latest_prices["Close"] - latest_prices["prev_close"])
-        / latest_prices["prev_close"] * 100
-    ).round(2)
+    latest_prices["price_diff"] = (
+        latest_prices["Close"] - latest_prices["prev_close"]
+    ).round(0)
 
     # ATR14%を計算
     tickers_in_grok = df["ticker"].unique()
@@ -94,8 +106,15 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
+    # vol_ratio を計算（10日移動平均）
+    vol_data = {}
+    for ticker in tickers_in_grok:
+        ticker_prices = prices_df[prices_df["ticker"] == ticker].copy()
+        if len(ticker_prices) >= 10:
+            vol_data[ticker] = calc_vol_ratio(ticker_prices)
+
     # マージ用マップ
-    price_map = latest_prices.set_index("ticker")[["Close", "change_pct", "Volume"]].to_dict("index")
+    price_map = latest_prices.set_index("ticker")[["Close", "price_diff", "Volume"]].to_dict("index")
 
     # マージ
     df = df.copy()
@@ -104,19 +123,23 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
         if ticker in price_map:
             p = price_map[ticker]
             df.at[idx, "Close"] = p.get("Close")
-            df.at[idx, "change_pct"] = p.get("change_pct")
+            df.at[idx, "price_diff"] = p.get("price_diff")
             df.at[idx, "Volume"] = p.get("Volume")
         if ticker in atr_data:
             df.at[idx, "atr14_pct"] = atr_data[ticker]
+        if ticker in vol_data:
+            df.at[idx, "vol_ratio"] = vol_data[ticker]
 
     # サマリー
     has_close = df["Close"].notna().sum()
-    has_change = df["change_pct"].notna().sum()
+    has_change = df["price_diff"].notna().sum()
     has_atr = df["atr14_pct"].notna().sum()
+    has_vol = df["vol_ratio"].notna().sum()
     print(f"[INFO] Price data enriched:")
     print(f"       Close: {has_close}/{len(df)}")
-    print(f"       change_pct: {has_change}/{len(df)}")
+    print(f"       price_diff: {has_change}/{len(df)}")
     print(f"       atr14_pct: {has_atr}/{len(df)}")
+    print(f"       vol_ratio: {has_vol}/{len(df)}")
 
     return df
 

@@ -427,8 +427,8 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
 
     all_stocks.parquet schema:
         ticker, code, stock_name, market, sectors, series, topixnewindexseries,
-        categories, tags, date, Close, change_pct, Volume, vol_ratio,
-        atr14_pct, rsi14, score, key_signal
+        categories, tags, date, Close, price_diff, Volume, vol_ratio,
+        atr14_pct, rsi9, score, key_signal
 
     + Grok拡張スキーマ:
         reason, source, selected_time, updated_at, sentiment_score,
@@ -473,11 +473,11 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
             "reason": reason,  # 新規カラム: Grokの選定理由
             "date": selected_date,
             "Close": None,
-            "change_pct": None,
+            "price_diff": None,
             "Volume": None,
             "vol_ratio": None,
             "atr14_pct": None,
-            "rsi14": None,
+            "rsi9": None,
             "score": None,
             "key_signal": None,
             "source": "grok",  # 新規カラム: データソース
@@ -757,7 +757,7 @@ def add_trading_restrictions(df: pd.DataFrame) -> pd.DataFrame:
 
 def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    prices_max_1d.parquetから価格データをマージ（Close, change_pct, Volume, atr14_pct）
+    prices_max_1d.parquetから価格データをマージ（Close, price_diff, Volume, atr14_pct）
 
     Args:
         df: grok_trending DataFrame
@@ -798,14 +798,14 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
     latest_prices = prices_df[prices_df['date'] == latest_date].copy()
     print(f"[INFO] Latest price date: {latest_date}, {len(latest_prices)} stocks")
 
-    # 前日データ取得（change_pct計算用）
+    # 前日データ取得（price_diff計算用）
     prev_date = prices_df[prices_df['date'] < latest_date]['date'].max()
     prev_prices = prices_df[prices_df['date'] == prev_date][['ticker', 'Close']].copy()
     prev_prices.columns = ['ticker', 'prev_close']
 
-    # change_pct計算
+    # price_diff計算（前日差の実額）
     latest_prices = latest_prices.merge(prev_prices, on='ticker', how='left')
-    latest_prices['change_pct'] = ((latest_prices['Close'] - latest_prices['prev_close']) / latest_prices['prev_close'] * 100).round(2)
+    latest_prices['price_diff'] = (latest_prices['Close'] - latest_prices['prev_close']).round(0)
 
     # ATR14計算（過去14日のTRの平均）
     def calc_atr14(ticker_df):
@@ -832,30 +832,30 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
-    # RSI14計算 (RSI1方式: 楽天証券準拠、SMA)
-    def calc_rsi14(ticker_df):
-        if len(ticker_df) < 15:
+    # RSI9計算 (RSI1方式: 楽天証券準拠、SMA、期間9)
+    def calc_rsi9(ticker_df):
+        if len(ticker_df) < 10:
             return None
         ticker_df = ticker_df.sort_values('date')
         close = ticker_df['Close'].values
         delta = np.diff(close)
         gain = np.where(delta > 0, delta, 0)
         loss = np.where(delta < 0, -delta, 0)
-        # SMA方式 (RSI1: 楽天証券準拠)
-        avg_gain = pd.Series(gain).tail(14).mean()
-        avg_loss = pd.Series(loss).tail(14).mean()
+        # SMA方式 (RSI1: 楽天証券準拠、期間9)
+        avg_gain = pd.Series(gain).tail(9).mean()
+        avg_loss = pd.Series(loss).tail(9).mean()
         if avg_loss == 0:
             return 100.0
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
         return round(rsi, 1)
 
-    # 各銘柄のRSI14を計算
+    # 各銘柄のRSI9を計算
     rsi_data = {}
     for ticker in tickers_in_grok:
         ticker_prices = prices_df[prices_df['ticker'] == ticker].copy()
-        if len(ticker_prices) >= 15:
-            rsi_data[ticker] = calc_rsi14(ticker_prices)
+        if len(ticker_prices) >= 10:
+            rsi_data[ticker] = calc_rsi9(ticker_prices)
 
     # vol_ratio計算（直近出来高 / 20日平均出来高）
     def calc_vol_ratio(ticker_df):
@@ -876,7 +876,7 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
             vol_data[ticker] = calc_vol_ratio(ticker_prices)
 
     # マージ用のマップ作成
-    price_map = latest_prices.set_index('ticker')[['Close', 'change_pct', 'Volume']].to_dict('index')
+    price_map = latest_prices.set_index('ticker')[['Close', 'price_diff', 'Volume']].to_dict('index')
 
     # grok_trendingにマージ
     df = df.copy()
@@ -885,12 +885,12 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
         if ticker in price_map:
             p = price_map[ticker]
             df.at[idx, 'Close'] = p.get('Close')
-            df.at[idx, 'change_pct'] = p.get('change_pct')
+            df.at[idx, 'price_diff'] = p.get('price_diff')
             df.at[idx, 'Volume'] = p.get('Volume')
         if ticker in atr_data:
             df.at[idx, 'atr14_pct'] = atr_data[ticker]
         if ticker in rsi_data:
-            df.at[idx, 'rsi14'] = rsi_data[ticker]
+            df.at[idx, 'rsi9'] = rsi_data[ticker]
         if ticker in vol_data:
             df.at[idx, 'vol_ratio'] = vol_data[ticker]
 
@@ -900,15 +900,15 @@ def enrich_with_price_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # サマリー表示
     has_close = df['Close'].notna().sum()
-    has_change = df['change_pct'].notna().sum()
+    has_change = df['price_diff'].notna().sum()
     has_atr = df['atr14_pct'].notna().sum()
-    has_rsi = df['rsi14'].notna().sum()
+    has_rsi = df['rsi9'].notna().sum()
     has_vol = df['vol_ratio'].notna().sum()
     print(f"[INFO] Price data enriched:")
     print(f"       Close: {has_close}/{len(df)}")
-    print(f"       change_pct: {has_change}/{len(df)}")
+    print(f"       price_diff: {has_change}/{len(df)}")
     print(f"       atr14_pct: {has_atr}/{len(df)}")
-    print(f"       rsi14: {has_rsi}/{len(df)}")
+    print(f"       rsi9: {has_rsi}/{len(df)}")
     print(f"       vol_ratio: {has_vol}/{len(df)}")
 
     return df
@@ -1016,7 +1016,7 @@ def save_grok_trending(df: pd.DataFrame, selected_time: str, should_merge: bool 
                 print(f"[WARN] Failed to download from S3: {e}")
                 print(f"[WARN] Will create new file instead of merging")
 
-    # 価格データをマージ（Close, change_pct, Volume, atr14_pct）
+    # 価格データをマージ（Close, price_diff, Volume, atr14_pct）
     df = enrich_with_price_data(df)
 
     # 取引制限カラムを追加
@@ -1178,8 +1178,8 @@ def main() -> int:
             empty_df = pd.DataFrame(columns=[
                 "ticker", "code", "stock_name", "market", "sectors", "series",
                 "topixnewindexseries", "categories", "tags", "reason",
-                "date", "Close", "change_pct", "Volume", "vol_ratio",
-                "atr14_pct", "rsi14", "weekday", "score", "key_signal",
+                "date", "Close", "price_diff", "Volume", "vol_ratio",
+                "atr14_pct", "rsi9", "weekday", "score", "key_signal",
                 "source", "selected_time", "updated_at"
             ])
 
@@ -1199,8 +1199,8 @@ def main() -> int:
         empty_df = pd.DataFrame(columns=[
             "ticker", "code", "stock_name", "market", "sectors", "series",
             "topixnewindexseries", "categories", "tags", "reason",
-            "date", "Close", "change_pct", "Volume", "vol_ratio",
-            "atr14_pct", "rsi14", "weekday", "score", "key_signal",
+            "date", "Close", "price_diff", "Volume", "vol_ratio",
+            "atr14_pct", "rsi9", "weekday", "score", "key_signal",
             "source", "selected_time", "updated_at"
         ])
 

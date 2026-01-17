@@ -22,9 +22,128 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DAY_TRADE_LIST_PATH = BASE_DIR / "data" / "parquet" / "grok_day_trade_list.parquet"
 GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 GROK_ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+GROK_PRICES_PATH = BASE_DIR / "improvement" / "grok_prices_max_1d.parquet"
 
 # 曜日名
 WEEKDAY_NAMES = ['月', '火', '水', '木', '金', '土', '日']
+
+
+def calc_price_limit(price: float) -> int:
+    """制限値幅を計算"""
+    if price < 100:
+        return 30
+    elif price < 200:
+        return 50
+    elif price < 500:
+        return 80
+    elif price < 700:
+        return 100
+    elif price < 1000:
+        return 150
+    elif price < 1500:
+        return 300
+    elif price < 2000:
+        return 400
+    elif price < 3000:
+        return 500
+    elif price < 5000:
+        return 700
+    elif price < 7000:
+        return 1000
+    elif price < 10000:
+        return 1500
+    elif price < 15000:
+        return 3000
+    elif price < 20000:
+        return 4000
+    elif price < 30000:
+        return 5000
+    elif price < 50000:
+        return 7000
+    elif price < 70000:
+        return 10000
+    elif price < 100000:
+        return 15000
+    elif price < 150000:
+        return 30000
+    elif price < 200000:
+        return 40000
+    elif price < 300000:
+        return 50000
+    elif price < 500000:
+        return 70000
+    elif price < 700000:
+        return 100000
+    elif price < 1000000:
+        return 150000
+    elif price < 1500000:
+        return 300000
+    elif price < 2000000:
+        return 400000
+    elif price < 3000000:
+        return 500000
+    elif price < 5000000:
+        return 700000
+    elif price < 7000000:
+        return 1000000
+    elif price < 10000000:
+        return 1500000
+    elif price < 15000000:
+        return 3000000
+    elif price < 20000000:
+        return 4000000
+    elif price < 30000000:
+        return 5000000
+    elif price < 50000000:
+        return 7000000
+    else:
+        return 10000000
+
+
+def calc_stop_flags(prices_df: pd.DataFrame) -> dict:
+    """
+    ストップ高/安フラグを計算してdictで返す
+
+    Returns:
+        dict: {ticker: {'is_stop_high': bool, 'is_stop_low': bool}}
+    """
+    prices_df = prices_df.sort_values(['ticker', 'date'])
+
+    # 前日・前々日終値
+    prices_df['prev_close'] = prices_df.groupby('ticker')['Close'].shift(1)
+    prices_df['prev_prev_close'] = prices_df.groupby('ticker')['Close'].shift(2)
+
+    # 制限値幅（前々日終値ベース）
+    prices_df['price_limit'] = prices_df['prev_prev_close'].apply(
+        lambda x: calc_price_limit(x) if pd.notna(x) else None
+    )
+
+    # ストップ高/安判定
+    prices_df['is_stop_high'] = (
+        prices_df['prev_close'] >= prices_df['prev_prev_close'] + prices_df['price_limit']
+    )
+    prices_df['is_stop_low'] = (
+        prices_df['prev_close'] <= prices_df['prev_prev_close'] - prices_df['price_limit']
+    )
+
+    # 最新日付のデータのみ取得
+    latest_date = prices_df['date'].max()
+    latest_df = prices_df[prices_df['date'] == latest_date]
+
+    return {
+        row['ticker']: {
+            'is_stop_high': bool(row['is_stop_high']) if pd.notna(row['is_stop_high']) else False,
+            'is_stop_low': bool(row['is_stop_low']) if pd.notna(row['is_stop_low']) else False
+        }
+        for _, row in latest_df.iterrows()
+    }
+
+
+def load_grok_prices() -> pd.DataFrame:
+    """grok_prices_max_1d.parquetを読み込み"""
+    if GROK_PRICES_PATH.exists():
+        return pd.read_parquet(GROK_PRICES_PATH)
+    return pd.DataFrame()
 
 
 def load_day_trade_list() -> pd.DataFrame:
@@ -197,6 +316,16 @@ async def get_day_trade_list():
     except Exception:
         appearance_counts = {}
 
+    # ストップ高/安フラグを計算
+    try:
+        prices_df = load_grok_prices()
+        if not prices_df.empty:
+            stop_flags = calc_stop_flags(prices_df)
+        else:
+            stop_flags = {}
+    except Exception:
+        stop_flags = {}
+
     # day_trade_listをdictに変換（tickerでルックアップ）
     dtl_map = {row["ticker"]: row for _, row in day_trade_df.iterrows()}
 
@@ -229,30 +358,20 @@ async def get_day_trade_list():
         else:
             day_trade_available_shares = None
 
-        # 時価総額（億円換算）
-        market_cap = row.get("market_cap")
-        if pd.notna(market_cap):
-            market_cap_oku = round(market_cap / 1e8, 0)
-        else:
-            market_cap_oku = None
-
-        # 500-1000億は見送り判定
-        skip_by_market_cap = False
-        if market_cap_oku and 500 <= market_cap_oku < 1000:
-            skip_by_market_cap = True
-
         # 最大必要資金（100株）
         max_cost_100 = row.get("max_cost_100") if pd.notna(row.get("max_cost_100")) else None
+
+        # 前日差
+        price_diff = int(row.get("price_diff")) if pd.notna(row.get("price_diff")) else None
 
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
             "grok_rank": row.get("grok_rank") if pd.notna(row.get("grok_rank")) else None,
             "close": row.get("Close") if pd.notna(row.get("Close")) else None,
-            "change_pct": row.get("change_pct") if pd.notna(row.get("change_pct")) else None,
-            "atr_pct": row.get("atr14_pct") if pd.notna(row.get("atr14_pct")) else None,
-            "market_cap_oku": market_cap_oku,
-            "skip_by_market_cap": skip_by_market_cap,
+            "price_diff": price_diff,
+            "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
+            "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "shortable": shortable,
             "day_trade": day_trade,
             "ng": ng,
@@ -307,7 +426,6 @@ async def get_day_trade_list():
             and s["day_trade_available_shares"] > 0
         ),
         "ng": sum(1 for s in stocks if s["ng"]),
-        "skip_by_market_cap": sum(1 for s in stocks if s["skip_by_market_cap"]),
         "total_funds_shortable": total_funds_shortable,
         "total_funds_day_trade_nonzero": total_funds_day_trade_nonzero,
         "total_required_funds": total_required_funds,
