@@ -1009,10 +1009,20 @@ async def get_market_status():
         "futures": None,
     }
 
-    if not GROK_TRENDING_PATH.exists():
-        return JSONResponse(content=result)
-
-    df = pd.read_parquet(GROK_TRENDING_PATH)
+    # ローカル or S3から読み込み
+    if GROK_TRENDING_PATH.exists():
+        df = pd.read_parquet(GROK_TRENDING_PATH)
+    else:
+        try:
+            import boto3
+            s3_client = boto3.client("s3", region_name=AWS_REGION)
+            with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+                s3_client.download_fileobj(S3_BUCKET, "parquet/grok_trending.parquet", tmp_file)
+                tmp_path = tmp_file.name
+            df = pd.read_parquet(tmp_path)
+            os.unlink(tmp_path)
+        except Exception:
+            return JSONResponse(content=result)
 
     if df.empty:
         return JSONResponse(content=result)
