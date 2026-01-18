@@ -34,6 +34,12 @@ PRICE_RANGES = [
 # 曜日名
 WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
 
+# RSI/ATRセグメント閾値
+SEIDO_RSI_THRESHOLD = 70
+SEIDO_ATR_THRESHOLD = 8
+ICHI_RSI_THRESHOLD = 90
+ICHI_ATR_THRESHOLD = 9
+
 
 def get_price_range_label(price: float | None) -> str:
     """価格から価格帯ラベルを取得"""
@@ -232,6 +238,28 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
+    # RSI/ATRセグメント判定
+    if "rsi9" in df.columns and "atr14_pct" in df.columns:
+        # RSI該当判定（信用種別によって閾値が異なる）
+        df["rsi_hit"] = (
+            ((df["margin_type"] == "制度信用") & (df["rsi9"] >= SEIDO_RSI_THRESHOLD)) |
+            ((df["margin_type"] == "いちにち信用") & (df["rsi9"] >= ICHI_RSI_THRESHOLD))
+        )
+        # ATR該当判定（信用種別によって閾値が異なる）
+        df["atr_hit"] = (
+            ((df["margin_type"] == "制度信用") & (df["atr14_pct"] >= SEIDO_ATR_THRESHOLD)) |
+            ((df["margin_type"] == "いちにち信用") & (df["atr14_pct"] >= ICHI_ATR_THRESHOLD))
+        )
+        # セグメント判定（排他的）
+        df["rsi_atr_segment"] = "excluded"
+        df.loc[df["rsi_hit"] & ~df["atr_hit"], "rsi_atr_segment"] = "rsi_only"
+        df.loc[~df["rsi_hit"] & df["atr_hit"], "rsi_atr_segment"] = "atr_only"
+        df.loc[df["rsi_hit"] & df["atr_hit"], "rsi_atr_segment"] = "both"
+    else:
+        df["rsi_hit"] = False
+        df["atr_hit"] = False
+        df["rsi_atr_segment"] = "excluded"
+
     return df
 
 
@@ -400,12 +428,112 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             ichinichi_data["priceRanges"]["all"].append(pr_data_all)
             ichinichi_data["priceRanges"]["ex0"].append(pr_data_ex0)
 
-        result.append({
+        # RSI/ATRセグメント別データ（segments==4の場合のみ）
+        rsi_atr_segments = None
+        if segments == 4 and "rsi_atr_segment" in wd_df.columns:
+            rsi_atr_segments = calc_rsi_atr_segment_data(wd_df, position, segments)
+
+        wd_data = {
             "weekday": wd_name,
             "seido": seido_data,
             "ichinichi": ichinichi_data,
             "position": position,
-        })
+        }
+        if rsi_atr_segments:
+            wd_data["rsiAtrSegments"] = rsi_atr_segments
+
+        result.append(wd_data)
+
+    return result
+
+
+def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int = 4) -> dict:
+    """
+    RSI/ATRセグメント別データを計算
+
+    Returns:
+    {
+        "counts": {"excluded": N, "rsi_only": N, "atr_only": N, "both": N, "all": N},
+        "excluded": {"seido": {...}, "ichinichi": {...}},
+        "rsi_only": {"seido": {...}, "ichinichi": {...}},
+        "atr_only": {"seido": {...}, "ichinichi": {...}},
+        "both": {"seido": {...}, "ichinichi": {...}},
+    }
+    """
+    segment_keys = ["excluded", "rsi_only", "atr_only", "both"]
+    result = {"counts": {"all": len(wd_df)}}
+
+    for seg_key in segment_keys:
+        seg_df = wd_df[wd_df["rsi_atr_segment"] == seg_key]
+        result["counts"][seg_key] = len(seg_df)
+
+        # 制度信用
+        seido_df = seg_df[seg_df["margin_type"] == "制度信用"]
+        seido_data = {
+            "count": len(seido_df),
+            "meTotal": int(seido_df["calc_me"].sum()) if len(seido_df) > 0 else 0,
+            "p1Total": int(seido_df["calc_p1"].sum()) if len(seido_df) > 0 else 0,
+            "aeTotal": int(seido_df["calc_ae"].sum()) if len(seido_df) > 0 else 0,
+            "p2Total": int(seido_df["calc_p2"].sum()) if len(seido_df) > 0 else 0,
+            "priceRanges": [],
+            "position": position,
+        }
+        for pr in PRICE_RANGES:
+            pr_df = seido_df[seido_df["price_range"] == pr["label"]]
+            seido_data["priceRanges"].append({
+                "label": pr["label"],
+                "count": len(pr_df),
+                "me": int(pr_df["calc_me"].sum()) if len(pr_df) > 0 else 0,
+                "p1": int(pr_df["calc_p1"].sum()) if len(pr_df) > 0 else 0,
+                "ae": int(pr_df["calc_ae"].sum()) if len(pr_df) > 0 else 0,
+                "p2": int(pr_df["calc_p2"].sum()) if len(pr_df) > 0 else 0,
+                "winMe": round(pr_df["calc_win_me"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "winAe": round(pr_df["calc_win_ae"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+            })
+
+        # いちにち信用
+        ichinichi_df = seg_df[seg_df["margin_type"] == "いちにち信用"]
+        ichinichi_ex0_df = ichinichi_df[ichinichi_df["is_ex0"]]
+        ichinichi_data = {
+            "count": {"all": len(ichinichi_df), "ex0": len(ichinichi_ex0_df)},
+            "meTotal": {"all": int(ichinichi_df["calc_me"].sum()) if len(ichinichi_df) > 0 else 0, "ex0": int(ichinichi_ex0_df["calc_me"].sum()) if len(ichinichi_ex0_df) > 0 else 0},
+            "p1Total": {"all": int(ichinichi_df["calc_p1"].sum()) if len(ichinichi_df) > 0 else 0, "ex0": int(ichinichi_ex0_df["calc_p1"].sum()) if len(ichinichi_ex0_df) > 0 else 0},
+            "aeTotal": {"all": int(ichinichi_df["calc_ae"].sum()) if len(ichinichi_df) > 0 else 0, "ex0": int(ichinichi_ex0_df["calc_ae"].sum()) if len(ichinichi_ex0_df) > 0 else 0},
+            "p2Total": {"all": int(ichinichi_df["calc_p2"].sum()) if len(ichinichi_df) > 0 else 0, "ex0": int(ichinichi_ex0_df["calc_p2"].sum()) if len(ichinichi_ex0_df) > 0 else 0},
+            "priceRanges": {"all": [], "ex0": []},
+            "position": position,
+        }
+        for pr in PRICE_RANGES:
+            pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
+            pr_ex0_df = pr_df[pr_df["is_ex0"]]
+            ichinichi_data["priceRanges"]["all"].append({
+                "label": pr["label"],
+                "count": len(pr_df),
+                "me": int(pr_df["calc_me"].sum()) if len(pr_df) > 0 else 0,
+                "p1": int(pr_df["calc_p1"].sum()) if len(pr_df) > 0 else 0,
+                "ae": int(pr_df["calc_ae"].sum()) if len(pr_df) > 0 else 0,
+                "p2": int(pr_df["calc_p2"].sum()) if len(pr_df) > 0 else 0,
+                "winMe": round(pr_df["calc_win_me"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win1": round(pr_df["calc_win1"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "winAe": round(pr_df["calc_win_ae"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+                "win2": round(pr_df["calc_win2"].mean() * 100, 0) if len(pr_df) > 0 else 0,
+            })
+            ichinichi_data["priceRanges"]["ex0"].append({
+                "label": pr["label"],
+                "count": len(pr_ex0_df),
+                "me": int(pr_ex0_df["calc_me"].sum()) if len(pr_ex0_df) > 0 else 0,
+                "p1": int(pr_ex0_df["calc_p1"].sum()) if len(pr_ex0_df) > 0 else 0,
+                "ae": int(pr_ex0_df["calc_ae"].sum()) if len(pr_ex0_df) > 0 else 0,
+                "p2": int(pr_ex0_df["calc_p2"].sum()) if len(pr_ex0_df) > 0 else 0,
+                "winMe": round(pr_ex0_df["calc_win_me"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+                "win1": round(pr_ex0_df["calc_win1"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+                "winAe": round(pr_ex0_df["calc_win_ae"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+                "win2": round(pr_ex0_df["calc_win2"].mean() * 100, 0) if len(pr_ex0_df) > 0 else 0,
+            })
+
+        result[seg_key] = {"seido": seido_data, "ichinichi": ichinichi_data}
 
     return result
 
@@ -789,6 +917,9 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
                 stock_data["ae"] = int(row["calc_ae"])
                 stock_data["winMe"] = bool(row["calc_win_me"])
                 stock_data["winAe"] = bool(row["calc_win_ae"])
+                # RSI/ATRフラグ
+                stock_data["rsiHit"] = bool(row.get("rsi_hit", False))
+                stock_data["atrHit"] = bool(row.get("atr_hit", False))
             stocks.append(stock_data)
 
         group_data = {
