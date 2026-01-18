@@ -18,6 +18,7 @@ router = APIRouter()
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -994,17 +995,13 @@ async def get_analysis_details(
 # 市場騰落表示API
 # ============================================================
 
-FUTURES_PATH = BASE_DIR / "data" / "parquet" / "futures_prices_60d_5m.parquet"
-NIKKEI_PATH = BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet"
-
 
 @router.get("/dev/analysis/market-status")
 async def get_market_status():
     """
     市場騰落表示API
 
-    - 日経終値: 前日終値との比較%
-    - 先物: 前日23:00との比較%
+    grok_trending.parquetからnikkei_change_pct, futures_change_pctを取得
     """
     result = {
         "generatedAt": datetime.now().isoformat(),
@@ -1012,55 +1009,28 @@ async def get_market_status():
         "futures": None,
     }
 
-    # 日経終値
-    if NIKKEI_PATH.exists():
-        df = pd.read_parquet(NIKKEI_PATH)
-        df = df[df["ticker"] == "^N225"].copy()
-        df["date"] = pd.to_datetime(df["date"]).dt.normalize()
-        df = df.sort_values("date")
+    if not GROK_TRENDING_PATH.exists():
+        return JSONResponse(content=result)
 
-        if len(df) >= 2:
-            latest = df.iloc[-1]
-            prev = df.iloc[-2]
-            change_pct = (latest["Close"] - prev["Close"]) / prev["Close"] * 100
-            result["nikkei"] = {
-                "date": latest["date"].strftime("%Y-%m-%d"),
-                "close": round(float(latest["Close"]), 2),
-                "prevClose": round(float(prev["Close"]), 2),
-                "changePct": round(change_pct, 2),
-            }
+    df = pd.read_parquet(GROK_TRENDING_PATH)
 
-    # 先物（23:00時点）
-    if FUTURES_PATH.exists():
-        df = pd.read_parquet(FUTURES_PATH)
-        df["date"] = pd.to_datetime(df["date"])
-        df["trade_date"] = df["date"].dt.date
-        df["hour"] = df["date"].dt.hour
-        df["minute"] = df["date"].dt.minute
+    if df.empty:
+        return JSONResponse(content=result)
 
-        # 22:55~23:05の範囲で最も23:00に近いデータ
-        df_2300 = df[((df["hour"] == 22) & (df["minute"] >= 55)) | ((df["hour"] == 23) & (df["minute"] <= 5))]
+    # 最初の行から取得（全行同一値）
+    row = df.iloc[0]
 
-        prices = []
-        for trade_date, group in df_2300.groupby("trade_date"):
-            group = group.copy()
-            group["diff_to_2300"] = abs(group["hour"] * 60 + group["minute"] - 23 * 60)
-            closest = group.loc[group["diff_to_2300"].idxmin()]
-            prices.append({
-                "date": pd.Timestamp(trade_date),
-                "price": closest["Close"],
-            })
+    nikkei_change_pct = row.get("nikkei_change_pct")
+    futures_change_pct = row.get("futures_change_pct")
 
-        if len(prices) >= 2:
-            df_prices = pd.DataFrame(prices).sort_values("date")
-            latest = df_prices.iloc[-1]
-            prev = df_prices.iloc[-2]
-            change_pct = (latest["price"] - prev["price"]) / prev["price"] * 100
-            result["futures"] = {
-                "date": latest["date"].strftime("%Y-%m-%d"),
-                "price": round(float(latest["price"]), 2),
-                "prevPrice": round(float(prev["price"]), 2),
-                "changePct": round(change_pct, 2),
-            }
+    if nikkei_change_pct is not None and not pd.isna(nikkei_change_pct):
+        result["nikkei"] = {
+            "changePct": round(float(nikkei_change_pct), 2),
+        }
+
+    if futures_change_pct is not None and not pd.isna(futures_change_pct):
+        result["futures"] = {
+            "changePct": round(float(futures_change_pct), 2),
+        }
 
     return JSONResponse(content=result)
