@@ -18,7 +18,6 @@ router = APIRouter()
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
-GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -1003,26 +1002,18 @@ async def get_market_status():
 
     grok_trending.parquetからnikkei_change_pct, futures_change_pctを取得
     """
+    from server.routers.dev_day_trade_list import load_grok_trending
+
     result = {
         "generatedAt": datetime.now().isoformat(),
         "nikkei": None,
         "futures": None,
     }
 
-    # ローカル or S3から読み込み
-    if GROK_TRENDING_PATH.exists():
-        df = pd.read_parquet(GROK_TRENDING_PATH)
-    else:
-        try:
-            import boto3
-            s3_client = boto3.client("s3", region_name=AWS_REGION)
-            with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-                s3_client.download_fileobj(S3_BUCKET, "parquet/grok_trending.parquet", tmp_file)
-                tmp_path = tmp_file.name
-            df = pd.read_parquet(tmp_path)
-            os.unlink(tmp_path)
-        except Exception:
-            return JSONResponse(content=result)
+    try:
+        df = load_grok_trending()
+    except Exception:
+        return JSONResponse(content=result)
 
     if df.empty:
         return JSONResponse(content=result)
