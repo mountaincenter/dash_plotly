@@ -46,6 +46,10 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
+FUTURES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
+
+# 極端相場の閾値（±3%）
+EXTREME_MARKET_THRESHOLD = 3.0
 
 # 取引制限データのパス（複数の候補をチェック）
 ROOT = Path(__file__).resolve().parents[2]
@@ -666,6 +670,104 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
         return None
 
 
+def fetch_extreme_market_info(backtest_date: datetime) -> dict:
+    """
+    先物23:00時点の前日比を計算し、極端相場かどうかを判定
+
+    Args:
+        backtest_date: バックテスト日
+
+    Returns:
+        dict: {
+            "futures_change_pct": float or None,
+            "is_extreme_market": bool,
+            "extreme_market_reason": str or None
+        }
+    """
+    result = {
+        "futures_change_pct": None,
+        "is_extreme_market": False,
+        "extreme_market_reason": None,
+    }
+
+    if not FUTURES_PATH.exists():
+        print(f"[WARN] Futures file not found: {FUTURES_PATH}")
+        return result
+
+    try:
+        df = pd.read_parquet(FUTURES_PATH)
+        df["date"] = pd.to_datetime(df["date"])
+        df["trade_date"] = df["date"].dt.date
+        df["hour"] = df["date"].dt.hour
+        df["minute"] = df["date"].dt.minute
+
+        # 23:00付近のデータを抽出（22:55〜23:05）
+        df_2300 = df[
+            ((df["hour"] == 22) & (df["minute"] >= 55)) |
+            ((df["hour"] == 23) & (df["minute"] <= 5))
+        ]
+
+        # 日付ごとに23:00に最も近いデータを取得
+        prices = {}
+        for trade_date, group in df_2300.groupby("trade_date"):
+            group = group.copy()
+            group["diff_to_2300"] = abs(group["hour"] * 60 + group["minute"] - 23 * 60)
+            closest = group.loc[group["diff_to_2300"].idxmin()]
+            prices[trade_date] = closest["Close"]
+
+        # backtest_dateの前日と当日の23:00価格を取得
+        backtest_date_obj = backtest_date.date()
+        prev_date_obj = (backtest_date - timedelta(days=1)).date()
+
+        # 前日を探す（土日祝を考慮して最大5日遡る）
+        for i in range(5):
+            check_date = (backtest_date - timedelta(days=i+1)).date()
+            if check_date in prices:
+                prev_date_obj = check_date
+                break
+
+        if prev_date_obj not in prices:
+            print(f"[WARN] Previous day futures price not found for {backtest_date.date()}")
+            return result
+
+        # 当日の早朝価格（8:45-9:00）を取得
+        df_morning = df[
+            (df["trade_date"] == backtest_date_obj) &
+            (df["hour"] == 8) & (df["minute"] >= 45)
+        ]
+        if df_morning.empty:
+            df_morning = df[
+                (df["trade_date"] == backtest_date_obj) &
+                (df["hour"] == 9) & (df["minute"] <= 5)
+            ]
+
+        if df_morning.empty:
+            print(f"[WARN] Morning futures price not found for {backtest_date.date()}")
+            return result
+
+        morning_price = df_morning.iloc[0]["Open"]
+        prev_price = prices[prev_date_obj]
+
+        # 変動率を計算
+        change_pct = (morning_price - prev_price) / prev_price * 100
+        result["futures_change_pct"] = round(change_pct, 2)
+
+        # 極端相場の判定（±3%）
+        if change_pct >= EXTREME_MARKET_THRESHOLD:
+            result["is_extreme_market"] = True
+            result["extreme_market_reason"] = "futures_3pct_up"
+        elif change_pct <= -EXTREME_MARKET_THRESHOLD:
+            result["is_extreme_market"] = True
+            result["extreme_market_reason"] = "futures_3pct_down"
+
+        print(f"[INFO] Futures change: {change_pct:+.2f}% (extreme: {result['is_extreme_market']})")
+        return result
+
+    except Exception as e:
+        print(f"[WARN] Failed to fetch extreme market info: {e}")
+        return result
+
+
 def run_backtest() -> pd.DataFrame:
     """
     grok_trending.parquetのバックテストを実行
@@ -765,6 +867,11 @@ def run_backtest() -> pd.DataFrame:
             "atr14_pct": row.get("atr14_pct"),
             "vol_ratio": row.get("vol_ratio"),
             "weekday": row.get("weekday"),
+            # 極端相場情報（23:00選定時にgrok_trending.parquetで計算）
+            "nikkei_change_pct": row.get("nikkei_change_pct"),
+            "futures_change_pct": row.get("futures_change_pct"),
+            "is_extreme_market": row.get("is_extreme_market"),
+            "extreme_market_reason": row.get("extreme_market_reason"),
         }
 
         results.append(result)

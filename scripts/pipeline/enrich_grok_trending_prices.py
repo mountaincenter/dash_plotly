@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[2]
 PARQUET_DIR = ROOT / "data" / "parquet"
 GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+FUTURES_PRICES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
 
 
 def load_grok_trending() -> pd.DataFrame:
@@ -64,6 +66,27 @@ def calc_atr14(ticker_df: pd.DataFrame) -> float | None:
     return None
 
 
+def calc_rsi9(ticker_df: pd.DataFrame) -> float | None:
+    """RSI9を計算（SMA方式、期間9）"""
+    import numpy as np
+
+    if len(ticker_df) < 10:
+        return None
+    ticker_df = ticker_df.sort_values("date")
+    close = ticker_df["Close"].values
+    delta = np.diff(close)
+    gain = np.where(delta > 0, delta, 0)
+    loss = np.where(delta < 0, -delta, 0)
+    # SMA方式（期間9）
+    avg_gain = pd.Series(gain).tail(9).mean()
+    avg_loss = pd.Series(loss).tail(9).mean()
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return round(rsi, 1)
+
+
 def calc_vol_ratio(ticker_df: pd.DataFrame) -> float | None:
     """出来高倍率を計算（当日出来高 / 10日移動平均）"""
     if len(ticker_df) < 10:
@@ -75,6 +98,74 @@ def calc_vol_ratio(ticker_df: pd.DataFrame) -> float | None:
     if vol_ma10 == 0 or pd.isna(vol_ma10):
         return None
     return round(latest_vol / vol_ma10, 2)
+
+
+def calc_extreme_market_info() -> dict:
+    """
+    極端相場情報を計算
+
+    Returns:
+        dict: nikkei_change_pct, futures_change_pct, is_extreme_market, extreme_market_reason
+    """
+    result = {
+        "nikkei_change_pct": None,
+        "futures_change_pct": None,
+        "is_extreme_market": False,
+        "extreme_market_reason": None,
+    }
+
+    # 日経225データ読み込み
+    if not INDEX_PRICES_PATH.exists():
+        print("[WARN] index_prices_max_1d.parquet not found")
+        return result
+
+    index_df = pd.read_parquet(INDEX_PRICES_PATH)
+    nikkei_df = index_df[index_df["ticker"] == "^N225"].copy()
+
+    if len(nikkei_df) < 2:
+        print("[WARN] Not enough Nikkei data")
+        return result
+
+    nikkei_df = nikkei_df.sort_values("date")
+    latest_nikkei = nikkei_df["Close"].iloc[-1]
+    prev_nikkei = nikkei_df["Close"].iloc[-2]
+
+    # nikkei_change_pct: 日経の前日比
+    if prev_nikkei and prev_nikkei > 0:
+        result["nikkei_change_pct"] = round(
+            (latest_nikkei - prev_nikkei) / prev_nikkei * 100, 6
+        )
+
+    # 先物データ読み込み
+    if not FUTURES_PRICES_PATH.exists():
+        print("[WARN] futures_prices_60d_5m.parquet not found")
+        return result
+
+    futures_df = pd.read_parquet(FUTURES_PRICES_PATH)
+    futures_df = futures_df.sort_values("date")
+    latest_futures = futures_df["Close"].iloc[-1]
+    latest_futures_time = futures_df["date"].iloc[-1]
+
+    # futures_change_pct: 先物 vs 日経終値
+    if latest_nikkei and latest_nikkei > 0:
+        result["futures_change_pct"] = round(
+            (latest_futures - latest_nikkei) / latest_nikkei * 100, 6
+        )
+
+    # is_extreme_market: |futures_change_pct| >= 3%
+    if result["futures_change_pct"] is not None:
+        if abs(result["futures_change_pct"]) >= 3.0:
+            result["is_extreme_market"] = True
+            direction = "上昇" if result["futures_change_pct"] > 0 else "下落"
+            result["extreme_market_reason"] = f"先物{direction}{abs(result['futures_change_pct']):.2f}%"
+
+    print(f"[INFO] Extreme market calculation:")
+    print(f"       Nikkei: {prev_nikkei:.2f} -> {latest_nikkei:.2f} ({result['nikkei_change_pct']:.4f}%)")
+    print(f"       Futures: {latest_futures:.2f} @ {latest_futures_time}")
+    print(f"       futures_change_pct: {result['futures_change_pct']:.4f}%")
+    print(f"       is_extreme_market: {result['is_extreme_market']}")
+
+    return result
 
 
 def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
@@ -106,6 +197,13 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
+    # rsi9 を計算
+    rsi_data = {}
+    for ticker in tickers_in_grok:
+        ticker_prices = prices_df[prices_df["ticker"] == ticker].copy()
+        if len(ticker_prices) >= 10:
+            rsi_data[ticker] = calc_rsi9(ticker_prices)
+
     # vol_ratio を計算（10日移動平均）
     vol_data = {}
     for ticker in tickers_in_grok:
@@ -127,19 +225,33 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
             df.at[idx, "Volume"] = p.get("Volume")
         if ticker in atr_data:
             df.at[idx, "atr14_pct"] = atr_data[ticker]
+        if ticker in rsi_data:
+            df.at[idx, "rsi9"] = rsi_data[ticker]
         if ticker in vol_data:
             df.at[idx, "vol_ratio"] = vol_data[ticker]
+
+    # 極端相場情報を計算・追加（全行同一値）
+    extreme_info = calc_extreme_market_info()
+    df["nikkei_change_pct"] = extreme_info["nikkei_change_pct"]
+    df["futures_change_pct"] = extreme_info["futures_change_pct"]
+    df["is_extreme_market"] = extreme_info["is_extreme_market"]
+    df["extreme_market_reason"] = extreme_info["extreme_market_reason"]
 
     # サマリー
     has_close = df["Close"].notna().sum()
     has_change = df["price_diff"].notna().sum()
     has_atr = df["atr14_pct"].notna().sum()
+    has_rsi = df["rsi9"].notna().sum()
     has_vol = df["vol_ratio"].notna().sum()
     print(f"[INFO] Price data enriched:")
     print(f"       Close: {has_close}/{len(df)}")
     print(f"       price_diff: {has_change}/{len(df)}")
     print(f"       atr14_pct: {has_atr}/{len(df)}")
+    print(f"       rsi9: {has_rsi}/{len(df)}")
     print(f"       vol_ratio: {has_vol}/{len(df)}")
+    print(f"       nikkei_change_pct: {extreme_info['nikkei_change_pct']}")
+    print(f"       futures_change_pct: {extreme_info['futures_change_pct']}")
+    print(f"       is_extreme_market: {extreme_info['is_extreme_market']}")
 
     return df
 

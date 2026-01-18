@@ -56,13 +56,18 @@ class PipelineRunner:
         self.steps.extend([
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
             ("pipeline.fetch_prices", "価格データ取得（yfinance - 株価）"),
-            ("pipeline.enrich_grok_trending_prices", "grok_trending価格データ更新"),
             ("pipeline.fetch_index_prices", "マーケット指標取得（yfinance - 指数/ETF/先物）"),
             ("pipeline.fetch_currency_prices", "為替レート取得（yfinance - FX）"),
             ("pipeline.update_topix_prices", "TOPIX系指数データ取得（J-Quants Standard）"),
             ("pipeline.update_sectors_prices", "33業種別指数データ取得（J-Quants Standard）"),
             ("pipeline.update_series_prices", "17業種別指数データ取得（J-Quants Standard）"),
         ])
+
+        # 23:00 JST実行時のみ: fetch_prices後にgrok_trendingの価格/テクニカル指標を更新
+        if not skip_grok:
+            self.steps.append(
+                ("pipeline.enrich_grok_trending_prices", "grok_trending価格データ更新（23:00専用）")
+            )
 
         # バックテストアーカイブ保存（16:00 JST実行時のみ）
         # 昨日23:00選定のGROK銘柄 + 今日の価格データ → Phase1バックテスト
