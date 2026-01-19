@@ -1027,11 +1027,17 @@ async def get_market_status():
     if nikkei_change_pct is not None and not pd.isna(nikkei_change_pct):
         result["nikkei"] = {
             "changePct": round(float(nikkei_change_pct), 2),
+            "close": row.get("nikkei_close"),
+            "prevClose": row.get("nikkei_prev_close"),
+            "date": row.get("nikkei_date"),
         }
 
     if futures_change_pct is not None and not pd.isna(futures_change_pct):
         result["futures"] = {
             "changePct": round(float(futures_change_pct), 2),
+            "price": row.get("futures_price"),
+            "prevPrice": row.get("nikkei_close"),  # 先物の比較基準は日経終値
+            "date": row.get("futures_date"),
         }
 
     return JSONResponse(content=result)

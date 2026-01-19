@@ -105,13 +105,19 @@ def calc_extreme_market_info() -> dict:
     極端相場情報を計算
 
     Returns:
-        dict: nikkei_change_pct, futures_change_pct, is_extreme_market, extreme_market_reason
+        dict: nikkei_change_pct, futures_change_pct, is_extreme_market, extreme_market_reason,
+              nikkei_close, nikkei_prev_close, nikkei_date, futures_price, futures_date
     """
     result = {
         "nikkei_change_pct": None,
         "futures_change_pct": None,
         "is_extreme_market": False,
         "extreme_market_reason": None,
+        "nikkei_close": None,
+        "nikkei_prev_close": None,
+        "nikkei_date": None,
+        "futures_price": None,
+        "futures_date": None,
     }
 
     # 日経225データ読み込み
@@ -129,6 +135,12 @@ def calc_extreme_market_info() -> dict:
     nikkei_df = nikkei_df.sort_values("date")
     latest_nikkei = nikkei_df["Close"].iloc[-1]
     prev_nikkei = nikkei_df["Close"].iloc[-2]
+    latest_nikkei_date = nikkei_df["date"].iloc[-1]
+
+    # 日経データ格納
+    result["nikkei_close"] = round(float(latest_nikkei), 2)
+    result["nikkei_prev_close"] = round(float(prev_nikkei), 2)
+    result["nikkei_date"] = str(latest_nikkei_date)[:10]
 
     # nikkei_change_pct: 日経の前日比
     if prev_nikkei and prev_nikkei > 0:
@@ -145,6 +157,10 @@ def calc_extreme_market_info() -> dict:
     futures_df = futures_df.sort_values("date")
     latest_futures = futures_df["Close"].iloc[-1]
     latest_futures_time = futures_df["date"].iloc[-1]
+
+    # 先物データ格納
+    result["futures_price"] = round(float(latest_futures), 2)
+    result["futures_date"] = str(latest_futures_time)[:10]
 
     # futures_change_pct: 先物 vs 日経終値
     if latest_nikkei and latest_nikkei > 0:
@@ -236,6 +252,11 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
     df["futures_change_pct"] = extreme_info["futures_change_pct"]
     df["is_extreme_market"] = extreme_info["is_extreme_market"]
     df["extreme_market_reason"] = extreme_info["extreme_market_reason"]
+    df["nikkei_close"] = extreme_info["nikkei_close"]
+    df["nikkei_prev_close"] = extreme_info["nikkei_prev_close"]
+    df["nikkei_date"] = extreme_info["nikkei_date"]
+    df["futures_price"] = extreme_info["futures_price"]
+    df["futures_date"] = extreme_info["futures_date"]
 
     # サマリー
     has_close = df["Close"].notna().sum()
