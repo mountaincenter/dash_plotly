@@ -154,6 +154,10 @@ def calc_extreme_market_info() -> dict:
         return result
 
     futures_df = pd.read_parquet(FUTURES_PRICES_PATH)
+    if futures_df.empty or len(futures_df) < 1:
+        print("[WARN] futures_prices_60d_5m.parquet is empty")
+        return result
+
     futures_df = futures_df.sort_values("date")
     latest_futures = futures_df["Close"].iloc[-1]
     latest_futures_time = futures_df["date"].iloc[-1]

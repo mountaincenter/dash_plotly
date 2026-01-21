@@ -51,12 +51,19 @@ def get_price_range_label(price: float | None) -> str:
     return ""
 
 
+# 手動除外日リスト（極端相場基準に引っかからないが除外すべき日）
+MANUAL_EXCLUDE_DATES = [
+    "2026-01-15",  # 前日1/14が日経+3.1%の大幅上昇、当日ショート-3.64%の異常日
+]
+
+
 def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
     """
     grok_trending_archive.parquetを読み込み
 
     Args:
         exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
+                        + MANUAL_EXCLUDE_DATES も除外
     """
     if ARCHIVE_PATH.exists():
         df = pd.read_parquet(ARCHIVE_PATH)
@@ -79,33 +86,48 @@ def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
             raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {str(e)}")
 
     # 極端相場除外
-    if exclude_extreme and "is_extreme_market" in df.columns:
-        df = df[df["is_extreme_market"] == False].copy()
+    if exclude_extreme:
+        if "is_extreme_market" in df.columns:
+            df = df[df["is_extreme_market"] == False].copy()
+        # 手動除外日も除外
+        if "backtest_date" in df.columns:
+            df = df[~df["backtest_date"].isin(MANUAL_EXCLUDE_DATES)].copy()
 
     return df
 
 
 def get_extreme_market_info(df: pd.DataFrame) -> dict:
-    """極端相場情報を取得"""
-    if "is_extreme_market" not in df.columns:
-        return {"available": False, "extremeDays": []}
-
-    extreme_df = df[df["is_extreme_market"] == True]
-    if len(extreme_df) == 0:
-        return {"available": True, "extremeDays": []}
-
+    """極端相場情報を取得（手動除外日を含む）"""
     days = []
-    for date in extreme_df["backtest_date"].unique():
-        day_df = extreme_df[extreme_df["backtest_date"] == date]
-        reason = day_df["extreme_market_reason"].iloc[0]
-        futures_pct = day_df["futures_change_pct"].iloc[0]
-        date_str = pd.to_datetime(date).strftime("%Y-%m-%d") if pd.notna(date) else None
-        days.append({
-            "date": date_str,
-            "reason": reason,
-            "futuresChangePct": round(futures_pct, 2),
-            "count": len(day_df),
-        })
+
+    # is_extreme_market=True の日
+    if "is_extreme_market" in df.columns:
+        extreme_df = df[df["is_extreme_market"] == True]
+        for date in extreme_df["backtest_date"].unique():
+            day_df = extreme_df[extreme_df["backtest_date"] == date]
+            reason = day_df["extreme_market_reason"].iloc[0]
+            futures_pct = day_df["futures_change_pct"].iloc[0] if "futures_change_pct" in day_df.columns else None
+            date_str = pd.to_datetime(date).strftime("%Y-%m-%d") if pd.notna(date) else None
+            days.append({
+                "date": date_str,
+                "reason": reason,
+                "futuresChangePct": round(futures_pct, 2) if futures_pct else None,
+                "count": len(day_df),
+            })
+
+    # 手動除外日を追加
+    for manual_date in MANUAL_EXCLUDE_DATES:
+        if manual_date not in [d["date"] for d in days]:
+            manual_df = df[df["backtest_date"] == manual_date]
+            days.append({
+                "date": manual_date,
+                "reason": "手動除外",
+                "futuresChangePct": None,
+                "count": len(manual_df) if len(manual_df) > 0 else 0,
+            })
+
+    if not days:
+        return {"available": True, "extremeDays": []}
 
     return {"available": True, "extremeDays": days}
 
