@@ -144,7 +144,7 @@ def calc_intraday_for_ticker(ticker: str, df_5m: pd.DataFrame, df_1d: pd.DataFra
     return result
 
 
-def main():
+def main() -> int:
     print(f"[START] {datetime.now().isoformat()}")
 
     # データ読み込み
@@ -171,11 +171,12 @@ def main():
 
     # 保存
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df_result.to_parquet(OUTPUT_PATH, index=False)
+    df_result.to_parquet(OUTPUT_PATH, engine="pyarrow", index=False)
     print(f"[SAVE] {OUTPUT_PATH}")
 
     print(f"[DONE] {datetime.now().isoformat()}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

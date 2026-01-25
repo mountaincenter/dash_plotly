@@ -65,9 +65,10 @@ class PipelineRunner:
 
         # 23:00 JST実行時のみ: fetch_prices後にgrok_trendingの価格/テクニカル指標を更新
         if not skip_grok:
-            self.steps.append(
-                ("pipeline.enrich_grok_trending_prices", "grok_trending価格データ更新（23:00専用）")
-            )
+            self.steps.extend([
+                ("pipeline.enrich_grok_trending_prices", "grok_trending価格データ更新（23:00専用）"),
+                ("pipeline.generate_intraday_analysis", "日中分析データ事前計算（23:00専用）"),
+            ])
 
         # バックテストアーカイブ保存（16:00 JST実行時のみ）
         # 昨日23:00選定のGROK銘柄 + 今日の価格データ → Phase1バックテスト
