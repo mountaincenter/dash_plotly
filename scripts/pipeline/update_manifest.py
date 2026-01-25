@@ -27,6 +27,7 @@ UPLOAD_FILES = [
     "meta_jquants.parquet",
     "margin_code_master.parquet",  # 取引制限マスタ（信用取引制限コード）
     "all_stocks.parquet",
+    "financials.parquet",  # J-Quants財務データ
     "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト

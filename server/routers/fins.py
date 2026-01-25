@@ -1,82 +1,147 @@
 # server/routers/fins.py
 """
 J-Quants財務データエンドポイント
+financials.parquetからの読み込み（S3フォールバック付き）
 """
 
 from __future__ import annotations
 
-import sys
+import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi_cache.decorator import cache
 
 router = APIRouter(prefix="/fins")
 
-
-def get_jquants_client():
-    """JQuantsClientのインスタンスを取得"""
-    scripts_path = Path(__file__).resolve().parents[2] / "scripts"
-    if str(scripts_path) not in sys.path:
-        sys.path.insert(0, str(scripts_path))
-
-    from lib.jquants_client import JQuantsClient
-    return JQuantsClient()
+# ==============================
+# パス・S3設定
+# ==============================
+PARQUET_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "parquet"
+FINANCIALS_PATH = PARQUET_DIR / "financials.parquet"
 
 
+def _get_env(name: str) -> Optional[str]:
+    v = os.getenv(name)
+    return v if (v is not None and str(v).strip() != "") else None
+
+
+_S3_BUCKET = _get_env("DATA_BUCKET")
+_S3_PREFIX_RAW = _get_env("PARQUET_PREFIX")
+_S3_PREFIX = (_S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet")
+_AWS_REGION = _get_env("AWS_REGION")
+_AWS_PROFILE = _get_env("AWS_PROFILE")
+_AWS_ENDPOINT = _get_env("AWS_ENDPOINT_URL")
+
+
+def _s3_key(filename: str) -> str:
+    return f"{_S3_PREFIX}/{filename}" if _S3_PREFIX else filename
+
+
+# ==============================
+# データ読み込み
+# ==============================
+def _read_parquet_local(path: Path) -> Optional[pd.DataFrame]:
+    if not path.exists():
+        return None
+    try:
+        return pd.read_parquet(str(path), engine="pyarrow")
+    except Exception:
+        return None
+
+
+def _read_parquet_s3(bucket: Optional[str], key: Optional[str]) -> Optional[pd.DataFrame]:
+    if not bucket or not key:
+        return None
+    try:
+        import boto3
+        from io import BytesIO
+
+        session_kwargs = {}
+        if _AWS_PROFILE:
+            session_kwargs["profile_name"] = _AWS_PROFILE
+        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
+
+        client_kwargs = {}
+        if _AWS_REGION:
+            client_kwargs["region_name"] = _AWS_REGION
+        if _AWS_ENDPOINT:
+            client_kwargs["endpoint_url"] = _AWS_ENDPOINT
+
+        s3 = session.client("s3", **client_kwargs)
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        data = obj["Body"].read()
+        return pd.read_parquet(BytesIO(data), engine="pyarrow")
+    except Exception as e:
+        print(f"!!! S3 READ ERROR: Failed to read s3://{bucket}/{key}. Error: {e}")
+        return None
+
+
+def load_financials_df() -> Optional[pd.DataFrame]:
+    """financials.parquetを読み込む（ローカル優先、S3フォールバック）"""
+    df = _read_parquet_local(FINANCIALS_PATH)
+    if (df is None or df.empty) and _S3_BUCKET:
+        s3_key = _s3_key("financials.parquet")
+        df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    return df
+
+
+# ==============================
+# エンドポイント
+# ==============================
 @router.get("/summary/{ticker}")
 @cache(expire=3600)
 async def get_financial_summary(ticker: str) -> dict[str, Any]:
-    """銘柄の財務サマリーを取得"""
-    code = ticker.replace(".T", "").strip()
+    """銘柄の財務サマリーを取得（financials.parquetから）"""
+    # ticker正規化: "7203" -> "7203.T", "7203.T" -> "7203.T"
+    normalized_ticker = ticker if ticker.endswith(".T") else f"{ticker}.T"
 
-    try:
-        client = get_jquants_client()
-        response = client.request("/fins/summary", params={"code": code})
-        data = response.get("data", [])
+    df = load_financials_df()
+    if df is None or df.empty:
+        raise HTTPException(status_code=503, detail="Financial data not available")
 
-        if not data:
-            raise HTTPException(status_code=404, detail=f"Financial data not found for {ticker}")
+    # tickerで検索
+    row = df[df["ticker"] == normalized_ticker]
+    if row.empty:
+        raise HTTPException(status_code=404, detail=f"Financial data not found for {ticker}")
 
-        # 最新データを取得（配列の最後）
-        latest = data[-1]
+    # 最初のレコードを取得
+    record = row.iloc[0]
 
-        def to_oku(val: Any) -> float | None:
-            """円単位を億円に変換"""
-            if val is None or val == "":
-                return None
-            try:
-                return round(float(val) / 100_000_000, 1)
-            except (ValueError, TypeError):
-                return None
+    def safe_value(val: Any) -> Any:
+        """NaN/Noneをnullに変換"""
+        if pd.isna(val):
+            return None
+        return val
 
-        def to_float(val: Any) -> float | None:
-            if val is None or val == "":
-                return None
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return None
+    return {
+        "ticker": normalized_ticker,
+        "fiscalPeriod": safe_value(record.get("fiscalPeriod")),
+        "periodEnd": safe_value(record.get("periodEnd")),
+        "disclosureDate": safe_value(record.get("disclosureDate")),
+        "sales": safe_value(record.get("sales")),
+        "operatingProfit": safe_value(record.get("operatingProfit")),
+        "ordinaryProfit": safe_value(record.get("ordinaryProfit")),
+        "netProfit": safe_value(record.get("netProfit")),
+        "eps": safe_value(record.get("eps")),
+        "totalAssets": safe_value(record.get("totalAssets")),
+        "equity": safe_value(record.get("equity")),
+        "equityRatio": safe_value(record.get("equityRatio")),
+        "bps": safe_value(record.get("bps")),
+        "sharesOutstanding": safe_value(record.get("sharesOutstanding")),
+    }
 
-        return {
-            "ticker": ticker,
-            "fiscalPeriod": latest.get("CurPerType"),
-            "periodEnd": latest.get("CurPerEn"),
-            "disclosureDate": latest.get("DiscDate"),
-            "sales": to_oku(latest.get("Sales")),
-            "operatingProfit": to_oku(latest.get("OP")),
-            "ordinaryProfit": to_oku(latest.get("OdP")),
-            "netProfit": to_oku(latest.get("NP")),
-            "eps": to_float(latest.get("EPS")),
-            "totalAssets": to_oku(latest.get("TA")),
-            "equity": to_oku(latest.get("Eq")),
-            "equityRatio": to_float(latest.get("EqAR")),
-            "bps": to_float(latest.get("BPS")),
-            "sharesOutstanding": to_float(latest.get("ShOutFY")),
-        }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch financial data: {str(e)}")
+@router.get("/all")
+@cache(expire=3600)
+async def get_all_financials() -> list[dict[str, Any]]:
+    """全銘柄の財務サマリーを取得"""
+    df = load_financials_df()
+    if df is None or df.empty:
+        return []
+
+    # NaNをNoneに変換
+    df = df.where(pd.notna(df), None)
+    return df.to_dict(orient="records")
