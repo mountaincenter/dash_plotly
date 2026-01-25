@@ -21,6 +21,7 @@ sys.path.insert(0, str(BASE_DIR / "scripts"))
 # ファイルパス
 PRICES_5M_PATH = BASE_DIR / "data" / "parquet" / "prices_60d_5m.parquet"
 PRICES_1D_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
+ALL_STOCKS_PATH = BASE_DIR / "data" / "parquet" / "all_stocks.parquet"
 OUTPUT_PATH = BASE_DIR / "data" / "parquet" / "intraday_analysis.parquet"
 
 # 曜日名
@@ -57,15 +58,15 @@ def calc_intraday_for_ticker(ticker: str, df_5m: pd.DataFrame, df_1d: pd.DataFra
     t_5m["date_only"] = t_5m["date"].dt.date
     dates = sorted(t_5m["date_only"].unique(), reverse=True)
 
-    # 日足をdate_onlyでインデックス化
+    # 日足をdate_onlyでインデックス化・ソート
     t_1d["date_only"] = t_1d["date"].dt.date
+    t_1d_sorted = t_1d.sort_values("date_only").copy()
     t_1d_indexed = t_1d.set_index("date_only")
 
     result = []
-    prev_close = None
 
-    # 古い順にループして前日終値を取得
-    for date in reversed(dates):
+    # 各日付を処理（新しい順）
+    for date in dates:
         # 日足データを取得
         if date not in t_1d_indexed.index:
             continue
@@ -74,11 +75,14 @@ def calc_intraday_for_ticker(ticker: str, df_5m: pd.DataFrame, df_1d: pd.DataFra
         if isinstance(day_1d, pd.DataFrame):
             day_1d = day_1d.iloc[0]
 
+        # 前日終値をprices_max_1d.parquetから直接取得
+        prev_days = t_1d_sorted[t_1d_sorted["date_only"] < date]
+        prev_close = prev_days.iloc[-1]["Close"] if len(prev_days) > 0 else None
+
         # 5分足データ
         day_5m = t_5m[t_5m["date_only"] == date].copy()
 
         if len(day_5m) == 0:
-            prev_close = day_1d["Close"]
             continue
 
         # 日足のCloseを15:30として追加（終値補正）
@@ -97,8 +101,8 @@ def calc_intraday_for_ticker(ticker: str, df_5m: pd.DataFrame, df_1d: pd.DataFra
         high_time = day_5m.loc[high_idx, "date"].strftime("%H:%M")
         low_time = day_5m.loc[low_idx, "date"].strftime("%H:%M")
 
-        # 前場終値（11:30以前の最後のClose）
-        am_data = day_5m[day_5m["date"].dt.hour < 12]
+        # 前場終値（11:30以前の最後の有効なClose）
+        am_data = day_5m[(day_5m["date"].dt.hour < 12) & (day_5m["Close"].notna())]
         am_close = am_data.sort_values("date").iloc[-1]["Close"] if len(am_data) > 0 else None
 
         # 曜日
@@ -136,10 +140,8 @@ def calc_intraday_for_ticker(ticker: str, df_5m: pd.DataFrame, df_1d: pd.DataFra
             "volatility": safe_int(high_price - low_price) if not pd.isna(high_price) and not pd.isna(low_price) else None,
         })
 
-        prev_close = close_1d
-
-    # 新しい順に反転
-    return list(reversed(result))
+    # 既に新しい順
+    return result
 
 
 def main():
@@ -148,8 +150,10 @@ def main():
     # データ読み込み
     df_5m, df_1d = load_data()
 
-    # 全銘柄リスト
-    tickers = sorted(df_5m["ticker"].unique())
+    # all_stocks.parquetから対象銘柄を取得
+    print(f"[LOAD] {ALL_STOCKS_PATH}")
+    df_all_stocks = pd.read_parquet(ALL_STOCKS_PATH)
+    tickers = sorted(df_all_stocks["ticker"].unique())
     print(f"[INFO] {len(tickers)} tickers to process")
 
     # 全銘柄分を計算

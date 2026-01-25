@@ -148,6 +148,8 @@ def calc_normalized_prices(ticker: str, date_str: str) -> list:
         day_5m["time"] = day_5m["date"].dt.strftime("%H:%M")
         day_5m["value"] = (day_5m["Close"] / prev_close * 100).round(2)
 
+        # NaN/nullを除外
+        day_5m = day_5m[day_5m["value"].notna()]
         return day_5m[["time", "value"]].to_dict("records")
     except:
         return []
@@ -185,6 +187,8 @@ def calc_index_normalized(index_ticker: str, date_str: str) -> list:
         day_5m["time"] = day_5m["date"].dt.strftime("%H:%M")
         day_5m["value"] = (day_5m["Close"] / prev_close * 100).round(2)
 
+        # NaN/nullを除外
+        day_5m = day_5m[day_5m["value"].notna()]
         return day_5m[["time", "value"]].to_dict("records")
     except:
         return []
