@@ -12,8 +12,24 @@ from datetime import datetime
 from typing import Optional
 import os
 import tempfile
+import math
 
 router = APIRouter()
+
+
+def sanitize_for_json(obj):
+    """NaN/Inf を None に変換（JSONシリアライズ対応）"""
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(item) for item in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif pd.isna(obj):
+        return None
+    return obj
 
 # データキャッシュ
 _data_cache: dict = {}
@@ -69,7 +85,13 @@ def load_intraday_table(ticker: str) -> list:
 
     # tickerカラムを除外してdict化
     cols = [c for c in df_ticker.columns if c != "ticker"]
-    return df_ticker[cols].to_dict("records")
+    # NaN → None に変換（JSONシリアライズ対応）
+    records = df_ticker[cols].to_dict("records")
+    for row in records:
+        for key, val in row.items():
+            if pd.isna(val):
+                row[key] = None
+    return records
 
 
 def calc_summary(table: list) -> dict:
@@ -192,7 +214,7 @@ async def get_intraday_analysis(
     # サマリー
     summary = calc_summary(table)
 
-    return JSONResponse(content={
+    response_data = {
         "table": table,
         "normalizedPrices": {
             "date": date,
@@ -205,4 +227,5 @@ async def get_intraday_analysis(
             "generatedAt": datetime.now().isoformat(),
             "ticker": ticker,
         },
-    })
+    }
+    return JSONResponse(content=sanitize_for_json(response_data))
