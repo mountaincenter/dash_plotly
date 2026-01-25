@@ -6,6 +6,7 @@
 """
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+from fastapi_cache.decorator import cache
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -229,6 +230,7 @@ def calc_summary(table: list) -> dict:
 
 
 @router.get("/dev/intraday-analysis")
+@cache(expire=1800)  # 30分キャッシュ
 async def get_intraday_analysis(
     ticker: str = Query(..., description="ティッカー（例: 7729.T）"),
     date: Optional[str] = Query(None, description="正規化価格の基準日（YYYY-MM-DD）。省略時は直近営業日"),
