@@ -33,37 +33,47 @@ async def get_financial_summary(ticker: str) -> dict[str, Any]:
 
     try:
         client = get_jquants_client()
-        response = client.request("/fins/summary", params={"LocalCode": code})
-        summaries = response.get("summary", [])
+        response = client.request("/fins/summary", params={"code": code})
+        data = response.get("data", [])
 
-        if not summaries:
+        if not data:
             raise HTTPException(status_code=404, detail=f"Financial data not found for {ticker}")
 
-        latest = summaries[0]
+        # 最新データを取得（配列の最後）
+        latest = data[-1]
 
         def to_oku(val: Any) -> float | None:
-            if val is None:
+            """円単位を億円に変換"""
+            if val is None or val == "":
                 return None
             try:
-                return round(float(val) / 100, 1)
+                return round(float(val) / 100_000_000, 1)
+            except (ValueError, TypeError):
+                return None
+
+        def to_float(val: Any) -> float | None:
+            if val is None or val == "":
+                return None
+            try:
+                return float(val)
             except (ValueError, TypeError):
                 return None
 
         return {
             "ticker": ticker,
-            "fiscalYear": latest.get("FiscalYear"),
-            "fiscalQuarter": latest.get("FiscalQuarter"),
-            "disclosureDate": latest.get("DisclosedDate"),
-            "sales": to_oku(latest.get("NetSales")),
-            "operatingProfit": to_oku(latest.get("OperatingProfit")),
-            "ordinaryProfit": to_oku(latest.get("OrdinaryProfit")),
-            "netProfit": to_oku(latest.get("Profit")),
-            "eps": latest.get("EarningsPerShare"),
-            "totalAssets": to_oku(latest.get("TotalAssets")),
-            "equity": to_oku(latest.get("Equity")),
-            "equityRatio": latest.get("EquityToAssetRatio"),
-            "bps": latest.get("BookValuePerShare"),
-            "sharesOutstanding": latest.get("NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock"),
+            "fiscalPeriod": latest.get("CurPerType"),
+            "periodEnd": latest.get("CurPerEn"),
+            "disclosureDate": latest.get("DiscDate"),
+            "sales": to_oku(latest.get("Sales")),
+            "operatingProfit": to_oku(latest.get("OP")),
+            "ordinaryProfit": to_oku(latest.get("OdP")),
+            "netProfit": to_oku(latest.get("NP")),
+            "eps": to_float(latest.get("EPS")),
+            "totalAssets": to_oku(latest.get("TA")),
+            "equity": to_oku(latest.get("Eq")),
+            "equityRatio": to_float(latest.get("EqAR")),
+            "bps": to_float(latest.get("BPS")),
+            "sharesOutstanding": to_float(latest.get("ShOutFY")),
         }
 
     except HTTPException:
