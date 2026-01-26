@@ -21,6 +21,7 @@ router = APIRouter(prefix="/fins")
 # ==============================
 PARQUET_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "parquet"
 FINANCIALS_PATH = PARQUET_DIR / "financials.parquet"
+ANNOUNCEMENTS_PATH = PARQUET_DIR / "announcements.parquet"
 
 
 def _get_env(name: str) -> Optional[str]:
@@ -88,6 +89,15 @@ def load_financials_df() -> Optional[pd.DataFrame]:
     return df
 
 
+def load_announcements_df() -> Optional[pd.DataFrame]:
+    """announcements.parquetを読み込む（ローカル優先、S3フォールバック）"""
+    df = _read_parquet_local(ANNOUNCEMENTS_PATH)
+    if (df is None or df.empty) and _S3_BUCKET:
+        s3_key = _s3_key("announcements.parquet")
+        df = _read_parquet_s3(_S3_BUCKET, s3_key)
+    return df
+
+
 # ==============================
 # エンドポイント
 # ==============================
@@ -145,3 +155,32 @@ async def get_all_financials() -> list[dict[str, Any]]:
     # NaNをNoneに変換
     df = df.where(pd.notna(df), None)
     return df.to_dict(orient="records")
+
+
+@router.get("/announcement/{ticker}")
+@cache(expire=3600)
+async def get_announcement(ticker: str) -> dict[str, Any]:
+    """銘柄の次回決算発表予定日を取得"""
+    normalized_ticker = ticker if ticker.endswith(".T") else f"{ticker}.T"
+
+    df = load_announcements_df()
+    if df is None or df.empty:
+        raise HTTPException(status_code=503, detail="Announcement data not available")
+
+    row = df[df["ticker"] == normalized_ticker]
+    if row.empty:
+        raise HTTPException(status_code=404, detail=f"Announcement not found for {ticker}")
+
+    record = row.iloc[0]
+
+    def safe_value(val: Any) -> Any:
+        if pd.isna(val):
+            return None
+        return val
+
+    return {
+        "ticker": normalized_ticker,
+        "announcementDate": safe_value(record.get("announcementDate")),
+        "nextQuarter": safe_value(record.get("nextQuarter")),
+        "confidence": safe_value(record.get("confidence")),
+    }
