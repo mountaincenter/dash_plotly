@@ -41,6 +41,7 @@ UPLOAD_FILES = [
     "prices_max_1mo.parquet",
     "tech_snapshot_1d.parquet",
     "intraday_analysis.parquet",  # 日中分析データ（23:00生成）
+    "intraday_averages.parquet",  # 日中分析平均データ（23:00生成）
     # 指数・ETF
     "index_prices_60d_15m.parquet",
     "index_prices_60d_5m.parquet",

@@ -37,6 +37,7 @@ _data_cache: dict = {}
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 INTRADAY_PATH = BASE_DIR / "data" / "parquet" / "intraday_analysis.parquet"
+AVERAGES_PATH = BASE_DIR / "data" / "parquet" / "intraday_averages.parquet"
 PRICES_5M_PATH = BASE_DIR / "data" / "parquet" / "prices_60d_5m.parquet"
 PRICES_1D_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
 INDEX_5M_PATH = BASE_DIR / "data" / "parquet" / "index_prices_60d_5m.parquet"
@@ -194,6 +195,35 @@ def calc_index_normalized(index_ticker: str, date_str: str) -> list:
         return []
 
 
+def load_intraday_averages(ticker: str) -> dict:
+    """事前計算済み平均データを読み込み"""
+    try:
+        df = load_parquet_with_s3_fallback(AVERAGES_PATH, "parquet/intraday_averages.parquet")
+        df_ticker = df[df["ticker"] == ticker].copy()
+
+        if len(df_ticker) == 0:
+            return {}
+
+        df_ticker = df_ticker.sort_values("time")
+
+        def to_time_value_list(col: str) -> list:
+            """指定カラムを [{time, value}] 形式に変換"""
+            data = df_ticker[["time", col]].dropna(subset=[col])
+            return [{"time": row["time"], "value": row[col]} for _, row in data.iterrows()]
+
+        return {
+            "avg5d": to_time_value_list("avg5d"),
+            "avg10d": to_time_value_list("avg10d"),
+            "avgMon": to_time_value_list("avg_mon"),
+            "avgTue": to_time_value_list("avg_tue"),
+            "avgWed": to_time_value_list("avg_wed"),
+            "avgThu": to_time_value_list("avg_thu"),
+            "avgFri": to_time_value_list("avg_fri"),
+        }
+    except Exception:
+        return {}
+
+
 @router.get("/dev/intraday-analysis")
 @cache(expire=1800)
 async def get_intraday_analysis(
@@ -215,6 +245,9 @@ async def get_intraday_analysis(
     normalized_nikkei = calc_index_normalized("^N225", date) if date else []
     normalized_topix = calc_index_normalized("1489.T", date) if date else []
 
+    # 平均データ（事前計算済み）
+    averages = load_intraday_averages(ticker)
+
     # サマリー
     summary = calc_summary(table)
 
@@ -225,6 +258,7 @@ async def get_intraday_analysis(
             "ticker": normalized_ticker,
             "nikkei": normalized_nikkei,
             "topix": normalized_topix,
+            **averages,  # avg5d, avg10d, avgMon, avgTue, avgWed, avgThu, avgFri
         },
         "summary": summary,
         "meta": {
