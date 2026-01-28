@@ -347,6 +347,35 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     return full_response, tool_stats
 
 
+def repair_json(json_str: str) -> str:
+    """
+    Grok APIが返す壊れたJSONを修復する
+
+    よくあるエラー:
+    1. オブジェクト間のカンマ欠落: } { → }, {
+    2. 配列要素間のカンマ欠落: } \n  { → }, {
+    3. 末尾カンマ: ,] → ]
+    """
+    import re
+
+    repaired = json_str
+
+    # 1. オブジェクト間のカンマ欠落を修復: }\n  { → },\n  {
+    # パターン: } の後に空白・改行があり { が続く場合
+    repaired = re.sub(r'\}\s*\n\s*\{', '},\n  {', repaired)
+
+    # 2. 直接隣接: }{ → },{
+    repaired = re.sub(r'\}\s*\{', '}, {', repaired)
+
+    # 3. 末尾カンマを除去: ,] → ]
+    repaired = re.sub(r',\s*\]', ']', repaired)
+
+    # 4. 末尾カンマを除去: ,} → }
+    repaired = re.sub(r',\s*\}', '}', repaired)
+
+    return repaired
+
+
 def parse_grok_response(response: str) -> list[dict[str, Any]]:
     """Parse Grok's JSON response (extract first JSON array)"""
     print("[INFO] Parsing Grok response...")
@@ -381,6 +410,7 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
         # verification_summaryがない場合
         first_json = json_str[:last_array_end + 1]
 
+    # まず通常のパースを試行
     try:
         data = json.loads(first_json)
         if isinstance(data, list):
@@ -389,9 +419,24 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
         else:
             raise ValueError(f"Expected JSON array, got {type(data)}")
     except json.JSONDecodeError as e:
-        print(f"[ERROR] Failed to parse JSON: {e}")
-        print(f"[DEBUG] Attempted to parse:\n{first_json[:500]}...")
-        raise
+        print(f"[WARN] Initial JSON parse failed: {e}")
+        print("[INFO] Attempting JSON repair...")
+
+        # JSON修復を試行
+        repaired_json = repair_json(first_json)
+
+        try:
+            data = json.loads(repaired_json)
+            if isinstance(data, list):
+                print(f"[OK] Parsed {len(data)} stocks after JSON repair")
+                return data
+            else:
+                raise ValueError(f"Expected JSON array, got {type(data)}")
+        except json.JSONDecodeError as e2:
+            print(f"[ERROR] JSON repair also failed: {e2}")
+            print(f"[DEBUG] Original JSON:\n{first_json[:500]}...")
+            print(f"[DEBUG] Repaired JSON:\n{repaired_json[:500]}...")
+            raise
 
 
 def calculate_selection_score(item: dict[str, Any]) -> float:
