@@ -917,6 +917,9 @@ def run_backtest() -> pd.DataFrame:
             "day_trade": day_trade_info['day_trade'],
             "ng": day_trade_info['ng'],
             "day_trade_available_shares": day_trade_info['day_trade_available_shares'],
+            # 売り残・買い残（grok_trending.parquetから直接取得、日付×銘柄で管理）
+            "margin_sell_balance": row.get("margin_sell_balance"),
+            "margin_buy_balance": row.get("margin_buy_balance"),
             # 価格制限・成行コスト（grok_trending.parquetから）
             "price_limit": row.get("price_limit"),
             "limit_price_upper": row.get("limit_price_upper"),

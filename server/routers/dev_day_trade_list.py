@@ -290,6 +290,8 @@ class DayTradeUpdateRequest(BaseModel):
     day_trade: Optional[bool] = None  # いちにち信用対象
     ng: Optional[bool] = None         # トレード不可
     day_trade_available_shares: Optional[int] = None  # 1人当たり売り可能株数
+    margin_sell_balance: Optional[int] = None  # 売り残
+    margin_buy_balance: Optional[int] = None   # 買い残
 
 
 @router.get("/dev/day-trade-list")
@@ -364,6 +366,10 @@ async def get_day_trade_list():
         # 前日差
         price_diff = int(row.get("price_diff")) if pd.notna(row.get("price_diff")) else None
 
+        # 売り残・買い残（grok_trending.parquetから直接取得）
+        margin_sell_balance = int(row.get("margin_sell_balance")) if pd.notna(row.get("margin_sell_balance")) else None
+        margin_buy_balance = int(row.get("margin_buy_balance")) if pd.notna(row.get("margin_buy_balance")) else None
+
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
@@ -376,6 +382,8 @@ async def get_day_trade_list():
             "day_trade": day_trade,
             "ng": ng,
             "day_trade_available_shares": day_trade_available_shares,
+            "margin_sell_balance": margin_sell_balance,
+            "margin_buy_balance": margin_buy_balance,
             "appearance_count": appearance_counts.get(ticker, 0),
             "max_cost_100": int(max_cost_100) if max_cost_100 is not None else None,
         })
@@ -506,6 +514,11 @@ async def update_day_trade_item(ticker: str, request: DayTradeUpdateRequest):
                 grok_df.loc[grok_mask, "ng"] = request.ng
             if request.day_trade_available_shares is not None:
                 grok_df.loc[grok_mask, "day_trade_available_shares"] = request.day_trade_available_shares
+            # 売り残・買い残はgrok_trending.parquetのみで管理
+            if request.margin_sell_balance is not None:
+                grok_df.loc[grok_mask, "margin_sell_balance"] = request.margin_sell_balance
+            if request.margin_buy_balance is not None:
+                grok_df.loc[grok_mask, "margin_buy_balance"] = request.margin_buy_balance
 
             save_grok_trending(grok_df)
     except Exception as e:
@@ -578,6 +591,11 @@ async def bulk_update_day_trade_list(updates: list[dict]):
                     grok_df.loc[mask, "ng"] = item["ng"]
                 if "day_trade_available_shares" in item:
                     grok_df.loc[mask, "day_trade_available_shares"] = item["day_trade_available_shares"]
+                # 売り残・買い残はgrok_trending.parquetのみで管理
+                if "margin_sell_balance" in item:
+                    grok_df.loc[mask, "margin_sell_balance"] = item["margin_sell_balance"]
+                if "margin_buy_balance" in item:
+                    grok_df.loc[mask, "margin_buy_balance"] = item["margin_buy_balance"]
 
         save_grok_trending(grok_df)
     except Exception as e:

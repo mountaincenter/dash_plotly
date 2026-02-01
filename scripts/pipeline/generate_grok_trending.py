@@ -851,6 +851,9 @@ def add_day_trade_flags(df: pd.DataFrame) -> pd.DataFrame:
     df['day_trade'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('day_trade', False))
     df['ng'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('ng', False))
     df['day_trade_available_shares'] = df['ticker'].apply(lambda t: dtl_map.get(t, {}).get('day_trade_available_shares', None))
+    # 売り残・買い残は手入力用に初期化（日付×銘柄で管理）
+    df['margin_sell_balance'] = None
+    df['margin_buy_balance'] = None
 
     # サマリー表示
     print(f"[INFO] Day trade flags added:")
