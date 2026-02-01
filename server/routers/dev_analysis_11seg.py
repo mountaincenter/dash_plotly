@@ -101,9 +101,11 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
-    # 勝敗判定（各セグメント）
+    # 11seg: ショート基準に符号反転
     for seg in TIME_SEGMENTS:
         key = seg["key"]
+        if key in df.columns:
+            df[key] = -df[key]
         df[f"{key}_win"] = df[key] > 0
 
     return df

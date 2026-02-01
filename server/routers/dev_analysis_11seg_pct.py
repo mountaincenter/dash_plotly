@@ -86,9 +86,11 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
-    # 変化率カラムを追加: seg_***_pct = seg_*** / buy_price
+    # 11seg: ショート基準に符号反転 + 変化率カラムを追加
     for seg in TIME_SEGMENTS:
         key = seg["key"]
+        if key in df.columns:
+            df[key] = -df[key]
         df[f"{key}_pct"] = df.apply(
             lambda r: r[key] / r["buy_price"] if pd.notna(r[key]) and r["buy_price"] > 0 else np.nan,
             axis=1

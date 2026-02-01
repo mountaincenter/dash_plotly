@@ -123,6 +123,12 @@ def prepare_data(df: pd.DataFrame, exclude_extreme: bool = False) -> pd.DataFram
     df["price_range"] = df["buy_price"].apply(get_price_range)
     df = df[df["price_range"].notna()]
 
+    # 11seg: ショート基準に符号反転
+    for seg in ELEVEN_SEGMENTS:
+        key = seg["key"]
+        if key in df.columns:
+            df[key] = -df[key]
+
     return df
 
 
