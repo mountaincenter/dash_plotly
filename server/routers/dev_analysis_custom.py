@@ -12,12 +12,16 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import tempfile
 
 router = APIRouter()
 
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+
+S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 # 曜日名
 WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
@@ -53,10 +57,25 @@ MANUAL_EXCLUDE_DATES = [
 
 def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
     """grok_trending_archive.parquetを読み込み"""
-    if not ARCHIVE_PATH.exists():
-        raise HTTPException(status_code=500, detail="アーカイブが見つかりません")
+    if ARCHIVE_PATH.exists():
+        df = pd.read_parquet(ARCHIVE_PATH)
+    else:
+        try:
+            import boto3
+            s3_client = boto3.client("s3", region_name=AWS_REGION)
 
-    df = pd.read_parquet(ARCHIVE_PATH)
+            with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+                s3_client.download_fileobj(
+                    S3_BUCKET,
+                    "parquet/backtest/grok_trending_archive.parquet",
+                    tmp_file
+                )
+                tmp_path = tmp_file.name
+
+            df = pd.read_parquet(tmp_path)
+            os.unlink(tmp_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {str(e)}")
 
     # 極端相場除外
     if exclude_extreme:
