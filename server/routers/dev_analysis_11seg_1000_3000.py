@@ -15,7 +15,7 @@ router = APIRouter()
 
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
-ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "improvement" / "grok_trending_archive_11seg.parquet"
+ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
 
 # 異常日（極端相場）
 EXTREME_DATES = [
