@@ -455,6 +455,60 @@ def get_price_at_time(
         return None
 
 
+# 11セグメント時刻定義
+SEGMENT_TIMES = [
+    ("seg_0930", "09:25", "09:30"),  # 09:30時点
+    ("seg_1000", "09:55", "10:00"),  # 10:00時点
+    ("seg_1030", "10:25", "10:30"),  # 10:30時点
+    ("seg_1100", "10:55", "11:00"),  # 11:00時点
+    ("seg_1130", "11:25", "11:30"),  # 11:30時点（前場引け）
+    ("seg_1300", "12:55", "13:00"),  # 13:00時点（後場寄り）
+    ("seg_1330", "13:25", "13:30"),  # 13:30時点
+    ("seg_1400", "13:55", "14:00"),  # 14:00時点
+    ("seg_1430", "14:25", "14:30"),  # 14:30時点
+    ("seg_1500", "14:55", "15:00"),  # 15:00時点
+    ("seg_1530", "15:25", "15:30"),  # 15:30時点（大引け）
+]
+
+
+def calculate_segment_prices(
+    df_5min: pd.DataFrame,
+    buy_price: float
+) -> dict:
+    """
+    11セグメントの価格を計算
+
+    Args:
+        df_5min: 5分足データ
+        buy_price: 始値（買値）
+
+    Returns:
+        dict: {seg_0930: 利益, seg_1000: 利益, ...}
+    """
+    segments = {}
+
+    if df_5min is None or df_5min.empty or buy_price is None or buy_price == 0:
+        for seg_name, _, _ in SEGMENT_TIMES:
+            segments[seg_name] = None
+        return segments
+
+    for seg_name, start_time, end_time in SEGMENT_TIMES:
+        try:
+            # 指定時刻付近のデータを取得
+            slot_data = df_5min.between_time(start_time, end_time)
+
+            if not slot_data.empty:
+                price = float(slot_data.iloc[-1]['Close'])
+                # 100株あたりの利益（円）
+                segments[seg_name] = (price - buy_price) * 100
+            else:
+                segments[seg_name] = None
+        except Exception:
+            segments[seg_name] = None
+
+    return segments
+
+
 def calculate_phase3_return(
     df_5min: pd.DataFrame,
     open_price: float,
@@ -626,6 +680,9 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
                 "profit_per_100_shares": (phase_return * buy_price * 100) if phase_return is not None else None
             }
 
+        # 11セグメント価格を計算
+        segment_prices = calculate_segment_prices(df_5min, buy_price)
+
         return {
             "prev_close": prev_close,
             "buy_price": buy_price,
@@ -662,6 +719,8 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             "data_source": "5min" if df_5min is not None else "1d",
             "profit_per_100_shares_morning_early": profit_per_100_shares_morning_early,
             "profit_per_100_shares_afternoon_early": profit_per_100_shares_afternoon_early,
+            # 11セグメント価格（100株あたり利益）
+            **segment_prices,
         }
 
     except Exception as e:
