@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Grok Trending 分析レポート</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; border-bottom: 3px solid #2196F3; padding-bottom: 10px; }
+        h2 { color: #1976D2; margin-top: 40px; }
+        h3 { color: #424242; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+        th { background: #2196F3; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        tr:hover { background: #e3f2fd; }
+        .positive { color: #4CAF50; font-weight: bold; }
+        .negative { color: #f44336; font-weight: bold; }
+        .highlight { background: #fff3e0 !important; }
+        .summary { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .insight { background: #e3f2fd; padding: 15px; border-left: 4px solid #2196F3; margin: 10px 0; }
+        .warning { background: #fff3e0; padding: 15px; border-left: 4px solid #ff9800; margin: 10px 0; }
+    </style>
+</head>
+<body>
+<h1>Grok Trending 11セグメント分析レポート</h1>
+<p>生成日時: 2026-02-01 12:25</p>
+
+<div class="summary">
+    <h3>データ概要</h3>
+    <ul>
+        <li>全件数: 922件</li>
+        <li>異常日除外後: 901件</li>
+        <li>期間: 2025-10-29 ~ 2026-01-30</li>
+    </ul>
+</div>
+
+<h2>1. 時間帯別リターン分析</h2>
+<p>各セグメント（時間帯）での平均リターンと勝率を分析</p>
+<table>
+    <tr>
+        <th>セグメント</th>
+        <th>件数</th>
+        <th>平均リターン%</th>
+        <th>中央値%</th>
+        <th>標準偏差</th>
+        <th>勝率%</th>
+        <th>最大%</th>
+        <th>最小%</th>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_0930</td>
+        <td>758</td>
+        <td class="positive">+0.26</td>
+        <td>+0.28</td>
+        <td>4.15</td>
+        <td>54.1</td>
+        <td class="positive">+15.28</td>
+        <td class="negative">-27.14</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1000</td>
+        <td>734</td>
+        <td class="positive">+0.57</td>
+        <td>+0.49</td>
+        <td>4.72</td>
+        <td>57.8</td>
+        <td class="positive">+21.25</td>
+        <td class="negative">-31.71</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1030</td>
+        <td>713</td>
+        <td class="positive">+0.80</td>
+        <td>+0.45</td>
+        <td>5.12</td>
+        <td>56.4</td>
+        <td class="positive">+23.24</td>
+        <td class="negative">-30.24</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1100</td>
+        <td>693</td>
+        <td class="positive">+0.95</td>
+        <td>+0.63</td>
+        <td>5.13</td>
+        <td>57.1</td>
+        <td class="positive">+21.87</td>
+        <td class="negative">-26.02</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1130</td>
+        <td>901</td>
+        <td class="positive">+0.78</td>
+        <td>+0.26</td>
+        <td>5.34</td>
+        <td>53.6</td>
+        <td class="positive">+25.93</td>
+        <td class="negative">-28.46</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1300</td>
+        <td>711</td>
+        <td class="positive">+1.19</td>
+        <td>+0.65</td>
+        <td>5.61</td>
+        <td>58.4</td>
+        <td class="positive">+25.32</td>
+        <td class="negative">-31.71</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1330</td>
+        <td>685</td>
+        <td class="positive">+1.23</td>
+        <td>+0.73</td>
+        <td>5.77</td>
+        <td>57.8</td>
+        <td class="positive">+21.76</td>
+        <td class="negative">-28.57</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1400</td>
+        <td>691</td>
+        <td class="positive">+1.37</td>
+        <td>+0.74</td>
+        <td>5.98</td>
+        <td>58.0</td>
+        <td class="positive">+29.59</td>
+        <td class="negative">-28.13</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1430</td>
+        <td>690</td>
+        <td class="positive">+1.48</td>
+        <td>+0.85</td>
+        <td>6.06</td>
+        <td>58.7</td>
+        <td class="positive">+26.18</td>
+        <td class="negative">-26.75</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1500</td>
+        <td>711</td>
+        <td class="positive">+1.36</td>
+        <td>+0.80</td>
+        <td>6.20</td>
+        <td>57.8</td>
+        <td class="positive">+30.15</td>
+        <td class="negative">-25.93</td>
+    </tr>
+    <tr>
+        <td style="text-align:left;">seg_1530</td>
+        <td>901</td>
+        <td class="positive">+1.08</td>
+        <td>+0.35</td>
+        <td>6.45</td>
+        <td>53.7</td>
+        <td class="positive">+33.84</td>
+        <td class="negative">-31.43</td>
+    </tr>
+</table>
+
+<h2>2. 曜日×時間帯クロス分析</h2>
+<h3>平均リターン%</h3>
+<table>
+    <tr><th>曜日</th><th>seg_0930</th><th>seg_1000</th><th>seg_1030</th><th>seg_1100</th><th>seg_1130</th><th>seg_1300</th><th>seg_1330</th><th>seg_1400</th><th>seg_1430</th><th>seg_1500</th><th>seg_1530</th></tr><tr><td style='text-align:left;'>月</td><td class='positive'>+0.20</td><td class='positive'>+0.84</td><td class='positive'>+0.78</td><td class='positive'>+0.74</td><td class='positive'>+0.48</td><td class='positive'>+0.56</td><td class='positive'>+0.74</td><td class='positive'>+0.96</td><td class='positive'>+0.93</td><td class='positive'>+0.63</td><td class='positive'>+0.89</td></tr><tr><td style='text-align:left;'>火</td><td class='positive'>+1.03</td><td class='positive'>+1.33</td><td class='positive'>+1.54</td><td class='positive'>+1.55</td><td class='positive'>+1.72</td><td class='positive'>+2.15</td><td class='positive'>+2.32</td><td class='positive'>+2.63</td><td class='positive'>+2.71</td><td class='positive'>+2.59</td><td class='positive'>+2.11</td></tr><tr><td style='text-align:left;'>水</td><td class='negative'>-0.32</td><td class='negative'>-0.59</td><td class='negative'>-0.65</td><td class='negative'>-0.39</td><td class='negative'>-0.51</td><td class='negative'>-0.18</td><td class='negative'>-0.35</td><td class='negative'>-0.15</td><td class='positive'>+0.00</td><td class='positive'>+0.11</td><td class='negative'>-0.11</td></tr><tr><td style='text-align:left;'>木</td><td class='positive'>+0.27</td><td class='positive'>+0.89</td><td class='positive'>+1.22</td><td class='positive'>+1.26</td><td class='positive'>+1.04</td><td class='positive'>+1.52</td><td class='positive'>+1.54</td><td class='positive'>+1.59</td><td class='positive'>+1.81</td><td class='positive'>+1.75</td><td class='positive'>+1.82</td></tr><tr><td style='text-align:left;'>金</td><td class='positive'>+0.05</td><td class='positive'>+0.32</td><td class='positive'>+0.90</td><td class='positive'>+1.30</td><td class='positive'>+1.05</td><td class='positive'>+1.47</td><td class='positive'>+1.45</td><td class='positive'>+1.47</td><td class='positive'>+1.35</td><td class='positive'>+1.22</td><td class='positive'>+0.50</td></tr></table>
+
+<h3>勝率%</h3>
+<table>
+    <tr><th>曜日</th><th>seg_0930</th><th>seg_1000</th><th>seg_1030</th><th>seg_1100</th><th>seg_1130</th><th>seg_1300</th><th>seg_1330</th><th>seg_1400</th><th>seg_1430</th><th>seg_1500</th><th>seg_1530</th></tr><tr><td style='text-align:left;'>月</td><td class='highlight'>56.4</td><td class='highlight'>62.2</td><td class='highlight'>58.1</td><td class='highlight'>57.0</td><td class='highlight'>56.2</td><td class='highlight'>59.6</td><td class='highlight'>58.9</td><td class=''>54.2</td><td class='highlight'>57.8</td><td class=''>50.0</td><td class=''>54.5</td></tr><tr><td style='text-align:left;'>火</td><td class='highlight'>59.0</td><td class='highlight'>69.5</td><td class='highlight'>62.6</td><td class='highlight'>62.2</td><td class='highlight'>60.6</td><td class='highlight'>64.6</td><td class='highlight'>62.7</td><td class='highlight'>64.7</td><td class='highlight'>65.4</td><td class='highlight'>65.4</td><td class='highlight'>61.7</td></tr><tr><td style='text-align:left;'>水</td><td class=''>48.7</td><td class=''>46.3</td><td class=''>45.8</td><td class=''>52.3</td><td class=''>47.2</td><td class=''>52.8</td><td class=''>47.3</td><td class=''>49.3</td><td class=''>48.8</td><td class=''>52.2</td><td class=''>46.1</td></tr><tr><td style='text-align:left;'>木</td><td class='highlight'>55.9</td><td class='highlight'>59.6</td><td class='highlight'>57.5</td><td class='highlight'>57.6</td><td class=''>54.9</td><td class='highlight'>58.0</td><td class='highlight'>60.1</td><td class='highlight'>60.5</td><td class='highlight'>58.9</td><td class='highlight'>58.7</td><td class=''>53.5</td></tr><tr><td style='text-align:left;'>金</td><td class=''>50.6</td><td class=''>51.0</td><td class='highlight'>57.4</td><td class='highlight'>55.6</td><td class=''>49.7</td><td class='highlight'>56.6</td><td class='highlight'>58.6</td><td class='highlight'>58.8</td><td class='highlight'>60.1</td><td class='highlight'>58.8</td><td class=''>53.1</td></tr></table>
+
+<h2>3. 価格帯別時間帯分析</h2>
+<p>買値の価格帯ごとに、各セグメントの平均リターンを分析</p>
+<table>
+    <tr><th>価格帯</th><th>seg_0930</th><th>seg_1000</th><th>seg_1030</th><th>seg_1100</th><th>seg_1130</th><th>seg_1300</th><th>seg_1330</th><th>seg_1400</th><th>seg_1430</th><th>seg_1500</th><th>seg_1530</th></tr><tr><td style='text-align:left;'>~1000</td><td class=''>+0.37</td><td class='positive'>+0.55</td><td class='positive'>+0.80</td><td class='positive'>+1.04</td><td class='positive'>+0.83</td><td class='positive'>+1.28</td><td class='positive'>+1.30</td><td class='positive'>+1.48</td><td class='positive'>+1.52</td><td class='positive'>+1.44</td><td class='positive'>+1.15</td></tr><tr><td style='text-align:left;'>1000-2000</td><td class=''>+0.21</td><td class='positive'>+0.96</td><td class='positive'>+1.34</td><td class='positive'>+1.52</td><td class='positive'>+1.27</td><td class='positive'>+1.95</td><td class='positive'>+2.02</td><td class='positive'>+2.05</td><td class='positive'>+2.45</td><td class='positive'>+2.26</td><td class='positive'>+1.79</td></tr><tr><td style='text-align:left;'>2000-3000</td><td class=''>+0.27</td><td class=''>+0.30</td><td class=''>+0.32</td><td class=''>+0.20</td><td class=''>+0.20</td><td class=''>-0.09</td><td class=''>+0.20</td><td class=''>+0.27</td><td class=''>+0.40</td><td class=''>+0.23</td><td class=''>+0.39</td></tr><tr><td style='text-align:left;'>3000-5000</td><td class=''>-0.26</td><td class=''>-0.15</td><td class=''>+0.05</td><td class=''>-0.07</td><td class=''>-0.12</td><td class=''>+0.18</td><td class=''>+0.08</td><td class=''>+0.50</td><td class=''>+0.17</td><td class=''>+0.40</td><td class=''>+0.04</td></tr><tr><td style='text-align:left;'>5000-10000</td><td class=''>-0.10</td><td class='positive'>+0.58</td><td class='positive'>+0.52</td><td class='positive'>+0.65</td><td class=''>+0.39</td><td class='positive'>+0.94</td><td class='positive'>+0.99</td><td class='positive'>+1.04</td><td class='positive'>+0.94</td><td class='positive'>+0.51</td><td class=''>+0.06</td></tr><tr><td style='text-align:left;'>10000~</td><td class='positive'>+0.99</td><td class='positive'>+0.79</td><td class='positive'>+0.77</td><td class='positive'>+0.96</td><td class='positive'>+1.25</td><td class='positive'>+0.88</td><td class='positive'>+1.00</td><td class='positive'>+0.88</td><td class='positive'>+1.20</td><td class='positive'>+1.07</td><td class='positive'>+1.13</td></tr></table>
+
+<h2>4. 早期シグナル分析</h2>
+<p>10:00時点での動きと、その後の推移の関係</p>
+
+<h3>seg_1000で+1%以上のケース (304件)</h3>
+<table>
+    <tr><th>後続セグメント</th><th>件数</th><th>平均リターン%</th><th>勝率%</th></tr>
+<tr><td>seg_1130</td><td>304</td><td class='positive'>+4.41</td><td>92.1</td></tr><tr><td>seg_1300</td><td>289</td><td class='positive'>+4.68</td><td>90.7</td></tr><tr><td>seg_1530</td><td>304</td><td class='positive'>+5.33</td><td>88.8</td></tr></table>
+<h3>seg_1000で-1%以下のケース (190件)</h3>
+<table>
+    <tr><th>後続セグメント</th><th>件数</th><th>平均リターン%</th><th>勝率%</th></tr>
+<tr><td>seg_1130</td><td>190</td><td class='negative'>-3.61</td><td>13.2</td></tr><tr><td>seg_1300</td><td>176</td><td class='negative'>-3.22</td><td>18.8</td></tr><tr><td>seg_1530</td><td>190</td><td class='negative'>-3.38</td><td>16.8</td></tr></table>
+<h2>5. 最適利確タイミング分析</h2>
+<p>各銘柄で最大リターンを記録したセグメントの分布</p>
+<table>
+    <tr><th>セグメント</th><th>件数</th><th>割合%</th></tr>
+<tr class='highlight'><td>seg_0930</td><td>161</td><td>17.9</td></tr><tr class='highlight'><td>seg_1530</td><td>158</td><td>17.5</td></tr><tr class=''><td>seg_1130</td><td>132</td><td>14.7</td></tr><tr class=''><td>seg_1000</td><td>72</td><td>8.0</td></tr><tr class=''><td>seg_1300</td><td>70</td><td>7.8</td></tr><tr class=''><td>seg_1030</td><td>68</td><td>7.5</td></tr><tr class=''><td>seg_1430</td><td>57</td><td>6.3</td></tr><tr class=''><td>seg_1400</td><td>53</td><td>5.9</td></tr><tr class=''><td>seg_1500</td><td>47</td><td>5.2</td></tr><tr class=''><td>seg_1330</td><td>45</td><td>5.0</td></tr><tr class=''><td>seg_1100</td><td>38</td><td>4.2</td></tr></table>
+
+<h2>6. 発見事項・示唆</h2>
+<div class="insight">
+<ul><li>最高勝率セグメント: <b>seg_1430</b> (勝率 58.7%)</li><li>最大リターン最頻出セグメント: <b>seg_0930</b> (17.9%)</li><li>月曜日のseg_1000は勝率 <b>62.2%</b></li><li>火曜日のseg_1000は勝率 <b>69.5%</b></li><li>木曜日のseg_1400は勝率 <b>60.5%</b></li><li>金曜日のseg_1430は勝率 <b>60.1%</b></li><li>10:00時点+1%以上 → 15:30勝率 <b>88.8%</b> (継続傾向)</li></ul>
+</div>
+
+<div class="warning">
+    <b>注意:</b> サンプルサイズが限られているため、統計的有意性は限定的です。傾向の参考としてご利用ください。
+</div>
+
+</body>
+</html>

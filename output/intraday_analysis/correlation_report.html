@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日経/TOPIX 相関分析</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #333;
+            --accent-color: #3b82f6;
+            --positive-color: #22c55e;
+            --negative-color: #ef4444;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--text-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        .section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .positive { color: var(--positive-color); }
+        .negative { color: var(--negative-color); }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .summary-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .summary-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>日経/TOPIX 相関分析</h1>
+        <p class="subtitle">Generated: 2026-01-09 01:32:07</p>
+        
+        <section class="section">
+            <h2>サマリー</h2>
+            <div class="content">
+                
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">分析銘柄数</div>
+            <div class="value">23</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均日経相関</div>
+            <div class="value">0.069</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均β(日経)</div>
+            <div class="value">0.32</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">β>1 銘柄数</div>
+            <div class="value">0</div>
+        </div>
+    </div>
+    
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄別 市場相関</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="d1e5474d-27a2-41e5-9385-23ff3aec7fd1" class="plotly-graph-div" style="height:400px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("d1e5474d-27a2-41e5-9385-23ff3aec7fd1")) {                    Plotly.newPlot(                        "d1e5474d-27a2-41e5-9385-23ff3aec7fd1",                        [{"marker":{"color":"#3b82f6"},"name":"日経相関","x":["218A.T","6330.T","5304.T","9338.T","4588.T","4575.T","7409.T","6629.T","5724.T","6232.T","4814.T","4082.T","4199.T","281A.T","6433.T","7078.T","3444.T","4570.T","7523.T","3656.T"],"y":{"dtype":"f8","bdata":"TF6GiY7lxT8\u002f8g0U9\u002f7DPysTHMrc5cM\u002frqNewi9zwz8rQDAYNmHBP63w+jjvMLw\u002fydfcuw7wtz84cB4Jn4a2P9BOAXU5jrQ\u002fjZYtJR6+sD\u002fK4zOUgnGwP+7UfWtDUq8\u002fJNm1LaFLrz8tqqfpI0irP4VfQPsV8ac\u002fuCsqdUCepD8OzyHDSdGfP2OtSlt4apA\u002friwdjMp4iD87JL6iCCaEPw=="},"type":"bar"},{"marker":{"color":"#f97316"},"name":"TOPIX相関","x":["218A.T","6330.T","5304.T","9338.T","4588.T","4575.T","7409.T","6629.T","5724.T","6232.T","4814.T","4082.T","4199.T","281A.T","6433.T","7078.T","3444.T","4570.T","7523.T","3656.T"],"y":{"dtype":"f8","bdata":"ViAlL0\u002fyzj\u002fdfPv5mdXOP6PXaDdHMcQ\u002fYQlR4RfXyz8XB8fp\u002fp7AP2MjG1H1lcg\u002fL1NvP6eWxD9FvIRRmtmsP\u002fvBNDYjMrk\u002fiX7oAr3WxD90LK9sjnCuP6ZraAkv67I\u002fnnrn0NNcsj9ujKWFmC+6P41z2qvKILY\u002f0tDTagtbsD9J6gi2JVioP9RnA1RnNaI\u002ffyjx5iynqL\u002fD2VtIR223Pw=="},"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"title":{"text":"銘柄別 市場相関（上位20）"},"barmode":"group","paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":400},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>β値分布</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="d8ef725c-7f0a-4ca9-a13f-88cc890c006a" class="plotly-graph-div" style="height:500px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("d8ef725c-7f0a-4ca9-a13f-88cc890c006a")) {                    Plotly.newPlot(                        "d8ef725c-7f0a-4ca9-a13f-88cc890c006a",                        [{"hovertemplate":"\u003cb\u003e%{text}\u003c\u002fb\u003e\u003cbr\u003eβ(日経): %{x:.2f}\u003cbr\u003eβ(TOPIX): %{y:.2f}\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":{"dtype":"f8","bdata":"gisXrnP3nT90rw48X0JnP75xQLbXok8\u002f+Arl\u002f29fGT\u002f6vFgaNqhuP1ltQgc7m24\u002fqFPYNLXXMD+LcV547dWIP9C0ApTh4JI\u002fMNL+cCrmcD8q0QKs0r6YP0JxLuF\u002faHo\u002fk\u002fOGVg+FcT9rVUXDaf2YP2kcVOyn6WE\u002ftDcZB6K2fz\u002fZ9QyXAKBDPzunVt1qlQI\u002f1xr3Xr6RWj+HLxYLHuiBPyupSMb3tiI\u002flk0SCqvPtT5TZLmszqSXPw=="},"colorbar":{"title":{"text":"R²"}},"colorscale":[[0.0,"rgb(247,251,255)"],[0.125,"rgb(222,235,247)"],[0.25,"rgb(198,219,239)"],[0.375,"rgb(158,202,225)"],[0.5,"rgb(107,174,214)"],[0.625,"rgb(66,146,198)"],[0.75,"rgb(33,113,181)"],[0.875,"rgb(8,81,156)"],[1.0,"rgb(8,48,107)"]],"showscale":true,"size":10},"mode":"markers+text","text":["218A.T","281A.T","3444.T","3656.T","4082.T","4199.T","4570.T","4575.T","4588.T","4814.T","5304.T","5724.T","6232.T","6330.T","6433.T","6629.T","6977.T","6993.T","7078.T","7409.T","7523.T","8918.T","9338.T"],"textfont":{"size":8},"textposition":"top center","x":{"dtype":"f8","bdata":"iskZAgtL6j9plM21wTHUP3wL4ZGeAMg\u002fYvXpRIZzqj8iOcX1WuTjP4ZPoQ\u002fPgdA\u002fKu+nqvfqwz+AmBJFFGDQP9\u002fiK1UgYOU\u002frL0rRmkv0j9LOxo+r6bHP\u002f6BTa+SUeA\u002f9uRQITaa0z8qDJr+mnHqP+Ig04KnMd0\u002fcSwI1CIf3z\u002fP3eolyWawv+OfgbriV7E\u002fXxm5m\u002fSvtz+ZUsQPFw3dP4Y+rEyb+58\u002fro\u002femhgco7\u002fQkLFfPuvUPw=="},"y":{"dtype":"f8","bdata":"8rHYo08N+D+cguXxexfpPxNd\u002fPT\u002fxdc\u002fu5NfTAjo4z\u002fGEbPShBvvP6LEHpF3E9k\u002fu0\u002fVt3+Z3D9WQwCiq3ziP+Jq6puCduo\u002fC3pe8AvK1T8vkJtW5RHPP+Cw4Qa35Ok\u002fzDpHsHCV7z\u002fTz33+qGT6P5JYUaDrdvE\u002fp9jHvonM2T+5pBZfE6LDP56v3HzpGOA\u002fgxF4JQFTyD9eGMvUMCzwP5vyorO12sS\u002fi7sI\u002fEOc77+Ri8M7dGHjPw=="},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"shapes":[{"line":{"color":"gray","dash":"dash"},"type":"line","x0":0,"x1":2,"y0":0,"y1":2}],"title":{"text":"β値分布（日経 vs TOPIX）"},"xaxis":{"title":{"text":"β (日経平均)"}},"yaxis":{"title":{"text":"β (TOPIX)"}},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":500},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>時間帯別 相関変化</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="39ae4f41-b727-4a1d-a93a-399099362ffd" class="plotly-graph-div" style="height:400px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("39ae4f41-b727-4a1d-a93a-399099362ffd")) {                    Plotly.newPlot(                        "39ae4f41-b727-4a1d-a93a-399099362ffd",                        [{"line":{"color":"#3b82f6","width":2},"marker":{"size":8},"mode":"lines+markers","name":"日経相関","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","11:30-12:00","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"8nRmqnhhoz+CuJTyR5mZP9FZg1qS1LA\u002f\u002fHjjZzmXkz9HS0b1X06YP2tYVlei5pY\u002fkeq8m82Csz9V2Ul47mabPyvJWNKwBZ8\u002fPrz6Pfs9pD9JQlzGje+jP2YtDa1GoF6\u002f"},"type":"scatter"},{"line":{"color":"#f97316","width":2},"marker":{"size":8},"mode":"lines+markers","name":"TOPIX相関","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","11:30-12:00","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"GhqMzCU6sz86G3kKYDObP0v7aqW6irE\u002fMuxH91l0lT\u002f0BQEV5tKZPwmWB6ONlXC\u002fAtne3sHRsj\u002fx6xl99R2TP1T4nfwozqU\u002fyQA2KEKxnT8lNFnz42KfP6QIXJTs0oI\u002f"},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.94],"title":{"text":"時間帯"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"相関係数"}},"yaxis2":{"anchor":"x","overlaying":"y","side":"right"},"shapes":[{"line":{"color":"gray","dash":"dash"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0.5,"y1":0.5,"yref":"y"}],"annotations":[{"showarrow":false,"text":"相関0.5","x":1,"xanchor":"left","xref":"x domain","y":0.5,"yanchor":"middle","yref":"y"}],"legend":{"x":0.02,"y":0.98},"title":{"text":"時間帯別 市場相関の変化"},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":400},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄詳細（β値順）</h2>
+            <div class="content">
+                
+    <table>
+        <thead>
+            <tr>
+                <th>ティッカー</th>
+                <th>銘柄名</th>
+                <th>業種</th>
+                <th>日経相関</th>
+                <th>TOPIX相関</th>
+                <th>β(日経)</th>
+                <th>β(TOPIX)</th>
+                <th>R²</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        <tr>
+            <td>6330.T</td>
+            <td>東洋エンジニアリング</td>
+            <td>建設業</td>
+            <td class="">0.156</td>
+            <td>0.241</td>
+            <td class="">0.83</td>
+            <td>1.65</td>
+            <td>0.024</td>
+        </tr>
+        
+        <tr>
+            <td>218A.T</td>
+            <td>Ｌｉｂｅｒａｗａｒｅ</td>
+            <td>精密機器</td>
+            <td class="">0.171</td>
+            <td>0.242</td>
+            <td class="">0.82</td>
+            <td>1.50</td>
+            <td>0.029</td>
+        </tr>
+        
+        <tr>
+            <td>4588.T</td>
+            <td>オンコリスバイオファーマ</td>
+            <td>医薬品</td>
+            <td class="">0.136</td>
+            <td>0.130</td>
+            <td class="">0.67</td>
+            <td>0.83</td>
+            <td>0.018</td>
+        </tr>
+        
+        <tr>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td>化学</td>
+            <td class="">0.061</td>
+            <td>0.074</td>
+            <td class="">0.62</td>
+            <td>0.97</td>
+            <td>0.004</td>
+        </tr>
+        
+        <tr>
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td>非鉄金属</td>
+            <td class="">0.080</td>
+            <td>0.098</td>
+            <td class="">0.51</td>
+            <td>0.81</td>
+            <td>0.006</td>
+        </tr>
+        
+        <tr>
+            <td>6629.T</td>
+            <td>テクノホライゾン</td>
+            <td>電気機器</td>
+            <td class="">0.088</td>
+            <td>0.056</td>
+            <td class="negative">0.49</td>
+            <td>0.40</td>
+            <td>0.008</td>
+        </tr>
+        
+        <tr>
+            <td>6433.T</td>
+            <td>ヒーハイスト</td>
+            <td>機械</td>
+            <td class="">0.047</td>
+            <td>0.086</td>
+            <td class="negative">0.46</td>
+            <td>1.09</td>
+            <td>0.002</td>
+        </tr>
+        
+        <tr>
+            <td>7409.T</td>
+            <td>ＡｅｒｏＥｄｇｅ</td>
+            <td>輸送用機器</td>
+            <td class="">0.094</td>
+            <td>0.161</td>
+            <td class="negative">0.45</td>
+            <td>1.01</td>
+            <td>0.009</td>
+        </tr>
+        
+        <tr>
+            <td>9338.T</td>
+            <td>ＩＮＦＯＲＩＣＨ</td>
+            <td>サービス業</td>
+            <td class="">0.152</td>
+            <td>0.218</td>
+            <td class="negative">0.33</td>
+            <td>0.61</td>
+            <td>0.023</td>
+        </tr>
+        
+        <tr>
+            <td>281A.T</td>
+            <td>インフォメティス</td>
+            <td>情報･通信業</td>
+            <td class="">0.053</td>
+            <td>0.102</td>
+            <td class="negative">0.32</td>
+            <td>0.78</td>
+            <td>0.003</td>
+        </tr>
+        
+        <tr>
+            <td>6232.T</td>
+            <td>ＡＣＳＬ</td>
+            <td>機械</td>
+            <td class="">0.065</td>
+            <td>0.163</td>
+            <td class="negative">0.31</td>
+            <td>0.99</td>
+            <td>0.004</td>
+        </tr>
+        
+        <tr>
+            <td>4814.T</td>
+            <td>ネクストウェア</td>
+            <td>情報･通信業</td>
+            <td class="">0.064</td>
+            <td>0.059</td>
+            <td class="negative">0.28</td>
+            <td>0.34</td>
+            <td>0.004</td>
+        </tr>
+        
+        <tr>
+            <td>4199.T</td>
+            <td>ワンダープラネット</td>
+            <td>情報･通信業</td>
+            <td class="">0.061</td>
+            <td>0.072</td>
+            <td class="negative">0.26</td>
+            <td>0.39</td>
+            <td>0.004</td>
+        </tr>
+        
+        <tr>
+            <td>4575.T</td>
+            <td>キャンバス</td>
+            <td>医薬品</td>
+            <td class="">0.110</td>
+            <td>0.192</td>
+            <td class="negative">0.26</td>
+            <td>0.58</td>
+            <td>0.012</td>
+        </tr>
+        
+        <tr>
+            <td>3444.T</td>
+            <td>菊池製作所</td>
+            <td>金属製品</td>
+            <td class="">0.031</td>
+            <td>0.048</td>
+            <td class="negative">0.19</td>
+            <td>0.37</td>
+            <td>0.001</td>
+        </tr>
+        
+        <tr>
+            <td>5304.T</td>
+            <td>ＳＥＣカーボン</td>
+            <td>ガラス･土石製品</td>
+            <td class="">0.155</td>
+            <td>0.158</td>
+            <td class="negative">0.18</td>
+            <td>0.24</td>
+            <td>0.024</td>
+        </tr>
+        
+        <tr>
+            <td>4570.T</td>
+            <td>免疫生物研究所</td>
+            <td>医薬品</td>
+            <td class="">0.016</td>
+            <td>0.036</td>
+            <td class="negative">0.16</td>
+            <td>0.45</td>
+            <td>0.000</td>
+        </tr>
+        
+        <tr>
+            <td>7078.T</td>
+            <td>ＩＮＣＬＵＳＩＶＥ　Ｈｏｌｄｉｎｇｓ</td>
+            <td>サービス業</td>
+            <td class="">0.040</td>
+            <td>0.064</td>
+            <td class="negative">0.09</td>
+            <td>0.19</td>
+            <td>0.002</td>
+        </tr>
+        
+        <tr>
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス</td>
+            <td>小売業</td>
+            <td class="">0.006</td>
+            <td>0.034</td>
+            <td class="negative">0.07</td>
+            <td>0.50</td>
+            <td>0.000</td>
+        </tr>
+        
+        <tr>
+            <td>3656.T</td>
+            <td>ＫＬａｂ</td>
+            <td>情報･通信業</td>
+            <td class="">0.010</td>
+            <td>0.092</td>
+            <td class="negative">0.05</td>
+            <td>0.62</td>
+            <td>0.000</td>
+        </tr>
+        
+        <tr>
+            <td>7523.T</td>
+            <td>アールビバン</td>
+            <td>小売業</td>
+            <td class="">0.012</td>
+            <td>-0.048</td>
+            <td class="negative">0.03</td>
+            <td>-0.16</td>
+            <td>0.000</td>
+        </tr>
+        
+        <tr>
+            <td>8918.T</td>
+            <td>ランド</td>
+            <td>不動産業</td>
+            <td class="">-0.001</td>
+            <td>-0.023</td>
+            <td class="negative">-0.04</td>
+            <td>-0.99</td>
+            <td>0.000</td>
+        </tr>
+        
+        <tr>
+            <td>6977.T</td>
+            <td>日本抵抗器製作所</td>
+            <td>電気機器</td>
+            <td class="">-0.024</td>
+            <td>0.045</td>
+            <td class="negative">-0.06</td>
+            <td>0.15</td>
+            <td>0.001</td>
+        </tr>
+        
+        </tbody>
+    </table>
+    
+            </div>
+        </section>
+        
+    </div>
+</body>
+</html>

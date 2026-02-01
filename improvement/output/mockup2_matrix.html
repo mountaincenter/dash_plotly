@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>案2: マトリクス表示</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0f',
+                foreground: '#fafafa',
+                card: '#18181b',
+                'card-foreground': '#fafafa',
+                muted: '#27272a',
+                'muted-foreground': '#a1a1aa',
+                border: '#27272a',
+            }
+        }
+    }
+}
+</script>
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.tab-active { background: rgba(39, 39, 42, 0.8); border-bottom: 2px solid #fafafa; }
+.tab-inactive { background: transparent; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { background: rgba(39, 39, 42, 0.4); }
+details summary { cursor: pointer; }
+details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+    <main class="relative min-h-screen">
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 py-4">
+
+            <header class="mb-4 pb-3 border-b border-border/30">
+                <h1 class="text-xl font-bold text-foreground">案2: マトリクス表示</h1>
+                <p class="text-muted-foreground text-sm">1行に全セグメントのP&Lを横並び表示。一覧性重視。</p>
+            </header>
+
+            <div class="grid grid-cols-1 gap-6">
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground">85件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30">
+                                    <th class="text-left px-2 py-2 font-medium">価格帯</th>
+                                    <th class="text-center px-3 py-2 font-medium text-sky-400" colspan="2">RSIのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-amber-400" colspan="2">ATRのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-purple-400" colspan="2">両方</th>
+                                    <th class="text-center px-3 py-2 font-medium text-emerald-400" colspan="2">除外後</th>
+                                </tr>
+                                <tr class="text-muted-foreground text-xs border-b border-border/20">
+                                    <th></th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">7</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+8,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">5</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+6,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">27</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-50,600</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">4</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+2,150</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+65,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">21</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+59,750</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">5</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-13,500</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+30,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">7</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+98,000</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-45,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-27,500</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="font-semibold text-lg text-foreground">火曜日</span>
+                        <span class="text-muted-foreground">133件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30">
+                                    <th class="text-left px-2 py-2 font-medium">価格帯</th>
+                                    <th class="text-center px-3 py-2 font-medium text-sky-400" colspan="2">RSIのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-amber-400" colspan="2">ATRのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-purple-400" colspan="2">両方</th>
+                                    <th class="text-center px-3 py-2 font-medium text-emerald-400" colspan="2">除外後</th>
+                                </tr>
+                                <tr class="text-muted-foreground text-xs border-b border-border/20">
+                                    <th></th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">7</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-7,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">13</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+24,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">48</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+22,500</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">4</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">10</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+89,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-10,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">28</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+112,350</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+12,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">11</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+49,600</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+5,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-35,800</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+37,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+283,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-19,000</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="font-semibold text-lg text-foreground">水曜日</span>
+                        <span class="text-muted-foreground">131件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30">
+                                    <th class="text-left px-2 py-2 font-medium">価格帯</th>
+                                    <th class="text-center px-3 py-2 font-medium text-sky-400" colspan="2">RSIのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-amber-400" colspan="2">ATRのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-purple-400" colspan="2">両方</th>
+                                    <th class="text-center px-3 py-2 font-medium text-emerald-400" colspan="2">除外後</th>
+                                </tr>
+                                <tr class="text-muted-foreground text-xs border-b border-border/20">
+                                    <th></th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">13</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">9</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+7,100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">42</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-17,200</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">9</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-94,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">5</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-3,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">39</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+28,100</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">5</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+9,500</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">4</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-87,000</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+15,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="font-semibold text-lg text-foreground">木曜日</span>
+                        <span class="text-muted-foreground">165件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30">
+                                    <th class="text-left px-2 py-2 font-medium">価格帯</th>
+                                    <th class="text-center px-3 py-2 font-medium text-sky-400" colspan="2">RSIのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-amber-400" colspan="2">ATRのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-purple-400" colspan="2">両方</th>
+                                    <th class="text-center px-3 py-2 font-medium text-emerald-400" colspan="2">除外後</th>
+                                </tr>
+                                <tr class="text-muted-foreground text-xs border-b border-border/20">
+                                    <th></th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">7</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+3,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">11</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+11,583</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+4,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">49</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+11,229</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">13</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-74,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">12</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+145,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+21,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">46</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-29,550</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-18,400</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">11</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+80,800</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">4</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-236,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+11,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-10,000</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+23,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+61,500</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="font-semibold text-lg text-foreground">金曜日</span>
+                        <span class="text-muted-foreground">121件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30">
+                                    <th class="text-left px-2 py-2 font-medium">価格帯</th>
+                                    <th class="text-center px-3 py-2 font-medium text-sky-400" colspan="2">RSIのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-amber-400" colspan="2">ATRのみ</th>
+                                    <th class="text-center px-3 py-2 font-medium text-purple-400" colspan="2">両方</th>
+                                    <th class="text-center px-3 py-2 font-medium text-emerald-400" colspan="2">除外後</th>
+                                </tr>
+                                <tr class="text-muted-foreground text-xs border-b border-border/20">
+                                    <th></th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                    <th class="text-right px-2 py-1">件</th>
+                                    <th class="text-right px-2 py-1">大引</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">8</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+19,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">15</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+7,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">36</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+8,200</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">13</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-21,550</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">8</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+88,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+31,100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">18</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+119,700</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+5,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+116,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">5</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+20,500</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+13,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+27,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">3</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+15,400</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2 whitespace-nowrap">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-sky-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-130,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-amber-400/70">2</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+107,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-purple-400/70">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400/70">1</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">-24,500</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

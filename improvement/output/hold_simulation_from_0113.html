@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1/13以降ロングホールド シミュレーション</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; padding: 24px; line-height: 1.5; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.subtitle { color: #7d8590; font-size: 12px; margin-bottom: 24px; }
+
+.summary { background: linear-gradient(135deg, #1a3a2a 0%, #0d1117 100%); border: 2px solid #238636; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.summary-item { text-align: center; padding: 16px; background: #21262d; border-radius: 8px; }
+.summary-value { font-size: 28px; font-weight: 700; }
+.summary-value.pos { color: #3fb950; }
+.summary-value.neg { color: #f85149; }
+.summary-label { font-size: 12px; color: #7d8590; margin-top: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+th { text-align: left; padding: 12px; background: #21262d; border-bottom: 1px solid #30363d; color: #7d8590; font-weight: 500; }
+th.r { text-align: right; }
+td { padding: 12px; border-bottom: 1px solid #21262d; }
+td.r { text-align: right; font-variant-numeric: tabular-nums; }
+tr:hover { background: #1c2128; }
+.pos { color: #3fb950; }
+.neg { color: #f85149; }
+.ticker { font-weight: 600; }
+.stock-name { font-size: 11px; color: #7d8590; }
+.chip { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; background: #30363d; color: #7d8590; }
+.generated { font-size: 11px; color: #7d8590; margin-top: 24px; padding-top: 16px; border-top: 1px solid #30363d; }
+</style>
+</head><body>
+<div class="container">
+<h1>📈 1/13以降ロングホールド シミュレーション</h1>
+<p class="subtitle">backtest_date の寄付でロング → 現在までホールドした場合の含み損益</p>
+
+<div class="summary">
+<div class="summary-grid">
+<div class="summary-item">
+    <div class="summary-value">60</div>
+    <div class="summary-label">エントリー数</div>
+</div>
+<div class="summary-item">
+    <div class="summary-value pos">+1,376,450円</div>
+    <div class="summary-label">含み益合計 (100株)</div>
+</div>
+<div class="summary-item">
+    <div class="summary-value pos">77%</div>
+    <div class="summary-label">勝率</div>
+</div>
+<div class="summary-item">
+    <div class="summary-value pos">46</div>
+    <div class="summary-label">含み益銘柄</div>
+</div>
+</div>
+</div>
+
+<table>
+<tr>
+<th>エントリー日</th>
+<th>銘柄</th>
+<th>カテゴリ</th>
+<th class="r">RSI</th>
+<th class="r">買値</th>
+<th class="r">現在値</th>
+<th class="r">損益(100株)</th>
+<th class="r">騰落率</th>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6330.T</span><br><span class="stock-name">東洋エンジニアリング</span></td>
+<td><span class="chip">プレミアム+テーマ連動+株クラバズ</span></td>
+<td class="r">93</td>
+<td class="r">5,370円</td>
+<td class="r">7,370円</td>
+<td class="r pos">+200,000円</td>
+<td class="r pos">+37.2%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">7711.T</span><br><span class="stock-name">助川電気工業</span></td>
+<td><span class="chip">プレミアム複数</span></td>
+<td class="r">78</td>
+<td class="r">7,700円</td>
+<td class="r">9,000円</td>
+<td class="r pos">+130,000円</td>
+<td class="r pos">+16.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">4082.T</span><br><span class="stock-name">第一稀元素化学工業</span></td>
+<td><span class="chip">テーマ連動+大バズ</span></td>
+<td class="r">94</td>
+<td class="r">2,021円</td>
+<td class="r">3,130円</td>
+<td class="r pos">+110,900円</td>
+<td class="r pos">+54.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">6330.T</span><br><span class="stock-name">東洋エンジニアリング</span></td>
+<td><span class="chip">プレミアム+ストップ高+レアアース関連</span></td>
+<td class="r">96</td>
+<td class="r">6,290円</td>
+<td class="r">7,370円</td>
+<td class="r pos">+108,000円</td>
+<td class="r pos">+17.2%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">5243.T</span><br><span class="stock-name">ｎｏｔｅ</span></td>
+<td><span class="chip">IR好材料+大バズ</span></td>
+<td class="r">75</td>
+<td class="r">1,809円</td>
+<td class="r">2,775円</td>
+<td class="r pos">+96,600円</td>
+<td class="r pos">+53.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6227.T</span><br><span class="stock-name">ＡＩメカテック</span></td>
+<td><span class="chip">ニュース材料+ボラ高</span></td>
+<td class="r">89</td>
+<td class="r">6,050円</td>
+<td class="r">6,950円</td>
+<td class="r pos">+90,000円</td>
+<td class="r pos">+14.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">5724.T</span><br><span class="stock-name">アサカ理研</span></td>
+<td><span class="chip">ニュース材料+ボラ高</span></td>
+<td class="r">90</td>
+<td class="r">3,980円</td>
+<td class="r">4,795円</td>
+<td class="r pos">+81,500円</td>
+<td class="r pos">+20.5%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">5243.T</span><br><span class="stock-name">ｎｏｔｅ</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">82</td>
+<td class="r">2,200円</td>
+<td class="r">2,775円</td>
+<td class="r pos">+57,500円</td>
+<td class="r pos">+26.1%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">4082.T</span><br><span class="stock-name">第一稀元素化学工業</span></td>
+<td><span class="chip">プレミアム+テーマ連動+株クラバズ</span></td>
+<td class="r">96</td>
+<td class="r">2,630円</td>
+<td class="r">3,130円</td>
+<td class="r pos">+50,000円</td>
+<td class="r pos">+19.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6315.T</span><br><span class="stock-name">ＴＯＷＡ</span></td>
+<td><span class="chip">IR好材料+大バズ</span></td>
+<td class="r">89</td>
+<td class="r">2,452円</td>
+<td class="r">2,905円</td>
+<td class="r pos">+45,300円</td>
+<td class="r pos">+18.5%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">5707.T</span><br><span class="stock-name">東邦亜鉛</span></td>
+<td><span class="chip">プレミアム+株クラバズ</span></td>
+<td class="r">81</td>
+<td class="r">1,629円</td>
+<td class="r">2,059円</td>
+<td class="r pos">+43,000円</td>
+<td class="r pos">+26.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">7746.T</span><br><span class="stock-name">岡本硝子</span></td>
+<td><span class="chip">プレミアム+IR好材料+株クラバズ</span></td>
+<td class="r">86</td>
+<td class="r">601円</td>
+<td class="r">1,001円</td>
+<td class="r pos">+40,000円</td>
+<td class="r pos">+66.6%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">5243.T</span><br><span class="stock-name">ｎｏｔｅ</span></td>
+<td><span class="chip">決算好材料+ストップ高</span></td>
+<td class="r">89</td>
+<td class="r">2,425円</td>
+<td class="r">2,775円</td>
+<td class="r pos">+35,000円</td>
+<td class="r pos">+14.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">4062.T</span><br><span class="stock-name">イビデン</span></td>
+<td><span class="chip">テーマ連動+株クラバズ</span></td>
+<td class="r">75</td>
+<td class="r">7,150円</td>
+<td class="r">7,482円</td>
+<td class="r pos">+33,200円</td>
+<td class="r pos">+4.6%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">9227.T</span><br><span class="stock-name">マイクロ波化学</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">87</td>
+<td class="r">1,019円</td>
+<td class="r">1,350円</td>
+<td class="r pos">+33,100円</td>
+<td class="r pos">+32.5%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">4440.T</span><br><span class="stock-name">ヴィッツ</span></td>
+<td><span class="chip">株クラバズ+出来高急増</span></td>
+<td class="r">87</td>
+<td class="r">1,190円</td>
+<td class="r">1,520円</td>
+<td class="r pos">+33,000円</td>
+<td class="r pos">+27.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">7014.T</span><br><span class="stock-name">名村造船所</span></td>
+<td><span class="chip">プレミアム+ニュース材料+株クラバズ</span></td>
+<td class="r">80</td>
+<td class="r">4,395円</td>
+<td class="r">4,665円</td>
+<td class="r pos">+27,000円</td>
+<td class="r pos">+6.1%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">6167.T</span><br><span class="stock-name">冨士ダイス</span></td>
+<td><span class="chip">IR好材料+ストップ高</span></td>
+<td class="r">98</td>
+<td class="r">1,109円</td>
+<td class="r">1,340円</td>
+<td class="r pos">+23,100円</td>
+<td class="r pos">+20.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">9227.T</span><br><span class="stock-name">マイクロ波化学</span></td>
+<td><span class="chip">プレミアム+株クラバズ</span></td>
+<td class="r">93</td>
+<td class="r">1,128円</td>
+<td class="r">1,350円</td>
+<td class="r pos">+22,200円</td>
+<td class="r pos">+19.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">5726.T</span><br><span class="stock-name">大阪チタニウムテクノロジーズ</span></td>
+<td><span class="chip">IR材料+株クラバズ</span></td>
+<td class="r">85</td>
+<td class="r">2,300円</td>
+<td class="r">2,503円</td>
+<td class="r pos">+20,300円</td>
+<td class="r pos">+8.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">3922.T</span><br><span class="stock-name">ＰＲ　ＴＩＭＥＳ</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">54</td>
+<td class="r">2,745円</td>
+<td class="r">2,873円</td>
+<td class="r pos">+12,800円</td>
+<td class="r pos">+4.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">9227.T</span><br><span class="stock-name">マイクロ波化学</span></td>
+<td><span class="chip">株クラバズ+ストップ高</span></td>
+<td class="r">94</td>
+<td class="r">1,230円</td>
+<td class="r">1,350円</td>
+<td class="r pos">+12,000円</td>
+<td class="r pos">+9.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">5698.T</span><br><span class="stock-name">エンビプロ・ホールディングス</span></td>
+<td><span class="chip">株クラバズ</span></td>
+<td class="r">93</td>
+<td class="r">865円</td>
+<td class="r">984円</td>
+<td class="r pos">+11,900円</td>
+<td class="r pos">+13.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">2323.T</span><br><span class="stock-name">ｆｏｎｆｕｎ</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">79</td>
+<td class="r">1,079円</td>
+<td class="r">1,198円</td>
+<td class="r pos">+11,900円</td>
+<td class="r pos">+11.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">3856.T</span><br><span class="stock-name">Ａｂａｌａｎｃｅ</span></td>
+<td><span class="chip">プレミアム</span></td>
+<td class="r">61</td>
+<td class="r">536円</td>
+<td class="r">636円</td>
+<td class="r pos">+10,000円</td>
+<td class="r pos">+18.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">5707.T</span><br><span class="stock-name">東邦亜鉛</span></td>
+<td><span class="chip">株クラバズ+ストップ高+レアメタル</span></td>
+<td class="r">84</td>
+<td class="r">1,964円</td>
+<td class="r">2,059円</td>
+<td class="r pos">+9,500円</td>
+<td class="r pos">+4.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">5253.T</span><br><span class="stock-name">カバー</span></td>
+<td><span class="chip">大バズ+仕手株</span></td>
+<td class="r">73</td>
+<td class="r">1,725円</td>
+<td class="r">1,819円</td>
+<td class="r pos">+9,400円</td>
+<td class="r pos">+5.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">7388.T</span><br><span class="stock-name">ＦＰパートナー</span></td>
+<td><span class="chip">株クラバズ</span></td>
+<td class="r">80</td>
+<td class="r">2,280円</td>
+<td class="r">2,345円</td>
+<td class="r pos">+6,500円</td>
+<td class="r pos">+2.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">7167.T</span><br><span class="stock-name">めぶきフィナンシャルグループ</span></td>
+<td><span class="chip">ニュース材料</span></td>
+<td class="r">68</td>
+<td class="r">1,094円</td>
+<td class="r">1,144円</td>
+<td class="r pos">+5,050円</td>
+<td class="r pos">+4.6%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">5721.T</span><br><span class="stock-name">エス・サイエンス</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">40</td>
+<td class="r">177円</td>
+<td class="r">214円</td>
+<td class="r pos">+3,700円</td>
+<td class="r pos">+20.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">7049.T</span><br><span class="stock-name">識学</span></td>
+<td><span class="chip">株クラバズ+IR</span></td>
+<td class="r">49</td>
+<td class="r">883円</td>
+<td class="r">912円</td>
+<td class="r pos">+2,900円</td>
+<td class="r pos">+3.3%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">4100.T</span><br><span class="stock-name">戸田工業</span></td>
+<td><span class="chip">ストップ高+化学</span></td>
+<td class="r">88</td>
+<td class="r">1,470円</td>
+<td class="r">1,498円</td>
+<td class="r pos">+2,800円</td>
+<td class="r pos">+1.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">7776.T</span><br><span class="stock-name">セルシード</span></td>
+<td><span class="chip">プレミアム+株クラバズ</span></td>
+<td class="r">77</td>
+<td class="r">317円</td>
+<td class="r">345円</td>
+<td class="r pos">+2,800円</td>
+<td class="r pos">+8.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">4833.T</span><br><span class="stock-name">Ｄｅｆ　ｃｏｎｓｕｌｔｉｎｇ</span></td>
+<td><span class="chip">プレミアム+急騰バズ+仕手株</span></td>
+<td class="r">71</td>
+<td class="r">87円</td>
+<td class="r">114円</td>
+<td class="r pos">+2,700円</td>
+<td class="r pos">+31.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6993.T</span><br><span class="stock-name">大黒屋ホールディングス</span></td>
+<td><span class="chip">プレミアム+株クラバズ</span></td>
+<td class="r">72</td>
+<td class="r">119円</td>
+<td class="r">142円</td>
+<td class="r pos">+2,300円</td>
+<td class="r pos">+19.3%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">9823.T</span><br><span class="stock-name">マミーマートホールディングス</span></td>
+<td><span class="chip">IR好材料</span></td>
+<td class="r">20</td>
+<td class="r">1,422円</td>
+<td class="r">1,445円</td>
+<td class="r pos">+2,300円</td>
+<td class="r pos">+1.6%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">3444.T</span><br><span class="stock-name">菊池製作所</span></td>
+<td><span class="chip">株クラバズ</span></td>
+<td class="r">77</td>
+<td class="r">990円</td>
+<td class="r">1,009円</td>
+<td class="r pos">+1,900円</td>
+<td class="r pos">+1.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">1887.T</span><br><span class="stock-name">日本国土開発</span></td>
+<td><span class="chip">ストップ高+決算</span></td>
+<td class="r">97</td>
+<td class="r">615円</td>
+<td class="r">634円</td>
+<td class="r pos">+1,900円</td>
+<td class="r pos">+3.1%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">5589.T</span><br><span class="stock-name">オートサーバー</span></td>
+<td><span class="chip">IR決算説明</span></td>
+<td class="r">87</td>
+<td class="r">2,532円</td>
+<td class="r">2,550円</td>
+<td class="r pos">+1,800円</td>
+<td class="r pos">+0.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6573.T</span><br><span class="stock-name">ＣＲＡＶＩＡ</span></td>
+<td><span class="chip">IR好材料+大バズ</span></td>
+<td class="r">74</td>
+<td class="r">74円</td>
+<td class="r">90円</td>
+<td class="r pos">+1,600円</td>
+<td class="r pos">+21.6%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">1662.T</span><br><span class="stock-name">石油資源開発</span></td>
+<td><span class="chip">株クラバズ+エネルギー関連</span></td>
+<td class="r">83</td>
+<td class="r">2,032円</td>
+<td class="r">2,047円</td>
+<td class="r pos">+1,500円</td>
+<td class="r pos">+0.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">3444.T</span><br><span class="stock-name">菊池製作所</span></td>
+<td><span class="chip">株クラバズ+ボラ高</span></td>
+<td class="r">81</td>
+<td class="r">995円</td>
+<td class="r">1,009円</td>
+<td class="r pos">+1,400円</td>
+<td class="r pos">+1.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">3236.T</span><br><span class="stock-name">プロパスト</span></td>
+<td><span class="chip">プレミアム+株クラバズ</span></td>
+<td class="r">70</td>
+<td class="r">342円</td>
+<td class="r">356円</td>
+<td class="r pos">+1,400円</td>
+<td class="r pos">+4.1%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">4317.T</span><br><span class="stock-name">レイ</span></td>
+<td><span class="chip">プレミアム</span></td>
+<td class="r">76</td>
+<td class="r">689円</td>
+<td class="r">702円</td>
+<td class="r pos">+1,300円</td>
+<td class="r pos">+1.9%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">4920.T</span><br><span class="stock-name">日本色材工業研究所</span></td>
+<td><span class="chip">IR決算</span></td>
+<td class="r">73</td>
+<td class="r">1,211円</td>
+<td class="r">1,213円</td>
+<td class="r pos">+200円</td>
+<td class="r pos">+0.2%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">6731.T</span><br><span class="stock-name">ピクセラ</span></td>
+<td><span class="chip">IR材料+株クラバズ</span></td>
+<td class="r">76</td>
+<td class="r">49円</td>
+<td class="r">50円</td>
+<td class="r pos">+100円</td>
+<td class="r pos">+2.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">3624.T</span><br><span class="stock-name">アクセルマーク</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">50</td>
+<td class="r">83円</td>
+<td class="r">83円</td>
+<td class="r ">+0円</td>
+<td class="r ">+0.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">7746.T</span><br><span class="stock-name">岡本硝子</span></td>
+<td><span class="chip">株クラバズ+ストップ高</span></td>
+<td class="r">93</td>
+<td class="r">1,001円</td>
+<td class="r">1,001円</td>
+<td class="r ">+0円</td>
+<td class="r ">+0.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">4422.T</span><br><span class="stock-name">ＶＡＬＵＥＮＥＸ</span></td>
+<td><span class="chip">プレミアム複数+株クラバズ</span></td>
+<td class="r">83</td>
+<td class="r">1,500円</td>
+<td class="r">1,500円</td>
+<td class="r ">+0円</td>
+<td class="r ">+0.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">6573.T</span><br><span class="stock-name">ＣＲＡＶＩＡ</span></td>
+<td><span class="chip">ストップ高</span></td>
+<td class="r">77</td>
+<td class="r">90円</td>
+<td class="r">90円</td>
+<td class="r ">+0円</td>
+<td class="r ">+0.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">3896.T</span><br><span class="stock-name">阿波製紙</span></td>
+<td><span class="chip">ストップ高</span></td>
+<td class="r">97</td>
+<td class="r">499円</td>
+<td class="r">499円</td>
+<td class="r ">+0円</td>
+<td class="r ">+0.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">2722.T</span><br><span class="stock-name">ＩＫホールディングス</span></td>
+<td><span class="chip">IR好材料</span></td>
+<td class="r">40</td>
+<td class="r">385円</td>
+<td class="r">383円</td>
+<td class="r neg">-200円</td>
+<td class="r neg">-0.5%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">340A.T</span><br><span class="stock-name">ジグザグ</span></td>
+<td><span class="chip">IR好材料</span></td>
+<td class="r">43</td>
+<td class="r">387円</td>
+<td class="r">384円</td>
+<td class="r neg">-300円</td>
+<td class="r neg">-0.8%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">4598.T</span><br><span class="stock-name">Ｄｅｌｔａ−Ｆｌｙ　Ｐｈａｒｍａ</span></td>
+<td><span class="chip">株クラバズ+バイオ</span></td>
+<td class="r">24</td>
+<td class="r">275円</td>
+<td class="r">268円</td>
+<td class="r neg">-700円</td>
+<td class="r neg">-2.5%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">2901.T</span><br><span class="stock-name">ウェルディッシュ</span></td>
+<td><span class="chip">IR決算+増益</span></td>
+<td class="r">45</td>
+<td class="r">421円</td>
+<td class="r">411円</td>
+<td class="r neg">-1,000円</td>
+<td class="r neg">-2.4%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">3350.T</span><br><span class="stock-name">メタプラネット</span></td>
+<td><span class="chip">株クラバズ</span></td>
+<td class="r">71</td>
+<td class="r">630円</td>
+<td class="r">613円</td>
+<td class="r neg">-1,700円</td>
+<td class="r neg">-2.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">3905.T</span><br><span class="stock-name">データセクション</span></td>
+<td><span class="chip">IR好材料+株クラバズ</span></td>
+<td class="r">72</td>
+<td class="r">2,305円</td>
+<td class="r">2,283円</td>
+<td class="r neg">-2,200円</td>
+<td class="r neg">-1.0%</td>
+</tr>
+
+<tr>
+<td>2026-01-15</td>
+<td><span class="ticker">3547.T</span><br><span class="stock-name">串カツ田中ホールディングス</span></td>
+<td><span class="chip">IR決算+好材料</span></td>
+<td class="r">45</td>
+<td class="r">1,973円</td>
+<td class="r">1,949円</td>
+<td class="r neg">-2,400円</td>
+<td class="r neg">-1.2%</td>
+</tr>
+
+<tr>
+<td>2026-01-13</td>
+<td><span class="ticker">5721.T</span><br><span class="stock-name">エス・サイエンス</span></td>
+<td><span class="chip">プレミアム+急騰+ニュース材料</span></td>
+<td class="r">56</td>
+<td class="r">248円</td>
+<td class="r">214円</td>
+<td class="r neg">-3,400円</td>
+<td class="r neg">-13.7%</td>
+</tr>
+
+<tr>
+<td>2026-01-14</td>
+<td><span class="ticker">369A.T</span><br><span class="stock-name">エータイ</span></td>
+<td><span class="chip">IR好材料</span></td>
+<td class="r">51</td>
+<td class="r">3,300円</td>
+<td class="r">3,170円</td>
+<td class="r neg">-13,000円</td>
+<td class="r neg">-3.9%</td>
+</tr>
+
+</table>
+<p class="generated">Generated at 2026-01-15 20:14:23 | 現在値取得時刻は各銘柄で異なる場合があります</p>
+</div>
+</body></html>

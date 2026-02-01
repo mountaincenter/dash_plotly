@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>grok銘柄バックテスト分析</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #333;
+            --accent-color: #3b82f6;
+            --positive-color: #22c55e;
+            --negative-color: #ef4444;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--text-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        .section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .positive { color: var(--positive-color); }
+        .negative { color: var(--negative-color); }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .summary-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .summary-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>grok銘柄バックテスト分析</h1>
+        <p class="subtitle">Generated: 2026-01-09 10:39:50</p>
+        
+        <section class="section">
+            <h2>【60日間】サマリー</h2>
+            <div class="content">
+                
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">分析日数（銘柄×日）</div>
+            <div class="value">22,349</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">ロング型（前安→後高）</div>
+            <div class="value positive">25.8%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">ショート型（前高→後安）</div>
+            <div class="value negative">33.8%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">寄付き安値率</div>
+            <div class="value">40.7%</div>
+        </div>
+    </div>
+    
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>【60日間】時間帯別 高値・安値出現率</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="8679d8f2-10c6-4f58-b303-194a7f54c709" class="plotly-graph-div" style="height:400px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("8679d8f2-10c6-4f58-b303-194a7f54c709")) {                    Plotly.newPlot(                        "8679d8f2-10c6-4f58-b303-194a7f54c709",                        [{"marker":{"color":"#ef4444"},"name":"高値出現率","text":["46.0%","9.8%","6.2%","4.6%","4.0%","7.7%","3.4%","3.2%","3.1%","4.2%","7.5%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"1wjsiiADR0BCikILTaIjQI5Vn1Kf1xhApb2kGpJhEkBpgA5GjNIPQGxo9MNhzR5Aunnxw+aGC0DCSb2\u002fkXwJQCKN2yXz6QhATEpSsNvpEEDaIPyZ8QweQA=="},"type":"bar"},{"marker":{"color":"#3b82f6"},"name":"安値出現率","text":["40.7%","8.5%","5.3%","3.9%","4.1%","9.1%","5.0%","4.4%","5.0%","5.9%","7.7%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"7gIAe0ZTREAxWCGlcO4gQDyyGOSTVRVAoVS0BUYbD0CRmz8L0lsQQDrtgsLXHCJATg\u002fo0ZciFEBxyYatn7wRQJJoM1ic6xNAyCHn5krJF0B55TtfnvYeQA=="},"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"title":{"text":"60日間 時間帯別 高値・安値出現率（全grok銘柄）"},"barmode":"group","xaxis":{"title":{"text":"時間帯"}},"yaxis":{"title":{"text":"出現率 (%)"}},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":400},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>【選定日】サマリー</h2>
+            <div class="content">
+                
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">選定数</div>
+            <div class="value">514</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">日次勝率</div>
+            <div class="value">37.9%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">前場勝率</div>
+            <div class="value">39.1%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均日次リターン</div>
+            <div class="value">-0.96%</div>
+        </div>
+    </div>
+    <div class="summary-grid" style="margin-top: 1rem;">
+        <div class="summary-card">
+            <div class="label">平均最大上昇</div>
+            <div class="value positive">+3.22%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均最大下落</div>
+            <div class="value negative">-3.78%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">前場高値率</div>
+            <div class="value">74.7%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">前場安値率</div>
+            <div class="value">60.7%</div>
+        </div>
+    </div>
+    
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>【選定日】時間帯別 高値・安値出現率</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="9dab4217-c29a-4949-a272-7037e3c317f4" class="plotly-graph-div" style="height:400px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("9dab4217-c29a-4949-a272-7037e3c317f4")) {                    Plotly.newPlot(                        "9dab4217-c29a-4949-a272-7037e3c317f4",                        [{"marker":{"color":"#ef4444"},"name":"高値出現率","text":["53.1%","10.7%","4.7%","3.3%","2.9%","5.8%","3.3%","3.3%","2.5%","4.7%","5.6%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":[53.11284046692607,10.700389105058365,4.669260700389105,3.3073929961089497,2.9182879377431905,5.836575875486381,3.3073929961089497,3.3073929961089497,2.529182879377432,4.669260700389105,5.642023346303502],"type":"bar"},{"marker":{"color":"#3b82f6"},"name":"安値出現率","text":["37.0%","6.8%","5.4%","5.8%","5.6%","11.3%","5.3%","3.7%","6.0%","4.5%","8.6%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":[36.964980544747085,6.809338521400778,5.447470817120623,5.836575875486381,5.642023346303502,11.284046692607005,5.252918287937743,3.6964980544747084,6.031128404669261,4.474708171206226,8.560311284046692],"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"title":{"text":"選定日 時間帯別 高値・安値出現率"},"barmode":"group","xaxis":{"title":{"text":"時間帯"}},"yaxis":{"title":{"text":"出現率 (%)"}},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":400},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>【選定日】リターン分布</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="99fd4700-7581-4f1a-abad-d906345a3ffc" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("99fd4700-7581-4f1a-abad-d906345a3ffc")) {                    Plotly.newPlot(                        "99fd4700-7581-4f1a-abad-d906345a3ffc",                        [{"marker":{"color":"#3b82f6"},"name":"日次リターン","nbinsx":30,"x":{"dtype":"f8","bdata":"FrKQhSxk0T9fX19fX1\u002fvv4eHh4eHhxdAzczMzMzMAMBDeQ3lNZTvP5Qoq8jQvwRAOhnIPsnq8T9i69uAoZoeQAAAAAAAAAAAYzhakICaLUDlAl5voz88QIBR4V9U+Lc\u002ftgNz7cBcKUB0FZxlyO72Py+hvYT2Evq\u002fyeFmsYdU+L9ItawDbfcGwLycgpdT8CXAa1eidiVq9z8dpdtXVu8CQHAzeSMEySTAhixkIQtZGECqqqqqqqoQQB1t3qe4ZCDAzFaJi9kqAUDp3QeIpWPQPwAAAAAAAATAIP3oRz\u002f68b8fVo7VhqDyvz744IMPPghACa22MEAz9j\u002fugtyA5iX+v7lcDXpRhNw\u002fchzHcRzH4b+CqHRkz0DkP11gO2WoVdg\u002f27Zt27ZtKMCNUAKDXUYAwG8HiW8HiQ9AAAAAAAAAAABqhOWeRlgOwCY5EcZlkvM\u002fAAAAAAAAAAAiDorOHC0LwAAAAAAAABnAGP8ScbnJ8z9eMCLNztjUPwqsyc0qlNS\u002f\u002feSr6GUaFcB2Nov+yqn3vzJKW7c4mhHACPwBf8AfEMAGFEZ1mhwEwMBiFdIeiRrADCBbDCBbHMAAAAAAAAAAADGfejGfehHAZkQfUB17+78NRKUje43hP6SzUx9AlyHA4ziO4ziOJ0A3BnHYjUH8P6c4htMXKuc\u002fcIeVN\u002f926D8pr6G8hvIiQJCnd7hRc\u002fy\u002fAcO5G9rED8CmgPlAdmE5QFu2bNmyZfu\u002fufpBRwW+yD+i0pE9A1HZvxgk5xck57c\u002fQBCDFHNQAkBKgpwcWZvpPxIB8dGEvADAAAAAAAAAAAAy+mxzwSTzv0UXXXTRRQtA\u002f85oe8fd5D9SYeL9yGkOQAAAAAAAAAAAn+FWPcnQ+7\u002fEs563i3cDwDMzMzMzM\u002fO\u002f4Hg6gXGR2L\u002f83h0uUG4bwIqNXxGm7\u002f+\u002fJJC+20X2AUBFF1100UX7v8Aid5jBl\u002fo\u002fFgSyhJlYDcBeEj6PSl3Sv4Jtr9NamADAOYRDOIRDGkBeRWfsOH\u002fxv5GT43kAJg\u002fAyRCso8371D\u002fKnaKFMyDEv55BoDiPrPY\u002f40Egbb28+T+9SGcrJB4JQCfReybRe\u002fY\u002fWAATFYcF+L\u002fm0LqtPQ64Pztwh0IHRRTAQTJWKkoJA8DD2jesfcMKwB0YUJxifhHAKK+hvIbyCsAaYbmnEZYLwBEREREREcE\u002f1KGbLOzPAcD1XCYknXHiv9mJndiJneg\u002f8lk3mCKfBcCKVUcNedgfwBW8nIKXUwDAJlcQkyuI+b\u002fCo7S8mL33P9cAvryfBKW\u002fBIlW2BxIBMDZiZ3YiZ3oP1J2v1F2v\u002fG\u002f3nM029g9F8AMXkHq3HgawKXDRjpspBvAv3n9mU5FMEBBX9AX9AUNwLc2kNsO5vO\u002fRkFAc31\u002f6b\u002fsHVMDe8fUP9bYVo1t1RjA28aL2saL+j+OjietqBIJwFutVqvVavW\u002fEnfEHXFHAMBwpkdgGVIOQKc9rgKCIdk\u002feLDfamNoCsBSGZVRGZXxv16PKecU+\u002fO\u002fntiJndiJ\u002fT+OlmO+rwQQwB\u002fBfQT3Eew\u002fBz4Mf4E06z8zMzMzMzMPwDuvlDdl4fA\u002fr169evXqBcDRRRdddNElQGWTTTbZZPM\u002f270YPeWO\u002fz8AAAAAAAAAAKuqqqqqqgpAJlcQkyuIGUDCck8jLPcUwM+F7RlLTADAn6bLMZLrz78BRBLRaEUHwBhvZZ9Davq\u002fVlVVVVVVFcCK\u002fj01qegPQARizop41Na\u002fyLIdkhZG5r8+3uM93uP9PyRJkiRJktw\u002fkwISfnIhGkBS39mo72wpQH+lQK1fKfA\u002fQ81JIC7UDEAAAAAAAAAAACFbOOaAe9a\u002fvYbyGsprEEAp8TNK\u002fIzSv6jlWhzL\u002fhVAH7g+LJMM\u002f7\u002fgpYrZKxgTQPYWrG1lDS\u002fAqkYuh0Wl6b+VhU5Z6JQVwPHw8PDw8PA\u002fX862APaLCMD5J7W3yOTvP7rh1T\u002fTcwBApkozcOXl1j9CoCkEmkIwQNZaa6211uq\u002fRO1K1K5EDcAAAAAAAAA5QNKmQ0gqbfo\u002fAAAAAAAAAABba6211lozQDaU11BeQ\u002fk\u002ft23btm3bJsDawRFEWi8gQAAAAAAAAAAAj2vzCxtz779c5htah78MwCC3Lu+AIxXAPyTw9kMCB8B6p67l4Gb\u002fv5uEKP4iZxDAKlL\u002fyJhXB8ChgluQFwcPwJdQ5ambSxnATO0vtb\u002fUJsAtORoKx87yv0Hyggg1mRrAymYoV0ci4z+2DZy9T5IPQFNjD7OAfOE\u002fmYJzaQ3Q8b9ID1TObuHnP3X\u002f5oFXuR3AEH3sks9NBcAeaPcqKTItwFgeEZpqvwrAFd5xb65I7r9E7UrUrkQdwHS53ooHL6a\u002fREaHMSBI9b9qPf3rLlQSwAQNJ3VfHgvAo4suuugiOsAfwX0E9xHsvyuTCsjyhfC\u002for2E9hLaL8AO3ORoJTHxvxO1K1G7EiHAD\u002fZbbQxNF8BaHxrrQ2MtQFhPYT2F9SDAwB\u002fwB\u002fwBD8BUTFt+nmYDwA44bRk8SAnA9DOnwZ0XGcBWP6kCW\u002fXTv6V4gUyKFxDAWZZlWZZlyb8XXXTRRRf9v98RcsHwWvW\u002fQ6wojY9MKMDyHSJXj2jyP7lcLpfL5fI\u002f5hS8nIKX0z8e1EEd1EG9vzhLrwkyLfS\u002fPnGZeJ1uA0A7x7PGikj6PwAAAAAAAAAAE76p5\u002fCO8D9YM6YhkeMJwCG+g\u002fgO4gNAcX5T7PV9+b+nrClrypoCwMFJ3IccSwtAEVBWPaER8D\u002f18ydknKfZP8tNngO0OxJAB2mQBmmQ9j\u002fmm+vVpswAQAAAAAAAAAAAVG48FAIXBkB++umnn34SwB68RM8GoABAjvKrslwD9T\u002f4uO+WQn8CwBxuuOGGGx7AAAAAAAAAAABp59N46M0TQAAAAAAAAAAAzjnnnHPOGUABoAdGzc\u002fyv7rVGamYW\u002f2\u002fAqiH+UlDGMBYpAw83ZrfP5LxIjJeRP4\u002f8hrKayivB8ArSb13xZsuwL+rxU2Y3x1AoCyBTfvJBUCxelg9rB7WP6ndU+kUA+Y\u002fmeXIzxWz7D96MOCMa5EQwDFroYCOzQdAGF100UUXA0Cwd0wN7B0cwGdmZmZmZhbAt23btm3bIcBQEIG6Ec8swP8T3WvFDxDAQw93be+xQMAAAAAAAAAAAGII2XjdCfQ\u002fMQzDMAzDCEBrwzR3wV\u002f1P6Fydgu\u002fGtO\u002flT\u002fqlD\u002fq9D+Q0m4EpLTbv6dOY+aLtv+\u002f+Zu3FRNHHMAS2ktoL6H9v0jqI2Lx5hPA1ATjrexzEUAxYsSIESMuQCQ5pwq3MfY\u002fAAAAAAAAAACD8Vb2OaQGwIjG+tBYH9q\u002fAAAAAAAACMA0V5zf200ZwNZZAZqULBrA0\u002f3iJ2nPAsAAAAAAAAA1QJLzsohPIOU\u002fuyHRQ3HxJMAVvJyCl1MQQDr9Q37qjirAXm1PaoaMzr+fG3QqSi7zv9MBvKRH0zFAIYQQQgghAMAAAAAAAAAAAAAAAAAAAAAAt23btm3bFsCu7HNITTD+PxCj8b5CH9U\u002fJ6PFK5+I+b+YdGoe5K7vvwPsgTMxwP4\u002fYRsEpzJhu7+E\u002fDAxENEUQKNU0u4C87S\u002fBMRHE\u002fLC9r9pJTHhMewGQCQYp40w9eu\u002fTC8u0UJHG8A\u002f6wZT5LPmvxNIJedlEb8\u002fzeqKIaa7x7\u002f2OaQmGG8NwMbqNVN0KuS\u002fAAAAAAAAAACGYRiGYRjyP7dt27Zt2wbAAAAAAAAAAAB6nud5nuc1wLubmoxdESHACjiGCsNdIsBvfqZmvEvPv1mWZVmWZTnACYptY5EdIcCBERiBERgBwGxWh1Gm4jfA7XNITTDe8j8SEp0+rp4nwODZqO9s1AfA9zTCck8j+L+X8SUtmoMGwFmWZVmWZfm\u002ftAzko8rbEsC35odFysDzvwBfF+wjZhDAnQ0Crf9C5L\u002fnTqQSMq31v2n5+G93kAHANso1yjXKBcAQZrsQZrvAv3Wn1Z1Wd\u002fq\u002f+XAkmEF4\u002fL\u002f0aw+5rBgYwN\u002fd3d3d3f2\u002fq6qqqqqqCsCVNWVNWVMGQAAAAAAAAAAAVrQzpddf7D9YqufeTdAmwO0rwEh+KMG\u002fQG5d3gFHGsC7jioJ\u002fqQMQBaykIUsZAHAutUZqZhb\u002fb+Hh4eHh4cXwLx+tlgZvinAcyDRCpsDA0C7jKKU3J+vvxb+Up6IigdAeHh4eHh48L9fa658rM3Av7wm8kUxU+U\u002fWW3DKd\u002fs8z8AAAAAAAAEQOB\u002fJKeo8uw\u002f1QbJ0qhD8D833HDDDTcEQMTkCmJyBQFAAAAAAAAA9D8PTxKxMz32v+wdUwN7x+Q\u002fjHeW\u002f2RX\u002fD+MtGMFwkjrv+JKozym59E\u002fXz+f+7dFEUCrqqqqqqoKQKrEVGIqMbW\u002fo1TS7gLz5D9kbo0+xVIIwGVJnl6OahXAFfmsG0yREcBhIpvGwd4gwM1hDnOYw+y\u002f07DdLE8iJcDaH+2P9kf7P5jtQpjtQiTAchzHcRzH8T8lSZIkSZIqwLYbelk1hAvAd99x8bIN8L+D8Vb2OaQmQFOHq5F\u002fjNW\u002f7BjFuY5R7D\u002fBO+h64\u002fnAPwT59mr0O\u002fC\u002f38aEdzvv5T+Z5cjPFbMswAAAAAAAABRAt8v3Krse8z9HJuMR0TvDP+vQb7YO\u002fRbAa1eidiVqB8CFxc2DEsYXwMlCFrKQBQNA7BjFuY5R7L\u002fBmvzFmoz9v48ZDmDuB9a\u002fttNywIab17+2Q9LCyLLdv8TkCmJyBdG\u002f0Bf0BX1BJ8CpYYj\u002f91YBQGhnSq+\u002fOKk\u002fxEndl8dWFEAJwrD4O+vYPwAAAAAAAAAAaBupfbwaJEBE9FypX\u002fb\u002fPwAAAAAAAAAAAQAAAACAC8AI65wBL+wZwEWuMwGDxwLA6cewjblC978kSZIkSZIEwBaykIUsZAHAdmOxvYmBLcBjJ3ZiJ3YKwB\u002fBfQT3Edy\u002fAAAAAAAAAADoA6pjb234v\u002fJZN5gin9W\u002fZeDp1vyw6L8k5u0MiXn7v7h8y7d8yxXAvrDIFUtq8L9YpAw83ZrPP9wxI2T7OAhA9ofBwpE5EcCJ4i9yhgXnv67sc0hNMP4\u002fQhaykIUsC8DxqzGRHqjcv6Xuy2Mrgi7AA15voz8U4r\u002febQPOzmC6vwAAAAAAAAAAGmG5pxGWC0DsSb6P1ewlQAAAAAAAAAAA0UL6m+dW+D\u002fMVw7bKCr7PxyRYqi\u002fHOE\u002fAAAAAAAAAAAAAAAAAAAAANdQXkN5DfU\u002fyzdf+6Ha67\u002f6UnKMd7veP6uqqqqqqvq\u002fkb7PEjHkEcCeolZM2dwCwEogLtScBALAL7rooosuAkChIFclWW\u002f9P6uqqqqqqvq\u002fWi0TuaBwzj\u002fY85XGblQJQBqISkf2DCjAJlcQkyuIGcCibdyq\u002fRsywBeykIUsZClAxIgRI0aMJMBpjjRHmiMtQAAAAAAAAAAAbzR1fu0hF8AkSZIkSZL8P7SX0F5Cey9A20UKCbaL1L\u002fWh8b60FgPQPGvD5ymcANAagiVdKOYFcD0aw+5rBj4v0N7Ce0ltOc\u002fBq5rCiJe4b9ID1TObuEHwOgDqmNvbei\u002f2ktoL6G9FEA="},"type":"histogram","xaxis":"x","yaxis":"y"},{"marker":{"color":"#22c55e"},"name":"最大上昇","nbinsx":30,"x":{"dtype":"f8","bdata":"qDe96U1vDkBfX19fX1\u002f\u002fP4SeaNT8qyVAAAAAAAAAAACH8hrKa6gZQJQoq8jQvwRATrBNhRsgAEDhSUHy51UuQFpaWlpaWiJAT34w53HpM0DlAl5voz88QOCl2Xdp9g1AzLUDc+3AMUA8BPNJLpQJQAAAAAAAAAAAagf4Tp5iDEALR+YEPJ8OQBW8nIKXUwBAOB+D8zE4\u002fz\u002fL6l3yYMAhQESd1iXAKxZAj9pIGAhYJUAkSZIkSZIcQAAAAAAAAAAAFL7beMJ3C0BYxA2uYa7sPwAAAAAAAO4\u002fAAAAAAAAAAAAAAAAAAAAAEioPtPW+AtAxwGJJHCmAEAAAAAAAAAAAPNZSOyy0gFAq6qqqqqqCkCCqHRkz0D0P11gO2WoVdg\u002f3LZt27Ztyz9GQTuA86IQQDeMPDeMPBdAFnOrM1IxH0Cx3NMIyz0RQN5zNNvYPQdATCaTyWQy+T\u002fVSBYBMvzgPwAAAAAAABlAGP8ScbnJE0BeMCLNztjUPwqsyc0qlNQ\u002fAAAAAAAAAACzBicm0wX0P7BUAl56R+g\u002f9oQ9YU\u002fY8z+Tg8xLieDRP5W+17+Jo\u002fQ\u002fmPohmPoh6D9WnJCSZxkBQBY6gxU6g8U\u002f6AOqY29t2D+pdGTPQFT6Pz1pG1hkecg\u002fq6qqqqqqKkAN1ds\u002fQ\u002fUGQMB9s9aDgvU\u002fARJPDRkg8T\u002fXUF5DeQ0lQAAAAAAAAAAAAAAAAAAAAACmgPlAdmE5QAMHDhw4cPA\u002fRKZhu1me9D8AAAAAAAAAAJU\u002f6pQ\u002f6tQ\u002f0W5gFqz6A0BKgpwcWZv5PwAAAAAAAAAAnKlXcgTD3z+DSUafbS7oPy+66KKLLhJAo6JkvBxl8D+OZVAqTLwPQAAAAAAAAPA\u002f\u002fDteyy+b2j8AAAAAAAAAADMzMzMzM+M\u002f4Hg6gXGR6D+NBjfOXXr9PwAAAAAAAAAAPzv+q2kbBkAAAAAAAAAAACDOSKRLQABAAAAAAAAAAAAAAAAAAAAAAJ\u002fbSRMCHwJAshM7sRM7I0A6cQzommL1P7AbsfU5cwFA\u002fBSXDME66j\u002fKnaKFMyDEP1+YVh0qk\u002f0\u002fq+hZ6Xzi\u002fj\u002f7pV\u002f6pV8aQOCKNeCKNQBAKtXLypFS9T\u002fIeshxKzECQEyKGjenhfs\u002ft6ov10suAEAc1r5h7RvmPwAAAAAAAAAAXkN5DeU15D8AAAAAAAAAABEREREREdE\u002frHrJ+8ht\u002fT\u002f1XCYknXHiP9mJndiJnfg\u002fEp63hyHhEUAAAAAAAAAAAAAAAAAAAAAAUaxUEfk19z\u002f9daTfRVoJQBphuacRlts\u002f50CiFTYH0j8ndmIndmIUQNdEINdEIPc\u002fCvWB1qJQ3z89yuxvx1fiPwAAAAAAAAAALTPO3SX6NEB3xB1xR9zRPwAAAAAAAAAAmFEQ0Fzf7z\u002fsHVMDe8fUP225zJbLbAlAHpP1HJP1\u002fD+21FW7A\u002f3bP7lcLpfL5eI\u002fp6wpa8qa0j\u002fypBVVIn4RQKc9rgKCIdk\u002fcl4W8Qmk0j8cwiEcwiHMP0TwPzxbvf4\u002fdmIndmInBkBJV58wGaHpP8F9BPcR3AdApWpYBxm0AkAzMzMzMzPTP60p6rnpJfo\u002fwYEDBw4cCEBddNFFF10wQOtXCtT6lQJANEiDNEiDBEBZlmVZlmX5P6uqqqqqqhJAJlcQkyuIGUDTCMs9jbD8P9HAu76A8Os\u002fAAAAAAAAAAAAAAAAAAAAAO1zSE0w3vI\u002fVlVVVVVV9T+K\u002fj01qegvQFotE7mgcM4\u002ftkPSwsiyvT9GZVRGZVQeQNu2bdu2bQVAKykg4ScXIkBS39mo72wpQH+lQK1fKQBAQ81JIC7UDEDsHVMDe8cUQEeh2b9AvOI\u002fsKG8hvIaEkDhlpoN+7voP2twmW2XRxxAAAAAAAAAAABTIkIgeTwnQP5pkCHUPeQ\u002fcoTJBNkY4T+ytB1L27EEQJeWlpaWlvY\u002fi2dWRifa0T\u002f8ONFy\u002fe4DQGAWxndCnwZATx1AzF6f7D8TtStRuxIxQIQQQgghhNA\u002fUrsStStR+z9u27Zt23Y9QGKAPXAmBghAX19fX19f\u002fz8hhBBCCCFAQAAAAAAAABRAAAAAAAAAAABpvYBtTlchQNBwUvflseU\u002f3IcYD1isAkAR9ZoTVPfgP4uG+OPW5a0\u002fIoG3HxJ48z9SGh+ZQO\u002fkP6Ab8\u002fTRatI\u002fKlL\u002fyJhXF0B8eTNB\u002fXOrPwAAAAAAAAAAAAAAAAAAAABYQbBUmn7FP9njPAVIXhBA7FjNe73F5z9YJbM9PtUWQPwUlwzBOvo\u002feGwPfMT01D+Cytkt\u002fGowQOZPW2jAkv4\u002fFuO6pX+h4T+9T3HJEKwTQMTkCmJyBRFAY+lLSnQw5D8EhBT3tUzmP3S53ooHL6Y\u002fAAAAAAAAAAAAAAAAAAAAAAQNJ3VfHvs\u002fuuiiiy66FkDKayivobwzQI8ZDmDuB+Y\u002fHMdxHMdxKEAYYKF01YHrPwAAAAAAAAAAEZ9AKjkvK0BaHxrrQ2MtQGorqa2ktgJAp6wpa8qaEkAp0D7kO4wQQMOdXTqhqyVAibKN9lULHECPdMUt6kjnPwAAAAAAAAAAWZZlWZZl6T8AAAAAAAAAAGzVBhVotvM\u002fKkrjIxPoHUBFeFKQ\u002fHn1PxaLxWKxWPw\u002f60NjfWis5z9YfMVXfMX3P0JUM4nvKgNAmGVoCOCGBEBG69PaPksGQApY9ckkX9k\u002fWWE8xL1o9D8cvQGZmHT0Pw3lNZTXUApAIGjqDVL+9D9FXVFX1BUFQBZZQ1P1cCZAODFK5nU3AUA7bEcqxfHnP+gA7Y5GNhRANEiDNEiDBECIwXxzvdoEQCp1EtcMENQ\u002f97Hk4r2KEUAWWGCBBRb4PzBg1H6kmQpAyuyHkc0E\u002fj\u002f4uO+WQn\u002fiPzXRRBNNNBFAAAAAAAAA+T\u002fQodxZ4MQWQJYpYD6QXfg\u002fW2uttdZaI0CjU5SwcBjtPyY5EcZlkuM\u002fHvH2zfehC0ByHMdxHMcRQP3Dnn\u002fY8xFAr6G8hvIaEUCJ7nySpzUBQGggKh3ZMyBAFnOrM1IxD0AiG5GNyEb0Pz\u002fm\u002fq5PgvA\u002ff4\u002fdoe3vAUChpkK04fMfQCVmLRTQsQlAo4suuuiiB0Aa2DumBvYXQJqZmZmZmek\u002fYO+YGtg7MEAAAAAAAAAAAAAAAAAAAAAAp6GoeALPEEDYEpPA8frmP\u002f7nyWTvEPU\u002fDMMwDMMwEECqY29tmOb2P\u002fRA5ewWfgVAX19fX19f\u002fz9zqFjQHCrmP+w7cCmPKdg\u002fAAAAAAAAAAAS2ktoL6H9P81eWeI69xBAaoLxVvY5FUCLayyusbgyQBAnnws8Nvg\u002fAAAAAAAAAACD8Vb2OaQGQAAAAAAAAAAAAAAAAAAAK0DtzBXn93bzP2SE9OIQhRFA+2aySjlR0D8AAAAAAAA1QE8glZyXRQxAo\u002fQfxjKh6j8BMgv307wtQK1mLMAbWPE\u002fMJsWaZwABUAAAAAAAAAAANMBvKRH0zFAW2uttdZaA0BZlmVZlmX5P84555xzzvk\u002ft23btm3bBkCu7HNITTAOQNMLrm4TZ+o\u002fqcHuTEaLB0DfiAKTTs0jQOapL8pdniJA9ZcjUgz19z\u002fpDOF2PPkgQDefrExjkec\u002fmpAXtgpqA0BjzQiEvAsQQBZviFg+efE\u002fAAAAAAAAAAC0bjBFPusCQFAglZyXRRhAzeqKIaa75z8UjLeyzyH1P+ti9ZopOuU\u002f\u002fBSXDME6+j\u002fzPM\u002fzPM\u002f3P7dt27Zt2wZARojsSz5A8j+f53me53nuP\u002fq5FINmgfE\u002fa\u002fDRANo19j8AAAAAAAAAAFmWZVmWZfk\u002fxraxyI7E+z8\u002f93M\u002f93P\u002fP5Ne\u002frSFBgxAGG9ln0Nq+j93xyOIERLtP23UdzbqO+s\u002fGmG5pxGWC0DK7IeRzQQOQMMwDMMwDBNAm0ScDhPW9T8AAAAAAAAAAAAAAAAAAAAAsdc0V5k14D\u002fVk84zBQj3P70edvUns\u002fg\u002fxDvEO8Q7BECe8ked8kfdPwAAAAAAAAAAAAAAAAAAAABdVgyU8EYDQHd3d3d3dxdA5DiO4ziOA0BrypqypqwRQHVS8YHjoQlAGCeDyANX8T9dYDtlqFXYPwswkh9KxBJA1Z6T6auEAUBUgOQFEWoSQL3pTW9609s\u002futUZqZhbDUCs2ZN8H6v5P65uE2daewJAzYFEK2wOGkDBwC+m573lP9jO\u002fDRdjhFA09LS0tLS4j9fa658rM3QP6DqkviFP\u002fE\u002fWW3DKd\u002fs8z9WVVVVVVUJQC4\u002fbT5IKQxA1QbJ0qhD8D9jjDHGGGMMQMTkCmJyBQFAL7rooosuAkAczFnE8evtP+Ks\u002fIQ4K+8\u002fPLlkRUEz\u002fT+q33NLnPr9Py252VCI39c\u002fcR3x17kKEkAAAAAAAAAUQPQQegg9hPY\u002fzOmGqsMv+j8AAAAAAAAAAHeRfUyxZe4\u002fAAAAAAAAAABmuMtXD8IBQM1hDnOYw9w\u002ff9BRgS+uBkB3k7vJ3eQiQKlT\u002fqhT\u002fhBAchzHcRzH8T8AAAAAAAAAACDjVummL+A\u002fkiUiLgQX9T\u002fRwhkQSu4sQFOHq5F\u002fjOU\u002fky8bNPmyAUAvTcF+cO31P75Y6RreGOI\u002fu533yg\u002fP6j8GZVitt6AkQAAAAAAAACRARojsSz5AAkAPix80S6PlP7xAJsULZAJAOB+D8zE43z80k6oDGOoGQCELWchCFgpAAAAAAAAAAAAAAAAAAAAAAI8ZDmDuB8Y\u002fnWoBt8Le7z+2Q9LCyLLNP8TkCmJyBdE\u002f+oK+oC\u002foG0AUcZDJ2xMEQEMBHZvvht8\u002fBA0ndV8eG0DqgJjivIMLQBqkQRqkQdo\u002f8GgdLELjJECNpA+Ec4AHQHFH3BF3xM0\u002fAAAAAAAAHkBy188WK8MXQNYWuc4EDN4\u002fKkrjIxPo7T8AAAAAAAAAAIi40XLM9\u002fU\u002f2N7EwHx\u002f9z8AAAAAAAAAAB\u002fBfQT3ESxAAAAAAAAAAACbAhzt9EjgP\u002fJZN5gin9U\u002fAAAAAAAAAAAAAAAAAAAAAC7f8i3f8gFAm32repZCIUBYpAw83Zr\u002fPwTH1x+8dQ1A1bIOtN1bKUCJ4i9yhgX3P2o9\u002fesuVBJAIQtZyEIW2j8AAAAAAAAAAAQNJ3VfHts\u002fhDVLjE+Z9j+z5NJ9rkH2P9mJndiJnfg\u002fNvhqut0JEUCasA2CU5koQMFD2vfGcMU\u002f0UL6m+dW+D\u002fGk1xXk+H9PzTu1nkF9ec\u002f3vV8pbEb5T9793aNr9PtP9dQXkN5DQVAXh+2GXwI9z\u002fdc8e3KjXjP6uqqqqqqgpAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7rooosuAkDNV5MaeVgRQKuqqqqqqgpAWi0TuaBw3j\u002fBBgLn3kITQPTW\u002fcm5JCJApzQv\u002fkTCF0Cr9m\u002fA+j4cQBeykIUsZClAAwcOHDhwAEByy7hl3DI0QKGgoKCgoCJAAAAAAAAAAABZHxrrQ2MDQBPaS2gvITFA20UKCbaLFEDRWB8a60MTQPGvD5ymcANAAAAAAAAAAABdVgyU8EbjP0N7Ce0ltPc\u002f1fuLDfmTBkBID1TObuH3P+gDqmNvbeg\u002f2ktoL6G9JEA="},"type":"histogram","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#ef4444"},"name":"最大下落","nbinsx":30,"x":{"dtype":"f8","bdata":"yEIWspCFIMCHh4eHh4cHwC\u002fscmWASgbAmpmZmZmZCcDXUF5DeQ31vwAAAAAAAAAAEuu8sSSA1b9gqKZjLhHuv3l4eHh4eAjAD7GBzxiO1r8DXm+jPxTivzgS543EeQPAfUaJn1HiD8AE80kulDncv\u002fYS2ktoLxHA6xyUzc+zDsC5GfvDYOEYwC+n4OUUPCjAg\u002fMxOB+D878dpdtXVu8CwKgkYnqBtSXAoTVnIrY8tL\u002fDMAzDMAwDwG3ep7hkCCLAFL7beMJ367+m2Qg5GnACwAAAAAAAQBDAr3vd6173CsALh7qrW0wLwEyA7Xo61g3ACwM0YwmL\u002fL8yYqXgbJwWwHTzzm7IJhbAchzHcRzH8b+CqHRkz0D0v11gO2WoVQjAt23btm3bLMAv8R9D15cIwBtXjhpXjtq\u002flCWwaT9ZAsBGWO5phOUawLlMciKMyxTA28K2sC1sE8AeeJXbdP8OwKqqqqqqqiDAdlqU1I8zFcB9QNhmvsvLvwqsyc0qlOS\u002fFOCz+6bwGMBnQqT0yJIIwKO0dYujGRrA9oQ9YU\u002fYE8CxbHwztHYHwLrooosuuibA4Qh\u002f4Qh\u002fIcAa0QdUx976vw5W6AxW6BzAqmNvbZjmBsAAAAAAAAAAAPONWjWZtSfAVlVVVVVV5b8AAAAAAAAAAKc4htMXKue\u002futUZqZhb3b95DeU1lNcAwArFT9CL9wLA8EnwDKooHMAOcZUpYD7wvwMHDhw4cBDAgS+uftBR67+Y39XiJswcwJsI5JoI5Pq\u002fywRuIzui\u002f7+ECu46TTHmv+DBZW\u002foSQ3AnKlXcgTD378SdHz74iABwAAAAAAAAAAAmseSWwAf9L+hVJh4P3LqvwAAAAAAAOC\u002fq7DNC8lTDcB16TNPK1IFwJqZmZmZmQnAqNrrIBVt4r8oGaANDDIhwIqNXxGm7w\u002fAAAAAAAAAAAC66KKLLroGwIBfhHAsjN2\u002fe2angkCWEMBmOuktG2b6v3CKMgJOUQbAAAAAAAAAAADfXindDxv\u002fvy4CLF+MNBbAvU9xyRCs47+u7HNITTDev5Rl5Ghxt9O\u002ffHkzQf1z678AAAAAAAAAABkZGRkZGcm\u002fkT+oJRf5A8Bd\u002fhE6gXLUv6\u002fFhQQWIRbA2MNa7PCyCcCMLrrooosOwB0YUJxifhHAAAAAAAAAEMAaYbmnEZYLwBEREREREdG\u002fTU\u002fAOAMbC8Bwizm2a6r7v57YiZ3Yid2\u002fHQqN18uhEMBTGUZhKQIhwM6OWoT8NQvAsh5aQrK4\u002f7\u002fQtVl9VXv+v8og8sBVtOO\u002fIdEKmwOJBsAAAAAAAAAAANPS0tLS0gLANu0nS2DTHsAGJp2aB7kbwOUWT27x5B7AFePjsl8yD8ChL+gL+oIOwMHiZ\u002f1h8wDAcEmoIW2v\u002fL8O7B1TA3sjwK0M1cpQrRzAAAAAAAAAAAB6axAme50XwJFIJBKJRALAEnfEHXFHAMBCMXJx2FLnv7aI5qxB8eS\u002fRXwCqeS8DMBSGZVRGZUBwFaRoX9pIwDAFDuxEzux07\u002fvZUodVtkRwDaU11BeQ\u002fm\u002fAAAAAAAAAAAAAAAAAAASwIGOfzWojOC\u002f9urVq1evDsAAAAAAAAAAAAAAAAAAAAAAq3fJgwFn\u002fL9ZlmVZlmUJwAAAAAAAAAAA9XxGXCAFAMDTCMs9jbAcwHSOBt71BQTA+LxYpa3w1791oGvvlDIUwBhvZZ9Davq\u002fq6qqqqqqGsAAAAAAAAAAAC4vPX9u7fS\u002fImlhZNkOCcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR39mo72z0v3+lQK1fKfC\u002fQ81JIC7U\u002fL\u002fsHVMDe8cEwFlEqqyg3ADAAAAAAAAAAACZPAHR+erevwi8YWonHMS\u002fNw9+FDzNBsDN8d0aNZEQwB00GipmnjDAqkYuh0Wl+b\u002fyByZ\u002fYPIXwB0eHh4eHt6\u002f2DQcdZipCcBRxXh6MEPFvylayw\u002fIkPS\u002fAAAAAAAAAAAFmkKgKQTqv6WUUkoppfS\u002fZHA+BudjGMAkSZIkSZL8v9KmQ0gqbfq\u002fX19fX19f778AAAAAAAAAAIfyGsprKBfAkiRJkiRJKMCnqzwTH\u002fclwKn78tiKoBHAZMe1+YWN+b9+\u002flsUJu0NwJ5MXyWMzRrAePshgbcfFsBIJtA7dS0HwK8DujFPHyHAollcONV2CcBvZFe+QDsTwGPuvOax6BzAAB4DeAzgKcDuXb3Z\u002feUOwLA1Ysbn8iPASrhVuOZOBcCstVOQoFISwFNjD7OAfPG\u002f9k7flLgl+b9ID1TObuHnv9VIFgEy\u002fCDAPvjggw8+CMBImAbfpMc1wCM7FLZmnA\u002fAY+lLSnQw9L8DY095iLkgwHS53ooHL7a\u002fEuWUbfoV+799hMAzN5AVwAQNJ3VfHgvA6aKLLrpoPMAX01lMZzErwPGfEfjpifu\u002fvoT2EtpLMMC66sBNjlYCwK9E7UrUriHAkvOyiE8gLcAAAAAAAAAAAGorqa2ktiLANOaMOWPOGMD+fTPvxYoEwHtRqWEVYRjAibKN9lULHMAdCo3Xy6EAwLxAJsULZBLAWZZlWZZlyb8XXXTRRRcNwFNO3W15\u002f\u002fa\u002fzX4hVpTGL8CX0oLJaYu4v0wmk8lkMsm\u002fWh8a60Nj3b8WX\u002fEVX\u002fH1v9Pwhg7LQ\u002f6\u002fdMsHtQf48L8AAAAAAAAAAAyucvzttt+\u002fMBqV5GbOvr8tZh\u002fL0nUQwGorqa2kttK\u002f4YV2Ntf9+r8M+oK+oC8IwOscHYZrOgXAAAAAAAAAAABrA+nXShPdv5\u002fwQoJQZfC\u002fAAAAAAAAAAAGrOD0i4myvyp1EtcMEOS\u002fwfABntQO87\u002fOOeecc84ZwAAAAAAAAAAAAAAAAAAAAAA3p6s8Ex8HwFtrrbXWWiPAAAAAAADAEsDQodxZ4MS2vw5xlSlgPuC\u002fzjnnnHPOCcD7BYETzpP3v7rVGamYWw3AOzpmoqUAH8BYpAw83Zr\u002fv\u002fA16b0mvce\u002fr6G8hvIaEcBajMyEXFwzwAAAAAAAAAAAQvT4LhxE478iG5GNyEb0v6ndU+kUA9a\u002fEhBOxEsCKsBZvUseDDgbwIcf1SVmLcS\u002fAAAAAAAABMAkSZIkSZInwMzMzMzMzBzA27Zt27ZtJcC0iwPD5VwtwOMHdPQMmhHANutupU5DQcDYEpPA8frWv6H2lB6uqei\u002fhmEYhmEYEsDoA6pjb23Iv0gPVM5u4fe\u002flT\u002fqlD\u002fq5L9zqFjQHCrmvz53M\u002fpPRgbAyw\u002fIkNTZJcAS2ktoL6H9v0jqI2Lx5hPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8lk3mCKfFcAYb2WfQ2oawOYUvJyCl\u002fO\u002fAAAAAAAAI8DtzBXn93YjwN6oMo\u002fEhyXAnSjIbKo1BsAAAAAAAAAnwEPTHey32ui\u002ftp5xwEIELMCxpa7aHegXwBCKSfbtuSzAsn8FnfW6+r8rmCXlgMgAwAAAAAAAAAAAW2uttdZaE8BZlmVZlmX5v84555xzzum\u002ft23btm3bFsCu7HNITTD+vwAAAAAAAAAAqz\u002fQIyXkBMCYdGoe5K4fwIIzMcAeOPO\u002fHJFiqL8cAcDRQvqb51YIwMzphqrDL9q\u002fT6qvZH4WFcC66sBNjlbSv8adecUbIva\u002fx4Lo4\u002fRdIMBU5LNuMEXuvw\u002f2W20MTQfAJki85Rqz+r8KxlvZ55AUwOti9ZopOuW\u002fvU9xyRCsA8Crqqqqqqrqv7dt27Zt2xbAXWA7ZahV6L8xDMMwDMM4wDnKXy23cSXA+GgA7RrLIsDU3vxMzXjnv7\u002fv+77v+zrAVNZvKn15IcB8y7d8y7cMwGxWh1Gm4jfAGG9ln0NqCsBpReScZXgxwG3UdzbqOwvAwnJPIyz3AsB59Le94QISwCRJkiRJkgzAgnxUeVvQGMC35odFysDzvxRgPHeHshnA2aoTyjKq6b9ecTmjm1oGwKICNtNp+QjAp1inWKdYB8BXrAFXrAHnvx\u002fBfQT3Efy\u002fR4IZhMftA8CKgRLeaOocwMzMzMzMzBzAOY7jOI7jEMCnrClrypryv\u002f+whkjYmxfAAAAAAAAAAABxXWA7ZagtwGU8CKStl+e\u002fQ\u002fxx6\u002fIOIMBUgOQFEWoSwEeJn1HiZxzAutUZqZhb\u002fb+s2ZN8H6sZwDdAjMb7Ci3ARCtsDiRaCcD0l+Xc6cPzv5+myzGS68+\u002f4uHh4eHhBcAef1FaK6QCwDM4sPymgPK\u002fBVC3ywvp17+rqqqqqqrqvycW6BYNLLm\u002fikh7B5NU5L8AAAAAAAAAADUeJ70awsi\u002fF1100UUXzb8czFnE8ev9v+Ks\u002fIQ4K9+\u002fmTwB0fnq3r\u002fgc0uc+j33v6ZvtZjx5OO\u002fR1TqgX9x8b8AAAAAAAAAAMrf5G\u002fyN+G\u002fo1TS7gLzxL\u002fptnFCJPIRwHeRfUyxZR7AMUU+6wZTGMAOQwR9qKMowFnJSlaykvW\u002fbayUPf4VKcAAAAAAAAAAAJU\u002f6pQ\u002f6iTAq6qqqqqq6r9u27Zt27YrwLYtFzWWOBPANX3+uali+788RQtnQCj5v1OHq5F\u002fjOW\u002f7BjFuY5R3L+ObVRhdh\u002ffvzy9d98gofK\u002fcVvLTVF\u002fs78mAeFEvCQwwAAAAAAAAAAAXWA7ZahVCMDY71tWxQrYvxphuacRlhvAUrsStStRC8BSariEmIAdwBaykIUsZOG\u002fkcDbDwm8DcBkkGroaeYHwF1WDJTwRgPAP3lk6BWo9L+2Q9LCyLLdv8TkCmJyBdG\u002fTllT1pQ1McB8L83ZsYWxv0MBHZvvht+\u002fAAAAAAAAAACJJ2pN1v76vwAAAAAAAAAA8GgdLELj9L8AAAAAAAAAAHFH3BF3xL2\u002fAAAAAABAEMDQrwOQic0cwEWuMwGDxxLApkV+91+dAMBKkiRJkiQZwAv2bO5lSg3A5zFmiWakL8DsxE7sxE4QwLOYzmI6ixHAio1fEabvH8CbAhzt9EgAwPJZN5gin+W\u002fjuM4juM49r\u002frVwrU+pUCwMy3fMu3fB3AVBdxRC3zIsBYpAw83Zrfv7eu1ZaIfiLAZ+wPg4UjE8CJ4i9yhgXnvwAAAAAAAAAAYa4dmGsHEcD0QOXsFn71vw0ndV8eWy\u002fABA0ndV8e+7\u002febQPOzmDqv9mJndiJnQjAAAAAAAAAAAAckWKovxzhv8FD2vfGcMW\u002f0nx\u002f0p2+zr8AAAAAAAAAAByRYqi\u002fHOG\u002f5fdjhPTi0L+0H42+PwvBvwAAAAAAAAAAyzdf+6Ha67\u002f6UnKMd7u+v6uqqqqqqgrAd95wJlkrE8AP9lttDE0HwPJZN5ginwXA7B1TA3vH5L8AAAAAAAAAAKuqqqqqqgrAhfqBrZaJDMAAAAAAAAAAAKhZweELKSrANuo7G\u002fWdIsCibdyq\u002fRsywAtZyEIWsijAr169evXqJcCaFvi1pgX+vw8PDw8PDwvAwPaQy4qBGsAkSZIkSZLcv6qqqqqqqgDAUddMi6Ou6b\u002fWh8b60FjPv0BPflJGmOK\u002fIdEKmwOJFsCKgRLeaOr8v0N7Ce0ltPe\u002fiJkGjaq1BcB2C78aE+kRwO6Cv4oTUgLAVlVVVVVV9b8="},"type":"histogram","xaxis":"x3","yaxis":"y3"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889]},"yaxis":{"anchor":"x","domain":[0.0,1.0]},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0]},"yaxis3":{"anchor":"x3","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"日次リターン","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"最大上昇","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"最大下落","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"title":{"text":"選定日のリターン分布"},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":350,"showlegend":false},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>【選定日】詳細（リターン順上位50）</h2>
+            <div class="content">
+                
+    <table>
+        <thead>
+            <tr>
+                <th>選定日</th>
+                <th>ティッカー</th>
+                <th>銘柄名</th>
+                <th>grokランク</th>
+                <th>日次リターン</th>
+                <th>最大上昇</th>
+                <th>最大下落</th>
+                <th>前場リターン</th>
+                <th>高値時間</th>
+                <th>安値時間</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        <tr>
+            <td>2025-10-31</td>
+            <td>4875.T</td>
+            <td>メディシノバ</td>
+            <td>7</td>
+            <td class="positive">28.25%</td>
+            <td class="positive">+28.25%</td>
+            <td class="negative">-0.56%</td>
+            <td>17.51%</td>
+            <td>12:30-13:00</td>
+            <td>09:30-10:00</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-11</td>
+            <td>3103.T</td>
+            <td>日東紡績</td>
+            <td>1</td>
+            <td class="positive">25.38%</td>
+            <td class="positive">+25.38%</td>
+            <td class="negative">-1.02%</td>
+            <td>19.80%</td>
+            <td>13:30-14:00</td>
+            <td>10:00-10:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス</td>
+            <td>6</td>
+            <td class="positive">25.00%</td>
+            <td class="positive">+29.46%</td>
+            <td class="negative">-1.79%</td>
+            <td>15.18%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>198A.T</td>
+            <td>ＰｏｓｔＰｒｉｍｅ</td>
+            <td>8</td>
+            <td class="positive">21.00%</td>
+            <td class="positive">+21.00%</td>
+            <td class="negative">-11.50%</td>
+            <td>12.50%</td>
+            <td>13:00-13:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>2134.T</td>
+            <td>北浜キャピタルパートナーズ</td>
+            <td>9</td>
+            <td class="positive">19.35%</td>
+            <td class="positive">+32.26%</td>
+            <td class="negative">0.00%</td>
+            <td>19.35%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>3444.T</td>
+            <td>菊池製作所</td>
+            <td>15</td>
+            <td class="positive">17.83%</td>
+            <td class="positive">+17.83%</td>
+            <td class="negative">0.00%</td>
+            <td>16.04%</td>
+            <td>12:30-13:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-19</td>
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td>1</td>
+            <td class="positive">16.27%</td>
+            <td class="positive">+20.98%</td>
+            <td class="negative">-3.90%</td>
+            <td>17.62%</td>
+            <td>12:30-13:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>5721.T</td>
+            <td>エス・サイエンス</td>
+            <td>1</td>
+            <td class="positive">16.26%</td>
+            <td class="positive">+17.07%</td>
+            <td class="negative">-0.81%</td>
+            <td>4.07%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>9647.T</td>
+            <td>協和コンサルタンツ</td>
+            <td>10</td>
+            <td class="positive">15.74%</td>
+            <td class="positive">+17.13%</td>
+            <td class="negative">-2.08%</td>
+            <td>-2.08%</td>
+            <td>13:30-14:00</td>
+            <td>10:00-10:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-08</td>
+            <td>9610.T</td>
+            <td>ウィルソン・ラーニング　ワールドワイド</td>
+            <td>22</td>
+            <td class="positive">15.07%</td>
+            <td class="positive">+18.72%</td>
+            <td class="negative">0.00%</td>
+            <td>12.33%</td>
+            <td>13:00-13:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-10-31</td>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td>6</td>
+            <td class="positive">14.80%</td>
+            <td class="positive">+19.91%</td>
+            <td class="negative">-0.35%</td>
+            <td>13.48%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-03</td>
+            <td>4579.T</td>
+            <td>ラクオリア創薬</td>
+            <td>4</td>
+            <td class="positive">14.69%</td>
+            <td class="positive">+14.69%</td>
+            <td class="negative">0.00%</td>
+            <td>14.69%</td>
+            <td>09:30-10:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>6433.T</td>
+            <td>ヒーハイスト</td>
+            <td>6</td>
+            <td class="positive">14.57%</td>
+            <td class="positive">+20.20%</td>
+            <td class="negative">-1.88%</td>
+            <td>15.45%</td>
+            <td>10:30-11:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>4570.T</td>
+            <td>免疫生物研究所</td>
+            <td>2</td>
+            <td class="positive">12.71%</td>
+            <td class="positive">+12.71%</td>
+            <td class="negative">-1.28%</td>
+            <td>4.26%</td>
+            <td>13:00-13:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>6217.T</td>
+            <td>津田駒工業</td>
+            <td>4</td>
+            <td class="positive">12.70%</td>
+            <td class="positive">+12.70%</td>
+            <td class="negative">-12.35%</td>
+            <td>12.70%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-10-31</td>
+            <td>1798.T</td>
+            <td>守谷商会</td>
+            <td>10</td>
+            <td class="positive">12.68%</td>
+            <td class="positive">+17.75%</td>
+            <td class="negative">-3.99%</td>
+            <td>0.00%</td>
+            <td>15:00-15:30</td>
+            <td>14:00-14:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-10</td>
+            <td>2334.T</td>
+            <td>イオレ</td>
+            <td>5</td>
+            <td class="positive">11.78%</td>
+            <td class="positive">+13.33%</td>
+            <td class="negative">-0.67%</td>
+            <td>10.00%</td>
+            <td>14:00-14:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-16</td>
+            <td>2437.T</td>
+            <td>Ｓｈｉｎｗａ　Ｗｉｓｅ　Ｈｏｌｄｉｎｇｓ</td>
+            <td>14</td>
+            <td class="positive">11.32%</td>
+            <td class="positive">+14.47%</td>
+            <td class="negative">-1.57%</td>
+            <td>0.00%</td>
+            <td>13:00-13:30</td>
+            <td>10:30-11:00</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-23</td>
+            <td>3856.T</td>
+            <td>Ａｂａｌａｎｃｅ</td>
+            <td>16</td>
+            <td class="positive">10.96%</td>
+            <td class="positive">+12.30%</td>
+            <td class="negative">-0.53%</td>
+            <td>5.08%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-21</td>
+            <td>8894.T</td>
+            <td>REVOLUTION</td>
+            <td>2</td>
+            <td class="positive">10.91%</td>
+            <td class="positive">+16.36%</td>
+            <td class="negative">0.00%</td>
+            <td>5.45%</td>
+            <td>13:30-14:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-18</td>
+            <td>5817.T</td>
+            <td>ＪＭＡＣＳ</td>
+            <td>7</td>
+            <td class="positive">10.05%</td>
+            <td class="positive">+10.44%</td>
+            <td class="negative">-1.31%</td>
+            <td>2.61%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-10</td>
+            <td>6803.T</td>
+            <td>TOA</td>
+            <td>9</td>
+            <td class="positive">9.47%</td>
+            <td class="positive">+10.53%</td>
+            <td class="negative">-2.11%</td>
+            <td>4.21%</td>
+            <td>09:00-09:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-01</td>
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス</td>
+            <td>2</td>
+            <td class="positive">8.09%</td>
+            <td class="positive">+8.67%</td>
+            <td class="negative">-10.98%</td>
+            <td>8.09%</td>
+            <td>10:30-11:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-10-31</td>
+            <td>3914.T</td>
+            <td>JIG-SAW</td>
+            <td>2</td>
+            <td class="positive">7.65%</td>
+            <td class="positive">+15.17%</td>
+            <td class="negative">-0.94%</td>
+            <td>7.65%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-05</td>
+            <td>5138.T</td>
+            <td>Ｒｅｂａｓｅ</td>
+            <td>15</td>
+            <td class="positive">7.47%</td>
+            <td class="positive">+8.10%</td>
+            <td class="negative">0.00%</td>
+            <td>3.42%</td>
+            <td>14:30-15:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-14</td>
+            <td>5706.T</td>
+            <td>三井金属鉱業</td>
+            <td>2</td>
+            <td class="positive">6.57%</td>
+            <td class="positive">+9.62%</td>
+            <td class="negative">0.00%</td>
+            <td>6.32%</td>
+            <td>12:30-13:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>5255.T</td>
+            <td>モンスターラボ</td>
+            <td>1</td>
+            <td class="positive">6.53%</td>
+            <td class="positive">+9.05%</td>
+            <td class="negative">0.00%</td>
+            <td>5.03%</td>
+            <td>09:30-10:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-05</td>
+            <td>9973.T</td>
+            <td>ＫＯＺＯホールディングス</td>
+            <td>7</td>
+            <td class="positive">6.45%</td>
+            <td class="positive">+9.68%</td>
+            <td class="negative">-3.23%</td>
+            <td>0.00%</td>
+            <td>13:00-13:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-21</td>
+            <td>7695.T</td>
+            <td>交換できるくん</td>
+            <td>7</td>
+            <td class="positive">6.38%</td>
+            <td class="positive">+6.38%</td>
+            <td class="negative">-2.00%</td>
+            <td>-0.63%</td>
+            <td>15:00-15:30</td>
+            <td>13:00-13:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-04</td>
+            <td>9552.T</td>
+            <td>M&A総研ホールディングス</td>
+            <td>8</td>
+            <td class="positive">6.09%</td>
+            <td class="positive">+10.67%</td>
+            <td class="negative">-0.08%</td>
+            <td>6.88%</td>
+            <td>09:30-10:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-10-29</td>
+            <td>3914.T</td>
+            <td>JIG-SA</td>
+            <td>4</td>
+            <td class="positive">5.88%</td>
+            <td class="positive">+10.84%</td>
+            <td class="negative">-2.79%</td>
+            <td>6.66%</td>
+            <td>10:30-11:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>218A.T</td>
+            <td>Liberaware</td>
+            <td>10</td>
+            <td class="positive">5.50%</td>
+            <td class="positive">+7.07%</td>
+            <td class="negative">-0.16%</td>
+            <td>5.18%</td>
+            <td>11:00-11:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-10</td>
+            <td>4579.T</td>
+            <td>ラクオリア創薬</td>
+            <td>5</td>
+            <td class="positive">5.20%</td>
+            <td class="positive">+8.49%</td>
+            <td class="negative">-3.04%</td>
+            <td>5.76%</td>
+            <td>13:00-13:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>7042.T</td>
+            <td>アクセスグループ・ホールディングス</td>
+            <td>20</td>
+            <td class="positive">5.19%</td>
+            <td class="positive">+10.37%</td>
+            <td class="negative">-1.33%</td>
+            <td>0.30%</td>
+            <td>09:00-09:30</td>
+            <td>11:00-11:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-18</td>
+            <td>6177.T</td>
+            <td>ＡｐｐＢａｎｋ</td>
+            <td>4</td>
+            <td class="positive">5.08%</td>
+            <td class="positive">+6.78%</td>
+            <td class="negative">0.00%</td>
+            <td>1.69%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-17</td>
+            <td>4564.T</td>
+            <td>オンコセラピー・サイエンス</td>
+            <td>2</td>
+            <td class="positive">5.00%</td>
+            <td class="positive">+10.00%</td>
+            <td class="negative">0.00%</td>
+            <td>5.00%</td>
+            <td>13:30-14:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-05</td>
+            <td>5016.T</td>
+            <td>ＪＸ金属</td>
+            <td>5</td>
+            <td class="positive">4.95%</td>
+            <td class="positive">+5.69%</td>
+            <td class="negative">-0.09%</td>
+            <td>3.17%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-27</td>
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td>1</td>
+            <td class="positive">4.77%</td>
+            <td class="positive">+11.62%</td>
+            <td class="negative">-4.14%</td>
+            <td>5.23%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-04</td>
+            <td>3914.T</td>
+            <td>ＪＩＧ−ＳＡＷ</td>
+            <td>19</td>
+            <td class="positive">4.56%</td>
+            <td class="positive">+5.05%</td>
+            <td class="negative">-1.02%</td>
+            <td>-0.25%</td>
+            <td>15:00-15:30</td>
+            <td>11:00-11:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-08</td>
+            <td>9271.T</td>
+            <td>和心</td>
+            <td>21</td>
+            <td class="positive">4.36%</td>
+            <td class="positive">+5.31%</td>
+            <td class="negative">0.00%</td>
+            <td>1.53%</td>
+            <td>14:30-15:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-15</td>
+            <td>8267.T</td>
+            <td>イオン</td>
+            <td>21</td>
+            <td class="positive">4.32%</td>
+            <td class="positive">+4.51%</td>
+            <td class="negative">-1.09%</td>
+            <td>3.01%</td>
+            <td>10:00-10:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-04</td>
+            <td>1798.T</td>
+            <td>守谷商会</td>
+            <td>9</td>
+            <td class="positive">4.17%</td>
+            <td class="positive">+7.14%</td>
+            <td class="negative">-2.38%</td>
+            <td>4.46%</td>
+            <td>11:00-11:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>3649.T</td>
+            <td>ファインデックス</td>
+            <td>8</td>
+            <td class="positive">4.11%</td>
+            <td class="positive">+4.53%</td>
+            <td class="negative">0.00%</td>
+            <td>4.21%</td>
+            <td>14:30-15:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>5817.T</td>
+            <td>ＪＭＡＣＳ</td>
+            <td>11</td>
+            <td class="positive">4.08%</td>
+            <td class="positive">+14.87%</td>
+            <td class="negative">-5.98%</td>
+            <td>2.62%</td>
+            <td>12:30-13:00</td>
+            <td>09:30-10:00</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-25</td>
+            <td>2438.T</td>
+            <td>アスカネット</td>
+            <td>8</td>
+            <td class="positive">3.99%</td>
+            <td class="positive">+15.95%</td>
+            <td class="negative">0.00%</td>
+            <td>5.41%</td>
+            <td>09:30-10:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-01</td>
+            <td>6834.T</td>
+            <td>精工技研</td>
+            <td>19</td>
+            <td class="positive">3.95%</td>
+            <td class="positive">+5.71%</td>
+            <td class="negative">-4.58%</td>
+            <td>-1.41%</td>
+            <td>14:30-15:00</td>
+            <td>10:00-10:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-06</td>
+            <td>6366.T</td>
+            <td>千代田化工建設(株)</td>
+            <td>4</td>
+            <td class="positive">3.94%</td>
+            <td class="positive">+5.81%</td>
+            <td class="negative">-0.41%</td>
+            <td>4.98%</td>
+            <td>11:00-11:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>215A.T</td>
+            <td>タイミー</td>
+            <td>12</td>
+            <td class="positive">3.92%</td>
+            <td class="positive">+4.82%</td>
+            <td class="negative">-0.24%</td>
+            <td>2.12%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-12</td>
+            <td>6496.T</td>
+            <td>中北製作所</td>
+            <td>6</td>
+            <td class="positive">3.80%</td>
+            <td class="positive">+3.97%</td>
+            <td class="negative">-0.83%</td>
+            <td>3.47%</td>
+            <td>15:00-15:30</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-20</td>
+            <td>6617.T</td>
+            <td>トレックス・セミコンダクター</td>
+            <td>2</td>
+            <td class="positive">3.79%</td>
+            <td class="positive">+4.37%</td>
+            <td class="negative">-0.73%</td>
+            <td>0.73%</td>
+            <td>14:30-15:00</td>
+            <td>09:00-09:30</td>
+        </tr>
+        
+        </tbody>
+    </table>
+    
+            </div>
+        </section>
+        
+    </div>
+</body>
+</html>

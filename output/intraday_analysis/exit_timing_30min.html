@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grok分析 - イグジット時間帯別 (30分刻み)</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #333;
+            --positive-color: #22c55e;
+            --negative-color: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            padding: 2rem;
+            line-height: 1.5;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .summary-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            text-align: center;
+            min-width: 80px;
+        }
+        .summary-card .label { font-size: 0.65rem; color: var(--text-muted); }
+        .summary-card .value { font-size: 0.9rem; font-weight: bold; }
+        .summary-card .rate { font-size: 0.7rem; color: var(--text-muted); }
+        .positive { color: var(--positive-color); }
+        .negative { color: var(--negative-color); }
+        .weekday-section { margin-bottom: 2rem; }
+        .weekday-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; }
+        .margin-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+        .margin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .margin-title { font-weight: 600; }
+        .margin-count { color: var(--text-muted); font-size: 0.875rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+        th, td {
+            padding: 0.4rem 0.3rem;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th { color: var(--text-muted); font-weight: 500; font-size: 0.65rem; }
+        th:first-child, td:first-child { text-align: left; }
+        td:nth-child(2) { text-align: center; }
+        .slot-header { writing-mode: vertical-rl; text-orientation: mixed; }
+    </style>
+</head>
+<body>
+    <h1>Grok分析 - イグジット時間帯別 (30分刻み)</h1>
+    <p class="subtitle">生成日時: 2026-01-09 14:45 | 総件数: 475 | データソース: 5分足</p>
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <div class="label">9:00-9:30</div>
+            <div class="value positive">+38.7万</div>
+            <div class="rate">51%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">9:30-10:00</div>
+            <div class="value positive">+34.2万</div>
+            <div class="rate">56%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">10:00-10:30</div>
+            <div class="value positive">+55.4万</div>
+            <div class="rate">54%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">10:30-11:00</div>
+            <div class="value positive">+46.0万</div>
+            <div class="rate">55%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">11:00-11:30</div>
+            <div class="value positive">+56.0万</div>
+            <div class="rate">56%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">12:30-13:00</div>
+            <div class="value positive">+70.3万</div>
+            <div class="rate">58%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">13:00-13:30</div>
+            <div class="value positive">+86.8万</div>
+            <div class="rate">59%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">13:30-14:00</div>
+            <div class="value positive">+71.7万</div>
+            <div class="rate">58%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">14:00-14:30</div>
+            <div class="value positive">+84.6万</div>
+            <div class="rate">59%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">14:30-15:00</div>
+            <div class="value positive">+79.6万</div>
+            <div class="rate">59%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">大引け</div>
+            <div class="value positive">+70.3万</div>
+            <div class="rate">56%</div>
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">月曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">46件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>13</td>
+<td class="negative">-1k<br><small>25%</small></td><td class="positive">+3k<br><small>31%</small></td><td class="positive">+3k<br><small>38%</small></td><td class="positive">+3k<br><small>38%</small></td><td class="positive">+3k<br><small>31%</small></td><td class="positive">+3k<br><small>38%</small></td><td class="positive">+6k<br><small>42%</small></td><td class="positive">+5k<br><small>38%</small></td><td class="positive">+6k<br><small>31%</small></td><td class="positive">+5k<br><small>38%</small></td><td class="positive">+4k<br><small>38%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>17</td>
+<td class="positive">+16k<br><small>59%</small></td><td class="positive">+29k<br><small>71%</small></td><td class="positive">+31k<br><small>71%</small></td><td class="positive">+30k<br><small>65%</small></td><td class="positive">+21k<br><small>73%</small></td><td class="positive">+31k<br><small>76%</small></td><td class="positive">+24k<br><small>65%</small></td><td class="positive">+24k<br><small>56%</small></td><td class="positive">+24k<br><small>65%</small></td><td class="positive">+21k<br><small>50%</small></td><td class="positive">+18k<br><small>53%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>5</td>
+<td class="negative">-4k<br><small>20%</small></td><td class="negative">-3k<br><small>40%</small></td><td class="negative">-4k<br><small>40%</small></td><td class="negative">-4k<br><small>40%</small></td><td class="negative">-3k<br><small>40%</small></td><td class="negative">-2k<br><small>40%</small></td><td class="negative">-4k<br><small>40%</small></td><td class="negative">-6k<br><small>40%</small></td><td class="negative">-9k<br><small>20%</small></td><td class="negative">-12k<br><small>20%</small></td><td class="negative">-14k<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>8</td>
+<td class="positive">+30k<br><small>43%</small></td><td class="positive">+37k<br><small>50%</small></td><td class="positive">+49k<br><small>38%</small></td><td class="positive">+40k<br><small>50%</small></td><td class="positive">+67k<br><small>62%</small></td><td class="positive">+102k<br><small>62%</small></td><td class="positive">+136k<br><small>62%</small></td><td class="positive">+129k<br><small>62%</small></td><td class="positive">+128k<br><small>62%</small></td><td class="positive">+110k<br><small>62%</small></td><td class="positive">+119k<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>3</td>
+<td class="positive">+76k<br><small>100%</small></td><td class="positive">+88k<br><small>100%</small></td><td class="positive">+92k<br><small>100%</small></td><td class="positive">+56k<br><small>100%</small></td><td class="positive">+49k<br><small>100%</small></td><td class="negative">-7k<br><small>33%</small></td><td class="negative">-42k<br><small>33%</small></td><td class="negative">-61k<br><small>33%</small></td><td class="negative">-52k<br><small>33%</small></td><td class="negative">-81k<br><small>33%</small></td><td class="negative">-72k<br><small>33%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">35件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>21</td>
+<td class="negative">-2k<br><small>50%</small></td><td class="positive">+6k<br><small>53%</small></td><td class="positive">+10k<br><small>47%</small></td><td class="positive">+13k<br><small>47%</small></td><td class="positive">+9k<br><small>53%</small></td><td class="positive">+8k<br><small>53%</small></td><td class="positive">+11k<br><small>55%</small></td><td class="positive">+13k<br><small>50%</small></td><td class="positive">+13k<br><small>50%</small></td><td class="positive">+8k<br><small>45%</small></td><td class="positive">+19k<br><small>52%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>12</td>
+<td class="positive">+37k<br><small>73%</small></td><td class="positive">+49k<br><small>82%</small></td><td class="positive">+52k<br><small>58%</small></td><td class="positive">+52k<br><small>67%</small></td><td class="positive">+52k<br><small>70%</small></td><td class="positive">+51k<br><small>67%</small></td><td class="positive">+52k<br><small>80%</small></td><td class="positive">+86k<br><small>73%</small></td><td class="positive">+88k<br><small>83%</small></td><td class="positive">+90k<br><small>80%</small></td><td class="positive">+108k<br><small>92%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>1</td>
+<td class="negative">-35k<br><small>0%</small></td><td class="negative">-38k<br><small>0%</small></td><td class="negative">-35k<br><small>0%</small></td><td class="negative">-28k<br><small>0%</small></td><td class="negative">-49k<br><small>0%</small></td><td class="negative">-47k<br><small>0%</small></td><td class="negative">-61k<br><small>0%</small></td><td class="negative">-63k<br><small>0%</small></td><td class="negative">-62k<br><small>0%</small></td><td class="negative">-63k<br><small>0%</small></td><td class="negative">-58k<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-8k<br><small>0%</small></td><td class="positive">+2k<br><small>100%</small></td><td class="">+0k<br><small>0%</small></td><td class="negative">-4k<br><small>0%</small></td><td class="negative">-2k<br><small>0%</small></td><td class="positive">+5k<br><small>100%</small></td><td class="positive">+8k<br><small>100%</small></td><td class="positive">+11k<br><small>100%</small></td><td class="positive">+11k<br><small>100%</small></td><td class="positive">+7k<br><small>100%</small></td><td class="positive">+9k<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">火曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">46件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>20</td>
+<td class="positive">+0k<br><small>55%</small></td><td class="positive">+0k<br><small>60%</small></td><td class="negative">-2k<br><small>45%</small></td><td class="negative">-5k<br><small>35%</small></td><td class="negative">-6k<br><small>45%</small></td><td class="negative">-6k<br><small>40%</small></td><td class="negative">-5k<br><small>44%</small></td><td class="negative">-6k<br><small>42%</small></td><td class="negative">-0k<br><small>47%</small></td><td class="negative">-1k<br><small>50%</small></td><td class="negative">-6k<br><small>45%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>12</td>
+<td class="positive">+14k<br><small>42%</small></td><td class="positive">+17k<br><small>75%</small></td><td class="positive">+14k<br><small>58%</small></td><td class="positive">+10k<br><small>67%</small></td><td class="positive">+8k<br><small>58%</small></td><td class="positive">+19k<br><small>67%</small></td><td class="positive">+21k<br><small>58%</small></td><td class="positive">+20k<br><small>67%</small></td><td class="positive">+19k<br><small>67%</small></td><td class="positive">+14k<br><small>67%</small></td><td class="positive">+3k<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>9</td>
+<td class="positive">+17k<br><small>67%</small></td><td class="positive">+35k<br><small>89%</small></td><td class="positive">+35k<br><small>67%</small></td><td class="positive">+28k<br><small>56%</small></td><td class="positive">+30k<br><small>56%</small></td><td class="positive">+36k<br><small>56%</small></td><td class="positive">+38k<br><small>56%</small></td><td class="positive">+45k<br><small>67%</small></td><td class="positive">+41k<br><small>44%</small></td><td class="positive">+40k<br><small>56%</small></td><td class="positive">+33k<br><small>56%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-10k<br><small>67%</small></td><td class="negative">-6k<br><small>67%</small></td><td class="negative">-6k<br><small>67%</small></td><td class="negative">-0k<br><small>67%</small></td><td class="positive">+4k<br><small>67%</small></td><td class="positive">+18k<br><small>100%</small></td><td class="positive">+15k<br><small>67%</small></td><td class="positive">+7k<br><small>67%</small></td><td class="positive">+8k<br><small>67%</small></td><td class="positive">+5k<br><small>67%</small></td><td class="positive">+3k<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+70k<br><small>50%</small></td><td class="positive">+80k<br><small>50%</small></td><td class="positive">+88k<br><small>100%</small></td><td class="positive">+62k<br><small>100%</small></td><td class="positive">+51k<br><small>50%</small></td><td class="positive">+116k<br><small>100%</small></td><td class="positive">+148k<br><small>100%</small></td><td class="positive">+126k<br><small>100%</small></td><td class="positive">+156k<br><small>100%</small></td><td class="positive">+170k<br><small>100%</small></td><td class="positive">+180k<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">65件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>39</td>
+<td class="positive">+33k<br><small>62%</small></td><td class="positive">+29k<br><small>61%</small></td><td class="positive">+36k<br><small>66%</small></td><td class="positive">+43k<br><small>68%</small></td><td class="positive">+49k<br><small>72%</small></td><td class="positive">+48k<br><small>72%</small></td><td class="positive">+45k<br><small>67%</small></td><td class="positive">+43k<br><small>64%</small></td><td class="positive">+51k<br><small>63%</small></td><td class="positive">+50k<br><small>72%</small></td><td class="positive">+48k<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>21</td>
+<td class="positive">+38k<br><small>67%</small></td><td class="positive">+66k<br><small>75%</small></td><td class="positive">+101k<br><small>76%</small></td><td class="positive">+76k<br><small>83%</small></td><td class="positive">+91k<br><small>84%</small></td><td class="positive">+98k<br><small>90%</small></td><td class="positive">+107k<br><small>84%</small></td><td class="positive">+108k<br><small>89%</small></td><td class="positive">+105k<br><small>78%</small></td><td class="positive">+111k<br><small>80%</small></td><td class="positive">+113k<br><small>81%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>2</td>
+<td class="positive">+26k<br><small>100%</small></td><td class="positive">+27k<br><small>100%</small></td><td class="positive">+31k<br><small>100%</small></td><td class="positive">+32k<br><small>100%</small></td><td class="positive">+38k<br><small>100%</small></td><td class="positive">+40k<br><small>50%</small></td><td class="positive">+44k<br><small>50%</small></td><td class="positive">+44k<br><small>100%</small></td><td class="positive">+44k<br><small>50%</small></td><td class="positive">+42k<br><small>100%</small></td><td class="positive">+46k<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-13k<br><small>0%</small></td><td class="negative">-43k<br><small>0%</small></td><td class="negative">-38k<br><small>0%</small></td><td class="negative">-38k<br><small>0%</small></td><td class="negative">-30k<br><small>0%</small></td><td class="negative">-20k<br><small>0%</small></td><td class="negative">-13k<br><small>0%</small></td><td class="negative">-19k<br><small>0%</small></td><td class="negative">-7k<br><small>0%</small></td><td class="negative">-15k<br><small>0%</small></td><td class="negative">-34k<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+69k<br><small>50%</small></td><td class="positive">+51k<br><small>50%</small></td><td class="positive">+65k<br><small>50%</small></td><td class="positive">+41k<br><small>50%</small></td><td class="positive">+42k<br><small>50%</small></td><td class="positive">+72k<br><small>50%</small></td><td class="positive">+98k<br><small>50%</small></td><td class="positive">+97k<br><small>50%</small></td><td class="positive">+105k<br><small>50%</small></td><td class="positive">+112k<br><small>50%</small></td><td class="positive">+122k<br><small>50%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">水曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">28件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>12</td>
+<td class="negative">-2k<br><small>50%</small></td><td class="positive">+0k<br><small>50%</small></td><td class="negative">-0k<br><small>42%</small></td><td class="positive">+2k<br><small>58%</small></td><td class="positive">+1k<br><small>58%</small></td><td class="negative">-1k<br><small>50%</small></td><td class="negative">-2k<br><small>42%</small></td><td class="negative">-3k<br><small>42%</small></td><td class="negative">-2k<br><small>50%</small></td><td class="positive">+1k<br><small>75%</small></td><td class="negative">-3k<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>12</td>
+<td class="positive">+12k<br><small>67%</small></td><td class="positive">+2k<br><small>42%</small></td><td class="positive">+12k<br><small>58%</small></td><td class="positive">+16k<br><small>58%</small></td><td class="positive">+18k<br><small>64%</small></td><td class="positive">+26k<br><small>75%</small></td><td class="positive">+22k<br><small>75%</small></td><td class="positive">+28k<br><small>75%</small></td><td class="positive">+29k<br><small>75%</small></td><td class="positive">+27k<br><small>75%</small></td><td class="positive">+26k<br><small>75%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>1</td>
+<td class="negative">-12k<br><small>0%</small></td><td class="negative">-2k<br><small>0%</small></td><td class="positive">+5k<br><small>100%</small></td><td class="positive">+8k<br><small>100%</small></td><td class="positive">+11k<br><small>100%</small></td><td class="positive">+11k<br><small>100%</small></td><td class="positive">+10k<br><small>100%</small></td><td class="positive">+10k<br><small>100%</small></td><td class="positive">+10k<br><small>100%</small></td><td class="positive">+8k<br><small>100%</small></td><td class="positive">+6k<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="positive">+1k<br><small>33%</small></td><td class="negative">-6k<br><small>67%</small></td><td class="negative">-22k<br><small>0%</small></td><td class="negative">-21k<br><small>33%</small></td><td class="negative">-22k<br><small>33%</small></td><td class="negative">-16k<br><small>33%</small></td><td class="positive">+1k<br><small>50%</small></td><td class="negative">-18k<br><small>33%</small></td><td class="negative">-22k<br><small>0%</small></td><td class="negative">-23k<br><small>0%</small></td><td class="negative">-27k<br><small>0%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">61件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>28</td>
+<td class="negative">-4k<br><small>50%</small></td><td class="negative">-10k<br><small>50%</small></td><td class="positive">+3k<br><small>46%</small></td><td class="positive">+3k<br><small>52%</small></td><td class="positive">+3k<br><small>44%</small></td><td class="positive">+5k<br><small>56%</small></td><td class="positive">+7k<br><small>56%</small></td><td class="positive">+7k<br><small>58%</small></td><td class="positive">+10k<br><small>76%</small></td><td class="positive">+8k<br><small>57%</small></td><td class="negative">-2k<br><small>54%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>31</td>
+<td class="negative">-10k<br><small>52%</small></td><td class="negative">-27k<br><small>52%</small></td><td class="negative">-14k<br><small>59%</small></td><td class="negative">-37k<br><small>57%</small></td><td class="negative">-36k<br><small>59%</small></td><td class="negative">-29k<br><small>62%</small></td><td class="negative">-31k<br><small>65%</small></td><td class="negative">-34k<br><small>55%</small></td><td class="negative">-45k<br><small>68%</small></td><td class="negative">-27k<br><small>56%</small></td><td class="negative">-55k<br><small>52%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>1</td>
+<td class="">+0k<br><small>0%</small></td><td class="positive">+0k<br><small>100%</small></td><td class="positive">+1k<br><small>100%</small></td><td class="positive">+0k<br><small>100%</small></td><td class="negative">-0k<br><small>0%</small></td><td class="positive">+1k<br><small>100%</small></td><td class="">+0k<br><small>0%</small></td><td class="positive">+1k<br><small>100%</small></td><td class="positive">+2k<br><small>100%</small></td><td class="positive">+3k<br><small>100%</small></td><td class="positive">+3k<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-3k<br><small>0%</small></td><td class="negative">-9k<br><small>0%</small></td><td class="negative">-8k<br><small>0%</small></td><td class="negative">-9k<br><small>0%</small></td><td class="negative">-4k<br><small>0%</small></td><td class="negative">-7k<br><small>0%</small></td><td class="negative">-11k<br><small>0%</small></td><td class="negative">-10k<br><small>0%</small></td><td class="negative">-17k<br><small>0%</small></td><td class="negative">-18k<br><small>0%</small></td><td class="negative">-22k<br><small>0%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">木曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">54件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>22</td>
+<td class="positive">+8k<br><small>59%</small></td><td class="positive">+5k<br><small>50%</small></td><td class="positive">+2k<br><small>45%</small></td><td class="positive">+4k<br><small>55%</small></td><td class="positive">+8k<br><small>52%</small></td><td class="positive">+11k<br><small>52%</small></td><td class="positive">+10k<br><small>45%</small></td><td class="positive">+12k<br><small>45%</small></td><td class="positive">+12k<br><small>50%</small></td><td class="positive">+11k<br><small>55%</small></td><td class="positive">+12k<br><small>50%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>17</td>
+<td class="positive">+20k<br><small>47%</small></td><td class="positive">+16k<br><small>47%</small></td><td class="positive">+20k<br><small>38%</small></td><td class="positive">+17k<br><small>41%</small></td><td class="positive">+23k<br><small>41%</small></td><td class="positive">+28k<br><small>35%</small></td><td class="positive">+26k<br><small>47%</small></td><td class="positive">+16k<br><small>41%</small></td><td class="positive">+26k<br><small>41%</small></td><td class="positive">+34k<br><small>41%</small></td><td class="positive">+28k<br><small>41%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>9</td>
+<td class="negative">-17k<br><small>33%</small></td><td class="negative">-13k<br><small>33%</small></td><td class="negative">-16k<br><small>33%</small></td><td class="negative">-20k<br><small>44%</small></td><td class="negative">-24k<br><small>22%</small></td><td class="negative">-17k<br><small>33%</small></td><td class="negative">-13k<br><small>33%</small></td><td class="negative">-23k<br><small>22%</small></td><td class="negative">-23k<br><small>22%</small></td><td class="negative">-17k<br><small>33%</small></td><td class="negative">-19k<br><small>33%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>4</td>
+<td class="negative">-1k<br><small>75%</small></td><td class="positive">+5k<br><small>75%</small></td><td class="negative">-1k<br><small>50%</small></td><td class="">+0k<br><small>50%</small></td><td class="positive">+12k<br><small>50%</small></td><td class="positive">+13k<br><small>50%</small></td><td class="positive">+21k<br><small>50%</small></td><td class="positive">+24k<br><small>75%</small></td><td class="positive">+12k<br><small>75%</small></td><td class="positive">+10k<br><small>75%</small></td><td class="positive">+20k<br><small>50%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+7k<br><small>50%</small></td><td class="positive">+10k<br><small>50%</small></td><td class="positive">+53k<br><small>100%</small></td><td class="positive">+71k<br><small>100%</small></td><td class="positive">+73k<br><small>100%</small></td><td class="positive">+68k<br><small>100%</small></td><td class="positive">+60k<br><small>100%</small></td><td class="positive">+59k<br><small>100%</small></td><td class="positive">+66k<br><small>100%</small></td><td class="positive">+56k<br><small>100%</small></td><td class="positive">+64k<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">66件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>30</td>
+<td class="negative">-5k<br><small>47%</small></td><td class="negative">-3k<br><small>64%</small></td><td class="negative">-11k<br><small>57%</small></td><td class="negative">-4k<br><small>60%</small></td><td class="positive">+3k<br><small>62%</small></td><td class="positive">+6k<br><small>57%</small></td><td class="positive">+12k<br><small>63%</small></td><td class="positive">+15k<br><small>68%</small></td><td class="positive">+20k<br><small>64%</small></td><td class="positive">+24k<br><small>57%</small></td><td class="positive">+17k<br><small>57%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>28</td>
+<td class="negative">-18k<br><small>46%</small></td><td class="positive">+8k<br><small>59%</small></td><td class="positive">+36k<br><small>60%</small></td><td class="positive">+61k<br><small>62%</small></td><td class="positive">+79k<br><small>62%</small></td><td class="positive">+45k<br><small>58%</small></td><td class="positive">+39k<br><small>61%</small></td><td class="positive">+47k<br><small>62%</small></td><td class="positive">+67k<br><small>67%</small></td><td class="positive">+61k<br><small>70%</small></td><td class="positive">+83k<br><small>64%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>4</td>
+<td class="positive">+8k<br><small>50%</small></td><td class="positive">+12k<br><small>50%</small></td><td class="positive">+6k<br><small>25%</small></td><td class="positive">+8k<br><small>25%</small></td><td class="positive">+8k<br><small>25%</small></td><td class="positive">+12k<br><small>50%</small></td><td class="positive">+13k<br><small>50%</small></td><td class="positive">+7k<br><small>50%</small></td><td class="positive">+17k<br><small>50%</small></td><td class="positive">+7k<br><small>50%</small></td><td class="positive">+14k<br><small>25%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-2k<br><small>33%</small></td><td class="negative">-25k<br><small>50%</small></td><td class="negative">-20k<br><small>67%</small></td><td class="negative">-61k<br><small>0%</small></td><td class="negative">-51k<br><small>50%</small></td><td class="negative">-28k<br><small>0%</small></td><td class="negative">-14k<br><small>50%</small></td><td class="negative">-117k<br><small>33%</small></td><td class="negative">-91k<br><small>0%</small></td><td class="negative">-82k<br><small>33%</small></td><td class="negative">-147k<br><small>33%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>1</td>
+<td class="negative">-6k<br><small>0%</small></td><td class="positive">+19k<br><small>100%</small></td><td class="positive">+9k<br><small>100%</small></td><td class="positive">+11k<br><small>100%</small></td><td class="positive">+8k<br><small>100%</small></td><td class="positive">+7k<br><small>100%</small></td><td class="positive">+12k<br><small>100%</small></td><td class="positive">+8k<br><small>100%</small></td><td class="positive">+18k<br><small>100%</small></td><td class="positive">+14k<br><small>100%</small></td><td class="positive">+20k<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">金曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">22件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>3</td>
+<td class="negative">-1k<br><small>33%</small></td><td class="positive">+0k<br><small>67%</small></td><td class="negative">-0k<br><small>67%</small></td><td class="positive">+1k<br><small>67%</small></td><td class="positive">+1k<br><small>67%</small></td><td class="positive">+2k<br><small>100%</small></td><td class="positive">+3k<br><small>100%</small></td><td class="positive">+5k<br><small>100%</small></td><td class="positive">+6k<br><small>100%</small></td><td class="positive">+6k<br><small>100%</small></td><td class="positive">+6k<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>7</td>
+<td class="negative">-9k<br><small>14%</small></td><td class="negative">-14k<br><small>14%</small></td><td class="negative">-19k<br><small>14%</small></td><td class="negative">-19k<br><small>0%</small></td><td class="negative">-21k<br><small>14%</small></td><td class="negative">-21k<br><small>14%</small></td><td class="negative">-18k<br><small>14%</small></td><td class="negative">-25k<br><small>0%</small></td><td class="negative">-26k<br><small>0%</small></td><td class="negative">-24k<br><small>14%</small></td><td class="negative">-23k<br><small>14%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>6</td>
+<td class="negative">-2k<br><small>50%</small></td><td class="positive">+8k<br><small>50%</small></td><td class="positive">+22k<br><small>83%</small></td><td class="positive">+29k<br><small>67%</small></td><td class="positive">+28k<br><small>67%</small></td><td class="positive">+27k<br><small>67%</small></td><td class="positive">+32k<br><small>83%</small></td><td class="positive">+29k<br><small>67%</small></td><td class="positive">+22k<br><small>83%</small></td><td class="positive">+36k<br><small>83%</small></td><td class="positive">+36k<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-17k<br><small>0%</small></td><td class="negative">-18k<br><small>33%</small></td><td class="negative">-15k<br><small>67%</small></td><td class="negative">-17k<br><small>0%</small></td><td class="negative">-20k<br><small>0%</small></td><td class="negative">-14k<br><small>0%</small></td><td class="negative">-6k<br><small>33%</small></td><td class="negative">-0k<br><small>67%</small></td><td class="positive">+6k<br><small>67%</small></td><td class="positive">+6k<br><small>67%</small></td><td class="positive">+11k<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>3</td>
+<td class="negative">-79k<br><small>67%</small></td><td class="negative">-111k<br><small>67%</small></td><td class="negative">-115k<br><small>33%</small></td><td class="negative">-128k<br><small>33%</small></td><td class="negative">-130k<br><small>33%</small></td><td class="negative">-182k<br><small>0%</small></td><td class="negative">-142k<br><small>0%</small></td><td class="negative">-139k<br><small>0%</small></td><td class="negative">-130k<br><small>0%</small></td><td class="negative">-132k<br><small>33%</small></td><td class="negative">-150k<br><small>33%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">52件</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9:00-9:30</th><th>9:30-10:00</th><th>10:00-10:30</th><th>10:30-11:00</th><th>11:00-11:30</th><th>12:30-13:00</th><th>13:00-13:30</th><th>13:30-14:00</th><th>14:00-14:30</th><th>14:30-15:00</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>37</td>
+<td class="negative">-5k<br><small>46%</small></td><td class="negative">-2k<br><small>44%</small></td><td class="positive">+7k<br><small>50%</small></td><td class="positive">+9k<br><small>51%</small></td><td class="positive">+15k<br><small>59%</small></td><td class="positive">+17k<br><small>60%</small></td><td class="positive">+21k<br><small>66%</small></td><td class="positive">+21k<br><small>74%</small></td><td class="positive">+19k<br><small>66%</small></td><td class="positive">+16k<br><small>63%</small></td><td class="positive">+0k<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>10</td>
+<td class="positive">+4k<br><small>50%</small></td><td class="positive">+18k<br><small>44%</small></td><td class="positive">+27k<br><small>50%</small></td><td class="positive">+26k<br><small>44%</small></td><td class="positive">+46k<br><small>50%</small></td><td class="positive">+39k<br><small>70%</small></td><td class="positive">+43k<br><small>67%</small></td><td class="positive">+47k<br><small>70%</small></td><td class="positive">+51k<br><small>78%</small></td><td class="positive">+48k<br><small>60%</small></td><td class="positive">+42k<br><small>60%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>3</td>
+<td class="positive">+0k<br><small>100%</small></td><td class="">+0k<br><small>0%</small></td><td class="positive">+2k<br><small>100%</small></td><td class="positive">+2k<br><small>50%</small></td><td class="positive">+2k<br><small>100%</small></td><td class="negative">-2k<br><small>0%</small></td><td class="negative">-2k<br><small>0%</small></td><td class="negative">-3k<br><small>0%</small></td><td class="negative">-2k<br><small>0%</small></td><td class="negative">-8k<br><small>0%</small></td><td class="negative">-8k<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="positive">+6k<br><small>100%</small></td><td class="positive">+4k<br><small>100%</small></td><td class="positive">+9k<br><small>100%</small></td><td class="positive">+27k<br><small>100%</small></td><td class="positive">+33k<br><small>100%</small></td><td class="positive">+37k<br><small>100%</small></td><td class="positive">+34k<br><small>100%</small></td><td class="positive">+39k<br><small>100%</small></td><td class="positive">+36k<br><small>100%</small></td><td class="positive">+34k<br><small>100%</small></td><td class="positive">+27k<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>1</td>
+<td class="positive">+161k<br><small>100%</small></td><td class="positive">+47k<br><small>100%</small></td><td class="positive">+60k<br><small>100%</small></td><td class="positive">+78k<br><small>100%</small></td><td class="positive">+73k<br><small>100%</small></td><td class="positive">+99k<br><small>100%</small></td><td class="positive">+112k<br><small>100%</small></td><td class="positive">+109k<br><small>100%</small></td><td class="positive">+108k<br><small>100%</small></td><td class="positive">+104k<br><small>100%</small></td><td class="positive">+103k<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

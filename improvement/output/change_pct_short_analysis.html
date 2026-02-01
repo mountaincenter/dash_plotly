@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>change_pct × ショート分析</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a3a3a3;
+            --positive: #22c55e;
+            --negative: #ef4444;
+            --accent: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        .meta { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .section h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section h3 {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 24px 0 12px 0;
+            padding-left: 12px;
+            border-left: 3px solid var(--accent);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--border-color); }
+        th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        th:first-child, td:first-child { text-align: left; }
+        tr:hover { background: var(--bg-tertiary); }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .highlight { background: rgba(239, 68, 68, 0.1) !important; }
+        .summary-row { background: var(--bg-tertiary); font-weight: 600; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--negative); }
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--positive); }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .stat-card .value { font-size: 20px; font-weight: 600; }
+        .weekday-header {
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .sub-table { margin-bottom: 24px; }
+        .price-range-label {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>change_pct × ショート分析</h1>
+    <p class="meta">
+        期間: 2025-11-04 ~ 2026-01-14 |
+        データ件数: 614件 |
+        生成: 2026-01-15 11:23
+    </p>
+
+    <!-- サマリーカード -->
+    <div class="section">
+        <h2>サマリー</h2>
+        <div class="grid-3">
+
+            <div class="stat-card">
+                <div class="label">0%未満</div>
+                <div class="value positive">136,429</div>
+            </div>
+    
+            <div class="stat-card">
+                <div class="label">0~5%</div>
+                <div class="value positive">330,600</div>
+            </div>
+    
+            <div class="stat-card">
+                <div class="label">5~10%</div>
+                <div class="value negative">-132,800</div>
+            </div>
+    
+            <div class="stat-card">
+                <div class="label">10~15%</div>
+                <div class="value positive">3,100</div>
+            </div>
+    
+            <div class="stat-card">
+                <div class="label">15~20%</div>
+                <div class="value positive">75,600</div>
+            </div>
+    
+            <div class="stat-card">
+                <div class="label">20%以上</div>
+                <div class="value positive">272,283</div>
+            </div>
+    
+        </div>
+    </div>
+
+    <!-- Section 1: change_pct × 大引け -->
+    <div class="section">
+        <h2>1. change_pct × 大引け損益</h2>
+        
+        <h3>全体</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>224</td>
+                    <td><span class="positive">50.0%</span></td>
+                    <td><span class="positive">136,429</span></td>
+                    <td><span class="positive">609</span></td>
+                </tr>
+    
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>192</td>
+                    <td><span class="negative">46.4%</span></td>
+                    <td><span class="positive">330,600</span></td>
+                    <td><span class="positive">1,721</span></td>
+                </tr>
+    
+                <tr class="highlight">
+                    <td>5~10%</td>
+                    <td>53</td>
+                    <td><span class="positive">56.6%</span></td>
+                    <td><span class="negative">-132,800</span></td>
+                    <td><span class="negative">-2,505</span></td>
+                </tr>
+    
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>48</td>
+                    <td><span class="positive">58.3%</span></td>
+                    <td><span class="positive">3,100</span></td>
+                    <td><span class="positive">64</span></td>
+                </tr>
+    
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>46</td>
+                    <td><span class="positive">50.0%</span></td>
+                    <td><span class="positive">75,600</span></td>
+                    <td><span class="positive">1,643</span></td>
+                </tr>
+    
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>51</td>
+                    <td><span class="positive">64.7%</span></td>
+                    <td><span class="positive">272,283</span></td>
+                    <td><span class="positive">5,338</span></td>
+                </tr>
+    
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>614</td>
+                    <td><span class="positive">51.3%</span></td>
+                    <td><span class="positive">685,212</span></td>
+                    <td><span class="positive">1,115</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>~1,000円 <span class="badge badge-success">64,313円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>99</td>
+                    <td><span class="positive">50.5%</span></td>
+                    <td><span class="positive">2,329</span></td>
+                    <td><span class="positive">23</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>89</td>
+                    <td><span class="negative">43.8%</span></td>
+                    <td><span class="negative">-12,700</span></td>
+                    <td><span class="negative">-142</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>5~10%</td>
+                    <td>25</td>
+                    <td><span class="negative">48.0%</span></td>
+                    <td><span class="negative">-7,900</span></td>
+                    <td><span class="negative">-316</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>25</td>
+                    <td><span class="positive">56.0%</span></td>
+                    <td><span class="negative">-2,800</span></td>
+                    <td><span class="negative">-112</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>26</td>
+                    <td><span class="negative">46.2%</span></td>
+                    <td><span class="positive">26,200</span></td>
+                    <td><span class="positive">1,007</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>22</td>
+                    <td><span class="positive">72.7%</span></td>
+                    <td><span class="positive">59,183</span></td>
+                    <td><span class="positive">2,690</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>286</td>
+                    <td><span class="positive">50.0%</span></td>
+                    <td><span class="positive">64,312</span></td>
+                    <td><span class="positive">224</span></td>
+                </tr>
+        
+            </tbody>
+        </table>
+    
+        <h3>1,000~3,000円 <span class="badge badge-success">362,100円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>87</td>
+                    <td><span class="positive">51.7%</span></td>
+                    <td><span class="positive">89,800</span></td>
+                    <td><span class="positive">1,032</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>65</td>
+                    <td><span class="negative">49.2%</span></td>
+                    <td><span class="positive">29,500</span></td>
+                    <td><span class="positive">453</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>5~10%</td>
+                    <td>21</td>
+                    <td><span class="positive">71.4%</span></td>
+                    <td><span class="positive">11,600</span></td>
+                    <td><span class="positive">552</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>14</td>
+                    <td><span class="positive">57.1%</span></td>
+                    <td><span class="positive">20,800</span></td>
+                    <td><span class="positive">1,485</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>11</td>
+                    <td><span class="positive">63.6%</span></td>
+                    <td><span class="positive">23,800</span></td>
+                    <td><span class="positive">2,163</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>26</td>
+                    <td><span class="positive">61.5%</span></td>
+                    <td><span class="positive">186,600</span></td>
+                    <td><span class="positive">7,176</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>224</td>
+                    <td><span class="positive">54.9%</span></td>
+                    <td><span class="positive">362,100</span></td>
+                    <td><span class="positive">1,616</span></td>
+                </tr>
+        
+            </tbody>
+        </table>
+    
+        <h3>3,000~5,000円 <span class="badge badge-success">75,800円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>17</td>
+                    <td><span class="negative">35.3%</span></td>
+                    <td><span class="positive">800</span></td>
+                    <td><span class="positive">47</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>18</td>
+                    <td><span class="negative">38.9%</span></td>
+                    <td><span class="negative">-2,000</span></td>
+                    <td><span class="negative">-111</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>5~10%</td>
+                    <td>6</td>
+                    <td><span class="positive">50.0%</span></td>
+                    <td><span class="negative">-75,500</span></td>
+                    <td><span class="negative">-12,583</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>5</td>
+                    <td><span class="positive">60.0%</span></td>
+                    <td><span class="positive">64,500</span></td>
+                    <td><span class="positive">12,900</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>5</td>
+                    <td><span class="positive">60.0%</span></td>
+                    <td><span class="positive">61,500</span></td>
+                    <td><span class="positive">12,300</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>3</td>
+                    <td><span class="negative">33.3%</span></td>
+                    <td><span class="positive">26,500</span></td>
+                    <td><span class="positive">8,833</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>54</td>
+                    <td><span class="negative">42.6%</span></td>
+                    <td><span class="positive">75,800</span></td>
+                    <td><span class="positive">1,403</span></td>
+                </tr>
+        
+            </tbody>
+        </table>
+    
+        <h3>5,000~10,000円 <span class="badge badge-danger">-99,000円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>17</td>
+                    <td><span class="negative">47.1%</span></td>
+                    <td><span class="negative">-11,000</span></td>
+                    <td><span class="negative">-647</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>10</td>
+                    <td><span class="negative">40.0%</span></td>
+                    <td><span class="positive">27,300</span></td>
+                    <td><span class="positive">2,730</span></td>
+                </tr>
+        
+                <tr><td>5~10%</td><td>0</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="highlight">
+                    <td>10~15%</td>
+                    <td>4</td>
+                    <td><span class="positive">75.0%</span></td>
+                    <td><span class="negative">-79,400</span></td>
+                    <td><span class="negative">-19,850</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>15~20%</td>
+                    <td>4</td>
+                    <td><span class="negative">25.0%</span></td>
+                    <td><span class="negative">-35,900</span></td>
+                    <td><span class="negative">-8,975</span></td>
+                </tr>
+        
+                <tr><td>20%以上</td><td>0</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>35</td>
+                    <td><span class="negative">45.7%</span></td>
+                    <td><span class="negative">-99,000</span></td>
+                    <td><span class="negative">-2,828</span></td>
+                </tr>
+        
+            </tbody>
+        </table>
+    
+        <h3>10,000円~ <span class="badge badge-success">282,000円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>勝率</th>
+                    <th>合計損益</th>
+                    <th>平均損益</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>4</td>
+                    <td><span class="positive">75.0%</span></td>
+                    <td><span class="positive">54,500</span></td>
+                    <td><span class="positive">13,625</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>10</td>
+                    <td><span class="positive">70.0%</span></td>
+                    <td><span class="positive">288,500</span></td>
+                    <td><span class="positive">28,850</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>5~10%</td>
+                    <td>1</td>
+                    <td><span class="negative">0.0%</span></td>
+                    <td><span class="negative">-61,000</span></td>
+                    <td><span class="negative">-61,000</span></td>
+                </tr>
+        
+                <tr><td>10~15%</td><td>0</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr><td>15~20%</td><td>0</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr><td>20%以上</td><td>0</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>15</td>
+                    <td><span class="positive">66.7%</span></td>
+                    <td><span class="positive">282,000</span></td>
+                    <td><span class="positive">18,800</span></td>
+                </tr>
+        
+            </tbody>
+        </table>
+    
+    </div>
+
+    <!-- Section 2: change_pct × 時間帯4区分 -->
+    <div class="section">
+        <h2>2. change_pct × 時間帯4区分</h2>
+        
+        <h3>全体</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め<br><small>9:00-10:25</small></th>
+                    <th>前場引け<br><small>~11:30</small></th>
+                    <th>後場早め<br><small>12:30-14:00</small></th>
+                    <th>大引け<br><small>~15:00</small></th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td>0%未満</td>
+                    <td>224</td>
+                    <td><span class="positive">111,918</span></td>
+                    <td><span class="positive">149,989</span></td>
+                    <td><span class="positive">192,997</span></td>
+                    <td><span class="positive">136,429</span></td>
+                </tr>
+    
+                <tr>
+                    <td>0~5%</td>
+                    <td>192</td>
+                    <td><span class="positive">164,663</span></td>
+                    <td><span class="positive">80,450</span></td>
+                    <td><span class="positive">381,645</span></td>
+                    <td><span class="positive">330,600</span></td>
+                </tr>
+    
+                <tr>
+                    <td>5~10%</td>
+                    <td>53</td>
+                    <td><span class="positive">40,253</span></td>
+                    <td><span class="negative">-36,440</span></td>
+                    <td><span class="negative">-127,089</span></td>
+                    <td><span class="negative">-132,800</span></td>
+                </tr>
+    
+                <tr>
+                    <td>10~15%</td>
+                    <td>48</td>
+                    <td><span class="positive">146,400</span></td>
+                    <td><span class="positive">149,000</span></td>
+                    <td><span class="positive">88,700</span></td>
+                    <td><span class="positive">3,100</span></td>
+                </tr>
+    
+                <tr>
+                    <td>15~20%</td>
+                    <td>46</td>
+                    <td><span class="negative">-3,800</span></td>
+                    <td><span class="positive">6,600</span></td>
+                    <td><span class="positive">115,900</span></td>
+                    <td><span class="positive">75,600</span></td>
+                </tr>
+    
+                <tr>
+                    <td>20%以上</td>
+                    <td>51</td>
+                    <td><span class="positive">85,774</span></td>
+                    <td><span class="positive">125,074</span></td>
+                    <td><span class="positive">237,574</span></td>
+                    <td><span class="positive">272,283</span></td>
+                </tr>
+    
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>614</td>
+                    <td><span class="positive">545,208</span></td>
+                    <td><span class="positive">474,674</span></td>
+                    <td><span class="positive">889,726</span></td>
+                    <td><span class="positive">685,213</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>~1,000円 <span class="badge badge-success">64,313円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め</th>
+                    <th>前場引け</th>
+                    <th>後場早め</th>
+                    <th>大引け</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>99</td>
+                    <td><span class="positive">7,170</span></td>
+                    <td><span class="positive">25,839</span></td>
+                    <td><span class="positive">24,700</span></td>
+                    <td><span class="positive">2,329</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>89</td>
+                    <td><span class="negative">-3,300</span></td>
+                    <td><span class="negative">-6,400</span></td>
+                    <td><span class="negative">-7,000</span></td>
+                    <td><span class="negative">-12,700</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>5~10%</td>
+                    <td>25</td>
+                    <td><span class="positive">9,629</span></td>
+                    <td><span class="positive">3,359</span></td>
+                    <td><span class="positive">1,879</span></td>
+                    <td><span class="negative">-7,900</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>25</td>
+                    <td><span class="negative">-11,700</span></td>
+                    <td><span class="negative">-6,500</span></td>
+                    <td><span class="positive">7,500</span></td>
+                    <td><span class="negative">-2,800</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>26</td>
+                    <td><span class="positive">8,200</span></td>
+                    <td><span class="positive">10,500</span></td>
+                    <td><span class="positive">18,500</span></td>
+                    <td><span class="positive">26,200</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>22</td>
+                    <td><span class="positive">16,874</span></td>
+                    <td><span class="positive">34,674</span></td>
+                    <td><span class="positive">47,274</span></td>
+                    <td><span class="positive">59,183</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>286</td>
+                    <td><span class="positive">26,874</span></td>
+                    <td><span class="positive">61,474</span></td>
+                    <td><span class="positive">92,854</span></td>
+                    <td><span class="positive">64,313</span></td>
+                </tr>
+            </tbody>
+        </table>
+    
+        <h3>1,000~3,000円 <span class="badge badge-success">362,100円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め</th>
+                    <th>前場引け</th>
+                    <th>後場早め</th>
+                    <th>大引け</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>87</td>
+                    <td><span class="positive">87,848</span></td>
+                    <td><span class="positive">89,150</span></td>
+                    <td><span class="positive">101,647</span></td>
+                    <td><span class="positive">89,800</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>65</td>
+                    <td><span class="positive">28,436</span></td>
+                    <td><span class="positive">34,900</span></td>
+                    <td><span class="positive">62,244</span></td>
+                    <td><span class="positive">29,500</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>5~10%</td>
+                    <td>21</td>
+                    <td><span class="negative">-8,800</span></td>
+                    <td><span class="negative">-14,000</span></td>
+                    <td><span class="positive">10,050</span></td>
+                    <td><span class="positive">11,600</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>14</td>
+                    <td><span class="positive">5,100</span></td>
+                    <td><span class="positive">13,000</span></td>
+                    <td><span class="positive">23,600</span></td>
+                    <td><span class="positive">20,800</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>11</td>
+                    <td><span class="positive">32,100</span></td>
+                    <td><span class="positive">14,200</span></td>
+                    <td><span class="positive">46,000</span></td>
+                    <td><span class="positive">23,800</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>26</td>
+                    <td><span class="positive">50,400</span></td>
+                    <td><span class="positive">72,900</span></td>
+                    <td><span class="positive">164,300</span></td>
+                    <td><span class="positive">186,600</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>224</td>
+                    <td><span class="positive">195,084</span></td>
+                    <td><span class="positive">210,150</span></td>
+                    <td><span class="positive">407,841</span></td>
+                    <td><span class="positive">362,100</span></td>
+                </tr>
+            </tbody>
+        </table>
+    
+        <h3>3,000~5,000円 <span class="badge badge-success">75,800円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め</th>
+                    <th>前場引け</th>
+                    <th>後場早め</th>
+                    <th>大引け</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>17</td>
+                    <td><span class="positive">9,500</span></td>
+                    <td><span class="positive">3,400</span></td>
+                    <td><span class="positive">4,750</span></td>
+                    <td><span class="positive">800</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>18</td>
+                    <td><span class="positive">22,190</span></td>
+                    <td><span class="negative">-6,650</span></td>
+                    <td><span class="positive">13,496</span></td>
+                    <td><span class="negative">-2,000</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>5~10%</td>
+                    <td>6</td>
+                    <td><span class="negative">-11,576</span></td>
+                    <td><span class="negative">-45,800</span></td>
+                    <td><span class="negative">-76,019</span></td>
+                    <td><span class="negative">-75,500</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>10~15%</td>
+                    <td>5</td>
+                    <td><span class="positive">57,500</span></td>
+                    <td><span class="positive">62,200</span></td>
+                    <td><span class="positive">62,500</span></td>
+                    <td><span class="positive">64,500</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>15~20%</td>
+                    <td>5</td>
+                    <td><span class="positive">46,900</span></td>
+                    <td><span class="positive">29,800</span></td>
+                    <td><span class="positive">65,000</span></td>
+                    <td><span class="positive">61,500</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>20%以上</td>
+                    <td>3</td>
+                    <td><span class="positive">18,500</span></td>
+                    <td><span class="positive">17,500</span></td>
+                    <td><span class="positive">26,000</span></td>
+                    <td><span class="positive">26,500</span></td>
+                </tr>
+        
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>54</td>
+                    <td><span class="positive">143,014</span></td>
+                    <td><span class="positive">60,450</span></td>
+                    <td><span class="positive">95,726</span></td>
+                    <td><span class="positive">75,800</span></td>
+                </tr>
+            </tbody>
+        </table>
+    
+        <h3>5,000~10,000円 <span class="badge badge-danger">-99,000円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め</th>
+                    <th>前場引け</th>
+                    <th>後場早め</th>
+                    <th>大引け</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>17</td>
+                    <td><span class="negative">-54,100</span></td>
+                    <td><span class="negative">-20,900</span></td>
+                    <td><span class="negative">-4,600</span></td>
+                    <td><span class="negative">-11,000</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>10</td>
+                    <td><span class="negative">-5,700</span></td>
+                    <td><span class="negative">-11,400</span></td>
+                    <td><span class="positive">17,400</span></td>
+                    <td><span class="positive">27,300</span></td>
+                </tr>
+        
+                <tr><td>5~10%</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="highlight">
+                    <td>10~15%</td>
+                    <td>4</td>
+                    <td><span class="positive">95,500</span></td>
+                    <td><span class="positive">80,300</span></td>
+                    <td><span class="negative">-4,900</span></td>
+                    <td><span class="negative">-79,400</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>15~20%</td>
+                    <td>4</td>
+                    <td><span class="negative">-91,000</span></td>
+                    <td><span class="negative">-47,900</span></td>
+                    <td><span class="negative">-13,600</span></td>
+                    <td><span class="negative">-35,900</span></td>
+                </tr>
+        
+                <tr><td>20%以上</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>35</td>
+                    <td><span class="negative">-55,300</span></td>
+                    <td><span class="positive">100</span></td>
+                    <td><span class="negative">-5,700</span></td>
+                    <td><span class="negative">-99,000</span></td>
+                </tr>
+            </tbody>
+        </table>
+    
+        <h3>10,000円~ <span class="badge badge-success">282,000円</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>change_pct区間</th>
+                    <th>件数</th>
+                    <th>前場早め</th>
+                    <th>前場引け</th>
+                    <th>後場早め</th>
+                    <th>大引け</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr class="">
+                    <td>0%未満</td>
+                    <td>4</td>
+                    <td><span class="positive">61,500</span></td>
+                    <td><span class="positive">52,500</span></td>
+                    <td><span class="positive">66,500</span></td>
+                    <td><span class="positive">54,500</span></td>
+                </tr>
+        
+                <tr class="">
+                    <td>0~5%</td>
+                    <td>10</td>
+                    <td><span class="positive">123,035</span></td>
+                    <td><span class="positive">70,000</span></td>
+                    <td><span class="positive">295,504</span></td>
+                    <td><span class="positive">288,500</span></td>
+                </tr>
+        
+                <tr class="highlight">
+                    <td>5~10%</td>
+                    <td>1</td>
+                    <td><span class="positive">51,000</span></td>
+                    <td><span class="positive">20,000</span></td>
+                    <td><span class="negative">-63,000</span></td>
+                    <td><span class="negative">-61,000</span></td>
+                </tr>
+        
+                <tr><td>10~15%</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr><td>15~20%</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr><td>20%以上</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td>15</td>
+                    <td><span class="positive">235,535</span></td>
+                    <td><span class="positive">142,500</span></td>
+                    <td><span class="positive">299,004</span></td>
+                    <td><span class="positive">282,000</span></td>
+                </tr>
+            </tbody>
+        </table>
+    
+    </div>
+
+    <!-- Section 3: change_pct × 曜日 × 時間帯 -->
+    <div class="section">
+        <h2>3. change_pct × 曜日 × 時間帯</h2>
+
+        <div class="sub-table">
+            <div class="weekday-header">月曜日 <span class="badge badge-success">133,700円</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>change_pct区間</th>
+                        <th>件数</th>
+                        <th>前場早め</th>
+                        <th>前場引け</th>
+                        <th>後場早め</th>
+                        <th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr class="">
+                        <td>0%未満</td>
+                        <td>30</td>
+                        <td><span class="positive">70,500</span></td>
+                        <td><span class="positive">77,000</span></td>
+                        <td><span class="positive">113,300</span></td>
+                        <td><span class="positive">114,650</span></td>
+                    </tr>
+        
+                    <tr class="highlight">
+                        <td>0~5%</td>
+                        <td>33</td>
+                        <td><span class="positive">42,449</span></td>
+                        <td><span class="positive">18,450</span></td>
+                        <td><span class="negative">-47,900</span></td>
+                        <td><span class="negative">-54,950</span></td>
+                    </tr>
+        
+                    <tr class="highlight">
+                        <td>5~10%</td>
+                        <td>7</td>
+                        <td><span class="positive">21,023</span></td>
+                        <td><span class="negative">-21,800</span></td>
+                        <td><span class="negative">-118,319</span></td>
+                        <td><span class="negative">-109,700</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>10~15%</td>
+                        <td>4</td>
+                        <td><span class="positive">48,900</span></td>
+                        <td><span class="positive">52,300</span></td>
+                        <td><span class="positive">53,300</span></td>
+                        <td><span class="positive">53,100</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>15~20%</td>
+                        <td>8</td>
+                        <td><span class="negative">-9,500</span></td>
+                        <td><span class="positive">12,100</span></td>
+                        <td><span class="positive">68,500</span></td>
+                        <td><span class="positive">71,000</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>20%以上</td>
+                        <td>3</td>
+                        <td><span class="positive">23,600</span></td>
+                        <td><span class="positive">22,400</span></td>
+                        <td><span class="positive">48,100</span></td>
+                        <td><span class="positive">59,600</span></td>
+                    </tr>
+        
+                    <tr class="summary-row">
+                        <td>合計</td>
+                        <td>85</td>
+                        <td><span class="positive">196,973</span></td>
+                        <td><span class="positive">160,450</span></td>
+                        <td><span class="positive">116,980</span></td>
+                        <td><span class="positive">133,700</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    
+        <div class="sub-table">
+            <div class="weekday-header">火曜日 <span class="badge badge-success">395,800円</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>change_pct区間</th>
+                        <th>件数</th>
+                        <th>前場早め</th>
+                        <th>前場引け</th>
+                        <th>後場早め</th>
+                        <th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr class="">
+                        <td>0%未満</td>
+                        <td>43</td>
+                        <td><span class="positive">43,300</span></td>
+                        <td><span class="positive">43,250</span></td>
+                        <td><span class="positive">29,800</span></td>
+                        <td><span class="positive">28,150</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>0~5%</td>
+                        <td>48</td>
+                        <td><span class="positive">185,885</span></td>
+                        <td><span class="positive">91,400</span></td>
+                        <td><span class="positive">285,554</span></td>
+                        <td><span class="positive">295,650</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>5~10%</td>
+                        <td>14</td>
+                        <td><span class="negative">-200</span></td>
+                        <td><span class="negative">-2,900</span></td>
+                        <td><span class="positive">750</span></td>
+                        <td><span class="negative">-3,600</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>10~15%</td>
+                        <td>16</td>
+                        <td><span class="negative">-7,600</span></td>
+                        <td><span class="positive">100</span></td>
+                        <td><span class="positive">9,700</span></td>
+                        <td><span class="positive">13,800</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>15~20%</td>
+                        <td>10</td>
+                        <td><span class="positive">4,900</span></td>
+                        <td><span class="positive">3,800</span></td>
+                        <td><span class="positive">15,200</span></td>
+                        <td><span class="negative">-5,700</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>20%以上</td>
+                        <td>22</td>
+                        <td><span class="positive">20,900</span></td>
+                        <td><span class="positive">16,900</span></td>
+                        <td><span class="positive">69,400</span></td>
+                        <td><span class="positive">67,500</span></td>
+                    </tr>
+        
+                    <tr class="summary-row">
+                        <td>合計</td>
+                        <td>153</td>
+                        <td><span class="positive">247,185</span></td>
+                        <td><span class="positive">152,550</span></td>
+                        <td><span class="positive">410,404</span></td>
+                        <td><span class="positive">395,800</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    
+        <div class="sub-table">
+            <div class="weekday-header">水曜日 <span class="badge badge-danger">-157,700円</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>change_pct区間</th>
+                        <th>件数</th>
+                        <th>前場早め</th>
+                        <th>前場引け</th>
+                        <th>後場早め</th>
+                        <th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr class="highlight">
+                        <td>0%未満</td>
+                        <td>58</td>
+                        <td><span class="negative">-35,501</span></td>
+                        <td><span class="negative">-34,950</span></td>
+                        <td><span class="negative">-31,552</span></td>
+                        <td><span class="negative">-57,200</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>0~5%</td>
+                        <td>39</td>
+                        <td><span class="negative">-3,713</span></td>
+                        <td><span class="negative">-15,800</span></td>
+                        <td><span class="positive">39,994</span></td>
+                        <td><span class="positive">25,200</span></td>
+                    </tr>
+        
+                    <tr class="highlight">
+                        <td>5~10%</td>
+                        <td>9</td>
+                        <td><span class="negative">-20,600</span></td>
+                        <td><span class="negative">-53,400</span></td>
+                        <td><span class="negative">-67,800</span></td>
+                        <td><span class="negative">-69,200</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>10~15%</td>
+                        <td>11</td>
+                        <td><span class="positive">9,900</span></td>
+                        <td><span class="positive">8,200</span></td>
+                        <td><span class="positive">19,400</span></td>
+                        <td><span class="positive">2,300</span></td>
+                    </tr>
+        
+                    <tr class="highlight">
+                        <td>15~20%</td>
+                        <td>8</td>
+                        <td><span class="negative">-39,600</span></td>
+                        <td><span class="negative">-36,000</span></td>
+                        <td><span class="negative">-54,200</span></td>
+                        <td><span class="negative">-62,700</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>20%以上</td>
+                        <td>6</td>
+                        <td><span class="negative">-4,600</span></td>
+                        <td><span class="negative">-2,300</span></td>
+                        <td><span class="negative">-1,600</span></td>
+                        <td><span class="positive">3,900</span></td>
+                    </tr>
+        
+                    <tr class="summary-row">
+                        <td>合計</td>
+                        <td>131</td>
+                        <td><span class="negative">-94,115</span></td>
+                        <td><span class="negative">-134,250</span></td>
+                        <td><span class="negative">-95,758</span></td>
+                        <td><span class="negative">-157,700</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    
+        <div class="sub-table">
+            <div class="weekday-header">木曜日 <span class="badge badge-success">207,463円</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>change_pct区間</th>
+                        <th>件数</th>
+                        <th>前場早め</th>
+                        <th>前場引け</th>
+                        <th>後場早め</th>
+                        <th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr class="">
+                        <td>0%未満</td>
+                        <td>52</td>
+                        <td><span class="negative">-15,679</span></td>
+                        <td><span class="negative">-13,060</span></td>
+                        <td><span class="negative">-100</span></td>
+                        <td><span class="positive">6,179</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>0~5%</td>
+                        <td>42</td>
+                        <td><span class="positive">2,200</span></td>
+                        <td><span class="positive">38,300</span></td>
+                        <td><span class="positive">73,000</span></td>
+                        <td><span class="positive">79,800</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>5~10%</td>
+                        <td>15</td>
+                        <td><span class="positive">34,200</span></td>
+                        <td><span class="positive">30,200</span></td>
+                        <td><span class="positive">51,300</span></td>
+                        <td><span class="positive">46,600</span></td>
+                    </tr>
+        
+                    <tr class="highlight">
+                        <td>10~15%</td>
+                        <td>11</td>
+                        <td><span class="positive">67,100</span></td>
+                        <td><span class="positive">63,600</span></td>
+                        <td><span class="negative">-17,600</span></td>
+                        <td><span class="negative">-80,600</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>15~20%</td>
+                        <td>12</td>
+                        <td><span class="positive">15,900</span></td>
+                        <td><span class="negative">-600</span></td>
+                        <td><span class="positive">75,800</span></td>
+                        <td><span class="positive">72,300</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>20%以上</td>
+                        <td>13</td>
+                        <td><span class="positive">4,074</span></td>
+                        <td><span class="positive">35,974</span></td>
+                        <td><span class="positive">57,274</span></td>
+                        <td><span class="positive">83,183</span></td>
+                    </tr>
+        
+                    <tr class="summary-row">
+                        <td>合計</td>
+                        <td>145</td>
+                        <td><span class="positive">107,794</span></td>
+                        <td><span class="positive">154,414</span></td>
+                        <td><span class="positive">239,674</span></td>
+                        <td><span class="positive">207,463</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    
+        <div class="sub-table">
+            <div class="weekday-header">金曜日 <span class="badge badge-success">105,950円</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>change_pct区間</th>
+                        <th>件数</th>
+                        <th>前場早め</th>
+                        <th>前場引け</th>
+                        <th>後場早め</th>
+                        <th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr class="">
+                        <td>0%未満</td>
+                        <td>41</td>
+                        <td><span class="positive">49,300</span></td>
+                        <td><span class="positive">77,750</span></td>
+                        <td><span class="positive">81,550</span></td>
+                        <td><span class="positive">44,650</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>0~5%</td>
+                        <td>30</td>
+                        <td><span class="negative">-62,159</span></td>
+                        <td><span class="negative">-51,900</span></td>
+                        <td><span class="positive">30,996</span></td>
+                        <td><span class="negative">-15,100</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>5~10%</td>
+                        <td>8</td>
+                        <td><span class="positive">5,829</span></td>
+                        <td><span class="positive">11,459</span></td>
+                        <td><span class="positive">6,979</span></td>
+                        <td><span class="positive">3,100</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>10~15%</td>
+                        <td>6</td>
+                        <td><span class="positive">28,100</span></td>
+                        <td><span class="positive">24,800</span></td>
+                        <td><span class="positive">23,900</span></td>
+                        <td><span class="positive">14,500</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>15~20%</td>
+                        <td>8</td>
+                        <td><span class="positive">24,500</span></td>
+                        <td><span class="positive">27,300</span></td>
+                        <td><span class="positive">10,600</span></td>
+                        <td><span class="positive">700</span></td>
+                    </tr>
+        
+                    <tr class="">
+                        <td>20%以上</td>
+                        <td>7</td>
+                        <td><span class="positive">41,800</span></td>
+                        <td><span class="positive">52,100</span></td>
+                        <td><span class="positive">64,400</span></td>
+                        <td><span class="positive">58,100</span></td>
+                    </tr>
+        
+                    <tr class="summary-row">
+                        <td>合計</td>
+                        <td>100</td>
+                        <td><span class="positive">87,370</span></td>
+                        <td><span class="positive">141,509</span></td>
+                        <td><span class="positive">218,426</span></td>
+                        <td><span class="positive">105,950</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    
+    </div>
+</div>
+</body>
+</html>

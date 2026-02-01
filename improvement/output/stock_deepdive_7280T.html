@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銘柄深掘り 7280 ミツバ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.7; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; color: #fff; font-size: 1.8em; margin-bottom: 10px; border-bottom: 2px solid #58a6ff; padding-bottom: 15px; }
+        .subtitle { text-align: center; color: #8b949e; margin-bottom: 10px; }
+        .data-source { text-align: center; color: #7ee787; font-size: 0.9em; margin-bottom: 20px; }
+        .summary-box { background: linear-gradient(135deg, #58a6ff20, #1f6feb20); border: 1px solid #58a6ff; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .summary-item { text-align: center; }
+        .summary-label { color: #8b949e; font-size: 0.85em; }
+        .summary-value { font-size: 1.4em; font-weight: bold; color: #fff; }
+        .summary-value.positive { color: #7ee787; }
+        .summary-value.negative { color: #f85149; }
+        .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; margin-right: 5px; margin-bottom: 5px; }
+        .tag.top5 { background: #f0883e30; color: #f0883e; border: 1px solid #f0883e; }
+        .tag.catalyst { background: #7ee78730; color: #7ee787; }
+        .tag.sector { background: #58a6ff30; color: #58a6ff; }
+        .section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .section h2 { color: #58a6ff; font-size: 1.2em; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #30363d; }
+        .section h3 { color: #7ee787; font-size: 1em; margin: 15px 0 10px 0; }
+        .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #21262d; }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #8b949e; }
+        .data-value { font-weight: bold; }
+        .data-value.negative { color: #f85149; }
+        .data-value.positive { color: #7ee787; }
+        .grok-reason { background: #21262d; border-left: 3px solid #f0883e; padding: 15px; margin: 15px 0; font-size: 0.9em; white-space: pre-wrap; word-break: break-word; line-height: 1.8; }
+        .sentiment-bar { display: flex; height: 20px; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+        .sentiment-positive { background: #7ee787; }
+        .sentiment-neutral { background: #8b949e; }
+        .sentiment-negative { background: #f85149; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>7280 ミツバ</h1>
+        <p class="subtitle">銘柄深掘りレポート | 選定日: 2026-01-23</p>
+        <p class="data-source">データソース: J-Quants API + Grok選定 (実データ)</p>
+        <div class="summary-box">
+            <div class="summary-item"><div class="summary-label">株価</div><div class="summary-value">¥1,374</div></div>
+            <div class="summary-item"><div class="summary-label">前日比</div><div class="summary-value negative">-3.31%</div></div>
+            <div class="summary-item"><div class="summary-label">時価総額</div><div class="summary-value">634.2億円</div></div>
+            <div class="summary-item"><div class="summary-label">Grokランク</div><div class="summary-value">#1</div></div>
+        </div>
+        <div style="margin-bottom: 30px; text-align: center;">
+            <span class="tag top5">⭐ Top5</span>
+            <span class="tag catalyst">ニュース好材料+株クラバズ</span>
+            <span class="tag sector">自動車部品</span>
+        </div>
+        <div class="section">
+            <h2>Grok選定理由（実データ）</h2>
+            <div class="grok-reason">[web_search: bloomberg.com]脱レアアース技術で株高騰ニュース(2026-01-22 0:51配信)。
+[web_search: yahoo.co.jp]時価総額約350億円確認。
+[x_search: semantic]デイトレ投稿複数、+179,680円利益報告(2026-01-22)。
+[web_search: kabutan.jp]出来高急増、ATR 5.0%。
+[web_search: jpx.co.jp]上場廃止該当なし。除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし。【@daykabu2021 が言及】似た自動車部品関連投稿確認</div>
+        </div>
+        <div class="section">
+            <h2>財務データ（J-Quants 実データ）</h2>
+            <p style="color: #8b949e; font-size: 0.9em; margin-bottom: 15px;">決算期: 2Q FY2026 | 開示日: 2025-11-12</p>
+            <h3>損益計算書</h3>
+            <div class="data-row"><span class="data-label">売上高</span><span class="data-value">1673.3億円</span></div>
+            <div class="data-row"><span class="data-label">営業利益</span><span class="data-value positive">99.4億円</span></div>
+            <div class="data-row"><span class="data-label">経常利益</span><span class="data-value positive">102.9億円</span></div>
+            <div class="data-row"><span class="data-label">純利益</span><span class="data-value positive">65.2億円</span></div>
+            <div class="data-row"><span class="data-label">EPS</span><span class="data-value ">133.40円</span></div>
+            <h3>貸借対照表</h3>
+            <div class="data-row"><span class="data-label">総資産</span><span class="data-value">3316.2億円</span></div>
+            <div class="data-row"><span class="data-label">純資産</span><span class="data-value">1168.9億円</span></div>
+            <div class="data-row"><span class="data-label">自己資本比率</span><span class="data-value ">31.0%</span></div>
+            <div class="data-row"><span class="data-label">現預金</span><span class="data-value">937.2億円</span></div>
+            <h3>バリュエーション</h3>
+            <div class="data-row"><span class="data-label">PER</span><span class="data-value">10.3倍</span></div>
+            <div class="data-row"><span class="data-label">PBR</span><span class="data-value">0.54倍</span></div>
+            <div class="data-row"><span class="data-label">発行済株式数</span><span class="data-value">46,154,016株</span></div>
+        </div>
+        <div class="section">
+            <h2>センチメント分析</h2>
+            <div class="sentiment-bar">
+                <div class="sentiment-positive" style="width: 85%;"></div>
+                <div class="sentiment-neutral" style="width: 10%;"></div>
+                <div class="sentiment-negative" style="width: 5%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #8b949e;">
+                <span>ポジティブ 85%</span><span>中立 10%</span><span>ネガティブ 5%</span>
+            </div>
+        </div>
+        <p style="text-align: center; color: #8b949e; margin-top: 30px; font-size: 0.85em;">Generated by python_stock | データソース: J-Quants API + grok_trending.parquet</p>
+    </div>
+</body>
+</html>

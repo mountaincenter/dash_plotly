@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>曜日傾向分析 - 一般 vs 自分のデータ</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a3a3a3;
+            --positive: #22c55e;
+            --negative: #ef4444;
+            --accent: #3b82f6;
+            --warning: #f59e0b;
+            --purple: #a855f7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .meta { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 500; font-size: 12px; }
+        tr:hover { background: var(--bg-tertiary); }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .warning { color: var(--warning); }
+        .purple { color: var(--purple); }
+        .match { background: rgba(34, 197, 94, 0.15); }
+        .mismatch { background: rgba(239, 68, 68, 0.15); }
+        .insight {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .insight h4 { margin-bottom: 8px; }
+        .insight-warning { border-left-color: var(--warning); }
+        .insight-danger { border-left-color: var(--negative); }
+        .insight-success { border-left-color: var(--positive); }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .tag-match { background: rgba(34, 197, 94, 0.2); color: var(--positive); }
+        .tag-mismatch { background: rgba(239, 68, 68, 0.2); color: var(--negative); }
+        .tag-partial { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .source { font-size: 12px; color: var(--text-secondary); margin-top: 16px; }
+        .source a { color: var(--accent); }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+        .weekday-detail {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .weekday-detail h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>曜日傾向分析 - 一般的傾向 vs 自分のデータ</h1>
+    <p class="meta">
+        データ期間: 2025-11-04 ~ 2026-01-14 |
+        生成: 2026-01-15 11:54
+    </p>
+
+    <!-- 一般的な曜日傾向 -->
+    <div class="section">
+        <h2>一般的な曜日アノマリー（市場の定説）</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>市場傾向</th>
+                <th>理由・背景</th>
+                <th>ショート期待</th>
+            </tr>
+
+            <tr>
+                <td><strong>月曜曜日</strong></td>
+                <td>株安傾向</td>
+                <td style="font-size:13px; color:var(--text-secondary)">週末の悪材料消化で売り先行。リバウンド狙いの買いも。</td>
+                <td>有利（下落→ショート利益）</td>
+            </tr>
+    
+            <tr>
+                <td><strong>火曜曜日</strong></td>
+                <td>上昇傾向</td>
+                <td style="font-size:13px; color:var(--text-secondary)">週前半は買い優勢。月曜からの反発。</td>
+                <td>不利（上昇→ショート損失）</td>
+            </tr>
+    
+            <tr>
+                <td><strong>水曜曜日</strong></td>
+                <td>軟調傾向</td>
+                <td style="font-size:13px; color:var(--text-secondary)">「魔の水曜日」SQ週は特に。ヘッジファンドの裁定取引。</td>
+                <td>有利（下落→ショート利益）</td>
+            </tr>
+    
+            <tr>
+                <td><strong>木曜曜日</strong></td>
+                <td>下落傾向</td>
+                <td style="font-size:13px; color:var(--text-secondary)">週末前に先回り利確売り。機関のポジション調整。</td>
+                <td>有利（下落→ショート利益）</td>
+            </tr>
+    
+            <tr>
+                <td><strong>金曜曜日</strong></td>
+                <td>売圧力強</td>
+                <td style="font-size:13px; color:var(--text-secondary)">週末持ち越しリスク回避。空売り買い戻しで反発も。</td>
+                <td>やや有利</td>
+            </tr>
+    
+        </table>
+        <div class="source">
+            出典: 
+            <a href="https://kabumado.jp/weekly_trade/" target="_blank">かぶまど</a>,
+            <a href="https://www.nli-research.co.jp/report/detail/id=40448" target="_blank">ニッセイ基礎研究所</a>,
+            <a href="https://jioinc.jp/investleaders/anomaly_dayeffect/" target="_blank">Invest Leaders</a>
+        </div>
+    </div>
+
+    <!-- 比較分析 -->
+    <div class="section">
+        <h2>一般傾向 vs 自分のデータ（Grokショート）</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>一般的傾向</th>
+                <th>ショート期待</th>
+                <th>実際の結果</th>
+                <th>日経平均</th>
+                <th>判定</th>
+            </tr>
+
+            <tr class="match">
+                <td><strong>月曜曜</strong></td>
+                <td>株安傾向</td>
+                <td>有利（下落→ショート利益）</td>
+                <td><span class="positive">133,700</span> (51%)</td>
+                <td class="positive">+0.31%</td>
+                <td><span class="tag tag-match">一致</span></td>
+            </tr>
+    
+            <tr class="mismatch">
+                <td><strong>火曜曜</strong></td>
+                <td>上昇傾向</td>
+                <td>不利（上昇→ショート損失）</td>
+                <td><span class="positive">395,800</span> (54%)</td>
+                <td class="negative">-0.06%</td>
+                <td><span class="tag tag-mismatch">不一致</span></td>
+            </tr>
+    
+            <tr class="mismatch">
+                <td><strong>水曜曜</strong></td>
+                <td>軟調傾向</td>
+                <td>有利（下落→ショート利益）</td>
+                <td><span class="negative">-157,700</span> (44%)</td>
+                <td class="positive">+0.10%</td>
+                <td><span class="tag tag-mismatch">不一致</span></td>
+            </tr>
+    
+            <tr class="match">
+                <td><strong>木曜曜</strong></td>
+                <td>下落傾向</td>
+                <td>有利（下落→ショート利益）</td>
+                <td><span class="positive">207,463</span> (55%)</td>
+                <td class="positive">+0.51%</td>
+                <td><span class="tag tag-match">一致</span></td>
+            </tr>
+    
+            <tr class="match">
+                <td><strong>金曜曜</strong></td>
+                <td>売圧力強</td>
+                <td>やや有利</td>
+                <td><span class="positive">105,950</span> (52%)</td>
+                <td class="negative">-0.17%</td>
+                <td><span class="tag tag-partial">やや一致</span></td>
+            </tr>
+    
+        </table>
+    </div>
+
+    <!-- ズレの詳細分析 -->
+    <div class="section">
+        <h2>ズレの詳細分析</h2>
+
+        <div class="weekday-detail">
+            <h3>🔴 火曜日 - 最大のズレ</h3>
+            <div class="comparison-grid">
+                <div>
+                    <strong>一般的傾向:</strong>
+                    <p>週前半は買い優勢で上昇傾向。月曜からの反発。</p>
+                    <p>→ ショートは不利なはず</p>
+                </div>
+                <div>
+                    <strong>実際の結果:</strong>
+                    <p>ショート最高益 <span class="positive">+395,800円</span></p>
+                    <p>→ 一般傾向と真逆</p>
+                </div>
+            </div>
+            <div class="insight insight-warning">
+                <h4>考察</h4>
+                <p>Grok選定銘柄は「前日に急騰した銘柄」が多い。火曜に選定される銘柄は月曜に急騰しており、<strong>火曜に利確売りが集中</strong>する可能性。市場全体は上昇でも、急騰銘柄は反落しやすい。</p>
+            </div>
+        </div>
+
+        <div class="weekday-detail">
+            <h3>🔴 水曜日 - 逆の結果</h3>
+            <div class="comparison-grid">
+                <div>
+                    <strong>一般的傾向:</strong>
+                    <p>「魔の水曜日」軟調傾向。SQ週は特に。</p>
+                    <p>→ ショートは有利なはず</p>
+                </div>
+                <div>
+                    <strong>実際の結果:</strong>
+                    <p>ショート唯一のマイナス <span class="negative">-157,700円</span></p>
+                    <p>→ 一般傾向と真逆</p>
+                </div>
+            </div>
+            <div class="insight insight-danger">
+                <h4>考察</h4>
+                <p>水曜の軟調は大型株・指数に影響。Grok選定の<strong>小型・急騰銘柄は別の動き</strong>をしている可能性。または、火曜の下落からの反発で水曜に買い戻しが入る？</p>
+            </div>
+        </div>
+
+        <div class="weekday-detail">
+            <h3>🟢 木曜日 - 傾向一致</h3>
+            <div class="comparison-grid">
+                <div>
+                    <strong>一般的傾向:</strong>
+                    <p>週末前の先回り利確売り。機関のポジション調整。</p>
+                    <p>→ ショートは有利</p>
+                </div>
+                <div>
+                    <strong>実際の結果:</strong>
+                    <p>ショートプラス <span class="positive">+207,463円</span></p>
+                    <p>→ 傾向と一致</p>
+                </div>
+            </div>
+            <div class="insight insight-success">
+                <h4>考察</h4>
+                <p>木曜は機関投資家の動きとGrok銘柄の動きが<strong>一致</strong>。週末リスク回避の売りは、急騰銘柄でも同様に発生する。<strong>木曜ショートは信頼度高い</strong>。</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 結論 -->
+    <div class="section">
+        <h2>結論: 自分の感覚とのズレ修正</h2>
+        
+        <div class="insight insight-warning">
+            <h4>⚠️ 重要な発見</h4>
+            <p>一般的な曜日アノマリーは<strong>市場全体（日経平均・TOPIX）</strong>の傾向であり、<br>
+            Grok選定銘柄のような<strong>「前日急騰した小型株」</strong>には直接当てはまらない。</p>
+        </div>
+        
+        <div class="insight">
+            <h4>Grok銘柄特有の傾向</h4>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>火曜:</strong> 月曜急騰銘柄の利確売り → ショート有利</li>
+                <li><strong>水曜:</strong> 火曜下落からの反発・買い戻し → ショート不利</li>
+                <li><strong>木曜:</strong> 週末前のポジション調整 → ショート有利（市場と一致）</li>
+            </ul>
+        </div>
+        
+        <div class="insight insight-success">
+            <h4>✅ 修正後のアクションプラン</h4>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>火曜・木曜:</strong> ショート積極的に（Grok銘柄特有の売り圧力）</li>
+                <li><strong>水曜:</strong> ショート避ける（反発リスク高い）</li>
+                <li><strong>月曜・金曜:</strong> 状況見て判断（データ不足）</li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

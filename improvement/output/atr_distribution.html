@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ATR14% (atr14_pct) 分布分析</title>
+<style>
+body {
+    background-color: #1a1a2e;
+    color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px;
+}
+h1, h2 { color: #fff; }
+.summary {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #252540;
+    border-radius: 8px;
+}
+.chart-container {
+    background: #252540;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.histogram {
+    display: flex;
+    align-items: flex-end;
+    height: 300px;
+    gap: 4px;
+    padding: 20px 10px;
+    border-bottom: 2px solid #444;
+}
+.bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.bar {
+    width: 100%;
+    background: linear-gradient(to top, #4a90d9, #74c0fc);
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    position: relative;
+}
+.bar:hover {
+    background: linear-gradient(to top, #ffd43b, #ffe066);
+}
+.bar-label {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    text-align: center;
+}
+.bar-count {
+    font-size: 10px;
+    color: #fff;
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+table {
+    border-collapse: collapse;
+    font-size: 13px;
+    width: 100%;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+th {
+    background-color: #252540;
+    color: #aaa;
+}
+td:first-child {
+    text-align: left;
+}
+</style>
+</head>
+<body>
+<h1>ATR14% (atr14_pct) 分布分析</h1>
+
+<div class="summary">
+    <p>総件数: 738件 / 欠損: 7件</p>
+    <p>平均: 6.28 / 中央値: 5.04 / 標準偏差: 4.84</p>
+    <p>最小: 0.47 / 最大: 34.98</p>
+</div>
+
+<div class="chart-container">
+    <h2>ATR14% (atr14_pct) 分布（731件）</h2>
+    <div class="histogram">
+        <div class="bar-container">
+            <div class="bar" style="height:63.716814159292035%;">
+                <span class="bar-count">72</span>
+            </div>
+            <div class="bar-label">0-2</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:83.1858407079646%;">
+                <span class="bar-count">94</span>
+            </div>
+            <div class="bar-label">2-3</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:100.0%;">
+                <span class="bar-count">113</span>
+            </div>
+            <div class="bar-label">3-4</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:76.10619469026548%;">
+                <span class="bar-count">86</span>
+            </div>
+            <div class="bar-label">4-5</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:65.48672566371681%;">
+                <span class="bar-count">74</span>
+            </div>
+            <div class="bar-label">5-6</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:47.78761061946903%;">
+                <span class="bar-count">54</span>
+            </div>
+            <div class="bar-label">6-7</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:51.32743362831859%;">
+                <span class="bar-count">58</span>
+            </div>
+            <div class="bar-label">7-8</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:59.29203539823009%;">
+                <span class="bar-count">67</span>
+            </div>
+            <div class="bar-label">8-10</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:70.79646017699115%;">
+                <span class="bar-count">80</span>
+            </div>
+            <div class="bar-label">10-15</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:29.20353982300885%;">
+                <span class="bar-count">33</span>
+            </div>
+            <div class="bar-label">>15</div>
+        </div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h2>帯別集計</h2>
+    <table>
+        <tr><th>帯</th><th>件数</th><th>割合</th><th>累積</th></tr>
+        <tr><td>0-2</td><td>72</td><td>9.8%</td><td>9.8%</td></tr>
+        <tr><td>2-3</td><td>94</td><td>12.9%</td><td>22.7%</td></tr>
+        <tr><td>3-4</td><td>113</td><td>15.5%</td><td>38.2%</td></tr>
+        <tr><td>4-5</td><td>86</td><td>11.8%</td><td>49.9%</td></tr>
+        <tr><td>5-6</td><td>74</td><td>10.1%</td><td>60.1%</td></tr>
+        <tr><td>6-7</td><td>54</td><td>7.4%</td><td>67.4%</td></tr>
+        <tr><td>7-8</td><td>58</td><td>7.9%</td><td>75.4%</td></tr>
+        <tr><td>8-10</td><td>67</td><td>9.2%</td><td>84.5%</td></tr>
+        <tr><td>10-15</td><td>80</td><td>10.9%</td><td>95.5%</td></tr>
+        <tr><td>>15</td><td>33</td><td>4.5%</td><td>100.0%</td></tr>
+    </table>
+</div>
+
+</body>
+</html>

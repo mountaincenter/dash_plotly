@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>曜日別傾向分析</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a3a3a3;
+            --positive: #22c55e;
+            --negative: #ef4444;
+            --accent: #3b82f6;
+            --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .meta { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px 16px; text-align: right; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 500; font-size: 12px; }
+        th:first-child, td:first-child { text-align: left; }
+        tr:hover { background: var(--bg-tertiary); }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .warning { color: var(--warning); }
+        .highlight-good { background: rgba(34, 197, 94, 0.1) !important; }
+        .highlight-bad { background: rgba(239, 68, 68, 0.1) !important; }
+        .summary-row { background: var(--bg-tertiary); font-weight: 600; }
+        .insight {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .insight-warning {
+            border-left-color: var(--warning);
+        }
+        .insight-danger {
+            border-left-color: var(--negative);
+        }
+        .grid-5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .weekday-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .weekday-card .day { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .weekday-card .profit { font-size: 24px; font-weight: 700; }
+        .weekday-card .winrate { font-size: 14px; color: var(--text-secondary); }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge-best { background: rgba(34, 197, 94, 0.2); color: var(--positive); }
+        .badge-worst { background: rgba(239, 68, 68, 0.2); color: var(--negative); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>曜日別傾向分析</h1>
+    <p class="meta">
+        期間: 2025-11-04 ~ 2026-01-14 |
+        データ: 614件 |
+        生成: 2026-01-15 11:48
+    </p>
+
+    <!-- サマリーカード -->
+    <div class="section">
+        <h2>曜日別 ショート損益サマリー</h2>
+        <div class="grid-5">
+
+            <div class="weekday-card">
+                <div class="day">月曜</div>
+                <div class="profit positive">133,700</div>
+                <div class="winrate">勝率 50.6%</div>
+            </div>
+    
+            <div class="weekday-card">
+                <div class="day">火曜<span class="badge badge-best">BEST</span></div>
+                <div class="profit positive">395,800</div>
+                <div class="winrate">勝率 53.6%</div>
+            </div>
+    
+            <div class="weekday-card">
+                <div class="day">水曜<span class="badge badge-worst">WORST</span></div>
+                <div class="profit negative">-157,700</div>
+                <div class="winrate">勝率 44.3%</div>
+            </div>
+    
+            <div class="weekday-card">
+                <div class="day">木曜</div>
+                <div class="profit positive">207,463</div>
+                <div class="winrate">勝率 55.2%</div>
+            </div>
+    
+            <div class="weekday-card">
+                <div class="day">金曜</div>
+                <div class="profit positive">105,950</div>
+                <div class="winrate">勝率 52.0%</div>
+            </div>
+    
+        </div>
+    </div>
+
+    <!-- 知見1: 基本統計 -->
+    <div class="section">
+        <h2>1. 曜日別 基本統計（ショート）</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>件数</th>
+                <th>勝率</th>
+                <th>合計損益</th>
+                <th>平均損益</th>
+                <th>日単位勝率</th>
+            </tr>
+
+            <tr class="highlight-good">
+                <td>月曜日</td>
+                <td>85</td>
+                <td><span class="positive">+0.59pt</span> (50.6%)</td>
+                <td><span class="positive">133,700</span></td>
+                <td><span class="positive">1,572</span></td>
+                <td>5勝1敗 (83%)</td>
+            </tr>
+    
+            <tr class="highlight-good">
+                <td>火曜日</td>
+                <td>153</td>
+                <td><span class="positive">+3.59pt</span> (53.6%)</td>
+                <td><span class="positive">395,800</span></td>
+                <td><span class="positive">2,586</span></td>
+                <td>7勝3敗 (70%)</td>
+            </tr>
+    
+            <tr class="highlight-bad">
+                <td>水曜日</td>
+                <td>131</td>
+                <td><span class="negative">-5.73pt</span> (44.3%)</td>
+                <td><span class="negative">-157,700</span></td>
+                <td><span class="negative">-1,203</span></td>
+                <td>3勝7敗 (30%)</td>
+            </tr>
+    
+            <tr class="highlight-good">
+                <td>木曜日</td>
+                <td>145</td>
+                <td><span class="positive">+5.17pt</span> (55.2%)</td>
+                <td><span class="positive">207,463</span></td>
+                <td><span class="positive">1,430</span></td>
+                <td>4勝5敗 (44%)</td>
+            </tr>
+    
+            <tr class="highlight-good">
+                <td>金曜日</td>
+                <td>100</td>
+                <td><span class="positive">+2.00pt</span> (52.0%)</td>
+                <td><span class="positive">105,950</span></td>
+                <td><span class="positive">1,059</span></td>
+                <td>4勝4敗 (50%)</td>
+            </tr>
+    
+        </table>
+        <div class="insight">
+            <strong>知見:</strong> 火曜が最も利益が大きく、水曜だけがマイナス。月曜は日単位勝率83%と安定。
+        </div>
+    </div>
+
+    <!-- 知見2: 時間帯推移 -->
+    <div class="section">
+        <h2>2. 曜日別 時間帯推移（ショート）</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>前場早め<br><small>9:00-10:25</small></th>
+                <th>前場引け<br><small>~11:30</small></th>
+                <th>後場早め<br><small>12:30-14:00</small></th>
+                <th>大引け<br><small>~15:00</small></th>
+                <th>前場→大引け</th>
+            </tr>
+
+            <tr>
+                <td>月曜日</td>
+                <td><span class="positive">196,973</span></td>
+                <td><span class="positive">160,450</span></td>
+                <td><span class="positive">116,980</span></td>
+                <td><span class="positive">133,700</span></td>
+                <td class="negative">↘️悪化 (-32%)</td>
+            </tr>
+    
+            <tr>
+                <td>火曜日</td>
+                <td><span class="positive">247,185</span></td>
+                <td><span class="positive">152,550</span></td>
+                <td><span class="positive">410,404</span></td>
+                <td><span class="positive">395,800</span></td>
+                <td class="positive">↗️改善 (+60%)</td>
+            </tr>
+    
+            <tr>
+                <td>水曜日</td>
+                <td><span class="negative">-94,115</span></td>
+                <td><span class="negative">-134,250</span></td>
+                <td><span class="negative">-95,758</span></td>
+                <td><span class="negative">-157,700</span></td>
+                <td class="negative">↘️悪化 (-68%)</td>
+            </tr>
+    
+            <tr>
+                <td>木曜日</td>
+                <td><span class="positive">107,794</span></td>
+                <td><span class="positive">154,414</span></td>
+                <td><span class="positive">239,674</span></td>
+                <td><span class="positive">207,463</span></td>
+                <td class="positive">↗️改善 (+92%)</td>
+            </tr>
+    
+            <tr>
+                <td>金曜日</td>
+                <td><span class="positive">87,370</span></td>
+                <td><span class="positive">141,509</span></td>
+                <td><span class="positive">218,426</span></td>
+                <td><span class="positive">105,950</span></td>
+                <td class="positive">↗️改善 (+21%)</td>
+            </tr>
+    
+        </table>
+        <div class="insight">
+            <strong>知見:</strong> 火曜・木曜は後場で利益拡大。月曜・水曜は後場で利益縮小または損失拡大。
+        </div>
+    </div>
+
+    <!-- 知見3: ロング vs ショート -->
+    <div class="section">
+        <h2>3. 曜日別 ロング vs ショート</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>ロング合計</th>
+                <th>ショート合計</th>
+                <th>差分</th>
+                <th>推奨</th>
+            </tr>
+
+            <tr>
+                <td>月曜日</td>
+                <td><span class="negative">-133,700</span></td>
+                <td><span class="positive">133,700</span></td>
+                <td><span class="positive">267,400</span></td>
+                <td class="positive">ショート</td>
+            </tr>
+    
+            <tr>
+                <td>火曜日</td>
+                <td><span class="negative">-395,800</span></td>
+                <td><span class="positive">395,800</span></td>
+                <td><span class="positive">791,600</span></td>
+                <td class="positive">ショート</td>
+            </tr>
+    
+            <tr>
+                <td>水曜日</td>
+                <td><span class="positive">157,700</span></td>
+                <td><span class="negative">-157,700</span></td>
+                <td><span class="negative">-315,400</span></td>
+                <td class="warning">ロング</td>
+            </tr>
+    
+            <tr>
+                <td>木曜日</td>
+                <td><span class="negative">-207,463</span></td>
+                <td><span class="positive">207,463</span></td>
+                <td><span class="positive">414,926</span></td>
+                <td class="positive">ショート</td>
+            </tr>
+    
+            <tr>
+                <td>金曜日</td>
+                <td><span class="negative">-105,950</span></td>
+                <td><span class="positive">105,950</span></td>
+                <td><span class="positive">211,900</span></td>
+                <td class="positive">ショート</td>
+            </tr>
+    
+        </table>
+        <div class="insight insight-warning">
+            <strong>知見:</strong> 水曜だけロング有利。他の4日はショート有利。
+        </div>
+    </div>
+
+    <!-- 知見4: 日経平均との相関 -->
+    <div class="section">
+        <h2>4. 日経平均 vs Grokショート 曜日別比較</h2>
+        <table>
+            <tr>
+                <th>曜日</th>
+                <th>日経平均<br>騰落率</th>
+                <th>Grok<br>ショート</th>
+                <th>相関</th>
+                <th>解釈</th>
+            </tr>
+
+            <tr>
+                <td>月曜日</td>
+                <td><span class="positive">+0.31%</span></td>
+                <td><span class="positive">133,700</span></td>
+                <td class="negative">❌ 逆相関</td>
+                <td>Grok銘柄独自の動き</td>
+            </tr>
+    
+            <tr>
+                <td>火曜日</td>
+                <td><span class="negative">-0.06%</span></td>
+                <td><span class="positive">395,800</span></td>
+                <td class="positive">✅ 順相関</td>
+                <td>市場と連動</td>
+            </tr>
+    
+            <tr>
+                <td>水曜日</td>
+                <td><span class="positive">+0.10%</span></td>
+                <td><span class="negative">-157,700</span></td>
+                <td class="positive">✅ 順相関</td>
+                <td>市場と連動</td>
+            </tr>
+    
+            <tr>
+                <td>木曜日</td>
+                <td><span class="positive">+0.51%</span></td>
+                <td><span class="positive">207,463</span></td>
+                <td class="negative">❌ 逆相関</td>
+                <td>Grok銘柄独自の動き</td>
+            </tr>
+    
+            <tr>
+                <td>金曜日</td>
+                <td><span class="negative">-0.17%</span></td>
+                <td><span class="positive">105,950</span></td>
+                <td class="positive">✅ 順相関</td>
+                <td>市場と連動</td>
+            </tr>
+    
+        </table>
+        <div class="insight">
+            <strong>知見:</strong> 火・水・金は市場全体と連動。月・木はGrok銘柄独自の動きで利益。
+        </div>
+    </div>
+
+    <!-- 結論 -->
+    <div class="section">
+        <h2>結論・アクションプラン</h2>
+        <div class="insight" style="background: rgba(34, 197, 94, 0.1); border-left-color: var(--positive);">
+            <strong>✅ 推奨日（ショート）:</strong><br>
+            ・火曜: 最高益 +395,800円、後場で利益拡大<br>
+            ・木曜: +207,463円、後場で大幅改善<br>
+            ・月曜: 日単位勝率83%と安定
+        </div>
+        <div class="insight insight-danger">
+            <strong>⚠️ 注意日:</strong><br>
+            ・水曜: 唯一のマイナス -157,700円、ロングが有利<br>
+            ・金曜: 利益は出るが日単位勝率50%で不安定
+        </div>
+    </div>
+</div>
+</body>
+</html>

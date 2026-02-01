@@ -169,10 +169,11 @@ def prepare_data(df: pd.DataFrame, price_ranges: list) -> pd.DataFrame:
     else:
         df["seg_p2"] = 0
 
-    # 11seg勝敗判定
+    # 11seg: ショート基準に符号反転
     for seg in TIME_SEGMENTS_11:
         key = seg["key"]
         if key in df.columns:
+            df[key] = -df[key]
             df[f"{key}_win"] = df[key] > 0
 
     return df

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>grok_trending 総合判断 2026/01/28</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            padding: 20px;
+            font-size: 14px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #fff; margin-bottom: 5px; }
+        .subtitle { color: #8b949e; margin-bottom: 20px; }
+        
+        .alert {
+            background: linear-gradient(135deg, #f8514920, #da363320);
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .alert h3 { color: #f85149; margin-bottom: 8px; }
+        
+        .stat-note {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        .stat-note strong { color: #58a6ff; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #161b22;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        th {
+            background: #21262d;
+            color: #58a6ff;
+            padding: 10px 6px;
+            text-align: left;
+        }
+        td { padding: 8px 6px; border-bottom: 1px solid #21262d; }
+        tr:hover { background: #1f2937; }
+        
+        .long-row { background: #7ee78715; }
+        .short-row { background: #f8514915; }
+        .ng-row { background: #8b949e15; }
+        
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .tag.long { background: #7ee78730; color: #7ee787; }
+        .tag.short { background: #f8514930; color: #f85149; }
+        .tag.neutral { background: #8b949e30; color: #8b949e; }
+        .tag.seido { background: #58a6ff30; color: #58a6ff; }
+        .tag.ichinichi { background: #f0883e30; color: #f0883e; }
+        .tag.ng { background: #8b949e30; color: #8b949e; }
+        
+        .rsi-high { color: #f85149; }
+        .rsi-low { color: #7ee787; }
+        
+        .section-header {
+            background: #21262d;
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            margin-top: 20px;
+        }
+        .section-header h3 { color: #fff; margin: 0; }
+        .section-header .stat { color: #8b949e; font-size: 0.9em; }
+        
+        .summary-box {
+            background: #161b22;
+            border: 1px solid #58a6ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>grok_trending 総合判断（修正版）</h1>
+    <p class="subtitle">2026年1月28日（水）- 正しい信用区分で再計算</p>
+    
+    <div class="stat-note">
+        <strong>統計の読み方:</strong> プラス = ショート利益 → SHORT / マイナス = ショート損失 → LONG<br>
+        <strong>銘柄構成:</strong> 制度信用 14銘柄 / いちにち信用 7銘柄 / NG 1銘柄
+    </div>
+    
+    <div class="alert">
+        <h3>⚠️ 市場環境</h3>
+        <p><strong>日経225先物（夜間）: 52,580円 (-280円)</strong> → 寄付ギャップダウン警戒</p>
+        <p>FOMC結果発表: 明日1/29 午前4時</p>
+    </div>
+    
+    <!-- いちにち信用 -->
+    <div class="section-header" style="background:#f0883e30;">
+        <h3><span class="tag ichinichi">いちにち信用</span> 7銘柄</h3>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>価格帯</th><th>RSI9</th><th>統計</th><th>推奨</th></tr>
+        <tr class="short-row">
+            <td>4973.T</td><td>日本高純度化学</td><td>4,860</td><td>3000~5000</td>
+            <td class="rsi-high">77.7</td>
+            <td>+13,500~+29,600 (100%)</td>
+            <td><span class="tag short">SHORT ◎</span> 全時間帯OK</td>
+        </tr>
+        <tr class="long-row">
+            <td>4960.T</td><td>ケミプロ化成</td><td>1,040</td><td>1000~3000</td>
+            <td class="rsi-high">93.3</td>
+            <td>-38,215~-84,900 (全マイナス)</td>
+            <td><span class="tag long">LONG</span> ※RSI過熱で様子見</td>
+        </tr>
+        <tr class="long-row">
+            <td>7646.T</td><td>PLANT</td><td>2,006</td><td>1000~3000</td>
+            <td class="rsi-low">37.3</td>
+            <td>-38,215~-84,900 (全マイナス)</td>
+            <td><span class="tag long">LONG ◎</span> RSI低め</td>
+        </tr>
+        <tr class="long-row">
+            <td>4259.T</td><td>エクサウィザーズ</td><td>654</td><td>500~1000</td>
+            <td class="rsi-high">74.6</td>
+            <td>-16,900 (32%)</td>
+            <td><span class="tag long">LONG</span> ※RSI高め注意</td>
+        </tr>
+        <tr class="long-row">
+            <td>9419.T</td><td>ワイヤレスゲート</td><td>306</td><td>~500</td>
+            <td class="rsi-high">75.7</td>
+            <td>-16,900 (32%)</td>
+            <td><span class="tag long">LONG</span> ※RSI高め注意</td>
+        </tr>
+        <tr class="long-row">
+            <td>5216.T</td><td>倉元製作所</td><td>244</td><td>~500</td>
+            <td class="rsi-high">92.6</td>
+            <td>-16,900 (32%)</td>
+            <td><span class="tag long">LONG</span> ※RSI過熱で様子見</td>
+        </tr>
+        <tr class="long-row">
+            <td>4833.T</td><td>Def consulting</td><td>91</td><td>~500</td>
+            <td class="rsi-low">14.0</td>
+            <td>-16,900 (32%)</td>
+            <td><span class="tag long">LONG ○</span> RSI極低</td>
+        </tr>
+    </table>
+    
+    <!-- 制度信用 3000~5000 -->
+    <div class="section-header" style="background:#f8514950;">
+        <h3><span class="tag seido">制度信用</span> 3,000~5,000円帯 - 統計最良</h3>
+        <div class="stat">SHORT 10:25決済 | +13,200円 | 勝率75%</div>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>RSI9</th><th>個別分析</th><th>推奨</th></tr>
+        <tr class="short-row">
+            <td>7504.T</td><td>高速</td><td>3,075</td><td>53.1</td>
+            <td>RSI中立、統計最良</td>
+            <td><span class="tag short">SHORT ◎</span> 10:25</td>
+        </tr>
+        <tr class="short-row">
+            <td>7931.T</td><td>未来工業</td><td>3,330</td><td class="rsi-low">33.9</td>
+            <td>RSI低め（反発注意）</td>
+            <td><span class="tag short">SHORT ○</span> 10:25</td>
+        </tr>
+        <tr class="short-row">
+            <td>8793.T</td><td>NECキャピタルソリューション</td><td>4,055</td><td class="rsi-low">31.7</td>
+            <td>RSI低め（反発注意）</td>
+            <td><span class="tag short">SHORT ○</span> 10:25</td>
+        </tr>
+    </table>
+    
+    <!-- 制度信用 1000~3000 -->
+    <div class="section-header" style="background:#f8514930;">
+        <h3><span class="tag seido">制度信用</span> 1,000~3,000円帯</h3>
+        <div class="stat">SHORT 14:45決済 | +12,750円 | 勝率50%</div>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>RSI9</th><th>個別分析</th><th>推奨</th></tr>
+        <tr class="short-row">
+            <td>9882.T</td><td>イエローハット</td><td>1,701</td><td class="rsi-high">77.7</td>
+            <td>RSI高め、SHORT向き</td>
+            <td><span class="tag short">SHORT ◎</span> 14:45</td>
+        </tr>
+        <tr class="short-row">
+            <td>7949.T</td><td>小松ウオール工業</td><td>2,894</td><td>56.7</td>
+            <td>RSI中立</td>
+            <td><span class="tag short">SHORT</span> 14:45</td>
+        </tr>
+        <tr class="short-row">
+            <td>6737.T</td><td>EIZO</td><td>2,303</td><td>45.6</td>
+            <td>RSI中立</td>
+            <td><span class="tag short">SHORT</span> 14:45</td>
+        </tr>
+        <tr class="short-row">
+            <td>7148.T</td><td>FPG</td><td>2,033</td><td class="rsi-low">34.5</td>
+            <td>RSI低め（反発注意）</td>
+            <td><span class="tag neutral">様子見</span></td>
+        </tr>
+        <tr class="short-row">
+            <td>3837.T</td><td>アドソル日進</td><td>1,607</td><td class="rsi-low">38.1</td>
+            <td>RSI低め（反発注意）</td>
+            <td><span class="tag neutral">様子見</span></td>
+        </tr>
+        <tr class="short-row">
+            <td>9991.T</td><td>ジェコス</td><td>1,522</td><td>46.4</td>
+            <td>RSI中立</td>
+            <td><span class="tag short">SHORT</span> 14:45</td>
+        </tr>
+        <tr class="short-row">
+            <td>6345.T</td><td>アイチコーポレーション</td><td>1,378</td><td>41.4</td>
+            <td>RSI中立</td>
+            <td><span class="tag short">SHORT</span> 14:45</td>
+        </tr>
+        <tr class="short-row">
+            <td>3231.T</td><td>野村不動産HD</td><td>1,028</td><td>52.0</td>
+            <td>RSI中立</td>
+            <td><span class="tag short">SHORT</span> 14:45</td>
+        </tr>
+    </table>
+    
+    <!-- 制度信用 5000~ -->
+    <div class="section-header" style="background:#7ee78730;">
+        <h3><span class="tag seido">制度信用</span> 5,000円~帯</h3>
+        <div class="stat">ショート勝率0% | -36,100円 → LONG推奨</div>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>RSI9</th><th>推奨</th></tr>
+        <tr class="long-row">
+            <td>7278.T</td><td>エクセディ</td><td>5,790</td><td>43.1</td>
+            <td><span class="tag long">LONG ◎</span></td>
+        </tr>
+    </table>
+    
+    <!-- 制度信用 500~1000 -->
+    <div class="section-header" style="background:#7ee78730;">
+        <h3><span class="tag seido">制度信用</span> 500~1,000円帯</h3>
+        <div class="stat">ショート損失 → LONG推奨</div>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>RSI9</th><th>推奨</th></tr>
+        <tr class="long-row">
+            <td>9368.T</td><td>キムラユニティー</td><td>906</td><td>57.4</td>
+            <td><span class="tag long">LONG ○</span></td>
+        </tr>
+        <tr class="long-row">
+            <td>3653.T</td><td>モルフォ</td><td>813</td><td class="rsi-low">39.1</td>
+            <td><span class="tag long">LONG ○</span> RSI低め</td>
+        </tr>
+    </table>
+    
+    <!-- NG -->
+    <div class="section-header" style="background:#8b949e30;">
+        <h3><span class="tag ng">NG</span> 対象外</h3>
+    </div>
+    <table>
+        <tr><th>Ticker</th><th>銘柄名</th><th>終値</th><th>理由</th></tr>
+        <tr class="ng-row">
+            <td>5721.T</td><td>エス・サイエンス</td><td>134</td>
+            <td>トレード対象外</td>
+        </tr>
+    </table>
+    
+    <!-- サマリー -->
+    <div class="summary-box">
+        <h3 style="color:#58a6ff;margin-bottom:15px;">📋 最終まとめ</h3>
+        
+        <p><strong>🔴 SHORT優先:</strong></p>
+        <ul style="margin:10px 0 15px 20px;">
+            <li><strong>4973.T 日本高純度化学</strong> @4,860 <span class="tag ichinichi">いちにち</span> 全時間帯OK ◎◎</li>
+            <li><strong>7504.T 高速</strong> @3,075 <span class="tag seido">制度</span> 10:25決済 ◎</li>
+            <li><strong>9882.T イエローハット</strong> @1,701 <span class="tag seido">制度</span> 14:45決済 RSI78</li>
+        </ul>
+        
+        <p><strong>🟢 LONG優先:</strong></p>
+        <ul style="margin:10px 0 15px 20px;">
+            <li><strong>7646.T PLANT</strong> @2,006 <span class="tag ichinichi">いちにち</span> RSI37 ◎</li>
+            <li><strong>7278.T エクセディ</strong> @5,790 <span class="tag seido">制度</span> 統計ショート勝率0%</li>
+            <li><strong>3653.T モルフォ</strong> @813 <span class="tag seido">制度</span> RSI39</li>
+        </ul>
+        
+        <p style="color:#d29922;"><strong>⚠️ 様子見:</strong> 4960.T ケミプロ化成（いちにちLONGだがRSI93過熱）</p>
+        <p style="color:#8b949e;margin-top:10px;"><strong>先物-280円:</strong> SHORTは寄付有利、LONGは押し目待ち</p>
+    </div>
+    
+</div>
+</body>
+</html>

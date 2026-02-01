@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市場動向まとめ 2026/01/28</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.7;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #f85149;
+            padding-bottom: 15px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 30px;
+        }
+
+        .alert-box {
+            background: linear-gradient(135deg, #f8514920, #da363320);
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .alert-box h2 {
+            color: #f85149;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .alert-box .highlight {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #ff7b72;
+        }
+
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #58a6ff;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #30363d;
+        }
+        .section h3 {
+            color: #7ee787;
+            font-size: 1em;
+            margin: 15px 0 10px 0;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #8b949e; }
+        .data-value { font-weight: bold; }
+        .data-value.negative { color: #f85149; }
+        .data-value.positive { color: #7ee787; }
+        .data-value.warning { color: #d29922; }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        ul li {
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        ul li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #58a6ff;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .tag.red { background: #f8514930; color: #f85149; }
+        .tag.yellow { background: #d2992230; color: #d29922; }
+        .tag.blue { background: #58a6ff30; color: #58a6ff; }
+        .tag.green { background: #7ee78730; color: #7ee787; }
+
+        .conclusion {
+            background: linear-gradient(135deg, #1f6feb20, #58a6ff20);
+            border: 1px solid #1f6feb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .conclusion h2 {
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .sources {
+            margin-top: 30px;
+            padding: 15px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+        .sources h3 {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .sources a {
+            color: #58a6ff;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .sources a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>市場動向まとめ</h1>
+        <p class="subtitle">2026年1月28日（水）00:45 更新</p>
+
+        <div class="alert-box">
+            <h2>本日の注目イベント</h2>
+            <p>
+                <span class="highlight">FOMC結果発表: 明日1/29 午前4時（JST）</span><br>
+                <span class="highlight">日経225先物（夜間）: 52,580円</span>（-280円、現物比-753円）
+            </p>
+        </div>
+
+        <!-- 株式市場データ -->
+        <div class="section" style="border-color: #7ee787;">
+            <h2 style="color: #7ee787;">株式市場（1/27 火）</h2>
+
+            <h3>主要指数</h3>
+            <div class="data-row">
+                <span class="data-label">日経225</span>
+                <span class="data-value positive">53,333.54 (+448.29, +0.85%)</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">TOPIX</span>
+                <span class="data-value positive">3,563.59 (+11.10, +0.31%)</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">TOPIX Prime</span>
+                <span class="data-value positive">1,836.14 (+5.68, +0.31%)</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">TOPIX Growth</span>
+                <span class="data-value negative">937.41 (-2.80, -0.30%)</span>
+            </div>
+
+            <h3>セクター騰落（上位）</h3>
+            <div class="data-row">
+                <span class="data-label">水産・農林業</span>
+                <span class="data-value positive">+2.20%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">非鉄金属</span>
+                <span class="data-value positive">+1.89%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">卸売業</span>
+                <span class="data-value positive">+1.31%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">銀行業</span>
+                <span class="data-value positive">+1.08%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">電気機器</span>
+                <span class="data-value positive">+1.06%</span>
+            </div>
+
+            <h3>セクター騰落（下位）</h3>
+            <div class="data-row">
+                <span class="data-label">電気・ガス業</span>
+                <span class="data-value negative">-1.90%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">空運業</span>
+                <span class="data-value negative">-1.43%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">陸運業</span>
+                <span class="data-value negative">-0.95%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">小売業</span>
+                <span class="data-value negative">-0.82%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">医薬品</span>
+                <span class="data-value negative">-0.73%</span>
+            </div>
+
+            <h3>市場の特徴</h3>
+            <ul>
+                <li><span class="tag green">リバウンド</span> 前日1,000円超安からの自律反発</li>
+                <li>卸売業・銀行業が前日の大幅安から反発</li>
+                <li>ディフェンシブ（電気ガス・陸運・空運）は軟調継続</li>
+                <li>TOPIX Growthのみマイナス → グロース株に資金流入せず</li>
+            </ul>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                データソース: data/parquet (TOPIX, セクター指数), yfinance (日経225)
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>日経225先物</h2>
+
+            <div class="data-row">
+                <span class="data-label">1/27 夜間取引終値（大証）</span>
+                <span class="data-value negative">52,580円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">前日比</span>
+                <span class="data-value negative">-280円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">現物終値との差</span>
+                <span class="data-value negative">-753円</span>
+            </div>
+
+            <h3>テクニカルポイント</h3>
+            <div class="data-row">
+                <span class="data-label">5日移動平均</span>
+                <span class="data-value">53,142円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">25日移動平均</span>
+                <span class="data-value">52,016円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">一目・転換線</span>
+                <span class="data-value">53,210円</span>
+            </div>
+
+            <h3>本日の見通し</h3>
+            <ul>
+                <li><span class="tag red">下窓</span> 先物-280円で寄り付きはギャップダウンの可能性</li>
+                <li>FOMC待ちで様子見ムードか</li>
+            </ul>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                出典: <a href="https://kabutan.jp/news/marketnews/?b=n202601270101" target="_blank" style="color:#58a6ff;">株探</a>
+            </p>
+        </div>
+
+        <div class="section" style="border-color: #f85149;">
+            <h2 style="color: #f85149;">為替（ドル円）</h2>
+
+            <div class="data-row">
+                <span class="data-label">1/27 終値</span>
+                <span class="data-value negative">153.29円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">前日比</span>
+                <span class="data-value negative">-1.88円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">1/23 高値（介入前）</span>
+                <span class="data-value">159.21円</span>
+            </div>
+
+            <h3>直近の動き</h3>
+            <ul>
+                <li>1/23: 日米レートチェック観測で159円→155円割れへ急落</li>
+                <li>1/26-27: 153円台まで円高進行</li>
+                <li>三村財務官: レートチェックについて「コメント控える」</li>
+            </ul>
+
+            <h3>市場の見方</h3>
+            <ul>
+                <li>米当局の円安修正協力 → ドル安容認と解釈</li>
+                <li>FOMC後のパウエル発言でさらなる変動の可能性</li>
+            </ul>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                出典: <a href="https://www.gaitame.com/media/entry/2026/01/27/084125" target="_blank" style="color:#58a6ff;">外為どっとコム</a> |
+                <a href="https://fx.minkabu.jp/news/356551" target="_blank" style="color:#58a6ff;">みんかぶFX</a>
+            </p>
+        </div>
+
+        <div class="section" style="border-color: #f0883e;">
+            <h2 style="color: #f0883e;">米国・FOMC（1/27-28）</h2>
+
+            <div class="data-row">
+                <span class="data-label">現在の政策金利</span>
+                <span class="data-value">3.50%〜3.75%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">今回の予想</span>
+                <span class="data-value warning">据え置き濃厚（4会合ぶり）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">結果発表</span>
+                <span class="data-value">1/29（木）午前4時（JST）</span>
+            </div>
+
+            <h3>注目ポイント</h3>
+            <ul>
+                <li>パウエル議長会見のトーン（タカ派/ハト派）</li>
+                <li>次回利下げは年央との見方が多い（FedWatch）</li>
+                <li>2026年末政策金利予想: 中央値3.6%（2.1%〜3.9%と分散）</li>
+            </ul>
+
+            <h3>パウエル議長の任期</h3>
+            <ul>
+                <li>任期: 2026年5月満了</li>
+                <li>トランプ大統領が後任候補を近々公表の方針</li>
+            </ul>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                出典: <a href="https://www.dlri.co.jp/report/macro/565786.html" target="_blank" style="color:#58a6ff;">第一生命経済研究所</a> |
+                <a href="https://www.smd-am.co.jp/market/ichikawa/2026/01/irepo260127/" target="_blank" style="color:#58a6ff;">三井住友DS</a>
+            </p>
+        </div>
+
+        <div class="conclusion">
+            <h2>本日（1/28 水）のポイント</h2>
+            <ul>
+                <li><span class="tag red">先物マイナス</span> 夜間-280円で寄り付き注意</li>
+                <li><span class="tag yellow">FOMC待ち</span> 結果は明日4時、様子見ムードか</li>
+                <li><span class="tag blue">円高継続</span> 153円台、FOMC後にさらなる変動の可能性</li>
+            </ul>
+            <p style="margin-top: 15px;">
+                <strong>今週の残りイベント:</strong>
+            </p>
+            <ul style="margin-top: 10px;">
+                <li><span class="tag yellow">1/29（木）4:00</span> FOMC結果発表・パウエル会見</li>
+                <li><span class="tag yellow">1/30（金）</span> 財務省 為替介入実績公表（12/29〜1/28分）</li>
+            </ul>
+        </div>
+
+        <div class="sources">
+            <h3>データソース</h3>
+            <a href="https://kabutan.jp/news/marketnews/?b=n202601270101" target="_blank">株探 先物テクニカル</a>
+            <a href="https://www.gaitame.com/media/entry/2026/01/27/084125" target="_blank">外為どっとコム</a>
+            <a href="https://www.dlri.co.jp/report/macro/565786.html" target="_blank">第一生命経済研究所</a>
+            <a href="https://www.smd-am.co.jp/market/ichikawa/2026/01/irepo260127/" target="_blank">三井住友DS</a>
+        </div>
+    </div>
+</body>
+</html>

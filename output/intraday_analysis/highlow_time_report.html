@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>時間帯別 高値安値分析</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #333;
+            --accent-color: #3b82f6;
+            --positive-color: #22c55e;
+            --negative-color: #ef4444;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--text-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        .section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .positive { color: var(--positive-color); }
+        .negative { color: var(--negative-color); }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .summary-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .summary-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>時間帯別 高値安値分析</h1>
+        <p class="subtitle">Generated: 2026-01-09 10:33:14</p>
+        
+        <section class="section">
+            <h2>サマリー</h2>
+            <div class="content">
+                
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">分析銘柄数</div>
+            <div class="value">23</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">分析日数</div>
+            <div class="value">60</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">前場高値率</div>
+            <div class="value">71.4%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">前場安値率</div>
+            <div class="value">63.0%</div>
+        </div>
+    </div>
+    <div class="summary-grid" style="margin-top: 1rem;">
+        <div class="summary-card">
+            <div class="label">平均ロング型</div>
+            <div class="value positive">25.0%</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均ショート型</div>
+            <div class="value negative">33.4%</div>
+        </div>
+    </div>
+    
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>時間帯別 高値・安値出現率</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="efeb6a80-e999-437c-8710-b5f3bcaee43c" class="plotly-graph-div" style="height:450px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("efeb6a80-e999-437c-8710-b5f3bcaee43c")) {                    Plotly.newPlot(                        "efeb6a80-e999-437c-8710-b5f3bcaee43c",                        [{"marker":{"color":"#ef4444"},"name":"高値出現率","text":["45.7%","10.4%","6.7%","4.5%","4.2%","0.1%","8.2%","3.1%","2.6%","3.0%","3.4%","8.2%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","11:30-12:00","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"bpRcGyXXRkDNmimzZsokQCutlkqrpRpAnhFzZ8TcEUAQgu+D4PsQQCyh9kqovbI\u002fBs2XQfNlIECTaLsk2i4JQEjA\u002fRFwfwRAgP4LoP8CCECvh8LrofAKQAbNl0HzZSBA"},"type":"bar"},{"marker":{"color":"#3b82f6"},"name":"安値出現率","text":["44.1%","6.5%","5.3%","3.6%","3.4%","0.4%","6.9%","4.9%","4.2%","5.4%","5.7%","9.5%"],"textposition":"outside","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","11:30-12:00","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":{"dtype":"f8","bdata":"0XZJtF0SRkAh+D4Ivg8aQNZPgfVTYBVAy6bJsmmyDEC5PBouj4YLQHdJtF0Sbdc\u002fuTwaLo+GG0C6MHoujJ4TQIunw+LpsBBAWyqtlkqrFUBulFwbJdcWQLF7IuyeCCNA"},"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"legend":{"x":0.02,"y":0.98},"title":{"text":"時間帯別 高値・安値出現率（全grok銘柄）"},"barmode":"group","xaxis":{"title":{"text":"時間帯"}},"yaxis":{"title":{"text":"出現率 (%)"}},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":450},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>前場/後場 分布</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="be3df2a4-0363-47f8-89c3-f86a737b5d4c" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("be3df2a4-0363-47f8-89c3-f86a737b5d4c")) {                    Plotly.newPlot(                        "be3df2a4-0363-47f8-89c3-f86a737b5d4c",                        [{"hole":0.4,"labels":["前場","後場"],"marker":{"colors":["#f97316","#8b5cf6"]},"textinfo":"label+percent","values":{"dtype":"f8","bdata":"nhFzZ8TcUUDowui5MHo8QA=="},"type":"pie","domain":{"x":[0.0,0.45],"y":[0.0,1.0]}},{"hole":0.4,"labels":["前場","後場"],"marker":{"colors":["#f97316","#8b5cf6"]},"textinfo":"label+percent","values":{"dtype":"f8","bdata":"Cb4Pgu+DT0Bl2TRZNk1CQA=="},"type":"pie","domain":{"x":[0.55,1.0],"y":[0.0,1.0]}}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"高値出現","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"安値出現","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"title":{"text":"前場\u002f後場での高値・安値出現率"},"paper_bgcolor":"#1a1a1a","height":350},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄別 高値出現時間帯</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="65476896-261f-4dd9-bfcf-9c587a0b5538" class="plotly-graph-div" style="height:575px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("65476896-261f-4dd9-bfcf-9c587a0b5538")) {                    Plotly.newPlot(                        "65476896-261f-4dd9-bfcf-9c587a0b5538",                        [{"colorbar":{"title":{"text":"出現率(%)"}},"colorscale":[[0.0,"rgb(255,245,240)"],[0.125,"rgb(254,224,210)"],[0.25,"rgb(252,187,161)"],[0.375,"rgb(252,146,114)"],[0.5,"rgb(251,106,74)"],[0.625,"rgb(239,59,44)"],[0.75,"rgb(203,24,29)"],[0.875,"rgb(165,15,21)"],[1.0,"rgb(103,0,13)"]],"hovertemplate":"銘柄: %{y}\u003cbr\u003e時間帯: %{x}\u003cbr\u003e出現率: %{z:.1f}%\u003cextra\u003e\u003c\u002fextra\u003e","text":[["53%","8%","","","","15%","","","","7%",""],["53%","16%","9%","5%","","","7%","","","",""],["38%","18%","7%","","10%","8%","","","","",""],["33%","8%","7%","","7%","13%","","","","","17%"],["46%","14%","11%","","9%","","","","","","11%"],["32%","20%","","7%","","12%","","","","","12%"],["43%","11%","12%","11%","5%","5%","","","","","7%"],["48%","10%","12%","","","8%","","","","",""],["35%","","","7%","8%","12%","","7%","","","17%"],["53%","15%","12%","","","","","","","",""],["40%","8%","7%","7%","7%","8%","","","","7%","12%"],["48%","7%","8%","","","17%","","","","",""],["58%","8%","","","","10%","","","8%","",""],["42%","12%","7%","","","7%","","7%","","","12%"],["47%","16%","9%","","7%","","","","","7%","5%"],["42%","10%","","5%","","10%","","","","","15%"],["36%","5%","","","5%","17%","10%","7%","","7%","7%"],["40%","18%","8%","10%","","","","","","","8%"],["43%","10%","12%","","","7%","","","","","12%"],["53%","8%","8%","7%","","10%","","","","",""],["28%","","7%","","","","7%","","13%","10%","20%"],["88%","","","","","","","","","",""],["50%","8%","","","","","","7%","","","8%"]],"textfont":{"size":10},"texttemplate":"%{text}","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":["218A.T Ｌｉｂｅｒａｗａｒｅ","281A.T インフォメティス","3444.T 菊池製作所","3656.T ＫＬａｂ","4082.T 第一稀元素化学工業","4199.T ワンダープラネット","4570.T 免疫生物研究所","4575.T キャンバス","4588.T オンコリスバイオファーマ","4814.T ネクストウェア","5304.T ＳＥＣカーボン","5724.T アサカ理研","6232.T ＡＣＳＬ","6330.T 東洋エンジニアリング","6433.T ヒーハイスト","6629.T テクノホライゾン","6977.T 日本抵抗器製作所","6993.T 大黒屋ホールディングス","7078.T ＩＮＣＬＵＳＩＶＥ　Ｈｏｌｄｉｎｇｓ","7409.T ＡｅｒｏＥｄｇｅ","7523.T アールビバン","8918.T ランド","9338.T ＩＮＦＯＲＩＣＨ"],"z":[[53.333333333333336,8.333333333333332,5.0,0,3.3333333333333335,15.0,0,3.3333333333333335,0,6.666666666666667,5.0],[53.44827586206896,15.517241379310345,8.620689655172415,5.172413793103448,0,3.4482758620689653,6.896551724137931,0,3.4482758620689653,1.7241379310344827,1.7241379310344827],[38.333333333333336,18.333333333333332,6.666666666666667,1.6666666666666667,10.0,8.333333333333332,1.6666666666666667,0,3.3333333333333335,5.0,5.0],[33.33333333333333,8.333333333333332,6.666666666666667,1.6666666666666667,6.666666666666667,13.333333333333334,5.0,1.6666666666666667,1.6666666666666667,5.0,16.666666666666664],[45.614035087719294,14.035087719298245,10.526315789473683,1.7543859649122806,8.771929824561402,0,0,3.508771929824561,3.508771929824561,1.7543859649122806,10.526315789473683],[31.666666666666664,20.0,0,6.666666666666667,5.0,11.666666666666666,3.3333333333333335,3.3333333333333335,1.6666666666666667,5.0,11.666666666666666],[42.857142857142854,10.714285714285714,12.5,10.714285714285714,5.357142857142857,5.357142857142857,1.7857142857142856,0,1.7857142857142856,1.7857142857142856,7.142857142857142],[48.333333333333336,10.0,11.666666666666666,5.0,5.0,8.333333333333332,1.6666666666666667,1.6666666666666667,1.6666666666666667,1.6666666666666667,5.0],[35.0,3.3333333333333335,1.6666666666666667,6.666666666666667,8.333333333333332,11.666666666666666,3.3333333333333335,6.666666666666667,3.3333333333333335,3.3333333333333335,16.666666666666664],[53.333333333333336,15.0,11.666666666666666,5.0,0,5.0,1.6666666666666667,1.6666666666666667,0,3.3333333333333335,3.3333333333333335],[40.0,8.333333333333332,6.666666666666667,6.666666666666667,6.666666666666667,8.333333333333332,1.6666666666666667,1.6666666666666667,1.6666666666666667,6.666666666666667,11.666666666666666],[48.333333333333336,6.666666666666667,8.333333333333332,5.0,3.3333333333333335,16.666666666666664,3.3333333333333335,3.3333333333333335,3.3333333333333335,1.6666666666666667,0],[57.6271186440678,8.47457627118644,3.389830508474576,3.389830508474576,0,10.16949152542373,1.694915254237288,0,8.47457627118644,3.389830508474576,3.389830508474576],[41.66666666666667,11.666666666666666,6.666666666666667,3.3333333333333335,5.0,6.666666666666667,3.3333333333333335,6.666666666666667,3.3333333333333335,0,11.666666666666666],[46.55172413793103,15.517241379310345,8.620689655172415,1.7241379310344827,6.896551724137931,3.4482758620689653,3.4482758620689653,0,1.7241379310344827,6.896551724137931,5.172413793103448],[42.3728813559322,10.16949152542373,3.389830508474576,5.084745762711865,3.389830508474576,10.16949152542373,1.694915254237288,3.389830508474576,1.694915254237288,3.389830508474576,15.254237288135593],[35.59322033898305,5.084745762711865,1.694915254237288,3.389830508474576,5.084745762711865,16.94915254237288,10.16949152542373,6.779661016949152,1.694915254237288,6.779661016949152,6.779661016949152],[40.0,18.333333333333332,8.333333333333332,10.0,1.6666666666666667,3.3333333333333335,3.3333333333333335,1.6666666666666667,5.0,0,8.333333333333332],[43.333333333333336,10.0,11.666666666666666,5.0,3.3333333333333335,6.666666666666667,5.0,0,1.6666666666666667,1.6666666666666667,11.666666666666666],[53.333333333333336,8.333333333333332,8.333333333333332,6.666666666666667,1.6666666666666667,10.0,1.6666666666666667,3.3333333333333335,1.6666666666666667,1.6666666666666667,3.3333333333333335],[28.333333333333332,1.6666666666666667,6.666666666666667,1.6666666666666667,3.3333333333333335,5.0,6.666666666666667,3.3333333333333335,13.333333333333334,10.0,20.0],[88.33333333333333,3.3333333333333335,1.6666666666666667,1.6666666666666667,0,3.3333333333333335,0,0,1.6666666666666667,0,0],[50.0,8.333333333333332,3.3333333333333335,5.0,5.0,5.0,5.0,6.666666666666667,3.3333333333333335,0,8.333333333333332]],"type":"heatmap"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"yaxis":{"tickfont":{"size":10},"title":{"text":"銘柄"}},"xaxis":{"title":{"text":"時間帯"},"tickangle":45},"title":{"text":"銘柄別 高値出現時間帯ヒートマップ"},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":575},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄別 安値出現時間帯</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="8f32dce1-e048-494d-b5a7-9fca49bb1503" class="plotly-graph-div" style="height:575px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("8f32dce1-e048-494d-b5a7-9fca49bb1503")) {                    Plotly.newPlot(                        "8f32dce1-e048-494d-b5a7-9fca49bb1503",                        [{"colorbar":{"title":{"text":"出現率(%)"}},"colorscale":[[0.0,"rgb(247,251,255)"],[0.125,"rgb(222,235,247)"],[0.25,"rgb(198,219,239)"],[0.375,"rgb(158,202,225)"],[0.5,"rgb(107,174,214)"],[0.625,"rgb(66,146,198)"],[0.75,"rgb(33,113,181)"],[0.875,"rgb(8,81,156)"],[1.0,"rgb(8,48,107)"]],"hovertemplate":"銘柄: %{y}\u003cbr\u003e時間帯: %{x}\u003cbr\u003e出現率: %{z:.1f}%\u003cextra\u003e\u003c\u002fextra\u003e","text":[["38%","","","7%","","","","","7%","7%","18%"],["29%","9%","7%","7%","","","9%","5%","5%","10%","14%"],["43%","","10%","","","","7%","10%","","","12%"],["50%","","","","","12%","","7%","7%","","8%"],["40%","7%","7%","","","11%","9%","","5%","7%","9%"],["33%","8%","7%","","","8%","","","","10%","10%"],["43%","12%","","","5%","5%","9%","","7%","","7%"],["38%","","","","","12%","7%","","10%","8%","10%"],["53%","","","","","","","","8%","10%","7%"],["42%","8%","8%","","","","12%","7%","","","7%"],["42%","10%","","","","12%","","","7%","","12%"],["48%","","","","","","","","8%","10%",""],["32%","","8%","","","12%","7%","7%","12%","8%",""],["43%","","10%","","","7%","","","7%","","18%"],["41%","9%","7%","","","7%","5%","5%","","","17%"],["42%","7%","5%","5%","8%","5%","7%","","8%","","5%"],["34%","5%","","8%","8%","14%","","5%","5%","","10%"],["57%","8%","","","","10%","","","","","7%"],["35%","10%","7%","7%","","","","","7%","7%","15%"],["47%","13%","","7%","","","7%","8%","","",""],["45%","","8%","7%","","","","","","7%","12%"],["97%","","","","","","","","","",""],["40%","8%","7%","","","10%","","","7%","12%","12%"]],"textfont":{"size":10},"texttemplate":"%{text}","x":["09:00-09:30","09:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","12:30-13:00","13:00-13:30","13:30-14:00","14:00-14:30","14:30-15:00","15:00-15:30"],"y":["218A.T Ｌｉｂｅｒａｗａｒｅ","281A.T インフォメティス","3444.T 菊池製作所","3656.T ＫＬａｂ","4082.T 第一稀元素化学工業","4199.T ワンダープラネット","4570.T 免疫生物研究所","4575.T キャンバス","4588.T オンコリスバイオファーマ","4814.T ネクストウェア","5304.T ＳＥＣカーボン","5724.T アサカ理研","6232.T ＡＣＳＬ","6330.T 東洋エンジニアリング","6433.T ヒーハイスト","6629.T テクノホライゾン","6977.T 日本抵抗器製作所","6993.T 大黒屋ホールディングス","7078.T ＩＮＣＬＵＳＩＶＥ　Ｈｏｌｄｉｎｇｓ","7409.T ＡｅｒｏＥｄｇｅ","7523.T アールビバン","8918.T ランド","9338.T ＩＮＦＯＲＩＣＨ"],"z":[[38.333333333333336,3.3333333333333335,5.0,6.666666666666667,3.3333333333333335,3.3333333333333335,3.3333333333333335,5.0,6.666666666666667,6.666666666666667,18.333333333333332],[29.310344827586203,8.620689655172415,6.896551724137931,6.896551724137931,3.4482758620689653,1.7241379310344827,8.620689655172415,5.172413793103448,5.172413793103448,10.344827586206897,13.793103448275861],[43.333333333333336,1.6666666666666667,10.0,5.0,3.3333333333333335,5.0,6.666666666666667,10.0,0,3.3333333333333335,11.666666666666666],[50.0,5.0,1.6666666666666667,0,5.0,11.666666666666666,1.6666666666666667,6.666666666666667,6.666666666666667,3.3333333333333335,8.333333333333332],[40.35087719298245,7.017543859649122,7.017543859649122,0,1.7543859649122806,10.526315789473683,8.771929824561402,3.508771929824561,5.263157894736842,7.017543859649122,8.771929824561402],[33.33333333333333,8.333333333333332,6.666666666666667,3.3333333333333335,5.0,8.333333333333332,3.3333333333333335,5.0,5.0,10.0,10.0],[42.857142857142854,12.5,3.571428571428571,1.7857142857142856,5.357142857142857,5.357142857142857,8.928571428571429,1.7857142857142856,7.142857142857142,3.571428571428571,7.142857142857142],[38.333333333333336,5.0,3.3333333333333335,1.6666666666666667,3.3333333333333335,11.666666666666666,6.666666666666667,1.6666666666666667,10.0,8.333333333333332,10.0],[53.333333333333336,3.3333333333333335,3.3333333333333335,1.6666666666666667,3.3333333333333335,3.3333333333333335,3.3333333333333335,3.3333333333333335,8.333333333333332,10.0,6.666666666666667],[41.66666666666667,8.333333333333332,8.333333333333332,3.3333333333333335,3.3333333333333335,5.0,11.666666666666666,6.666666666666667,3.3333333333333335,0,6.666666666666667],[41.66666666666667,10.0,1.6666666666666667,1.6666666666666667,5.0,11.666666666666666,5.0,0,6.666666666666667,5.0,11.666666666666666],[48.333333333333336,5.0,5.0,3.3333333333333335,0,5.0,5.0,5.0,8.333333333333332,10.0,3.3333333333333335],[32.20338983050847,3.389830508474576,8.47457627118644,3.389830508474576,3.389830508474576,11.864406779661017,6.779661016949152,6.779661016949152,11.864406779661017,8.47457627118644,3.389830508474576],[43.333333333333336,1.6666666666666667,10.0,3.3333333333333335,1.6666666666666667,6.666666666666667,0,3.3333333333333335,6.666666666666667,5.0,18.333333333333332],[41.37931034482759,8.620689655172415,6.896551724137931,1.7241379310344827,3.4482758620689653,6.896551724137931,5.172413793103448,5.172413793103448,1.7241379310344827,1.7241379310344827,17.24137931034483],[42.3728813559322,6.779661016949152,5.084745762711865,5.084745762711865,8.47457627118644,5.084745762711865,6.779661016949152,3.389830508474576,8.47457627118644,3.389830508474576,5.084745762711865],[33.89830508474576,5.084745762711865,1.694915254237288,8.47457627118644,8.47457627118644,13.559322033898304,1.694915254237288,5.084745762711865,5.084745762711865,3.389830508474576,10.16949152542373],[56.666666666666664,8.333333333333332,1.6666666666666667,5.0,3.3333333333333335,10.0,1.6666666666666667,3.3333333333333335,0,3.3333333333333335,6.666666666666667],[35.0,10.0,6.666666666666667,6.666666666666667,1.6666666666666667,1.6666666666666667,5.0,5.0,6.666666666666667,6.666666666666667,15.0],[46.666666666666664,13.333333333333334,5.0,6.666666666666667,0,3.3333333333333335,6.666666666666667,8.333333333333332,3.3333333333333335,3.3333333333333335,3.3333333333333335],[45.0,5.0,8.333333333333332,6.666666666666667,5.0,5.0,3.3333333333333335,1.6666666666666667,1.6666666666666667,6.666666666666667,11.666666666666666],[96.66666666666667,1.6666666666666667,0,0,0,1.6666666666666667,0,0,0,0,0],[40.0,8.333333333333332,6.666666666666667,0,1.6666666666666667,10.0,3.3333333333333335,0,6.666666666666667,11.666666666666666,11.666666666666666]],"type":"heatmap"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"yaxis":{"tickfont":{"size":10},"title":{"text":"銘柄"}},"xaxis":{"title":{"text":"時間帯"},"tickangle":45},"title":{"text":"銘柄別 安値出現時間帯ヒートマップ"},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":575},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄別パターン</h2>
+            <div class="content">
+                <div class="chart-container"><div>                            <div id="05977416-89c8-4df6-8776-8f00bd36006e" class="plotly-graph-div" style="height:450px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("05977416-89c8-4df6-8776-8f00bd36006e")) {                    Plotly.newPlot(                        "05977416-89c8-4df6-8776-8f00bd36006e",                        [{"marker":{"color":"#22c55e"},"name":"ロングパターン（前場安値→後場高値）","text":["48%","43%","38%","36%","32%","31%","28%","28%","28%","27%","23%","22%","22%","22%","22%","19%","19%","18%","18%","16%","16%","13%","5%"],"textposition":"outside","x":["7523.T","4588.T","3656.T","6629.T","6330.T","6977.T","218A.T","5304.T","5724.T","6232.T","9338.T","4199.T","6993.T","7078.T","7409.T","4082.T","6433.T","4575.T","3444.T","4570.T","281A.T","4814.T","8918.T"],"y":{"dtype":"f8","bdata":"q6qqqqoqSECrqqqqqqpFQKuqqqqqKkNAi6DhpO7LQUCqqqqqqqo\u002fQKXuy2Mrgj5AVVVVVVVVPEBVVVVVVVU8QFVVVVVVVTxABA0ndV8eO0BVVVVVVVU3QKuqqqqqqjVAq6qqqqqqNUCrqqqqqqo1QKuqqqqqqjVAxXQW01lMM0DCck8jLPcyQFVVVVVVVTJAVVVVVVVVMkAlSZIkSRIwQD6NsNzTCC9Aq6qqqqqqKkAAAAAAAAAUQA=="},"type":"bar"},{"marker":{"color":"#ef4444"},"name":"ショートパターン（前場高値→後場安値）","text":["20%","33%","33%","32%","40%","22%","42%","37%","37%","49%","38%","28%","25%","35%","28%","44%","36%","47%","32%","32%","43%","33%","2%"],"textposition":"outside","x":["7523.T","4588.T","3656.T","6629.T","6330.T","6977.T","218A.T","5304.T","5724.T","6232.T","9338.T","4199.T","6993.T","7078.T","7409.T","4082.T","6433.T","4575.T","3444.T","4570.T","281A.T","4814.T","8918.T"],"y":{"dtype":"f8","bdata":"AAAAAAAANECqqqqqqqpAQKqqqqqqqkBAui+PrQgaQEAAAAAAAABEQJO6L4+tCDZAVlVVVVXVREBVVVVVVVVCQFVVVVVVVUJAzGMrgoaTSECrqqqqqipDQFVVVVVVVTxAAAAAAAAAOUAAAAAAAIBBQFVVVVVVVTxA4D6C+wjuRUC5pxGWexpCQFVVVVVVVUdAqqqqqqqqP0AlSZIkSRJAQNzTCMs9jUVAqqqqqqqqQECrqqqqqqr6Pw=="},"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"legend":{"x":0.02,"y":0.98},"title":{"text":"銘柄別 ロング\u002fショートパターン出現率"},"barmode":"group","xaxis":{"title":{"text":"銘柄"}},"yaxis":{"title":{"text":"出現率 (%)"}},"paper_bgcolor":"#1a1a1a","plot_bgcolor":"#1a1a1a","height":450},                        {"responsive": true}                    )                };            </script>        </div></div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2>銘柄詳細</h2>
+            <div class="content">
+                
+    <table>
+        <thead>
+            <tr>
+                <th>ティッカー</th>
+                <th>銘柄名</th>
+                <th>日数</th>
+                <th>ロング型</th>
+                <th>ショート型</th>
+                <th>高値(前/後)</th>
+                <th>安値(前/後)</th>
+                <th>高値時間帯TOP3</th>
+                <th>安値時間帯TOP3</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        <tr>
+            <td>7523.T</td>
+            <td>アールビバン</td>
+            <td>60</td>
+            <td class="positive">48.3%</td>
+            <td class="">20.0%</td>
+            <td>42% / 58%</td>
+            <td>70% / 30%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(28%), 15:00-15:30(20%), 14:00-14:30(13%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(45%), 15:00-15:30(12%), 10:00-10:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>4588.T</td>
+            <td>オンコリスバイオファーマ</td>
+            <td>60</td>
+            <td class="positive">43.3%</td>
+            <td class="negative">33.3%</td>
+            <td>55% / 45%</td>
+            <td>65% / 35%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(35%), 15:00-15:30(17%), 12:30-13:00(12%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(53%), 14:30-15:00(10%), 14:00-14:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>3656.T</td>
+            <td>ＫＬａｂ</td>
+            <td>60</td>
+            <td class="positive">38.3%</td>
+            <td class="negative">33.3%</td>
+            <td>57% / 43%</td>
+            <td>62% / 38%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(33%), 15:00-15:30(17%), 12:30-13:00(13%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(50%), 12:30-13:00(12%), 15:00-15:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>6629.T</td>
+            <td>テクノホライゾン</td>
+            <td>59</td>
+            <td class="positive">35.6%</td>
+            <td class="negative">32.2%</td>
+            <td>64% / 36%</td>
+            <td>68% / 32%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(42%), 15:00-15:30(15%), 09:30-10:00(10%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(42%), 14:00-14:30(8%), 11:00-11:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>6330.T</td>
+            <td>東洋エンジニアリング</td>
+            <td>60</td>
+            <td class="positive">31.7%</td>
+            <td class="negative">40.0%</td>
+            <td>68% / 32%</td>
+            <td>60% / 40%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(42%), 09:30-10:00(12%), 15:00-15:30(12%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(43%), 15:00-15:30(18%), 10:00-10:30(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>6977.T</td>
+            <td>日本抵抗器製作所</td>
+            <td>59</td>
+            <td class="positive">30.5%</td>
+            <td class="">22.0%</td>
+            <td>51% / 49%</td>
+            <td>58% / 39%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(36%), 12:30-13:00(17%), 13:00-13:30(10%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(34%), 12:30-13:00(14%), 15:00-15:30(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>218A.T</td>
+            <td>Ｌｉｂｅｒａｗａｒｅ</td>
+            <td>60</td>
+            <td class="">28.3%</td>
+            <td class="negative">41.7%</td>
+            <td>70% / 30%</td>
+            <td>57% / 43%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(53%), 12:30-13:00(15%), 09:30-10:00(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(38%), 15:00-15:30(18%), 14:30-15:00(7%)</td>
+        </tr>
+        
+        <tr>
+            <td>5304.T</td>
+            <td>ＳＥＣカーボン</td>
+            <td>60</td>
+            <td class="">28.3%</td>
+            <td class="negative">36.7%</td>
+            <td>68% / 32%</td>
+            <td>60% / 40%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(40%), 15:00-15:30(12%), 09:30-10:00(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(42%), 15:00-15:30(12%), 12:30-13:00(12%)</td>
+        </tr>
+        
+        <tr>
+            <td>5724.T</td>
+            <td>アサカ理研</td>
+            <td>60</td>
+            <td class="">28.3%</td>
+            <td class="negative">36.7%</td>
+            <td>72% / 28%</td>
+            <td>62% / 37%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(48%), 12:30-13:00(17%), 10:00-10:30(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(48%), 14:30-15:00(10%), 14:00-14:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>6232.T</td>
+            <td>ＡＣＳＬ</td>
+            <td>59</td>
+            <td class="">27.1%</td>
+            <td class="negative">49.2%</td>
+            <td>73% / 27%</td>
+            <td>51% / 49%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(58%), 12:30-13:00(10%), 09:30-10:00(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(32%), 14:00-14:30(12%), 12:30-13:00(12%)</td>
+        </tr>
+        
+        <tr>
+            <td>9338.T</td>
+            <td>ＩＮＦＯＲＩＣＨ</td>
+            <td>60</td>
+            <td class="">23.3%</td>
+            <td class="negative">38.3%</td>
+            <td>72% / 28%</td>
+            <td>57% / 43%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(50%), 09:30-10:00(8%), 15:00-15:30(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(40%), 14:30-15:00(12%), 15:00-15:30(12%)</td>
+        </tr>
+        
+        <tr>
+            <td>4199.T</td>
+            <td>ワンダープラネット</td>
+            <td>60</td>
+            <td class="">21.7%</td>
+            <td class="">28.3%</td>
+            <td>63% / 37%</td>
+            <td>57% / 42%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(32%), 09:30-10:00(20%), 15:00-15:30(12%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(33%), 14:30-15:00(10%), 15:00-15:30(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>6993.T</td>
+            <td>大黒屋ホールディングス</td>
+            <td>60</td>
+            <td class="">21.7%</td>
+            <td class="">25.0%</td>
+            <td>78% / 22%</td>
+            <td>75% / 25%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(40%), 09:30-10:00(18%), 10:30-11:00(10%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(57%), 12:30-13:00(10%), 09:30-10:00(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>7078.T</td>
+            <td>ＩＮＣＬＵＳＩＶＥ　Ｈｏｌｄｉｎｇｓ</td>
+            <td>60</td>
+            <td class="">21.7%</td>
+            <td class="negative">35.0%</td>
+            <td>73% / 27%</td>
+            <td>60% / 40%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(43%), 15:00-15:30(12%), 10:00-10:30(12%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(35%), 15:00-15:30(15%), 09:30-10:00(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>7409.T</td>
+            <td>ＡｅｒｏＥｄｇｅ</td>
+            <td>60</td>
+            <td class="">21.7%</td>
+            <td class="">28.3%</td>
+            <td>78% / 22%</td>
+            <td>72% / 28%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(53%), 12:30-13:00(10%), 09:30-10:00(8%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(47%), 09:30-10:00(13%), 13:30-14:00(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>4082.T</td>
+            <td>第一稀元素化学工業</td>
+            <td>57</td>
+            <td class="">19.3%</td>
+            <td class="negative">43.9%</td>
+            <td>81% / 19%</td>
+            <td>56% / 44%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(46%), 09:30-10:00(14%), 10:00-10:30(11%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(40%), 12:30-13:00(11%), 15:00-15:30(9%)</td>
+        </tr>
+        
+        <tr>
+            <td>6433.T</td>
+            <td>ヒーハイスト</td>
+            <td>58</td>
+            <td class="">19.0%</td>
+            <td class="negative">36.2%</td>
+            <td>79% / 21%</td>
+            <td>62% / 38%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(47%), 09:30-10:00(16%), 10:00-10:30(9%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(41%), 15:00-15:30(17%), 09:30-10:00(9%)</td>
+        </tr>
+        
+        <tr>
+            <td>4575.T</td>
+            <td>キャンバス</td>
+            <td>60</td>
+            <td class="">18.3%</td>
+            <td class="negative">46.7%</td>
+            <td>80% / 20%</td>
+            <td>52% / 48%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(48%), 10:00-10:30(12%), 09:30-10:00(10%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(38%), 12:30-13:00(12%), 14:00-14:30(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>3444.T</td>
+            <td>菊池製作所</td>
+            <td>60</td>
+            <td class="">18.3%</td>
+            <td class="negative">31.7%</td>
+            <td>75% / 23%</td>
+            <td>63% / 37%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(38%), 09:30-10:00(18%), 11:00-11:30(10%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(43%), 15:00-15:30(12%), 13:30-14:00(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>4570.T</td>
+            <td>免疫生物研究所</td>
+            <td>56</td>
+            <td class="">16.1%</td>
+            <td class="negative">32.1%</td>
+            <td>82% / 18%</td>
+            <td>66% / 34%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(43%), 10:00-10:30(12%), 10:30-11:00(11%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(43%), 09:30-10:00(12%), 13:00-13:30(9%)</td>
+        </tr>
+        
+        <tr>
+            <td>281A.T</td>
+            <td>インフォメティス</td>
+            <td>58</td>
+            <td class="">15.5%</td>
+            <td class="negative">43.1%</td>
+            <td>83% / 17%</td>
+            <td>55% / 45%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(53%), 09:30-10:00(16%), 10:00-10:30(9%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(29%), 15:00-15:30(14%), 14:30-15:00(10%)</td>
+        </tr>
+        
+        <tr>
+            <td>4814.T</td>
+            <td>ネクストウェア</td>
+            <td>60</td>
+            <td class="">13.3%</td>
+            <td class="negative">33.3%</td>
+            <td>85% / 15%</td>
+            <td>65% / 33%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(53%), 09:30-10:00(15%), 10:00-10:30(12%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(42%), 13:00-13:30(12%), 10:00-10:30(8%)</td>
+        </tr>
+        
+        <tr>
+            <td>8918.T</td>
+            <td>ランド</td>
+            <td>60</td>
+            <td class="">5.0%</td>
+            <td class="">1.7%</td>
+            <td>95% / 5%</td>
+            <td>98% / 2%</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(88%), 09:30-10:00(3%), 12:30-13:00(3%)</td>
+            <td style="font-size: 0.75rem;">09:00-09:30(97%), 09:30-10:00(2%), 12:30-13:00(2%)</td>
+        </tr>
+        
+        </tbody>
+    </table>
+    <p style="color: #888; font-size: 0.8rem; margin-top: 1rem;">
+        ロング型: 前場に安値、後場に高値が出現 → 寄付き買い戦略向き<br>
+        ショート型: 前場に高値、後場に安値が出現 → 寄付き売り戦略向き
+    </p>
+    
+            </div>
+        </section>
+        
+    </div>
+</body>
+</html>

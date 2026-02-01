@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>案1: タブ切替方式</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0f',
+                foreground: '#fafafa',
+                card: '#18181b',
+                'card-foreground': '#fafafa',
+                muted: '#27272a',
+                'muted-foreground': '#a1a1aa',
+                border: '#27272a',
+            }
+        }
+    }
+}
+</script>
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.tab-active { background: rgba(39, 39, 42, 0.8); border-bottom: 2px solid #fafafa; }
+.tab-inactive { background: transparent; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { background: rgba(39, 39, 42, 0.4); }
+details summary { cursor: pointer; }
+details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+    <main class="relative min-h-screen">
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 py-4">
+
+            <header class="mb-4 pb-3 border-b border-border/30">
+                <h1 class="text-xl font-bold text-foreground">案1: タブ切替方式</h1>
+                <p class="text-muted-foreground text-sm">上部タブでセグメント切替、各セグメント内はanalysisと同じレイアウト</p>
+            </header>
+
+            <!-- タブ -->
+            <div class="flex gap-1 mb-6 border-b border-border/30">
+                <button class="tab-active px-4 py-2 text-sm text-foreground rounded-t-lg">RSIのみ</button>
+                <button class="tab-inactive px-4 py-2 text-sm text-muted-foreground rounded-t-lg">ATRのみ</button>
+                <button class="tab-inactive px-4 py-2 text-sm text-muted-foreground rounded-t-lg">両方</button>
+                <button class="tab-inactive px-4 py-2 text-sm text-muted-foreground rounded-t-lg">除外後</button>
+            </div>
+
+            <p class="text-xs text-muted-foreground mb-4">※実装時はJSでタブ切替。ここではRSIのみを表示</p>
+
+            <div class="grid grid-cols-1 gap-4">
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground">15件</span>
+                    </div>
+                    <div class="flex justify-end gap-5 mb-3 pb-3 border-b border-border/30">
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">10:25</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+12,750</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">前場引</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+15,350</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">14:45</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+15,900</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">大引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-3,950</div>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground border-b border-border/30">
+                                <th class="text-left px-2 py-2">価格帯</th>
+                                <th class="text-right px-2 py-2">件</th>
+                                <th class="text-right px-2 py-2">10:25</th>
+                                <th class="text-right px-2 py-2">%</th>
+                                <th class="text-right px-2 py-2">大引</th>
+                                <th class="text-right px-2 py-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">~1,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">7</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+3,900</td>
+                                <td class="text-right px-2 py-2 tabular-nums">43%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+8,600</td>
+                                <td class="text-right px-2 py-2 tabular-nums">43%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">4</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+13,350</td>
+                                <td class="text-right px-2 py-2 tabular-nums">75%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+2,150</td>
+                                <td class="text-right px-2 py-2 tabular-nums">25%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">5,000~10,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">2</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-30,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+30,300</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">10,000円~</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+26,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-45,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">火曜日</span>
+                        <span class="text-muted-foreground">13件</span>
+                    </div>
+                    <div class="flex justify-end gap-5 mb-3 pb-3 border-b border-border/30">
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">10:25</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+9,900</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">前場引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-1,600</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">14:45</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+12,250</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">大引</div>
+                            <div class="text-xl font-bold tabular-nums text-emerald-400">+29,900</div>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground border-b border-border/30">
+                                <th class="text-left px-2 py-2">価格帯</th>
+                                <th class="text-right px-2 py-2">件</th>
+                                <th class="text-right px-2 py-2">10:25</th>
+                                <th class="text-right px-2 py-2">%</th>
+                                <th class="text-right px-2 py-2">大引</th>
+                                <th class="text-right px-2 py-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">~1,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">7</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-7,700</td>
+                                <td class="text-right px-2 py-2 tabular-nums">29%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-7,200</td>
+                                <td class="text-right px-2 py-2 tabular-nums">43%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">4</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-9,300</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,600</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">5,000~10,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+4,900</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+5,200</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">10,000円~</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+22,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+37,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">水曜日</span>
+                        <span class="text-muted-foreground">25件</span>
+                    </div>
+                    <div class="flex justify-end gap-5 mb-3 pb-3 border-b border-border/30">
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">10:25</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-83,500</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">前場引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-115,200</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">14:45</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-59,500</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">大引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-95,300</div>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground border-b border-border/30">
+                                <th class="text-left px-2 py-2">価格帯</th>
+                                <th class="text-right px-2 py-2">件</th>
+                                <th class="text-right px-2 py-2">10:25</th>
+                                <th class="text-right px-2 py-2">%</th>
+                                <th class="text-right px-2 py-2">大引</th>
+                                <th class="text-right px-2 py-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">~1,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">13</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-3,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">23%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,700</td>
+                                <td class="text-right px-2 py-2 tabular-nums">38%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">9</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-66,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">33%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-94,600</td>
+                                <td class="text-right px-2 py-2 tabular-nums">33%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+6,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">5,000~10,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-5,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">10,000円~</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-15,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+15,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">100%</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">木曜日</span>
+                        <span class="text-muted-foreground">27件</span>
+                    </div>
+                    <div class="flex justify-end gap-5 mb-3 pb-3 border-b border-border/30">
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">10:25</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-212,500</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">前場引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-223,200</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">14:45</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-234,700</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">大引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-325,300</div>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground border-b border-border/30">
+                                <th class="text-left px-2 py-2">価格帯</th>
+                                <th class="text-right px-2 py-2">件</th>
+                                <th class="text-right px-2 py-2">10:25</th>
+                                <th class="text-right px-2 py-2">%</th>
+                                <th class="text-right px-2 py-2">大引</th>
+                                <th class="text-right px-2 py-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">~1,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">7</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+2,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">29%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+3,300</td>
+                                <td class="text-right px-2 py-2 tabular-nums">29%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">13</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-97,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">23%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-74,200</td>
+                                <td class="text-right px-2 py-2 tabular-nums">8%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">3</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-17,500</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-18,400</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">5,000~10,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">4</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-100,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-236,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">25%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">10,000円~</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-foreground">-</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">金曜日</span>
+                        <span class="text-muted-foreground">27件</span>
+                    </div>
+                    <div class="flex justify-end gap-5 mb-3 pb-3 border-b border-border/30">
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">10:25</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-40,120</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">前場引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-65,840</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">14:45</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-59,220</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-muted-foreground text-sm">大引</div>
+                            <div class="text-xl font-bold tabular-nums text-rose-400">-114,250</div>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground border-b border-border/30">
+                                <th class="text-left px-2 py-2">価格帯</th>
+                                <th class="text-right px-2 py-2">件</th>
+                                <th class="text-right px-2 py-2">10:25</th>
+                                <th class="text-right px-2 py-2">%</th>
+                                <th class="text-right px-2 py-2">大引</th>
+                                <th class="text-right px-2 py-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">~1,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">8</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+24,429</td>
+                                <td class="text-right px-2 py-2 tabular-nums">62%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+19,300</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">13</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+23,050</td>
+                                <td class="text-right px-2 py-2 tabular-nums">54%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-21,550</td>
+                                <td class="text-right px-2 py-2 tabular-nums">31%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">2</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+4,400</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+5,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">50%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">5,000~10,000円</td>
+                                <td class="text-right px-2 py-2 tabular-nums">3</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+25,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">67%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-emerald-400">+13,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">67%</td>
+                            </tr>
+
+                            <tr class="border-b border-border/20">
+                                <td class="px-2 py-2">10,000円~</td>
+                                <td class="text-right px-2 py-2 tabular-nums">1</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-117,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                                <td class="text-right px-2 py-2 tabular-nums text-rose-400">-130,000</td>
+                                <td class="text-right px-2 py-2 tabular-nums">0%</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

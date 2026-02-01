@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>モックアップ: Analysis + RSI/ATR 統合案</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0f',
+                foreground: '#fafafa',
+                card: '#18181b',
+                'card-foreground': '#fafafa',
+                muted: '#27272a',
+                'muted-foreground': '#a1a1aa',
+                border: '#27272a',
+            }
+        }
+    }
+}
+</script>
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.filter-btn { transition: all 0.2s; }
+.filter-btn:hover { opacity: 0.8; }
+.filter-btn.active { ring: 2px; }
+</style>
+</head>
+<body>
+    <main class="relative min-h-screen">
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <header class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 pb-3 border-b border-border/30">
+                <div>
+                    <h1 class="text-xl font-bold text-foreground">モックアップ: Analysis + RSI/ATR 統合案</h1>
+                    <p class="text-muted-foreground text-sm">現状の視認性を維持しながらRSI/ATRを追加する方法</p>
+                </div>
+            </header>
+
+            <!-- ========================================== -->
+            <!-- 案1: フィルターバー方式 -->
+            <!-- ========================================== -->
+            <div class="mb-10 p-6 border-2 border-dashed border-purple-500/50 rounded-xl">
+                <h2 class="text-lg font-bold text-purple-400 mb-4">案1: フィルターバー方式</h2>
+                <p class="text-sm text-muted-foreground mb-4">既存のテーブル上部にフィルターを追加。クリックでデータを絞り込み。</p>
+
+                <!-- フィルターバー -->
+                <div class="bg-card/50 rounded-lg border border-border/40 p-3 mb-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-sm text-muted-foreground">フィルター:</span>
+                        <button class="filter-btn px-3 py-1.5 rounded-md text-sm bg-muted/50 text-foreground border border-border/40">
+                            すべて
+                        </button>
+                        <button class="filter-btn px-3 py-1.5 rounded-md text-sm bg-sky-500/20 text-sky-400 border border-sky-500/40">
+                            RSI該当のみ
+                        </button>
+                        <button class="filter-btn px-3 py-1.5 rounded-md text-sm bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                            ATR該当のみ
+                        </button>
+                        <button class="filter-btn px-3 py-1.5 rounded-md text-sm bg-purple-500/20 text-purple-400 border border-purple-500/40">
+                            両方該当
+                        </button>
+                        <button class="filter-btn px-3 py-1.5 rounded-md text-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                            除外後
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 既存テーブル（変更なし） -->
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground text-base">25件</span>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground text-sm border-b border-border/30">
+                                <th class="text-right px-2 py-2.5 font-medium">価格帯</th>
+                                <th class="text-right px-2 py-2.5 font-medium">件</th>
+                                <th class="text-right px-2 py-2.5 font-medium">10:25</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                                <th class="text-right px-2 py-2.5 font-medium">大引</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">~1,000円</td>
+                                <td class="text-right px-2 py-2.5">5</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+12,500</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+18,200</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                            </tr>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2.5">8</td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">-8,300</td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">38%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+5,100</td>
+                                <td class="text-right px-2 py-2.5">50%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-xs text-muted-foreground">
+                    <strong>メリット:</strong> 既存レイアウト完全維持、直感的<br>
+                    <strong>デメリット:</strong> フィルター切替で全体像を見失いやすい
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 案2: バッジ方式（テーブル行に追加） -->
+            <!-- ========================================== -->
+            <div class="mb-10 p-6 border-2 border-dashed border-cyan-500/50 rounded-xl">
+                <h2 class="text-lg font-bold text-cyan-400 mb-4">案2: バッジ方式（価格帯行にインジケーター追加）</h2>
+                <p class="text-sm text-muted-foreground mb-4">各価格帯の行にRSI/ATR該当件数をバッジで表示。一覧性を維持。</p>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground text-base">25件</span>
+                        <!-- カード全体のバッジ -->
+                        <div class="flex gap-1 ml-auto">
+                            <span class="px-1.5 py-0.5 text-xs rounded bg-sky-500/20 text-sky-400">RSI:5</span>
+                            <span class="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400">ATR:3</span>
+                        </div>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground text-sm border-b border-border/30">
+                                <th class="text-right px-2 py-2.5 font-medium">価格帯</th>
+                                <th class="text-right px-2 py-2.5 font-medium">件</th>
+                                <th class="text-center px-2 py-2.5 font-medium">RSI/ATR</th>
+                                <th class="text-right px-2 py-2.5 font-medium">10:25</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                                <th class="text-right px-2 py-2.5 font-medium">大引</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">~1,000円</td>
+                                <td class="text-right px-2 py-2.5">5</td>
+                                <td class="text-center px-2 py-2.5">
+                                    <span class="px-1 py-0.5 text-xs rounded bg-sky-500/20 text-sky-400">2</span>
+                                    <span class="px-1 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400">1</span>
+                                </td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+12,500</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+18,200</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                            </tr>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">1,000~3,000円</td>
+                                <td class="text-right px-2 py-2.5">8</td>
+                                <td class="text-center px-2 py-2.5">
+                                    <span class="px-1 py-0.5 text-xs rounded bg-sky-500/20 text-sky-400">3</span>
+                                    <span class="px-1 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400">2</span>
+                                </td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">-8,300</td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">38%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+5,100</td>
+                                <td class="text-right px-2 py-2.5">50%</td>
+                            </tr>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">3,000~5,000円</td>
+                                <td class="text-right px-2 py-2.5">6</td>
+                                <td class="text-center px-2 py-2.5">
+                                    <span class="px-1 py-0.5 text-xs rounded text-muted-foreground">-</span>
+                                </td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+5,000</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">67%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+8,000</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">67%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-xs text-muted-foreground">
+                    <strong>メリット:</strong> 一覧で全体像を把握可能、既存レイアウトほぼ維持<br>
+                    <strong>デメリット:</strong> 横幅が少し増える
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 案3: 展開式サブテーブル -->
+            <!-- ========================================== -->
+            <div class="mb-10 p-6 border-2 border-dashed border-emerald-500/50 rounded-xl">
+                <h2 class="text-lg font-bold text-emerald-400 mb-4">案3: 展開式サブテーブル</h2>
+                <p class="text-sm text-muted-foreground mb-4">価格帯をクリックすると、RSI/ATR別の詳細が展開。通常時は既存と同じ。</p>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground text-base">25件</span>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground text-sm border-b border-border/30">
+                                <th class="text-right px-2 py-2.5 font-medium">価格帯</th>
+                                <th class="text-right px-2 py-2.5 font-medium">件</th>
+                                <th class="text-right px-2 py-2.5 font-medium">10:25</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                                <th class="text-right px-2 py-2.5 font-medium">大引</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 通常行 -->
+                            <tr class="border-b border-border/20 cursor-pointer hover:bg-muted/20">
+                                <td class="text-right px-2 py-2.5">~1,000円 <span class="text-muted-foreground">▼</span></td>
+                                <td class="text-right px-2 py-2.5">5</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+12,500</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+18,200</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                            </tr>
+                            <!-- 展開されたサブ行（RSI/ATR詳細） -->
+                            <tr class="bg-muted/10">
+                                <td colspan="6" class="px-4 py-2">
+                                    <div class="text-xs space-y-1">
+                                        <div class="flex items-center gap-4">
+                                            <span class="w-20 text-sky-400">RSI該当(2)</span>
+                                            <span class="text-rose-400">10:25: -3,200</span>
+                                            <span class="text-rose-400">大引: -5,100</span>
+                                            <span class="text-muted-foreground">→ ロング推奨</span>
+                                        </div>
+                                        <div class="flex items-center gap-4">
+                                            <span class="w-20 text-amber-400">ATR該当(1)</span>
+                                            <span class="text-emerald-400">10:25: +8,500</span>
+                                            <span class="text-emerald-400">大引: +12,300</span>
+                                            <span class="text-muted-foreground">→ ショート有効</span>
+                                        </div>
+                                        <div class="flex items-center gap-4">
+                                            <span class="w-20 text-emerald-400">除外後(2)</span>
+                                            <span class="text-emerald-400">10:25: +7,200</span>
+                                            <span class="text-emerald-400">大引: +11,000</span>
+                                            <span class="text-muted-foreground"></span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- 通常行（閉じた状態） -->
+                            <tr class="border-b border-border/20 cursor-pointer hover:bg-muted/20">
+                                <td class="text-right px-2 py-2.5">1,000~3,000円 <span class="text-muted-foreground">▶</span></td>
+                                <td class="text-right px-2 py-2.5">8</td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">-8,300</td>
+                                <td class="text-right px-2 py-2.5 text-rose-400">38%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+5,100</td>
+                                <td class="text-right px-2 py-2.5">50%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-xs text-muted-foreground">
+                    <strong>メリット:</strong> 通常時は既存と完全同一、必要時のみ詳細表示<br>
+                    <strong>デメリット:</strong> クリックが必要、一覧性は低下
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 案4: タブ切替 + インジケーター -->
+            <!-- ========================================== -->
+            <div class="mb-10 p-6 border-2 border-dashed border-amber-500/50 rounded-xl">
+                <h2 class="text-lg font-bold text-amber-400 mb-4">案4: タブ切替 + 行インジケーター</h2>
+                <p class="text-sm text-muted-foreground mb-4">タブで表示モードを切替。「詳細」タブでRSI/ATR列を追加表示。</p>
+
+                <!-- タブ -->
+                <div class="flex gap-1 mb-4">
+                    <button class="px-4 py-2 rounded-t-lg text-sm bg-card border border-border/40 border-b-0 text-foreground">標準</button>
+                    <button class="px-4 py-2 rounded-t-lg text-sm bg-muted/30 border border-border/40 border-b-0 text-muted-foreground">RSI/ATR詳細</button>
+                </div>
+
+                <div class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="font-semibold text-lg text-foreground">月曜日</span>
+                        <span class="text-muted-foreground text-base">25件</span>
+                    </div>
+                    <p class="text-xs text-muted-foreground mb-2">※「標準」タブ選択時は既存と同一表示</p>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-muted-foreground text-sm border-b border-border/30">
+                                <th class="text-right px-2 py-2.5 font-medium">価格帯</th>
+                                <th class="text-right px-2 py-2.5 font-medium">件</th>
+                                <th class="text-right px-2 py-2.5 font-medium">10:25</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                                <th class="text-right px-2 py-2.5 font-medium">大引</th>
+                                <th class="text-right px-2 py-2.5 font-medium">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-border/20">
+                                <td class="text-right px-2 py-2.5">~1,000円</td>
+                                <td class="text-right px-2 py-2.5">5</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+12,500</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">+18,200</td>
+                                <td class="text-right px-2 py-2.5 text-emerald-400">60%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-xs text-muted-foreground">
+                    <strong>メリット:</strong> 標準時は完全互換、詳細が必要な人だけ切替<br>
+                    <strong>デメリット:</strong> タブ切替の手間、同時比較不可
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 推奨案まとめ -->
+            <!-- ========================================== -->
+            <div class="p-6 border-2 border-solid border-foreground/30 rounded-xl bg-card/30">
+                <h2 class="text-lg font-bold text-foreground mb-4">推奨: 案2（バッジ方式）または 案1+案2 の組み合わせ</h2>
+                <div class="text-sm text-muted-foreground space-y-2">
+                    <p><strong>理由:</strong></p>
+                    <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li>案2: 既存レイアウトをほぼ維持しつつ、RSI/ATR情報を常時表示</li>
+                        <li>案1+案2: フィルターで絞り込みつつ、バッジで該当状況を把握</li>
+                        <li>視認性を損なわず、必要な情報を追加できる</li>
+                    </ul>
+                    <p class="mt-4"><strong>実装時の注意:</strong></p>
+                    <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li>既存のテーブル構造・CSS・カラーは変更しない</li>
+                        <li>RSI/ATR列またはバッジのみ追加</li>
+                        <li>フィルターはJavaScriptで表示/非表示を切替（DOM変更なし）</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

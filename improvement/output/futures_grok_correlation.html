@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>先物5分足 × Grokショート利益 相関分析</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .info-box {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info-box h3 { margin-top: 0; color: #333; }
+        .info-box ul { margin: 0; padding-left: 20px; }
+        .info-box li { margin: 5px 0; }
+        .highlight { background: #fff3cd; padding: 2px 5px; border-radius: 3px; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: #fff;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: right;
+        }
+        th {
+            background: #333;
+            color: #fff;
+            font-weight: 600;
+        }
+        td:first-child, th:first-child { text-align: left; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        tr:hover { background: #f0f0f0; }
+        .positive { color: #28a745; font-weight: 600; }
+        .negative { color: #dc3545; font-weight: 600; }
+        .warning { background: #fff3cd !important; }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .summary-card .label { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>先物5分足 × Grokショート利益 相関分析</h1>
+
+    <div class="info-box">
+        <h3>📊 データソース</h3>
+        <ul>
+            <li><strong>先物データ:</strong> <span class="highlight">futures_prices_60d_5m.parquet</span></li>
+            <li><strong>ティッカー:</strong> NKD=F（CME日経225先物、USD建て）</li>
+            <li><strong>タイムゾーン:</strong> <span class="highlight">JST（日本時間）に変換済み</span></li>
+            <li><strong>取得タイミング:</strong> 23:00 JST パイプライン</li>
+        </ul>
+    </div>
+
+    <div class="info-box">
+        <h3>📐 計算方法</h3>
+        <ul>
+            <li><strong>先物変動率:</strong> (当日23:00価格 - 前営業日23:00価格) / 前営業日23:00価格 × 100</li>
+            <li><strong>ショート利益:</strong> Grok推奨銘柄の大引けショート利益（符号反転）</li>
+            <li><strong>対象期間:</strong> 2025-11-04 以降</li>
+        </ul>
+    </div>
+
+    <h2>📈 先物変動率別 ショート利益サマリー</h2>
+    <table>
+        <tr>
+            <th>先物変動率</th>
+            <th>日数</th>
+            <th>利益合計</th>
+            <th>利益平均</th>
+        </tr>
+
+        <tr>
+            <td><-1%</td>
+            <td>8</td>
+            <td class="positive">+575,550円</td>
+            <td class="positive">+71,944円</td>
+        </tr>
+
+        <tr>
+            <td>-1~0%</td>
+            <td>13</td>
+            <td class="positive">+375,450円</td>
+            <td class="positive">+28,881円</td>
+        </tr>
+
+        <tr>
+            <td>0~+1%</td>
+            <td>10</td>
+            <td class="positive">+44,700円</td>
+            <td class="positive">+4,470円</td>
+        </tr>
+
+        <tr>
+            <td>+1~+2%</td>
+            <td>5</td>
+            <td class="negative">-10,420円</td>
+            <td class="negative">-2,084円</td>
+        </tr>
+
+        <tr>
+            <td>>+2%</td>
+            <td>1</td>
+            <td class="negative">-13,300円</td>
+            <td class="negative">-13,300円</td>
+        </tr>
+
+    </table>
+
+    <div class="summary">
+        <div class="summary-card">
+            <div class="value positive">+971,979円</div>
+            <div class="label">総利益（37日）</div>
+        </div>
+    </div>
+
+    <h2>📅 日別データ</h2>
+    <table>
+        <tr>
+            <th>日付</th>
+            <th>曜日</th>
+            <th>前日23:00価格</th>
+            <th>当日23:00価格</th>
+            <th>先物変動率</th>
+            <th>銘柄数</th>
+            <th>ショート利益</th>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-04</td>
+            <td>火</td>
+            <td>52,655</td>
+            <td>51,280</td>
+            <td class="positive">-2.61%</td>
+            <td>11</td>
+            <td class="positive">+10,400円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-05</td>
+            <td>水</td>
+            <td>51,280</td>
+            <td>50,860</td>
+            <td class="positive">-0.82%</td>
+            <td>10</td>
+            <td class="positive">+4,300円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-06</td>
+            <td>木</td>
+            <td>50,860</td>
+            <td>50,980</td>
+            <td class="">+0.24%</td>
+            <td>11</td>
+            <td class="positive">+79,500円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-07</td>
+            <td>金</td>
+            <td>50,980</td>
+            <td>50,195</td>
+            <td class="positive">-1.54%</td>
+            <td>10</td>
+            <td class="positive">+152,500円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2025-11-10</td>
+            <td>月</td>
+            <td>50,195</td>
+            <td>51,050</td>
+            <td class="negative">+1.70%</td>
+            <td>12</td>
+            <td class="negative">-45,000円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-11</td>
+            <td>火</td>
+            <td>51,050</td>
+            <td>50,925</td>
+            <td class="positive">-0.24%</td>
+            <td>11</td>
+            <td class="positive">+17,400円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-12</td>
+            <td>水</td>
+            <td>50,925</td>
+            <td>51,400</td>
+            <td class="">+0.93%</td>
+            <td>7</td>
+            <td class="negative">-35,100円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-13</td>
+            <td>木</td>
+            <td>51,400</td>
+            <td>50,850</td>
+            <td class="positive">-1.07%</td>
+            <td>11</td>
+            <td class="positive">+18,600円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-14</td>
+            <td>金</td>
+            <td>50,850</td>
+            <td>49,930</td>
+            <td class="positive">-1.81%</td>
+            <td>11</td>
+            <td class="negative">-130,500円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-17</td>
+            <td>月</td>
+            <td>49,930</td>
+            <td>50,165</td>
+            <td class="">+0.47%</td>
+            <td>11</td>
+            <td class="positive">+29,800円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-18</td>
+            <td>火</td>
+            <td>50,165</td>
+            <td>48,850</td>
+            <td class="positive">-2.62%</td>
+            <td>12</td>
+            <td class="positive">+328,150円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-19</td>
+            <td>水</td>
+            <td>48,850</td>
+            <td>49,205</td>
+            <td class="">+0.73%</td>
+            <td>10</td>
+            <td class="negative">-24,100円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2025-11-20</td>
+            <td>木</td>
+            <td>49,205</td>
+            <td>50,105</td>
+            <td class="negative">+1.83%</td>
+            <td>12</td>
+            <td class="negative">-28,970円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-21</td>
+            <td>金</td>
+            <td>50,105</td>
+            <td>48,740</td>
+            <td class="positive">-2.72%</td>
+            <td>5</td>
+            <td class="negative">-9,500円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-11-25</td>
+            <td>火</td>
+            <td>48,940</td>
+            <td>48,765</td>
+            <td class="positive">-0.36%</td>
+            <td>11</td>
+            <td class="positive">+11,000円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2025-11-26</td>
+            <td>水</td>
+            <td>48,765</td>
+            <td>49,655</td>
+            <td class="negative">+1.83%</td>
+            <td>10</td>
+            <td class="negative">-32,300円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-01</td>
+            <td>月</td>
+            <td>49,655</td>
+            <td>49,240</td>
+            <td class="positive">-0.84%</td>
+            <td>20</td>
+            <td class="positive">+82,350円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-02</td>
+            <td>火</td>
+            <td>49,240</td>
+            <td>49,650</td>
+            <td class="">+0.83%</td>
+            <td>16</td>
+            <td class="positive">+50,600円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-03</td>
+            <td>水</td>
+            <td>49,650</td>
+            <td>49,500</td>
+            <td class="positive">-0.30%</td>
+            <td>11</td>
+            <td class="negative">-5,600円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2025-12-04</td>
+            <td>木</td>
+            <td>49,500</td>
+            <td>50,820</td>
+            <td class="negative">+2.67%</td>
+            <td>25</td>
+            <td class="negative">-13,300円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-05</td>
+            <td>金</td>
+            <td>50,820</td>
+            <td>50,585</td>
+            <td class="positive">-0.46%</td>
+            <td>18</td>
+            <td class="positive">+10,500円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-08</td>
+            <td>月</td>
+            <td>50,585</td>
+            <td>50,520</td>
+            <td class="positive">-0.13%</td>
+            <td>21</td>
+            <td class="positive">+64,500円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-09</td>
+            <td>火</td>
+            <td>50,520</td>
+            <td>50,980</td>
+            <td class="">+0.91%</td>
+            <td>16</td>
+            <td class="negative">-900円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-10</td>
+            <td>水</td>
+            <td>50,980</td>
+            <td>50,780</td>
+            <td class="positive">-0.39%</td>
+            <td>15</td>
+            <td class="positive">+13,800円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-11</td>
+            <td>木</td>
+            <td>50,780</td>
+            <td>50,680</td>
+            <td class="positive">-0.20%</td>
+            <td>25</td>
+            <td class="positive">+116,000円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-12</td>
+            <td>金</td>
+            <td>50,680</td>
+            <td>50,845</td>
+            <td class="">+0.33%</td>
+            <td>17</td>
+            <td class="negative">-8,100円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-15</td>
+            <td>月</td>
+            <td>50,845</td>
+            <td>50,510</td>
+            <td class="positive">-0.66%</td>
+            <td>17</td>
+            <td class="positive">+350円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-16</td>
+            <td>火</td>
+            <td>50,510</td>
+            <td>49,825</td>
+            <td class="positive">-1.36%</td>
+            <td>17</td>
+            <td class="positive">+91,400円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-17</td>
+            <td>水</td>
+            <td>49,825</td>
+            <td>49,780</td>
+            <td class="positive">-0.09%</td>
+            <td>12</td>
+            <td class="positive">+23,900円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-18</td>
+            <td>木</td>
+            <td>49,780</td>
+            <td>49,500</td>
+            <td class="positive">-0.56%</td>
+            <td>8</td>
+            <td class="negative">-14,950円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2025-12-19</td>
+            <td>金</td>
+            <td>49,500</td>
+            <td>50,160</td>
+            <td class="negative">+1.33%</td>
+            <td>10</td>
+            <td class="positive">+32,300円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-22</td>
+            <td>月</td>
+            <td>50,160</td>
+            <td>50,430</td>
+            <td class="">+0.54%</td>
+            <td>4</td>
+            <td class="positive">+1,700円</td>
+        </tr>
+
+        <tr class="">
+            <td>2025-12-23</td>
+            <td>火</td>
+            <td>50,430</td>
+            <td>50,700</td>
+            <td class="">+0.54%</td>
+            <td>19</td>
+            <td class="negative">-600円</td>
+        </tr>
+
+        <tr class="">
+            <td>2026-01-06</td>
+            <td>火</td>
+            <td>52,170</td>
+            <td>52,105</td>
+            <td class="positive">-0.12%</td>
+            <td>20</td>
+            <td class="positive">+51,900円</td>
+        </tr>
+
+        <tr class="">
+            <td>2026-01-07</td>
+            <td>水</td>
+            <td>52,105</td>
+            <td>52,110</td>
+            <td class="">+0.01%</td>
+            <td>19</td>
+            <td class="negative">-48,100円</td>
+        </tr>
+
+        <tr class="">
+            <td>2026-01-08</td>
+            <td>木</td>
+            <td>52,110</td>
+            <td>51,585</td>
+            <td class="positive">-1.01%</td>
+            <td>23</td>
+            <td class="positive">+114,500円</td>
+        </tr>
+
+        <tr class="warning">
+            <td>2026-01-09</td>
+            <td>金</td>
+            <td>51,585</td>
+            <td>52,380</td>
+            <td class="negative">+1.54%</td>
+            <td>22</td>
+            <td class="positive">+63,550円</td>
+        </tr>
+
+    </table>
+
+    <div class="info-box">
+        <h3>🔍 分析ポイント</h3>
+        <ul>
+            <li><span style="background: #fff3cd; padding: 2px 5px;">黄色行</span>: 先物変動 +1%以上（見送り候補）</li>
+            <li><span class="positive">緑字</span>: プラス / <span class="negative">赤字</span>: マイナス</li>
+            <li>先物+1%以上の日のショート利益を確認 → 見送りルールの有効性</li>
+        </ul>
+    </div>
+
+    <p style="color: #999; font-size: 12px; margin-top: 40px;">
+        生成日時: 2026-01-13 16:49:34
+    </p>
+</body>
+</html>

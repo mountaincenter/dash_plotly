@@ -356,6 +356,117 @@ async def get_results_by_stock():
     }
 
 
+# 価格帯定義
+PRICE_RANGES = [
+    {"label": "~1,000円", "min": 0, "max": 1000},
+    {"label": "1,000~3,000円", "min": 1000, "max": 3000},
+    {"label": "3,000~5,000円", "min": 3000, "max": 5000},
+    {"label": "5,000~10,000円", "min": 5000, "max": 10000},
+    {"label": "10,000円~", "min": 10000, "max": float("inf")},
+]
+
+# 翌日以降の損切り銘柄（当日決済ではない）- 価格帯分析から除外
+EXCLUDE_NON_SAME_DAY_LOSSES = [
+    ("2025-12-26", "7042", -7120),     # アクセスグループHL
+    ("2026-01-14", "2160", -8957),     # ジーエヌアイ
+    ("2026-01-15", "369A", -17351),    # エータイ
+    ("2026-01-16", "5243", -38490),    # NOTE（-38,490の方のみ）
+    ("2026-01-20", "6167", -5013),     # 冨士ダイス
+    ("2026-01-20", "215A", -18127),    # タイミー
+    ("2026-01-21", "4062", -48393),    # イビデン
+    ("2026-01-22", "8267", -1929),     # イオン
+    ("2026-01-30", "4461", -116000),   # 第一工業製薬
+]
+
+
+def get_price_range(price: float) -> str:
+    """価格から価格帯ラベルを取得"""
+    for pr in PRICE_RANGES:
+        if pr["min"] <= price < pr["max"]:
+            return pr["label"]
+    return PRICE_RANGES[-1]["label"]
+
+
+@router.get("/api/dev/stock-results/price-range")
+async def get_price_range_stats(from_date: Optional[str] = None):
+    """
+    価格帯別の損益統計
+    - ロング/ショート別
+    - from_date: 開始日フィルタ (例: 2025-12-22)
+    """
+    df = load_stock_results()
+
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No stock results data found")
+
+    # 日付フィルタ
+    if from_date:
+        df = df[df["約定日"] >= from_date].copy()
+
+    # 翌日以降の損切り銘柄を除外
+    def should_exclude(row):
+        date_str = row["約定日"].strftime("%Y-%m-%d")
+        code = str(row["コード"])
+        profit = row["実現損益"]
+        for ex_date, ex_code, ex_profit in EXCLUDE_NON_SAME_DAY_LOSSES:
+            if date_str == ex_date and code == ex_code and int(profit) == ex_profit:
+                return True
+        return False
+
+    exclude_mask = df.apply(should_exclude, axis=1)
+    df = df[~exclude_mask].copy()
+
+    # 価格帯を追加
+    df["price_range"] = df["平均取得価額"].apply(get_price_range)
+    df["is_win"] = df["実現損益"] > 0
+
+    def calc_stats(sub_df: pd.DataFrame) -> Dict[str, Any]:
+        if len(sub_df) == 0:
+            return {"count": 0, "win_count": 0, "win_rate": 0, "profit": 0, "avg_profit": 0}
+        return {
+            "count": int(len(sub_df)),
+            "win_count": int(sub_df["is_win"].sum()),
+            "win_rate": round(float(sub_df["is_win"].mean() * 100), 1),
+            "profit": int(sub_df["実現損益"].sum()),
+            "avg_profit": int(sub_df["実現損益"].mean()),
+        }
+
+    results = {"long": [], "short": []}
+
+    for pr in PRICE_RANGES:
+        label = pr["label"]
+        pr_df = df[df["price_range"] == label]
+
+        long_df = pr_df[pr_df["売買"] == "ロング"]
+        short_df = pr_df[pr_df["売買"] == "ショート"]
+
+        long_stats = calc_stats(long_df)
+        long_stats["label"] = label
+        results["long"].append(long_stats)
+
+        short_stats = calc_stats(short_df)
+        short_stats["label"] = label
+        results["short"].append(short_stats)
+
+    # 合計
+    long_all = df[df["売買"] == "ロング"]
+    short_all = df[df["売買"] == "ショート"]
+
+    long_total = calc_stats(long_all)
+    long_total["label"] = "合計"
+    results["long"].append(long_total)
+
+    short_total = calc_stats(short_all)
+    short_total["label"] = "合計"
+    results["short"].append(short_total)
+
+    return {
+        "priceRanges": [pr["label"] for pr in PRICE_RANGES],
+        "long": results["long"],
+        "short": results["short"],
+    }
+
+
 @router.post("/api/dev/stock-results/refresh")
 async def refresh_stock_results():
     """

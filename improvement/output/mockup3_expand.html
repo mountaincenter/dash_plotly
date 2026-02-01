@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>案3: サマリー + 展開式</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0f',
+                foreground: '#fafafa',
+                card: '#18181b',
+                'card-foreground': '#fafafa',
+                muted: '#27272a',
+                'muted-foreground': '#a1a1aa',
+                border: '#27272a',
+            }
+        }
+    }
+}
+</script>
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.tab-active { background: rgba(39, 39, 42, 0.8); border-bottom: 2px solid #fafafa; }
+.tab-inactive { background: transparent; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { background: rgba(39, 39, 42, 0.4); }
+details summary { cursor: pointer; }
+details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+    <main class="relative min-h-screen">
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 py-4">
+
+            <header class="mb-4 pb-3 border-b border-border/30">
+                <h1 class="text-xl font-bold text-foreground">案3: サマリー + 展開式</h1>
+                <p class="text-muted-foreground text-sm">通常は除外後のP&Lのみ表示。クリックでRSI/ATR詳細が展開。</p>
+            </header>
+
+            <div class="grid grid-cols-1 gap-4">
+
+                <details class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50" open>
+                    <summary class="p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="font-semibold text-lg text-foreground">月曜日</span>
+                            <span class="text-muted-foreground">62件（除外後）</span>
+                            <span class="tabular-nums text-emerald-400">+66,150</span>
+                        </div>
+                        <span class="text-muted-foreground text-sm">▼ RSI/ATR詳細</span>
+                    </summary>
+                    <div class="px-4 pb-4 border-t border-border/30 pt-3">
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-sky-500/10 rounded-lg p-3 border border-sky-500/30">
+                                <div class="text-sky-400 text-sm font-medium mb-1">RSIのみ (15件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-3,950</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ロング推奨</div>
+                            </div>
+                            <div class="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                                <div class="text-amber-400 text-sm font-medium mb-1">ATRのみ (8件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+71,500</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ショート有効</div>
+                            </div>
+                            <div class="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                <div class="text-purple-400 text-sm font-medium mb-1">両方 (0件)</div>
+                                <div class="text-lg font-bold tabular-nums text-foreground">-</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ 要分析</div>
+                            </div>
+                        </div>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30 text-xs">
+                                    <th class="text-left px-2 py-2">価格帯</th>
+                                    <th class="text-right px-2 py-2 text-emerald-400">除外後</th>
+                                    <th class="text-right px-2 py-2 text-sky-400">RSI</th>
+                                    <th class="text-right px-2 py-2 text-amber-400">ATR</th>
+                                    <th class="text-right px-2 py-2 text-purple-400">両方</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">27件 -50,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">7件 +8,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">5件 +6,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">21件 +59,750</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">4件 +2,150</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">3件 +65,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">5件 -13,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">1件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">7件 +98,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +30,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">2件 -27,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -45,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50" open>
+                    <summary class="p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="font-semibold text-lg text-foreground">火曜日</span>
+                            <span class="text-muted-foreground">91件（除外後）</span>
+                            <span class="tabular-nums text-emerald-400">+129,650</span>
+                        </div>
+                        <span class="text-muted-foreground text-sm">▼ RSI/ATR詳細</span>
+                    </summary>
+                    <div class="px-4 pb-4 border-t border-border/30 pt-3">
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-sky-500/10 rounded-lg p-3 border border-sky-500/30">
+                                <div class="text-sky-400 text-sm font-medium mb-1">RSIのみ (13件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+29,900</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ロング推奨</div>
+                            </div>
+                            <div class="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                                <div class="text-amber-400 text-sm font-medium mb-1">ATRのみ (27件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+410,300</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ショート有効</div>
+                            </div>
+                            <div class="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                <div class="text-purple-400 text-sm font-medium mb-1">両方 (2件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-10,500</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ 要分析</div>
+                            </div>
+                        </div>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30 text-xs">
+                                    <th class="text-left px-2 py-2">価格帯</th>
+                                    <th class="text-right px-2 py-2 text-emerald-400">除外後</th>
+                                    <th class="text-right px-2 py-2 text-sky-400">RSI</th>
+                                    <th class="text-right px-2 py-2 text-amber-400">ATR</th>
+                                    <th class="text-right px-2 py-2 text-purple-400">両方</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">48件 +22,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">7件 -7,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">13件 +24,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">28件 +112,350</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">4件 -5,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">10件 +89,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">2件 -10,500</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">11件 +49,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +12,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">3件 -35,800</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +5,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -19,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +37,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +283,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50" open>
+                    <summary class="p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="font-semibold text-lg text-foreground">水曜日</span>
+                            <span class="text-muted-foreground">90件（除外後）</span>
+                            <span class="tabular-nums text-rose-400">-66,600</span>
+                        </div>
+                        <span class="text-muted-foreground text-sm">▼ RSI/ATR詳細</span>
+                    </summary>
+                    <div class="px-4 pb-4 border-t border-border/30 pt-3">
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-sky-500/10 rounded-lg p-3 border border-sky-500/30">
+                                <div class="text-sky-400 text-sm font-medium mb-1">RSIのみ (25件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-95,300</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ロング推奨</div>
+                            </div>
+                            <div class="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                                <div class="text-amber-400 text-sm font-medium mb-1">ATRのみ (15件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+7,200</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ショート有効</div>
+                            </div>
+                            <div class="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                <div class="text-purple-400 text-sm font-medium mb-1">両方 (1件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-3,000</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ 要分析</div>
+                            </div>
+                        </div>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30 text-xs">
+                                    <th class="text-left px-2 py-2">価格帯</th>
+                                    <th class="text-right px-2 py-2 text-emerald-400">除外後</th>
+                                    <th class="text-right px-2 py-2 text-sky-400">RSI</th>
+                                    <th class="text-right px-2 py-2 text-amber-400">ATR</th>
+                                    <th class="text-right px-2 py-2 text-purple-400">両方</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">42件 -17,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">13件 -5,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">9件 +7,100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">39件 +28,100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">9件 -94,600</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">5件 +100</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -3,000</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">5件 +9,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -5,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">1件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">4件 -87,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -5,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +15,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50" open>
+                    <summary class="p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="font-semibold text-lg text-foreground">木曜日</span>
+                            <span class="text-muted-foreground">111件（除外後）</span>
+                            <span class="tabular-nums text-emerald-400">+113,979</span>
+                        </div>
+                        <span class="text-muted-foreground text-sm">▼ RSI/ATR詳細</span>
+                    </summary>
+                    <div class="px-4 pb-4 border-t border-border/30 pt-3">
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-sky-500/10 rounded-lg p-3 border border-sky-500/30">
+                                <div class="text-sky-400 text-sm font-medium mb-1">RSIのみ (27件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-325,300</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ロング推奨</div>
+                            </div>
+                            <div class="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                                <div class="text-amber-400 text-sm font-medium mb-1">ATRのみ (25件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+191,283</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ショート有効</div>
+                            </div>
+                            <div class="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                <div class="text-purple-400 text-sm font-medium mb-1">両方 (2件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+26,200</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ 要分析</div>
+                            </div>
+                        </div>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30 text-xs">
+                                    <th class="text-left px-2 py-2">価格帯</th>
+                                    <th class="text-right px-2 py-2 text-emerald-400">除外後</th>
+                                    <th class="text-right px-2 py-2 text-sky-400">RSI</th>
+                                    <th class="text-right px-2 py-2 text-amber-400">ATR</th>
+                                    <th class="text-right px-2 py-2 text-purple-400">両方</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">49件 +11,229</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">7件 +3,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">11件 +11,583</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +4,600</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">46件 -29,550</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">13件 -74,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">12件 +145,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +21,600</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">11件 +80,800</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">3件 -18,400</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">3件 -10,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">4件 -236,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +11,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +61,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +23,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-card/50 via-card/80 to-card/50" open>
+                    <summary class="p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="font-semibold text-lg text-foreground">金曜日</span>
+                            <span class="text-muted-foreground">63件（除外後）</span>
+                            <span class="tabular-nums text-emerald-400">+139,300</span>
+                        </div>
+                        <span class="text-muted-foreground text-sm">▼ RSI/ATR詳細</span>
+                    </summary>
+                    <div class="px-4 pb-4 border-t border-border/30 pt-3">
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="bg-sky-500/10 rounded-lg p-3 border border-sky-500/30">
+                                <div class="text-sky-400 text-sm font-medium mb-1">RSIのみ (27件)</div>
+                                <div class="text-lg font-bold tabular-nums text-rose-400">-114,250</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ロング推奨</div>
+                            </div>
+                            <div class="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                                <div class="text-amber-400 text-sm font-medium mb-1">ATRのみ (28件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+346,000</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ ショート有効</div>
+                            </div>
+                            <div class="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                <div class="text-purple-400 text-sm font-medium mb-1">両方 (3件)</div>
+                                <div class="text-lg font-bold tabular-nums text-emerald-400">+31,100</div>
+                                <div class="text-xs text-muted-foreground mt-1">→ 要分析</div>
+                            </div>
+                        </div>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-muted-foreground border-b border-border/30 text-xs">
+                                    <th class="text-left px-2 py-2">価格帯</th>
+                                    <th class="text-right px-2 py-2 text-emerald-400">除外後</th>
+                                    <th class="text-right px-2 py-2 text-sky-400">RSI</th>
+                                    <th class="text-right px-2 py-2 text-amber-400">ATR</th>
+                                    <th class="text-right px-2 py-2 text-purple-400">両方</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">~1,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">36件 +8,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">8件 +19,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">15件 +7,200</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">1,000~3,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">18件 +119,700</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">13件 -21,550</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">8件 +88,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">3件 +31,100</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">3,000~5,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">5件 +20,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +5,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +116,300</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">5,000~10,000円</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">3件 +15,400</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">3件 +13,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">1件 +27,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                                <tr class="border-b border-border/20">
+                                    <td class="px-2 py-2">10,000円~</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -24,500</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-rose-400">1件 -130,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-emerald-400">2件 +107,000</td>
+                                    <td class="text-right px-2 py-2 tabular-nums text-foreground">0件 -</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

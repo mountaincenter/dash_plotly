@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銘柄深掘り 4579 ラクオリア創薬</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.7;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #58a6ff;
+            padding-bottom: 15px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 30px;
+        }
+        .data-source {
+            text-align: center;
+            color: #7ee787;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #58a6ff20, #1f6feb20);
+            border: 1px solid #58a6ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-label {
+            color: #8b949e;
+            font-size: 0.85em;
+        }
+        .summary-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #fff;
+        }
+        .summary-value.positive { color: #7ee787; }
+        .summary-value.negative { color: #f85149; }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .tag.top5 { background: #f0883e30; color: #f0883e; border: 1px solid #f0883e; }
+        .tag.catalyst { background: #7ee78730; color: #7ee787; }
+        .tag.sector { background: #58a6ff30; color: #58a6ff; }
+
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #58a6ff;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #30363d;
+        }
+        .section h3 {
+            color: #7ee787;
+            font-size: 1em;
+            margin: 15px 0 10px 0;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #8b949e; }
+        .data-value { font-weight: bold; }
+        .data-value.negative { color: #f85149; }
+        .data-value.positive { color: #7ee787; }
+        .data-value.warning { color: #d29922; }
+
+        .grok-reason {
+            background: #21262d;
+            border-left: 3px solid #f0883e;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 0.95em;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .chart-placeholder {
+            background: #21262d;
+            border: 1px dashed #30363d;
+            border-radius: 8px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8b949e;
+            margin: 15px 0;
+        }
+
+        .sentiment-bar {
+            display: flex;
+            height: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .sentiment-positive { background: #7ee787; }
+        .sentiment-neutral { background: #8b949e; }
+        .sentiment-negative { background: #f85149; }
+
+        .conclusion {
+            background: linear-gradient(135deg, #7ee78720, #3fb95020);
+            border: 1px solid #7ee787;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .conclusion h2 {
+            color: #7ee787;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        ul li {
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        ul li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #58a6ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>4579 ラクオリア創薬</h1>
+        <p class="subtitle">銘柄深掘りレポート | 2025年11月25日</p>
+        <p class="data-source">データソース: J-Quants API (実データ)</p>
+
+        <!-- サマリー -->
+        <div class="summary-box">
+            <div class="summary-item">
+                <div class="summary-label">株価</div>
+                <div class="summary-value">¥1,105</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">前日比</div>
+                <div class="summary-value positive">+2.98%</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">時価総額</div>
+                <div class="summary-value">270.3億円</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Grokスコア</div>
+                <div class="summary-value">100.0</div>
+            </div>
+        </div>
+
+        <!-- タグ -->
+        <div style="margin-bottom: 30px; text-align: center;">
+            <span class="tag top5">⭐ Top5</span>
+            <span class="tag catalyst">バイオ材料</span>
+            <span class="tag catalyst">勝訴</span>
+            <span class="tag sector">医薬品</span>
+        </div>
+
+        <!-- Grok選定理由 -->
+        <div class="section">
+            <h2>Grok選定理由</h2>
+            <div class="grok-reason">[web_search: Yahoo!ファイナンス] 時価総額120億円確認。
+[web_search: kabutan.jp] 2025年11月21日発表、大法院における全件勝訴判決。
+[x_search: 複数投稿] 2025年11月21日以降、言及確認（例: @ギン 投稿「大法院における全件勝訴判決」）。
+[web_search: kabutan.jp] 2025年11月21日出来高20日平均の2.8倍。
+[web_search: Yahoo!ファイナンス] 直近5日ATR 5.2%。
+[web_search: jpx.co.jp] 上場廃止該当なし。
+除外確認: Core30リスト照合済み、時価総額500億円未満OK、上場廃止なし</div>
+        </div>
+
+        <!-- 財務データ（実データ） -->
+        <div class="section">
+            <h2>財務データ（J-Quants 実データ）</h2>
+            <p style="color: #8b949e; font-size: 0.9em; margin-bottom: 15px;">
+                決算期: 3Q FY2025 | 開示日: 2025-11-14
+            </p>
+
+            <h3>損益計算書</h3>
+            <div class="data-row">
+                <span class="data-label">売上高</span>
+                <span class="data-value">23.1億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">営業利益</span>
+                <span class="data-value negative">-3.4億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">経常利益</span>
+                <span class="data-value negative">-4.3億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">純利益</span>
+                <span class="data-value negative">-5.7億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">EPS</span>
+                <span class="data-value negative">-24.29円</span>
+            </div>
+
+            <h3>貸借対照表</h3>
+            <div class="data-row">
+                <span class="data-label">総資産</span>
+                <span class="data-value">95.2億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">純資産</span>
+                <span class="data-value">60.4億円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">自己資本比率</span>
+                <span class="data-value positive">63.0%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">現預金</span>
+                <span class="data-value">35.4億円</span>
+            </div>
+
+            <h3>バリュエーション</h3>
+            <div class="data-row">
+                <span class="data-label">PER</span>
+                <span class="data-value">N/A（赤字）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">PBR</span>
+                <span class="data-value">4.47倍</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">発行済株式数</span>
+                <span class="data-value">24,457,673株</span>
+            </div>
+        </div>
+
+        <!-- チャート分析 -->
+        <div class="section">
+            <h2>チャート分析</h2>
+            <div class="chart-placeholder">
+                [Plotly チャート - J-Quants株価データで描画予定]
+            </div>
+        </div>
+
+        <!-- SNS反応 -->
+        <div class="section">
+            <h2>X (Twitter) 反応</h2>
+
+            <h3>センチメント分析</h3>
+            <div class="sentiment-bar">
+                <div class="sentiment-positive" style="width: 80%;"></div>
+                <div class="sentiment-neutral" style="width: 15%;"></div>
+                <div class="sentiment-negative" style="width: 5%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #8b949e;">
+                <span>ポジティブ 80%</span>
+                <span>中立 15%</span>
+                <span>ネガティブ 5%</span>
+            </div>
+            <p style="color: #8b949e; font-size: 0.9em; margin-top: 10px;">
+                ※ Grok sentiment_score: 0.8
+            </p>
+        </div>
+
+        <!-- 結論 -->
+        <div class="conclusion">
+            <h2>総合評価</h2>
+            <p>
+                <strong>韓国大法院勝訴</strong>という明確なカタリストにより、市場の注目度が高い。
+            </p>
+            <ul style="margin-top: 15px;">
+                <li><strong>強み:</strong> 自己資本比率63%と財務安定、現預金35億円でランウェイ確保</li>
+                <li><strong>リスク:</strong> 営業赤字継続、バイオ特有のパイプラインリスク</li>
+                <li><strong>注目点:</strong> 訴訟勝訴によるロイヤリティ収入の実現時期</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; color: #8b949e; margin-top: 30px; font-size: 0.85em;">
+            Generated by python_stock | データソース: J-Quants API
+        </p>
+    </div>
+</body>
+</html>

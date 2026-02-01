@@ -1,0 +1,3078 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSI x 4-segment Profit Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 p-6">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-2xl font-bold mb-2">RSI x 4-segment Profit Analysis (SHORT basis)</h1>
+        <p class="text-gray-400 mb-6">5min RSI (period=9) correlation with 4-segment profit</p>
+
+        <!-- Summary -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Summary</h2>
+            <div class="grid grid-cols-4 gap-4 text-center">
+                <div>
+                    <div class="text-2xl font-bold text-blue-400">657</div>
+                    <div class="text-xs text-gray-400">Total trades</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-emerald-400">+749,516</div>
+                    <div class="text-xs text-gray-400">ME (10:25)</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-emerald-400">+1,081,943</div>
+                    <div class="text-xs text-gray-400">AE (14:45)</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-emerald-400">+722,263</div>
+                    <div class="text-xs text-gray-400">P2 (Close)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample ticker -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Sample: 6227.T</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Date</th>
+                            <th class="text-right py-2">Open</th>
+                            <th class="text-right py-2">09:05</th><th class="text-right py-2">09:30</th><th class="text-right py-2">10:00</th><th class="text-right py-2">10:25</th><th class="text-right py-2">11:30</th><th class="text-right py-2">12:35</th><th class="text-right py-2">14:45</th><th class="text-right py-2">15:30</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P2</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">2026-01-09</td>
+                            <td class="text-right py-2">6,050</td>
+                            <td class="text-right py-2 text-gray-300">36.1</td><td class="text-right py-2 text-rose-400">0.0</td><td class="text-right py-2 text-rose-400">21.4</td><td class="text-right py-2 text-gray-300">36.4</td><td class="text-right py-2 text-gray-300">66.7</td><td class="text-right py-2 text-gray-300">57.9</td><td class="text-right py-2 text-gray-300">60.0</td><td class="text-right py-2 text-emerald-400">92.3</td>
+                            <td class="text-right py-2 text-emerald-400">+24,000</td>
+                            <td class="text-right py-2 text-emerald-400">+7,000</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 09:05</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">89</td>
+                            <td class="text-right py-2 text-emerald-400">+271,920</td>
+                            <td class="text-right py-2">64%</td>
+                            <td class="text-right py-2 text-emerald-400">+314,890</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-right py-2 text-emerald-400">+500,600</td>
+                            <td class="text-right py-2">66%</td>
+                            <td class="text-right py-2 text-emerald-400">+460,030</td>
+                            <td class="text-right py-2">66%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">54</td>
+                            <td class="text-right py-2 text-emerald-400">+192,830</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-right py-2 text-emerald-400">+201,310</td>
+                            <td class="text-right py-2">59%</td>
+                            <td class="text-right py-2 text-emerald-400">+232,180</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+197,100</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">125</td>
+                            <td class="text-right py-2 text-emerald-400">+220,955</td>
+                            <td class="text-right py-2">64%</td>
+                            <td class="text-right py-2 text-emerald-400">+242,100</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+212,964</td>
+                            <td class="text-right py-2">65%</td>
+                            <td class="text-right py-2 text-emerald-400">+182,300</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">143</td>
+                            <td class="text-right py-2 text-emerald-400">+13,072</td>
+                            <td class="text-right py-2">45%</td>
+                            <td class="text-right py-2 text-rose-400">-39,400</td>
+                            <td class="text-right py-2">45%</td>
+                            <td class="text-right py-2 text-rose-400">-101,101</td>
+                            <td class="text-right py-2">51%</td>
+                            <td class="text-right py-2 text-rose-400">-154,100</td>
+                            <td class="text-right py-2">50%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">207</td>
+                            <td class="text-right py-2 text-emerald-400">+50,738</td>
+                            <td class="text-right py-2">44%</td>
+                            <td class="text-right py-2 text-emerald-400">+28,274</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-right py-2 text-emerald-400">+237,301</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-right py-2 text-emerald-400">+59,533</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 09:30</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">79</td>
+                            <td class="text-right py-2 text-emerald-400">+442,000</td>
+                            <td class="text-right py-2">84%</td>
+                            <td class="text-right py-2 text-emerald-400">+471,700</td>
+                            <td class="text-right py-2">84%</td>
+                            <td class="text-right py-2 text-emerald-400">+542,250</td>
+                            <td class="text-right py-2">78%</td>
+                            <td class="text-right py-2 text-emerald-400">+530,100</td>
+                            <td class="text-right py-2">77%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">75</td>
+                            <td class="text-right py-2 text-emerald-400">+408,305</td>
+                            <td class="text-right py-2">73%</td>
+                            <td class="text-right py-2 text-emerald-400">+337,550</td>
+                            <td class="text-right py-2">75%</td>
+                            <td class="text-right py-2 text-emerald-400">+320,313</td>
+                            <td class="text-right py-2">71%</td>
+                            <td class="text-right py-2 text-emerald-400">+340,150</td>
+                            <td class="text-right py-2">68%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">128</td>
+                            <td class="text-right py-2 text-emerald-400">+210,720</td>
+                            <td class="text-right py-2">67%</td>
+                            <td class="text-right py-2 text-emerald-400">+305,840</td>
+                            <td class="text-right py-2">60%</td>
+                            <td class="text-right py-2 text-emerald-400">+337,701</td>
+                            <td class="text-right py-2">66%</td>
+                            <td class="text-right py-2 text-emerald-400">+355,180</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">187</td>
+                            <td class="text-right py-2 text-emerald-400">+82,276</td>
+                            <td class="text-right py-2">46%</td>
+                            <td class="text-right py-2 text-emerald-400">+32,234</td>
+                            <td class="text-right py-2">49%</td>
+                            <td class="text-right py-2 text-emerald-400">+97,953</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-right py-2 text-rose-400">-76,667</td>
+                            <td class="text-right py-2">51%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">149</td>
+                            <td class="text-right py-2 text-rose-400">-393,786</td>
+                            <td class="text-right py-2">26%</td>
+                            <td class="text-right py-2 text-rose-400">-400,150</td>
+                            <td class="text-right py-2">29%</td>
+                            <td class="text-right py-2 text-rose-400">-216,273</td>
+                            <td class="text-right py-2">32%</td>
+                            <td class="text-right py-2 text-rose-400">-403,900</td>
+                            <td class="text-right py-2">31%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 10:00</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">54</td>
+                            <td class="text-right py-2 text-emerald-400">+230,679</td>
+                            <td class="text-right py-2">80%</td>
+                            <td class="text-right py-2 text-emerald-400">+263,074</td>
+                            <td class="text-right py-2">80%</td>
+                            <td class="text-right py-2 text-emerald-400">+227,987</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-right py-2 text-emerald-400">+299,683</td>
+                            <td class="text-right py-2">74%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">69</td>
+                            <td class="text-right py-2 text-emerald-400">+382,850</td>
+                            <td class="text-right py-2">74%</td>
+                            <td class="text-right py-2 text-emerald-400">+360,200</td>
+                            <td class="text-right py-2">74%</td>
+                            <td class="text-right py-2 text-emerald-400">+392,500</td>
+                            <td class="text-right py-2">75%</td>
+                            <td class="text-right py-2 text-emerald-400">+336,300</td>
+                            <td class="text-right py-2">72%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">189</td>
+                            <td class="text-right py-2 text-emerald-400">+650,534</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-right py-2 text-emerald-400">+608,700</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+743,791</td>
+                            <td class="text-right py-2">69%</td>
+                            <td class="text-right py-2 text-emerald-400">+691,900</td>
+                            <td class="text-right py-2">68%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">221</td>
+                            <td class="text-right py-2 text-rose-400">-127,574</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">-100,650</td>
+                            <td class="text-right py-2">42%</td>
+                            <td class="text-right py-2 text-rose-400">-105,836</td>
+                            <td class="text-right py-2">44%</td>
+                            <td class="text-right py-2 text-rose-400">-282,820</td>
+                            <td class="text-right py-2">43%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">85</td>
+                            <td class="text-right py-2 text-rose-400">-386,973</td>
+                            <td class="text-right py-2">27%</td>
+                            <td class="text-right py-2 text-rose-400">-384,150</td>
+                            <td class="text-right py-2">33%</td>
+                            <td class="text-right py-2 text-rose-400">-176,499</td>
+                            <td class="text-right py-2">34%</td>
+                            <td class="text-right py-2 text-rose-400">-300,200</td>
+                            <td class="text-right py-2">34%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 10:25</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">61</td>
+                            <td class="text-right py-2 text-emerald-400">+262,000</td>
+                            <td class="text-right py-2">87%</td>
+                            <td class="text-right py-2 text-emerald-400">+265,500</td>
+                            <td class="text-right py-2">82%</td>
+                            <td class="text-right py-2 text-emerald-400">+199,100</td>
+                            <td class="text-right py-2">72%</td>
+                            <td class="text-right py-2 text-emerald-400">+133,600</td>
+                            <td class="text-right py-2">79%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">75</td>
+                            <td class="text-right py-2 text-emerald-400">+283,016</td>
+                            <td class="text-right py-2">77%</td>
+                            <td class="text-right py-2 text-emerald-400">+284,560</td>
+                            <td class="text-right py-2">77%</td>
+                            <td class="text-right py-2 text-emerald-400">+426,274</td>
+                            <td class="text-right py-2">79%</td>
+                            <td class="text-right py-2 text-emerald-400">+400,600</td>
+                            <td class="text-right py-2">79%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">197</td>
+                            <td class="text-right py-2 text-emerald-400">+531,717</td>
+                            <td class="text-right py-2">60%</td>
+                            <td class="text-right py-2 text-emerald-400">+541,324</td>
+                            <td class="text-right py-2">60%</td>
+                            <td class="text-right py-2 text-emerald-400">+585,424</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+384,633</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">205</td>
+                            <td class="text-right py-2 text-rose-400">-67,273</td>
+                            <td class="text-right py-2">41%</td>
+                            <td class="text-right py-2 text-rose-400">-44,750</td>
+                            <td class="text-right py-2">44%</td>
+                            <td class="text-right py-2 text-emerald-400">+88,590</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-right py-2 text-emerald-400">+97,650</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">80</td>
+                            <td class="text-right py-2 text-rose-400">-259,944</td>
+                            <td class="text-right py-2">20%</td>
+                            <td class="text-right py-2 text-rose-400">-299,460</td>
+                            <td class="text-right py-2">21%</td>
+                            <td class="text-right py-2 text-rose-400">-217,445</td>
+                            <td class="text-right py-2">28%</td>
+                            <td class="text-right py-2 text-rose-400">-271,620</td>
+                            <td class="text-right py-2">24%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 11:30</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">50</td>
+                            <td class="text-right py-2 text-emerald-400">+79,950</td>
+                            <td class="text-right py-2">62%</td>
+                            <td class="text-right py-2 text-emerald-400">+237,050</td>
+                            <td class="text-right py-2">88%</td>
+                            <td class="text-right py-2 text-emerald-400">+173,150</td>
+                            <td class="text-right py-2">76%</td>
+                            <td class="text-right py-2 text-emerald-400">+133,850</td>
+                            <td class="text-right py-2">78%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">67</td>
+                            <td class="text-right py-2 text-emerald-400">+260,200</td>
+                            <td class="text-right py-2">70%</td>
+                            <td class="text-right py-2 text-emerald-400">+357,100</td>
+                            <td class="text-right py-2">82%</td>
+                            <td class="text-right py-2 text-emerald-400">+352,450</td>
+                            <td class="text-right py-2">82%</td>
+                            <td class="text-right py-2 text-emerald-400">+280,750</td>
+                            <td class="text-right py-2">75%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">195</td>
+                            <td class="text-right py-2 text-emerald-400">+94,281</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-right py-2 text-emerald-400">+269,424</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-right py-2 text-emerald-400">+331,571</td>
+                            <td class="text-right py-2">58%</td>
+                            <td class="text-right py-2 text-emerald-400">+288,813</td>
+                            <td class="text-right py-2">58%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">203</td>
+                            <td class="text-right py-2 text-emerald-400">+426,975</td>
+                            <td class="text-right py-2">53%</td>
+                            <td class="text-right py-2 text-emerald-400">+234,500</td>
+                            <td class="text-right py-2">44%</td>
+                            <td class="text-right py-2 text-emerald-400">+465,838</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-right py-2 text-emerald-400">+353,550</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">103</td>
+                            <td class="text-right py-2 text-rose-400">-111,890</td>
+                            <td class="text-right py-2">43%</td>
+                            <td class="text-right py-2 text-rose-400">-350,900</td>
+                            <td class="text-right py-2">26%</td>
+                            <td class="text-right py-2 text-rose-400">-241,065</td>
+                            <td class="text-right py-2">32%</td>
+                            <td class="text-right py-2 text-rose-400">-312,100</td>
+                            <td class="text-right py-2">32%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 12:35</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">61</td>
+                            <td class="text-right py-2 text-emerald-400">+220,680</td>
+                            <td class="text-right py-2">66%</td>
+                            <td class="text-right py-2 text-emerald-400">+348,360</td>
+                            <td class="text-right py-2">80%</td>
+                            <td class="text-right py-2 text-emerald-400">+397,380</td>
+                            <td class="text-right py-2">75%</td>
+                            <td class="text-right py-2 text-emerald-400">+360,400</td>
+                            <td class="text-right py-2">79%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">66</td>
+                            <td class="text-right py-2 text-emerald-400">+69,900</td>
+                            <td class="text-right py-2">62%</td>
+                            <td class="text-right py-2 text-emerald-400">+124,300</td>
+                            <td class="text-right py-2">71%</td>
+                            <td class="text-right py-2 text-emerald-400">+327,150</td>
+                            <td class="text-right py-2">80%</td>
+                            <td class="text-right py-2 text-emerald-400">+329,750</td>
+                            <td class="text-right py-2">71%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">187</td>
+                            <td class="text-right py-2 text-emerald-400">+361,862</td>
+                            <td class="text-right py-2">55%</td>
+                            <td class="text-right py-2 text-emerald-400">+432,524</td>
+                            <td class="text-right py-2">59%</td>
+                            <td class="text-right py-2 text-emerald-400">+581,272</td>
+                            <td class="text-right py-2">65%</td>
+                            <td class="text-right py-2 text-emerald-400">+412,033</td>
+                            <td class="text-right py-2">64%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">204</td>
+                            <td class="text-right py-2 text-emerald-400">+270,364</td>
+                            <td class="text-right py-2">51%</td>
+                            <td class="text-right py-2 text-emerald-400">+190,740</td>
+                            <td class="text-right py-2">47%</td>
+                            <td class="text-right py-2 text-emerald-400">+82,057</td>
+                            <td class="text-right py-2">46%</td>
+                            <td class="text-right py-2 text-emerald-400">+48,580</td>
+                            <td class="text-right py-2">46%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">100</td>
+                            <td class="text-right py-2 text-rose-400">-173,290</td>
+                            <td class="text-right py-2">43%</td>
+                            <td class="text-right py-2 text-rose-400">-348,750</td>
+                            <td class="text-right py-2">32%</td>
+                            <td class="text-right py-2 text-rose-400">-305,915</td>
+                            <td class="text-right py-2">31%</td>
+                            <td class="text-right py-2 text-rose-400">-405,900</td>
+                            <td class="text-right py-2">34%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 14:45</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">38</td>
+                            <td class="text-right py-2 text-emerald-400">+86,732</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+155,560</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+238,584</td>
+                            <td class="text-right py-2">74%</td>
+                            <td class="text-right py-2 text-emerald-400">+264,900</td>
+                            <td class="text-right py-2">74%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">51</td>
+                            <td class="text-right py-2 text-emerald-400">+204,700</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-right py-2 text-emerald-400">+214,000</td>
+                            <td class="text-right py-2">59%</td>
+                            <td class="text-right py-2 text-emerald-400">+247,200</td>
+                            <td class="text-right py-2">80%</td>
+                            <td class="text-right py-2 text-emerald-400">+164,600</td>
+                            <td class="text-right py-2">73%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">179</td>
+                            <td class="text-right py-2 text-emerald-400">+229,735</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-right py-2 text-emerald-400">+155,740</td>
+                            <td class="text-right py-2">54%</td>
+                            <td class="text-right py-2 text-emerald-400">+436,888</td>
+                            <td class="text-right py-2">63%</td>
+                            <td class="text-right py-2 text-emerald-400">+235,380</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">246</td>
+                            <td class="text-right py-2 text-emerald-400">+173,765</td>
+                            <td class="text-right py-2">51%</td>
+                            <td class="text-right py-2 text-emerald-400">+201,274</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-right py-2 text-emerald-400">+294,171</td>
+                            <td class="text-right py-2">51%</td>
+                            <td class="text-right py-2 text-emerald-400">+270,383</td>
+                            <td class="text-right py-2">52%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">104</td>
+                            <td class="text-right py-2 text-emerald-400">+54,584</td>
+                            <td class="text-right py-2">55%</td>
+                            <td class="text-right py-2 text-emerald-400">+20,600</td>
+                            <td class="text-right py-2">53%</td>
+                            <td class="text-right py-2 text-rose-400">-134,898</td>
+                            <td class="text-right py-2">37%</td>
+                            <td class="text-right py-2 text-rose-400">-190,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-center py-2 text-blue-400 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">RSI Band Analysis: 15:30</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">RSI</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-right py-2">Win%</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">0-20</td>
+                            <td class="text-right py-2">40</td>
+                            <td class="text-right py-2 text-emerald-400">+73,924</td>
+                            <td class="text-right py-2">72%</td>
+                            <td class="text-right py-2 text-emerald-400">+110,524</td>
+                            <td class="text-right py-2">70%</td>
+                            <td class="text-right py-2 text-emerald-400">+72,774</td>
+                            <td class="text-right py-2">60%</td>
+                            <td class="text-right py-2 text-emerald-400">+209,283</td>
+                            <td class="text-right py-2">78%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">20-30</td>
+                            <td class="text-right py-2">50</td>
+                            <td class="text-right py-2 text-emerald-400">+36,000</td>
+                            <td class="text-right py-2">60%</td>
+                            <td class="text-right py-2 text-emerald-400">+51,850</td>
+                            <td class="text-right py-2">62%</td>
+                            <td class="text-right py-2 text-emerald-400">+101,200</td>
+                            <td class="text-right py-2">72%</td>
+                            <td class="text-right py-2 text-emerald-400">+147,000</td>
+                            <td class="text-right py-2">78%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">30-50</td>
+                            <td class="text-right py-2">174</td>
+                            <td class="text-right py-2 text-emerald-400">+551,820</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-right py-2 text-emerald-400">+477,240</td>
+                            <td class="text-right py-2">61%</td>
+                            <td class="text-right py-2 text-emerald-400">+665,450</td>
+                            <td class="text-right py-2">64%</td>
+                            <td class="text-right py-2 text-emerald-400">+805,830</td>
+                            <td class="text-right py-2">68%</td>
+                            <td class="text-center py-2 text-emerald-400 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">50-70</td>
+                            <td class="text-right py-2">237</td>
+                            <td class="text-right py-2 text-emerald-400">+137,480</td>
+                            <td class="text-right py-2">49%</td>
+                            <td class="text-right py-2 text-emerald-400">+156,110</td>
+                            <td class="text-right py-2">50%</td>
+                            <td class="text-right py-2 text-emerald-400">+286,030</td>
+                            <td class="text-right py-2">53%</td>
+                            <td class="text-right py-2 text-emerald-400">+44,450</td>
+                            <td class="text-right py-2">49%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">70-100</td>
+                            <td class="text-right py-2">117</td>
+                            <td class="text-right py-2 text-rose-400">-49,708</td>
+                            <td class="text-right py-2">42%</td>
+                            <td class="text-right py-2 text-rose-400">-48,550</td>
+                            <td class="text-right py-2">44%</td>
+                            <td class="text-right py-2 text-rose-400">-43,511</td>
+                            <td class="text-right py-2">42%</td>
+                            <td class="text-right py-2 text-rose-400">-461,700</td>
+                            <td class="text-right py-2">32%</td>
+                            <td class="text-center py-2 text-purple-400 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2 font-medium">N/A</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2">38%</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2">0%</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2">23%</td>
+                            <td class="text-center py-2 text-yellow-400 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Price Range Analysis: 09:30</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">40</td>
+                            <td class="text-right py-2 text-emerald-400">+68,300</td>
+                            <td class="text-right py-2 text-emerald-400">+83,000</td>
+                            <td class="text-right py-2 text-emerald-400">+67,800</td>
+                            <td class="text-right py-2 text-emerald-400">+66,000</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">25</td>
+                            <td class="text-right py-2 text-emerald-400">+136,000</td>
+                            <td class="text-right py-2 text-emerald-400">+149,600</td>
+                            <td class="text-right py-2 text-emerald-400">+127,650</td>
+                            <td class="text-right py-2 text-emerald-400">+121,100</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">6</td>
+                            <td class="text-right py-2 text-emerald-400">+68,000</td>
+                            <td class="text-right py-2 text-emerald-400">+81,100</td>
+                            <td class="text-right py-2 text-emerald-400">+84,300</td>
+                            <td class="text-right py-2 text-emerald-400">+82,600</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+95,700</td>
+                            <td class="text-right py-2 text-emerald-400">+96,000</td>
+                            <td class="text-right py-2 text-emerald-400">+96,500</td>
+                            <td class="text-right py-2 text-emerald-400">+80,400</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+74,000</td>
+                            <td class="text-right py-2 text-emerald-400">+62,000</td>
+                            <td class="text-right py-2 text-emerald-400">+166,000</td>
+                            <td class="text-right py-2 text-emerald-400">+180,000</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">40</td>
+                            <td class="text-right py-2 text-emerald-400">+24,900</td>
+                            <td class="text-right py-2 text-emerald-400">+26,300</td>
+                            <td class="text-right py-2 text-emerald-400">+29,000</td>
+                            <td class="text-right py-2 text-emerald-400">+25,100</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">19</td>
+                            <td class="text-right py-2 text-emerald-400">+64,600</td>
+                            <td class="text-right py-2 text-emerald-400">+65,100</td>
+                            <td class="text-right py-2 text-emerald-400">+87,200</td>
+                            <td class="text-right py-2 text-emerald-400">+90,850</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+59,405</td>
+                            <td class="text-right py-2 text-emerald-400">+62,150</td>
+                            <td class="text-right py-2 text-emerald-400">+43,413</td>
+                            <td class="text-right py-2 text-emerald-400">+53,300</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+1,400</td>
+                            <td class="text-right py-2 text-rose-400">-9,000</td>
+                            <td class="text-right py-2 text-rose-400">-2,800</td>
+                            <td class="text-right py-2 text-rose-400">-4,600</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+258,000</td>
+                            <td class="text-right py-2 text-emerald-400">+193,000</td>
+                            <td class="text-right py-2 text-emerald-400">+163,500</td>
+                            <td class="text-right py-2 text-emerald-400">+175,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">62</td>
+                            <td class="text-right py-2 text-emerald-400">+34,470</td>
+                            <td class="text-right py-2 text-emerald-400">+35,640</td>
+                            <td class="text-right py-2 text-emerald-400">+42,800</td>
+                            <td class="text-right py-2 text-emerald-400">+38,130</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">49</td>
+                            <td class="text-right py-2 text-emerald-400">+88,148</td>
+                            <td class="text-right py-2 text-emerald-400">+157,700</td>
+                            <td class="text-right py-2 text-emerald-400">+170,797</td>
+                            <td class="text-right py-2 text-emerald-400">+205,950</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+18,500</td>
+                            <td class="text-right py-2 text-emerald-400">+11,000</td>
+                            <td class="text-right py-2 text-emerald-400">+11,000</td>
+                            <td class="text-right py-2 text-emerald-400">+14,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">9</td>
+                            <td class="text-right py-2 text-emerald-400">+29,600</td>
+                            <td class="text-right py-2 text-emerald-400">+35,500</td>
+                            <td class="text-right py-2 text-emerald-400">+71,600</td>
+                            <td class="text-right py-2 text-emerald-400">+81,100</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+40,002</td>
+                            <td class="text-right py-2 text-emerald-400">+66,000</td>
+                            <td class="text-right py-2 text-emerald-400">+41,504</td>
+                            <td class="text-right py-2 text-emerald-400">+15,500</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">95</td>
+                            <td class="text-right py-2 text-rose-400">-14,696</td>
+                            <td class="text-right py-2 text-rose-400">-1,766</td>
+                            <td class="text-right py-2 text-emerald-400">+21,654</td>
+                            <td class="text-right py-2 text-emerald-400">+28,283</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">69</td>
+                            <td class="text-right py-2 text-emerald-400">+66,636</td>
+                            <td class="text-right py-2 text-emerald-400">+21,800</td>
+                            <td class="text-right py-2 text-emerald-400">+147,294</td>
+                            <td class="text-right py-2 text-emerald-400">+135,350</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">15</td>
+                            <td class="text-right py-2 text-rose-400">-10,600</td>
+                            <td class="text-right py-2 text-rose-400">-20,700</td>
+                            <td class="text-right py-2 text-rose-400">-100</td>
+                            <td class="text-right py-2 text-rose-400">-13,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+18,400</td>
+                            <td class="text-right py-2 text-emerald-400">+25,400</td>
+                            <td class="text-right py-2 text-rose-400">-63,900</td>
+                            <td class="text-right py-2 text-rose-400">-133,900</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+22,536</td>
+                            <td class="text-right py-2 text-emerald-400">+7,500</td>
+                            <td class="text-right py-2 text-rose-400">-6,995</td>
+                            <td class="text-right py-2 text-rose-400">-92,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">75</td>
+                            <td class="text-right py-2 text-rose-400">-63,400</td>
+                            <td class="text-right py-2 text-rose-400">-59,100</td>
+                            <td class="text-right py-2 text-rose-400">-53,600</td>
+                            <td class="text-right py-2 text-rose-400">-65,800</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">43</td>
+                            <td class="text-right py-2 text-rose-400">-88,800</td>
+                            <td class="text-right py-2 text-rose-400">-102,250</td>
+                            <td class="text-right py-2 text-rose-400">-74,050</td>
+                            <td class="text-right py-2 text-rose-400">-116,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">19</td>
+                            <td class="text-right py-2 text-rose-400">-78,286</td>
+                            <td class="text-right py-2 text-rose-400">-110,600</td>
+                            <td class="text-right py-2 text-rose-400">-93,923</td>
+                            <td class="text-right py-2 text-rose-400">-101,200</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">11</td>
+                            <td class="text-right py-2 text-rose-400">-147,800</td>
+                            <td class="text-right py-2 text-rose-400">-107,700</td>
+                            <td class="text-right py-2 text-rose-400">-12,200</td>
+                            <td class="text-right py-2 text-rose-400">-135,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">1</td>
+                            <td class="text-right py-2 text-rose-400">-15,500</td>
+                            <td class="text-right py-2 text-rose-400">-20,500</td>
+                            <td class="text-right py-2 text-emerald-400">+17,500</td>
+                            <td class="text-right py-2 text-emerald-400">+15,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Price Range Analysis: 10:25</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">29</td>
+                            <td class="text-right py-2 text-emerald-400">+41,400</td>
+                            <td class="text-right py-2 text-emerald-400">+39,700</td>
+                            <td class="text-right py-2 text-emerald-400">+40,500</td>
+                            <td class="text-right py-2 text-emerald-400">+43,600</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">20</td>
+                            <td class="text-right py-2 text-emerald-400">+80,900</td>
+                            <td class="text-right py-2 text-emerald-400">+83,300</td>
+                            <td class="text-right py-2 text-emerald-400">+84,000</td>
+                            <td class="text-right py-2 text-emerald-400">+76,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">4</td>
+                            <td class="text-right py-2 text-emerald-400">+8,900</td>
+                            <td class="text-right py-2 text-rose-400">-13,600</td>
+                            <td class="text-right py-2 text-rose-400">-19,400</td>
+                            <td class="text-right py-2 text-rose-400">-20,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+55,800</td>
+                            <td class="text-right py-2 text-emerald-400">+84,100</td>
+                            <td class="text-right py-2 text-emerald-400">+6,000</td>
+                            <td class="text-right py-2 text-rose-400">-68,400</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+75,000</td>
+                            <td class="text-right py-2 text-emerald-400">+72,000</td>
+                            <td class="text-right py-2 text-emerald-400">+88,000</td>
+                            <td class="text-right py-2 text-emerald-400">+102,000</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">29</td>
+                            <td class="text-right py-2 text-emerald-400">+34,330</td>
+                            <td class="text-right py-2 text-emerald-400">+32,360</td>
+                            <td class="text-right py-2 text-emerald-400">+32,080</td>
+                            <td class="text-right py-2 text-emerald-400">+35,400</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">33</td>
+                            <td class="text-right py-2 text-emerald-400">+125,286</td>
+                            <td class="text-right py-2 text-emerald-400">+105,400</td>
+                            <td class="text-right py-2 text-emerald-400">+140,794</td>
+                            <td class="text-right py-2 text-emerald-400">+122,600</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">11</td>
+                            <td class="text-right py-2 text-emerald-400">+142,000</td>
+                            <td class="text-right py-2 text-emerald-400">+136,700</td>
+                            <td class="text-right py-2 text-emerald-400">+189,800</td>
+                            <td class="text-right py-2 text-emerald-400">+192,100</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">2</td>
+                            <td class="text-right py-2 text-rose-400">-18,600</td>
+                            <td class="text-right py-2 text-emerald-400">+10,100</td>
+                            <td class="text-right py-2 text-emerald-400">+63,600</td>
+                            <td class="text-right py-2 text-emerald-400">+50,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-center py-2 font-bold">-</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">97</td>
+                            <td class="text-right py-2 text-emerald-400">+15,274</td>
+                            <td class="text-right py-2 text-emerald-400">+36,874</td>
+                            <td class="text-right py-2 text-emerald-400">+27,574</td>
+                            <td class="text-right py-2 text-emerald-400">+30,483</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">67</td>
+                            <td class="text-right py-2 text-emerald-400">+204,150</td>
+                            <td class="text-right py-2 text-emerald-400">+220,550</td>
+                            <td class="text-right py-2 text-emerald-400">+300,350</td>
+                            <td class="text-right py-2 text-emerald-400">+301,050</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">17</td>
+                            <td class="text-right py-2 text-rose-400">-20,309</td>
+                            <td class="text-right py-2 text-rose-400">-33,200</td>
+                            <td class="text-right py-2 text-rose-400">-37,803</td>
+                            <td class="text-right py-2 text-rose-400">-47,100</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+72,600</td>
+                            <td class="text-right py-2 text-emerald-400">+60,100</td>
+                            <td class="text-right py-2 text-emerald-400">+90,300</td>
+                            <td class="text-right py-2 text-rose-400">-18,300</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+260,002</td>
+                            <td class="text-right py-2 text-emerald-400">+257,000</td>
+                            <td class="text-right py-2 text-emerald-400">+205,004</td>
+                            <td class="text-right py-2 text-emerald-400">+118,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">118</td>
+                            <td class="text-right py-2 text-rose-400">-9,500</td>
+                            <td class="text-right py-2 text-emerald-400">+9,700</td>
+                            <td class="text-right py-2 text-emerald-400">+18,500</td>
+                            <td class="text-right py-2 text-emerald-400">+5,100</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">59</td>
+                            <td class="text-right py-2 text-rose-400">-1,602</td>
+                            <td class="text-right py-2 text-emerald-400">+28,000</td>
+                            <td class="text-right py-2 text-emerald-400">+28,847</td>
+                            <td class="text-right py-2 text-emerald-400">+68,850</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">13</td>
+                            <td class="text-right py-2 text-rose-400">-33,671</td>
+                            <td class="text-right py-2 text-rose-400">-31,350</td>
+                            <td class="text-right py-2 text-rose-400">-52,057</td>
+                            <td class="text-right py-2 text-rose-400">-50,600</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">12</td>
+                            <td class="text-right py-2 text-rose-400">-90,500</td>
+                            <td class="text-right py-2 text-rose-400">-92,100</td>
+                            <td class="text-right py-2 text-rose-400">-33,700</td>
+                            <td class="text-right py-2 text-rose-400">-47,700</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-emerald-400">+68,000</td>
+                            <td class="text-right py-2 text-emerald-400">+41,000</td>
+                            <td class="text-right py-2 text-emerald-400">+127,000</td>
+                            <td class="text-right py-2 text-emerald-400">+122,000</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-rose-400">-31,930</td>
+                            <td class="text-right py-2 text-rose-400">-34,560</td>
+                            <td class="text-right py-2 text-rose-400">-11,000</td>
+                            <td class="text-right py-2 text-rose-400">-22,870</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">26</td>
+                            <td class="text-right py-2 text-rose-400">-142,150</td>
+                            <td class="text-right py-2 text-rose-400">-145,300</td>
+                            <td class="text-right py-2 text-rose-400">-95,100</td>
+                            <td class="text-right py-2 text-rose-400">-132,650</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-rose-400">-39,900</td>
+                            <td class="text-right py-2 text-rose-400">-35,600</td>
+                            <td class="text-right py-2 text-rose-400">-35,850</td>
+                            <td class="text-right py-2 text-rose-400">-38,600</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">4</td>
+                            <td class="text-right py-2 text-rose-400">-22,000</td>
+                            <td class="text-right py-2 text-rose-400">-22,000</td>
+                            <td class="text-right py-2 text-rose-400">-37,000</td>
+                            <td class="text-right py-2 text-rose-400">-29,000</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-rose-400">-23,964</td>
+                            <td class="text-right py-2 text-rose-400">-62,000</td>
+                            <td class="text-right py-2 text-rose-400">-38,495</td>
+                            <td class="text-right py-2 text-rose-400">-48,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Price Range Analysis: 11:30</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">21</td>
+                            <td class="text-right py-2 text-emerald-400">+5,800</td>
+                            <td class="text-right py-2 text-emerald-400">+31,100</td>
+                            <td class="text-right py-2 text-emerald-400">+46,300</td>
+                            <td class="text-right py-2 text-emerald-400">+52,100</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">23</td>
+                            <td class="text-right py-2 text-emerald-400">+77,850</td>
+                            <td class="text-right py-2 text-emerald-400">+172,750</td>
+                            <td class="text-right py-2 text-emerald-400">+140,450</td>
+                            <td class="text-right py-2 text-emerald-400">+184,050</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">1</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-rose-400">-3,700</td>
+                            <td class="text-right py-2 text-emerald-400">+33,200</td>
+                            <td class="text-right py-2 text-rose-400">-13,600</td>
+                            <td class="text-right py-2 text-rose-400">-102,300</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-right py-2 text-rose-400">+0</td>
+                            <td class="text-center py-2 font-bold">-</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">33</td>
+                            <td class="text-right py-2 text-emerald-400">+23,800</td>
+                            <td class="text-right py-2 text-emerald-400">+43,100</td>
+                            <td class="text-right py-2 text-emerald-400">+41,900</td>
+                            <td class="text-right py-2 text-emerald-400">+47,000</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">26</td>
+                            <td class="text-right py-2 text-emerald-400">+65,300</td>
+                            <td class="text-right py-2 text-emerald-400">+108,950</td>
+                            <td class="text-right py-2 text-emerald-400">+180,250</td>
+                            <td class="text-right py-2 text-emerald-400">+168,050</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">5</td>
+                            <td class="text-right py-2 text-emerald-400">+18,600</td>
+                            <td class="text-right py-2 text-emerald-400">+42,750</td>
+                            <td class="text-right py-2 text-emerald-400">+40,200</td>
+                            <td class="text-right py-2 text-emerald-400">+35,100</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">2</td>
+                            <td class="text-right py-2 text-emerald-400">+32,500</td>
+                            <td class="text-right py-2 text-emerald-400">+36,300</td>
+                            <td class="text-right py-2 text-emerald-400">+37,100</td>
+                            <td class="text-right py-2 text-emerald-400">+35,600</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">1</td>
+                            <td class="text-right py-2 text-emerald-400">+120,000</td>
+                            <td class="text-right py-2 text-emerald-400">+126,000</td>
+                            <td class="text-right py-2 text-emerald-400">+53,000</td>
+                            <td class="text-right py-2 text-rose-400">-5,000</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">93</td>
+                            <td class="text-right py-2 text-emerald-400">+12,374</td>
+                            <td class="text-right py-2 text-emerald-400">+45,774</td>
+                            <td class="text-right py-2 text-emerald-400">+44,754</td>
+                            <td class="text-right py-2 text-emerald-400">+49,613</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">65</td>
+                            <td class="text-right py-2 text-emerald-400">+74,500</td>
+                            <td class="text-right py-2 text-emerald-400">+106,750</td>
+                            <td class="text-right py-2 text-emerald-400">+112,650</td>
+                            <td class="text-right py-2 text-emerald-400">+112,400</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">18</td>
+                            <td class="text-right py-2 text-emerald-400">+4,505</td>
+                            <td class="text-right py-2 text-emerald-400">+31,800</td>
+                            <td class="text-right py-2 text-emerald-400">+5,763</td>
+                            <td class="text-right py-2 text-rose-400">-4,200</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">12</td>
+                            <td class="text-right py-2 text-rose-400">-63,600</td>
+                            <td class="text-right py-2 text-rose-400">-9,400</td>
+                            <td class="text-right py-2 text-emerald-400">+13,900</td>
+                            <td class="text-right py-2 text-emerald-400">+1,000</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">7</td>
+                            <td class="text-right py-2 text-emerald-400">+66,502</td>
+                            <td class="text-right py-2 text-emerald-400">+94,500</td>
+                            <td class="text-right py-2 text-emerald-400">+154,504</td>
+                            <td class="text-right py-2 text-emerald-400">+130,000</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">111</td>
+                            <td class="text-right py-2 text-emerald-400">+36,900</td>
+                            <td class="text-right py-2 text-emerald-400">+28,300</td>
+                            <td class="text-right py-2 text-emerald-400">+35,300</td>
+                            <td class="text-right py-2 text-emerald-400">+26,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">59</td>
+                            <td class="text-right py-2 text-emerald-400">+74,884</td>
+                            <td class="text-right py-2 text-emerald-400">+24,200</td>
+                            <td class="text-right py-2 text-emerald-400">+99,791</td>
+                            <td class="text-right py-2 text-emerald-400">+102,250</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">17</td>
+                            <td class="text-right py-2 text-emerald-400">+57,291</td>
+                            <td class="text-right py-2 text-emerald-400">+38,300</td>
+                            <td class="text-right py-2 text-emerald-400">+97,847</td>
+                            <td class="text-right py-2 text-emerald-400">+106,600</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">9</td>
+                            <td class="text-right py-2 text-emerald-400">+52,900</td>
+                            <td class="text-right py-2 text-emerald-400">+2,700</td>
+                            <td class="text-right py-2 text-emerald-400">+60,400</td>
+                            <td class="text-right py-2 text-rose-400">-32,300</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">7</td>
+                            <td class="text-right py-2 text-emerald-400">+205,000</td>
+                            <td class="text-right py-2 text-emerald-400">+141,000</td>
+                            <td class="text-right py-2 text-emerald-400">+172,500</td>
+                            <td class="text-right py-2 text-emerald-400">+150,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Price</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">~1,000</td>
+                            <td class="text-right py-2">54</td>
+                            <td class="text-right py-2 text-rose-400">-29,300</td>
+                            <td class="text-right py-2 text-rose-400">-64,200</td>
+                            <td class="text-right py-2 text-rose-400">-60,600</td>
+                            <td class="text-right py-2 text-rose-400">-83,500</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">1,000~3,000</td>
+                            <td class="text-right py-2">32</td>
+                            <td class="text-right py-2 text-rose-400">-25,950</td>
+                            <td class="text-right py-2 text-rose-400">-120,700</td>
+                            <td class="text-right py-2 text-rose-400">-74,250</td>
+                            <td class="text-right py-2 text-rose-400">-130,000</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">3,000~5,000</td>
+                            <td class="text-right py-2">12</td>
+                            <td class="text-right py-2 text-rose-400">-23,376</td>
+                            <td class="text-right py-2 text-rose-400">-89,900</td>
+                            <td class="text-right py-2 text-rose-400">-99,120</td>
+                            <td class="text-right py-2 text-rose-400">-102,200</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">5,000~10,000</td>
+                            <td class="text-right py-2">3</td>
+                            <td class="text-right py-2 text-rose-400">-20,800</td>
+                            <td class="text-right py-2 text-rose-400">-22,600</td>
+                            <td class="text-right py-2 text-rose-400">-8,600</td>
+                            <td class="text-right py-2 text-rose-400">-14,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">10,000~</td>
+                            <td class="text-right py-2">2</td>
+                            <td class="text-right py-2 text-rose-400">-12,464</td>
+                            <td class="text-right py-2 text-rose-400">-53,500</td>
+                            <td class="text-right py-2 text-emerald-400">+1,505</td>
+                            <td class="text-right py-2 text-emerald-400">+18,500</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Weekday Analysis: 09:30</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+92,350</td>
+                            <td class="text-right py-2 text-emerald-400">+99,800</td>
+                            <td class="text-right py-2 text-emerald-400">+115,050</td>
+                            <td class="text-right py-2 text-emerald-400">+114,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">22</td>
+                            <td class="text-right py-2 text-emerald-400">+181,550</td>
+                            <td class="text-right py-2 text-emerald-400">+179,800</td>
+                            <td class="text-right py-2 text-emerald-400">+246,600</td>
+                            <td class="text-right py-2 text-emerald-400">+252,700</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">15</td>
+                            <td class="text-right py-2 text-emerald-400">+22,800</td>
+                            <td class="text-right py-2 text-emerald-400">+23,000</td>
+                            <td class="text-right py-2 text-emerald-400">+5,900</td>
+                            <td class="text-right py-2 text-emerald-400">+9,700</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">14</td>
+                            <td class="text-right py-2 text-emerald-400">+49,300</td>
+                            <td class="text-right py-2 text-emerald-400">+68,500</td>
+                            <td class="text-right py-2 text-emerald-400">+82,400</td>
+                            <td class="text-right py-2 text-emerald-400">+76,200</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">20</td>
+                            <td class="text-right py-2 text-emerald-400">+96,000</td>
+                            <td class="text-right py-2 text-emerald-400">+100,600</td>
+                            <td class="text-right py-2 text-emerald-400">+92,300</td>
+                            <td class="text-right py-2 text-emerald-400">+76,600</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">12</td>
+                            <td class="text-right py-2 text-emerald-400">+103,600</td>
+                            <td class="text-right py-2 text-emerald-400">+62,150</td>
+                            <td class="text-right py-2 text-rose-400">-56,800</td>
+                            <td class="text-right py-2 text-rose-400">-67,450</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">22</td>
+                            <td class="text-right py-2 text-emerald-400">+159,500</td>
+                            <td class="text-right py-2 text-emerald-400">+122,400</td>
+                            <td class="text-right py-2 text-emerald-400">+205,850</td>
+                            <td class="text-right py-2 text-emerald-400">+227,900</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">13</td>
+                            <td class="text-right py-2 text-rose-400">-19,995</td>
+                            <td class="text-right py-2 text-rose-400">-9,000</td>
+                            <td class="text-right py-2 text-rose-400">-25,337</td>
+                            <td class="text-right py-2 text-rose-400">-23,900</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">15</td>
+                            <td class="text-right py-2 text-emerald-400">+58,600</td>
+                            <td class="text-right py-2 text-emerald-400">+45,600</td>
+                            <td class="text-right py-2 text-emerald-400">+45,000</td>
+                            <td class="text-right py-2 text-emerald-400">+66,400</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">13</td>
+                            <td class="text-right py-2 text-emerald-400">+106,600</td>
+                            <td class="text-right py-2 text-emerald-400">+116,400</td>
+                            <td class="text-right py-2 text-emerald-400">+151,600</td>
+                            <td class="text-right py-2 text-emerald-400">+137,200</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">17</td>
+                            <td class="text-right py-2 text-emerald-400">+80,002</td>
+                            <td class="text-right py-2 text-emerald-400">+88,700</td>
+                            <td class="text-right py-2 text-emerald-400">+78,504</td>
+                            <td class="text-right py-2 text-emerald-400">+76,300</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">23</td>
+                            <td class="text-right py-2 text-emerald-400">+46,700</td>
+                            <td class="text-right py-2 text-emerald-400">+60,000</td>
+                            <td class="text-right py-2 text-emerald-400">+84,300</td>
+                            <td class="text-right py-2 text-emerald-400">+86,300</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">35</td>
+                            <td class="text-right py-2 text-emerald-400">+12,198</td>
+                            <td class="text-right py-2 text-emerald-400">+1,700</td>
+                            <td class="text-right py-2 text-emerald-400">+22,097</td>
+                            <td class="text-right py-2 text-emerald-400">+11,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">34</td>
+                            <td class="text-right py-2 text-emerald-400">+55,170</td>
+                            <td class="text-right py-2 text-emerald-400">+123,640</td>
+                            <td class="text-right py-2 text-emerald-400">+111,900</td>
+                            <td class="text-right py-2 text-emerald-400">+164,930</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">19</td>
+                            <td class="text-right py-2 text-emerald-400">+16,650</td>
+                            <td class="text-right py-2 text-emerald-400">+31,800</td>
+                            <td class="text-right py-2 text-emerald-400">+40,900</td>
+                            <td class="text-right py-2 text-emerald-400">+16,150</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">24</td>
+                            <td class="text-right py-2 text-emerald-400">+28,950</td>
+                            <td class="text-right py-2 text-emerald-400">+22,750</td>
+                            <td class="text-right py-2 text-emerald-400">+41,100</td>
+                            <td class="text-right py-2 text-emerald-400">+51,850</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">44</td>
+                            <td class="text-right py-2 text-emerald-400">+11,836</td>
+                            <td class="text-right py-2 text-rose-400">-31,650</td>
+                            <td class="text-right py-2 text-emerald-400">+65,755</td>
+                            <td class="text-right py-2 text-emerald-400">+44,850</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">37</td>
+                            <td class="text-right py-2 text-emerald-400">+80,786</td>
+                            <td class="text-right py-2 text-emerald-400">+81,400</td>
+                            <td class="text-right py-2 text-emerald-400">+32,294</td>
+                            <td class="text-right py-2 text-rose-400">-35,300</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">51</td>
+                            <td class="text-right py-2 text-emerald-400">+76,874</td>
+                            <td class="text-right py-2 text-emerald-400">+55,174</td>
+                            <td class="text-right py-2 text-emerald-400">+36,674</td>
+                            <td class="text-right py-2 text-rose-400">-20,317</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">31</td>
+                            <td class="text-right py-2 text-rose-400">-116,170</td>
+                            <td class="text-right py-2 text-rose-400">-95,440</td>
+                            <td class="text-right py-2 text-rose-400">-77,870</td>
+                            <td class="text-right py-2 text-rose-400">-117,750</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">27</td>
+                            <td class="text-right py-2 text-rose-400">-84,126</td>
+                            <td class="text-right py-2 text-rose-400">-73,650</td>
+                            <td class="text-right py-2 text-rose-400">-29,670</td>
+                            <td class="text-right py-2 text-rose-400">-24,100</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">33</td>
+                            <td class="text-right py-2 text-rose-400">-44,400</td>
+                            <td class="text-right py-2 text-rose-400">-35,000</td>
+                            <td class="text-right py-2 text-rose-400">-31,250</td>
+                            <td class="text-right py-2 text-rose-400">-43,300</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">24</td>
+                            <td class="text-right py-2 text-rose-400">-62,000</td>
+                            <td class="text-right py-2 text-rose-400">-95,350</td>
+                            <td class="text-right py-2 text-rose-400">-88,450</td>
+                            <td class="text-right py-2 text-rose-400">-106,400</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">36</td>
+                            <td class="text-right py-2 text-rose-400">-129,550</td>
+                            <td class="text-right py-2 text-rose-400">-134,100</td>
+                            <td class="text-right py-2 text-rose-400">-30,200</td>
+                            <td class="text-right py-2 text-rose-400">-73,650</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">29</td>
+                            <td class="text-right py-2 text-rose-400">-73,709</td>
+                            <td class="text-right py-2 text-rose-400">-62,050</td>
+                            <td class="text-right py-2 text-rose-400">-36,703</td>
+                            <td class="text-right py-2 text-rose-400">-156,450</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Weekday Analysis: 10:25</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+31,900</td>
+                            <td class="text-right py-2 text-emerald-400">+30,200</td>
+                            <td class="text-right py-2 text-emerald-400">+33,600</td>
+                            <td class="text-right py-2 text-emerald-400">+33,800</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">14</td>
+                            <td class="text-right py-2 text-emerald-400">+70,150</td>
+                            <td class="text-right py-2 text-emerald-400">+57,600</td>
+                            <td class="text-right py-2 text-emerald-400">+75,300</td>
+                            <td class="text-right py-2 text-emerald-400">+95,200</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">10</td>
+                            <td class="text-right py-2 text-emerald-400">+31,600</td>
+                            <td class="text-right py-2 text-emerald-400">+7,750</td>
+                            <td class="text-right py-2 text-rose-400">-2,950</td>
+                            <td class="text-right py-2 text-rose-400">-2,200</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">20</td>
+                            <td class="text-right py-2 text-emerald-400">+103,400</td>
+                            <td class="text-right py-2 text-emerald-400">+123,900</td>
+                            <td class="text-right py-2 text-emerald-400">+46,300</td>
+                            <td class="text-right py-2 text-rose-400">-27,300</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">9</td>
+                            <td class="text-right py-2 text-emerald-400">+24,950</td>
+                            <td class="text-right py-2 text-emerald-400">+46,050</td>
+                            <td class="text-right py-2 text-emerald-400">+46,850</td>
+                            <td class="text-right py-2 text-emerald-400">+34,100</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">11</td>
+                            <td class="text-right py-2 text-emerald-400">+1,000</td>
+                            <td class="text-right py-2 text-emerald-400">+31,900</td>
+                            <td class="text-right py-2 text-emerald-400">+81,600</td>
+                            <td class="text-right py-2 text-emerald-400">+68,300</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">22</td>
+                            <td class="text-right py-2 text-emerald-400">+123,400</td>
+                            <td class="text-right py-2 text-emerald-400">+122,900</td>
+                            <td class="text-right py-2 text-emerald-400">+160,800</td>
+                            <td class="text-right py-2 text-emerald-400">+149,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">10</td>
+                            <td class="text-right py-2 text-emerald-400">+7,286</td>
+                            <td class="text-right py-2 text-emerald-400">+4,700</td>
+                            <td class="text-right py-2 text-rose-400">-806</td>
+                            <td class="text-right py-2 text-rose-400">-4,000</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">19</td>
+                            <td class="text-right py-2 text-emerald-400">+94,800</td>
+                            <td class="text-right py-2 text-emerald-400">+55,600</td>
+                            <td class="text-right py-2 text-emerald-400">+102,500</td>
+                            <td class="text-right py-2 text-emerald-400">+113,800</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">13</td>
+                            <td class="text-right py-2 text-emerald-400">+56,530</td>
+                            <td class="text-right py-2 text-emerald-400">+69,460</td>
+                            <td class="text-right py-2 text-emerald-400">+82,180</td>
+                            <td class="text-right py-2 text-emerald-400">+73,000</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">32</td>
+                            <td class="text-right py-2 text-emerald-400">+174,052</td>
+                            <td class="text-right py-2 text-emerald-400">+162,650</td>
+                            <td class="text-right py-2 text-emerald-400">+126,254</td>
+                            <td class="text-right py-2 text-emerald-400">+142,350</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">44</td>
+                            <td class="text-right py-2 text-emerald-400">+161,000</td>
+                            <td class="text-right py-2 text-emerald-400">+128,300</td>
+                            <td class="text-right py-2 text-emerald-400">+188,200</td>
+                            <td class="text-right py-2 text-emerald-400">+195,500</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">40</td>
+                            <td class="text-right py-2 text-emerald-400">+152,200</td>
+                            <td class="text-right py-2 text-emerald-400">+159,700</td>
+                            <td class="text-right py-2 text-emerald-400">+98,400</td>
+                            <td class="text-right py-2 text-emerald-400">+30,900</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">45</td>
+                            <td class="text-right py-2 text-emerald-400">+58,874</td>
+                            <td class="text-right py-2 text-emerald-400">+80,174</td>
+                            <td class="text-right py-2 text-emerald-400">+124,274</td>
+                            <td class="text-right py-2 text-emerald-400">+129,383</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">36</td>
+                            <td class="text-right py-2 text-rose-400">-14,409</td>
+                            <td class="text-right py-2 text-emerald-400">+10,500</td>
+                            <td class="text-right py-2 text-emerald-400">+48,297</td>
+                            <td class="text-right py-2 text-rose-400">-113,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">27</td>
+                            <td class="text-right py-2 text-rose-400">-7,626</td>
+                            <td class="text-right py-2 text-rose-400">-30,950</td>
+                            <td class="text-right py-2 text-rose-400">-56,370</td>
+                            <td class="text-right py-2 text-rose-400">-47,000</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">48</td>
+                            <td class="text-right py-2 text-emerald-400">+42,000</td>
+                            <td class="text-right py-2 text-emerald-400">+48,550</td>
+                            <td class="text-right py-2 text-emerald-400">+172,900</td>
+                            <td class="text-right py-2 text-emerald-400">+149,550</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">44</td>
+                            <td class="text-right py-2 text-rose-400">-39,197</td>
+                            <td class="text-right py-2 text-rose-400">-31,100</td>
+                            <td class="text-right py-2 text-rose-400">-70,640</td>
+                            <td class="text-right py-2 text-rose-400">-74,600</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">47</td>
+                            <td class="text-right py-2 text-rose-400">-68,050</td>
+                            <td class="text-right py-2 text-rose-400">-29,300</td>
+                            <td class="text-right py-2 text-emerald-400">+19,800</td>
+                            <td class="text-right py-2 text-emerald-400">+66,650</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">39</td>
+                            <td class="text-right py-2 text-emerald-400">+5,600</td>
+                            <td class="text-right py-2 text-rose-400">-1,950</td>
+                            <td class="text-right py-2 text-emerald-400">+22,900</td>
+                            <td class="text-right py-2 text-emerald-400">+3,050</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">10</td>
+                            <td class="text-right py-2 text-emerald-400">+21,450</td>
+                            <td class="text-right py-2 text-emerald-400">+5,950</td>
+                            <td class="text-right py-2 text-rose-400">-36,900</td>
+                            <td class="text-right py-2 text-rose-400">-45,950</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">16</td>
+                            <td class="text-right py-2 text-rose-400">-41,364</td>
+                            <td class="text-right py-2 text-rose-400">-61,800</td>
+                            <td class="text-right py-2 text-rose-400">-25,945</td>
+                            <td class="text-right py-2 text-rose-400">-21,300</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">20</td>
+                            <td class="text-right py-2 text-rose-400">-118,100</td>
+                            <td class="text-right py-2 text-rose-400">-139,300</td>
+                            <td class="text-right py-2 text-rose-400">-77,500</td>
+                            <td class="text-right py-2 text-rose-400">-94,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">19</td>
+                            <td class="text-right py-2 text-rose-400">-78,630</td>
+                            <td class="text-right py-2 text-rose-400">-71,560</td>
+                            <td class="text-right py-2 text-rose-400">-47,100</td>
+                            <td class="text-right py-2 text-rose-400">-68,970</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">15</td>
+                            <td class="text-right py-2 text-rose-400">-43,300</td>
+                            <td class="text-right py-2 text-rose-400">-32,750</td>
+                            <td class="text-right py-2 text-rose-400">-30,000</td>
+                            <td class="text-right py-2 text-rose-400">-40,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-2">Weekday Analysis: 11:30</h2>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 0-20</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-rose-400">-9,750</td>
+                            <td class="text-right py-2 text-emerald-400">+23,400</td>
+                            <td class="text-right py-2 text-emerald-400">+75,750</td>
+                            <td class="text-right py-2 text-emerald-400">+64,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">7</td>
+                            <td class="text-right py-2 text-emerald-400">+9,500</td>
+                            <td class="text-right py-2 text-emerald-400">+23,600</td>
+                            <td class="text-right py-2 text-emerald-400">+19,100</td>
+                            <td class="text-right py-2 text-emerald-400">+18,600</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">14</td>
+                            <td class="text-right py-2 text-rose-400">-5,500</td>
+                            <td class="text-right py-2 text-emerald-400">+14,000</td>
+                            <td class="text-right py-2 text-emerald-400">+12,400</td>
+                            <td class="text-right py-2 text-emerald-400">+1,800</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">13</td>
+                            <td class="text-right py-2 text-emerald-400">+45,900</td>
+                            <td class="text-right py-2 text-emerald-400">+105,700</td>
+                            <td class="text-right py-2 text-rose-400">-1,200</td>
+                            <td class="text-right py-2 text-rose-400">-22,000</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">8</td>
+                            <td class="text-right py-2 text-emerald-400">+39,800</td>
+                            <td class="text-right py-2 text-emerald-400">+70,350</td>
+                            <td class="text-right py-2 text-emerald-400">+67,100</td>
+                            <td class="text-right py-2 text-emerald-400">+70,950</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 20-30</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">9</td>
+                            <td class="text-right py-2 text-emerald-400">+43,100</td>
+                            <td class="text-right py-2 text-emerald-400">+52,350</td>
+                            <td class="text-right py-2 text-emerald-400">+54,500</td>
+                            <td class="text-right py-2 text-emerald-400">+51,400</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">14</td>
+                            <td class="text-right py-2 text-emerald-400">+74,000</td>
+                            <td class="text-right py-2 text-emerald-400">+90,550</td>
+                            <td class="text-right py-2 text-emerald-400">+131,350</td>
+                            <td class="text-right py-2 text-emerald-400">+129,750</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">10</td>
+                            <td class="text-right py-2 text-emerald-400">+121,400</td>
+                            <td class="text-right py-2 text-emerald-400">+134,700</td>
+                            <td class="text-right py-2 text-emerald-400">+57,200</td>
+                            <td class="text-right py-2 text-rose-400">-2,500</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">23</td>
+                            <td class="text-right py-2 text-emerald-400">+36,200</td>
+                            <td class="text-right py-2 text-emerald-400">+64,800</td>
+                            <td class="text-right py-2 text-emerald-400">+87,700</td>
+                            <td class="text-right py-2 text-emerald-400">+88,400</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">11</td>
+                            <td class="text-right py-2 text-rose-400">-14,500</td>
+                            <td class="text-right py-2 text-emerald-400">+14,700</td>
+                            <td class="text-right py-2 text-emerald-400">+21,700</td>
+                            <td class="text-right py-2 text-emerald-400">+13,700</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 30-50</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">28</td>
+                            <td class="text-right py-2 text-emerald-400">+64,902</td>
+                            <td class="text-right py-2 text-emerald-400">+87,950</td>
+                            <td class="text-right py-2 text-emerald-400">+105,504</td>
+                            <td class="text-right py-2 text-emerald-400">+106,600</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">49</td>
+                            <td class="text-right py-2 text-emerald-400">+112,600</td>
+                            <td class="text-right py-2 text-emerald-400">+143,000</td>
+                            <td class="text-right py-2 text-emerald-400">+208,750</td>
+                            <td class="text-right py-2 text-emerald-400">+194,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">29</td>
+                            <td class="text-right py-2 text-rose-400">-19,195</td>
+                            <td class="text-right py-2 text-emerald-400">+7,300</td>
+                            <td class="text-right py-2 text-rose-400">-29,937</td>
+                            <td class="text-right py-2 text-rose-400">-21,800</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">53</td>
+                            <td class="text-right py-2 text-emerald-400">+82,894</td>
+                            <td class="text-right py-2 text-emerald-400">+124,714</td>
+                            <td class="text-right py-2 text-emerald-400">+98,774</td>
+                            <td class="text-right py-2 text-emerald-400">+114,663</td>
+                            <td class="text-center py-2 font-bold">P1</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">36</td>
+                            <td class="text-right py-2 text-rose-400">-146,920</td>
+                            <td class="text-right py-2 text-rose-400">-93,540</td>
+                            <td class="text-right py-2 text-rose-400">-51,520</td>
+                            <td class="text-right py-2 text-rose-400">-105,550</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 50-70</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">31</td>
+                            <td class="text-right py-2 text-emerald-400">+159,400</td>
+                            <td class="text-right py-2 text-emerald-400">+91,100</td>
+                            <td class="text-right py-2 text-rose-400">-13,000</td>
+                            <td class="text-right py-2 text-rose-400">-3,150</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">50</td>
+                            <td class="text-right py-2 text-emerald-400">+136,650</td>
+                            <td class="text-right py-2 text-emerald-400">+98,500</td>
+                            <td class="text-right py-2 text-emerald-400">+197,950</td>
+                            <td class="text-right py-2 text-emerald-400">+205,200</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">44</td>
+                            <td class="text-right py-2 text-rose-400">-716</td>
+                            <td class="text-right py-2 text-rose-400">-23,600</td>
+                            <td class="text-right py-2 text-emerald-400">+35,891</td>
+                            <td class="text-right py-2 text-emerald-400">+25,500</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">38</td>
+                            <td class="text-right py-2 text-rose-400">-10,400</td>
+                            <td class="text-right py-2 text-rose-400">-51,300</td>
+                            <td class="text-right py-2 text-emerald-400">+70,300</td>
+                            <td class="text-right py-2 text-emerald-400">+83,100</td>
+                            <td class="text-center py-2 font-bold">P2</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">40</td>
+                            <td class="text-right py-2 text-emerald-400">+142,041</td>
+                            <td class="text-right py-2 text-emerald-400">+119,800</td>
+                            <td class="text-right py-2 text-emerald-400">+174,697</td>
+                            <td class="text-right py-2 text-emerald-400">+42,900</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-md font-medium mt-4 mb-2 text-blue-300">RSI 70-100</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="text-left py-2">Day</th>
+                            <th class="text-right py-2">N</th>
+                            <th class="text-right py-2">ME</th>
+                            <th class="text-right py-2">P1</th>
+                            <th class="text-right py-2">AE</th>
+                            <th class="text-right py-2">P2</th>
+                            <th class="text-center py-2">Best</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Mon</td>
+                            <td class="text-right py-2">12</td>
+                            <td class="text-right py-2 text-rose-400">-36,876</td>
+                            <td class="text-right py-2 text-rose-400">-55,050</td>
+                            <td class="text-right py-2 text-rose-400">-74,570</td>
+                            <td class="text-right py-2 text-rose-400">-67,850</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Tue</td>
+                            <td class="text-right py-2">24</td>
+                            <td class="text-right py-2 text-emerald-400">+22,436</td>
+                            <td class="text-right py-2 text-rose-400">-60,100</td>
+                            <td class="text-right py-2 text-emerald-400">+14,105</td>
+                            <td class="text-right py-2 text-emerald-400">+20,000</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Wed</td>
+                            <td class="text-right py-2">27</td>
+                            <td class="text-right py-2 text-rose-400">-62,200</td>
+                            <td class="text-right py-2 text-rose-400">-130,650</td>
+                            <td class="text-right py-2 text-rose-400">-129,050</td>
+                            <td class="text-right py-2 text-rose-400">-147,400</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Thu</td>
+                            <td class="text-right py-2">23</td>
+                            <td class="text-right py-2 text-rose-400">-44,200</td>
+                            <td class="text-right py-2 text-rose-400">-85,100</td>
+                            <td class="text-right py-2 text-rose-400">-9,800</td>
+                            <td class="text-right py-2 text-rose-400">-50,600</td>
+                            <td class="text-center py-2 font-bold">AE</td>
+                        </tr>
+
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">Fri</td>
+                            <td class="text-right py-2">17</td>
+                            <td class="text-right py-2 text-emerald-400">+8,950</td>
+                            <td class="text-right py-2 text-rose-400">-20,000</td>
+                            <td class="text-right py-2 text-rose-400">-41,750</td>
+                            <td class="text-right py-2 text-rose-400">-66,250</td>
+                            <td class="text-center py-2 font-bold">ME</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+</html>

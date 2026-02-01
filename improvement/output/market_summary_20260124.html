@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市場動向まとめ 2026/01/24</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.7;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #f85149;
+            padding-bottom: 15px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 30px;
+        }
+
+        .alert-box {
+            background: linear-gradient(135deg, #f8514920, #da363320);
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .alert-box h2 {
+            color: #f85149;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .alert-box .highlight {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #ff7b72;
+        }
+
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #58a6ff;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #30363d;
+        }
+        .section h3 {
+            color: #7ee787;
+            font-size: 1em;
+            margin: 15px 0 10px 0;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #8b949e; }
+        .data-value { font-weight: bold; }
+        .data-value.negative { color: #f85149; }
+        .data-value.positive { color: #7ee787; }
+        .data-value.warning { color: #d29922; }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        ul li {
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        ul li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #58a6ff;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 25px;
+        }
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: #30363d;
+        }
+        .timeline-item {
+            position: relative;
+            padding: 10px 0;
+        }
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            left: -21px;
+            top: 14px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #58a6ff;
+        }
+        .timeline-time {
+            color: #8b949e;
+            font-size: 0.9em;
+        }
+        .timeline-event {
+            color: #e6edf3;
+        }
+
+        .conclusion {
+            background: linear-gradient(135deg, #1f6feb20, #58a6ff20);
+            border: 1px solid #1f6feb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .conclusion h2 {
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .sources {
+            margin-top: 30px;
+            padding: 15px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+        .sources h3 {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .sources a {
+            color: #58a6ff;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .sources a:hover {
+            text-decoration: underline;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .tag.red { background: #f8514930; color: #f85149; }
+        .tag.yellow { background: #d2992230; color: #d29922; }
+        .tag.blue { background: #58a6ff30; color: #58a6ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>市場動向まとめ</h1>
+        <p class="subtitle">2026年1月23日〜25日（1/25更新）</p>
+
+        <div class="alert-box">
+            <h2>週末の不穏な動き</h2>
+            <p>
+                <span class="highlight">ドル円: 159円 → 155円</span>（為替介入観測）<br>
+                <span class="highlight">日経先物: -800円</span>（夜間取引）
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>為替（ドル円）</h2>
+
+            <h3>急激な円高進行</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">1/23 16:33</div>
+                    <div class="timeline-event">159.23円</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1/23 16:44（11分後）</div>
+                    <div class="timeline-event">157.37円 <span class="tag red">-1.86円</span></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1/24 朝</div>
+                    <div class="timeline-event">155.70〜80円 <span class="tag red">1ヶ月ぶり円高</span></div>
+                </div>
+            </div>
+
+            <h3>為替介入疑惑</h3>
+            <ul>
+                <li>レートチェック実施の可能性が報道</li>
+                <li>片山財務相: 介入について「お答えできない」</li>
+                <li>政府・日銀: 160円超えには「介入と追加利上げで対応」の姿勢</li>
+            </ul>
+        </div>
+
+        <div class="section" style="border-color: #f85149;">
+            <h2 style="color: #f85149;">【1/25追記】日米協調介入の可能性</h2>
+
+            <h3>1/12 ベッセント財務長官 × 片山財務大臣 会合</h3>
+            <ul>
+                <li><strong>米財務省公式発表:</strong> 「過度な為替レート変動の本質的な望ましくなさ」を指摘</li>
+                <li><strong>片山財務相:</strong> 「円の一方的な下落への深い懸念を伝え、<strong>ベッセント長官もこの見解を共有</strong>」</li>
+                <li>「必要に応じて<strong>米国と緊密に連携</strong>する」と指示</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://home.treasury.gov/news/press-releases/sb0363" target="_blank" style="color:#58a6ff;">米財務省 公式リードアウト</a> |
+                <a href="https://www.japantimes.co.jp/business/2026/01/13/economy/katayama-bessent-concerns-yens-weakening/" target="_blank" style="color:#58a6ff;">Japan Times報道</a>
+            </p>
+
+            <h3>市場の解釈（1/23急落について）</h3>
+            <ul>
+                <li><span class="tag red">重要</span> 「1月23日金曜日、<strong>介入のルールが変わった</strong>」（Forex.com分析）</li>
+                <li>早期の、予防的な、そして<strong>潜在的に日米協調</strong>された介入の可能性</li>
+                <li>「米国も日本も、キャリートレード巻き戻しの悪影響なしにUSD/JPYが軟化することを望んでいる」</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://www.forex.com/ie/news-and-analysis/usd-jpy-outlook-the-rules-of-intervention-just-changed/" target="_blank" style="color:#58a6ff;">Forex.com: USD/JPY Outlook - The rules of intervention just changed</a>
+            </p>
+
+            <h3>示唆されること</h3>
+            <div class="data-row">
+                <span class="data-label">米国の姿勢</span>
+                <span class="data-value warning">為替変動を望ましくないと明言（介入容認）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">日米連携</span>
+                <span class="data-value warning">片山・ベッセント会談で懸念共有、連携確認</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">従来との違い</span>
+                <span class="data-value negative">単独介入 → 協調介入の可能性</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>日経225先物</h2>
+
+            <div class="data-row">
+                <span class="data-label">夜間取引終値（1/24 6:00）</span>
+                <span class="data-value">52,900円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">前日比</span>
+                <span class="data-value negative">-800円</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">現物終値比</span>
+                <span class="data-value negative">-946円</span>
+            </div>
+
+            <h3>背景要因</h3>
+            <ul>
+                <li>円高急進 → 輸出企業への懸念</li>
+                <li>植田総裁「長期金利上昇はかなり速いスピード」発言</li>
+                <li>海外投資家の日本国債売り</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>日銀金融政策（1/22-23会合）</h2>
+
+            <div class="data-row">
+                <span class="data-label">政策金利</span>
+                <span class="data-value">0.75%（据え置き）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">賛否</span>
+                <span class="data-value">賛成8・反対1（高田委員）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2026年度CPI見通し</span>
+                <span class="data-value warning">2.2%（上方修正）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">市場予測</span>
+                <span class="data-value">4月追加利上げ観測</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>国際情勢（トランプ関税）</h2>
+
+            <div class="data-row">
+                <span class="data-label">日本への相互関税</span>
+                <span class="data-value">15%（2025年7月合意）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">自動車・部品</span>
+                <span class="data-value positive">25% → 15%に引き下げ</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">米最高裁の関税判断</span>
+                <span class="data-value warning">2/20以降に持ち越し</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>国内株価への影響</h2>
+
+            <h3>リスク要因</h3>
+            <ul>
+                <li><span class="tag red">円高</span> 輸出企業の収益悪化懸念</li>
+                <li><span class="tag yellow">野村予測</span> 年後半に140円台前半へ円高進行</li>
+                <li><span class="tag yellow">午年格言</span> 過去平均騰落率 -6.7%（十二支最悪）</li>
+            </ul>
+
+            <h3>今後の注目イベント</h3>
+            <div class="data-row">
+                <span class="data-label">FOMC</span>
+                <span class="data-value warning">1/27-28（警戒必要）</span>
+            </div>
+        </div>
+
+        <div class="section" style="border-color: #f0883e;">
+            <h2 style="color: #f0883e;">米国動向</h2>
+
+            <h3>FRB/FOMC（1/27-28会合）</h3>
+            <div class="data-row">
+                <span class="data-label">現在の政策金利</span>
+                <span class="data-value">3.50%〜3.75%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">1月会合予想</span>
+                <span class="data-value warning">据え置き濃厚（利下げ確率16%）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2026年見通し</span>
+                <span class="data-value">年内2回利下げ予想（年末3.0%〜3.25%）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">パウエル議長任期</span>
+                <span class="data-value warning">2026年5月満了 → トランプが後任指名</span>
+            </div>
+            <ul>
+                <li>12月会合で3回連続利下げ後、1月は様子見</li>
+                <li>インフレ2%目標を上回り、追加利下げのハードルが上昇</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm" target="_blank" style="color:#58a6ff;">FRB FOMC会合カレンダー</a> |
+                <a href="https://www.federalreserve.gov/monetarypolicy/fomcminutes20251210.htm" target="_blank" style="color:#58a6ff;">12月FOMC議事録</a>
+            </p>
+
+            <h3>トランプ関税（1月の動き）</h3>
+            <div class="data-row">
+                <span class="data-label">1/13</span>
+                <span class="data-value negative">対イラン取引国に25%関税（中国に影響）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">1/14</span>
+                <span class="data-value warning">半導体に25%関税（NVIDIA H200等）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">1/17</span>
+                <span class="data-value negative">デンマーク等8カ国に10%関税（グリーンランド）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">1/21</span>
+                <span class="data-value positive">グリーンランド関税は撤回（NATO枠組み合意）</span>
+            </div>
+            <ul>
+                <li>仏シャンパン・ワインに<strong>200%関税</strong>示唆</li>
+                <li>最高裁のIEEPA関税判断は<strong>2月以降に持ち越し</strong></li>
+                <li>2026年の関税負担: <strong>1世帯あたり約$2,100</strong>（Tax Policy Center推計）</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://www.whitehouse.gov/fact-sheets/2026/01/fact-sheet-president-donald-j-trump-takes-action-on-certain-advanced-computing-chips-to-protect-americas-economic-and-national-security/" target="_blank" style="color:#58a6ff;">ホワイトハウス 半導体関税</a> |
+                <a href="https://www.tradecomplianceresourcehub.com/2026/01/14/trump-2-0-tariff-tracker/" target="_blank" style="color:#58a6ff;">Trump 2.0 Tariff Tracker</a>
+            </p>
+
+            <h3>米国債市場（1/23時点）</h3>
+            <div class="data-row">
+                <span class="data-label">10年債利回り</span>
+                <span class="data-value">4.25%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2年債利回り</span>
+                <span class="data-value">3.59%</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">30年債利回り</span>
+                <span class="data-value">4.83%</span>
+            </div>
+            <ul>
+                <li>グリーンランド関税発表で一時5ヶ月ぶり高値</li>
+                <li><strong>日本国債の急変動</strong>が米債市場にも波及</li>
+                <li>インフレ2%超継続 → 利回り上昇圧力</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value=2026" target="_blank" style="color:#58a6ff;">米財務省 金利データ</a> |
+                <a href="https://fred.stlouisfed.org/series/DGS10" target="_blank" style="color:#58a6ff;">FRED 10年債利回り</a>
+            </p>
+        </div>
+
+        <div class="section" style="border-color: #7ee787;">
+            <h2 style="color: #7ee787;">1次情報：日銀 展望レポート（2026年1月23日公表）</h2>
+
+            <h3>実質GDP見通し</h3>
+            <div class="data-row">
+                <span class="data-label">2025年度</span>
+                <span class="data-value positive">+0.9%（前回 +0.7%）↑</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2026年度</span>
+                <span class="data-value positive">+1.0%（前回 +0.7%）↑</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2027年度</span>
+                <span class="data-value">+0.8%（前回 +1.0%）↓</span>
+            </div>
+
+            <h3>消費者物価見通し（除く生鮮食品）</h3>
+            <div class="data-row">
+                <span class="data-label">2024年度</span>
+                <span class="data-value warning">+2.7%（前回 +2.5%）↑</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2025年度</span>
+                <span class="data-value warning">+2.4%（前回 +1.9%）↑</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">2026年度</span>
+                <span class="data-value">+2.0%（前回 +1.9%）↑</span>
+            </div>
+
+            <h3>日銀の見解</h3>
+            <ul>
+                <li>24年度・25年度の物価見通しは<strong>「上振れリスクの方が大きい」</strong></li>
+                <li>コメ価格が高水準で推移する見込み</li>
+                <li>円安に伴う輸入価格上昇が物価押し上げに作用</li>
+                <li>経済・物価見通しが実現していけば<strong>「引き続き政策金利を引き上げ、金融緩和の度合いを調整」</strong></li>
+            </ul>
+
+            <p style="margin-top: 15px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://www.boj.or.jp/mopo/outlook/index.htm" target="_blank" style="color:#58a6ff;">日本銀行 経済・物価情勢の展望</a>
+            </p>
+        </div>
+
+        <div class="section" style="border-color: #7ee787;">
+            <h2 style="color: #7ee787;">1次情報：財務省 為替介入実績</h2>
+
+            <div class="data-row">
+                <span class="data-label">最新公表予定（月次）</span>
+                <span class="data-value warning">1月30日（12/29〜1/28分）</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">日次詳細公表</span>
+                <span class="data-value">2月2日〜6日（10月〜12月分）</span>
+            </div>
+
+            <p style="margin-top: 15px; color: #8b949e;">
+                ※ 1/23の円高急進が介入によるものかは、1月30日の月次公表まで公式確認不可
+            </p>
+
+            <p style="margin-top: 10px; font-size: 0.9em; color: #8b949e;">
+                原文: <a href="https://www.mof.go.jp/policy/international_policy/reference/feio/index.html" target="_blank" style="color:#58a6ff;">財務省 外国為替平衡操作の実施状況</a>
+            </p>
+        </div>
+
+        <div class="conclusion">
+            <h2>結論</h2>
+            <p>
+                週末に向けて<strong>円高+先物大幅安</strong>の不穏な動き。<br>
+                為替介入観測と日銀利上げ期待が交錯し、来週は<strong>神経質な展開</strong>が予想される。
+            </p>
+            <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d;">
+                <strong>【1/25追記】</strong> 1/23の急落は<strong>日米協調介入</strong>の可能性。<br>
+                米財務省が「為替変動を望ましくない」と明言し、介入容認姿勢を示したことで、<br>
+                従来の「単独介入 → 米国の批判」という構図が変化した可能性がある。
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>関連ニュース記事</h2>
+
+            <h3>為替・介入関連</h3>
+            <ul>
+                <li><a href="https://www.gaitame.com/media/entry/2026/01/23/165838" target="_blank" style="color:#58a6ff;">【緊急配信】ドル円急変動! 円買い介入？レートチェック？ 今何が起きている!?</a><br><span style="color:#8b949e;">外為どっとコム 2026/1/23</span></li>
+                <li><a href="https://www.ig.com/jp/news-and-trade-ideas/jpy-rises-to-157yen-showing-fear-of-japanese-government-interven-260123" target="_blank" style="color:#58a6ff;">ドル円、円高急進157円台 日銀総裁会見直後 為替介入警戒が要因か</a><br><span style="color:#8b949e;">IG証券 2026/1/23</span></li>
+                <li><a href="https://fx.minkabu.jp/news/356339" target="_blank" style="color:#58a6ff;">ドル円急落、介入の可能性を指摘する動き＝ロンドン為替</a><br><span style="color:#8b949e;">みんかぶFX 2026/1/23 17:01</span></li>
+                <li><a href="https://www.gaitame.com/media/entry/2026/01/24/120000" target="_blank" style="color:#58a6ff;">ドル/円、159円台から急落！レートチェック疑惑で為替介入警戒高まる</a><br><span style="color:#8b949e;">外為どっとコム 2026/1/24</span></li>
+            </ul>
+
+            <h3>日銀・金融政策関連</h3>
+            <ul>
+                <li><a href="https://www.smd-am.co.jp/market/ichikawa/2026/01/irepo260121/" target="_blank" style="color:#58a6ff;">2026年1月日銀政策会合プレビュー～今回の注目点を整理する</a><br><span style="color:#8b949e;">三井住友DSアセットマネジメント 2026/1/21</span></li>
+                <li><a href="https://www.bloomberg.co.jp/news/articles/2026-01-23/..." target="_blank" style="color:#58a6ff;">日銀は政策金利を0.75%に据え置き、高田委員は1%への利上げ提案</a><br><span style="color:#8b949e;">Bloomberg 2026/1/23</span></li>
+            </ul>
+
+            <h3>株式市場関連</h3>
+            <ul>
+                <li><a href="https://minkabu.jp/news/4423107" target="_blank" style="color:#58a6ff;">日経225先物：24日夜間取引終値＝800円安、5万2900円</a><br><span style="color:#8b949e;">みんかぶ（株探） 2026/1/24 06:03</span></li>
+                <li><a href="https://www.nikkei.com/article/DGXZQOFL075HK0X00C26A1000000/" target="_blank" style="color:#58a6ff;">日経平均、急伸相場に「鬼より怖い一文新値」 日中対立の長期化懸念</a><br><span style="color:#8b949e;">日本経済新聞 2026/1</span></li>
+            </ul>
+
+            <h3>トランプ関税・国際情勢</h3>
+            <ul>
+                <li><a href="https://www.jetro.go.jp/biz/areareports/special/2026/0102/b22b8fffdeb2f0f6.html" target="_blank" style="color:#58a6ff;">トランプ関税後の日本企業による対米投資動向</a><br><span style="color:#8b949e;">ジェトロ 2026/1/2</span></li>
+                <li><a href="https://www.bloomberg.co.jp/news/articles/2026-01-20/T9651YKJH6VM00" target="_blank" style="color:#58a6ff;">米最高裁、20日もトランプ関税で判断示さず－次の機会は1カ月後</a><br><span style="color:#8b949e;">Bloomberg 2026/1/20</span></li>
+                <li><a href="https://www.mri.co.jp/knowledge/opinion/2026/202601_2.html" target="_blank" style="color:#58a6ff;">トランプ政権下で二極化する米国経済の展望</a><br><span style="color:#8b949e;">三菱総合研究所 2026/1</span></li>
+            </ul>
+
+            <h3>2026年相場見通し</h3>
+            <ul>
+                <li><a href="https://www.nomura.co.jp/wealthstyle/article/0548" target="_blank" style="color:#58a6ff;">2026年も日経平均株価の上昇を予想 脱デフレの「転換点」が鮮明に</a><br><span style="color:#8b949e;">野村證券 池田雄之輔</span></li>
+                <li><a href="https://www.smd-am.co.jp/market/ichikawa/2025/12/irepo251226/" target="_blank" style="color:#58a6ff;">2026年のドル円相場見通し</a><br><span style="color:#8b949e;">三井住友DSアセットマネジメント 2025/12/26</span></li>
+                <li><a href="https://www.nikkei.com/article/DGXZQOUB0592Z0V00C26A1000000/" target="_blank" style="color:#58a6ff;">2026年「円高シナリオ」の現実味 年始には相場反転の経験則</a><br><span style="color:#8b949e;">日本経済新聞 2026/1</span></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

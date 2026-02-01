@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>金曜下落→月曜 パターン分析</title>
+<style>
+body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #e5e5e5; padding: 20px; }
+h1 { color: #fff; border-bottom: 2px solid #333; padding-bottom: 10px; }
+h2 { color: #a0a0a0; margin-top: 30px; }
+.hypothesis { background: #1a1a2e; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4a9eff; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+.card { background: #1a1a1a; padding: 20px; border-radius: 8px; }
+.card h3 { margin: 0 0 15px 0; color: #888; font-size: 14px; }
+.stat { margin: 10px 0; }
+.stat-label { color: #666; font-size: 12px; }
+.stat-value { font-size: 24px; font-weight: bold; }
+.positive { color: #10b981; }
+.negative { color: #ef4444; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+th, td { padding: 12px; text-align: right; border-bottom: 1px solid #333; }
+th { background: #1a1a1a; color: #888; font-weight: normal; }
+td:first-child, th:first-child { text-align: left; }
+.conclusion { background: #1a2e1a; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+.warning { background: #2e1a1a; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
+</style>
+</head>
+<body>
+<h1>金曜下落→月曜 パターン分析</h1>
+
+<div class="hypothesis">
+<strong>仮説:</strong><br>
+金曜に利確・ポジション整理で日経下落 → 月曜前場前半に遅れた個人勢が利確/損切りで一時下落 → 前場引け以降に再仕込みで上昇
+</div>
+
+<h2>サマリー比較</h2>
+<div class="summary">
+<div class="card">
+<h3>金曜下落 → 月曜</h3>
+<div class="stat">
+<div class="stat-label">サンプル数</div>
+<div class="stat-value">3日</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25 平均損益</div>
+<div class="stat-value negative">-4,841円</div>
+</div>
+<div class="stat">
+<div class="stat-label">14:45 平均損益</div>
+<div class="stat-value negative">-16,733円</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25→14:45 回復</div>
+<div class="stat-value negative">-11,892円</div>
+</div>
+</div>
+
+<div class="card">
+<h3>金曜上昇 → 月曜(比較)</h3>
+<div class="stat">
+<div class="stat-label">サンプル数</div>
+<div class="stat-value">3日</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25 平均損益</div>
+<div class="stat-value negative">-68,751円</div>
+</div>
+<div class="stat">
+<div class="stat-label">14:45 平均損益</div>
+<div class="stat-value negative">-33,767円</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25→14:45 回復</div>
+<div class="stat-value positive">+34,984円</div>
+</div>
+</div>
+
+<div class="card">
+<h3>全月曜(比較)</h3>
+<div class="stat">
+<div class="stat-label">サンプル数</div>
+<div class="stat-value">6日</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25 平均損益</div>
+<div class="stat-value negative">-36,796円</div>
+</div>
+<div class="stat">
+<div class="stat-label">14:45 平均損益</div>
+<div class="stat-value negative">-25,250円</div>
+</div>
+<div class="stat">
+<div class="stat-label">10:25→14:45 回復</div>
+<div class="stat-value positive">+11,546円</div>
+</div>
+</div>
+</div>
+
+<h2>金曜下落→月曜 詳細データ</h2>
+<table>
+<tr>
+<th>月曜日</th>
+<th>金曜日経騰落</th>
+<th>月曜日経騰落</th>
+<th>10:25損益</th>
+<th>前引損益</th>
+<th>14:45損益</th>
+<th>回復額</th>
+</tr>
+<tr>
+<td>2025-11-10</td>
+<td class="negative">-1.19%</td>
+<td class="positive">+1.26%</td>
+<td class="positive">+21,876</td>
+<td class="positive">+32,700</td>
+<td class="positive">+45,000</td>
+<td class="positive">+23,124</td>
+</tr>
+<tr>
+<td>2025-11-17</td>
+<td class="negative">-1.77%</td>
+<td class="negative">-0.10%</td>
+<td class="negative">-13,800</td>
+<td class="negative">-19,500</td>
+<td class="negative">-29,800</td>
+<td class="negative">-16,000</td>
+</tr>
+<tr>
+<td>2025-12-08</td>
+<td class="negative">-1.05%</td>
+<td class="positive">+0.18%</td>
+<td class="negative">-22,600</td>
+<td class="negative">-25,900</td>
+<td class="negative">-65,400</td>
+<td class="negative">-42,800</td>
+</tr>
+</table>
+
+<div class="warning">
+<strong>注意:</strong> サンプル数が3日と少ないため、統計的な信頼性は低い。データ蓄積後に再検証が必要。
+</div>
+
+<div class="conclusion">
+<strong>暫定結論:</strong><br>
+現時点のデータでは仮説「前場前半下落→後場上昇」は支持されない。むしろ10:25→14:45で悪化傾向(-11,892円)。<br>
+ただし2025-11-10は+23,124円の回復があり、条件によってはパターンが成立する可能性あり。
+</div>
+
+</body>
+</html>

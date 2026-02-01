@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>11時間区分別利益分析（Grok選定銘柄ショート）</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .description {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 1.1rem;
+            margin: 30px 0 15px;
+            color: #ccc;
+            border-left: 4px solid #22c55e;
+            padding-left: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #222;
+            text-align: right;
+        }
+        th {
+            background: #1a1a1a;
+            color: #888;
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+        }
+        th:first-child, td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #0a0a0a;
+            z-index: 1;
+        }
+        th:first-child {
+            background: #1a1a1a;
+            z-index: 2;
+        }
+        tr:hover { background: #1a1a1a; }
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        .neutral { color: #888; }
+        .highlight { background: #1a2e1a !important; }
+        .small { font-size: 0.7rem; color: #666; }
+        .generated {
+            margin-top: 30px;
+            font-size: 0.75rem;
+            color: #666;
+            text-align: right;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { background: #222; color: #ccc; }
+        .tab-btn.active { background: #333; color: #fff; border-color: #555; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .summary-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .metric { margin-bottom: 10px; }
+        .metric-label { font-size: 0.75rem; color: #888; }
+        .metric-value { font-size: 1.1rem; font-weight: bold; }
+        .note {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 5px;
+            padding: 8px;
+            background: #111;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>11時間区分別利益分析（Grok選定銘柄ショート）</h1>
+        <div class="description">
+            期間: 2025-11-04以降 | 対象: 1392件<br>
+            利益計算: (売り建値 - 各時間の価格) × 100株<br>
+            価格取得: 11:30=前場引け(sell_price), 15:30=大引け(daily_close), その他=5分足Close
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('weekday')">曜日別</button>
+            <button class="tab-btn" onclick="showTab('margin')">信用区分別</button>
+            <button class="tab-btn" onclick="showTab('price')">価格帯別</button>
+            <button class="tab-btn" onclick="showTab('weekday_margin')">曜日×信用区分</button>
+            <button class="tab-btn" onclick="showTab('weekday_price')">曜日×価格帯</button>
+        </div>
+
+        <div id="weekday" class="tab-content active">
+            <h2>曜日別</h2>
+            <div class="note">
+                各時間区分での平均利益（円/100株）。プラス=ショート利益。
+            </div>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>曜日</th>
+                        <th>件数</th>
+                        <th>-9:30</th>
+                        <th>9:30-10:00</th>
+                        <th>10:00-10:30</th>
+                        <th>10:30-11:00</th>
+                        <th>11:00-11:30</th>
+                        <th>12:30-13:00</th>
+                        <th>13:00-13:30</th>
+                        <th>13:30-14:00</th>
+                        <th>14:00-14:30</th>
+                        <th>14:30-15:00</th>
+                        <th>15:00-15:30</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>月</strong></td>
+                        <td>194</td>
+                        <td class="positive">+5,713<br><span class="small">n=186 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+6,321<br><span class="small">n=186 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+6,155<br><span class="small">n=186 勝率<span class="positive">63%</span></span></td>
+                        <td class="positive">+5,971<br><span class="small">n=186 勝率<span class="positive">63%</span></span></td>
+                        <td class="positive">+1,509<br><span class="small">n=194 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+6,098<br><span class="small">n=186 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+5,704<br><span class="small">n=186 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+5,833<br><span class="small">n=186 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+5,441<br><span class="small">n=186 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+5,188<br><span class="small">n=183 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+744<br><span class="small">n=194 勝率<span class="positive">54%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火</strong></td>
+                        <td>324</td>
+                        <td class="positive">+3,442<br><span class="small">n=291 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+4,060<br><span class="small">n=291 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,940<br><span class="small">n=291 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+3,482<br><span class="small">n=291 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+678<br><span class="small">n=324 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+4,904<br><span class="small">n=291 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+4,788<br><span class="small">n=291 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+5,091<br><span class="small">n=289 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+5,030<br><span class="small">n=287 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+5,231<br><span class="small">n=283 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+1,736<br><span class="small">n=324 勝率<span class="positive">51%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水</strong></td>
+                        <td>295</td>
+                        <td class="positive">+1,583<br><span class="small">n=276 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,239<br><span class="small">n=274 勝率<span class="negative">43%</span></span></td>
+                        <td class="positive">+1,105<br><span class="small">n=274 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+988<br><span class="small">n=272 勝率<span class="negative">47%</span></span></td>
+                        <td class="negative">-875<br><span class="small">n=295 勝率<span class="negative">46%</span></span></td>
+                        <td class="positive">+1,152<br><span class="small">n=272 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,268<br><span class="small">n=270 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,644<br><span class="small">n=269 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+1,475<br><span class="small">n=266 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,528<br><span class="small">n=264 勝率<span class="positive">53%</span></span></td>
+                        <td class="negative">-497<br><span class="small">n=295 勝率<span class="negative">47%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木</strong></td>
+                        <td>329</td>
+                        <td class="positive">+658<br><span class="small">n=297 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,315<br><span class="small">n=294 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+1,928<br><span class="small">n=294 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+1,836<br><span class="small">n=292 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,344<br><span class="small">n=329 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,582<br><span class="small">n=290 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,343<br><span class="small">n=290 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,615<br><span class="small">n=290 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,879<br><span class="small">n=290 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+1,632<br><span class="small">n=286 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+1,681<br><span class="small">n=329 勝率<span class="positive">51%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金</strong></td>
+                        <td>250</td>
+                        <td class="positive">+3,883<br><span class="small">n=226 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+3,652<br><span class="small">n=225 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+3,884<br><span class="small">n=224 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+3,963<br><span class="small">n=223 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+1,556<br><span class="small">n=250 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+3,973<br><span class="small">n=222 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,247<br><span class="small">n=222 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+4,500<br><span class="small">n=222 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+4,686<br><span class="small">n=222 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+4,160<br><span class="small">n=220 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+1,346<br><span class="small">n=250 勝率<span class="positive">54%</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div id="margin" class="tab-content">
+            <h2>信用区分別</h2>
+            <div class="note">
+                制度=制度信用、いちにち=いちにち信用（在庫0含む）、いちにち(除0)=いちにち信用（在庫0除く）
+            </div>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>信用区分</th>
+                        <th>件数</th>
+                        <th>-9:30</th>
+                        <th>9:30-10:00</th>
+                        <th>10:00-10:30</th>
+                        <th>10:30-11:00</th>
+                        <th>11:00-11:30</th>
+                        <th>12:30-13:00</th>
+                        <th>13:00-13:30</th>
+                        <th>13:30-14:00</th>
+                        <th>14:00-14:30</th>
+                        <th>14:30-15:00</th>
+                        <th>15:00-15:30</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>制度</strong></td>
+                        <td>330</td>
+                        <td class="positive">+1,912<br><span class="small">n=311 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,172<br><span class="small">n=311 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,173<br><span class="small">n=311 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,932<br><span class="small">n=310 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+601<br><span class="small">n=330 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+2,473<br><span class="small">n=310 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,349<br><span class="small">n=310 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+2,563<br><span class="small">n=309 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,443<br><span class="small">n=308 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+2,225<br><span class="small">n=306 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+764<br><span class="small">n=330 勝率<span class="negative">49%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>いちにち</strong></td>
+                        <td>822</td>
+                        <td class="positive">+3,392<br><span class="small">n=742 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+3,746<br><span class="small">n=736 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,856<br><span class="small">n=735 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,725<br><span class="small">n=732 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+901<br><span class="small">n=822 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+3,993<br><span class="small">n=729 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,979<br><span class="small">n=727 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+4,308<br><span class="small">n=725 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,390<br><span class="small">n=721 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,305<br><span class="small">n=708 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+1,286<br><span class="small">n=822 勝率<span class="positive">53%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>いちにち(除0)</strong></td>
+                        <td>240</td>
+                        <td class="positive">+2,075<br><span class="small">n=223 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,119<br><span class="small">n=223 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,336<br><span class="small">n=223 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,193<br><span class="small">n=222 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+612<br><span class="small">n=240 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+2,421<br><span class="small">n=222 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,288<br><span class="small">n=222 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+2,482<br><span class="small">n=222 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,323<br><span class="small">n=222 勝率<span class="negative">50%</span></span></td>
+                        <td class="positive">+2,192<br><span class="small">n=222 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+584<br><span class="small">n=240 勝率<span class="negative">49%</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div id="price" class="tab-content">
+            <h2>価格帯別</h2>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件数</th>
+                        <th>-9:30</th>
+                        <th>9:30-10:00</th>
+                        <th>10:00-10:30</th>
+                        <th>10:30-11:00</th>
+                        <th>11:00-11:30</th>
+                        <th>12:30-13:00</th>
+                        <th>13:00-13:30</th>
+                        <th>13:30-14:00</th>
+                        <th>14:00-14:30</th>
+                        <th>14:30-15:00</th>
+                        <th>15:00-15:30</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>500円未満</strong></td>
+                        <td>359</td>
+                        <td class="positive">+67<br><span class="small">n=321 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+111<br><span class="small">n=321 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+185<br><span class="small">n=321 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+162<br><span class="small">n=321 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+200<br><span class="small">n=359 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+189<br><span class="small">n=320 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+182<br><span class="small">n=320 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+252<br><span class="small">n=318 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+269<br><span class="small">n=318 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+280<br><span class="small">n=316 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+328<br><span class="small">n=359 勝率<span class="positive">56%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>500-1000円</strong></td>
+                        <td>250</td>
+                        <td class="positive">+407<br><span class="small">n=233 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+306<br><span class="small">n=231 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+346<br><span class="small">n=231 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+470<br><span class="small">n=229 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+202<br><span class="small">n=250 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+353<br><span class="small">n=228 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+378<br><span class="small">n=227 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+412<br><span class="small">n=227 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+344<br><span class="small">n=225 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+273<br><span class="small">n=217 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+3<br><span class="small">n=250 勝率<span class="negative">44%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>1000-2000円</strong></td>
+                        <td>365</td>
+                        <td class="positive">+2,361<br><span class="small">n=340 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+2,753<br><span class="small">n=338 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+3,057<br><span class="small">n=337 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+3,044<br><span class="small">n=335 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+1,292<br><span class="small">n=365 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+3,485<br><span class="small">n=335 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+3,442<br><span class="small">n=335 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,638<br><span class="small">n=334 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+3,824<br><span class="small">n=331 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+3,862<br><span class="small">n=330 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,887<br><span class="small">n=365 勝率<span class="positive">53%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2000-3000円</strong></td>
+                        <td>164</td>
+                        <td class="positive">+4,413<br><span class="small">n=147 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,607<br><span class="small">n=146 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+4,649<br><span class="small">n=146 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,487<br><span class="small">n=146 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+273<br><span class="small">n=164 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+4,306<br><span class="small">n=145 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+4,076<br><span class="small">n=145 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+4,421<br><span class="small">n=145 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+4,287<br><span class="small">n=145 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+4,382<br><span class="small">n=141 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+394<br><span class="small">n=164 勝率<span class="negative">48%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>3000-5000円</strong></td>
+                        <td>127</td>
+                        <td class="positive">+7,994<br><span class="small">n=118 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+8,803<br><span class="small">n=117 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+8,951<br><span class="small">n=117 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+8,778<br><span class="small">n=116 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+366<br><span class="small">n=127 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+9,167<br><span class="small">n=116 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+9,399<br><span class="small">n=115 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+9,663<br><span class="small">n=115 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+9,262<br><span class="small">n=115 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+9,122<br><span class="small">n=115 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+776<br><span class="small">n=127 勝率<span class="negative">46%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>5000円以上</strong></td>
+                        <td>127</td>
+                        <td class="positive">+9,085<br><span class="small">n=117 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+9,963<br><span class="small">n=117 勝率<span class="positive">63%</span></span></td>
+                        <td class="positive">+9,705<br><span class="small">n=117 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+8,204<br><span class="small">n=117 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+3,155<br><span class="small">n=127 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+10,419<br><span class="small">n=117 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+9,915<br><span class="small">n=117 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+11,324<br><span class="small">n=117 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+11,261<br><span class="small">n=117 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+9,624<br><span class="small">n=117 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+3,776<br><span class="small">n=127 勝率<span class="positive">55%</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div id="weekday_margin" class="tab-content">
+            <h2>曜日×信用区分別</h2>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>曜日×信用</th>
+                        <th>件数</th>
+                        <th>-9:30</th>
+                        <th>9:30-10:00</th>
+                        <th>10:00-10:30</th>
+                        <th>10:30-11:00</th>
+                        <th>11:00-11:30</th>
+                        <th>12:30-13:00</th>
+                        <th>13:00-13:30</th>
+                        <th>13:30-14:00</th>
+                        <th>14:00-14:30</th>
+                        <th>14:30-15:00</th>
+                        <th>15:00-15:30</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>月・制度</strong></td>
+                        <td>62</td>
+                        <td class="positive">+5,017<br><span class="small">n=61 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+5,647<br><span class="small">n=61 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+5,405<br><span class="small">n=61 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+5,144<br><span class="small">n=61 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+2,724<br><span class="small">n=62 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+5,406<br><span class="small">n=61 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+4,778<br><span class="small">n=61 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+4,569<br><span class="small">n=61 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+4,057<br><span class="small">n=61 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+3,666<br><span class="small">n=60 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,108<br><span class="small">n=62 勝率<span class="negative">48%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・いちにち</strong></td>
+                        <td>110</td>
+                        <td class="positive">+7,122<br><span class="small">n=103 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+7,721<br><span class="small">n=103 勝率<span class="positive">65%</span></span></td>
+                        <td class="positive">+7,494<br><span class="small">n=103 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+7,413<br><span class="small">n=103 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+842<br><span class="small">n=110 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+7,530<br><span class="small">n=103 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+7,190<br><span class="small">n=103 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+7,537<br><span class="small">n=103 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+7,198<br><span class="small">n=103 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+7,093<br><span class="small">n=101 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+465<br><span class="small">n=110 勝率<span class="positive">54%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・いちにち(除0)</strong></td>
+                        <td>22</td>
+                        <td class="positive">+1,050<br><span class="small">n=22 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+1,636<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+1,961<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+1,514<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+1,418<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+1,309<br><span class="small">n=22 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+1,311<br><span class="small">n=22 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+1,359<br><span class="small">n=22 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+1,052<br><span class="small">n=22 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+593<br><span class="small">n=22 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+1,111<br><span class="small">n=22 勝率<span class="positive">68%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・制度</strong></td>
+                        <td>71</td>
+                        <td class="positive">+1,188<br><span class="small">n=65 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+2,062<br><span class="small">n=65 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+1,465<br><span class="small">n=65 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+811<br><span class="small">n=65 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+511<br><span class="small">n=71 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+2,925<br><span class="small">n=65 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+2,512<br><span class="small">n=65 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+2,949<br><span class="small">n=64 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,750<br><span class="small">n=63 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+2,798<br><span class="small">n=63 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,765<br><span class="small">n=71 勝率<span class="negative">46%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・いちにち</strong></td>
+                        <td>196</td>
+                        <td class="positive">+5,169<br><span class="small">n=174 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+5,757<br><span class="small">n=174 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+5,756<br><span class="small">n=174 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+5,274<br><span class="small">n=174 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+1,074<br><span class="small">n=196 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+6,821<br><span class="small">n=174 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+6,731<br><span class="small">n=174 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+7,007<br><span class="small">n=173 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+7,074<br><span class="small">n=172 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+7,446<br><span class="small">n=168 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+2,608<br><span class="small">n=196 勝率<span class="positive">55%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・いちにち(除0)</strong></td>
+                        <td>57</td>
+                        <td class="positive">+479<br><span class="small">n=52 勝率<span class="negative">46%</span></span></td>
+                        <td class="positive">+878<br><span class="small">n=52 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+957<br><span class="small">n=52 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+826<br><span class="small">n=52 勝率<span class="negative">46%</span></span></td>
+                        <td class="negative">-472<br><span class="small">n=57 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+965<br><span class="small">n=52 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+1,133<br><span class="small">n=52 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+1,355<br><span class="small">n=52 勝率<span class="negative">46%</span></span></td>
+                        <td class="positive">+1,030<br><span class="small">n=52 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+1,021<br><span class="small">n=52 勝率<span class="negative">44%</span></span></td>
+                        <td class="negative">-1,297<br><span class="small">n=57 勝率<span class="negative">42%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・制度</strong></td>
+                        <td>64</td>
+                        <td class="negative">-156<br><span class="small">n=62 勝率<span class="positive">55%</span></span></td>
+                        <td class="negative">-408<br><span class="small">n=62 勝率<span class="negative">48%</span></span></td>
+                        <td class="negative">-363<br><span class="small">n=62 勝率<span class="positive">52%</span></span></td>
+                        <td class="negative">-367<br><span class="small">n=62 勝率<span class="positive">53%</span></span></td>
+                        <td class="negative">-605<br><span class="small">n=64 勝率<span class="positive">53%</span></span></td>
+                        <td class="negative">-30<br><span class="small">n=62 勝率<span class="positive">55%</span></span></td>
+                        <td class="negative">-21<br><span class="small">n=62 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+425<br><span class="small">n=62 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+150<br><span class="small">n=62 勝率<span class="positive">55%</span></span></td>
+                        <td class="negative">-1<br><span class="small">n=62 勝率<span class="positive">60%</span></span></td>
+                        <td class="negative">-25<br><span class="small">n=64 勝率<span class="positive">58%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・いちにち</strong></td>
+                        <td>168</td>
+                        <td class="positive">+1,786<br><span class="small">n=153 勝率<span class="negative">50%</span></span></td>
+                        <td class="positive">+1,490<br><span class="small">n=151 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+1,451<br><span class="small">n=151 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+1,249<br><span class="small">n=150 勝率<span class="negative">48%</span></span></td>
+                        <td class="negative">-954<br><span class="small">n=168 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+1,138<br><span class="small">n=150 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,291<br><span class="small">n=148 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+1,621<br><span class="small">n=147 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,547<br><span class="small">n=144 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+1,770<br><span class="small">n=142 勝率<span class="positive">55%</span></span></td>
+                        <td class="negative">-834<br><span class="small">n=168 勝率<span class="negative">46%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・いちにち(除0)</strong></td>
+                        <td>63</td>
+                        <td class="positive">+2,844<br><span class="small">n=61 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+2,292<br><span class="small">n=61 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+1,740<br><span class="small">n=61 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+1,738<br><span class="small">n=60 勝率<span class="negative">38%</span></span></td>
+                        <td class="negative">-942<br><span class="small">n=63 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+2,405<br><span class="small">n=60 勝率<span class="negative">43%</span></span></td>
+                        <td class="positive">+2,545<br><span class="small">n=60 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+2,961<br><span class="small">n=60 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+2,671<br><span class="small">n=60 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+2,538<br><span class="small">n=60 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-78<br><span class="small">n=63 勝率<span class="negative">40%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・制度</strong></td>
+                        <td>80</td>
+                        <td class="positive">+827<br><span class="small">n=74 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,186<br><span class="small">n=74 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,772<br><span class="small">n=74 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+1,975<br><span class="small">n=73 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+1,777<br><span class="small">n=80 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+2,221<br><span class="small">n=73 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+2,206<br><span class="small">n=73 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+2,179<br><span class="small">n=73 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+2,342<br><span class="small">n=73 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+2,419<br><span class="small">n=72 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+2,332<br><span class="small">n=80 勝率<span class="negative">46%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・いちにち</strong></td>
+                        <td>195</td>
+                        <td class="positive">+604<br><span class="small">n=176 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+1,509<br><span class="small">n=173 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+1,998<br><span class="small">n=173 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,900<br><span class="small">n=172 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+1,213<br><span class="small">n=195 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,418<br><span class="small">n=170 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+1,251<br><span class="small">n=170 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+1,674<br><span class="small">n=170 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+2,044<br><span class="small">n=170 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+1,612<br><span class="small">n=167 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,512<br><span class="small">n=195 勝率<span class="positive">53%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・いちにち(除0)</strong></td>
+                        <td>54</td>
+                        <td class="positive">+591<br><span class="small">n=47 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+801<br><span class="small">n=47 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,912<br><span class="small">n=47 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,387<br><span class="small">n=47 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,177<br><span class="small">n=54 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,178<br><span class="small">n=47 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+333<br><span class="small">n=47 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+528<br><span class="small">n=47 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+561<br><span class="small">n=47 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+498<br><span class="small">n=47 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,328<br><span class="small">n=54 勝率<span class="positive">52%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・制度</strong></td>
+                        <td>53</td>
+                        <td class="positive">+3,262<br><span class="small">n=49 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,746<br><span class="small">n=49 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+2,903<br><span class="small">n=49 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+2,266<br><span class="small">n=49 勝率<span class="negative">49%</span></span></td>
+                        <td class="negative">-2,083<br><span class="small">n=53 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+1,766<br><span class="small">n=49 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+2,319<br><span class="small">n=49 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+2,839<br><span class="small">n=49 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+3,090<br><span class="small">n=49 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+2,255<br><span class="small">n=49 勝率<span class="positive">53%</span></span></td>
+                        <td class="negative">-2,391<br><span class="small">n=53 勝率<span class="negative">49%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・いちにち</strong></td>
+                        <td>153</td>
+                        <td class="positive">+3,708<br><span class="small">n=136 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+3,508<br><span class="small">n=135 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+3,699<br><span class="small">n=134 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+3,996<br><span class="small">n=133 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+2,360<br><span class="small">n=153 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+4,066<br><span class="small">n=132 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,375<br><span class="small">n=132 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+4,635<br><span class="small">n=132 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+4,822<br><span class="small">n=132 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+4,308<br><span class="small">n=130 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+2,224<br><span class="small">n=153 勝率<span class="positive">55%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・いちにち(除0)</strong></td>
+                        <td>44</td>
+                        <td class="positive">+5,210<br><span class="small">n=41 勝率<span class="positive">76%</span></span></td>
+                        <td class="positive">+5,207<br><span class="small">n=41 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+5,660<br><span class="small">n=41 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+5,884<br><span class="small">n=41 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+3,145<br><span class="small">n=44 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+6,310<br><span class="small">n=41 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+6,143<br><span class="small">n=41 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+6,052<br><span class="small">n=41 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+6,152<br><span class="small">n=41 勝率<span class="positive">63%</span></span></td>
+                        <td class="positive">+5,968<br><span class="small">n=41 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+2,793<br><span class="small">n=44 勝率<span class="positive">59%</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div id="weekday_price" class="tab-content">
+            <h2>曜日×価格帯別</h2>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>曜日×価格帯</th>
+                        <th>件数</th>
+                        <th>-9:30</th>
+                        <th>9:30-10:00</th>
+                        <th>10:00-10:30</th>
+                        <th>10:30-11:00</th>
+                        <th>11:00-11:30</th>
+                        <th>12:30-13:00</th>
+                        <th>13:00-13:30</th>
+                        <th>13:30-14:00</th>
+                        <th>14:00-14:30</th>
+                        <th>14:30-15:00</th>
+                        <th>15:00-15:30</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>月・500円未満</strong></td>
+                        <td>40</td>
+                        <td class="positive">+223<br><span class="small">n=35 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+417<br><span class="small">n=35 勝率<span class="positive">63%</span></span></td>
+                        <td class="positive">+320<br><span class="small">n=35 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+294<br><span class="small">n=35 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+260<br><span class="small">n=40 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+257<br><span class="small">n=35 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+277<br><span class="small">n=35 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+231<br><span class="small">n=35 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+243<br><span class="small">n=35 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+191<br><span class="small">n=35 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+342<br><span class="small">n=40 勝率<span class="positive">60%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・500-1000円</strong></td>
+                        <td>34</td>
+                        <td class="positive">+271<br><span class="small">n=34 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+532<br><span class="small">n=34 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+506<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+579<br><span class="small">n=34 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+515<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+621<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+838<br><span class="small">n=34 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+774<br><span class="small">n=34 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+656<br><span class="small">n=34 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+639<br><span class="small">n=33 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+744<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・1000-2000円</strong></td>
+                        <td>47</td>
+                        <td class="positive">+1,426<br><span class="small">n=46 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+2,107<br><span class="small">n=46 勝率<span class="positive">80%</span></span></td>
+                        <td class="positive">+1,868<br><span class="small">n=46 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+1,776<br><span class="small">n=46 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+1,668<br><span class="small">n=47 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+1,990<br><span class="small">n=46 勝率<span class="positive">85%</span></span></td>
+                        <td class="positive">+1,785<br><span class="small">n=46 勝率<span class="positive">72%</span></span></td>
+                        <td class="positive">+2,496<br><span class="small">n=46 勝率<span class="positive">72%</span></span></td>
+                        <td class="positive">+2,429<br><span class="small">n=46 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+2,723<br><span class="small">n=46 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+2,636<br><span class="small">n=47 勝率<span class="positive">68%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・2000-3000円</strong></td>
+                        <td>27</td>
+                        <td class="positive">+13,179<br><span class="small">n=27 勝率<span class="positive">78%</span></span></td>
+                        <td class="positive">+13,475<br><span class="small">n=27 勝率<span class="positive">78%</span></span></td>
+                        <td class="positive">+14,037<br><span class="small">n=27 勝率<span class="positive">78%</span></span></td>
+                        <td class="positive">+13,636<br><span class="small">n=27 勝率<span class="positive">70%</span></span></td>
+                        <td class="positive">+1,126<br><span class="small">n=27 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+12,893<br><span class="small">n=27 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+12,893<br><span class="small">n=27 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+12,752<br><span class="small">n=27 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+12,680<br><span class="small">n=27 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+13,212<br><span class="small">n=25 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+583<br><span class="small">n=27 勝率<span class="negative">48%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・3000-5000円</strong></td>
+                        <td>15</td>
+                        <td class="positive">+30,719<br><span class="small">n=13 勝率<span class="negative">46%</span></span></td>
+                        <td class="positive">+31,762<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+31,554<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+30,404<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="negative">-7,940<br><span class="small">n=15 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+30,685<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+30,162<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+29,808<br><span class="small">n=13 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+29,392<br><span class="small">n=13 勝率<span class="negative">23%</span></span></td>
+                        <td class="positive">+29,008<br><span class="small">n=13 勝率<span class="negative">46%</span></span></td>
+                        <td class="negative">-9,873<br><span class="small">n=15 勝率<span class="negative">20%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>月・5000円以上</strong></td>
+                        <td>31</td>
+                        <td class="positive">+7,255<br><span class="small">n=31 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+8,690<br><span class="small">n=31 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+7,781<br><span class="small">n=31 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+7,597<br><span class="small">n=31 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+8,874<br><span class="small">n=31 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+8,565<br><span class="small">n=31 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+6,465<br><span class="small">n=31 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+6,577<br><span class="small">n=31 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+4,677<br><span class="small">n=31 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+2,868<br><span class="small">n=31 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+3,671<br><span class="small">n=31 勝率<span class="positive">58%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・500円未満</strong></td>
+                        <td>117</td>
+                        <td class="positive">+90<br><span class="small">n=107 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+126<br><span class="small">n=107 勝率<span class="negative">46%</span></span></td>
+                        <td class="positive">+118<br><span class="small">n=107 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+83<br><span class="small">n=107 勝率<span class="negative">45%</span></span></td>
+                        <td class="positive">+202<br><span class="small">n=117 勝率<span class="negative">50%</span></span></td>
+                        <td class="positive">+179<br><span class="small">n=107 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+150<br><span class="small">n=107 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+350<br><span class="small">n=105 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+350<br><span class="small">n=105 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+352<br><span class="small">n=104 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+279<br><span class="small">n=117 勝率<span class="negative">47%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・500-1000円</strong></td>
+                        <td>36</td>
+                        <td class="positive">+109<br><span class="small">n=34 勝率<span class="positive">59%</span></span></td>
+                        <td class="negative">-350<br><span class="small">n=34 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+18<br><span class="small">n=34 勝率<span class="positive">56%</span></span></td>
+                        <td class="negative">-109<br><span class="small">n=34 勝率<span class="positive">50%</span></span></td>
+                        <td class="negative">-389<br><span class="small">n=36 勝率<span class="negative">42%</span></span></td>
+                        <td class="negative">-582<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="negative">-576<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="negative">-574<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                        <td class="negative">-447<br><span class="small">n=32 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+157<br><span class="small">n=30 勝率<span class="positive">50%</span></span></td>
+                        <td class="negative">-706<br><span class="small">n=36 勝率<span class="negative">44%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・1000-2000円</strong></td>
+                        <td>74</td>
+                        <td class="positive">+1,235<br><span class="small">n=68 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+2,472<br><span class="small">n=68 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+2,733<br><span class="small">n=68 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+2,459<br><span class="small">n=68 勝率<span class="positive">65%</span></span></td>
+                        <td class="positive">+276<br><span class="small">n=74 勝率<span class="positive">51%</span></span></td>
+                        <td class="positive">+3,713<br><span class="small">n=68 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+3,925<br><span class="small">n=68 勝率<span class="positive">65%</span></span></td>
+                        <td class="positive">+4,087<br><span class="small">n=68 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+3,743<br><span class="small">n=68 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+3,567<br><span class="small">n=68 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+827<br><span class="small">n=74 勝率<span class="positive">59%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・2000-3000円</strong></td>
+                        <td>33</td>
+                        <td class="positive">+2,162<br><span class="small">n=28 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+2,241<br><span class="small">n=28 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+1,593<br><span class="small">n=28 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+1,784<br><span class="small">n=28 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+1,552<br><span class="small">n=33 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+2,120<br><span class="small">n=28 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+2,575<br><span class="small">n=28 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+3,116<br><span class="small">n=28 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+3,170<br><span class="small">n=28 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+3,680<br><span class="small">n=27 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+2,029<br><span class="small">n=33 勝率<span class="positive">61%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・3000-5000円</strong></td>
+                        <td>34</td>
+                        <td class="positive">+1,217<br><span class="small">n=30 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+2,710<br><span class="small">n=30 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+2,243<br><span class="small">n=30 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,957<br><span class="small">n=30 勝率<span class="negative">43%</span></span></td>
+                        <td class="positive">+1,362<br><span class="small">n=34 勝率<span class="negative">35%</span></span></td>
+                        <td class="positive">+2,660<br><span class="small">n=30 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+2,247<br><span class="small">n=30 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+2,863<br><span class="small">n=30 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+2,440<br><span class="small">n=30 勝率<span class="negative">37%</span></span></td>
+                        <td class="positive">+2,230<br><span class="small">n=30 勝率<span class="negative">37%</span></span></td>
+                        <td class="positive">+2,371<br><span class="small">n=34 勝率<span class="negative">41%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>火・5000円以上</strong></td>
+                        <td>30</td>
+                        <td class="positive">+33,633<br><span class="small">n=24 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+36,156<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+34,819<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+30,510<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+3,077<br><span class="small">n=30 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+43,173<br><span class="small">n=24 勝率<span class="positive">75%</span></span></td>
+                        <td class="positive">+41,271<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+41,794<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+41,860<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+42,923<br><span class="small">n=24 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+11,550<br><span class="small">n=30 勝率<span class="positive">50%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・500円未満</strong></td>
+                        <td>65</td>
+                        <td class="negative">-74<br><span class="small">n=62 勝率<span class="negative">37%</span></span></td>
+                        <td class="negative">-215<br><span class="small">n=62 勝率<span class="negative">29%</span></span></td>
+                        <td class="negative">-142<br><span class="small">n=62 勝率<span class="negative">39%</span></span></td>
+                        <td class="negative">-131<br><span class="small">n=62 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-85<br><span class="small">n=65 勝率<span class="positive">52%</span></span></td>
+                        <td class="negative">-39<br><span class="small">n=62 勝率<span class="positive">52%</span></span></td>
+                        <td class="neutral">+0<br><span class="small">n=62 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+55<br><span class="small">n=62 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+82<br><span class="small">n=62 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+130<br><span class="small">n=61 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+91<br><span class="small">n=65 勝率<span class="positive">52%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・500-1000円</strong></td>
+                        <td>63</td>
+                        <td class="negative">-237<br><span class="small">n=57 勝率<span class="negative">44%</span></span></td>
+                        <td class="negative">-193<br><span class="small">n=55 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-325<br><span class="small">n=55 勝率<span class="negative">44%</span></span></td>
+                        <td class="negative">-168<br><span class="small">n=53 勝率<span class="positive">51%</span></span></td>
+                        <td class="negative">-606<br><span class="small">n=63 勝率<span class="negative">33%</span></span></td>
+                        <td class="negative">-238<br><span class="small">n=53 勝率<span class="negative">45%</span></span></td>
+                        <td class="negative">-244<br><span class="small">n=52 勝率<span class="negative">44%</span></span></td>
+                        <td class="negative">-294<br><span class="small">n=52 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-298<br><span class="small">n=52 勝率<span class="negative">44%</span></span></td>
+                        <td class="negative">-237<br><span class="small">n=52 勝率<span class="negative">46%</span></span></td>
+                        <td class="negative">-635<br><span class="small">n=63 勝率<span class="negative">41%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・1000-2000円</strong></td>
+                        <td>88</td>
+                        <td class="positive">+4,666<br><span class="small">n=83 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+4,652<br><span class="small">n=83 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+4,219<br><span class="small">n=83 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+4,266<br><span class="small">n=83 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-1,368<br><span class="small">n=88 勝率<span class="negative">39%</span></span></td>
+                        <td class="positive">+3,903<br><span class="small">n=83 勝率<span class="negative">43%</span></span></td>
+                        <td class="positive">+3,705<br><span class="small">n=83 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+4,039<br><span class="small">n=82 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+4,361<br><span class="small">n=79 勝率<span class="negative">42%</span></span></td>
+                        <td class="positive">+4,449<br><span class="small">n=78 勝率<span class="negative">42%</span></span></td>
+                        <td class="negative">-1,428<br><span class="small">n=88 勝率<span class="negative">39%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・2000-3000円</strong></td>
+                        <td>37</td>
+                        <td class="positive">+925<br><span class="small">n=32 勝率<span class="positive">69%</span></span></td>
+                        <td class="positive">+144<br><span class="small">n=32 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+72<br><span class="small">n=32 勝率<span class="positive">62%</span></span></td>
+                        <td class="negative">-9<br><span class="small">n=32 勝率<span class="positive">66%</span></span></td>
+                        <td class="negative">-259<br><span class="small">n=37 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+566<br><span class="small">n=32 勝率<span class="positive">72%</span></span></td>
+                        <td class="positive">+391<br><span class="small">n=32 勝率<span class="positive">72%</span></span></td>
+                        <td class="positive">+1,122<br><span class="small">n=32 勝率<span class="positive">72%</span></span></td>
+                        <td class="positive">+341<br><span class="small">n=32 勝率<span class="positive">72%</span></span></td>
+                        <td class="negative">-188<br><span class="small">n=32 勝率<span class="positive">72%</span></span></td>
+                        <td class="negative">-497<br><span class="small">n=37 勝率<span class="positive">62%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・3000-5000円</strong></td>
+                        <td>22</td>
+                        <td class="positive">+1,068<br><span class="small">n=22 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+1,459<br><span class="small">n=22 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+3,882<br><span class="small">n=22 勝率<span class="positive">86%</span></span></td>
+                        <td class="positive">+3,136<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+3,086<br><span class="small">n=22 勝率<span class="positive">77%</span></span></td>
+                        <td class="positive">+2,618<br><span class="small">n=22 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+3,786<br><span class="small">n=21 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+4,662<br><span class="small">n=21 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+3,976<br><span class="small">n=21 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+3,667<br><span class="small">n=21 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+2,045<br><span class="small">n=22 勝率<span class="positive">68%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>水・5000円以上</strong></td>
+                        <td>20</td>
+                        <td class="positive">+735<br><span class="small">n=20 勝率<span class="positive">50%</span></span></td>
+                        <td class="negative">-2,970<br><span class="small">n=20 勝率<span class="negative">35%</span></span></td>
+                        <td class="negative">-5,420<br><span class="small">n=20 勝率<span class="negative">35%</span></span></td>
+                        <td class="negative">-6,845<br><span class="small">n=20 勝率<span class="negative">25%</span></span></td>
+                        <td class="negative">-7,625<br><span class="small">n=20 勝率<span class="negative">35%</span></span></td>
+                        <td class="negative">-3,570<br><span class="small">n=20 勝率<span class="negative">35%</span></span></td>
+                        <td class="negative">-2,220<br><span class="small">n=20 勝率<span class="positive">50%</span></span></td>
+                        <td class="negative">-540<br><span class="small">n=20 勝率<span class="positive">50%</span></span></td>
+                        <td class="negative">-1,810<br><span class="small">n=20 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-505<br><span class="small">n=20 勝率<span class="negative">40%</span></span></td>
+                        <td class="negative">-670<br><span class="small">n=20 勝率<span class="negative">40%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・500円未満</strong></td>
+                        <td>69</td>
+                        <td class="negative">-145<br><span class="small">n=57 勝率<span class="positive">51%</span></span></td>
+                        <td class="negative">-55<br><span class="small">n=57 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+94<br><span class="small">n=57 勝率<span class="positive">63%</span></span></td>
+                        <td class="negative">-54<br><span class="small">n=57 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+93<br><span class="small">n=69 勝率<span class="positive">55%</span></span></td>
+                        <td class="negative">-31<br><span class="small">n=57 勝率<span class="positive">56%</span></span></td>
+                        <td class="negative">-96<br><span class="small">n=57 勝率<span class="positive">60%</span></span></td>
+                        <td class="negative">-68<br><span class="small">n=57 勝率<span class="positive">65%</span></span></td>
+                        <td class="negative">-66<br><span class="small">n=57 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+3<br><span class="small">n=57 勝率<span class="positive">61%</span></span></td>
+                        <td class="positive">+413<br><span class="small">n=69 勝率<span class="positive">64%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・500-1000円</strong></td>
+                        <td>67</td>
+                        <td class="positive">+1,116<br><span class="small">n=63 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+1,054<br><span class="small">n=63 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+898<br><span class="small">n=63 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+1,021<br><span class="small">n=63 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+917<br><span class="small">n=67 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,171<br><span class="small">n=62 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+1,006<br><span class="small">n=62 勝率<span class="negative">47%</span></span></td>
+                        <td class="positive">+1,254<br><span class="small">n=62 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+1,221<br><span class="small">n=62 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+951<br><span class="small">n=59 勝率<span class="negative">49%</span></span></td>
+                        <td class="positive">+1,063<br><span class="small">n=67 勝率<span class="negative">43%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・1000-2000円</strong></td>
+                        <td>94</td>
+                        <td class="positive">+1,062<br><span class="small">n=88 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+780<br><span class="small">n=86 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+2,312<br><span class="small">n=86 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+2,322<br><span class="small">n=84 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+1,865<br><span class="small">n=94 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+2,954<br><span class="small">n=84 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+2,895<br><span class="small">n=84 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+2,848<br><span class="small">n=84 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+3,444<br><span class="small">n=84 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+3,666<br><span class="small">n=84 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+3,467<br><span class="small">n=94 勝率<span class="positive">53%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・2000-3000円</strong></td>
+                        <td>45</td>
+                        <td class="negative">-1,356<br><span class="small">n=39 勝率<span class="negative">28%</span></span></td>
+                        <td class="negative">-17<br><span class="small">n=38 勝率<span class="negative">34%</span></span></td>
+                        <td class="positive">+134<br><span class="small">n=38 勝率<span class="negative">34%</span></span></td>
+                        <td class="negative">-322<br><span class="small">n=38 勝率<span class="negative">29%</span></span></td>
+                        <td class="negative">-504<br><span class="small">n=45 勝率<span class="negative">33%</span></span></td>
+                        <td class="negative">-1,528<br><span class="small">n=37 勝率<span class="negative">32%</span></span></td>
+                        <td class="negative">-2,203<br><span class="small">n=37 勝率<span class="negative">27%</span></span></td>
+                        <td class="negative">-1,741<br><span class="small">n=37 勝率<span class="negative">27%</span></span></td>
+                        <td class="negative">-1,473<br><span class="small">n=37 勝率<span class="negative">30%</span></span></td>
+                        <td class="negative">-1,539<br><span class="small">n=36 勝率<span class="negative">33%</span></span></td>
+                        <td class="negative">-1<br><span class="small">n=45 勝率<span class="negative">38%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・3000-5000円</strong></td>
+                        <td>30</td>
+                        <td class="positive">+1,804<br><span class="small">n=27 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+3,511<br><span class="small">n=27 勝率<span class="positive">59%</span></span></td>
+                        <td class="positive">+2,700<br><span class="small">n=27 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,226<br><span class="small">n=27 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+1,427<br><span class="small">n=30 勝率<span class="negative">40%</span></span></td>
+                        <td class="positive">+2,563<br><span class="small">n=27 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,470<br><span class="small">n=27 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+2,063<br><span class="small">n=27 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+2,111<br><span class="small">n=27 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+2,256<br><span class="small">n=27 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+3,120<br><span class="small">n=30 勝率<span class="negative">47%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>木・5000円以上</strong></td>
+                        <td>24</td>
+                        <td class="positive">+1,913<br><span class="small">n=23 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+7,043<br><span class="small">n=23 勝率<span class="positive">78%</span></span></td>
+                        <td class="positive">+9,913<br><span class="small">n=23 勝率<span class="positive">78%</span></span></td>
+                        <td class="positive">+10,087<br><span class="small">n=23 勝率<span class="positive">70%</span></span></td>
+                        <td class="positive">+7,458<br><span class="small">n=24 勝率<span class="positive">75%</span></span></td>
+                        <td class="positive">+5,522<br><span class="small">n=23 勝率<span class="positive">70%</span></span></td>
+                        <td class="positive">+4,522<br><span class="small">n=23 勝率<span class="positive">65%</span></span></td>
+                        <td class="positive">+7,130<br><span class="small">n=23 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+7,870<br><span class="small">n=23 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+4,217<br><span class="small">n=23 勝率<span class="positive">74%</span></span></td>
+                        <td class="positive">+1,417<br><span class="small">n=24 勝率<span class="positive">62%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・500円未満</strong></td>
+                        <td>68</td>
+                        <td class="positive">+283<br><span class="small">n=60 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+398<br><span class="small">n=60 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+648<br><span class="small">n=60 勝率<span class="positive">68%</span></span></td>
+                        <td class="positive">+730<br><span class="small">n=60 勝率<span class="positive">70%</span></span></td>
+                        <td class="positive">+540<br><span class="small">n=68 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+617<br><span class="small">n=59 勝率<span class="positive">64%</span></span></td>
+                        <td class="positive">+644<br><span class="small">n=59 勝率<span class="positive">69%</span></span></td>
+                        <td class="positive">+605<br><span class="small">n=59 勝率<span class="positive">73%</span></span></td>
+                        <td class="positive">+661<br><span class="small">n=59 勝率<span class="positive">66%</span></span></td>
+                        <td class="positive">+629<br><span class="small">n=59 勝率<span class="positive">69%</span></span></td>
+                        <td class="positive">+543<br><span class="small">n=68 勝率<span class="positive">65%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・500-1000円</strong></td>
+                        <td>50</td>
+                        <td class="positive">+559<br><span class="small">n=45 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+194<br><span class="small">n=45 勝率<span class="positive">53%</span></span></td>
+                        <td class="positive">+523<br><span class="small">n=45 勝率<span class="positive">60%</span></span></td>
+                        <td class="positive">+805<br><span class="small">n=45 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+476<br><span class="small">n=50 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+425<br><span class="small">n=45 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+605<br><span class="small">n=45 勝率<span class="positive">67%</span></span></td>
+                        <td class="positive">+540<br><span class="small">n=45 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+205<br><span class="small">n=45 勝率<span class="positive">60%</span></span></td>
+                        <td class="negative">-242<br><span class="small">n=43 勝率<span class="positive">63%</span></span></td>
+                        <td class="negative">-606<br><span class="small">n=50 勝率<span class="positive">50%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・1000-2000円</strong></td>
+                        <td>62</td>
+                        <td class="positive">+3,136<br><span class="small">n=55 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+3,858<br><span class="small">n=55 勝率<span class="positive">55%</span></span></td>
+                        <td class="positive">+3,876<br><span class="small">n=54 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+4,108<br><span class="small">n=54 勝率<span class="positive">54%</span></span></td>
+                        <td class="positive">+5,125<br><span class="small">n=62 勝率<span class="negative">48%</span></span></td>
+                        <td class="positive">+4,656<br><span class="small">n=54 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,689<br><span class="small">n=54 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,666<br><span class="small">n=54 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,918<br><span class="small">n=54 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+4,662<br><span class="small">n=54 勝率<span class="positive">56%</span></span></td>
+                        <td class="positive">+4,894<br><span class="small">n=62 勝率<span class="positive">56%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・2000-3000円</strong></td>
+                        <td>22</td>
+                        <td class="positive">+12,171<br><span class="small">n=21 勝率<span class="positive">57%</span></span></td>
+                        <td class="positive">+11,526<br><span class="small">n=21 勝率<span class="positive">62%</span></span></td>
+                        <td class="positive">+11,798<br><span class="small">n=21 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+11,886<br><span class="small">n=21 勝率<span class="negative">48%</span></span></td>
+                        <td class="negative">-209<br><span class="small">n=22 勝率<span class="negative">41%</span></span></td>
+                        <td class="positive">+12,157<br><span class="small">n=21 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+11,419<br><span class="small">n=21 勝率<span class="positive">52%</span></span></td>
+                        <td class="positive">+11,336<br><span class="small">n=21 勝率<span class="negative">33%</span></span></td>
+                        <td class="positive">+11,145<br><span class="small">n=21 勝率<span class="negative">33%</span></span></td>
+                        <td class="positive">+11,888<br><span class="small">n=21 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+18<br><span class="small">n=22 勝率<span class="negative">27%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・3000-5000円</strong></td>
+                        <td>26</td>
+                        <td class="positive">+16,742<br><span class="small">n=26 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+16,356<br><span class="small">n=25 勝率<span class="negative">36%</span></span></td>
+                        <td class="positive">+16,460<br><span class="small">n=25 勝率<span class="negative">44%</span></span></td>
+                        <td class="positive">+18,133<br><span class="small">n=24 勝率<span class="positive">50%</span></span></td>
+                        <td class="positive">+331<br><span class="small">n=26 勝率<span class="negative">38%</span></span></td>
+                        <td class="positive">+19,079<br><span class="small">n=24 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+19,800<br><span class="small">n=24 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+20,179<br><span class="small">n=24 勝率<span class="positive">71%</span></span></td>
+                        <td class="positive">+19,554<br><span class="small">n=24 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+19,462<br><span class="small">n=24 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+1,054<br><span class="small">n=26 勝率<span class="negative">46%</span></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>金・5000円以上</strong></td>
+                        <td>22</td>
+                        <td class="negative">-1,468<br><span class="small">n=19 勝率<span class="positive">53%</span></span></td>
+                        <td class="negative">-3,900<br><span class="small">n=19 勝率<span class="positive">58%</span></span></td>
+                        <td class="negative">-3,211<br><span class="small">n=19 勝率<span class="positive">68%</span></span></td>
+                        <td class="negative">-5,421<br><span class="small">n=19 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+309<br><span class="small">n=22 勝率<span class="negative">36%</span></span></td>
+                        <td class="negative">-7,274<br><span class="small">n=19 勝率<span class="negative">37%</span></span></td>
+                        <td class="negative">-4,763<br><span class="small">n=19 勝率<span class="negative">47%</span></span></td>
+                        <td class="negative">-1,853<br><span class="small">n=19 勝率<span class="positive">58%</span></span></td>
+                        <td class="positive">+1,216<br><span class="small">n=19 勝率<span class="positive">58%</span></span></td>
+                        <td class="negative">-4,211<br><span class="small">n=19 勝率<span class="positive">68%</span></span></td>
+                        <td class="negative">-59<br><span class="small">n=22 勝率<span class="positive">64%</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div class="generated">Generated: 2026-01-30 19:15:03</div>
+    </div>
+
+    <script>
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+    }
+    </script>
+</body>
+</html>

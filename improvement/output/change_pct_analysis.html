@@ -1,0 +1,834 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>change_pct と騰落の関係分析</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; border-bottom: 3px solid #2196F3; padding-bottom: 10px; }
+        h2 { color: #1976D2; margin-top: 30px; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: right; }
+        th { background: #2196F3; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        tr:hover { background: #e3f2fd; }
+        .negative { color: #d32f2f; font-weight: bold; }
+        .positive { color: #388e3c; }
+        .highlight { background: #fff3e0 !important; }
+        .summary-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metric { display: inline-block; margin: 10px 20px; text-align: center; }
+        .metric-value { font-size: 28px; font-weight: bold; }
+        .metric-label { font-size: 14px; color: #666; }
+        .warning { background: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 20px 0; }
+        .insight { background: #e8f5e9; border-left: 4px solid #388e3c; padding: 15px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>change_pct（前日騰落率）と当日損益の関係分析</h1>
+    <p>生成日時: 2026-01-15 11:13</p>
+    <p>データ期間: 2025-10-29 ~ 2026-01-14 （697件）</p>
+    
+    <div class="summary-box">
+        <h2 style="margin-top:0">相関係数</h2>
+        <div class="metric">
+            <div class="metric-value negative">-0.014</div>
+            <div class="metric-label">change_pct × Phase1損益</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value negative">-0.041</div>
+            <div class="metric-label">change_pct × Phase2損益</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value negative">-0.017</div>
+            <div class="metric-label">change_pct × 前場早め損益</div>
+        </div>
+    </div>
+    
+    <h2>change_pct区間別の統計</h2>
+    <table>
+        <tr>
+            <th>change_pct区間</th>
+            <th>銘柄数</th>
+            <th>構成比</th>
+            <th>P1勝率</th>
+            <th>P1平均損益</th>
+            <th>P2勝率</th>
+            <th>P2平均損益</th>
+            <th>前場早め平均</th>
+        </tr>
+
+        <tr class="">
+            <td style="text-align:left">-10%以下</td>
+            <td>30</td>
+            <td>4.3%</td>
+            <td>33.3%</td>
+            <td class="negative">-2,886</td>
+            <td>33.3%</td>
+            <td class="negative">-2,430</td>
+            <td class="negative">-1,442</td>
+        </tr>
+    
+        <tr class="">
+            <td style="text-align:left">-10~-5%</td>
+            <td>32</td>
+            <td>4.6%</td>
+            <td>34.4%</td>
+            <td class="negative">-817</td>
+            <td>34.4%</td>
+            <td class="negative">-909</td>
+            <td class="negative">-516</td>
+        </tr>
+    
+        <tr class="">
+            <td style="text-align:left">-5~0%</td>
+            <td>193</td>
+            <td>27.7%</td>
+            <td>45.6%</td>
+            <td class="negative">-190</td>
+            <td>46.1%</td>
+            <td class="negative">-161</td>
+            <td class="negative">-315</td>
+        </tr>
+    
+        <tr class="">
+            <td style="text-align:left">0~5%</td>
+            <td>214</td>
+            <td>30.7%</td>
+            <td>46.7%</td>
+            <td class="negative">-1,097</td>
+            <td>46.3%</td>
+            <td class="negative">-1,456</td>
+            <td class="negative">-1,434</td>
+        </tr>
+    
+        <tr class="">
+            <td style="text-align:left">5~10%</td>
+            <td>61</td>
+            <td>8.8%</td>
+            <td>39.3%</td>
+            <td class="positive">1,069</td>
+            <td>37.7%</td>
+            <td class="positive">4,208</td>
+            <td class="negative">-178</td>
+        </tr>
+    
+        <tr class="">
+            <td style="text-align:left">10~15%</td>
+            <td>51</td>
+            <td>7.3%</td>
+            <td>35.3%</td>
+            <td class="negative">-2,947</td>
+            <td>41.2%</td>
+            <td class="negative">-70</td>
+            <td class="negative">-2,876</td>
+        </tr>
+    
+        <tr class="highlight">
+            <td style="text-align:left">15~20%</td>
+            <td>55</td>
+            <td>7.9%</td>
+            <td>29.1%</td>
+            <td class="positive">43</td>
+            <td>32.7%</td>
+            <td class="negative">-970</td>
+            <td class="positive">712</td>
+        </tr>
+    
+        <tr class="highlight">
+            <td style="text-align:left">20~30%</td>
+            <td>48</td>
+            <td>6.9%</td>
+            <td>29.2%</td>
+            <td class="negative">-2,366</td>
+            <td>18.8%</td>
+            <td class="negative">-5,137</td>
+            <td class="negative">-1,869</td>
+        </tr>
+    
+        <tr class="highlight">
+            <td style="text-align:left">30%以上</td>
+            <td>13</td>
+            <td>1.9%</td>
+            <td>30.8%</td>
+            <td class="negative">-953</td>
+            <td>23.1%</td>
+            <td class="negative">-2,515</td>
+            <td class="negative">-441</td>
+        </tr>
+    
+    </table>
+
+    <div class="warning">
+        <strong>注意:</strong> change_pct >= 20%の銘柄は63件あり、平均損益が大きくマイナスになる傾向があります。
+    </div>
+    
+    <h2>change_pct >= 20% の銘柄詳細（63件）</h2>
+    <table>
+        <tr>
+            <th>日付</th>
+            <th>ticker</th>
+            <th>銘柄名</th>
+            <th>change_pct</th>
+            <th>P1損益</th>
+            <th>P2損益</th>
+            <th>前場早め</th>
+        </tr>
+    
+        <tr>
+            <td>2026-01-14</td>
+            <td>4422.T</td>
+            <td style="text-align:left">ＶＡＬＵＥＮＥＸ</td>
+            <td class="positive">+79.2%</td>
+            <td class="negative">-8,000</td>
+            <td class="negative">-30,000</td>
+            <td class="negative">-4,900</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-11</td>
+            <td>2743.T</td>
+            <td style="text-align:left">ピクセルカンパニーズ</td>
+            <td class="positive">+58.8%</td>
+            <td class="negative">-700</td>
+            <td class="negative">-1,300</td>
+            <td class="negative">-900</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-16</td>
+            <td>5721.T</td>
+            <td style="text-align:left">エス・サイエンス</td>
+            <td class="positive">+41.0%</td>
+            <td class="negative">-300</td>
+            <td class="positive">0</td>
+            <td class="negative">-300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>5216.T</td>
+            <td style="text-align:left">倉元製作所</td>
+            <td class="positive">+39.4%</td>
+            <td class="negative">-1,200</td>
+            <td class="negative">-300</td>
+            <td class="positive">1,000</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-07</td>
+            <td>6731.T</td>
+            <td style="text-align:left">ピクセラ</td>
+            <td class="positive">+38.9%</td>
+            <td class="negative">-300</td>
+            <td class="negative">-800</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-01</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋ホールディングス</td>
+            <td class="positive">+38.0%</td>
+            <td class="positive">1,400</td>
+            <td class="positive">1,500</td>
+            <td class="positive">1,300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋ホールディングス</td>
+            <td class="positive">+36.2%</td>
+            <td class="negative">-1,500</td>
+            <td class="negative">-1,500</td>
+            <td class="negative">-1,500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-11</td>
+            <td>4572.T</td>
+            <td style="text-align:left">カルナバイオサイエンス</td>
+            <td class="positive">+35.7%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>198A.T</td>
+            <td style="text-align:left">ＰｏｓｔＰｒｉｍｅ</td>
+            <td class="positive">+35.2%</td>
+            <td class="positive">2,300</td>
+            <td class="positive">4,000</td>
+            <td class="positive">2,300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋HD</td>
+            <td class="positive">+33.3%</td>
+            <td class="positive">200</td>
+            <td class="positive">0</td>
+            <td class="positive">300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-23</td>
+            <td>5240.T</td>
+            <td style="text-align:left">ｍｏｎｏＡＩ　ｔｅｃｈｎｏｌｏｇｙ</td>
+            <td class="positive">+32.4%</td>
+            <td class="negative">-3,700</td>
+            <td class="negative">-3,200</td>
+            <td class="negative">-3,600</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-16</td>
+            <td>2164.T</td>
+            <td style="text-align:left">地域新聞社</td>
+            <td class="positive">+32.0%</td>
+            <td class="negative">-3,000</td>
+            <td class="negative">-4,400</td>
+            <td class="negative">-1,500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋ホールディングス</td>
+            <td class="positive">+31.6%</td>
+            <td class="positive">2,400</td>
+            <td class="positive">3,300</td>
+            <td class="positive">2,500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>5250.T</td>
+            <td style="text-align:left">プライム・ストラテジー</td>
+            <td class="positive">+29.4%</td>
+            <td class="negative">-700</td>
+            <td class="negative">-1,500</td>
+            <td class="negative">-500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>6664.T</td>
+            <td style="text-align:left">オプトエレクトロニクス</td>
+            <td class="positive">+29.3%</td>
+            <td class="positive">400</td>
+            <td class="negative">-800</td>
+            <td class="positive">600</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-08</td>
+            <td>6615.T</td>
+            <td style="text-align:left">ユー・エム・シー・エレクトロニクス</td>
+            <td class="positive">+29.1%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-17</td>
+            <td>5721.T</td>
+            <td style="text-align:left">エス・サイエンス</td>
+            <td class="positive">+29.1%</td>
+            <td class="positive">1,700</td>
+            <td class="negative">-2,600</td>
+            <td class="positive">300</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-08</td>
+            <td>4814.T</td>
+            <td style="text-align:left">ネクストウェア</td>
+            <td class="positive">+28.9%</td>
+            <td class="positive">400</td>
+            <td class="negative">-3,700</td>
+            <td class="positive">1,400</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-23</td>
+            <td>6029.T</td>
+            <td style="text-align:left">アトラグループ</td>
+            <td class="positive">+28.7%</td>
+            <td class="negative">-3,100</td>
+            <td class="negative">-3,800</td>
+            <td class="negative">-3,600</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-14</td>
+            <td>5707.T</td>
+            <td style="text-align:left">東邦亜鉛</td>
+            <td class="positive">+28.3%</td>
+            <td class="positive">2,700</td>
+            <td class="positive">3,000</td>
+            <td class="positive">2,700</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>2342.T</td>
+            <td style="text-align:left">トランスジェニックグループ</td>
+            <td class="positive">+28.3%</td>
+            <td class="negative">-5,000</td>
+            <td class="negative">-5,700</td>
+            <td class="negative">-5,200</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-04</td>
+            <td>4875.T</td>
+            <td style="text-align:left">メディシノバ</td>
+            <td class="positive">+28.2%</td>
+            <td class="positive">100</td>
+            <td class="negative">-900</td>
+            <td class="negative">-1,000</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>9610.T</td>
+            <td style="text-align:left">ウィルソン・ラーニング　ワールドワイド</td>
+            <td class="positive">+28.1%</td>
+            <td class="negative">-1,600</td>
+            <td class="positive">100</td>
+            <td class="positive">2,400</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-13</td>
+            <td>4833.T</td>
+            <td style="text-align:left">Ｄｅｆ　ｃｏｎｓｕｌｔｉｎｇ</td>
+            <td class="positive">+27.7%</td>
+            <td class="positive">1,500</td>
+            <td class="positive">1,400</td>
+            <td class="positive">1,700</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>2385.T</td>
+            <td style="text-align:left">総医研ホールディングス</td>
+            <td class="positive">+27.4%</td>
+            <td class="negative">-4,500</td>
+            <td class="negative">-4,800</td>
+            <td class="negative">-4,100</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-08</td>
+            <td>4082.T</td>
+            <td style="text-align:left">第一稀元素化学工業</td>
+            <td class="positive">+26.7%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>7746.T</td>
+            <td style="text-align:left">岡本硝子</td>
+            <td class="positive">+26.7%</td>
+            <td class="negative">-2,200</td>
+            <td class="negative">-100</td>
+            <td class="negative">-1,300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>4579.T</td>
+            <td style="text-align:left">ラクオリア創薬</td>
+            <td class="positive">+26.6%</td>
+            <td class="negative">-8,400</td>
+            <td class="negative">-11,000</td>
+            <td class="negative">-6,800</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>206A.T</td>
+            <td style="text-align:left">ＰＲＩＳＭ　ＢｉｏＬａｂ</td>
+            <td class="positive">+25.6%</td>
+            <td class="negative">-3,800</td>
+            <td class="negative">-4,600</td>
+            <td class="negative">-2,700</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-13</td>
+            <td>4440.T</td>
+            <td style="text-align:left">ヴィッツ</td>
+            <td class="positive">+25.4%</td>
+            <td class="positive">29,100</td>
+            <td class="positive">34,500</td>
+            <td class="positive">29,000</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-08</td>
+            <td>8918.T</td>
+            <td style="text-align:left">ランド</td>
+            <td class="positive">+25.0%</td>
+            <td class="negative">-100</td>
+            <td class="negative">-100</td>
+            <td class="negative">-100</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-19</td>
+            <td>4395.T</td>
+            <td style="text-align:left">アクリート</td>
+            <td class="positive">+24.8%</td>
+            <td class="negative">-17,400</td>
+            <td class="negative">-15,800</td>
+            <td class="negative">-12,600</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-08</td>
+            <td>4664.T</td>
+            <td style="text-align:left">アール・エス・シー</td>
+            <td class="positive">+24.6%</td>
+            <td class="negative">-22,400</td>
+            <td class="negative">-59,600</td>
+            <td class="negative">-23,600</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>485A.T</td>
+            <td style="text-align:left">パワーエックス</td>
+            <td class="positive">+24.4%</td>
+            <td class="positive">2,400</td>
+            <td class="negative">-11,800</td>
+            <td class="negative">-5,800</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-11</td>
+            <td>4664.T</td>
+            <td style="text-align:left">アール・エス・シー</td>
+            <td class="positive">+24.4%</td>
+            <td class="negative">-18,900</td>
+            <td class="negative">-14,500</td>
+            <td class="negative">-11,100</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-08</td>
+            <td>218A.T</td>
+            <td style="text-align:left">Ｌｉｂｅｒａｗａｒｅ</td>
+            <td class="positive">+24.2%</td>
+            <td class="negative">-12,200</td>
+            <td class="negative">-15,400</td>
+            <td class="negative">-11,200</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋ホールディングス</td>
+            <td class="positive">+24.1%</td>
+            <td class="negative">-1,200</td>
+            <td class="negative">-1,100</td>
+            <td class="negative">-1,000</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-28</td>
+            <td>4570.T</td>
+            <td style="text-align:left">免疫生物研究所</td>
+            <td class="positive">+23.6%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-22</td>
+            <td>6217.T</td>
+            <td style="text-align:left">津田駒工業</td>
+            <td class="positive">+23.5%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-27</td>
+            <td>4570.T</td>
+            <td style="text-align:left">免疫生物研究所</td>
+            <td class="positive">+23.3%</td>
+            <td class="positive">30,000</td>
+            <td class="positive">30,000</td>
+            <td class="positive">30,000</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-06</td>
+            <td>485A.T</td>
+            <td style="text-align:left">パワーエックス</td>
+            <td class="positive">+23.2%</td>
+            <td class="positive">600</td>
+            <td class="negative">-24,400</td>
+            <td class="negative">-1,800</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>8995.T</td>
+            <td style="text-align:left">誠建設工業</td>
+            <td class="positive">+23.2%</td>
+            <td class="negative">-45,000</td>
+            <td class="negative">-45,000</td>
+            <td class="negative">-10,700</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-14</td>
+            <td>4082.T</td>
+            <td style="text-align:left">第一稀元素化学工業</td>
+            <td class="positive">+23.1%</td>
+            <td class="negative">-100</td>
+            <td class="positive">0</td>
+            <td class="negative">-100</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>6615.T</td>
+            <td style="text-align:left">ユー・エム・シー・エレクトロニクス</td>
+            <td class="positive">+22.5%</td>
+            <td class="negative">-1,500</td>
+            <td class="negative">-2,500</td>
+            <td class="negative">-700</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-16</td>
+            <td>4175.T</td>
+            <td style="text-align:left">ｃｏｌｙ</td>
+            <td class="positive">+22.5%</td>
+            <td class="negative">-5,100</td>
+            <td class="negative">-6,300</td>
+            <td class="negative">-2,200</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-02</td>
+            <td>4570.T</td>
+            <td style="text-align:left">免疫生物研究所</td>
+            <td class="positive">+22.4%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-09</td>
+            <td>4491.T</td>
+            <td style="text-align:left">コンピューターマネージメント</td>
+            <td class="positive">+22.2%</td>
+            <td class="negative">-17,500</td>
+            <td class="negative">-26,500</td>
+            <td class="negative">-18,500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-04</td>
+            <td>4425.T</td>
+            <td style="text-align:left">Ｋｕｄａｎ</td>
+            <td class="positive">+21.7%</td>
+            <td class="positive">18,000</td>
+            <td class="positive">8,700</td>
+            <td class="positive">9,600</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-09</td>
+            <td>4570.T</td>
+            <td style="text-align:left">免疫生物研究所</td>
+            <td class="positive">+21.5%</td>
+            <td class="negative">-6,200</td>
+            <td class="negative">-11,000</td>
+            <td class="negative">-11,300</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-16</td>
+            <td>442A.T</td>
+            <td style="text-align:left">クラシコ</td>
+            <td class="positive">+21.2%</td>
+            <td class="negative">-5,600</td>
+            <td class="negative">-9,300</td>
+            <td class="negative">-4,000</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-23</td>
+            <td>6433.T</td>
+            <td style="text-align:left">ヒーハイスト</td>
+            <td class="positive">+21.2%</td>
+            <td class="negative">-1,700</td>
+            <td class="negative">-2,900</td>
+            <td class="positive">1,200</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-26</td>
+            <td>4570.T</td>
+            <td style="text-align:left">免疫生物研究所</td>
+            <td class="positive">+21.1%</td>
+            <td class="positive">8,000</td>
+            <td class="positive">23,900</td>
+            <td class="positive">6,900</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-09</td>
+            <td>4082.T</td>
+            <td style="text-align:left">第一稀元素化学工業</td>
+            <td class="positive">+21.1%</td>
+            <td class="positive">3,600</td>
+            <td class="positive">11,800</td>
+            <td class="negative">-3,100</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-23</td>
+            <td>485A.T</td>
+            <td style="text-align:left">パワーエックス</td>
+            <td class="positive">+21.0%</td>
+            <td class="negative">-4,400</td>
+            <td class="negative">-5,000</td>
+            <td class="negative">-13,100</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-11</td>
+            <td>5817.T</td>
+            <td style="text-align:left">ＪＭＡＣＳ</td>
+            <td class="positive">+20.9%</td>
+            <td class="negative">-8,900</td>
+            <td class="negative">-22,500</td>
+            <td class="negative">-4,900</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>3719.T</td>
+            <td style="text-align:left">ＡＩストーム</td>
+            <td class="positive">+20.9%</td>
+            <td class="negative">-474</td>
+            <td class="negative">-1,383</td>
+            <td class="positive">225</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-03</td>
+            <td>4664.T</td>
+            <td style="text-align:left">アール・エス・シー</td>
+            <td class="positive">+20.7%</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+            <td class="positive">0</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-13</td>
+            <td>2323.T</td>
+            <td style="text-align:left">ｆｏｎｆｕｎ</td>
+            <td class="positive">+20.7%</td>
+            <td class="positive">10,200</td>
+            <td class="positive">10,400</td>
+            <td class="positive">10,500</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-06</td>
+            <td>4199.T</td>
+            <td style="text-align:left">ワンダープラネット</td>
+            <td class="positive">+20.6%</td>
+            <td class="negative">-5,200</td>
+            <td class="negative">-22,300</td>
+            <td class="negative">-10,500</td>
+        </tr>
+        
+        <tr>
+            <td>2026-01-09</td>
+            <td>5597.T</td>
+            <td style="text-align:left">ブルーイノベーション</td>
+            <td class="positive">+20.3%</td>
+            <td class="negative">-17,900</td>
+            <td class="negative">-26,000</td>
+            <td class="negative">-5,800</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-25</td>
+            <td>7138.T</td>
+            <td style="text-align:left">ＴＯＲＩＣＯ</td>
+            <td class="positive">+20.3%</td>
+            <td class="negative">-1,200</td>
+            <td class="negative">-7,500</td>
+            <td class="negative">-1,500</td>
+        </tr>
+        
+        <tr>
+            <td>2025-11-06</td>
+            <td>6993.T</td>
+            <td style="text-align:left">大黒屋ホールディングス(株)</td>
+            <td class="positive">+20.0%</td>
+            <td class="negative">-300</td>
+            <td class="negative">-600</td>
+            <td class="negative">-200</td>
+        </tr>
+        
+        <tr>
+            <td>2025-12-01</td>
+            <td>5721.T</td>
+            <td style="text-align:left">エス・サイエンス</td>
+            <td class="positive">+20.0%</td>
+            <td class="negative">-1,300</td>
+            <td class="negative">-1,500</td>
+            <td class="negative">-1,100</td>
+        </tr>
+        </table>
+    <div class="summary-box">
+        <h3 style="margin-top:0">change_pct >= 20% 銘柄の合計損益</h3>
+        <div class="metric">
+            <div class="metric-value negative">-127,574円</div>
+            <div class="metric-label">Phase1 合計</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value negative">-281,383円</div>
+            <div class="metric-label">Phase2 合計</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value negative">-88,874円</div>
+            <div class="metric-label">前場早め 合計</div>
+        </div>
+    </div>
+    
+    <div class="insight">
+        <strong>結論:</strong><br>
+        ・change_pctが高い銘柄ほど当日のリターンが低下する傾向（負の相関）<br>
+        ・特にchange_pct >= 20%の銘柄は避けるべき<br>
+        ・0~10%の適度な上昇銘柄が最も安定したリターン
+    </div>
+</div>
+</body>
+</html>

@@ -131,7 +131,7 @@ def main():
         'profit_per_100_shares_phase1',
         'profit_per_100_shares_afternoon_early',
         'profit_per_100_shares_phase2',
-        'vol_ratio', 'rsi9',
+        'vol_ratio', 'rsi9', 'atr14_pct',
         'is_stop_high', 'is_stop_low',
         'is_opening_stop_high', 'is_opening_stop_low',
         'weekday', 'weekday_name', 'price_range', 'margin_type'
@@ -139,7 +139,7 @@ def main():
 
     df_view.columns = ['日付', 'ティッカー', '銘柄名', '前日終値', '始値', '終値',
                        '損益_前前L', '損益_前引L', '損益_後前L', '損益_大引L',
-                       'vol_ratio', 'rsi9', 'ストップ高', 'ストップ安',
+                       'vol_ratio', 'rsi9', 'atr14_pct', 'ストップ高', 'ストップ安',
                        '寄付S高', '寄付S安',
                        '曜日番号', '曜日', '価格帯', '信用区分']
 
@@ -1202,6 +1202,282 @@ table.mini th, table.mini td {{
 
     html += '</div>\n'
 
+    # ATR高値銘柄セクション（制度8%以上・いちにち9%以上）- RSIと同じカード形式
+    df_atr_seido = df_view[(df_view['信用区分'] == '制度信用') & (df_view['atr14_pct'] >= 8)].copy()
+    df_atr_ichi = df_view[(df_view['信用区分'] == 'いちにち信用') & (df_view['atr14_pct'] >= 9)].copy()
+
+    # 曜日別集計（制度信用ATR8+）
+    atr_seido_wd_stats = []
+    for wd in range(5):
+        subset = df_atr_seido[df_atr_seido['曜日番号'] == wd]
+        if len(subset) > 0:
+            atr_seido_wd_stats.append({
+                'weekday': wd_map_idx[wd],
+                'count': len(subset),
+                's_前前': subset['損益_前前S'].sum(),
+                's_前引': subset['損益_前引S'].sum(),
+                's_後前': subset['損益_後前S'].sum(),
+                's_大引': subset['損益_大引S'].sum(),
+            })
+        else:
+            atr_seido_wd_stats.append({
+                'weekday': wd_map_idx[wd], 'count': 0,
+                's_前前': 0, 's_前引': 0, 's_後前': 0, 's_大引': 0
+            })
+
+    # 曜日別集計（いちにち信用ATR9+）
+    atr_ichi_wd_stats = []
+    for wd in range(5):
+        subset = df_atr_ichi[df_atr_ichi['曜日番号'] == wd]
+        if len(subset) > 0:
+            atr_ichi_wd_stats.append({
+                'weekday': wd_map_idx[wd],
+                'count': len(subset),
+                's_前前': subset['損益_前前S'].sum(),
+                's_前引': subset['損益_前引S'].sum(),
+                's_後前': subset['損益_後前S'].sum(),
+                's_大引': subset['損益_大引S'].sum(),
+            })
+        else:
+            atr_ichi_wd_stats.append({
+                'weekday': wd_map_idx[wd], 'count': 0,
+                's_前前': 0, 's_前引': 0, 's_後前': 0, 's_大引': 0
+            })
+
+    # ロング損益計算
+    df_atr_seido['損益_ロング'] = -df_atr_seido['損益_ショート']
+    df_atr_ichi['損益_ロング'] = -df_atr_ichi['損益_ショート']
+
+    atr_seido_long_total = df_atr_seido['損益_ロング'].sum()
+    atr_seido_short_total = df_atr_seido['損益_ショート'].sum()
+    atr_ichi_long_total = df_atr_ichi['損益_ロング'].sum()
+    atr_ichi_short_total = df_atr_ichi['損益_ショート'].sum()
+
+    # 4区分ショート合計
+    atr_seido_s_前前 = df_atr_seido['損益_前前S'].sum()
+    atr_seido_s_前引 = df_atr_seido['損益_前引S'].sum()
+    atr_seido_s_後前 = df_atr_seido['損益_後前S'].sum()
+    atr_seido_s_大引 = df_atr_seido['損益_大引S'].sum()
+    atr_ichi_s_前前 = df_atr_ichi['損益_前前S'].sum()
+    atr_ichi_s_前引 = df_atr_ichi['損益_前引S'].sum()
+    atr_ichi_s_後前 = df_atr_ichi['損益_後前S'].sum()
+    atr_ichi_s_大引 = df_atr_ichi['損益_大引S'].sum()
+
+    html += f'''
+<!-- 高ATR戦略分析 -->
+<div class="section">
+<h2 style="color:#51cf66;">高ATR銘柄 戦略分析（ロング vs ショート）</h2>
+<p style="font-size:12px;color:#888;margin-bottom:15px;">※ 制度信用ATR8%+、いちにち信用ATR9%+を抽出</p>
+
+<!-- 戦略サマリーカード -->
+<div class="cards" style="margin-bottom:20px;">
+    <div class="card" style="border-left:3px solid #51cf66;">
+        <h3 style="color:#51cf66;">戦略推奨</h3>
+        <table class="mini" style="width:100%;">
+            <tr style="border-bottom:2px solid #444;">
+                <th style="text-align:left;">条件</th>
+                <th>基本戦略</th>
+            </tr>
+            <tr style="background:#2a3a2a;">
+                <td style="text-align:left;">制度信用 ATR8%+</td>
+                <td style="color:#ff6b6b;font-weight:bold;">ショート</td>
+            </tr>
+            <tr style="background:#2a3a2a;">
+                <td style="text-align:left;">いちにち ATR9%+</td>
+                <td style="color:#ff6b6b;font-weight:bold;">ショート</td>
+            </tr>
+        </table>
+    </div>
+    <div class="card" style="border-left:3px solid #74c0fc;">
+        <h3 style="color:#74c0fc;">損益比較（全体）</h3>
+        <div class="card-stat">
+            <span class="label">制度ATR8+ ({len(df_atr_seido)}件)</span>
+            <span class="value">S: <span class="{'positive' if atr_seido_short_total > 0 else 'negative'}">{atr_seido_short_total:+,.0f}</span> / L: <span class="{'positive' if atr_seido_long_total > 0 else 'negative'}">{atr_seido_long_total:+,.0f}</span></span>
+        </div>
+        <div class="card-stat">
+            <span class="label">いちにちATR9+ ({len(df_atr_ichi)}件)</span>
+            <span class="value">S: <span class="{'positive' if atr_ichi_short_total > 0 else 'negative'}">{atr_ichi_short_total:+,.0f}</span> / L: <span class="{'positive' if atr_ichi_long_total > 0 else 'negative'}">{atr_ichi_long_total:+,.0f}</span></span>
+        </div>
+    </div>
+</div>
+
+'''
+
+    html += f'''<!-- ショート4区分サマリー -->
+<div class="cards" style="margin-bottom:20px;">
+    <div class="card" style="border-left:3px solid #74c0fc;">
+        <h3 style="color:#74c0fc;">制度ATR8%+ ショート4区分</h3>
+        <table class="mini" style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:2px solid #444;">
+                <th style="text-align:center;padding:8px;">前前</th>
+                <th style="text-align:center;padding:8px;">前引</th>
+                <th style="text-align:center;padding:8px;">後前</th>
+                <th style="text-align:center;padding:8px;">大引</th>
+            </tr>
+            <tr>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_seido_s_前前)};">{atr_seido_s_前前:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_seido_s_前引)};">{atr_seido_s_前引:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_seido_s_後前)};">{atr_seido_s_後前:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_seido_s_大引)};">{atr_seido_s_大引:+,.0f}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="card" style="border-left:3px solid #ffd43b;">
+        <h3 style="color:#ffd43b;">いちにちATR9%+ ショート4区分</h3>
+        <table class="mini" style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:2px solid #444;">
+                <th style="text-align:center;padding:8px;">前前</th>
+                <th style="text-align:center;padding:8px;">前引</th>
+                <th style="text-align:center;padding:8px;">後前</th>
+                <th style="text-align:center;padding:8px;">大引</th>
+            </tr>
+            <tr>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_ichi_s_前前)};">{atr_ichi_s_前前:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_ichi_s_前引)};">{atr_ichi_s_前引:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_ichi_s_後前)};">{atr_ichi_s_後前:+,.0f}</td>
+                <td style="text-align:right;padding:8px;font-weight:bold;color:{pnl_color(atr_ichi_s_大引)};">{atr_ichi_s_大引:+,.0f}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- 曜日別詳細テーブル -->
+<div style="display:flex;gap:20px;">
+    <div style="flex:1;background:#252540;padding:15px;border-radius:8px;">
+        <h4 style="color:#74c0fc;margin:0 0 10px 0;">制度信用 ATR8%+ 曜日別</h4>
+        <div style="display:flex;gap:15px;margin-bottom:10px;padding:8px;background:#1a1a2e;border-radius:4px;font-size:12px;">
+            <span style="color:#888;">ショート合計:</span>
+            <span>前前 <span style="color:{pnl_color(atr_seido_s_前前)};font-weight:bold;">{atr_seido_s_前前:+,.0f}</span></span>
+            <span>前引 <span style="color:{pnl_color(atr_seido_s_前引)};font-weight:bold;">{atr_seido_s_前引:+,.0f}</span></span>
+            <span>後前 <span style="color:{pnl_color(atr_seido_s_後前)};font-weight:bold;">{atr_seido_s_後前:+,.0f}</span></span>
+            <span>大引 <span style="color:{pnl_color(atr_seido_s_大引)};font-weight:bold;">{atr_seido_s_大引:+,.0f}</span></span>
+        </div>
+        <table class="mini" style="width:100%;">
+            <tr style="border-bottom:2px solid #444;">
+                <th>曜日</th><th>件</th>
+                <th style="text-align:right;">前前</th>
+                <th style="text-align:right;">前引</th>
+                <th style="text-align:right;">後前</th>
+                <th style="text-align:right;">大引</th>
+            </tr>
+'''
+    for s in atr_seido_wd_stats:
+        html += f'''            <tr>
+                <td>{s['weekday']}</td>
+                <td style="text-align:center;">{s['count']}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_前前'])};">{s['s_前前']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_前引'])};">{s['s_前引']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_後前'])};">{s['s_後前']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_大引'])};">{s['s_大引']:+,.0f}</td>
+            </tr>
+'''
+    html += f'''        </table>
+    </div>
+    <div style="flex:1;background:#252540;padding:15px;border-radius:8px;">
+        <h4 style="color:#ffd43b;margin:0 0 10px 0;">いちにち信用 ATR9%+ 曜日別</h4>
+        <div style="display:flex;gap:15px;margin-bottom:10px;padding:8px;background:#1a1a2e;border-radius:4px;font-size:12px;">
+            <span style="color:#888;">ショート合計:</span>
+            <span>前前 <span style="color:{pnl_color(atr_ichi_s_前前)};font-weight:bold;">{atr_ichi_s_前前:+,.0f}</span></span>
+            <span>前引 <span style="color:{pnl_color(atr_ichi_s_前引)};font-weight:bold;">{atr_ichi_s_前引:+,.0f}</span></span>
+            <span>後前 <span style="color:{pnl_color(atr_ichi_s_後前)};font-weight:bold;">{atr_ichi_s_後前:+,.0f}</span></span>
+            <span>大引 <span style="color:{pnl_color(atr_ichi_s_大引)};font-weight:bold;">{atr_ichi_s_大引:+,.0f}</span></span>
+        </div>
+        <table class="mini" style="width:100%;">
+            <tr style="border-bottom:2px solid #444;">
+                <th>曜日</th><th>件</th>
+                <th style="text-align:right;">前前</th>
+                <th style="text-align:right;">前引</th>
+                <th style="text-align:right;">後前</th>
+                <th style="text-align:right;">大引</th>
+            </tr>
+'''
+    for s in atr_ichi_wd_stats:
+        html += f'''            <tr>
+                <td>{s['weekday']}</td>
+                <td style="text-align:center;">{s['count']}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_前前'])};">{s['s_前前']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_前引'])};">{s['s_前引']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_後前'])};">{s['s_後前']:+,.0f}</td>
+                <td style="text-align:right;color:{pnl_color(s['s_大引'])};">{s['s_大引']:+,.0f}</td>
+            </tr>
+'''
+    html += '''        </table>
+    </div>
+</div>
+
+'''
+
+    # 高ATR銘柄 曜日別リスト（曜日 > 信用区分 > 銘柄）ショート4区分
+    html += '''
+<h3 style="color:#51cf66;margin-top:20px;">高ATR銘柄 曜日別一覧（ショート4区分）</h3>
+<p style="font-size:12px;color:#888;margin-bottom:15px;">※ 制度信用ATR8%+、いちにち信用ATR9%+を抽出。前前=前場前半、前引=前場引け、後前=後場前半、大引=大引け</p>
+'''
+
+    for wd in range(5):
+        wd_name = wd_map_idx[wd]
+        wd_seido = df_atr_seido[df_atr_seido['曜日番号'] == wd].sort_values('日付', ascending=False)
+        wd_ichi = df_atr_ichi[df_atr_ichi['曜日番号'] == wd].sort_values('日付', ascending=False)
+
+        html += f'''
+<div style="background:#252540;padding:15px;border-radius:8px;margin-bottom:15px;">
+    <h3 style="color:#fff;margin:0 0 15px 0;font-size:16px;border-bottom:1px solid #444;padding-bottom:8px;">{wd_name}曜日</h3>
+
+    <div style="margin-bottom:15px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#74c0fc;">
+            制度信用 ATR8%+ <span style="color:#888;">({len(wd_seido)}件)</span>
+        </div>
+'''
+        if len(wd_seido) > 0:
+            html += '        <table class="mini" style="width:100%;"><tr><th>日付</th><th>ATR</th><th>銘柄</th><th>前前</th><th>前引</th><th>後前</th><th>大引</th></tr>\n'
+            for _, row in wd_seido.iterrows():
+                is_untradable = row['取引不成立'] == True
+                strike_style = 'text-decoration:line-through;color:#666;' if is_untradable else ''
+                date_str = row['日付'].strftime('%m/%d') if pd.notna(row['日付']) else '-'
+                atr = f"{row['atr14_pct']:.1f}" if pd.notna(row['atr14_pct']) else '-'
+                p1 = row['損益_前前S']
+                p2 = row['損益_前引S']
+                p3 = row['損益_後前S']
+                p4 = row['損益_大引S']
+                def pnl_style_atr(v, strike):
+                    if strike: return strike
+                    return 'color:#51cf66' if v > 0 else 'color:#ff6b6b' if v < 0 else ''
+                html += f'        <tr style="{strike_style}"><td>{date_str}</td><td>{atr}</td><td style="text-align:left;">{row["ティッカー"]} {row["銘柄名"]}</td><td style="{pnl_style_atr(p1, strike_style)}">{p1:+,.0f}</td><td style="{pnl_style_atr(p2, strike_style)}">{p2:+,.0f}</td><td style="{pnl_style_atr(p3, strike_style)}">{p3:+,.0f}</td><td style="{pnl_style_atr(p4, strike_style)}">{p4:+,.0f}</td></tr>\n'
+            html += '        </table>\n'
+        else:
+            html += '        <p style="color:#666;font-size:12px;">該当なし</p>\n'
+
+        html += f'''    </div>
+
+    <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#ffd43b;">
+            いちにち信用 ATR9%+ <span style="color:#888;">({len(wd_ichi)}件)</span>
+        </div>
+'''
+        if len(wd_ichi) > 0:
+            html += '        <table class="mini" style="width:100%;"><tr><th>日付</th><th>ATR</th><th>銘柄</th><th>前前</th><th>前引</th><th>後前</th><th>大引</th></tr>\n'
+            for _, row in wd_ichi.iterrows():
+                is_untradable = row['取引不成立'] == True
+                strike_style = 'text-decoration:line-through;color:#666;' if is_untradable else ''
+                date_str = row['日付'].strftime('%m/%d') if pd.notna(row['日付']) else '-'
+                atr = f"{row['atr14_pct']:.1f}" if pd.notna(row['atr14_pct']) else '-'
+                p1 = row['損益_前前S']
+                p2 = row['損益_前引S']
+                p3 = row['損益_後前S']
+                p4 = row['損益_大引S']
+                def pnl_style_atr(v, strike):
+                    if strike: return strike
+                    return 'color:#51cf66' if v > 0 else 'color:#ff6b6b' if v < 0 else ''
+                html += f'        <tr style="{strike_style}"><td>{date_str}</td><td>{atr}</td><td style="text-align:left;">{row["ティッカー"]} {row["銘柄名"]}</td><td style="{pnl_style_atr(p1, strike_style)}">{p1:+,.0f}</td><td style="{pnl_style_atr(p2, strike_style)}">{p2:+,.0f}</td><td style="{pnl_style_atr(p3, strike_style)}">{p3:+,.0f}</td><td style="{pnl_style_atr(p4, strike_style)}">{p4:+,.0f}</td></tr>\n'
+            html += '        </table>\n'
+        else:
+            html += '        <p style="color:#666;font-size:12px;">該当なし</p>\n'
+
+        html += '''    </div>
+</div>
+'''
+
+    html += '</div>\n'
+
     # 全体テーブル
     html += '''<div class="section">
 <h2>全銘柄一覧</h2>
@@ -1217,6 +1493,7 @@ table.mini th, table.mini td {{
     <th>損益(ショート)</th>
     <th>vol_ratio</th>
     <th>rsi9</th>
+    <th>ATR%</th>
     <th>S高</th>
     <th>S安</th>
 </tr>
@@ -1230,6 +1507,11 @@ table.mini th, table.mini td {{
         profit_style = style_profit(row['損益_ショート']) if not is_untradable else strike_style
         stop_high_style = style_stop(row['ストップ高']) if not is_untradable else strike_style
         stop_low_style = style_stop(row['ストップ安']) if not is_untradable else strike_style
+        # ATRスタイル: 8%以上は緑
+        atr_val = row['atr14_pct']
+        atr_style = 'color: #51cf66;' if pd.notna(atr_val) and atr_val >= 8 else ''
+        if is_untradable:
+            atr_style = strike_style
 
         date_str = row['日付'].strftime('%Y-%m-%d') if pd.notna(row['日付']) else '-'
         prev_close = f"{row['前日終値']:,.0f}" if pd.notna(row['前日終値']) else '-'
@@ -1238,6 +1520,7 @@ table.mini th, table.mini td {{
         profit = f"{row['損益_ショート']:+,.0f}" if pd.notna(row['損益_ショート']) else '-'
         vol = f"{row['vol_ratio']:.2f}" if pd.notna(row['vol_ratio']) else '-'
         rsi = f"{row['rsi9']:.1f}" if pd.notna(row['rsi9']) else '-'
+        atr = f"{row['atr14_pct']:.1f}" if pd.notna(row['atr14_pct']) else '-'
         stop_high = '●' if row['ストップ高'] == True else ''
         stop_low = '●' if row['ストップ安'] == True else ''
 
@@ -1251,6 +1534,7 @@ table.mini th, table.mini td {{
     <td style="{profit_style}">{profit}</td>
     <td style="{vol_style}">{vol}</td>
     <td style="{rsi_style}">{rsi}</td>
+    <td style="{atr_style}">{atr}</td>
     <td style="{stop_high_style}">{stop_high}</td>
     <td style="{stop_low_style}">{stop_low}</td>
 </tr>

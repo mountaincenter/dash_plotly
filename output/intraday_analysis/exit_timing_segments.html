@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grok分析 - イグジット時間帯別</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #333;
+            --positive-color: #22c55e;
+            --negative-color: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            padding: 2rem;
+            line-height: 1.5;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .summary-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .summary-card .label { font-size: 0.75rem; color: var(--text-muted); }
+        .summary-card .value { font-size: 1.25rem; font-weight: bold; margin-top: 0.25rem; }
+        .summary-card .rate { font-size: 0.875rem; color: var(--text-muted); }
+        .positive { color: var(--positive-color); }
+        .negative { color: var(--negative-color); }
+        .weekday-section { margin-bottom: 2rem; }
+        .weekday-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; }
+        .margin-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .margin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .margin-title { font-weight: 600; }
+        .margin-count { color: var(--text-muted); font-size: 0.875rem; }
+        .totals {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        .totals .segment-label { color: var(--text-muted); font-size: 0.75rem; }
+        .totals .segment-value { font-weight: bold; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th, td {
+            padding: 0.5rem;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th { color: var(--text-muted); font-weight: 500; }
+        th:first-child, td:first-child { text-align: left; }
+        td:nth-child(2) { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Grok分析 - イグジット時間帯別</h1>
+    <p class="subtitle">生成日時: 2026-01-09 11:28 | 総件数: 536 | データソース: yfinance 1時間足</p>
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <div class="label">9-10時</div>
+            <div class="value positive">+2,265,387円</div>
+            <div class="rate">勝率 54.9%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">前場引</div>
+            <div class="value positive">+2,358,467円</div>
+            <div class="rate">勝率 56.3%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">12:30-13:30</div>
+            <div class="value positive">+2,693,111円</div>
+            <div class="rate">勝率 58.6%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">13:30-14:30</div>
+            <div class="value positive">+2,672,161円</div>
+            <div class="rate">勝率 58.5%</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="label">大引け</div>
+            <div class="value positive">+821,413円</div>
+            <div class="rate">勝率 56.0%</div>
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">月曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">46件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+283,483</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+301,183</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+203,317</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+209,117</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+55,700</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>13</td>
+<td class="positive">+2,600<br><small>38%</small></td><td class="positive">+3,200<br><small>31%</small></td><td class="positive">+4,900<br><small>38%</small></td><td class="positive">+3,700<br><small>38%</small></td><td class="positive">+4,000<br><small>38%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>17</td>
+<td class="positive">+189,083<br><small>71%</small></td><td class="positive">+182,033<br><small>81%</small></td><td class="positive">+181,917<br><small>59%</small></td><td class="positive">+178,317<br><small>69%</small></td><td class="positive">+18,400<br><small>53%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>5</td>
+<td class="negative">-4,200<br><small>40%</small></td><td class="negative">-3,050<br><small>40%</small></td><td class="negative">-12,100<br><small>20%</small></td><td class="negative">-13,000<br><small>20%</small></td><td class="negative">-13,500<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>8</td>
+<td class="positive">+39,500<br><small>50%</small></td><td class="positive">+67,500<br><small>62%</small></td><td class="positive">+109,600<br><small>62%</small></td><td class="positive">+110,600<br><small>62%</small></td><td class="positive">+119,300<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>3</td>
+<td class="positive">+56,500<br><small>100%</small></td><td class="positive">+51,500<br><small>100%</small></td><td class="negative">-81,000<br><small>33%</small></td><td class="negative">-70,500<br><small>33%</small></td><td class="negative">-72,500<br><small>33%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">35件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+463,550</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+460,300</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+505,700</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+531,900</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+78,000</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>21</td>
+<td class="positive">+12,600<br><small>47%</small></td><td class="positive">+9,800<br><small>53%</small></td><td class="positive">+7,700<br><small>45%</small></td><td class="positive">+17,500<br><small>47%</small></td><td class="positive">+19,300<br><small>52%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>12</td>
+<td class="positive">+52,300<br><small>67%</small></td><td class="positive">+53,000<br><small>73%</small></td><td class="positive">+91,800<br><small>75%</small></td><td class="positive">+106,700<br><small>92%</small></td><td class="positive">+107,700<br><small>92%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>1</td>
+<td class="positive">+402,650<br><small>100%</small></td><td class="positive">+400,500<br><small>100%</small></td><td class="positive">+399,200<br><small>100%</small></td><td class="positive">+399,700<br><small>100%</small></td><td class="negative">-58,000<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-4,000<br><small>0%</small></td><td class="negative">-3,000<br><small>0%</small></td><td class="positive">+7,000<br><small>100%</small></td><td class="positive">+8,000<br><small>100%</small></td><td class="positive">+9,000<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">火曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">48件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+85,300</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+78,350</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+213,450</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+192,800</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+199,950</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>21</td>
+<td class="negative">-10,000<br><small>33%</small></td><td class="negative">-13,400<br><small>43%</small></td><td class="negative">-9,900<br><small>45%</small></td><td class="negative">-8,100<br><small>47%</small></td><td class="negative">-14,100<br><small>43%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>13</td>
+<td class="positive">+6,200<br><small>62%</small></td><td class="positive">+2,850<br><small>54%</small></td><td class="positive">+8,850<br><small>62%</small></td><td class="negative">-3,150<br><small>62%</small></td><td class="negative">-1,950<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>9</td>
+<td class="positive">+28,100<br><small>56%</small></td><td class="positive">+31,000<br><small>44%</small></td><td class="positive">+40,100<br><small>56%</small></td><td class="positive">+32,350<br><small>56%</small></td><td class="positive">+32,600<br><small>56%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-500<br><small>67%</small></td><td class="positive">+3,900<br><small>67%</small></td><td class="positive">+4,900<br><small>67%</small></td><td class="positive">+200<br><small>67%</small></td><td class="positive">+3,400<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+61,500<br><small>100%</small></td><td class="positive">+54,000<br><small>50%</small></td><td class="positive">+169,500<br><small>100%</small></td><td class="positive">+171,500<br><small>100%</small></td><td class="positive">+180,000<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">83件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+828,100</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+874,850</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+1,014,200</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+1,015,400</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+359,400</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>48</td>
+<td class="positive">+46,600<br><small>66%</small></td><td class="positive">+51,500<br><small>72%</small></td><td class="positive">+50,700<br><small>65%</small></td><td class="positive">+64,900<br><small>66%</small></td><td class="positive">+52,300<br><small>60%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>29</td>
+<td class="positive">+105,000<br><small>72%</small></td><td class="positive">+124,600<br><small>81%</small></td><td class="positive">+191,500<br><small>79%</small></td><td class="positive">+195,000<br><small>79%</small></td><td class="positive">+189,600<br><small>79%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>3</td>
+<td class="positive">+24,000<br><small>67%</small></td><td class="positive">+28,000<br><small>67%</small></td><td class="positive">+29,000<br><small>67%</small></td><td class="positive">+27,500<br><small>67%</small></td><td class="positive">+29,500<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-38,000<br><small>0%</small></td><td class="negative">-30,000<br><small>0%</small></td><td class="negative">-15,000<br><small>0%</small></td><td class="negative">-28,000<br><small>0%</small></td><td class="negative">-34,000<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+690,500<br><small>100%</small></td><td class="positive">+700,750<br><small>100%</small></td><td class="positive">+758,000<br><small>100%</small></td><td class="positive">+756,000<br><small>100%</small></td><td class="positive">+122,000<br><small>50%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">水曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">36件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value negative">-8,850</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value negative">-19,650</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+19,400</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value negative">-200</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+3,300</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>15</td>
+<td class="positive">+400<br><small>47%</small></td><td class="negative">-2,600<br><small>40%</small></td><td class="negative">-800<br><small>60%</small></td><td class="negative">-5,500<br><small>47%</small></td><td class="negative">-5,500<br><small>53%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>14</td>
+<td class="positive">+11,750<br><small>50%</small></td><td class="positive">+11,750<br><small>46%</small></td><td class="positive">+17,500<br><small>64%</small></td><td class="positive">+16,100<br><small>64%</small></td><td class="positive">+14,800<br><small>64%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>3</td>
+<td class="positive">+15,000<br><small>100%</small></td><td class="positive">+14,700<br><small>100%</small></td><td class="positive">+8,700<br><small>67%</small></td><td class="positive">+9,200<br><small>67%</small></td><td class="positive">+5,500<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-21,000<br><small>33%</small></td><td class="negative">-23,000<br><small>33%</small></td><td class="negative">-23,000<br><small>0%</small></td><td class="negative">-30,000<br><small>0%</small></td><td class="negative">-27,000<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>1</td>
+<td class="negative">-15,000<br><small>0%</small></td><td class="negative">-20,500<br><small>0%</small></td><td class="positive">+17,000<br><small>100%</small></td><td class="positive">+10,000<br><small>100%</small></td><td class="positive">+15,500<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">72件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+225,240</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+220,360</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+215,380</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+247,060</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value negative">-124,800</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>35</td>
+<td class="positive">+1,800<br><small>48%</small></td><td class="positive">+1,200<br><small>44%</small></td><td class="positive">+6,200<br><small>53%</small></td><td class="positive">+6,100<br><small>48%</small></td><td class="negative">-3,800<br><small>49%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>34</td>
+<td class="positive">+236,940<br><small>52%</small></td><td class="positive">+238,160<br><small>56%</small></td><td class="positive">+224,180<br><small>53%</small></td><td class="positive">+257,060<br><small>52%</small></td><td class="negative">-75,500<br><small>47%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>2</td>
+<td class="negative">-4,500<br><small>50%</small></td><td class="negative">-15,000<br><small>0%</small></td><td class="positive">+3,000<br><small>100%</small></td><td class="positive">+2,900<br><small>100%</small></td><td class="negative">-23,500<br><small>50%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="negative">-9,000<br><small>0%</small></td><td class="negative">-4,000<br><small>0%</small></td><td class="negative">-18,000<br><small>0%</small></td><td class="negative">-19,000<br><small>0%</small></td><td class="negative">-22,000<br><small>0%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">木曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">58件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+80,720</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+96,540</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+103,090</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+119,080</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+117,880</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>23</td>
+<td class="positive">+2,470<br><small>52%</small></td><td class="positive">+7,340<br><small>48%</small></td><td class="positive">+9,490<br><small>50%</small></td><td class="positive">+10,430<br><small>55%</small></td><td class="positive">+10,430<br><small>48%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>20</td>
+<td class="positive">+27,450<br><small>45%</small></td><td class="positive">+29,100<br><small>45%</small></td><td class="positive">+44,100<br><small>45%</small></td><td class="positive">+44,350<br><small>45%</small></td><td class="positive">+41,550<br><small>45%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>9</td>
+<td class="negative">-20,200<br><small>44%</small></td><td class="negative">-24,900<br><small>22%</small></td><td class="negative">-17,000<br><small>33%</small></td><td class="negative">-17,700<br><small>33%</small></td><td class="negative">-18,600<br><small>33%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>4</td>
+<td class="">+0<br><small>50%</small></td><td class="positive">+12,000<br><small>50%</small></td><td class="positive">+10,000<br><small>75%</small></td><td class="positive">+13,000<br><small>50%</small></td><td class="positive">+20,000<br><small>50%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>2</td>
+<td class="positive">+71,000<br><small>100%</small></td><td class="positive">+73,000<br><small>100%</small></td><td class="positive">+56,500<br><small>100%</small></td><td class="positive">+69,000<br><small>100%</small></td><td class="positive">+64,500<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">84件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+79,574</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+96,874</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+114,674</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+57,474</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+89,583</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>36</td>
+<td class="negative">-2,526<br><small>65%</small></td><td class="positive">+6,274<br><small>66%</small></td><td class="positive">+30,374<br><small>66%</small></td><td class="positive">+6,574<br><small>59%</small></td><td class="positive">+24,783<br><small>64%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>38</td>
+<td class="positive">+73,600<br><small>60%</small></td><td class="positive">+95,900<br><small>60%</small></td><td class="positive">+81,400<br><small>68%</small></td><td class="positive">+98,400<br><small>67%</small></td><td class="positive">+111,800<br><small>66%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>6</td>
+<td class="positive">+40,500<br><small>50%</small></td><td class="positive">+24,700<br><small>67%</small></td><td class="positive">+70,900<br><small>67%</small></td><td class="positive">+76,500<br><small>67%</small></td><td class="positive">+80,000<br><small>50%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-43,000<br><small>33%</small></td><td class="negative">-33,000<br><small>67%</small></td><td class="negative">-82,000<br><small>33%</small></td><td class="negative">-144,000<br><small>33%</small></td><td class="negative">-147,000<br><small>33%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>1</td>
+<td class="positive">+11,000<br><small>100%</small></td><td class="positive">+3,000<br><small>100%</small></td><td class="positive">+14,000<br><small>100%</small></td><td class="positive">+20,000<br><small>100%</small></td><td class="positive">+20,000<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="weekday-section">
+        <div class="weekday-title">金曜日</div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">制度信用</span>
+                <span class="margin-count">22件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+85,170</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+79,760</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+109,800</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+111,130</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value negative">-121,300</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>3</td>
+<td class="positive">+1,270<br><small>67%</small></td><td class="positive">+1,460<br><small>67%</small></td><td class="positive">+5,950<br><small>100%</small></td><td class="positive">+5,080<br><small>100%</small></td><td class="positive">+5,500<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>7</td>
+<td class="negative">-19,450<br><small>0%</small></td><td class="negative">-21,000<br><small>14%</small></td><td class="negative">-23,750<br><small>14%</small></td><td class="negative">-19,250<br><small>14%</small></td><td class="negative">-23,100<br><small>14%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>6</td>
+<td class="positive">+249,250<br><small>83%</small></td><td class="positive">+248,200<br><small>83%</small></td><td class="positive">+254,200<br><small>83%</small></td><td class="positive">+257,000<br><small>83%</small></td><td class="positive">+35,800<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>3</td>
+<td class="negative">-17,400<br><small>0%</small></td><td class="negative">-19,900<br><small>0%</small></td><td class="positive">+5,900<br><small>67%</small></td><td class="positive">+1,800<br><small>67%</small></td><td class="positive">+11,000<br><small>67%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>3</td>
+<td class="negative">-128,500<br><small>33%</small></td><td class="negative">-129,000<br><small>0%</small></td><td class="negative">-132,500<br><small>33%</small></td><td class="negative">-133,500<br><small>33%</small></td><td class="negative">-150,500<br><small>33%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+        <div class="margin-card">
+            <div class="margin-header">
+                <span class="margin-title">いちにち信用</span>
+                <span class="margin-count">52件</span>
+            </div>
+            <div class="totals">
+
+                <div>
+                    <div class="segment-label">9-10時</div>
+                    <div class="segment-value positive">+143,100</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">前場引</div>
+                    <div class="segment-value positive">+169,900</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">12:30-13:30</div>
+                    <div class="segment-value positive">+194,100</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">13:30-14:30</div>
+                    <div class="segment-value positive">+188,400</div>
+                </div>
+
+                <div>
+                    <div class="segment-label">大引け</div>
+                    <div class="segment-value positive">+163,700</div>
+                </div>
+
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件</th>
+<th>9-10時</th><th>前場引</th><th>12:30-13:30</th><th>13:30-14:30</th><th>大引け</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td>37</td>
+<td class="positive">+8,600<br><small>50%</small></td><td class="positive">+15,000<br><small>59%</small></td><td class="positive">+16,100<br><small>63%</small></td><td class="positive">+5,400<br><small>62%</small></td><td class="positive">+300<br><small>62%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td>10</td>
+<td class="positive">+27,500<br><small>50%</small></td><td class="positive">+45,400<br><small>50%</small></td><td class="positive">+47,500<br><small>60%</small></td><td class="positive">+51,000<br><small>70%</small></td><td class="positive">+41,900<br><small>60%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td>3</td>
+<td class="positive">+2,000<br><small>50%</small></td><td class="positive">+2,500<br><small>100%</small></td><td class="negative">-7,500<br><small>0%</small></td><td class="negative">-7,000<br><small>0%</small></td><td class="negative">-8,500<br><small>0%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td>1</td>
+<td class="positive">+27,000<br><small>100%</small></td><td class="positive">+34,000<br><small>100%</small></td><td class="positive">+34,000<br><small>100%</small></td><td class="positive">+31,000<br><small>100%</small></td><td class="positive">+27,000<br><small>100%</small></td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td>1</td>
+<td class="positive">+78,000<br><small>100%</small></td><td class="positive">+73,000<br><small>100%</small></td><td class="positive">+104,000<br><small>100%</small></td><td class="positive">+108,000<br><small>100%</small></td><td class="positive">+103,000<br><small>100%</small></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

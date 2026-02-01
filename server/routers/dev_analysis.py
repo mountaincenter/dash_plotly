@@ -31,6 +31,18 @@ PRICE_RANGES = [
     {"label": "10,000円~", "min": 10000, "max": float("inf")},
 ]
 
+# 細かい価格帯定義
+PRICE_RANGES_FINE = [
+    {"label": "~500円", "min": 0, "max": 500},
+    {"label": "500~1,000円", "min": 500, "max": 1000},
+    {"label": "1,000~2,000円", "min": 1000, "max": 2000},
+    {"label": "2,000~3,000円", "min": 2000, "max": 3000},
+    {"label": "3,000~5,000円", "min": 3000, "max": 5000},
+    {"label": "5,000~7,500円", "min": 5000, "max": 7500},
+    {"label": "7,500~10,000円", "min": 7500, "max": 10000},
+    {"label": "10,000円~", "min": 10000, "max": float("inf")},
+]
+
 # 曜日名
 WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
 
@@ -41,11 +53,12 @@ ICHI_RSI_THRESHOLD = 90
 ICHI_ATR_THRESHOLD = 9
 
 
-def get_price_range_label(price: float | None) -> str:
+def get_price_range_label(price: float | None, price_ranges: list | None = None) -> str:
     """価格から価格帯ラベルを取得"""
     if price is None or pd.isna(price):
         return ""
-    for pr in PRICE_RANGES:
+    ranges = price_ranges if price_ranges is not None else PRICE_RANGES
+    for pr in ranges:
         if pr["min"] <= price < pr["max"]:
             return pr["label"]
     return ""
@@ -132,7 +145,7 @@ def get_extreme_market_info(df: pd.DataFrame) -> dict:
     return {"available": True, "extremeDays": days}
 
 
-def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None) -> pd.DataFrame:
+def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None, price_ranges: list | None = None) -> pd.DataFrame:
     """
     データ前処理
 
@@ -145,6 +158,9 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
     - 長さ5のリスト ["S", "S", "S", "S", "L"] など
     - 月〜金のポジション（S=ショート, L=ロング）
     - デフォルト: ["S", "S", "S", "S", "L"]（月-木ショート、金ロング）
+
+    price_ranges:
+    - 価格帯リスト（デフォルト: PRICE_RANGES）
     """
     # フィルタ: buy_priceがあるもののみ
     df = df[df["buy_price"].notna()].copy()
@@ -252,11 +268,13 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
     )
 
     # 価格帯
+    ranges = price_ranges if price_ranges is not None else PRICE_RANGES
+
     def get_price_range(price):
-        for pr in PRICE_RANGES:
+        for pr in ranges:
             if pr["min"] <= price < pr["max"]:
                 return pr["label"]
-        return PRICE_RANGES[-1]["label"]
+        return ranges[-1]["label"]
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
@@ -348,9 +366,10 @@ def calc_period_stats(df: pd.DataFrame, period: str, segments: int = 2) -> dict:
     }
 
 
-def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None, segments: int = 2) -> list:
+def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[str] | None = None, segments: int = 2, price_ranges: list | None = None) -> list:
     """曜日別データ (segments: 2 or 4)"""
     result = []
+    ranges = price_ranges if price_ranges is not None else PRICE_RANGES
 
     if weekday_positions is None:
         weekday_positions = ["S", "S", "S", "S", "L"]
@@ -379,7 +398,7 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             seido_data["meTotal"] = int(seido_df["calc_me"].sum())
             seido_data["aeTotal"] = int(seido_df["calc_ae"].sum())
 
-        for pr in PRICE_RANGES:
+        for pr in ranges:
             pr_df = seido_df[seido_df["price_range"] == pr["label"]]
             pr_data = {
                 "label": pr["label"],
@@ -412,7 +431,7 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
             ichinichi_data["meTotal"] = {"all": int(ichinichi_df["calc_me"].sum()), "ex0": int(ichinichi_ex0_df["calc_me"].sum())}
             ichinichi_data["aeTotal"] = {"all": int(ichinichi_df["calc_ae"].sum()), "ex0": int(ichinichi_ex0_df["calc_ae"].sum())}
 
-        for pr in PRICE_RANGES:
+        for pr in ranges:
             pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
             pr_ex0_df = pr_df[pr_df["is_ex0"]]
 
@@ -453,7 +472,7 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
         # RSI/ATRセグメント別データ（segments==4の場合のみ）
         rsi_atr_segments = None
         if segments == 4 and "rsi_atr_segment" in wd_df.columns:
-            rsi_atr_segments = calc_rsi_atr_segment_data(wd_df, position, segments)
+            rsi_atr_segments = calc_rsi_atr_segment_data(wd_df, position, segments, ranges)
 
         wd_data = {
             "weekday": wd_name,
@@ -469,7 +488,7 @@ def calc_weekday_data(df: pd.DataFrame, mode: str = "short", weekday_positions: 
     return result
 
 
-def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int = 4) -> dict:
+def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int = 4, price_ranges: list | None = None) -> dict:
     """
     RSI/ATRセグメント別データを計算
 
@@ -483,6 +502,7 @@ def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int 
     }
     """
     segment_keys = ["excluded", "rsi_only", "atr_only", "both"]
+    ranges = price_ranges if price_ranges is not None else PRICE_RANGES
     result = {"counts": {"all": len(wd_df)}}
 
     for seg_key in segment_keys:
@@ -500,7 +520,7 @@ def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int 
             "priceRanges": [],
             "position": position,
         }
-        for pr in PRICE_RANGES:
+        for pr in ranges:
             pr_df = seido_df[seido_df["price_range"] == pr["label"]]
             seido_data["priceRanges"].append({
                 "label": pr["label"],
@@ -527,7 +547,7 @@ def calc_rsi_atr_segment_data(wd_df: pd.DataFrame, position: str, segments: int 
             "priceRanges": {"all": [], "ex0": []},
             "position": position,
         }
-        for pr in PRICE_RANGES:
+        for pr in ranges:
             pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
             pr_ex0_df = pr_df[pr_df["is_ex0"]]
             ichinichi_data["priceRanges"]["all"].append({
@@ -722,9 +742,9 @@ def calc_atr_band_data(df: pd.DataFrame, segments: int = 4) -> dict:
     return result
 
 
-def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None, segments: int = 2) -> dict:
+def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: list[str] | None = None, segments: int = 2, price_ranges: list | None = None) -> dict:
     """指定モードで分析データを計算 (segments: 2 or 4)"""
-    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
+    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions, price_ranges=price_ranges)
 
     if len(df) == 0:
         return None
@@ -738,7 +758,7 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
     }
 
     # 曜日別データ
-    weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions, segments=segments)
+    weekday_data = calc_weekday_data(df, mode=mode, weekday_positions=weekday_positions, segments=segments, price_ranges=price_ranges)
 
     # RSI帯別データ（4区分のみ）
     rsi_band_data = calc_rsi_band_data(df, segments=4) if segments == 4 else None
@@ -780,13 +800,14 @@ def calc_analysis_for_mode(df_raw: pd.DataFrame, mode: str, weekday_positions: l
 
 
 @router.get("/dev/analysis/day-trade-summary")
-async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False):
+async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False, price_range_type: str = "normal"):
     """
     Grok分析サマリー
 
     Query params:
     - segments: 2（簡易版: 前場引け/大引け）or 4（詳細版: 前場前半/前場引け/後場前半/大引け）
     - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
+    - price_range_type: "normal"（通常: ~1000/1000~3000/...）or "fine"（細かい: ~500/500~1000/1000~2000/...）
 
     Returns:
     - short: ショート戦略の分析
@@ -802,6 +823,11 @@ async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False
     """
     if segments not in (2, 4):
         raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
+    if price_range_type not in ("normal", "fine"):
+        raise HTTPException(status_code=400, detail="price_range_typeはnormalまたはfineを指定してください")
+
+    # 価格帯設定
+    price_ranges = PRICE_RANGES_FINE if price_range_type == "fine" else PRICE_RANGES
 
     # 極端相場情報は除外前のデータから取得
     df_all = load_archive(exclude_extreme=False)
@@ -811,9 +837,9 @@ async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False
     df_raw = load_archive(exclude_extreme=exclude_extreme)
 
     # 3パターン計算
-    short_data = calc_analysis_for_mode(df_raw, "short", segments=segments)
-    long_data = calc_analysis_for_mode(df_raw, "long", segments=segments)
-    weekday_strategy_data = calc_analysis_for_mode(df_raw, "weekday_strategy", segments=segments)
+    short_data = calc_analysis_for_mode(df_raw, "short", segments=segments, price_ranges=price_ranges)
+    long_data = calc_analysis_for_mode(df_raw, "long", segments=segments, price_ranges=price_ranges)
+    weekday_strategy_data = calc_analysis_for_mode(df_raw, "weekday_strategy", segments=segments, price_ranges=price_ranges)
 
     if not short_data:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -824,6 +850,7 @@ async def get_day_trade_summary(segments: int = 2, exclude_extreme: bool = False
         "weekdayStrategy": weekday_strategy_data,
         "extremeMarket": extreme_info,
         "excludeExtreme": exclude_extreme,
+        "priceRangeType": price_range_type,
     })
 
 
@@ -836,6 +863,7 @@ async def get_custom_weekday_strategy(
     fri: str = "L",
     segments: int = 2,
     exclude_extreme: bool = False,
+    price_range_type: str = "normal",
 ):
     """
     カスタム曜日別戦略
@@ -844,12 +872,18 @@ async def get_custom_weekday_strategy(
     - mon, tue, wed, thu, fri: 各曜日のポジション（S=ショート, L=ロング）
     - segments: 2（簡易版）or 4（詳細版）
     - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
+    - price_range_type: "normal"（通常）or "fine"（細かい価格帯）
 
     デフォルト: 月-木ショート、金ロング
     """
     # バリデーション
     if segments not in (2, 4):
         raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
+    if price_range_type not in ("normal", "fine"):
+        raise HTTPException(status_code=400, detail="price_range_typeはnormalまたはfineを指定してください")
+
+    # 価格帯設定
+    price_ranges = PRICE_RANGES_FINE if price_range_type == "fine" else PRICE_RANGES
 
     positions = [mon.upper(), tue.upper(), wed.upper(), thu.upper(), fri.upper()]
     for p in positions:
@@ -857,7 +891,7 @@ async def get_custom_weekday_strategy(
             raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
-    data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions, segments=segments)
+    data = calc_analysis_for_mode(df_raw, "weekday_strategy", weekday_positions=positions, segments=segments, price_ranges=price_ranges)
 
     if not data:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -922,7 +956,7 @@ def calc_grouped_details(df: pd.DataFrame, view: str, mode: str = "short", weekd
                 "ticker": row["ticker"],
                 "stockName": row.get("stock_name", ""),
                 "marginType": row["margin_type"],
-                "priceRange": get_price_range_label(row.get("buy_price")),
+                "priceRange": row["price_range"],
                 "prevClose": int(row["prev_close"]) if pd.notna(row.get("prev_close")) else None,
                 "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
                 "sellPrice": int(row["sell_price"]) if pd.notna(row.get("sell_price")) else None,
@@ -970,6 +1004,7 @@ async def get_analysis_details(
     fri: str = "L",
     segments: int = 2,
     exclude_extreme: bool = False,
+    price_range_type: str = "normal",
 ):
     """
     詳細データ
@@ -980,6 +1015,7 @@ async def get_analysis_details(
     - mon, tue, wed, thu, fri: 曜日別戦略のポジション（mode=weekday_strategyの場合のみ有効）
     - segments: 2（簡易版）or 4（詳細版）
     - exclude_extreme: True の場合、極端相場（日経±3%超）のデータを除外
+    - price_range_type: "normal"（通常）or "fine"（細かい価格帯）
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定してください")
@@ -987,6 +1023,11 @@ async def get_analysis_details(
         raise HTTPException(status_code=400, detail="modeはshort/long/weekday_strategyのいずれかを指定してください")
     if segments not in (2, 4):
         raise HTTPException(status_code=400, detail="segmentsは2または4を指定してください")
+    if price_range_type not in ("normal", "fine"):
+        raise HTTPException(status_code=400, detail="price_range_typeはnormalまたはfineを指定してください")
+
+    # 価格帯設定
+    price_ranges = PRICE_RANGES_FINE if price_range_type == "fine" else PRICE_RANGES
 
     weekday_positions = None
     if mode == "weekday_strategy":
@@ -996,7 +1037,7 @@ async def get_analysis_details(
                 raise HTTPException(status_code=400, detail="ポジションはSまたはLで指定してください")
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
-    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions)
+    df = prepare_data(df_raw.copy(), mode=mode, weekday_positions=weekday_positions, price_ranges=price_ranges)
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")

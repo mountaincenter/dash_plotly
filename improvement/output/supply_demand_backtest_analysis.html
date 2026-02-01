@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>需給 × パフォーマンス 相関分析</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 { color: #58a6ff; }
+        h2 { color: #8b949e; margin-top: 30px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #30363d;
+            padding: 10px;
+            text-align: right;
+        }
+        th { background: #21262d; color: #58a6ff; }
+        tr:nth-child(even) { background: #161b22; }
+        .positive { color: #3fb950; }
+        .negative { color: #f85149; }
+        .highlight { background: #1f3d1f; }
+        .summary-box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .metric {
+            display: inline-block;
+            margin: 10px 20px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <h1>需給 × パフォーマンス 相関分析</h1>
+
+    <div class="summary-box">
+        <div class="metric">
+            <div class="metric-value">753</div>
+            <div class="metric-label">総バックテスト数</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">508</div>
+            <div class="metric-label">需給データあり</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">48</div>
+            <div class="metric-label">日数</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">469</div>
+            <div class="metric-label">銘柄数</div>
+        </div>
+    </div>
+
+    <h2>貸借倍率別パフォーマンス</h2>
+    <p>貸借倍率 = 買残 ÷ 売残（低いほど売り優勢 → 買い戻し需要）</p>
+    <table>
+        <tr>
+            <th>貸借倍率</th>
+            <th>件数</th>
+            <th>Phase1 平均リターン</th>
+            <th>Phase1 勝率</th>
+            <th>Phase2 平均リターン</th>
+            <th>Phase2 勝率</th>
+        </tr>
+
+        <tr class="highlight">
+            <td style="text-align:left"><1 (売り優勢)</td>
+            <td>17</td>
+            <td class="positive">0.02%</td>
+            <td>52.9%</td>
+            <td class="positive">0.01%</td>
+            <td>47.1%</td>
+        </tr>
+
+        <tr class="">
+            <td style="text-align:left">1-3</td>
+            <td>111</td>
+            <td class="positive">0.00%</td>
+            <td>45.9%</td>
+            <td class="positive">0.00%</td>
+            <td>49.5%</td>
+        </tr>
+
+        <tr class="">
+            <td style="text-align:left">3-10</td>
+            <td>120</td>
+            <td class="negative">-0.01%</td>
+            <td>45.8%</td>
+            <td class="negative">-0.01%</td>
+            <td>43.3%</td>
+        </tr>
+
+        <tr class="">
+            <td style="text-align:left">>10 (買い優勢)</td>
+            <td>260</td>
+            <td class="negative">-0.01%</td>
+            <td>40.4%</td>
+            <td class="negative">-0.01%</td>
+            <td>40.4%</td>
+        </tr>
+
+    </table>
+
+    <h2>相関係数（貸借倍率 vs パフォーマンス）</h2>
+    <table>
+        <tr>
+            <th>指標</th>
+            <th>相関係数</th>
+            <th>解釈</th>
+        </tr>
+
+        <tr>
+            <td>phase1_return</td>
+            <td>-0.088</td>
+            <td>相関なし</td>
+        </tr>
+
+        <tr>
+            <td>phase2_return</td>
+            <td>-0.063</td>
+            <td>相関なし</td>
+        </tr>
+
+        <tr>
+            <td>phase3_1pct_return</td>
+            <td>-0.031</td>
+            <td>相関なし</td>
+        </tr>
+
+    </table>
+
+    <h2>分析の解釈</h2>
+    <div class="summary-box">
+        <p><strong>期待される結果:</strong></p>
+        <ul>
+            <li>貸借倍率 < 1（売り優勢）の銘柄は、買い戻し需要で上昇しやすい</li>
+            <li>相関係数が負であれば、需給分析が有効</li>
+        </ul>
+        <p><strong>注意点:</strong></p>
+        <ul>
+            <li>J-Quantsの需給データは週次更新のため、タイムラグあり</li>
+            <li>サンプル数が少ない場合は統計的有意性に注意</li>
+        </ul>
+    </div>
+</body>
+</html>

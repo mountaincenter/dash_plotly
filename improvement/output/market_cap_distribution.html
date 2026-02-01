@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>時価総額（億円） 分布分析</title>
+<style>
+body {
+    background-color: #1a1a2e;
+    color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px;
+}
+h1, h2 { color: #fff; }
+.summary {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #252540;
+    border-radius: 8px;
+}
+.chart-container {
+    background: #252540;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.histogram {
+    display: flex;
+    align-items: flex-end;
+    height: 300px;
+    gap: 4px;
+    padding: 20px 10px;
+    border-bottom: 2px solid #444;
+}
+.bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.bar {
+    width: 100%;
+    background: linear-gradient(to top, #4a90d9, #74c0fc);
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    position: relative;
+}
+.bar:hover {
+    background: linear-gradient(to top, #ffd43b, #ffe066);
+}
+.bar-label {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    text-align: center;
+}
+.bar-count {
+    font-size: 10px;
+    color: #fff;
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+table {
+    border-collapse: collapse;
+    font-size: 13px;
+    width: 100%;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+th {
+    background-color: #252540;
+    color: #aaa;
+}
+td:first-child {
+    text-align: left;
+}
+</style>
+</head>
+<body>
+<h1>時価総額（億円） 分布分析</h1>
+
+<div class="summary">
+    <p>総件数: 738件 / 欠損: 12件</p>
+    <p>平均: 1919.88 / 中央値: 175.06 / 標準偏差: 11640.19</p>
+    <p>最小: 9.84 / 最大: 247400.20</p>
+</div>
+
+<div class="chart-container">
+    <h2>時価総額（億円） 分布（726件）</h2>
+    <div class="histogram">
+        <div class="bar-container">
+            <div class="bar" style="height:71.1864406779661%;">
+                <span class="bar-count">126</span>
+            </div>
+            <div class="bar-label"><50億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:63.84180790960452%;">
+                <span class="bar-count">113</span>
+            </div>
+            <div class="bar-label">50-100億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:86.4406779661017%;">
+                <span class="bar-count">153</span>
+            </div>
+            <div class="bar-label">100-200億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:100.0%;">
+                <span class="bar-count">177</span>
+            </div>
+            <div class="bar-label">200-500億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:24.293785310734464%;">
+                <span class="bar-count">43</span>
+            </div>
+            <div class="bar-label">500-1000億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:12.994350282485875%;">
+                <span class="bar-count">23</span>
+            </div>
+            <div class="bar-label">1000-2000億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:21.468926553672315%;">
+                <span class="bar-count">38</span>
+            </div>
+            <div class="bar-label">2000-5000億</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:11.864406779661017%;">
+                <span class="bar-count">21</span>
+            </div>
+            <div class="bar-label">5000億-1兆</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:18.07909604519774%;">
+                <span class="bar-count">32</span>
+            </div>
+            <div class="bar-label">>1兆</div>
+        </div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h2>帯別集計</h2>
+    <table>
+        <tr><th>帯</th><th>件数</th><th>割合</th><th>累積</th></tr>
+        <tr><td><50億</td><td>126</td><td>17.4%</td><td>17.4%</td></tr>
+        <tr><td>50-100億</td><td>113</td><td>15.6%</td><td>32.9%</td></tr>
+        <tr><td>100-200億</td><td>153</td><td>21.1%</td><td>54.0%</td></tr>
+        <tr><td>200-500億</td><td>177</td><td>24.4%</td><td>78.4%</td></tr>
+        <tr><td>500-1000億</td><td>43</td><td>5.9%</td><td>84.3%</td></tr>
+        <tr><td>1000-2000億</td><td>23</td><td>3.2%</td><td>87.5%</td></tr>
+        <tr><td>2000-5000億</td><td>38</td><td>5.2%</td><td>92.7%</td></tr>
+        <tr><td>5000億-1兆</td><td>21</td><td>2.9%</td><td>95.6%</td></tr>
+        <tr><td>>1兆</td><td>32</td><td>4.4%</td><td>100.0%</td></tr>
+    </table>
+</div>
+
+</body>
+</html>

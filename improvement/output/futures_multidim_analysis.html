@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>先物変化率分析 - フロー全体</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: rgba(24, 24, 27, 0.8);
+            --bg-card-hover: rgba(39, 39, 42, 0.6);
+            --border-color: rgba(63, 63, 70, 0.4);
+            --text-primary: #fafafa;
+            --text-muted: #a1a1aa;
+            --text-dimmed: #71717a;
+            --positive: #34d399;
+            --negative: #fb7185;
+            --warning: #fbbf24;
+            --accent: #3b82f6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 24px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+        h2 { font-size: 1.125rem; font-weight: 600; margin: 32px 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+        h3 { font-size: 0.9375rem; font-weight: 600; color: var(--text-muted); margin: 20px 0 12px 0; }
+        .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 24px; }
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .alert {
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .alert-danger { background: rgba(251, 113, 133, 0.1); border: 1px solid rgba(251, 113, 133, 0.3); }
+        .alert-success { background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3); }
+        .alert-warning { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); }
+        .alert-info { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .alert-title { font-weight: 600; font-size: 0.875rem; margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 12px 0; }
+        th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border-color); }
+        th { background: rgba(39, 39, 42, 0.5); color: var(--text-muted); font-weight: 500; font-size: 0.75rem; }
+        td:first-child, th:first-child { text-align: left; }
+        tr:hover td { background: rgba(39, 39, 42, 0.3); }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .warning { color: var(--warning); }
+        .muted { color: var(--text-dimmed); }
+        .bold { font-weight: 600; }
+        .tabular { font-variant-numeric: tabular-nums; }
+        code { background: rgba(39, 39, 42, 0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.8125rem; }
+        pre { background: rgba(39, 39, 42, 0.8); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.75rem; }
+        .flow-box { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 16px; margin: 12px 0; }
+        .flow-arrow { text-align: center; color: var(--accent); font-size: 1.5rem; margin: 8px 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        .footer { text-align: center; color: var(--text-dimmed); font-size: 0.75rem; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>先物変化率分析 - フロー全体</h1>
+    <p class="subtitle">極端相場フラグ検討のための分析ドキュメント</p>
+
+    <!-- ========================================== -->
+    <!-- セクション0: データソース -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>0. データソース</h2>
+
+        <h3>使用ファイル</h3>
+        <table>
+            <tr><th>ファイル</th><th>内容</th><th>用途</th></tr>
+            <tr>
+                <td><code>grok_trending_archive.parquet</code></td>
+                <td>バックテスト結果（614件）</td>
+                <td>ショート損益の計算元</td>
+            </tr>
+            <tr>
+                <td><code>futures_prices_60d_5m.parquet</code></td>
+                <td>先物5分足（60日分）</td>
+                <td>先物23:00価格の取得</td>
+            </tr>
+            <tr>
+                <td><code>index_prices_max_1d.parquet</code></td>
+                <td>日経225日足</td>
+                <td>日経終値の取得</td>
+            </tr>
+        </table>
+
+        <h3>損益計算カラム（dev_analysis.py準拠）</h3>
+        <table>
+            <tr><th>時間帯</th><th>元カラム</th><th>ショート計算</th></tr>
+            <tr><td>10:25</td><td>profit_per_100_shares_morning_early</td><td>× -1</td></tr>
+            <tr><td>前場引け</td><td>profit_per_100_shares_phase1</td><td>× -1</td></tr>
+            <tr><td>14:45</td><td>profit_per_100_shares_afternoon_early</td><td>× -1</td></tr>
+            <tr><td>大引け</td><td>profit_per_100_shares_phase2</td><td>× -1</td></tr>
+        </table>
+
+        <div class="alert alert-info">
+            <div class="alert-title">参照UI</div>
+            <code>http://localhost:3000/dev/analysis</code> がベースの分析画面
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- セクション1: 計算方式の比較 -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>1. 先物変化率の計算方式</h2>
+
+        <div class="grid-2">
+            <div class="flow-box">
+                <h3>方式1: 先物同士比較</h3>
+                <pre>前取引日の先物23:00 → 前夜の先物23:00</pre>
+                <p class="muted">先物の日次変化を測定</p>
+            </div>
+            <div class="flow-box">
+                <h3>方式2: 日経終値 vs 先物（夜間ギャップ）</h3>
+                <pre>前営業日の日経終値(15:30) → 前夜の先物23:00</pre>
+                <p class="muted">トレーダーが直面する「夜間ギャップ」を測定</p>
+            </div>
+        </div>
+
+        <h3>決定的な違い: 2026-01-13のケース</h3>
+        <div class="alert alert-warning">
+            <div class="alert-title">祝日を跨ぐ場合の差異</div>
+            <table>
+                <tr><th>日付</th><th>方式1（先物日次）</th><th>方式2（夜間ギャップ）</th><th>日経日次</th></tr>
+                <tr>
+                    <td class="bold">2026-01-13</td>
+                    <td class="tabular">+0.25%</td>
+                    <td class="tabular positive bold">+4.30%</td>
+                    <td class="tabular">+3.10%</td>
+                </tr>
+            </table>
+            <p style="margin-top: 12px;">
+                <strong>方式1では+0.25%（普通）、方式2では+4.30%（極端）と判定が異なる</strong><br>
+                両方式とも比較期間は同じ（1/9 → 1/12）だが、基準点が異なる:
+            </p>
+            <ul style="margin: 8px 0; padding-left: 20px;">
+                <li><strong>方式1</strong>: 1/9 先物23:00 → 1/12 先物23:00 = +0.25%（先物同士の比較）</li>
+                <li><strong>方式2</strong>: 1/9 日経終値15:30 → 1/12 先物23:00 = +4.30%（日経終値基準）</li>
+            </ul>
+            <p>
+                差が生じる理由: 1/9の日経終値(15:30)と1/9の先物(23:00)の間に既にギャップが存在。<br>
+                方式2は「日経終値からの乖離」を測定するため、トレーダーが翌営業日に直面する実際のギャップを反映。
+            </p>
+        </div>
+
+        <h3>相関分析（n=44日）</h3>
+        <table>
+            <tr><th></th><th>先物日次(方式1)</th><th>日経日次</th><th>夜間Gap(方式2)</th></tr>
+            <tr><td>先物日次(方式1)</td><td>1.000</td><td class="tabular">0.689</td><td class="tabular">0.839</td></tr>
+            <tr><td>日経日次</td><td class="tabular">0.689</td><td>1.000</td><td class="tabular">0.864</td></tr>
+            <tr><td>夜間Gap(方式2)</td><td class="tabular">0.839</td><td class="tabular">0.864</td><td>1.000</td></tr>
+        </table>
+
+        <div class="alert alert-success">
+            <div class="alert-title">結論: 方式2（夜間ギャップ）を採用</div>
+            <ul style="margin: 8px 0; padding-left: 20px;">
+                <li>方式1は祝日ギャップを正しく捉えられない</li>
+                <li>方式2はトレーダーが実際に直面するギャップを測定</li>
+                <li>極端相場の検出に適している</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- セクション2: 統計的有意性テスト -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>2. 統計的有意性テスト</h2>
+
+        <div class="alert alert-info">
+            <div class="alert-title">帰無仮説</div>
+            <strong>H0: 期待損益 = 0円</strong>（取引しても意味がない）<br>
+            検定方法: 1標本t検定
+        </div>
+
+        <h3>ショート戦略 - 区間別統計的有意性</h3>
+
+        <h4>10:25決済</h4>
+        <table>
+            <tr><th>区間</th><th>n</th><th>平均損益</th><th>累計損益</th><th>t値</th><th>p値</th><th>判定</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">92</td><td class="tabular">-124円</td><td class="tabular">-11,448円</td><td class="tabular">-0.08</td><td class="tabular muted">0.9334</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">-1~-0.5%</td><td class="tabular bold">61</td><td class="tabular positive bold">+3,115円</td><td class="tabular positive">+190,000円</td><td class="tabular">3.31</td><td class="tabular positive bold">0.0016</td><td class="positive bold">利益**</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">162</td><td class="tabular">-368円</td><td class="tabular">-59,664円</td><td class="tabular">-0.76</td><td class="tabular muted">0.4480</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">0~+0.5%</td><td class="tabular bold">76</td><td class="tabular positive bold">+4,649円</td><td class="tabular positive">+353,293円</td><td class="tabular">2.53</td><td class="tabular positive">0.0134</td><td class="positive">利益*</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular">75</td><td class="tabular">-302円</td><td class="tabular">-22,630円</td><td class="tabular">-0.35</td><td class="tabular muted">0.7282</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">+1~+2%</td><td class="tabular bold">65</td><td class="tabular positive bold">+4,039円</td><td class="tabular positive">+262,550円</td><td class="tabular">3.32</td><td class="tabular positive bold">0.0015</td><td class="positive bold">利益**</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular">21</td><td class="tabular">+983円</td><td class="tabular">+20,650円</td><td class="tabular">0.84</td><td class="tabular muted">0.4108</td><td class="muted">―</td></tr>
+            <tr class="negative"><td class="bold negative">&gt;+3%</td><td class="tabular bold">21</td><td class="tabular negative bold">-4,857円</td><td class="tabular negative">-102,000円</td><td class="tabular">-2.42</td><td class="tabular negative">0.0251</td><td class="negative">損失*</td></tr>
+        </table>
+
+        <h4>前場引け決済</h4>
+        <table>
+            <tr><th>区間</th><th>n</th><th>平均損益</th><th>累計損益</th><th>t値</th><th>p値</th><th>判定</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">92</td><td class="tabular">-121円</td><td class="tabular">-11,090円</td><td class="tabular">-0.08</td><td class="tabular muted">0.9383</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">-1~-0.5%</td><td class="tabular bold">61</td><td class="tabular positive bold">+3,492円</td><td class="tabular positive">+213,000円</td><td class="tabular">3.94</td><td class="tabular positive bold">0.0002</td><td class="positive bold">利益**</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">162</td><td class="tabular">-564円</td><td class="tabular">-91,300円</td><td class="tabular">-0.99</td><td class="tabular muted">0.3221</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">0~+0.5%</td><td class="tabular bold">76</td><td class="tabular positive bold">+4,751円</td><td class="tabular positive">+361,100円</td><td class="tabular">2.60</td><td class="tabular positive">0.0113</td><td class="positive">利益*</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular">75</td><td class="tabular">-333円</td><td class="tabular">-25,010円</td><td class="tabular">-0.38</td><td class="tabular muted">0.7028</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">+1~+2%</td><td class="tabular bold">65</td><td class="tabular positive bold">+2,840円</td><td class="tabular positive">+184,600円</td><td class="tabular">2.99</td><td class="tabular positive bold">0.0040</td><td class="positive bold">利益**</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular">21</td><td class="tabular">+243円</td><td class="tabular">+5,100円</td><td class="tabular">0.15</td><td class="tabular muted">0.8859</td><td class="muted">―</td></tr>
+            <tr class="negative"><td class="bold negative">&gt;+3%</td><td class="tabular bold">21</td><td class="tabular negative bold">-6,476円</td><td class="tabular negative">-136,000円</td><td class="tabular">-3.13</td><td class="tabular negative bold">0.0053</td><td class="negative bold">損失**</td></tr>
+        </table>
+
+        <h4>14:45決済</h4>
+        <table>
+            <tr><th>区間</th><th>n</th><th>平均損益</th><th>累計損益</th><th>t値</th><th>p値</th><th>判定</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">92</td><td class="tabular">+6円</td><td class="tabular">+507円</td><td class="tabular">0.00</td><td class="tabular muted">0.9971</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">-1~-0.5%</td><td class="tabular bold">61</td><td class="tabular positive bold">+4,089円</td><td class="tabular positive">+249,450円</td><td class="tabular">4.48</td><td class="tabular positive bold">&lt;0.0001</td><td class="positive bold">利益**</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">162</td><td class="tabular">+424円</td><td class="tabular">+68,705円</td><td class="tabular">0.60</td><td class="tabular muted">0.5514</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">0~+0.5%</td><td class="tabular bold">76</td><td class="tabular positive bold">+7,886円</td><td class="tabular positive">+599,300円</td><td class="tabular">2.68</td><td class="tabular positive bold">0.0090</td><td class="positive bold">利益**</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular">75</td><td class="tabular">+70円</td><td class="tabular">+5,250円</td><td class="tabular">0.12</td><td class="tabular muted">0.9034</td><td class="muted">―</td></tr>
+            <tr><td>+1~+2%</td><td class="tabular">65</td><td class="tabular">+2,615円</td><td class="tabular">+170,000円</td><td class="tabular">1.73</td><td class="tabular muted">0.0880</td><td class="muted">―</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular">21</td><td class="tabular">+1,029円</td><td class="tabular">+21,600円</td><td class="tabular">0.85</td><td class="tabular muted">0.4058</td><td class="muted">―</td></tr>
+            <tr class="negative"><td class="bold negative">&gt;+3%</td><td class="tabular bold">21</td><td class="tabular negative bold">-7,260円</td><td class="tabular negative">-152,450円</td><td class="tabular">-3.29</td><td class="tabular negative bold">0.0037</td><td class="negative bold">損失**</td></tr>
+        </table>
+
+        <h4>大引け決済</h4>
+        <table>
+            <tr><th>区間</th><th>n</th><th>平均損益</th><th>累計損益</th><th>t値</th><th>p値</th><th>判定</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">92</td><td class="tabular">-798円</td><td class="tabular">-73,450円</td><td class="tabular">-0.46</td><td class="tabular muted">0.6496</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">-1~-0.5%</td><td class="tabular bold">61</td><td class="tabular positive bold">+4,293円</td><td class="tabular positive">+261,900円</td><td class="tabular">4.76</td><td class="tabular positive bold">&lt;0.0001</td><td class="positive bold">利益**</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">162</td><td class="tabular">+222円</td><td class="tabular">+35,950円</td><td class="tabular">0.29</td><td class="tabular muted">0.7741</td><td class="muted">―</td></tr>
+            <tr class="positive"><td class="bold">0~+0.5%</td><td class="tabular bold">76</td><td class="tabular positive bold">+8,207円</td><td class="tabular positive">+623,700円</td><td class="tabular">2.68</td><td class="tabular positive bold">0.0091</td><td class="positive bold">利益**</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular">75</td><td class="tabular">-13円</td><td class="tabular">-970円</td><td class="tabular">-0.02</td><td class="tabular muted">0.9819</td><td class="muted">―</td></tr>
+            <tr><td>+1~+2%</td><td class="tabular">65</td><td class="tabular">+2,202円</td><td class="tabular">+143,150円</td><td class="tabular">1.49</td><td class="tabular muted">0.1408</td><td class="muted">―</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular">21</td><td class="tabular">+538円</td><td class="tabular">+11,300円</td><td class="tabular">0.30</td><td class="tabular muted">0.7662</td><td class="muted">―</td></tr>
+            <tr class="negative"><td class="bold negative">&gt;+3%</td><td class="tabular bold">21</td><td class="tabular negative bold">-7,664円</td><td class="tabular negative">-160,950円</td><td class="tabular">-3.42</td><td class="tabular negative bold">0.0027</td><td class="negative bold">損失**</td></tr>
+        </table>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- セクション3: 結論 -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>3. 結論</h2>
+
+        <div class="alert alert-danger">
+            <div class="alert-title">極端相場（&gt;+3%）: 全時間帯で統計的に有意な損失</div>
+            <table>
+                <tr><th>時間帯</th><th>平均損益</th><th>p値</th></tr>
+                <tr><td>10:25</td><td class="tabular negative bold">-4,857円</td><td class="tabular">0.0251</td></tr>
+                <tr><td>前場引け</td><td class="tabular negative bold">-6,476円</td><td class="tabular bold">0.0053</td></tr>
+                <tr><td>14:45</td><td class="tabular negative bold">-7,260円</td><td class="tabular bold">0.0037</td></tr>
+                <tr><td>大引け</td><td class="tabular negative bold">-7,664円</td><td class="tabular bold">0.0027</td></tr>
+            </table>
+            <p style="margin-top: 12px;"><strong>→ 夜間ギャップ（方式2）が+3%超の場合、ショート取引を回避すべき</strong></p>
+        </div>
+
+        <div class="alert alert-success">
+            <div class="alert-title">推奨ゾーン: 統計的に有意な利益</div>
+            <table>
+                <tr><th>区間</th><th>全時間帯で有意</th><th>平均損益レンジ</th></tr>
+                <tr><td class="positive bold">-1~-0.5%</td><td>p &lt; 0.01</td><td class="tabular positive">+3,115円 ~ +4,293円</td></tr>
+                <tr><td class="positive bold">0~+0.5%</td><td>p &lt; 0.05</td><td class="tabular positive">+4,649円 ~ +8,207円</td></tr>
+            </table>
+        </div>
+
+        <h3>実装への反映</h3>
+        <table>
+            <tr><th>項目</th><th>値</th></tr>
+            <tr><td>計算方式</td><td><strong>方式2（日経終値 vs 先物23:00）</strong></td></tr>
+            <tr><td>極端相場閾値</td><td><strong>±3%</strong></td></tr>
+            <tr><td>極端相場時の対応</td><td>ショート取引回避を推奨</td></tr>
+            <tr><td>parquetカラム</td><td><code>futures_change_pct</code>（方式2で計算）</td></tr>
+        </table>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- セクション4: 区間×曜日クロス集計 -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>4. 区間 × 曜日 クロス集計（大引け決済）</h2>
+
+        <h3>損益合計（円）</h3>
+        <table>
+            <tr><th>区間</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>合計</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular negative">-15,200</td><td class="tabular muted">-</td><td class="tabular positive">+6,700</td><td class="tabular muted">-</td><td class="tabular negative">-64,950</td><td class="tabular negative">-73,450</td></tr>
+            <tr class="positive"><td class="bold">-1~-0.5%</td><td class="tabular muted">-</td><td class="tabular positive bold">+147,400</td><td class="tabular muted">-</td><td class="tabular positive">+82,200</td><td class="tabular positive">+32,300</td><td class="tabular positive bold">+261,900</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular positive">+65,400</td><td class="tabular positive">+500</td><td class="tabular negative">-115,700</td><td class="tabular positive">+93,150</td><td class="tabular negative">-7,400</td><td class="tabular positive">+35,950</td></tr>
+            <tr class="positive"><td class="bold">0~+0.5%</td><td class="tabular positive">+17,150</td><td class="tabular positive bold">+339,550</td><td class="tabular muted">-</td><td class="tabular positive">+114,500</td><td class="tabular positive bold">+152,500</td><td class="tabular positive bold">+623,700</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular muted">-</td><td class="tabular negative">-600</td><td class="tabular positive">+10,000</td><td class="tabular negative">-10,370</td><td class="tabular muted">-</td><td class="tabular negative">-970</td></tr>
+            <tr><td>+1~+2%</td><td class="tabular positive">+84,150</td><td class="tabular positive">+69,300</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular negative">-10,300</td><td class="tabular positive">+143,150</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular positive">+11,300</td><td class="tabular positive">+11,300</td></tr>
+            <tr class="negative"><td class="bold negative">&gt;+3%</td><td class="tabular muted">-</td><td class="tabular negative bold">-160,950</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular negative bold">-160,950</td></tr>
+        </table>
+
+        <h3>件数</h3>
+        <table>
+            <tr><th>区間</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>合計</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">23</td><td class="tabular muted">0</td><td class="tabular">34</td><td class="tabular muted">0</td><td class="tabular">35</td><td class="tabular">92</td></tr>
+            <tr><td>-1~-0.5%</td><td class="tabular muted">0</td><td class="tabular bold">38</td><td class="tabular muted">0</td><td class="tabular">13</td><td class="tabular">10</td><td class="tabular">61</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">23</td><td class="tabular">21</td><td class="tabular">38</td><td class="tabular bold">62</td><td class="tabular">18</td><td class="tabular">162</td></tr>
+            <tr><td>0~+0.5%</td><td class="tabular">19</td><td class="tabular">24</td><td class="tabular muted">0</td><td class="tabular">23</td><td class="tabular">10</td><td class="tabular">76</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular muted">0</td><td class="tabular">19</td><td class="tabular">33</td><td class="tabular">23</td><td class="tabular muted">0</td><td class="tabular">75</td></tr>
+            <tr><td>+1~+2%</td><td class="tabular">27</td><td class="tabular">31</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular">7</td><td class="tabular">65</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular">21</td><td class="tabular">21</td></tr>
+            <tr><td>&gt;+3%</td><td class="tabular muted">0</td><td class="tabular bold">21</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular muted">0</td><td class="tabular">21</td></tr>
+        </table>
+
+        <h3>勝率（%）</h3>
+        <table>
+            <tr><th>区間</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th></tr>
+            <tr><td>&lt;-1%</td><td class="tabular">60.9</td><td class="tabular muted">-</td><td class="tabular">64.7</td><td class="tabular muted">-</td><td class="tabular negative">42.9</td></tr>
+            <tr><td>-1~-0.5%</td><td class="tabular muted">-</td><td class="tabular positive bold">78.9</td><td class="tabular muted">-</td><td class="tabular">61.5</td><td class="tabular positive">70.0</td></tr>
+            <tr><td>-0.5~0%</td><td class="tabular">52.2</td><td class="tabular">57.1</td><td class="tabular negative bold">23.7</td><td class="tabular">54.8</td><td class="tabular">55.6</td></tr>
+            <tr><td>0~+0.5%</td><td class="tabular negative bold">15.8</td><td class="tabular">66.7</td><td class="tabular muted">-</td><td class="tabular positive bold">73.9</td><td class="tabular positive">70.0</td></tr>
+            <tr><td>+0.5~+1%</td><td class="tabular muted">-</td><td class="tabular negative">42.1</td><td class="tabular">51.5</td><td class="tabular">56.5</td><td class="tabular muted">-</td></tr>
+            <tr><td>+1~+2%</td><td class="tabular positive">70.4</td><td class="tabular">51.6</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular negative bold">14.3</td></tr>
+            <tr><td>+2~+3%</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular">61.9</td></tr>
+            <tr><td>&gt;+3%</td><td class="tabular muted">-</td><td class="tabular negative bold">9.5</td><td class="tabular muted">-</td><td class="tabular muted">-</td><td class="tabular muted">-</td></tr>
+        </table>
+
+        <h3>注目すべき組み合わせ</h3>
+
+        <div class="alert alert-success">
+            <div class="alert-title">高勝率・高収益（n≧5）</div>
+            <table>
+                <tr><th>組み合わせ</th><th>n</th><th>勝率</th><th>平均損益</th><th>累計損益</th></tr>
+                <tr><td class="positive bold">-1~-0.5% × 火</td><td class="tabular">38</td><td class="tabular positive">78.9%</td><td class="tabular positive">+3,879円</td><td class="tabular positive">+147,400円</td></tr>
+                <tr><td class="positive bold">0~+0.5% × 木</td><td class="tabular">23</td><td class="tabular positive">73.9%</td><td class="tabular positive">+4,978円</td><td class="tabular positive">+114,500円</td></tr>
+                <tr><td class="positive bold">0~+0.5% × 金</td><td class="tabular">10</td><td class="tabular positive">70.0%</td><td class="tabular positive bold">+15,250円</td><td class="tabular positive">+152,500円</td></tr>
+                <tr><td class="positive">0~+0.5% × 火</td><td class="tabular">24</td><td class="tabular">66.7%</td><td class="tabular positive bold">+14,148円</td><td class="tabular positive bold">+339,550円</td></tr>
+                <tr><td class="positive">+1~+2% × 月</td><td class="tabular">27</td><td class="tabular positive">70.4%</td><td class="tabular positive">+3,117円</td><td class="tabular positive">+84,150円</td></tr>
+            </table>
+        </div>
+
+        <div class="alert alert-danger">
+            <div class="alert-title">低勝率・高損失（n≧5）</div>
+            <table>
+                <tr><th>組み合わせ</th><th>n</th><th>勝率</th><th>平均損益</th><th>累計損益</th></tr>
+                <tr><td class="negative bold">&gt;+3% × 火</td><td class="tabular">21</td><td class="tabular negative bold">9.5%</td><td class="tabular negative bold">-7,664円</td><td class="tabular negative">-160,950円</td></tr>
+                <tr><td class="negative">+1~+2% × 金</td><td class="tabular">7</td><td class="tabular negative">14.3%</td><td class="tabular negative">-1,471円</td><td class="tabular negative">-10,300円</td></tr>
+                <tr><td class="negative">0~+0.5% × 月</td><td class="tabular">19</td><td class="tabular negative">15.8%</td><td class="tabular">+903円</td><td class="tabular positive">+17,150円</td></tr>
+                <tr><td class="negative">-0.5~0% × 水</td><td class="tabular">38</td><td class="tabular negative">23.7%</td><td class="tabular negative">-3,045円</td><td class="tabular negative">-115,700円</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- セクション5: 今後の課題 -->
+    <!-- ========================================== -->
+    <div class="section">
+        <h2>5. 今後の課題</h2>
+        <ul style="margin: 12px 0; padding-left: 20px;">
+            <li><strong>サンプル数の増加</strong>: n=21（&gt;+3%区間）は検出力限界。n≧50で安定</li>
+            <li><strong>パイプライン自動化</strong>: 16:45/23:00パイプラインで自動計算・フラグ付与</li>
+            <li><strong>エントリールール精緻化</strong>: 区間×曜日の組み合わせでフィルタリング</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        生成日時: 2026-01-14 | 分析期間: 2025-11-04以降 | 分析基盤: /dev/analysis (dev_analysis.py)
+    </div>
+</div>
+</body>
+</html>

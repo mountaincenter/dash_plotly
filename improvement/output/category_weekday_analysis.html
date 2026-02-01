@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>カテゴリ × 曜日 分析（修正版）</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a3a3a3;
+            --positive: #22c55e;
+            --negative: #ef4444;
+            --accent: #3b82f6;
+            --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .meta { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px 16px; text-align: right; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 500; font-size: 12px; }
+        th:first-child, td:first-child { text-align: left; }
+        tr:hover { background: var(--bg-tertiary); }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .warning { color: var(--warning); }
+        .highlight-best { background: rgba(34, 197, 94, 0.15) !important; }
+        .highlight-worst { background: rgba(239, 68, 68, 0.15) !important; }
+        .insight {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .insight-warning { border-left-color: var(--warning); }
+        .insight-danger { border-left-color: var(--negative); }
+        .insight-success { border-left-color: var(--positive); }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-best { background: rgba(34, 197, 94, 0.2); color: var(--positive); }
+        .badge-worst { background: rgba(239, 68, 68, 0.2); color: var(--negative); }
+        .comparison-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .comparison-item {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .comparison-item .label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+        .comparison-item .value { font-size: 28px; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>カテゴリ × 曜日 クロス分析（修正版）</h1>
+    <p class="meta">
+        データ期間: 2025-10-29 ~ 2026-01-14 |
+        データ: 697件 |
+        生成: 2026-01-15 12:04
+    </p>
+
+    <!-- 重要な発見 -->
+    <div class="section">
+        <h2>🔥 重要な発見: IRの有無で木曜が真逆</h2>
+        <div class="comparison-box">
+            <div class="comparison-item">
+                <div class="label">株クラバズ単独 × 木曜</div>
+                <div class="value negative">-93,050円</div>
+                <div class="label">勝率 47% (34件)</div>
+            </div>
+            <div class="comparison-item">
+                <div class="label">株クラバズ+IR × 木曜</div>
+                <div class="value positive">+180,530円</div>
+                <div class="label">勝率 54% (72件)</div>
+            </div>
+        </div>
+        <div class="insight insight-warning">
+            <strong>💡 インサイト:</strong> 木曜日は「IRの裏付けがある株クラバズ」のみショート有効。
+            SNS話題だけの銘柄は木曜ショート不向き（買い戻し入る？）
+        </div>
+    </div>
+
+    <!-- 合計損益テーブル -->
+    <div class="section">
+        <h2>1. カテゴリ × 曜日: 合計損益</h2>
+        <table>
+            <tr>
+                <th>カテゴリ</th>
+                <th>月曜</th>
+                <th>火曜</th>
+                <th>水曜</th>
+                <th>木曜</th>
+                <th>金曜</th>
+                <th>合計</th>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ</strong></td>
+                <td class="positive">14,000</td>
+                <td class="positive">232,400</td>
+                <td class="negative">-27,900</td>
+                <td class="negative">-93,050</td>
+                <td class="negative">-118,200</td>
+                <td class="positive"><strong>7,250</strong></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+IR</strong></td>
+                <td class="positive">47,800</td>
+                <td class="negative">-19,100</td>
+                <td class="positive">12,300</td>
+                <td class="positive">180,530</td>
+                <td class="negative">-22,300</td>
+                <td class="positive"><strong>199,230</strong></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+テーマ</strong></td>
+                <td class="positive">8,950</td>
+                <td class="negative">-94,400</td>
+                <td class="negative">-49,800</td>
+                <td class="positive">104,683</td>
+                <td class="positive">24,450</td>
+                <td class="negative"><strong>-6,117</strong></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+IR+テーマ</strong></td>
+                <td class="negative">-5,300</td>
+                <td class="positive">141,100</td>
+                <td class="negative">-14,800</td>
+                <td class="positive">15,900</td>
+                <td class="positive">17,500</td>
+                <td class="positive"><strong>154,400</strong></td>
+            </tr>
+            <tr>
+                <td><strong>IR材料</strong></td>
+                <td class="positive">11,300</td>
+                <td class="positive">23,400</td>
+                <td class="negative">-47,000</td>
+                <td class="negative">-1,400</td>
+                <td class="positive">179,400</td>
+                <td class="positive"><strong>165,700</strong></td>
+            </tr>
+            <tr>
+                <td><strong>テーマ連動</strong></td>
+                <td class="">0</td>
+                <td class="positive">68,500</td>
+                <td class="negative">-1,300</td>
+                <td class="">0</td>
+                <td class="negative">-33,200</td>
+                <td class="positive"><strong>34,000</strong></td>
+            </tr>
+            <tr>
+                <td><strong>バイオ</strong></td>
+                <td class="">0</td>
+                <td class="positive">8,000</td>
+                <td class="negative">-23,200</td>
+                <td class="">0</td>
+                <td class="">0</td>
+                <td class="negative"><strong>-15,200</strong></td>
+            </tr>
+            <tr>
+                <td><strong>その他</strong></td>
+                <td class="positive">74,750</td>
+                <td class="positive">47,600</td>
+                <td class="negative">-12,400</td>
+                <td class="">0</td>
+                <td class="negative">-124,900</td>
+                <td class="negative"><strong>-14,950</strong></td>
+            </tr>
+
+        </table>
+    </div>
+
+    <!-- 勝率テーブル -->
+    <div class="section">
+        <h2>2. カテゴリ × 曜日: 勝率</h2>
+        <table>
+            <tr>
+                <th>カテゴリ</th>
+                <th>月曜</th>
+                <th>火曜</th>
+                <th>水曜</th>
+                <th>木曜</th>
+                <th>金曜</th>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ</strong></td>
+                <td class="negative">37% <small>(19件)</small></td>
+                <td class="positive">58% <small>(36件)</small></td>
+                <td class="negative">43% <small>(28件)</small></td>
+                <td class="warning">47% <small>(34件)</small></td>
+                <td class="positive">57% <small>(40件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+IR</strong></td>
+                <td class="warning">53% <small>(34件)</small></td>
+                <td class="warning">50% <small>(28件)</small></td>
+                <td class="warning">46% <small>(71件)</small></td>
+                <td class="warning">54% <small>(72件)</small></td>
+                <td class="negative">31% <small>(35件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+テーマ</strong></td>
+                <td class="positive">88% <small>(8件)</small></td>
+                <td class="negative">35% <small>(17件)</small></td>
+                <td class="negative">27% <small>(15件)</small></td>
+                <td class="positive">68% <small>(34件)</small></td>
+                <td class="warning">50% <small>(12件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>株クラバズ+IR+テーマ</strong></td>
+                <td class="positive">58% <small>(12件)</small></td>
+                <td class="positive">64% <small>(11件)</small></td>
+                <td class="positive">57% <small>(7件)</small></td>
+                <td class="warning">53% <small>(17件)</small></td>
+                <td class="positive">62% <small>(8件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>IR材料</strong></td>
+                <td class="positive">71% <small>(7件)</small></td>
+                <td class="positive">58% <small>(24件)</small></td>
+                <td class="negative">43% <small>(21件)</small></td>
+                <td class="warning">50% <small>(4件)</small></td>
+                <td class="positive">65% <small>(17件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>テーマ連動</strong></td>
+                <td>-</td>
+                <td class="positive">82% <small>(11件)</small></td>
+                <td class="negative">0% <small>(2件)</small></td>
+                <td>-</td>
+                <td class="negative">33% <small>(3件)</small></td>
+            </tr>
+            <tr>
+                <td><strong>バイオ</strong></td>
+                <td>-</td>
+                <td class="positive">100% <small>(2件)</small></td>
+                <td class="negative">33% <small>(3件)</small></td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><strong>その他</strong></td>
+                <td class="negative">33% <small>(12件)</small></td>
+                <td class="warning">50% <small>(38件)</small></td>
+                <td class="positive">71% <small>(7件)</small></td>
+                <td>-</td>
+                <td class="negative">38% <small>(8件)</small></td>
+            </tr>
+
+        </table>
+    </div>
+
+    <!-- ベスト・ワースト -->
+    <div class="section">
+        <h2>3. ベスト・ワースト組み合わせ（5件以上）</h2>
+        <table>
+            <tr>
+                <th></th>
+                <th>組み合わせ</th>
+                <th>合計損益</th>
+                <th>件数</th>
+                <th>勝率</th>
+            </tr>
+            <tr class="highlight-best">
+                <td><span class="badge badge-best">BEST 1</span></td>
+                <td><strong>株クラバズ × 火曜</strong></td>
+                <td class="positive">232,400</td>
+                <td>36件</td>
+                <td>58%</td>
+            </tr>
+            <tr class="highlight-best">
+                <td><span class="badge badge-best">BEST 2</span></td>
+                <td><strong>株クラバズ+IR × 木曜</strong></td>
+                <td class="positive">180,530</td>
+                <td>72件</td>
+                <td>54%</td>
+            </tr>
+            <tr class="highlight-best">
+                <td><span class="badge badge-best">BEST 3</span></td>
+                <td><strong>IR材料 × 金曜</strong></td>
+                <td class="positive">179,400</td>
+                <td>17件</td>
+                <td>65%</td>
+            </tr>
+            <tr class="highlight-best">
+                <td><span class="badge badge-best">BEST 4</span></td>
+                <td><strong>株クラバズ+IR+テーマ × 火曜</strong></td>
+                <td class="positive">141,100</td>
+                <td>11件</td>
+                <td>64%</td>
+            </tr>
+            <tr class="highlight-best">
+                <td><span class="badge badge-best">BEST 5</span></td>
+                <td><strong>株クラバズ+テーマ × 木曜</strong></td>
+                <td class="positive">104,683</td>
+                <td>34件</td>
+                <td>68%</td>
+            </tr>
+            <tr><td colspan="5" style="border:none;height:16px;"></td></tr>
+            <tr class="highlight-worst">
+                <td><span class="badge badge-worst">WORST 1</span></td>
+                <td><strong>その他 × 金曜</strong></td>
+                <td class="negative">-124,900</td>
+                <td>8件</td>
+                <td>38%</td>
+            </tr>
+            <tr class="highlight-worst">
+                <td><span class="badge badge-worst">WORST 2</span></td>
+                <td><strong>株クラバズ × 金曜</strong></td>
+                <td class="negative">-118,200</td>
+                <td>40件</td>
+                <td>57%</td>
+            </tr>
+            <tr class="highlight-worst">
+                <td><span class="badge badge-worst">WORST 3</span></td>
+                <td><strong>株クラバズ+テーマ × 火曜</strong></td>
+                <td class="negative">-94,400</td>
+                <td>17件</td>
+                <td>35%</td>
+            </tr>
+            <tr class="highlight-worst">
+                <td><span class="badge badge-worst">WORST 4</span></td>
+                <td><strong>株クラバズ × 木曜</strong></td>
+                <td class="negative">-93,050</td>
+                <td>34件</td>
+                <td>47%</td>
+            </tr>
+            <tr class="highlight-worst">
+                <td><span class="badge badge-worst">WORST 5</span></td>
+                <td><strong>株クラバズ+テーマ × 水曜</strong></td>
+                <td class="negative">-49,800</td>
+                <td>15件</td>
+                <td>27%</td>
+            </tr>
+
+        </table>
+    </div>
+
+    <!-- 結論 -->
+    <div class="section">
+        <h2>結論: 木曜日のショート判断基準</h2>
+        
+        <div class="insight insight-success">
+            <h4>✅ 木曜ショートOK</h4>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>株クラバズ+IR:</strong> +180,530円 / 54%勝率</li>
+                <li><strong>株クラバズ+テーマ:</strong> +104,683円 / 68%勝率</li>
+                <li>→ <strong>IRやテーマの裏付けがある銘柄</strong>はショート有効</li>
+            </ul>
+        </div>
+        
+        <div class="insight insight-danger">
+            <h4>⚠️ 木曜ショートNG</h4>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>株クラバズ単独:</strong> -93,050円 / 47%勝率</li>
+                <li>→ <strong>SNS話題だけの銘柄</strong>は木曜に買い戻しが入る</li>
+            </ul>
+        </div>
+        
+        <div class="insight">
+            <h4>📊 今日（木曜）の判断</h4>
+            <p>reasonを確認し、IR/決算/テーマの言及があるかチェック。<br>
+            言及がある銘柄のみショート検討、ない銘柄は見送り。</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

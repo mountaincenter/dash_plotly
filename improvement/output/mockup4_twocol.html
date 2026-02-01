@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>案4: 2カラムレイアウト</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0f',
+                foreground: '#fafafa',
+                card: '#18181b',
+                'card-foreground': '#fafafa',
+                muted: '#27272a',
+                'muted-foreground': '#a1a1aa',
+                border: '#27272a',
+            }
+        }
+    }
+}
+</script>
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.tab-active { background: rgba(39, 39, 42, 0.8); border-bottom: 2px solid #fafafa; }
+.tab-inactive { background: transparent; border-bottom: 2px solid transparent; }
+.tab-inactive:hover { background: rgba(39, 39, 42, 0.4); }
+details summary { cursor: pointer; }
+details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+    <main class="relative min-h-screen">
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 py-4">
+
+            <header class="mb-4 pb-3 border-b border-border/30">
+                <h1 class="text-xl font-bold text-foreground">案4: 2カラムレイアウト</h1>
+                <p class="text-muted-foreground text-sm">左に「除外後」メイン、右に「RSI/ATR詳細」を常時並列表示。</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 左カラム: 除外後（メイン） -->
+                <div>
+                    <h2 class="text-lg font-semibold text-emerald-400 mb-4">除外後（メイン）</h2>
+                    <div class="space-y-4">
+
+                        <div class="rounded-lg border border-border/40 bg-card/50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-foreground">月曜日</span>
+                                <span class="text-muted-foreground text-sm">62件</span>
+                            </div>
+                            <table class="w-full text-xs">
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">~1,000円</td>
+                                        <td class="text-right py-1 tabular-nums">27</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-50,600</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">1,000~3,000円</td>
+                                        <td class="text-right py-1 tabular-nums">21</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+59,750</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">3,000~5,000円</td>
+                                        <td class="text-right py-1 tabular-nums">5</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-13,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">5,000~10,000円</td>
+                                        <td class="text-right py-1 tabular-nums">7</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+98,000</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">10,000円~</td>
+                                        <td class="text-right py-1 tabular-nums">2</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-27,500</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-border/40 bg-card/50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-foreground">火曜日</span>
+                                <span class="text-muted-foreground text-sm">91件</span>
+                            </div>
+                            <table class="w-full text-xs">
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">~1,000円</td>
+                                        <td class="text-right py-1 tabular-nums">48</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+22,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">1,000~3,000円</td>
+                                        <td class="text-right py-1 tabular-nums">28</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+112,350</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">3,000~5,000円</td>
+                                        <td class="text-right py-1 tabular-nums">11</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+49,600</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">5,000~10,000円</td>
+                                        <td class="text-right py-1 tabular-nums">3</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-35,800</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">10,000円~</td>
+                                        <td class="text-right py-1 tabular-nums">1</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-19,000</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-border/40 bg-card/50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-foreground">水曜日</span>
+                                <span class="text-muted-foreground text-sm">90件</span>
+                            </div>
+                            <table class="w-full text-xs">
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">~1,000円</td>
+                                        <td class="text-right py-1 tabular-nums">42</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-17,200</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">1,000~3,000円</td>
+                                        <td class="text-right py-1 tabular-nums">39</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+28,100</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">3,000~5,000円</td>
+                                        <td class="text-right py-1 tabular-nums">5</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+9,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">5,000~10,000円</td>
+                                        <td class="text-right py-1 tabular-nums">4</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-87,000</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">10,000円~</td>
+                                        <td class="text-right py-1 tabular-nums">0</td>
+                                        <td class="text-right py-1 tabular-nums text-foreground">-</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-border/40 bg-card/50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-foreground">木曜日</span>
+                                <span class="text-muted-foreground text-sm">111件</span>
+                            </div>
+                            <table class="w-full text-xs">
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">~1,000円</td>
+                                        <td class="text-right py-1 tabular-nums">49</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+11,229</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">1,000~3,000円</td>
+                                        <td class="text-right py-1 tabular-nums">46</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-29,550</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">3,000~5,000円</td>
+                                        <td class="text-right py-1 tabular-nums">11</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+80,800</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">5,000~10,000円</td>
+                                        <td class="text-right py-1 tabular-nums">3</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-10,000</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">10,000円~</td>
+                                        <td class="text-right py-1 tabular-nums">2</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+61,500</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-border/40 bg-card/50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-foreground">金曜日</span>
+                                <span class="text-muted-foreground text-sm">63件</span>
+                            </div>
+                            <table class="w-full text-xs">
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">~1,000円</td>
+                                        <td class="text-right py-1 tabular-nums">36</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+8,200</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">1,000~3,000円</td>
+                                        <td class="text-right py-1 tabular-nums">18</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+119,700</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">3,000~5,000円</td>
+                                        <td class="text-right py-1 tabular-nums">5</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+20,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">5,000~10,000円</td>
+                                        <td class="text-right py-1 tabular-nums">3</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+15,400</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">10,000円~</td>
+                                        <td class="text-right py-1 tabular-nums">1</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-24,500</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 右カラム: RSI/ATR詳細 -->
+                <div>
+                    <h2 class="text-lg font-semibold text-foreground mb-4">RSI/ATR 詳細</h2>
+                    <div class="space-y-4">
+
+                        <div class="rounded-lg border border-sky-500/40 bg-sky-500/5 p-3">
+                            <h3 class="text-sky-400 font-medium mb-2">RSIのみ → ロング推奨</h3>
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-muted-foreground border-b border-border/30">
+                                        <th class="text-left py-1">曜日</th>
+                                        <th class="text-right py-1">件</th>
+                                        <th class="text-right py-1">大引</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">月曜日</td>
+                                        <td class="text-right py-1 tabular-nums">15</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-3,950</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">火曜日</td>
+                                        <td class="text-right py-1 tabular-nums">13</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+29,900</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">水曜日</td>
+                                        <td class="text-right py-1 tabular-nums">25</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-95,300</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">木曜日</td>
+                                        <td class="text-right py-1 tabular-nums">27</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-325,300</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">金曜日</td>
+                                        <td class="text-right py-1 tabular-nums">27</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-114,250</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                            <h3 class="text-amber-400 font-medium mb-2">ATRのみ → ショート有効</h3>
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-muted-foreground border-b border-border/30">
+                                        <th class="text-left py-1">曜日</th>
+                                        <th class="text-right py-1">件</th>
+                                        <th class="text-right py-1">大引</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">月曜日</td>
+                                        <td class="text-right py-1 tabular-nums">8</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+71,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">火曜日</td>
+                                        <td class="text-right py-1 tabular-nums">27</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+410,300</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">水曜日</td>
+                                        <td class="text-right py-1 tabular-nums">15</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+7,200</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">木曜日</td>
+                                        <td class="text-right py-1 tabular-nums">25</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+191,283</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">金曜日</td>
+                                        <td class="text-right py-1 tabular-nums">28</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+346,000</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="rounded-lg border border-purple-500/40 bg-purple-500/5 p-3">
+                            <h3 class="text-purple-400 font-medium mb-2">両方 → 要分析</h3>
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-muted-foreground border-b border-border/30">
+                                        <th class="text-left py-1">曜日</th>
+                                        <th class="text-right py-1">件</th>
+                                        <th class="text-right py-1">大引</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">月曜日</td>
+                                        <td class="text-right py-1 tabular-nums">0</td>
+                                        <td class="text-right py-1 tabular-nums text-foreground">-</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">火曜日</td>
+                                        <td class="text-right py-1 tabular-nums">2</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-10,500</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">水曜日</td>
+                                        <td class="text-right py-1 tabular-nums">1</td>
+                                        <td class="text-right py-1 tabular-nums text-rose-400">-3,000</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">木曜日</td>
+                                        <td class="text-right py-1 tabular-nums">2</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+26,200</td>
+                                    </tr>
+
+                                    <tr class="border-b border-border/20">
+                                        <td class="py-1">金曜日</td>
+                                        <td class="text-right py-1 tabular-nums">3</td>
+                                        <td class="text-right py-1 tabular-nums text-emerald-400">+31,100</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>価格帯別損益分析 (12/22~)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; }
+        .subtitle { color: #888; font-size: 0.875rem; margin-bottom: 24px; }
+        .section { margin-bottom: 32px; }
+        .section-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 12px; color: #fff; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        th { background: rgba(255,255,255,0.05); color: #aaa; font-weight: 500; font-size: 0.875rem; }
+        th:first-child, td:first-child { text-align: left; }
+        tr:last-child td { border-bottom: none; }
+        tr.total { background: rgba(255,255,255,0.05); font-weight: 600; }
+        .positive { color: #34d399; }
+        .negative { color: #f87171; }
+        .win-high { color: #34d399; }
+        .win-low { color: #f87171; }
+        .tabular { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>価格帯別損益分析</h1>
+        <p class="subtitle">2025-12-22 ~ 2026-01-30 | 206件</p>
+
+        <div class="section">
+            <div class="section-title">全体</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件数</th>
+                        <th>勝率</th>
+                        <th>合計損益</th>
+                        <th>平均損益</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td class="tabular">89</td>
+                        <td class="tabular win-high">52.8%</td>
+                        <td class="tabular positive">+3,462</td>
+                        <td class="tabular positive">+38</td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td class="tabular">81</td>
+                        <td class="tabular win-high">58.0%</td>
+                        <td class="tabular positive">+24,084</td>
+                        <td class="tabular positive">+297</td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td class="tabular">20</td>
+                        <td class="tabular win-high">50.0%</td>
+                        <td class="tabular negative">-69,046</td>
+                        <td class="tabular negative">-3,452</td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td class="tabular">13</td>
+                        <td class="tabular win-low">46.2%</td>
+                        <td class="tabular negative">-12,620</td>
+                        <td class="tabular negative">-970</td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td class="tabular">3</td>
+                        <td class="tabular win-high">66.7%</td>
+                        <td class="tabular negative">-90,975</td>
+                        <td class="tabular negative">-30,325</td>
+                    </tr>
+
+                    <tr class="total">
+                        <td>合計</td>
+                        <td class="tabular">206</td>
+                        <td class="tabular win-high">54.4%</td>
+                        <td class="tabular negative">-145,095</td>
+                        <td class="tabular negative">-704</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">ロング</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件数</th>
+                        <th>勝率</th>
+                        <th>合計損益</th>
+                        <th>平均損益</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td class="tabular">19</td>
+                        <td class="tabular win-high">52.6%</td>
+                        <td class="tabular positive">+2,492</td>
+                        <td class="tabular positive">+131</td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td class="tabular">12</td>
+                        <td class="tabular win-high">66.7%</td>
+                        <td class="tabular negative">-29,485</td>
+                        <td class="tabular negative">-2,457</td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td class="tabular">5</td>
+                        <td class="tabular win-low">40.0%</td>
+                        <td class="tabular negative">-34,859</td>
+                        <td class="tabular negative">-6,971</td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td class="tabular">3</td>
+                        <td class="tabular win-low">33.3%</td>
+                        <td class="tabular positive">+34,566</td>
+                        <td class="tabular positive">+11,522</td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td class="tabular">1</td>
+                        <td class="tabular win-low">0.0%</td>
+                        <td class="tabular negative">-116,000</td>
+                        <td class="tabular negative">-116,000</td>
+                    </tr>
+
+                    <tr class="total">
+                        <td>合計</td>
+                        <td class="tabular">40</td>
+                        <td class="tabular win-high">52.5%</td>
+                        <td class="tabular negative">-143,286</td>
+                        <td class="tabular negative">-3,582</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">ショート</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>価格帯</th>
+                        <th>件数</th>
+                        <th>勝率</th>
+                        <th>合計損益</th>
+                        <th>平均損益</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>~1,000円</td>
+                        <td class="tabular">70</td>
+                        <td class="tabular win-high">52.9%</td>
+                        <td class="tabular positive">+970</td>
+                        <td class="tabular positive">+13</td>
+                    </tr>
+
+                    <tr>
+                        <td>1,000~3,000円</td>
+                        <td class="tabular">69</td>
+                        <td class="tabular win-high">56.5%</td>
+                        <td class="tabular positive">+53,569</td>
+                        <td class="tabular positive">+776</td>
+                    </tr>
+
+                    <tr>
+                        <td>3,000~5,000円</td>
+                        <td class="tabular">15</td>
+                        <td class="tabular win-high">53.3%</td>
+                        <td class="tabular negative">-34,187</td>
+                        <td class="tabular negative">-2,279</td>
+                    </tr>
+
+                    <tr>
+                        <td>5,000~10,000円</td>
+                        <td class="tabular">10</td>
+                        <td class="tabular win-high">50.0%</td>
+                        <td class="tabular negative">-47,186</td>
+                        <td class="tabular negative">-4,718</td>
+                    </tr>
+
+                    <tr>
+                        <td>10,000円~</td>
+                        <td class="tabular">2</td>
+                        <td class="tabular win-high">100.0%</td>
+                        <td class="tabular positive">+25,025</td>
+                        <td class="tabular positive">+12,512</td>
+                    </tr>
+
+                    <tr class="total">
+                        <td>合計</td>
+                        <td class="tabular">166</td>
+                        <td class="tabular win-high">54.8%</td>
+                        <td class="tabular negative">-1,809</td>
+                        <td class="tabular negative">-10</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <p class="subtitle" style="margin-top: 32px;">Generated: 2026-01-31 11:46:13</p>
+    </div>
+</body>
+</html>

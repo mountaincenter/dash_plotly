@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RSI/ATR除外 曜日別損益分析</title>
+<style>
+body {
+    background-color: #1a1a2e;
+    color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+h1 {
+    color: #fff;
+    margin-bottom: 10px;
+}
+h2 {
+    color: #fff;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+.subtitle {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+.legend {
+    background-color: #252540;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    font-size: 13px;
+}
+.legend-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.legend-item {
+    margin-bottom: 4px;
+    color: #aaa;
+}
+.tables-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.table-section {
+    background: linear-gradient(135deg, #252540 0%, #1e1e35 100%);
+    border-radius: 12px;
+    border: 1px solid #333;
+    padding: 20px;
+}
+.table-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+}
+.table-section.seido h3 {
+    color: #74c0fc;
+}
+.table-section.ichinichi h3 {
+    color: #ffd43b;
+}
+.table-section.ichinichi0 h3 {
+    color: #ff922b;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+th {
+    color: #888;
+    font-weight: 500;
+    font-size: 12px;
+}
+td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.row-all { background-color: rgba(255,255,255,0.03); }
+.row-rsi { }
+.row-atr { }
+.row-both-hit { background-color: rgba(177, 98, 252, 0.1); }
+.row-excluded { background-color: rgba(81, 207, 102, 0.1); }
+.row-diff { background-color: rgba(255, 107, 107, 0.1); }
+.label-all { color: #fff; }
+.label-rsi { color: #74c0fc; }
+.label-atr { color: #ffa94d; }
+.label-both-hit { color: #b162fc; }
+.label-excluded { color: #51cf66; font-weight: 600; }
+.label-diff { color: #ff6b6b; }
+.positive { color: #51cf66; }
+.negative { color: #ff6b6b; }
+.zero { color: #666; }
+.weekday-section {
+    margin-bottom: 30px;
+}
+.weekday-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+.summary-table-container {
+    background: linear-gradient(135deg, #252540 0%, #1e1e35 100%);
+    border-radius: 12px;
+    border: 1px solid #444;
+    padding: 20px;
+    margin-bottom: 20px;
+    max-width: 600px;
+}
+.summary-table-container.ex0 {
+    border: 1px solid #ff922b;
+}
+.ex0-label {
+    color: #ff922b;
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.summary-table th {
+    color: #888;
+    font-weight: 500;
+    font-size: 12px;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #444;
+}
+.summary-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #333;
+}
+.summary-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+</style>
+</head>
+<body>
+<h1>RSI/ATR除外 曜日別損益分析</h1>
+<div class="subtitle">ショート戦略 - 各条件での損益比較</div>
+
+<div class="legend">
+    <div class="legend-title">除外条件</div>
+    <div class="legend-item">制度信用: RSI ≥ 70 または ATR ≥ 8%</div>
+    <div class="legend-item">いちにち信用: RSI ≥ 90 または ATR ≥ 9%</div>
+</div>
+
+<h2>サマリー（制度+いちにち合計）</h2>
+<div class="summary-table-container">
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>条件</th>
+                <th>件数</th>
+                <th>10:25</th>
+                <th>前引</th>
+                <th>14:45</th>
+                <th>大引</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="row-all">
+                <td class="label-all">全体</td>
+                <td class="num">635</td>
+                <td class="num"><span class="positive">+681,608</span></td>
+                <td class="num"><span class="positive">+692,774</span></td>
+                <td class="num"><span class="positive">+1,106,577</span></td>
+                <td class="num"><span class="positive">+943,663</span></td>
+            </tr>
+            <tr class="row-rsi">
+                <td class="label-rsi">RSIのみ</td>
+                <td class="num">107</td>
+                <td class="num"><span class="negative">-313,470</span></td>
+                <td class="num"><span class="negative">-390,490</span></td>
+                <td class="num"><span class="negative">-325,270</span></td>
+                <td class="num"><span class="negative">-508,900</span></td>
+            </tr>
+            <tr class="row-atr">
+                <td class="label-atr">ATRのみ</td>
+                <td class="num">103</td>
+                <td class="num"><span class="positive">+551,174</span></td>
+                <td class="num"><span class="positive">+728,274</span></td>
+                <td class="num"><span class="positive">+947,474</span></td>
+                <td class="num"><span class="positive">+1,026,283</span></td>
+            </tr>
+            <tr class="row-both-hit">
+                <td class="label-both-hit">両方</td>
+                <td class="num">8</td>
+                <td class="num"><span class="positive">+56,500</span></td>
+                <td class="num"><span class="positive">+53,900</span></td>
+                <td class="num"><span class="positive">+63,300</span></td>
+                <td class="num"><span class="positive">+43,800</span></td>
+            </tr>
+            <tr class="row-excluded">
+                <td class="label-excluded">除外後</td>
+                <td class="num">417</td>
+                <td class="num"><span class="positive">+387,403</span></td>
+                <td class="num"><span class="positive">+301,089</span></td>
+                <td class="num"><span class="positive">+421,072</span></td>
+                <td class="num"><span class="positive">+382,479</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="summary-table-container ex0">
+    <div class="ex0-label">除0版（RSIのみは除0なし）</div>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>条件</th>
+                <th>件数</th>
+                <th>10:25</th>
+                <th>前引</th>
+                <th>14:45</th>
+                <th>大引</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="row-all">
+                <td class="label-all">全体</td>
+                <td class="num">559</td>
+                <td class="num"><span class="positive">+579,808</span></td>
+                <td class="num"><span class="positive">+517,074</span></td>
+                <td class="num"><span class="positive">+991,376</span></td>
+                <td class="num"><span class="positive">+825,962</span></td>
+            </tr>
+            <tr class="row-rsi">
+                <td class="label-rsi">RSIのみ</td>
+                <td class="num">107</td>
+                <td class="num"><span class="negative">-313,470</span></td>
+                <td class="num"><span class="negative">-390,490</span></td>
+                <td class="num"><span class="negative">-325,270</span></td>
+                <td class="num"><span class="negative">-508,900</span></td>
+            </tr>
+            <tr class="row-atr">
+                <td class="label-atr">ATRのみ</td>
+                <td class="num">82</td>
+                <td class="num"><span class="positive">+455,774</span></td>
+                <td class="num"><span class="positive">+525,674</span></td>
+                <td class="num"><span class="positive">+774,874</span></td>
+                <td class="num"><span class="positive">+790,883</span></td>
+            </tr>
+            <tr class="row-both-hit">
+                <td class="label-both-hit">両方</td>
+                <td class="num">4</td>
+                <td class="num"><span class="positive">+600</span></td>
+                <td class="num"><span class="negative">-3,000</span></td>
+                <td class="num"><span class="positive">+19,100</span></td>
+                <td class="num"><span class="positive">+8,100</span></td>
+            </tr>
+            <tr class="row-excluded">
+                <td class="label-excluded">除外後</td>
+                <td class="num">379</td>
+                <td class="num"><span class="positive">+299,102</span></td>
+                <td class="num"><span class="positive">+244,889</span></td>
+                <td class="num"><span class="positive">+316,271</span></td>
+                <td class="num"><span class="positive">+259,979</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h2>全体合計</h2>
+<div class="tables-container">
+    <div class="table-section seido">
+        <h3>制度信用</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>条件</th>
+                    <th>件数</th>
+                    <th>10:25</th>
+                    <th>前引</th>
+                    <th>14:45</th>
+                    <th>大引</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">236</td>
+            <td class="num"><span class="positive">+265,090</span></td>
+            <td class="num"><span class="positive">+171,399</span></td>
+            <td class="num"><span class="positive">+327,026</span></td>
+            <td class="num"><span class="positive">+224,779</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">73</td>
+            <td class="num"><span class="negative">-110,470</span></td>
+            <td class="num"><span class="negative">-168,690</span></td>
+            <td class="num"><span class="negative">-60,970</span></td>
+            <td class="num"><span class="negative">-136,300</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">13</td>
+            <td class="num"><span class="positive">+118,400</span></td>
+            <td class="num"><span class="positive">+127,700</span></td>
+            <td class="num"><span class="positive">+228,800</span></td>
+            <td class="num"><span class="positive">+223,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">4</td>
+            <td class="num"><span class="positive">+600</span></td>
+            <td class="num"><span class="negative">-3,000</span></td>
+            <td class="num"><span class="positive">+19,100</span></td>
+            <td class="num"><span class="positive">+8,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">146</td>
+            <td class="num"><span class="positive">+256,559</span></td>
+            <td class="num"><span class="positive">+215,389</span></td>
+            <td class="num"><span class="positive">+140,095</span></td>
+            <td class="num"><span class="positive">+129,279</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">90</td>
+            <td class="num"><span class="positive">+8,531</span></td>
+            <td class="num"><span class="negative">-43,990</span></td>
+            <td class="num"><span class="positive">+186,931</span></td>
+            <td class="num"><span class="positive">+95,500</span></td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="table-section ichinichi">
+        <h3>いちにち信用</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>条件</th>
+                    <th>件数</th>
+                    <th>10:25</th>
+                    <th>前引</th>
+                    <th>14:45</th>
+                    <th>大引</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">399</td>
+            <td class="num"><span class="positive">+416,518</span></td>
+            <td class="num"><span class="positive">+521,375</span></td>
+            <td class="num"><span class="positive">+779,551</span></td>
+            <td class="num"><span class="positive">+718,884</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">34</td>
+            <td class="num"><span class="negative">-203,000</span></td>
+            <td class="num"><span class="negative">-221,800</span></td>
+            <td class="num"><span class="negative">-264,300</span></td>
+            <td class="num"><span class="negative">-372,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">90</td>
+            <td class="num"><span class="positive">+432,774</span></td>
+            <td class="num"><span class="positive">+600,574</span></td>
+            <td class="num"><span class="positive">+718,674</span></td>
+            <td class="num"><span class="positive">+802,583</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">4</td>
+            <td class="num"><span class="positive">+55,900</span></td>
+            <td class="num"><span class="positive">+56,900</span></td>
+            <td class="num"><span class="positive">+44,200</span></td>
+            <td class="num"><span class="positive">+35,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">271</td>
+            <td class="num"><span class="positive">+130,844</span></td>
+            <td class="num"><span class="positive">+85,700</span></td>
+            <td class="num"><span class="positive">+280,977</span></td>
+            <td class="num"><span class="positive">+253,200</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">128</td>
+            <td class="num"><span class="positive">+285,674</span></td>
+            <td class="num"><span class="positive">+435,675</span></td>
+            <td class="num"><span class="positive">+498,574</span></td>
+            <td class="num"><span class="positive">+465,684</span></td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="table-section ichinichi0">
+        <h3>いちにち信用（除0）</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>条件</th>
+                    <th>件数</th>
+                    <th>10:25</th>
+                    <th>前引</th>
+                    <th>14:45</th>
+                    <th>大引</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">323</td>
+            <td class="num"><span class="positive">+314,718</span></td>
+            <td class="num"><span class="positive">+345,675</span></td>
+            <td class="num"><span class="positive">+664,350</span></td>
+            <td class="num"><span class="positive">+601,183</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">21</td>
+            <td class="num"><span class="negative">-65,200</span></td>
+            <td class="num"><span class="negative">-81,800</span></td>
+            <td class="num"><span class="negative">-57,900</span></td>
+            <td class="num"><span class="negative">-96,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">69</td>
+            <td class="num"><span class="positive">+337,374</span></td>
+            <td class="num"><span class="positive">+397,974</span></td>
+            <td class="num"><span class="positive">+546,074</span></td>
+            <td class="num"><span class="positive">+567,183</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">233</td>
+            <td class="num"><span class="positive">+42,543</span></td>
+            <td class="num"><span class="positive">+29,500</span></td>
+            <td class="num"><span class="positive">+176,176</span></td>
+            <td class="num"><span class="positive">+130,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">90</td>
+            <td class="num"><span class="positive">+272,175</span></td>
+            <td class="num"><span class="positive">+316,175</span></td>
+            <td class="num"><span class="positive">+488,174</span></td>
+            <td class="num"><span class="positive">+470,483</span></td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="weekday-section">
+    <div class="weekday-title">月曜日</div>
+    <div class="tables-container">
+        <div class="table-section seido">
+            <h3>制度信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">47</td>
+            <td class="num"><span class="positive">+170,649</span></td>
+            <td class="num"><span class="positive">+147,250</span></td>
+            <td class="num"><span class="positive">+70,799</span></td>
+            <td class="num"><span class="positive">+55,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">12</td>
+            <td class="num"><span class="positive">+10,550</span></td>
+            <td class="num"><span class="positive">+12,950</span></td>
+            <td class="num"><span class="positive">+12,500</span></td>
+            <td class="num"><span class="negative">-6,650</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">1</td>
+            <td class="num"><span class="negative">-200</span></td>
+            <td class="num"><span class="positive">+500</span></td>
+            <td class="num"><span class="positive">+300</span></td>
+            <td class="num"><span class="negative">-200</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">34</td>
+            <td class="num"><span class="positive">+160,299</span></td>
+            <td class="num"><span class="positive">+133,800</span></td>
+            <td class="num"><span class="positive">+57,999</span></td>
+            <td class="num"><span class="positive">+62,550</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">13</td>
+            <td class="num"><span class="positive">+10,350</span></td>
+            <td class="num"><span class="positive">+13,450</span></td>
+            <td class="num"><span class="positive">+12,800</span></td>
+            <td class="num"><span class="negative">-6,850</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi">
+            <h3>いちにち信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">38</td>
+            <td class="num"><span class="positive">+26,323</span></td>
+            <td class="num"><span class="positive">+13,200</span></td>
+            <td class="num"><span class="positive">+46,180</span></td>
+            <td class="num"><span class="positive">+78,000</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">3</td>
+            <td class="num"><span class="positive">+2,200</span></td>
+            <td class="num"><span class="positive">+2,400</span></td>
+            <td class="num"><span class="positive">+3,400</span></td>
+            <td class="num"><span class="positive">+2,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">7</td>
+            <td class="num"><span class="positive">+26,900</span></td>
+            <td class="num"><span class="positive">+25,100</span></td>
+            <td class="num"><span class="positive">+53,400</span></td>
+            <td class="num"><span class="positive">+71,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">28</td>
+            <td class="num"><span class="negative">-2,776</span></td>
+            <td class="num"><span class="negative">-14,300</span></td>
+            <td class="num"><span class="negative">-10,619</span></td>
+            <td class="num"><span class="positive">+3,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">10</td>
+            <td class="num"><span class="positive">+29,099</span></td>
+            <td class="num"><span class="positive">+27,500</span></td>
+            <td class="num"><span class="positive">+56,799</span></td>
+            <td class="num"><span class="positive">+74,400</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi0">
+            <h3>いちにち信用（除0）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">37</td>
+            <td class="num"><span class="positive">+26,323</span></td>
+            <td class="num"><span class="positive">+13,200</span></td>
+            <td class="num"><span class="positive">+46,180</span></td>
+            <td class="num"><span class="positive">+78,000</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">2</td>
+            <td class="num"><span class="positive">+2,200</span></td>
+            <td class="num"><span class="positive">+2,400</span></td>
+            <td class="num"><span class="positive">+3,400</span></td>
+            <td class="num"><span class="positive">+2,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">7</td>
+            <td class="num"><span class="positive">+26,900</span></td>
+            <td class="num"><span class="positive">+25,100</span></td>
+            <td class="num"><span class="positive">+53,400</span></td>
+            <td class="num"><span class="positive">+71,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">28</td>
+            <td class="num"><span class="negative">-2,776</span></td>
+            <td class="num"><span class="negative">-14,300</span></td>
+            <td class="num"><span class="negative">-10,619</span></td>
+            <td class="num"><span class="positive">+3,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">9</td>
+            <td class="num"><span class="positive">+29,099</span></td>
+            <td class="num"><span class="positive">+27,500</span></td>
+            <td class="num"><span class="positive">+56,799</span></td>
+            <td class="num"><span class="positive">+74,400</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="weekday-section">
+    <div class="weekday-title">火曜日</div>
+    <div class="tables-container">
+        <div class="table-section seido">
+            <h3>制度信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">48</td>
+            <td class="num"><span class="positive">+120,950</span></td>
+            <td class="num"><span class="positive">+78,350</span></td>
+            <td class="num"><span class="positive">+197,050</span></td>
+            <td class="num"><span class="positive">+199,950</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">11</td>
+            <td class="num"><span class="positive">+9,600</span></td>
+            <td class="num"><span class="negative">-4,500</span></td>
+            <td class="num"><span class="positive">+10,650</span></td>
+            <td class="num"><span class="positive">+28,400</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">3</td>
+            <td class="num"><span class="positive">+84,200</span></td>
+            <td class="num"><span class="positive">+74,900</span></td>
+            <td class="num"><span class="positive">+155,900</span></td>
+            <td class="num"><span class="positive">+155,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">2</td>
+            <td class="num"><span class="negative">-2,000</span></td>
+            <td class="num"><span class="negative">-7,600</span></td>
+            <td class="num"><span class="negative">-500</span></td>
+            <td class="num"><span class="negative">-10,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">32</td>
+            <td class="num"><span class="positive">+29,150</span></td>
+            <td class="num"><span class="positive">+15,550</span></td>
+            <td class="num"><span class="positive">+31,000</span></td>
+            <td class="num"><span class="positive">+26,550</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">16</td>
+            <td class="num"><span class="positive">+91,800</span></td>
+            <td class="num"><span class="positive">+62,800</span></td>
+            <td class="num"><span class="positive">+166,050</span></td>
+            <td class="num"><span class="positive">+173,400</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi">
+            <h3>いちにち信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">85</td>
+            <td class="num"><span class="positive">+229,335</span></td>
+            <td class="num"><span class="positive">+211,000</span></td>
+            <td class="num"><span class="positive">+368,104</span></td>
+            <td class="num"><span class="positive">+359,400</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">2</td>
+            <td class="num"><span class="positive">+300</span></td>
+            <td class="num"><span class="positive">+2,900</span></td>
+            <td class="num"><span class="positive">+1,600</span></td>
+            <td class="num"><span class="positive">+1,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">24</td>
+            <td class="num"><span class="positive">+165,400</span></td>
+            <td class="num"><span class="positive">+165,700</span></td>
+            <td class="num"><span class="positive">+243,900</span></td>
+            <td class="num"><span class="positive">+254,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">59</td>
+            <td class="num"><span class="positive">+63,635</span></td>
+            <td class="num"><span class="positive">+42,400</span></td>
+            <td class="num"><span class="positive">+122,604</span></td>
+            <td class="num"><span class="positive">+103,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">26</td>
+            <td class="num"><span class="positive">+165,700</span></td>
+            <td class="num"><span class="positive">+168,600</span></td>
+            <td class="num"><span class="positive">+245,500</span></td>
+            <td class="num"><span class="positive">+256,300</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi0">
+            <h3>いちにち信用（除0）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">71</td>
+            <td class="num"><span class="positive">+194,835</span></td>
+            <td class="num"><span class="positive">+184,400</span></td>
+            <td class="num"><span class="positive">+301,304</span></td>
+            <td class="num"><span class="positive">+301,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">2</td>
+            <td class="num"><span class="positive">+300</span></td>
+            <td class="num"><span class="positive">+2,900</span></td>
+            <td class="num"><span class="positive">+1,600</span></td>
+            <td class="num"><span class="positive">+1,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">17</td>
+            <td class="num"><span class="positive">+149,100</span></td>
+            <td class="num"><span class="positive">+150,400</span></td>
+            <td class="num"><span class="positive">+205,300</span></td>
+            <td class="num"><span class="positive">+219,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">52</td>
+            <td class="num"><span class="positive">+45,435</span></td>
+            <td class="num"><span class="positive">+31,100</span></td>
+            <td class="num"><span class="positive">+94,404</span></td>
+            <td class="num"><span class="positive">+80,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">19</td>
+            <td class="num"><span class="positive">+149,400</span></td>
+            <td class="num"><span class="positive">+153,300</span></td>
+            <td class="num"><span class="positive">+206,900</span></td>
+            <td class="num"><span class="positive">+221,000</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="weekday-section">
+    <div class="weekday-title">水曜日</div>
+    <div class="tables-container">
+        <div class="table-section seido">
+            <h3>制度信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">39</td>
+            <td class="num"><span class="negative">-17,400</span></td>
+            <td class="num"><span class="negative">-20,050</span></td>
+            <td class="num"><span class="positive">+19,350</span></td>
+            <td class="num"><span class="negative">-5,900</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">12</td>
+            <td class="num"><span class="negative">-13,000</span></td>
+            <td class="num"><span class="negative">-21,600</span></td>
+            <td class="num"><span class="positive">+21,100</span></td>
+            <td class="num"><span class="positive">+10,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">2</td>
+            <td class="num"><span class="positive">+2,100</span></td>
+            <td class="num"><span class="positive">+4,300</span></td>
+            <td class="num"><span class="positive">+6,100</span></td>
+            <td class="num"><span class="positive">+4,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">1</td>
+            <td class="num"><span class="negative">-2,700</span></td>
+            <td class="num"><span class="negative">-2,700</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="negative">-3,000</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">24</td>
+            <td class="num"><span class="negative">-3,800</span></td>
+            <td class="num"><span class="negative">-50</span></td>
+            <td class="num"><span class="negative">-7,850</span></td>
+            <td class="num"><span class="negative">-17,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">15</td>
+            <td class="num"><span class="negative">-13,600</span></td>
+            <td class="num"><span class="negative">-20,000</span></td>
+            <td class="num"><span class="positive">+27,200</span></td>
+            <td class="num"><span class="positive">+11,600</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi">
+            <h3>いちにち信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">92</td>
+            <td class="num"><span class="negative">-76,715</span></td>
+            <td class="num"><span class="negative">-114,200</span></td>
+            <td class="num"><span class="negative">-115,108</span></td>
+            <td class="num"><span class="negative">-151,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">13</td>
+            <td class="num"><span class="negative">-70,500</span></td>
+            <td class="num"><span class="negative">-93,600</span></td>
+            <td class="num"><span class="negative">-80,600</span></td>
+            <td class="num"><span class="negative">-105,400</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">13</td>
+            <td class="num"><span class="positive">+2,200</span></td>
+            <td class="num"><span class="negative">-3,800</span></td>
+            <td class="num"><span class="positive">+7,900</span></td>
+            <td class="num"><span class="positive">+2,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">66</td>
+            <td class="num"><span class="negative">-8,415</span></td>
+            <td class="num"><span class="negative">-16,800</span></td>
+            <td class="num"><span class="negative">-42,408</span></td>
+            <td class="num"><span class="negative">-49,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">26</td>
+            <td class="num"><span class="negative">-68,300</span></td>
+            <td class="num"><span class="negative">-97,400</span></td>
+            <td class="num"><span class="negative">-72,700</span></td>
+            <td class="num"><span class="negative">-102,700</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi0">
+            <h3>いちにち信用（除0）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">77</td>
+            <td class="num"><span class="negative">-49,315</span></td>
+            <td class="num"><span class="negative">-71,400</span></td>
+            <td class="num"><span class="negative">-55,908</span></td>
+            <td class="num"><span class="negative">-93,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">9</td>
+            <td class="num"><span class="negative">-53,900</span></td>
+            <td class="num"><span class="negative">-75,400</span></td>
+            <td class="num"><span class="negative">-80,700</span></td>
+            <td class="num"><span class="negative">-86,700</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">12</td>
+            <td class="num"><span class="positive">+2,200</span></td>
+            <td class="num"><span class="negative">-3,800</span></td>
+            <td class="num"><span class="positive">+7,700</span></td>
+            <td class="num"><span class="positive">+2,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">56</td>
+            <td class="num"><span class="positive">+2,384</span></td>
+            <td class="num"><span class="positive">+7,800</span></td>
+            <td class="num"><span class="positive">+17,091</span></td>
+            <td class="num"><span class="negative">-9,300</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">21</td>
+            <td class="num"><span class="negative">-51,699</span></td>
+            <td class="num"><span class="negative">-79,200</span></td>
+            <td class="num"><span class="negative">-72,999</span></td>
+            <td class="num"><span class="negative">-84,200</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="weekday-section">
+    <div class="weekday-title">木曜日</div>
+    <div class="tables-container">
+        <div class="table-section seido">
+            <h3>制度信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">67</td>
+            <td class="num"><span class="positive">+30,820</span></td>
+            <td class="num"><span class="positive">+42,139</span></td>
+            <td class="num"><span class="positive">+78,600</span></td>
+            <td class="num"><span class="positive">+76,779</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">19</td>
+            <td class="num"><span class="negative">-61,100</span></td>
+            <td class="num"><span class="negative">-75,500</span></td>
+            <td class="num"><span class="negative">-33,600</span></td>
+            <td class="num"><span class="negative">-43,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">5</td>
+            <td class="num"><span class="positive">+27,000</span></td>
+            <td class="num"><span class="positive">+46,200</span></td>
+            <td class="num"><span class="positive">+50,700</span></td>
+            <td class="num"><span class="positive">+46,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">1</td>
+            <td class="num"><span class="positive">+5,300</span></td>
+            <td class="num"><span class="positive">+7,300</span></td>
+            <td class="num"><span class="positive">+19,600</span></td>
+            <td class="num"><span class="positive">+21,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">42</td>
+            <td class="num"><span class="positive">+59,620</span></td>
+            <td class="num"><span class="positive">+64,139</span></td>
+            <td class="num"><span class="positive">+41,900</span></td>
+            <td class="num"><span class="positive">+52,879</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">25</td>
+            <td class="num"><span class="negative">-28,800</span></td>
+            <td class="num"><span class="negative">-22,000</span></td>
+            <td class="num"><span class="positive">+36,700</span></td>
+            <td class="num"><span class="positive">+23,900</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi">
+            <h3>いちにち信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">98</td>
+            <td class="num"><span class="negative">-121,525</span></td>
+            <td class="num"><span class="negative">-98,425</span></td>
+            <td class="num"><span class="negative">-53,925</span></td>
+            <td class="num"><span class="negative">-70,616</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">8</td>
+            <td class="num"><span class="negative">-151,400</span></td>
+            <td class="num"><span class="negative">-147,700</span></td>
+            <td class="num"><span class="negative">-201,100</span></td>
+            <td class="num"><span class="negative">-281,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">20</td>
+            <td class="num"><span class="positive">+53,374</span></td>
+            <td class="num"><span class="positive">+103,874</span></td>
+            <td class="num"><span class="positive">+85,574</span></td>
+            <td class="num"><span class="positive">+145,183</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">1</td>
+            <td class="num"><span class="positive">+6,700</span></td>
+            <td class="num"><span class="positive">+5,600</span></td>
+            <td class="num"><span class="positive">+4,100</span></td>
+            <td class="num"><span class="positive">+4,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">69</td>
+            <td class="num"><span class="negative">-30,200</span></td>
+            <td class="num"><span class="negative">-60,200</span></td>
+            <td class="num"><span class="positive">+57,500</span></td>
+            <td class="num"><span class="positive">+61,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">29</td>
+            <td class="num"><span class="negative">-91,325</span></td>
+            <td class="num"><span class="negative">-38,225</span></td>
+            <td class="num"><span class="negative">-111,425</span></td>
+            <td class="num"><span class="negative">-131,716</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi0">
+            <h3>いちにち信用（除0）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">75</td>
+            <td class="num"><span class="negative">-32,225</span></td>
+            <td class="num"><span class="negative">-25,525</span></td>
+            <td class="num"><span class="positive">+93,974</span></td>
+            <td class="num"><span class="positive">+69,983</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">3</td>
+            <td class="num"><span class="negative">-27,000</span></td>
+            <td class="num"><span class="negative">-25,900</span></td>
+            <td class="num"><span class="positive">+4,700</span></td>
+            <td class="num"><span class="negative">-25,300</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">13</td>
+            <td class="num"><span class="positive">+48,674</span></td>
+            <td class="num"><span class="positive">+60,374</span></td>
+            <td class="num"><span class="positive">+80,874</span></td>
+            <td class="num"><span class="positive">+93,283</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">59</td>
+            <td class="num"><span class="negative">-53,900</span></td>
+            <td class="num"><span class="negative">-60,000</span></td>
+            <td class="num"><span class="positive">+8,400</span></td>
+            <td class="num"><span class="positive">+2,000</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">16</td>
+            <td class="num"><span class="positive">+21,675</span></td>
+            <td class="num"><span class="positive">+34,475</span></td>
+            <td class="num"><span class="positive">+85,574</span></td>
+            <td class="num"><span class="positive">+67,983</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="weekday-section">
+    <div class="weekday-title">金曜日</div>
+    <div class="tables-container">
+        <div class="table-section seido">
+            <h3>制度信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">35</td>
+            <td class="num"><span class="negative">-39,929</span></td>
+            <td class="num"><span class="negative">-76,290</span></td>
+            <td class="num"><span class="negative">-38,773</span></td>
+            <td class="num"><span class="negative">-101,750</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">19</td>
+            <td class="num"><span class="negative">-56,520</span></td>
+            <td class="num"><span class="negative">-80,040</span></td>
+            <td class="num"><span class="negative">-71,620</span></td>
+            <td class="num"><span class="negative">-124,350</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">2</td>
+            <td class="num"><span class="positive">+5,300</span></td>
+            <td class="num"><span class="positive">+1,800</span></td>
+            <td class="num"><span class="positive">+15,800</span></td>
+            <td class="num"><span class="positive">+17,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">14</td>
+            <td class="num"><span class="positive">+11,290</span></td>
+            <td class="num"><span class="positive">+1,950</span></td>
+            <td class="num"><span class="positive">+17,046</span></td>
+            <td class="num"><span class="positive">+4,800</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">21</td>
+            <td class="num"><span class="negative">-51,219</span></td>
+            <td class="num"><span class="negative">-78,240</span></td>
+            <td class="num"><span class="negative">-55,819</span></td>
+            <td class="num"><span class="negative">-106,550</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi">
+            <h3>いちにち信用</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">86</td>
+            <td class="num"><span class="positive">+359,100</span></td>
+            <td class="num"><span class="positive">+509,800</span></td>
+            <td class="num"><span class="positive">+534,300</span></td>
+            <td class="num"><span class="positive">+503,900</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">8</td>
+            <td class="num"><span class="positive">+16,400</span></td>
+            <td class="num"><span class="positive">+14,200</span></td>
+            <td class="num"><span class="positive">+12,400</span></td>
+            <td class="num"><span class="positive">+10,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">26</td>
+            <td class="num"><span class="positive">+184,900</span></td>
+            <td class="num"><span class="positive">+309,700</span></td>
+            <td class="num"><span class="positive">+327,900</span></td>
+            <td class="num"><span class="positive">+328,200</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">3</td>
+            <td class="num"><span class="positive">+49,200</span></td>
+            <td class="num"><span class="positive">+51,300</span></td>
+            <td class="num"><span class="positive">+40,100</span></td>
+            <td class="num"><span class="positive">+31,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">49</td>
+            <td class="num"><span class="positive">+108,600</span></td>
+            <td class="num"><span class="positive">+134,600</span></td>
+            <td class="num"><span class="positive">+153,900</span></td>
+            <td class="num"><span class="positive">+134,500</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">37</td>
+            <td class="num"><span class="positive">+250,500</span></td>
+            <td class="num"><span class="positive">+375,200</span></td>
+            <td class="num"><span class="positive">+380,400</span></td>
+            <td class="num"><span class="positive">+369,400</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-section ichinichi0">
+            <h3>いちにち信用（除0）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>条件</th>
+                        <th>件数</th>
+                        <th>10:25</th>
+                        <th>前引</th>
+                        <th>14:45</th>
+                        <th>大引</th>
+                    </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <td class="label-all">全データ</td>
+            <td class="num">63</td>
+            <td class="num"><span class="positive">+175,100</span></td>
+            <td class="num"><span class="positive">+245,000</span></td>
+            <td class="num"><span class="positive">+278,800</span></td>
+            <td class="num"><span class="positive">+244,900</span></td>
+        </tr>
+        <tr>
+            <td class="label-rsi">RSIのみ</td>
+            <td class="num">5</td>
+            <td class="num"><span class="positive">+13,200</span></td>
+            <td class="num"><span class="positive">+14,200</span></td>
+            <td class="num"><span class="positive">+13,100</span></td>
+            <td class="num"><span class="positive">+11,100</span></td>
+        </tr>
+        <tr>
+            <td class="label-atr">ATRのみ</td>
+            <td class="num">20</td>
+            <td class="num"><span class="positive">+110,500</span></td>
+            <td class="num"><span class="positive">+165,900</span></td>
+            <td class="num"><span class="positive">+198,800</span></td>
+            <td class="num"><span class="positive">+180,200</span></td>
+        </tr>
+        <tr>
+            <td class="label-both-hit">両方</td>
+            <td class="num">0</td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+            <td class="num"><span class="zero">0</span></td>
+        </tr>
+        <tr>
+            <td class="label-excluded">除外後</td>
+            <td class="num">38</td>
+            <td class="num"><span class="positive">+51,400</span></td>
+            <td class="num"><span class="positive">+64,900</span></td>
+            <td class="num"><span class="positive">+66,900</span></td>
+            <td class="num"><span class="positive">+53,600</span></td>
+        </tr>
+        <tr>
+            <td class="label-diff">差額</td>
+            <td class="num">25</td>
+            <td class="num"><span class="positive">+123,700</span></td>
+            <td class="num"><span class="positive">+180,100</span></td>
+            <td class="num"><span class="positive">+211,900</span></td>
+            <td class="num"><span class="positive">+191,300</span></td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

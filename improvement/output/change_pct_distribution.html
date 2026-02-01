@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>変化率 (change_pct) 分布分析</title>
+<style>
+body {
+    background-color: #1a1a2e;
+    color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px;
+}
+h1, h2 { color: #fff; }
+.summary {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #252540;
+    border-radius: 8px;
+}
+.chart-container {
+    background: #252540;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.histogram {
+    display: flex;
+    align-items: flex-end;
+    height: 300px;
+    gap: 4px;
+    padding: 20px 10px;
+    border-bottom: 2px solid #444;
+}
+.bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.bar {
+    width: 100%;
+    background: linear-gradient(to top, #4a90d9, #74c0fc);
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    position: relative;
+}
+.bar:hover {
+    background: linear-gradient(to top, #ffd43b, #ffe066);
+}
+.bar-label {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    text-align: center;
+}
+.bar-count {
+    font-size: 10px;
+    color: #fff;
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+table {
+    border-collapse: collapse;
+    font-size: 13px;
+    width: 100%;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+th {
+    background-color: #252540;
+    color: #aaa;
+}
+td:first-child {
+    text-align: left;
+}
+</style>
+</head>
+<body>
+<h1>変化率 (change_pct) 分布分析</h1>
+
+<div class="summary">
+    <p>総件数: 738件 / 欠損: 0件</p>
+    <p>平均: 0.52 / 中央値: -0.10 / 標準偏差: 8.97</p>
+    <p>最小: -31.16 / 最大: 55.07</p>
+</div>
+
+<div class="chart-container">
+    <h2>変化率 (change_pct) 分布（738件）</h2>
+    <div class="histogram">
+        <div class="bar-container">
+            <div class="bar" style="height:61.76470588235294%;">
+                <span class="bar-count">63</span>
+            </div>
+            <div class="bar-label"><-10</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:92.15686274509804%;">
+                <span class="bar-count">94</span>
+            </div>
+            <div class="bar-label">-10~-5</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:53.92156862745098%;">
+                <span class="bar-count">55</span>
+            </div>
+            <div class="bar-label">-5~-3</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:87.25490196078431%;">
+                <span class="bar-count">89</span>
+            </div>
+            <div class="bar-label">-3~-1</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:91.17647058823529%;">
+                <span class="bar-count">93</span>
+            </div>
+            <div class="bar-label">-1~0</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:70.58823529411765%;">
+                <span class="bar-count">72</span>
+            </div>
+            <div class="bar-label">0~1</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:100.0%;">
+                <span class="bar-count">102</span>
+            </div>
+            <div class="bar-label">1~3</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:37.254901960784316%;">
+                <span class="bar-count">38</span>
+            </div>
+            <div class="bar-label">3~5</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:46.07843137254902%;">
+                <span class="bar-count">47</span>
+            </div>
+            <div class="bar-label">5~10</div>
+        </div>
+        <div class="bar-container">
+            <div class="bar" style="height:83.33333333333334%;">
+                <span class="bar-count">85</span>
+            </div>
+            <div class="bar-label">>10</div>
+        </div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h2>帯別集計</h2>
+    <table>
+        <tr><th>帯</th><th>件数</th><th>割合</th><th>累積</th></tr>
+        <tr><td><-10</td><td>63</td><td>8.5%</td><td>8.5%</td></tr>
+        <tr><td>-10~-5</td><td>94</td><td>12.7%</td><td>21.3%</td></tr>
+        <tr><td>-5~-3</td><td>55</td><td>7.5%</td><td>28.7%</td></tr>
+        <tr><td>-3~-1</td><td>89</td><td>12.1%</td><td>40.8%</td></tr>
+        <tr><td>-1~0</td><td>93</td><td>12.6%</td><td>53.4%</td></tr>
+        <tr><td>0~1</td><td>72</td><td>9.8%</td><td>63.1%</td></tr>
+        <tr><td>1~3</td><td>102</td><td>13.8%</td><td>77.0%</td></tr>
+        <tr><td>3~5</td><td>38</td><td>5.1%</td><td>82.1%</td></tr>
+        <tr><td>5~10</td><td>47</td><td>6.4%</td><td>88.5%</td></tr>
+        <tr><td>>10</td><td>85</td><td>11.5%</td><td>100.0%</td></tr>
+    </table>
+</div>
+
+</body>
+</html>

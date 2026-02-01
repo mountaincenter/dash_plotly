@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J-Quants API v2 需給データ仕様</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        h2 { color: #8b949e; margin-top: 40px; }
+        .api-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .endpoint {
+            background: #21262d;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #7ee787;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .description { color: #8b949e; margin-bottom: 15px; }
+        .fields-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .fields-table th, .fields-table td {
+            border: 1px solid #30363d;
+            padding: 10px;
+            text-align: left;
+        }
+        .fields-table th {
+            background: #21262d;
+            color: #58a6ff;
+        }
+        .fields-table tr:nth-child(even) { background: #161b22; }
+        .sample-data {
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #3d1f1f;
+            border: 1px solid #f85149;
+            color: #f85149;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .note {
+            background: #1f2d1f;
+            border: 1px solid #3fb950;
+            color: #3fb950;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .count { color: #8b949e; font-size: 14px; }
+        .field-name { color: #ffa657; }
+        .plan-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .standard { background: #238636; color: white; }
+        .premium { background: #a371f7; color: white; }
+    </style>
+</head>
+<body>
+    <h1>J-Quants API v2 需給関連データ仕様</h1>
+    <p class="description">Standardプラン（3,300円/月）で取得可能な需給データの詳細</p>
+
+    <div class="api-section">
+        <h2>信用取引週末残高（週次）銘柄: 72800 <span class="plan-badge standard">Standard</span></h2>
+        <div class="endpoint">/markets/margin-interest</div>
+
+        <p class="count">取得件数: 3件（過去30日間）</p>
+
+        <h3>フィールド一覧</h3>
+        <table class="fields-table">
+            <tr>
+                <th>フィールド名</th>
+                <th>サンプル値</th>
+            </tr>
+
+            <tr>
+                <td class="field-name">Date</td>
+                <td>2025-12-26</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">Code</td>
+                <td>72800</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtVol</td>
+                <td>22900.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongVol</td>
+                <td>300500.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtNegVol</td>
+                <td>2200.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongNegVol</td>
+                <td>157700.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtStdVol</td>
+                <td>20700.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongStdVol</td>
+                <td>142800.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">IssType</td>
+                <td>2</td>
+            </tr>
+
+        </table>
+
+        <h3>サンプルデータ（最大5件）</h3>
+        <div class="sample-data">[
+  {
+    "Date": "2025-12-26",
+    "Code": "72800",
+    "ShrtVol": 22900.0,
+    "LongVol": 300500.0,
+    "ShrtNegVol": 2200.0,
+    "LongNegVol": 157700.0,
+    "ShrtStdVol": 20700.0,
+    "LongStdVol": 142800.0,
+    "IssType": "2"
+  },
+  {
+    "Date": "2026-01-09",
+    "Code": "72800",
+    "ShrtVol": 22800.0,
+    "LongVol": 462500.0,
+    "ShrtNegVol": 2800.0,
+    "LongNegVol": 242800.0,
+    "ShrtStdVol": 20000.0,
+    "LongStdVol": 219700.0,
+    "IssType": "2"
+  },
+  {
+    "Date": "2026-01-16",
+    "Code": "72800",
+    "ShrtVol": 18800.0,
+    "LongVol": 688300.0,
+    "ShrtNegVol": 3100.0,
+    "LongNegVol": 325600.0,
+    "ShrtStdVol": 15700.0,
+    "LongStdVol": 362700.0,
+    "IssType": "2"
+  }
+]</div>
+
+    </div>
+
+    <div class="api-section">
+        <h2>日々公表信用取引残高（日次）date: 2026-01-16 <span class="plan-badge standard">Standard</span></h2>
+        <div class="endpoint">/markets/margin-alert</div>
+
+        <p class="count">取得件数: 228件（過去30日間）</p>
+
+        <h3>フィールド一覧</h3>
+        <table class="fields-table">
+            <tr>
+                <th>フィールド名</th>
+                <th>サンプル値</th>
+            </tr>
+
+            <tr>
+                <td class="field-name">PubDate</td>
+                <td>2026-01-16</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">Code</td>
+                <td>13250</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">AppDate</td>
+                <td>2026-01-15</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">PubReason</td>
+                <td>{'Restricted': '0', 'DailyPublication': '0', 'Monitoring': '0', 'RestrictedByJSF': '0', 'PrecautionByJSF': '1', 'UnclearOrSecOnAlert': '0'}</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtOut</td>
+                <td>3030.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtOutChg</td>
+                <td>210.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtOutRatio</td>
+                <td>*</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongOut</td>
+                <td>227710.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongOutChg</td>
+                <td>-1890.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongOutRatio</td>
+                <td>*</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">SLRatio</td>
+                <td>1.3</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtNegOut</td>
+                <td>0.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtNegOutChg</td>
+                <td>0.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtStdOut</td>
+                <td>3030.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtStdOutChg</td>
+                <td>210.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongNegOut</td>
+                <td>118930.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongNegOutChg</td>
+                <td>-15190.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongStdOut</td>
+                <td>108780.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">LongStdOutChg</td>
+                <td>13300.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">TSEMrgnRegCls</td>
+                <td>001</td>
+            </tr>
+
+        </table>
+
+        <h3>サンプルデータ（最大5件）</h3>
+        <div class="sample-data">[
+  {
+    "PubDate": "2026-01-16",
+    "Code": "13250",
+    "AppDate": "2026-01-15",
+    "PubReason": {
+      "Restricted": "0",
+      "DailyPublication": "0",
+      "Monitoring": "0",
+      "RestrictedByJSF": "0",
+      "PrecautionByJSF": "1",
+      "UnclearOrSecOnAlert": "0"
+    },
+    "ShrtOut": 3030.0,
+    "ShrtOutChg": 210.0,
+    "ShrtOutRatio": "*",
+    "LongOut": 227710.0,
+    "LongOutChg": -1890.0,
+    "LongOutRatio": "*",
+    "SLRatio": 1.3,
+    "ShrtNegOut": 0.0,
+    "ShrtNegOutChg": 0.0,
+    "ShrtStdOut": 3030.0,
+    "ShrtStdOutChg": 210.0,
+    "LongNegOut": 118930.0,
+    "LongNegOutChg": -15190.0,
+    "LongStdOut": 108780.0,
+    "LongStdOutChg": 13300.0,
+    "TSEMrgnRegCls": "001"
+  },
+  {
+    "PubDate": "2026-01-16",
+    "Code": "13580",
+    "AppDate": "2026-01-15",
+    "PubReason": {
+      "Restricted": "0",
+      "DailyPublication": "0",
+      "Monitoring": "0",
+      "RestrictedByJSF": "0",
+      "PrecautionByJSF": "1",
+      "UnclearOrSecOnAlert": "0"
+    },
+    "ShrtOut": 6449.0,
+    "ShrtOutChg": -719.0,
+    "ShrtOutRatio": "*",
+    "LongOut": 5011.0,
+    "LongOutChg": 746.0,
+    "LongOutRatio": "*",
+    "SLRatio": 128.7,
+    "ShrtNegOut": 0.0,
+    "ShrtNegOutChg": -50.0,
+    "ShrtStdOut": 6449.0,
+    "ShrtStdOutChg": -669.0,
+    "LongNegOut": 1791.0,
+    "LongNegOutChg": 327.0,
+    "LongStdOut": 3220.0,
+    "LongStdOutChg": 419.0,
+    "TSEMrgnRegCls": "001"
+  },
+  {
+    "PubDate": "2026-01-16",
+    "Code": "13650",
+    "AppDate": "2026-01-15",
+    "PubReason": {
+      "Restricted": "0",
+      "DailyPublication": "0",
+      "Monitoring": "0",
+      "RestrictedByJSF": "0",
+      "PrecautionByJSF": "1",
+      "UnclearOrSecOnAlert": "0"
+    },
+    "ShrtOut": 7159.0,
+    "ShrtOutChg": -839.0,
+    "ShrtOutRatio": "*",
+    "LongOut": 5926.0,
+    "LongOutChg": 851.0,
+    "LongOutRatio": "*",
+    "SLRatio": 120.8,
+    "ShrtNegOut": 0.0,
+    "ShrtNegOutChg": 0.0,
+    "ShrtStdOut": 7159.0,
+    "ShrtStdOutChg": -839.0,
+    "LongNegOut": 2583.0,
+    "LongNegOutChg": 189.0,
+    "LongStdOut": 3343.0,
+    "LongStdOutChg": 662.0,
+    "TSEMrgnRegCls": "001"
+  },
+  {
+    "PubDate": "2026-01-16",
+    "Code": "14190",
+    "AppDate": "2026-01-15",
+    "PubReason": {
+      "Restricted": "0",
+      "DailyPublication": "0",
+      "Monitoring": "0",
+      "RestrictedByJSF": "1",
+      "PrecautionByJSF": "0",
+      "UnclearOrSecOnAlert": "0"
+    },
+    "ShrtOut": 968300.0,
+    "ShrtOutChg": -1700.0,
+    "ShrtOutRatio": 3.2873,
+    "LongOut": 179700.0,
+    "LongOutChg": -16500.0,
+    "LongOutRatio": 0.6101,
+    "SLRatio": 538.8,
+    "ShrtNegOut": 499200.0,
+    "ShrtNegOutChg": 900.0,
+    "ShrtStdOut": 469100.0,
+    "ShrtStdOutChg": -2600.0,
+    "LongNegOut": 85900.0,
+    "LongNegOutChg": -2300.0,
+    "LongStdOut": 93800.0,
+    "LongStdOutChg": -14200.0,
+    "TSEMrgnRegCls": "001"
+  },
+  {
+    "PubDate": "2026-01-16",
+    "Code": "14330",
+    "AppDate": "2026-01-15",
+    "PubReason": {
+      "Restricted": "0",
+      "DailyPublication": "0",
+      "Monitoring": "0",
+      "RestrictedByJSF": "1",
+      "PrecautionByJSF": "0",
+      "UnclearOrSecOnAlert": "0"
+    },
+    "ShrtOut": 164700.0,
+    "ShrtOutChg": -300.0,
+    "ShrtOutRatio": 1.7715,
+    "LongOut": 326800.0,
+    "LongOutChg": -33700.0,
+    "LongOutRatio": 3.515,
+    "SLRatio": 50.4,
+    "ShrtNegOut": 4500.0,
+    "ShrtNegOutChg": 0.0,
+    "ShrtStdOut": 160200.0,
+    "ShrtStdOutChg": -300.0,
+    "LongNegOut": 135900.0,
+    "LongNegOutChg": -24600.0,
+    "LongStdOut": 190900.0,
+    "LongStdOutChg": -9100.0,
+    "TSEMrgnRegCls": "001"
+  }
+]</div>
+
+    </div>
+
+    <div class="api-section">
+        <h2>業種別空売り比率（日次）date: 2026-01-16 <span class="plan-badge standard">Standard</span></h2>
+        <div class="endpoint">/markets/short-ratio</div>
+
+        <p class="count">取得件数: 34件（過去30日間）</p>
+
+        <h3>フィールド一覧</h3>
+        <table class="fields-table">
+            <tr>
+                <th>フィールド名</th>
+                <th>サンプル値</th>
+            </tr>
+
+            <tr>
+                <td class="field-name">Date</td>
+                <td>2026-01-16</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">S33</td>
+                <td>0050</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">SellExShortVa</td>
+                <td>2355725750.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtWithResVa</td>
+                <td>764397600.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtNoResVa</td>
+                <td>96888700.0</td>
+            </tr>
+
+        </table>
+
+        <h3>サンプルデータ（最大5件）</h3>
+        <div class="sample-data">[
+  {
+    "Date": "2026-01-16",
+    "S33": "0050",
+    "SellExShortVa": 2355725750.0,
+    "ShrtWithResVa": 764397600.0,
+    "ShrtNoResVa": 96888700.0
+  },
+  {
+    "Date": "2026-01-16",
+    "S33": "1050",
+    "SellExShortVa": 22718899600.0,
+    "ShrtWithResVa": 16220730300.0,
+    "ShrtNoResVa": 2165135600.0
+  },
+  {
+    "Date": "2026-01-16",
+    "S33": "2050",
+    "SellExShortVa": 172318420500.0,
+    "ShrtWithResVa": 48546507600.0,
+    "ShrtNoResVa": 5528338800.0
+  },
+  {
+    "Date": "2026-01-16",
+    "S33": "3050",
+    "SellExShortVa": 67291413500.0,
+    "ShrtWithResVa": 36292412100.0,
+    "ShrtNoResVa": 3426339700.0
+  },
+  {
+    "Date": "2026-01-16",
+    "S33": "3100",
+    "SellExShortVa": 14159822600.0,
+    "ShrtWithResVa": 5152045100.0,
+    "ShrtNoResVa": 563691650.0
+  }
+]</div>
+
+    </div>
+
+    <div class="api-section">
+        <h2>空売り残高報告（銘柄別）code: 72800 <span class="plan-badge standard">Standard</span></h2>
+        <div class="endpoint">/markets/short-sale-report</div>
+
+        <p class="count">取得件数: 115件（過去30日間）</p>
+
+        <h3>フィールド一覧</h3>
+        <table class="fields-table">
+            <tr>
+                <th>フィールド名</th>
+                <th>サンプル値</th>
+            </tr>
+
+            <tr>
+                <td class="field-name">DiscDate</td>
+                <td>2017-12-08</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">CalcDate</td>
+                <td>2017-12-06</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">Code</td>
+                <td>72800</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">SSName</td>
+                <td>Credit Suisse Securities (Europe) Limited</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">SSAddr</td>
+                <td>One Cabot Square, London E14 4QJ, United Kingdom </td>
+            </tr>
+
+            <tr>
+                <td class="field-name">DICName</td>
+                <td>-</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">DICAddr</td>
+                <td>-</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">FundName</td>
+                <td>-</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtPosToSO</td>
+                <td>0.005</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtPosShares</td>
+                <td>229106.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">ShrtPosUnits</td>
+                <td>2291.0</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">PrevRptDate</td>
+                <td>2017-12-04</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">PrevRptRatio</td>
+                <td>0.0047</td>
+            </tr>
+
+            <tr>
+                <td class="field-name">Notes</td>
+                <td>Subsequent</td>
+            </tr>
+
+        </table>
+
+        <h3>サンプルデータ（最大5件）</h3>
+        <div class="sample-data">[
+  {
+    "DiscDate": "2017-12-08",
+    "CalcDate": "2017-12-06",
+    "Code": "72800",
+    "SSName": "Credit Suisse Securities (Europe) Limited",
+    "SSAddr": "One Cabot Square, London E14 4QJ, United Kingdom ",
+    "DICName": "-",
+    "DICAddr": "-",
+    "FundName": "-",
+    "ShrtPosToSO": 0.005,
+    "ShrtPosShares": 229106.0,
+    "ShrtPosUnits": 2291.0,
+    "PrevRptDate": "2017-12-04",
+    "PrevRptRatio": 0.0047,
+    "Notes": "Subsequent"
+  },
+  {
+    "DiscDate": "2017-12-12",
+    "CalcDate": "2017-12-08",
+    "Code": "72800",
+    "SSName": "Credit Suisse Securities (Europe) Limited",
+    "SSAddr": "One Cabot Square, London E14 4QJ, United Kingdom ",
+    "DICName": "-",
+    "DICAddr": "-",
+    "FundName": "-",
+    "ShrtPosToSO": 0.0061,
+    "ShrtPosShares": 280206.0,
+    "ShrtPosUnits": 2802.0,
+    "PrevRptDate": "2017-12-05",
+    "PrevRptRatio": 0.005,
+    "Notes": "Subsequent"
+  },
+  {
+    "DiscDate": "2017-12-22",
+    "CalcDate": "2017-12-20",
+    "Code": "72800",
+    "SSName": "Credit Suisse Securities (Europe) Limited",
+    "SSAddr": "One Cabot Square, London E14 4QJ, United Kingdom ",
+    "DICName": "-",
+    "DICAddr": "-",
+    "FundName": "-",
+    "ShrtPosToSO": 0.0059,
+    "ShrtPosShares": 269356.0,
+    "ShrtPosUnits": 2693.0,
+    "PrevRptDate": "2017-12-08",
+    "PrevRptRatio": 0.0061,
+    "Notes": "Subsequent"
+  },
+  {
+    "DiscDate": "2017-12-28",
+    "CalcDate": "2017-12-26",
+    "Code": "72800",
+    "SSName": "Credit Suisse Securities (Europe) Limited",
+    "SSAddr": "One Cabot Square, London E14 4QJ, United Kingdom ",
+    "DICName": "-",
+    "DICAddr": "-",
+    "FundName": "-",
+    "ShrtPosToSO": 0.0049,
+    "ShrtPosShares": 227706.0,
+    "ShrtPosUnits": 2277.0,
+    "PrevRptDate": "2017-12-20",
+    "PrevRptRatio": 0.0059,
+    "Notes": "Subsequent"
+  },
+  {
+    "DiscDate": "2018-05-30",
+    "CalcDate": "2018-05-28",
+    "Code": "72800",
+    "SSName": "GOLDMAN SACHS INTERNATIONAL",
+    "SSAddr": "Peterborough Court 133 Fleet Street London",
+    "DICName": "-",
+    "DICAddr": "-",
+    "FundName": "-",
+    "ShrtPosToSO": 0.0055,
+    "ShrtPosShares": 251552.0,
+    "ShrtPosUnits": 2515.0,
+    "PrevRptDate": "2018-05-10",
+    "PrevRptRatio": 0.0041,
+    "Notes": "顧客取引に係るヘッジポジションも含む"
+  }
+]</div>
+
+    </div>
+
+    <div class="api-section">
+        <h2>breakdown <span class="plan-badge premium">Premium</span></h2>
+        <div class="endpoint">N/A</div>
+
+        <div class="error">エラー: 403 Client Error: Forbidden for url: https://api.jquants.com/v2/markets/breakdown?date=2026-01-16</div>
+
+        <div class="note">Premiumプランのみ利用可能</div>
+
+    </div>
+
+    <div class="api-section">
+        <h2>需給分析での活用方法</h2>
+        <table class="fields-table">
+            <tr>
+                <th>データ</th>
+                <th>分析指標</th>
+                <th>見方</th>
+            </tr>
+            <tr>
+                <td>信用買残</td>
+                <td>将来の売り圧力</td>
+                <td>買残増加 → 将来の売り圧力上昇</td>
+            </tr>
+            <tr>
+                <td>信用売残</td>
+                <td>将来の買い圧力</td>
+                <td>売残増加 → 将来の買い戻し需要</td>
+            </tr>
+            <tr>
+                <td>貸借倍率（買残÷売残）</td>
+                <td>需給バランス</td>
+                <td>1未満: 売り優勢、1超: 買い優勢</td>
+            </tr>
+            <tr>
+                <td>空売り比率</td>
+                <td>下落圧力</td>
+                <td>高い → 下落圧力大 / 逆張り買いシグナル</td>
+            </tr>
+            <tr>
+                <td>空売り残高</td>
+                <td>将来の買い戻し需要</td>
+                <td>残高増加 → 将来の買い戻し需要</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
