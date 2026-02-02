@@ -180,9 +180,13 @@ def calc_extreme_market_info() -> dict:
             result["extreme_market_reason"] = f"先物{direction}{abs(result['futures_change_pct']):.2f}%"
 
     print(f"[INFO] Extreme market calculation:")
-    print(f"       Nikkei: {prev_nikkei:.2f} -> {latest_nikkei:.2f} ({result['nikkei_change_pct']:.4f}%)")
+    nikkei_chg = result['nikkei_change_pct']
+    futures_chg = result['futures_change_pct']
+    nikkei_chg_str = f"{nikkei_chg:.4f}%" if nikkei_chg is not None else "N/A"
+    futures_chg_str = f"{futures_chg:.4f}%" if futures_chg is not None else "N/A"
+    print(f"       Nikkei: {prev_nikkei:.2f} -> {latest_nikkei:.2f} ({nikkei_chg_str})")
     print(f"       Futures: {latest_futures:.2f} @ {latest_futures_time}")
-    print(f"       futures_change_pct: {result['futures_change_pct']:.4f}%")
+    print(f"       futures_change_pct: {futures_chg_str}")
     print(f"       is_extreme_market: {result['is_extreme_market']}")
 
     return result
