@@ -330,7 +330,6 @@ def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
             interval="5m",
             progress=False,
             auto_adjust=False,
-            repair=True,
         )
 
         if df.empty:
@@ -611,7 +610,6 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
                     interval="1d",
                     progress=False,
                     auto_adjust=False,
-                    repair=True,
                 )
                 # MultiIndexの場合はフラット化
                 if not hist_daily.empty and isinstance(hist_daily.columns, pd.MultiIndex):
