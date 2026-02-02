@@ -12,6 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # ★ セキュリティ：openssl のみ最小アップグレード（CVE-2025-9230 対応）

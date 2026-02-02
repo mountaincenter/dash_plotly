@@ -1,0 +1,36 @@
+{
+  "feature_names": [
+    "grok_rank",
+    "selection_score",
+    "buy_price",
+    "market_cap",
+    "atr14_pct",
+    "vol_ratio",
+    "rsi9",
+    "weekday",
+    "nikkei_change_pct",
+    "futures_change_pct",
+    "shortable",
+    "day_trade",
+    "volatility_5d",
+    "volatility_10d",
+    "volatility_20d",
+    "ma5_deviation",
+    "ma25_deviation",
+    "prev_day_return",
+    "return_5d",
+    "return_10d",
+    "volume_ratio_5d",
+    "price_range_5d"
+  ],
+  "target": "phase2_win",
+  "metrics": {
+    "auc_mean": 0.7002622906641506,
+    "auc_std": 0.03593075613535809,
+    "accuracy_mean": 0.6748538011695906,
+    "precision_mean": 0.6144587397648645,
+    "recall_mean": 0.495873573309921,
+    "f1_mean": 0.5443558698135922
+  },
+  "n_features": 22
+}

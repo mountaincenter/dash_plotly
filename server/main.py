@@ -24,6 +24,7 @@ from server.routers.dev_analysis_11seg_1000_3000 import router as dev_analysis_1
 from server.routers.dev_analysis_custom import router as dev_analysis_custom_router
 from server.routers.dev_intraday import router as dev_intraday_router
 from server.routers.fins import router as fins_router
+from server.routers.dev_ml_prediction import router as dev_ml_prediction_router
 
 import os
 
@@ -109,3 +110,4 @@ app.include_router(dev_analysis_11seg_1000_3000_router, tags=["analysis-11seg-10
 app.include_router(dev_analysis_custom_router, tags=["analysis-custom"])
 app.include_router(dev_intraday_router, tags=["intraday"])
 app.include_router(fins_router, tags=["fins"])
+app.include_router(dev_ml_prediction_router, tags=["ml-prediction"])
