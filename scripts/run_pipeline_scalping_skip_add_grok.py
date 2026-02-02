@@ -11,9 +11,8 @@ GitHub Actionsとローカル開発の両方で使用
   4. fetch_prices            - yfinanceでall_stocks.parquetの価格データ取得
   5. fetch_index_prices      - yfinanceで指数・ETF・先物の価格データ取得
   6. fetch_currency_prices   - yfinanceで為替レートデータ取得
-  7. generate_financials     - J-Quants /fins/summaryから財務データ取得
-  8. generate_announcements  - J-Quants /fins/summaryから決算発表日推定
-  9. update_manifest         - manifest.json生成・S3一括アップロード
+  7. generate_fins_data      - J-Quants /fins/summaryから財務データ＋決算発表日を一括取得
+  8. update_manifest         - manifest.json生成・S3一括アップロード
 
 注意:
   - generate_scalpingは実行されません（スキップ）
@@ -63,8 +62,7 @@ class PipelineRunner:
             ("pipeline.update_topix_prices", "TOPIX系指数データ取得（J-Quants Standard）"),
             ("pipeline.update_sectors_prices", "33業種別指数データ取得（J-Quants Standard）"),
             ("pipeline.update_series_prices", "17業種別指数データ取得（J-Quants Standard）"),
-            ("pipeline.generate_financials", "財務データ取得（J-Quants /fins/summary）"),
-            ("pipeline.generate_announcements", "決算発表日推定（J-Quants /fins/summary）"),
+            ("pipeline.generate_fins_data", "財務データ＋決算発表日（J-Quants /fins/summary）"),
         ])
 
         # 23:00 JST実行時のみ: fetch_prices後にgrok_trendingの価格/テクニカル指標を更新
