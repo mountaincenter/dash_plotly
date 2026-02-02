@@ -322,15 +322,22 @@ def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
         start_date = date - timedelta(days=2)
         end_date = date + timedelta(days=2)
 
-        stock = yf.Ticker(ticker)
-        df = stock.history(
+        # yf.download()を使用（GitHub Actions環境でyf.Ticker().history()が失敗するため）
+        df = yf.download(
+            ticker,
             start=start_date.strftime("%Y-%m-%d"),
             end=end_date.strftime("%Y-%m-%d"),
-            interval="5m"
+            interval="5m",
+            progress=False,
+            auto_adjust=False,
         )
 
         if df.empty:
             return None
+
+        # MultiIndexの場合はフラット化
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
         # タイムゾーンを除去（JST前提）
         if df.index.tz is not None:
@@ -584,19 +591,29 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
 
         # 日次データを取得（前営業日を含める）
-        stock = yf.Ticker(ticker)
         if prev_trading_day:
             start_date = prev_trading_day
         else:
             start_date = (backtest_date - timedelta(days=5)).strftime("%Y-%m-%d")
         end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
 
+        # yf.download()を使用（GitHub Actions環境でyf.Ticker().history()が失敗するため）
         # リトライロジック（GitHub Actions環境でのAPI制限対策）
         hist_daily = pd.DataFrame()
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                hist_daily = stock.history(start=start_date, end=end_date, interval="1d")
+                hist_daily = yf.download(
+                    ticker,
+                    start=start_date,
+                    end=end_date,
+                    interval="1d",
+                    progress=False,
+                    auto_adjust=False,
+                )
+                # MultiIndexの場合はフラット化
+                if not hist_daily.empty and isinstance(hist_daily.columns, pd.MultiIndex):
+                    hist_daily.columns = hist_daily.columns.get_level_values(0)
                 if not hist_daily.empty:
                     break
                 if attempt < max_retries - 1:

@@ -30,6 +30,10 @@ on:
         description: "Slack通知に市場サマリーを表示（手動実行時のみ有効）"
         type: boolean
         default: false
+      force_1645_mode:
+        description: "16:45モードを強制（Grok選定スキップ、バックテスト実行）"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -88,8 +92,14 @@ jobs:
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
           echo "Current hour (JST): $CURRENT_HOUR"
 
+          # force_1645_mode が true の場合、強制的に16:45モード（Grok選定スキップ）
+          if [ "${{ github.event.inputs.force_1645_mode }}" = "true" ]; then
+            echo "mode=stock_data_forced" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "💹 FORCED 16:45 Mode - Grok selection SKIPPED, backtest ENABLED"
           # force_grok が true の場合、強制的にGROKモード
-          if [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
+          elif [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             echo "mode=grok_forced" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
