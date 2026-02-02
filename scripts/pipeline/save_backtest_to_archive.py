@@ -28,6 +28,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, time
 from typing import Optional, Tuple, Any
 import traceback
+import time as time_module
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -590,16 +591,41 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             start_date = (backtest_date - timedelta(days=5)).strftime("%Y-%m-%d")
         end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
 
-        hist_daily = stock.history(start=start_date, end=end_date, interval="1d")
+        # リトライロジック（GitHub Actions環境でのAPI制限対策）
+        hist_daily = pd.DataFrame()
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                hist_daily = stock.history(start=start_date, end=end_date, interval="1d")
+                if not hist_daily.empty:
+                    break
+                if attempt < max_retries - 1:
+                    wait_sec = (attempt + 1) * 2
+                    print(f"[WARN] {ticker}: Empty response, retry {attempt + 1}/{max_retries} after {wait_sec}s")
+                    time_module.sleep(wait_sec)
+            except Exception as e:
+                print(f"[WARN] {ticker}: yfinance error on attempt {attempt + 1}: {e}")
+                if attempt < max_retries - 1:
+                    time_module.sleep((attempt + 1) * 2)
+
+        # デバッグログ: yfinanceの戻り値を確認
+        print(f"[DEBUG] {ticker}: yfinance query start={start_date}, end={end_date}")
+        print(f"[DEBUG] {ticker}: hist_daily.empty={hist_daily.empty}, shape={hist_daily.shape}")
+        if not hist_daily.empty:
+            print(f"[DEBUG] {ticker}: hist_daily.index={list(hist_daily.index)}")
 
         if hist_daily.empty:
+            print(f"[DEBUG] {ticker}: FAIL - hist_daily is empty after {max_retries} retries")
             return None
 
         # インデックスをdate型に変換
         hist_daily.index = pd.to_datetime(hist_daily.index).date
         backtest_date_obj = backtest_date.date()
 
+        print(f"[DEBUG] {ticker}: backtest_date_obj={backtest_date_obj}, index after conversion={list(hist_daily.index)}")
+
         if backtest_date_obj not in hist_daily.index:
+            print(f"[DEBUG] {ticker}: FAIL - backtest_date_obj not in index")
             return None
 
         daily_row = hist_daily.loc[backtest_date_obj]
