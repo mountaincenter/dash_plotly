@@ -749,6 +749,132 @@ jobs:
             echo "ℹ️  Skipping market summary (only runs at 16:45 JST)"
           fi
 
+      - name: ML Model Retraining (Friday only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          # 金曜日かどうかを判定（JST基準）
+          DAY_OF_WEEK=$(TZ=Asia/Tokyo date +%u)  # 1=月曜, 5=金曜
+
+          if [ "$DAY_OF_WEEK" != "5" ]; then
+            echo "ℹ️  Today is not Friday (day=$DAY_OF_WEEK). Skipping ML retraining."
+            exit 0
+          fi
+
+          echo "============================================================"
+          echo "🤖 ML Model Retraining (Friday 16:45)"
+          echo "============================================================"
+
+          # === Step 1: 必要なデータをS3からダウンロード ===
+          echo ""
+          echo "📥 Step 1: Downloading required data from S3..."
+
+          # grok_trending_archive.parquet
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
+            data/parquet/backtest/grok_trending_archive.parquet \
+            --only-show-errors
+          echo "  ✅ grok_trending_archive.parquet"
+
+          # grok_prices_max_1d.parquet
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
+            data/parquet/grok_prices_max_1d.parquet \
+            --only-show-errors
+          echo "  ✅ grok_prices_max_1d.parquet"
+
+          # index_prices_max_1d.parquet
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}index_prices_max_1d.parquet" \
+            data/parquet/index_prices_max_1d.parquet \
+            --only-show-errors
+          echo "  ✅ index_prices_max_1d.parquet"
+
+          # futures_prices_max_1d.parquet
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}futures_prices_max_1d.parquet" \
+            data/parquet/futures_prices_max_1d.parquet \
+            --only-show-errors
+          echo "  ✅ futures_prices_max_1d.parquet"
+
+          # currency_prices_max_1d.parquet
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}currency_prices_max_1d.parquet" \
+            data/parquet/currency_prices_max_1d.parquet \
+            --only-show-errors
+          echo "  ✅ currency_prices_max_1d.parquet"
+
+          # === Step 2: grok_prices_max_1d.parquet を更新 ===
+          echo ""
+          echo "📊 Step 2: Updating grok_prices_max_1d.parquet..."
+          python3 scripts/pipeline/generate_grok_prices_max_1d.py
+
+          if [ $? -eq 0 ]; then
+            echo "  ✅ grok_prices_max_1d.parquet updated"
+            # S3にアップロード
+            aws s3 cp \
+              data/parquet/grok_prices_max_1d.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
+              --only-show-errors
+            echo "  ✅ Uploaded to S3"
+          else
+            echo "  ⚠️ Failed to update grok_prices_max_1d.parquet (continuing with existing data)"
+          fi
+
+          # === Step 3: 特徴量生成 ===
+          echo ""
+          echo "📊 Step 3: Generating features..."
+          mkdir -p data/parquet/ml
+          python3 scripts/ml/feature_engineering.py
+
+          if [ $? -eq 0 ]; then
+            FEATURES_COUNT=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/ml/archive_with_features.parquet'); print(len(df))")
+            echo "  ✅ Generated features: $FEATURES_COUNT records"
+          else
+            echo "  ❌ Failed to generate features"
+            exit 1
+          fi
+
+          # === Step 4: モデル学習 ===
+          echo ""
+          echo "🤖 Step 4: Training ML model..."
+          mkdir -p models
+          python3 scripts/ml/train_model.py
+
+          if [ $? -eq 0 ]; then
+            echo "  ✅ Model training completed"
+          else
+            echo "  ❌ Failed to train model"
+            exit 1
+          fi
+
+          # === Step 5: モデルをS3にアップロード ===
+          echo ""
+          echo "📤 Step 5: Uploading model to S3..."
+
+          aws s3 cp \
+            models/grok_lgbm_model.pkl \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_model.pkl" \
+            --only-show-errors
+          echo "  ✅ grok_lgbm_model.pkl"
+
+          aws s3 cp \
+            models/grok_lgbm_meta.json \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
+            --only-show-errors
+          echo "  ✅ grok_lgbm_meta.json"
+
+          # 特徴量ファイルもアップロード
+          aws s3 cp \
+            data/parquet/ml/archive_with_features.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/archive_with_features.parquet" \
+            --only-show-errors
+          echo "  ✅ archive_with_features.parquet"
+
+          echo ""
+          echo "============================================================"
+          echo "✅ ML Model Retraining completed!"
+          echo "============================================================"
+
       - name: Generate Grok Analysis Data
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |

@@ -2,7 +2,7 @@
 開発用: デイトレードリスト管理API
 
 grok_trending.parquet と grok_day_trade_list.parquet を使用
-- GET /dev/day-trade-list: 一覧取得（grok_trending.parquetから）
+- GET /dev/day-trade-list: 一覧取得（grok_trending.parquetから、ML予測含む）
 - PUT /dev/day-trade-list/{ticker}: 個別銘柄のフラグ更新
 """
 from fastapi import APIRouter, HTTPException
@@ -11,18 +11,31 @@ from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import tempfile
 import os
 import io
+import joblib
+import json
 
 router = APIRouter()
+
+# キャッシュ（モジュールレベル）
+_ml_model_cache = {"model": None, "meta": None, "loaded": False}
+_prices_cache = {"df": None, "loaded": False}
 
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 DAY_TRADE_LIST_PATH = BASE_DIR / "data" / "parquet" / "grok_day_trade_list.parquet"
 GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 GROK_ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
-GROK_PRICES_PATH = BASE_DIR / "improvement" / "grok_prices_max_1d.parquet"
+GROK_PRICES_PATH = BASE_DIR / "data" / "parquet" / "grok_prices_max_1d.parquet"
+PRICES_FALLBACK_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
+ML_MODEL_PATH = BASE_DIR / "models" / "grok_lgbm_model.pkl"
+ML_META_PATH = BASE_DIR / "models" / "grok_lgbm_meta.json"
+INDEX_PRICES_PATH = BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet"
+FUTURES_PRICES_PATH = BASE_DIR / "data" / "parquet" / "futures_prices_max_1d.parquet"
+CURRENCY_PRICES_PATH = BASE_DIR / "data" / "parquet" / "currency_prices_max_1d.parquet"
 
 # 曜日名
 WEEKDAY_NAMES = ['月', '火', '水', '木', '金', '土', '日']
@@ -140,10 +153,223 @@ def calc_stop_flags(prices_df: pd.DataFrame) -> dict:
 
 
 def load_grok_prices() -> pd.DataFrame:
-    """grok_prices_max_1d.parquetを読み込み"""
+    """grok_prices_max_1d.parquet + prices_max_1d.parquet（フォールバック）を読み込み"""
+    global _prices_cache
+    if _prices_cache["loaded"]:
+        return _prices_cache["df"]
+
+    dfs = []
+
+    # メイン: grok_prices_max_1d.parquet
     if GROK_PRICES_PATH.exists():
-        return pd.read_parquet(GROK_PRICES_PATH)
+        df = pd.read_parquet(GROK_PRICES_PATH)
+        if 'date' in df.columns and df['date'].dtype == 'object':
+            df['date'] = df['date'].str.replace(r'\+\d{2}:\d{2}$', '', regex=True)
+            df['date'] = pd.to_datetime(df['date'], format='mixed')
+        dfs.append(df)
+
+    # フォールバック: prices_max_1d.parquet（grokにない銘柄用）
+    if PRICES_FALLBACK_PATH.exists():
+        df_fb = pd.read_parquet(PRICES_FALLBACK_PATH)
+        if 'date' in df_fb.columns and df_fb['date'].dtype == 'object':
+            df_fb['date'] = df_fb['date'].str.replace(r'\+\d{2}:\d{2}$', '', regex=True)
+            df_fb['date'] = pd.to_datetime(df_fb['date'], format='mixed')
+        dfs.append(df_fb)
+
+    if dfs:
+        combined = pd.concat(dfs, ignore_index=True).drop_duplicates(subset=['ticker', 'date'])
+        _prices_cache["df"] = combined
+        _prices_cache["loaded"] = True
+        return combined
+
     return pd.DataFrame()
+
+
+def load_ml_model():
+    """MLモデルとメタ情報を読み込み（キャッシュ付き）"""
+    global _ml_model_cache
+    if _ml_model_cache["loaded"]:
+        return _ml_model_cache["model"], _ml_model_cache["meta"]
+
+    if not ML_MODEL_PATH.exists() or not ML_META_PATH.exists():
+        return None, None
+
+    model = joblib.load(ML_MODEL_PATH)
+    with open(ML_META_PATH, 'r') as f:
+        meta = json.load(f)
+
+    _ml_model_cache["model"] = model
+    _ml_model_cache["meta"] = meta
+    _ml_model_cache["loaded"] = True
+    return model, meta
+
+
+def load_market_data() -> dict:
+    """市場データ（日経、TOPIX、先物、為替）を読み込み"""
+    market_data = {}
+
+    if INDEX_PRICES_PATH.exists():
+        idx_df = pd.read_parquet(INDEX_PRICES_PATH)
+        idx_df['date'] = pd.to_datetime(idx_df['date'])
+        for key, ticker in [('nikkei', '^N225'), ('topix', '1306.T')]:
+            df = idx_df[idx_df['ticker'] == ticker].copy()
+            market_data[key] = df.sort_values('date').reset_index(drop=True)
+
+    if FUTURES_PRICES_PATH.exists():
+        fut_df = pd.read_parquet(FUTURES_PRICES_PATH)
+        fut_df['date'] = pd.to_datetime(fut_df['date'])
+        market_data['futures'] = fut_df[fut_df['ticker'] == 'NKD=F'].sort_values('date').reset_index(drop=True)
+
+    if CURRENCY_PRICES_PATH.exists():
+        cur_df = pd.read_parquet(CURRENCY_PRICES_PATH)
+        cur_df['date'] = pd.to_datetime(cur_df['date'])
+        market_data['usdjpy'] = cur_df[cur_df['ticker'] == 'JPY=X'].sort_values('date').reset_index(drop=True)
+
+    return market_data
+
+
+def calc_market_features(target_date: pd.Timestamp, market_data: dict) -> dict:
+    """市場指標の特徴量を計算"""
+    features = {}
+
+    for key in ['nikkei', 'topix', 'futures', 'usdjpy']:
+        if key not in market_data:
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        df = market_data[key]
+        df_past = df[df['date'] < target_date].tail(30)
+
+        if len(df_past) < 5:
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        closes = df_past['Close'].values
+        returns = np.diff(closes) / closes[:-1]
+        features[f'{key}_vol_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
+        features[f'{key}_ret_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
+        ma5 = np.mean(closes[-5:])
+        features[f'{key}_ma5_dev'] = (closes[-1] - ma5) / ma5 * 100
+
+    return features
+
+
+def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame) -> dict:
+    """価格ベース特徴量を計算"""
+    ticker_prices = prices_df[
+        (prices_df['ticker'] == ticker) &
+        (prices_df['date'] < target_date)
+    ].sort_values('date').tail(60).dropna(subset=['Close'])
+
+    if len(ticker_prices) < 5:
+        return None
+
+    closes = ticker_prices['Close'].values
+    volumes = ticker_prices['Volume'].values
+    highs = ticker_prices['High'].values
+    lows = ticker_prices['Low'].values
+
+    features = {}
+    returns = np.diff(closes) / closes[:-1]
+    features['volatility_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
+    features['volatility_10d'] = np.std(returns[-10:]) * 100 if len(returns) >= 10 else np.nan
+    features['volatility_20d'] = np.std(returns[-20:]) * 100 if len(returns) >= 20 else np.nan
+
+    ma5 = np.mean(closes[-5:])
+    ma25 = np.mean(closes[-25:]) if len(closes) >= 25 else np.nan
+    features['ma5_deviation'] = (closes[-1] - ma5) / ma5 * 100
+    features['ma25_deviation'] = (closes[-1] - ma25) / ma25 * 100 if not np.isnan(ma25) else np.nan
+    features['prev_day_return'] = (closes[-1] - closes[-2]) / closes[-2] * 100 if len(closes) >= 2 else np.nan
+    features['return_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
+    features['return_10d'] = (closes[-1] - closes[-10]) / closes[-10] * 100 if len(closes) >= 10 else np.nan
+
+    if len(volumes) >= 5:
+        avg_vol_5d = np.mean(volumes[-5:])
+        features['volume_ratio_5d'] = volumes[-1] / avg_vol_5d if avg_vol_5d > 0 else np.nan
+    else:
+        features['volume_ratio_5d'] = np.nan
+
+    if len(highs) >= 5 and len(lows) >= 5:
+        features['price_range_5d'] = (np.max(highs[-5:]) - np.min(lows[-5:])) / np.min(lows[-5:]) * 100 if np.min(lows[-5:]) > 0 else np.nan
+    else:
+        features['price_range_5d'] = np.nan
+
+    return features
+
+
+def get_quintile(prob: float) -> str:
+    """prob_upから5分位を返す（学習時の分布に基づく近似）"""
+    if prob <= 0.32:
+        return "Q1"
+    elif prob <= 0.40:
+        return "Q2"
+    elif prob <= 0.48:
+        return "Q3"
+    elif prob <= 0.55:
+        return "Q4"
+    else:
+        return "Q5"
+
+
+def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: pd.DataFrame) -> dict:
+    """grok_dfの各銘柄に対してML予測を実行"""
+    if model is None:
+        return {}
+
+    feature_names = meta['feature_names']
+    target_date = pd.to_datetime(grok_df['date'].iloc[0])
+    market_data = load_market_data()
+    market_features = calc_market_features(target_date, market_data)
+
+    results = {}
+
+    for _, row in grok_df.iterrows():
+        ticker = row['ticker']
+
+        existing_features = {
+            'grok_rank': row.get('grok_rank'),
+            'selection_score': row.get('selection_score'),
+            'buy_price': row.get('Close'),
+            'market_cap': row.get('market_cap'),
+            'atr14_pct': row.get('atr14_pct'),
+            'vol_ratio': row.get('vol_ratio'),
+            'rsi9': row.get('rsi9'),
+            'weekday': row.get('weekday'),
+            'nikkei_change_pct': row.get('nikkei_change_pct'),
+            'futures_change_pct': row.get('futures_change_pct'),
+            'shortable': 1 if row.get('shortable') else 0,
+            'day_trade': 1 if row.get('day_trade') else 0,
+        }
+
+        price_features = calc_price_features(ticker, target_date, prices_df)
+        if price_features is None:
+            results[ticker] = {'prob_up': None, 'quintile': None}
+            continue
+
+        all_features = {**existing_features, **price_features, **market_features}
+
+        feature_vector = []
+        for fname in feature_names:
+            val = all_features.get(fname)
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                feature_vector.append(0)
+            else:
+                feature_vector.append(float(val))
+
+        try:
+            prob = model.predict_proba([feature_vector])[0][1]
+            results[ticker] = {
+                'prob_up': round(float(prob), 3),
+                'quintile': get_quintile(prob)
+            }
+        except Exception:
+            results[ticker] = {'prob_up': None, 'quintile': None}
+
+    return results
 
 
 def load_day_trade_list() -> pd.DataFrame:
@@ -297,12 +523,12 @@ class DayTradeUpdateRequest(BaseModel):
 @router.get("/dev/day-trade-list")
 async def get_day_trade_list():
     """
-    デイトレードリスト一覧を取得（grok_trending.parquetから）
+    デイトレードリスト一覧を取得（grok_trending.parquetから、ML予測含む）
 
     Returns:
     - total: 総銘柄数
     - summary: {shortable, day_trade, ng}
-    - stocks: 銘柄リスト（appearance_count付き）
+    - stocks: 銘柄リスト（appearance_count, prob_up, quintile付き）
     """
     grok_df = load_grok_trending()
     day_trade_df = load_day_trade_list()
@@ -325,8 +551,20 @@ async def get_day_trade_list():
             stop_flags = calc_stop_flags(prices_df)
         else:
             stop_flags = {}
+            prices_df = pd.DataFrame()
     except Exception:
         stop_flags = {}
+        prices_df = pd.DataFrame()
+
+    # ML予測を実行
+    ml_predictions = {}
+    try:
+        model, meta = load_ml_model()
+        if model is not None and not prices_df.empty:
+            prices_df['date'] = pd.to_datetime(prices_df['date'])
+            ml_predictions = predict_ml_for_stocks(grok_df, model, meta, prices_df)
+    except Exception as e:
+        print(f"ML予測エラー: {e}")
 
     # day_trade_listをdictに変換（tickerでルックアップ）
     dtl_map = {row["ticker"]: row for _, row in day_trade_df.iterrows()}
@@ -370,6 +608,11 @@ async def get_day_trade_list():
         margin_sell_balance = int(row.get("margin_sell_balance")) if pd.notna(row.get("margin_sell_balance")) else None
         margin_buy_balance = int(row.get("margin_buy_balance")) if pd.notna(row.get("margin_buy_balance")) else None
 
+        # ML予測結果を取得
+        ml_result = ml_predictions.get(ticker, {})
+        prob_up = ml_result.get('prob_up')
+        quintile = ml_result.get('quintile')
+
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
@@ -378,6 +621,8 @@ async def get_day_trade_list():
             "price_diff": price_diff,
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
+            "prob_up": prob_up,
+            "quintile": quintile,
             "shortable": shortable,
             "day_trade": day_trade,
             "ng": ng,

@@ -1,7 +1,20 @@
 #!/usr/bin/env python3
 """
 feature_engineering.py
-grok_trending_archive + 日足データから特徴量を作成
+grok_trending_archive + 日足データ + 市場データから特徴量を作成
+
+=== データソース ===
+- grok_trending_archive.parquet: 学習データ（目的変数 phase2_win 含む）
+- grok_prices_max_1d.parquet: 銘柄個別の日足（yfinanceから取得済み）
+- index_prices_max_1d.parquet: 日経225(^N225), TOPIX ETF(1306.T)
+- futures_prices_max_1d.parquet: 日経先物(NKD=F)
+- currency_prices_max_1d.parquet: ドル円(JPY=X)
+
+=== 目的変数の定義 ===
+- phase2_win = True: 終値 > 始値（株価上昇 = ロング利益）
+- phase2_win = False: 終値 < 始値（株価下落 = ショート利益）
+
+※ ショート戦略では phase2_win=False を狙う
 """
 
 from __future__ import annotations
@@ -21,8 +34,21 @@ from common_cfg.paths import PARQUET_DIR
 ARCHIVE_PATH = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
 PRICES_PATH = PARQUET_DIR / "grok_prices_max_1d.parquet"
 
+# 市場データパス
+INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+FUTURES_PRICES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
+CURRENCY_PRICES_PATH = PARQUET_DIR / "currency_prices_max_1d.parquet"
 
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+# 市場指標のticker
+MARKET_TICKERS = {
+    'nikkei': '^N225',
+    'topix': '1306.T',
+    'futures': 'NKD=F',
+    'usdjpy': 'JPY=X',
+}
+
+
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, pd.DataFrame]]:
     """データ読み込み"""
     print("[INFO] Loading data...")
 
@@ -33,7 +59,97 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     prices['date'] = pd.to_datetime(prices['date'])
     print(f"  Prices: {len(prices):,} rows, {prices['ticker'].nunique()} tickers")
 
-    return archive, prices
+    # 市場データ読み込み
+    market_data = load_market_data()
+
+    return archive, prices, market_data
+
+
+def load_market_data() -> dict[str, pd.DataFrame]:
+    """市場データ（日経、TOPIX、先物、為替）を読み込み"""
+    print("[INFO] Loading market data...")
+
+    market_data = {}
+
+    # Index (日経225, TOPIX ETF)
+    if INDEX_PRICES_PATH.exists():
+        idx_df = pd.read_parquet(INDEX_PRICES_PATH)
+        idx_df['date'] = pd.to_datetime(idx_df['date'])
+
+        for key, ticker in [('nikkei', '^N225'), ('topix', '1306.T')]:
+            df = idx_df[idx_df['ticker'] == ticker].copy()
+            df = df.sort_values('date').reset_index(drop=True)
+            market_data[key] = df
+            print(f"  {key} ({ticker}): {len(df):,} rows")
+
+    # Futures (日経先物)
+    if FUTURES_PRICES_PATH.exists():
+        fut_df = pd.read_parquet(FUTURES_PRICES_PATH)
+        fut_df['date'] = pd.to_datetime(fut_df['date'])
+        df = fut_df[fut_df['ticker'] == 'NKD=F'].copy()
+        df = df.sort_values('date').reset_index(drop=True)
+        market_data['futures'] = df
+        print(f"  futures (NKD=F): {len(df):,} rows")
+
+    # Currency (ドル円)
+    if CURRENCY_PRICES_PATH.exists():
+        cur_df = pd.read_parquet(CURRENCY_PRICES_PATH)
+        cur_df['date'] = pd.to_datetime(cur_df['date'])
+        df = cur_df[cur_df['ticker'] == 'JPY=X'].copy()
+        df = df.sort_values('date').reset_index(drop=True)
+        market_data['usdjpy'] = df
+        print(f"  usdjpy (JPY=X): {len(df):,} rows")
+
+    return market_data
+
+
+def calc_market_features(
+    target_date: pd.Timestamp,
+    market_data: dict[str, pd.DataFrame],
+) -> dict:
+    """
+    市場指標の特徴量を計算
+
+    Args:
+        target_date: 対象日付（この日より前のデータのみ使用）
+        market_data: 市場データ辞書
+
+    Returns:
+        特徴量辞書
+    """
+    features = {}
+
+    for key in ['nikkei', 'topix', 'futures', 'usdjpy']:
+        if key not in market_data:
+            # データなしの場合はNaN
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        df = market_data[key]
+        df_past = df[df['date'] < target_date].tail(30)
+
+        if len(df_past) < 5:
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        closes = df_past['Close'].values
+
+        # 5日ボラティリティ
+        returns = np.diff(closes) / closes[:-1]
+        features[f'{key}_vol_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
+
+        # 5日リターン
+        features[f'{key}_ret_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
+
+        # MA5乖離率
+        ma5 = np.mean(closes[-5:])
+        features[f'{key}_ma5_dev'] = (closes[-1] - ma5) / ma5 * 100
+
+    return features
 
 
 def calc_price_features(
@@ -127,13 +243,18 @@ def calc_price_features(
     return features
 
 
-def create_features(archive_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
+def create_features(
+    archive_df: pd.DataFrame,
+    prices_df: pd.DataFrame,
+    market_data: dict[str, pd.DataFrame]
+) -> pd.DataFrame:
     """
     archive全行に対して特徴量を追加
 
     Args:
         archive_df: grok_trending_archive
         prices_df: grok_prices_max_1d
+        market_data: 市場データ辞書
 
     Returns:
         特徴量追加済みDataFrame
@@ -144,6 +265,9 @@ def create_features(archive_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.Dat
     archive_df = archive_df.copy()
     archive_df['backtest_date'] = pd.to_datetime(archive_df['backtest_date'])
 
+    # 市場特徴量を日付ごとにキャッシュ
+    market_features_cache = {}
+
     feature_records = []
     total = len(archive_df)
 
@@ -151,9 +275,18 @@ def create_features(archive_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.Dat
         ticker = row['ticker']
         target_date = row['backtest_date']
 
-        # 価格ベース特徴量
+        # 価格ベース特徴量（銘柄個別）
         price_features = calc_price_features(ticker, target_date, prices_df)
-        feature_records.append(price_features)
+
+        # 市場特徴量（日付ごとにキャッシュ）
+        date_key = target_date.strftime('%Y-%m-%d')
+        if date_key not in market_features_cache:
+            market_features_cache[date_key] = calc_market_features(target_date, market_data)
+        market_features = market_features_cache[date_key]
+
+        # 結合
+        all_features = {**price_features, **market_features}
+        feature_records.append(all_features)
 
         # 進捗表示
         if (idx + 1) % 100 == 0 or idx == total - 1:
@@ -177,15 +310,24 @@ def get_feature_columns() -> list[str]:
         'shortable', 'day_trade'
     ]
 
-    # 新規作成した特徴量
-    new_features = [
+    # 新規作成した特徴量（銘柄個別）
+    price_features = [
         'volatility_5d', 'volatility_10d', 'volatility_20d',
         'ma5_deviation', 'ma25_deviation',
         'prev_day_return', 'return_5d', 'return_10d',
         'volume_ratio_5d', 'price_range_5d'
     ]
 
-    return existing_features + new_features
+    # 市場特徴量（日経、TOPIX、先物、ドル円）
+    market_features = []
+    for key in ['nikkei', 'topix', 'futures', 'usdjpy']:
+        market_features.extend([
+            f'{key}_vol_5d',
+            f'{key}_ret_5d',
+            f'{key}_ma5_dev',
+        ])
+
+    return existing_features + price_features + market_features
 
 
 def main():
@@ -195,10 +337,10 @@ def main():
     print("=" * 60)
 
     # データ読み込み
-    archive, prices = load_data()
+    archive, prices, market_data = load_data()
 
     # 特徴量作成
-    df_with_features = create_features(archive, prices)
+    df_with_features = create_features(archive, prices, market_data)
 
     # 保存
     output_path = PARQUET_DIR / "ml" / "archive_with_features.parquet"

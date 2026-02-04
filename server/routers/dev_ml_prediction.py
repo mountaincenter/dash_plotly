@@ -6,6 +6,21 @@ grok_trending.parquetの銘柄に対して騰落確率を予測
 
 データソース:
 - 日足: grok_prices_max_1d.parquet
+- 市場: index_prices_max_1d.parquet, futures_prices_max_1d.parquet, currency_prices_max_1d.parquet
+
+=== 重要: prob_up の解釈（ショート戦略） ===
+
+【モデルの出力】
+- prob_up = 株価上昇確率（ロング基準で計算）
+- phase2_win = 終値 > 始値（ロング利益）
+
+【ショート戦略での使い方】
+- prob_up 高い → 株価上昇予測 → ショート損失リスク高 → 避ける
+- prob_up 低い → 株価下落予測 → ショート利益期待 → 推奨
+
+【実運用】
+- prob_up下位の銘柄をショート対象として選定
+- prob_up上位の銘柄はショート回避
 """
 
 from fastapi import APIRouter, HTTPException
@@ -28,6 +43,9 @@ MODEL_DIR = BASE_DIR / "models"
 
 GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 GROK_PRICES_PATH = PARQUET_DIR / "grok_prices_max_1d.parquet"
+INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+FUTURES_PRICES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
+CURRENCY_PRICES_PATH = PARQUET_DIR / "currency_prices_max_1d.parquet"
 MODEL_PATH = MODEL_DIR / "grok_lgbm_model.pkl"
 META_PATH = MODEL_DIR / "grok_lgbm_meta.json"
 
@@ -96,6 +114,75 @@ def load_prices() -> pd.DataFrame:
         raise HTTPException(status_code=500, detail=f"価格データ読み込みエラー: {str(e)}")
 
 
+def load_market_data() -> dict:
+    """市場データ（日経、TOPIX、先物、為替）を読み込み"""
+    market_data = {}
+
+    # Index (日経225, TOPIX ETF)
+    if INDEX_PRICES_PATH.exists():
+        idx_df = pd.read_parquet(INDEX_PRICES_PATH)
+        idx_df['date'] = pd.to_datetime(idx_df['date'])
+
+        for key, ticker in [('nikkei', '^N225'), ('topix', '1306.T')]:
+            df = idx_df[idx_df['ticker'] == ticker].copy()
+            df = df.sort_values('date').reset_index(drop=True)
+            market_data[key] = df
+
+    # Futures (日経先物)
+    if FUTURES_PRICES_PATH.exists():
+        fut_df = pd.read_parquet(FUTURES_PRICES_PATH)
+        fut_df['date'] = pd.to_datetime(fut_df['date'])
+        df = fut_df[fut_df['ticker'] == 'NKD=F'].copy()
+        df = df.sort_values('date').reset_index(drop=True)
+        market_data['futures'] = df
+
+    # Currency (ドル円)
+    if CURRENCY_PRICES_PATH.exists():
+        cur_df = pd.read_parquet(CURRENCY_PRICES_PATH)
+        cur_df['date'] = pd.to_datetime(cur_df['date'])
+        df = cur_df[cur_df['ticker'] == 'JPY=X'].copy()
+        df = df.sort_values('date').reset_index(drop=True)
+        market_data['usdjpy'] = df
+
+    return market_data
+
+
+def calc_market_features(target_date: pd.Timestamp, market_data: dict) -> dict:
+    """市場指標の特徴量を計算"""
+    features = {}
+
+    for key in ['nikkei', 'topix', 'futures', 'usdjpy']:
+        if key not in market_data:
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        df = market_data[key]
+        df_past = df[df['date'] < target_date].tail(30)
+
+        if len(df_past) < 5:
+            features[f'{key}_vol_5d'] = np.nan
+            features[f'{key}_ret_5d'] = np.nan
+            features[f'{key}_ma5_dev'] = np.nan
+            continue
+
+        closes = df_past['Close'].values
+
+        # 5日ボラティリティ
+        returns = np.diff(closes) / closes[:-1]
+        features[f'{key}_vol_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
+
+        # 5日リターン
+        features[f'{key}_ret_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
+
+        # MA5乖離率
+        ma5 = np.mean(closes[-5:])
+        features[f'{key}_ma5_dev'] = (closes[-1] - ma5) / ma5 * 100
+
+    return features
+
+
 def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame) -> dict:
     """価格ベース特徴量を計算"""
     ticker_prices = prices_df[
@@ -157,14 +244,26 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     return features
 
 
-def get_confidence_level(prob: float) -> str:
-    """確率からconfidence levelを返す"""
-    if prob >= 0.65:
-        return "high"
-    elif prob >= 0.55:
-        return "medium"
+def get_short_recommendation(prob: float, threshold: float = 0.40) -> dict:
+    """
+    prob_upからショート推奨度を判定
+
+    Args:
+        prob: 株価上昇確率（ロング基準）
+        threshold: ショート推奨閾値（デフォルト0.40）
+
+    Returns:
+        recommendation: ショート推奨度
+        reason: 理由
+    """
+    if prob <= 0.25:
+        return {"recommendation": "strong_short", "reason": "株価下落確率が非常に高い"}
+    elif prob <= threshold:
+        return {"recommendation": "short", "reason": "株価下落確率が高い"}
+    elif prob <= 0.55:
+        return {"recommendation": "neutral", "reason": "方向性が不明確"}
     else:
-        return "low"
+        return {"recommendation": "avoid", "reason": "株価上昇予測のためショート回避"}
 
 
 @router.get("/dev/ml/prediction")
@@ -184,12 +283,16 @@ async def get_ml_prediction():
     # データ読み込み
     grok_df = load_grok_trending()
     prices_df = load_prices()
+    market_data = load_market_data()
 
     if grok_df.empty:
         raise HTTPException(status_code=404, detail="grok_trendingにデータがありません")
 
     # 対象日付
     target_date = pd.to_datetime(grok_df['date'].iloc[0])
+
+    # 市場特徴量（日付ごとに同じなので1回だけ計算）
+    market_features = calc_market_features(target_date, market_data)
 
     predictions = []
 
@@ -226,8 +329,8 @@ async def get_ml_prediction():
             })
             continue
 
-        # 全特徴量を結合
-        all_features = {**existing_features, **price_features}
+        # 全特徴量を結合（既存 + 価格 + 市場）
+        all_features = {**existing_features, **price_features, **market_features}
 
         # 特徴量ベクトル作成
         feature_vector = []
@@ -244,11 +347,13 @@ async def get_ml_prediction():
         # 予測
         try:
             prob = model.predict_proba([feature_vector])[0][1]
+            short_rec = get_short_recommendation(prob)
             predictions.append({
                 'ticker': ticker,
                 'stock_name': stock_name,
                 'prob_up': round(float(prob), 3),
-                'confidence': get_confidence_level(prob),
+                'short_recommendation': short_rec['recommendation'],
+                'short_reason': short_rec['reason'],
                 'missing_features': missing_features if missing_features else None
             })
         except Exception as e:
@@ -256,18 +361,24 @@ async def get_ml_prediction():
                 'ticker': ticker,
                 'stock_name': stock_name,
                 'prob_up': None,
-                'confidence': 'error',
+                'short_recommendation': 'error',
                 'error': str(e)
             })
 
-    # 確率でソート
-    predictions.sort(key=lambda x: x.get('prob_up') or 0, reverse=True)
+    # ショート推奨順にソート（prob_up低い順 = ショート推奨順）
+    predictions.sort(key=lambda x: x.get('prob_up') or 1.0)
+
+    # 推奨銘柄数をカウント
+    short_recommended = len([p for p in predictions if p.get('short_recommendation') in ['strong_short', 'short']])
 
     return JSONResponse(content={
         'date': target_date.strftime('%Y-%m-%d'),
         'model_auc': meta['metrics']['auc_mean'],
         'total_stocks': len(grok_df),
         'predicted_stocks': len([p for p in predictions if p.get('prob_up') is not None]),
+        'short_recommended': short_recommended,
+        'strategy': 'SHORT',
+        'threshold': 0.40,
         'predictions': predictions,
         'generated_at': datetime.now().isoformat()
     })
