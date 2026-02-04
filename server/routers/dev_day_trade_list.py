@@ -608,10 +608,13 @@ async def get_day_trade_list():
         margin_sell_balance = int(row.get("margin_sell_balance")) if pd.notna(row.get("margin_sell_balance")) else None
         margin_buy_balance = int(row.get("margin_buy_balance")) if pd.notna(row.get("margin_buy_balance")) else None
 
-        # ML予測結果を取得
-        ml_result = ml_predictions.get(ticker, {})
-        prob_up = ml_result.get('prob_up')
-        quintile = ml_result.get('quintile')
+        # ML予測結果を取得（parquetファイルのカラムを優先、なければ動的計算）
+        prob_up = row.get('prob_up') if pd.notna(row.get('prob_up')) else None
+        quintile = row.get('quintile') if pd.notna(row.get('quintile')) else None
+        if prob_up is None:
+            ml_result = ml_predictions.get(ticker, {})
+            prob_up = ml_result.get('prob_up')
+            quintile = ml_result.get('quintile')
 
         stocks.append({
             "ticker": ticker,
