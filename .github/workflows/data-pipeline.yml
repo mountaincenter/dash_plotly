@@ -329,6 +329,64 @@ jobs:
             echo "⚠️ Warning: Failed to add market_cap (continuing anyway)"
           fi
 
+          # ML予測（prob_up, quintile）カラムを追加
+          echo "🤖 Adding ML predictions (prob_up, quintile) to grok_trending.parquet..."
+
+          # 必要なファイルをS3からダウンロード
+          echo "📥 Downloading files for ML prediction..."
+
+          # grok_prices_max_1d.parquet
+          if ! aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
+            data/parquet/grok_prices_max_1d.parquet \
+            --only-show-errors; then
+            echo "⚠️ Warning: grok_prices_max_1d.parquet not found in S3"
+          fi
+
+          # MLモデルファイル
+          mkdir -p models
+          if ! aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_model.pkl" \
+            models/grok_lgbm_model.pkl \
+            --only-show-errors; then
+            echo "⚠️ Warning: ML model not found in S3"
+          fi
+          if ! aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
+            models/grok_lgbm_meta.json \
+            --only-show-errors; then
+            echo "⚠️ Warning: ML meta not found in S3"
+          fi
+
+          # 市場データ（index, futures, currency）
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}index_prices_max_1d.parquet" \
+            data/parquet/index_prices_max_1d.parquet \
+            --only-show-errors || echo "⚠️ index_prices not found"
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}futures_prices_max_1d.parquet" \
+            data/parquet/futures_prices_max_1d.parquet \
+            --only-show-errors || echo "⚠️ futures_prices not found"
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}currency_prices_max_1d.parquet" \
+            data/parquet/currency_prices_max_1d.parquet \
+            --only-show-errors || echo "⚠️ currency_prices not found"
+
+          # ML予測スクリプト実行
+          python3 scripts/pipeline/add_ml_prediction_to_grok_trending.py
+          if [ $? -eq 0 ]; then
+            echo "✅ Added prob_up/quintile columns"
+            # 更新されたgrok_trending.parquetをS3にアップロード
+            aws s3 cp \
+              data/parquet/grok_trending.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
+              --region ${{ env.AWS_REGION }} \
+              --only-show-errors
+            echo "✅ Uploaded updated grok_trending.parquet (with ML predictions) to S3"
+          else
+            echo "⚠️ Warning: Failed to add ML predictions (continuing anyway)"
+          fi
+
           # trading_recommendation.json を生成（v2.1ロジック - 2階建てアーキテクチャ）
           echo "📊 Generating trading_recommendation.json (v2.1 - 2階建てアーキテクチャ)..."
           python3 scripts/pipeline/generate_trading_recommendation_v2_1.py
