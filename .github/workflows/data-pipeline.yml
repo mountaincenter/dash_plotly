@@ -343,6 +343,25 @@ jobs:
             echo "⚠️ Warning: grok_prices_max_1d.parquet not found in S3"
           fi
 
+          # grok_trending_archive.parquet（generate_grok_prices_max_1d.py用）
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
+            data/parquet/backtest/grok_trending_archive.parquet \
+            --only-show-errors || echo "⚠️ archive not found"
+
+          # 新規銘柄の価格データを取得（grok_trendingの銘柄がgrok_prices_max_1dにない場合）
+          echo "📊 Updating grok_prices_max_1d.parquet with new tickers..."
+          python3 scripts/pipeline/generate_grok_prices_max_1d.py || echo "⚠️ Price update failed"
+
+          # 更新されたgrok_prices_max_1d.parquetをS3にアップロード
+          if [ -f "data/parquet/grok_prices_max_1d.parquet" ]; then
+            aws s3 cp \
+              data/parquet/grok_prices_max_1d.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
+              --only-show-errors
+            echo "✅ Updated grok_prices_max_1d.parquet on S3"
+          fi
+
           # MLモデルファイル
           mkdir -p models
           if ! aws s3 cp \

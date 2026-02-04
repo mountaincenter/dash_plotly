@@ -19,21 +19,40 @@ from scripts.lib.yfinance_fetcher import fetch_prices_for_tickers
 from common_cfg.paths import PARQUET_DIR
 
 ARCHIVE_PATH = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
+GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 OUTPUT_PATH = PARQUET_DIR / "grok_prices_max_1d.parquet"
 
 
-def load_archive_tickers() -> list[str]:
-    """grok_trending_archive.parquetからユニーク銘柄を取得"""
-    if not ARCHIVE_PATH.exists():
-        raise FileNotFoundError(
-            f"grok_trending_archive.parquet not found: {ARCHIVE_PATH}"
-        )
+def load_all_tickers() -> list[str]:
+    """grok_trending_archive.parquet + grok_trending.parquet からユニーク銘柄を取得"""
+    tickers = set()
 
-    print(f"[INFO] Loading archive: {ARCHIVE_PATH}")
-    df = pd.read_parquet(ARCHIVE_PATH)
-    tickers = df["ticker"].unique().tolist()
-    print(f"  ✓ Found {len(tickers)} unique tickers")
-    return tickers
+    # archive から取得
+    if ARCHIVE_PATH.exists():
+        print(f"[INFO] Loading archive: {ARCHIVE_PATH}")
+        df = pd.read_parquet(ARCHIVE_PATH)
+        archive_tickers = df["ticker"].unique().tolist()
+        tickers.update(archive_tickers)
+        print(f"  ✓ Archive: {len(archive_tickers)} tickers")
+    else:
+        print(f"[WARN] Archive not found: {ARCHIVE_PATH}")
+
+    # 現在のgrok_trending から取得（新規選定銘柄を含める）
+    if GROK_TRENDING_PATH.exists():
+        print(f"[INFO] Loading current grok_trending: {GROK_TRENDING_PATH}")
+        df = pd.read_parquet(GROK_TRENDING_PATH)
+        current_tickers = df["ticker"].unique().tolist()
+        new_tickers = set(current_tickers) - tickers
+        tickers.update(current_tickers)
+        print(f"  ✓ Current: {len(current_tickers)} tickers ({len(new_tickers)} new)")
+    else:
+        print(f"[WARN] grok_trending not found: {GROK_TRENDING_PATH}")
+
+    if not tickers:
+        raise FileNotFoundError("No tickers found in archive or grok_trending")
+
+    print(f"  ✓ Total unique tickers: {len(tickers)}")
+    return list(tickers)
 
 
 def main():
@@ -42,8 +61,8 @@ def main():
     print("Generate grok_prices_max_1d.parquet")
     print("=" * 60)
 
-    # 1. archive銘柄を取得
-    tickers = load_archive_tickers()
+    # 1. archive + 現在のgrok_trending銘柄を取得
+    tickers = load_all_tickers()
 
     # 2. yfinanceで日足データを取得
     print(f"\n[INFO] Fetching daily prices for {len(tickers)} tickers...")
