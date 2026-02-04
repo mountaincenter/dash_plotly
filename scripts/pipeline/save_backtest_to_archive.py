@@ -48,6 +48,10 @@ BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
+PRICES_5M_PATH = PARQUET_DIR / "prices_60d_5m.parquet"
+
+# prices_60d_5m.parquetのキャッシュ
+_prices_5m_df: Optional[pd.DataFrame] = None
 
 # 極端相場の閾値（±3%）
 EXTREME_MARKET_THRESHOLD = 3.0
@@ -306,52 +310,64 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         return None
 
 
+def load_prices_5m() -> Optional[pd.DataFrame]:
+    """
+    prices_60d_5m.parquetを読み込み（シングルトン）
+
+    Returns:
+        pd.DataFrame: 5分足データ、または存在しない場合はNone
+    """
+    global _prices_5m_df
+
+    if _prices_5m_df is not None:
+        return _prices_5m_df
+
+    if not PRICES_5M_PATH.exists():
+        print(f"[WARN] prices_60d_5m.parquet not found: {PRICES_5M_PATH}")
+        return None
+
+    _prices_5m_df = pd.read_parquet(PRICES_5M_PATH)
+    print(f"[INFO] prices_60d_5m.parquet loaded: {len(_prices_5m_df)} records")
+    return _prices_5m_df
+
+
 def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
     """
-    yfinanceを使用して5分足の株価データを取得
+    prices_60d_5m.parquetから5分足の株価データを取得
 
     Args:
         ticker: 銘柄コード (例: "9984.T")
         date: 取得する日付
 
     Returns:
-        5分足データのDataFrame、または取得失敗時はNone
+        5分足データのDataFrame（indexがdatetime）、または取得失敗時はNone
     """
-    try:
-        # 日付の前後2日分のデータを取得（余裕を持たせる）
-        start_date = date - timedelta(days=2)
-        end_date = date + timedelta(days=2)
+    df_all = load_prices_5m()
 
-        # yf.download()を使用（GitHub Actions環境でyf.Ticker().history()が失敗するため）
-        df = yf.download(
-            ticker,
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
-            interval="5m",
-            progress=False,
-            auto_adjust=False,
-        )
-
-        if df.empty:
-            return None
-
-        # MultiIndexの場合はフラット化
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # タイムゾーンを除去（JST前提）
-        if df.index.tz is not None:
-            df.index = df.index.tz_localize(None)
-
-        # 指定日のデータのみを抽出
-        target_date = pd.Timestamp(date.date())
-        df_target = df[df.index.date == target_date.date()]
-
-        return df_target if not df_target.empty else None
-
-    except Exception as e:
-        print(f"[WARN] Failed to fetch intraday data for {ticker} on {date.date()}: {e}")
+    if df_all is None:
+        print(f"[WARN] {ticker}: prices_60d_5m.parquet not available")
         return None
+
+    # 銘柄でフィルタ
+    df_ticker = df_all[df_all['ticker'] == ticker].copy()
+
+    if df_ticker.empty:
+        print(f"[WARN] {ticker}: Not found in prices_60d_5m.parquet")
+        return None
+
+    # 指定日のデータのみを抽出
+    target_date = pd.Timestamp(date.date())
+    df_target = df_ticker[df_ticker['date'].dt.date == target_date.date()].copy()
+
+    if df_target.empty:
+        print(f"[WARN] {ticker}: No 5m data for {date.date()} in prices_60d_5m.parquet")
+        return None
+
+    # dateをindexに設定（between_time用）
+    df_target = df_target.set_index('date')
+
+    print(f"[DEBUG] {ticker}: Got {len(df_target)} 5m records for {date.date()} from parquet")
+    return df_target
 
 
 def calculate_morning_metrics(
@@ -481,7 +497,8 @@ SEGMENT_TIMES = [
 
 def calculate_segment_prices(
     df_5min: pd.DataFrame,
-    buy_price: float
+    buy_price: float,
+    daily_close: Optional[float] = None
 ) -> dict:
     """
     11セグメントの価格を計算
@@ -489,9 +506,14 @@ def calculate_segment_prices(
     Args:
         df_5min: 5分足データ
         buy_price: 始値（買値）
+        daily_close: 日足終値（seg_1530用）
 
     Returns:
         dict: {seg_0930: 利益, seg_1000: 利益, ...}
+
+    Note:
+        seg_1530は5分足の15:25バーがNaNになることがあるため、
+        daily_close（日足終値）を使用する
     """
     segments = {}
 
@@ -502,6 +524,14 @@ def calculate_segment_prices(
 
     for seg_name, start_time, end_time in SEGMENT_TIMES:
         try:
+            # seg_1530は日足終値を使用（5分足の15:25バーはNaNになることがある）
+            if seg_name == "seg_1530":
+                if daily_close is not None and daily_close > 0:
+                    segments[seg_name] = (daily_close - buy_price) * 100
+                else:
+                    segments[seg_name] = None
+                continue
+
             # 指定時刻付近のデータを取得
             slot_data = df_5min.between_time(start_time, end_time)
 
@@ -723,8 +753,8 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
                 "profit_per_100_shares": (phase_return * buy_price * 100) if phase_return is not None else None
             }
 
-        # 11セグメント価格を計算
-        segment_prices = calculate_segment_prices(df_5min, buy_price)
+        # 11セグメント価格を計算（seg_1530は日足終値を使用）
+        segment_prices = calculate_segment_prices(df_5min, buy_price, daily_close)
 
         return {
             "prev_close": prev_close,
