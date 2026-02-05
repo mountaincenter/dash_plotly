@@ -186,10 +186,25 @@ def load_grok_prices() -> pd.DataFrame:
 
 
 def load_ml_model():
-    """MLモデルとメタ情報を読み込み（キャッシュ付き）"""
+    """MLモデルとメタ情報を読み込み（キャッシュ付き、S3フォールバック）"""
     global _ml_model_cache
     if _ml_model_cache["loaded"]:
         return _ml_model_cache["model"], _ml_model_cache["meta"]
+
+    if not ML_MODEL_PATH.exists() or not ML_META_PATH.exists():
+        try:
+            import boto3
+            s3_bucket = os.getenv("S3_BUCKET", "stock-api-data")
+            s3_region = os.getenv("AWS_REGION", "ap-northeast-1")
+            s3_client = boto3.client("s3", region_name=s3_region)
+            ML_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+            if not ML_MODEL_PATH.exists():
+                s3_client.download_file(s3_bucket, "parquet/ml/grok_lgbm_model.pkl", str(ML_MODEL_PATH))
+            if not ML_META_PATH.exists():
+                s3_client.download_file(s3_bucket, "parquet/ml/grok_lgbm_meta.json", str(ML_META_PATH))
+        except Exception:
+            return None, None
 
     if not ML_MODEL_PATH.exists() or not ML_META_PATH.exists():
         return None, None

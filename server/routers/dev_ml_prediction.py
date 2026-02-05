@@ -55,9 +55,19 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 
 def load_model():
-    """モデルとメタ情報を読み込み"""
-    if not MODEL_PATH.exists():
-        raise HTTPException(status_code=500, detail="モデルファイルが見つかりません")
+    """モデルとメタ情報を読み込み（ローカル優先、S3フォールバック）"""
+    if not MODEL_PATH.exists() or not META_PATH.exists():
+        try:
+            import boto3
+            s3_client = boto3.client("s3", region_name=AWS_REGION)
+            MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+            if not MODEL_PATH.exists():
+                s3_client.download_file(S3_BUCKET, "parquet/ml/grok_lgbm_model.pkl", str(MODEL_PATH))
+            if not META_PATH.exists():
+                s3_client.download_file(S3_BUCKET, "parquet/ml/grok_lgbm_meta.json", str(META_PATH))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"モデル読み込みエラー: {str(e)}")
 
     model = joblib.load(MODEL_PATH)
 

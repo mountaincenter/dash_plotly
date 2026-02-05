@@ -41,6 +41,10 @@ yfinance-smoke-test-*.parquet
 # ---- Parquet files (all directories) ----
 *.parquet
 
+# ---- MLモデル（S3で管理、gitには載せない）----
+models/*.pkl
+models/*.json
+
 # ---- ログ ----
 *.log
 logs/
