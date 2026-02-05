@@ -219,7 +219,8 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
                 feature_vector.append(float(val))
 
         try:
-            prob = model.predict_proba([feature_vector])[0][1]
+            X = pd.DataFrame([feature_vector], columns=feature_names)
+            prob = model.predict_proba(X)[0][1]
             results[ticker] = {
                 'prob_up': round(float(prob), 3),
                 'quintile': get_quintile(prob)

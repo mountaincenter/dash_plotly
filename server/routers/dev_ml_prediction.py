@@ -356,7 +356,8 @@ async def get_ml_prediction():
 
         # 予測
         try:
-            prob = model.predict_proba([feature_vector])[0][1]
+            X = pd.DataFrame([feature_vector], columns=feature_names)
+            prob = model.predict_proba(X)[0][1]
             short_rec = get_short_recommendation(prob)
             predictions.append({
                 'ticker': ticker,
