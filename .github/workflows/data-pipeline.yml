@@ -852,12 +852,15 @@ jobs:
             --only-show-errors
           echo "  ✅ grok_trending_archive.parquet"
 
-          # grok_prices_max_1d.parquet
-          aws s3 cp \
+          # grok_prices_max_1d.parquet（S3に存在しない場合はStep 2で再生成）
+          if aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
             data/parquet/grok_prices_max_1d.parquet \
-            --only-show-errors
-          echo "  ✅ grok_prices_max_1d.parquet"
+            --only-show-errors 2>/dev/null; then
+            echo "  ✅ grok_prices_max_1d.parquet"
+          else
+            echo "  ⚠️ grok_prices_max_1d.parquet not found in S3 (will be generated in Step 2)"
+          fi
 
           # index_prices_max_1d.parquet
           aws s3 cp \
