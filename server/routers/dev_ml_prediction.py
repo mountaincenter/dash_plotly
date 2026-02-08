@@ -357,6 +357,8 @@ async def get_ml_prediction():
         # 予測
         try:
             X = pd.DataFrame([feature_vector], columns=feature_names)
+            if 'weekday' in X.columns:
+                X['weekday'] = X['weekday'].astype('category')
             prob = model.predict_proba(X)[0][1]
             short_rec = get_short_recommendation(prob)
             predictions.append({
