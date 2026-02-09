@@ -205,7 +205,8 @@ jobs:
           success() && (
             steps.exec_mode.outputs.mode == 'stock_data' ||
             steps.exec_mode.outputs.mode == 'stock_data_forced' ||
-            steps.check_next_trading.conclusion == 'success'
+            steps.check_next_trading.conclusion == 'success' ||
+            steps.check_next_trading.conclusion == 'skipped'
           )
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
