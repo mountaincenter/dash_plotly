@@ -290,11 +290,9 @@ def prepare_data(df: pd.DataFrame, mode: str = "short", weekday_positions: list[
             ((df["margin_type"] == "制度信用") & (df["atr14_pct"] >= SEIDO_ATR_THRESHOLD)) |
             ((df["margin_type"] == "いちにち信用") & (df["atr14_pct"] >= ICHI_ATR_THRESHOLD))
         )
-        # セグメント判定（排他的）
+        # セグメント判定（通常 or ATRのみ。RSI系は通常に統合）
         df["rsi_atr_segment"] = "excluded"
-        df.loc[df["rsi_hit"] & ~df["atr_hit"], "rsi_atr_segment"] = "rsi_only"
         df.loc[~df["rsi_hit"] & df["atr_hit"], "rsi_atr_segment"] = "atr_only"
-        df.loc[df["rsi_hit"] & df["atr_hit"], "rsi_atr_segment"] = "both"
     else:
         df["rsi_hit"] = False
         df["atr_hit"] = False
