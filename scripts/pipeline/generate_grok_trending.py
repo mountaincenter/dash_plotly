@@ -308,7 +308,7 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
 
     # chat.create()でセッション作成
     chat = client.chat.create(
-        model="grok-4-fast-reasoning",
+        model="grok-4-1-fast-reasoning",
         tools=[web_search(), x_search()],
     )
 
