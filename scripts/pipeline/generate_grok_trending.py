@@ -307,13 +307,12 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     client = Client(api_key=api_key)
 
     # chat.create()でセッション作成
-    # max_tokens: reasoning + completion の合計枠（20-25銘柄JSON ≈ 6,000-8,000トークン必要）
-    # reasoning_effort: reasoning消費を抑制しcompletion枠を最大化
+    # non-reasoning: reasoning_tokens=0 → max_tokensが全てcompletion出力に使える
+    # このタスクは検索→JSON整形なのでreasoning不要
     chat = client.chat.create(
-        model="grok-4-1-fast-reasoning",
+        model="grok-4-1-fast-non-reasoning",
         tools=[web_search(), x_search()],
         max_tokens=16000,
-        reasoning_effort="low",
     )
 
     # システムメッセージとユーザープロンプトを追加
