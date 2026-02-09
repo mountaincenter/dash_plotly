@@ -137,7 +137,7 @@ jobs:
 
       - name: Check next day is trading day (for 23:00 run)
         id: check_next_trading
-        if: steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced'
+        if: (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced') && github.event.inputs.skip_trading_day_check != 'true'
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
         run: |
