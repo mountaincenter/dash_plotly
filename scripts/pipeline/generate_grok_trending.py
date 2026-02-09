@@ -355,25 +355,69 @@ def repair_json(json_str: str) -> str:
     1. オブジェクト間のカンマ欠落: } { → }, {
     2. 配列要素間のカンマ欠落: } \n  { → }, {
     3. 末尾カンマ: ,] → ]
+    4. 値間のカンマ欠落: "value"\n    "key" → "value",\n    "key"
+    5. 制御文字混入
     """
     import re
 
     repaired = json_str
 
+    # 0. 制御文字を除去（タブ・改行・スペース以外）
+    repaired = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', repaired)
+
     # 1. オブジェクト間のカンマ欠落を修復: }\n  { → },\n  {
-    # パターン: } の後に空白・改行があり { が続く場合
     repaired = re.sub(r'\}\s*\n\s*\{', '},\n  {', repaired)
 
     # 2. 直接隣接: }{ → },{
     repaired = re.sub(r'\}\s*\{', '}, {', repaired)
 
-    # 3. 末尾カンマを除去: ,] → ]
+    # 3. 値の後にカンマなく次のキーが来るパターン: "value"\n    "key" → "value",\n    "key"
+    repaired = re.sub(r'(")\s*\n(\s*")', r'\1,\n\2', repaired)
+
+    # 4. 数値/bool/nullの後にカンマなく次のキーが来るパターン
+    repaired = re.sub(r'(\d|true|false|null)\s*\n(\s*")', r'\1,\n\2', repaired)
+
+    # 5. 末尾カンマを除去: ,] → ]
     repaired = re.sub(r',\s*\]', ']', repaired)
 
-    # 4. 末尾カンマを除去: ,} → }
+    # 6. 末尾カンマを除去: ,} → }
     repaired = re.sub(r',\s*\}', '}', repaired)
 
+    # 7. 連続カンマを除去: ,, → ,
+    repaired = re.sub(r',\s*,', ',', repaired)
+
     return repaired
+
+
+def extract_objects_fallback(json_str: str) -> list[dict[str, Any]]:
+    """
+    JSON配列のパースに失敗した場合、個別オブジェクトを1つずつ切り出すフォールバック
+    """
+    import re
+
+    results = []
+    # トップレベルの { ... } を1つずつマッチ
+    depth = 0
+    start = None
+    for i, ch in enumerate(json_str):
+        if ch == '{':
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0 and start is not None:
+                obj_str = json_str[start:i + 1]
+                try:
+                    obj = json.loads(obj_str)
+                    if isinstance(obj, dict) and 'ticker_symbol' in obj:
+                        results.append(obj)
+                except json.JSONDecodeError:
+                    # 個別オブジェクトも壊れている場合はスキップ
+                    pass
+                start = None
+
+    return results
 
 
 def parse_grok_response(response: str) -> list[dict[str, Any]]:
@@ -433,7 +477,16 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
             else:
                 raise ValueError(f"Expected JSON array, got {type(data)}")
         except json.JSONDecodeError as e2:
-            print(f"[ERROR] JSON repair also failed: {e2}")
+            print(f"[WARN] JSON repair also failed: {e2}")
+            print("[INFO] Attempting object-by-object extraction fallback...")
+
+            # フォールバック: 個別オブジェクト切り出し
+            data = extract_objects_fallback(first_json)
+            if data:
+                print(f"[OK] Extracted {len(data)} stocks via fallback parser")
+                return data
+
+            print(f"[ERROR] All JSON parse methods failed")
             print(f"[DEBUG] Original JSON:\n{first_json[:500]}...")
             print(f"[DEBUG] Repaired JSON:\n{repaired_json[:500]}...")
             raise
