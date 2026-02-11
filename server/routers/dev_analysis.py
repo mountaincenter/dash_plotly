@@ -1074,7 +1074,8 @@ def _load_parquet_local_or_s3(local_path: Path, s3_key: str) -> pd.DataFrame:
         df = pd.read_parquet(tmp_path)
         os.unlink(tmp_path)
         return df
-    except Exception:
+    except Exception as e:
+        print(f"[WARN] _load_parquet_local_or_s3 failed: {s3_key} -> {e}")
         return pd.DataFrame()
 
 
@@ -1152,8 +1153,10 @@ async def get_market_status():
                     "date": str(latest["date"])[:10],
                     "daysAbove30": days_above_30,
                 }
-    except Exception:
-        pass
+        else:
+            print(f"[WARN] vi_df empty={vi_df.empty}, cols={list(vi_df.columns) if not vi_df.empty else 'N/A'}")
+    except Exception as e:
+        print(f"[ERROR] VI load failed: {e}")
 
     # TOPIX連動 1306
     try:

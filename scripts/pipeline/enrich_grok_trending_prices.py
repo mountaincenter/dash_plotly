@@ -164,7 +164,7 @@ def calc_extreme_market_info() -> dict:
 
     # 先物データ格納
     result["futures_price"] = round(float(latest_futures), 2)
-    result["futures_date"] = str(latest_futures_time)[:10]
+    result["futures_date"] = str(latest_futures_time)
 
     # futures_change_pct: 先物 vs 日経終値
     if latest_nikkei and latest_nikkei > 0:
