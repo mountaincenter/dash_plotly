@@ -22,6 +22,10 @@ ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archi
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
+PARQUET_DIR = BASE_DIR / "data" / "parquet"
+NIKKEI_VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+
 # 価格帯定義
 PRICE_RANGES = [
     {"label": "~1,000円", "min": 0, "max": 1000},
@@ -1056,12 +1060,32 @@ async def get_analysis_details(
 # ============================================================
 
 
+def _load_parquet_local_or_s3(local_path: Path, s3_key: str) -> pd.DataFrame:
+    """ローカル → S3フォールバックでparquetを読み込み"""
+    if local_path.exists():
+        return pd.read_parquet(local_path)
+
+    try:
+        import boto3
+        s3_client = boto3.client("s3", region_name=AWS_REGION)
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
+            s3_client.download_fileobj(S3_BUCKET, s3_key, tmp)
+            tmp_path = tmp.name
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
 @router.get("/dev/analysis/market-status")
 async def get_market_status():
     """
     市場騰落表示API
 
     grok_trending.parquetからnikkei_change_pct, futures_change_pctを取得
+    nikkei_vi_max_1d.parquetから日経VIを取得
+    index_prices_max_1d.parquetから1306.T(TOPIX連動)を取得
     """
     from server.routers.dev_day_trade_list import load_grok_trending
 
@@ -1069,36 +1093,88 @@ async def get_market_status():
         "generatedAt": datetime.now().isoformat(),
         "nikkei": None,
         "futures": None,
+        "vi": None,
+        "topix": None,
     }
 
     try:
         df = load_grok_trending()
     except Exception:
-        return JSONResponse(content=result)
+        df = pd.DataFrame()
 
-    if df.empty:
-        return JSONResponse(content=result)
+    if not df.empty:
+        # 最初の行から取得（全行同一値）
+        row = df.iloc[0]
 
-    # 最初の行から取得（全行同一値）
-    row = df.iloc[0]
+        nikkei_change_pct = row.get("nikkei_change_pct")
+        futures_change_pct = row.get("futures_change_pct")
 
-    nikkei_change_pct = row.get("nikkei_change_pct")
-    futures_change_pct = row.get("futures_change_pct")
+        if nikkei_change_pct is not None and not pd.isna(nikkei_change_pct):
+            result["nikkei"] = {
+                "changePct": round(float(nikkei_change_pct), 2),
+                "close": row.get("nikkei_close"),
+                "prevClose": row.get("nikkei_prev_close"),
+                "date": row.get("nikkei_date"),
+            }
 
-    if nikkei_change_pct is not None and not pd.isna(nikkei_change_pct):
-        result["nikkei"] = {
-            "changePct": round(float(nikkei_change_pct), 2),
-            "close": row.get("nikkei_close"),
-            "prevClose": row.get("nikkei_prev_close"),
-            "date": row.get("nikkei_date"),
-        }
+        if futures_change_pct is not None and not pd.isna(futures_change_pct):
+            result["futures"] = {
+                "changePct": round(float(futures_change_pct), 2),
+                "price": row.get("futures_price"),
+                "prevPrice": row.get("nikkei_close"),  # 先物の比較基準は日経終値
+                "date": row.get("futures_date"),
+            }
 
-    if futures_change_pct is not None and not pd.isna(futures_change_pct):
-        result["futures"] = {
-            "changePct": round(float(futures_change_pct), 2),
-            "price": row.get("futures_price"),
-            "prevPrice": row.get("nikkei_close"),  # 先物の比較基準は日経終値
-            "date": row.get("futures_date"),
-        }
+    # 日経VI
+    try:
+        vi_df = _load_parquet_local_or_s3(NIKKEI_VI_PATH, "parquet/nikkei_vi_max_1d.parquet")
+        if not vi_df.empty and "close" in vi_df.columns:
+            vi_df = vi_df.sort_values("date")
+            if len(vi_df) >= 2:
+                latest = vi_df.iloc[-1]
+                prev = vi_df.iloc[-2]
+                vi_close = float(latest["close"])
+                vi_prev = float(prev["close"])
+                vi_change = vi_close - vi_prev
+
+                # 30超え継続日数
+                days_above_30 = 0
+                for i in range(len(vi_df) - 1, -1, -1):
+                    if vi_df.iloc[i]["close"] >= 30:
+                        days_above_30 += 1
+                    else:
+                        break
+
+                result["vi"] = {
+                    "close": round(vi_close, 2),
+                    "prevClose": round(vi_prev, 2),
+                    "change": round(vi_change, 2),
+                    "date": str(latest["date"])[:10],
+                    "daysAbove30": days_above_30,
+                }
+    except Exception:
+        pass
+
+    # TOPIX連動 1306
+    try:
+        idx_df = _load_parquet_local_or_s3(INDEX_PRICES_PATH, "parquet/index_prices_max_1d.parquet")
+        if not idx_df.empty and "ticker" in idx_df.columns:
+            t1306 = idx_df[idx_df["ticker"] == "1306.T"][["date", "Close"]].dropna(subset=["Close"])
+            t1306 = t1306.sort_values("date")
+            if len(t1306) >= 2:
+                latest = t1306.iloc[-1]
+                prev = t1306.iloc[-2]
+                close_val = float(latest["Close"])
+                prev_val = float(prev["Close"])
+                change_pct = (close_val - prev_val) / prev_val * 100
+
+                result["topix"] = {
+                    "close": round(close_val, 1),
+                    "prevClose": round(prev_val, 1),
+                    "changePct": round(change_pct, 2),
+                    "date": str(latest["date"])[:10],
+                }
+    except Exception:
+        pass
 
     return JSONResponse(content=result)

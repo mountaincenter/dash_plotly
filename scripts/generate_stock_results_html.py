@@ -21,9 +21,11 @@ from common_cfg.s3io import upload_file, download_file
 # パス設定
 BASE_DIR = Path(__file__).parent.parent
 CSV_PATH = BASE_DIR / "data" / "csv" / "stock_results.csv"
+NIKKEIVI_CSV_PATH = BASE_DIR / "data" / "csv" / "nikkeivi.csv"
 OUTPUT_PATH = BASE_DIR / "output" / "stock_results.html"
 PARQUET_DIR = BASE_DIR / "data" / "parquet"
 PARQUET_PATH = PARQUET_DIR / "stock_results.parquet"
+NIKKEIVI_PARQUET_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
 
 # 出力ディレクトリ作成
@@ -1059,6 +1061,20 @@ summary_path = PARQUET_DIR / "stock_results_summary.parquet"
 summary_df.to_parquet(summary_path, index=False)
 print(f"サマリーファイルを出力しました: {summary_path}")
 
+# 日経VI CSV → Parquet
+if NIKKEIVI_CSV_PATH.exists():
+    print(f"\n日経VIデータを処理中: {NIKKEIVI_CSV_PATH}")
+    vi_df = pd.read_csv(NIKKEIVI_CSV_PATH)
+    vi_df.columns = ["date", "open", "high", "low", "close"]
+    vi_df["date"] = pd.to_datetime(vi_df["date"])
+    vi_df = vi_df.sort_values("date").reset_index(drop=True)
+    vi_df.to_parquet(NIKKEIVI_PARQUET_PATH, index=False)
+    print(f"日経VI Parquet出力: {NIKKEIVI_PARQUET_PATH}")
+    print(f"  行数: {len(vi_df)}行, 期間: {vi_df['date'].min().date()} ~ {vi_df['date'].max().date()}")
+else:
+    print(f"\n[SKIP] {NIKKEIVI_CSV_PATH} が見つかりません")
+    vi_df = None
+
 # S3からmanifest.jsonをダウンロードして最新を取得
 print("\nS3からmanifest.jsonを取得中...")
 s3_cfg = load_s3_config()
@@ -1111,6 +1127,16 @@ manifest["files"]["stock_results_summary.parquet"] = {
     "updated_at": now
 }
 
+# 日経VI
+if vi_df is not None and NIKKEIVI_PARQUET_PATH.exists():
+    manifest["files"]["nikkei_vi_max_1d.parquet"] = {
+        "exists": True,
+        "size_bytes": NIKKEIVI_PARQUET_PATH.stat().st_size,
+        "row_count": len(vi_df),
+        "columns": list(vi_df.columns),
+        "updated_at": now
+    }
+
 manifest["generated_at"] = now
 
 with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
@@ -1122,6 +1148,8 @@ print("\nS3へアップロード中...")
 if s3_cfg.bucket:
     upload_file(s3_cfg, PARQUET_PATH, "stock_results.parquet")
     upload_file(s3_cfg, summary_path, "stock_results_summary.parquet")
+    if NIKKEIVI_PARQUET_PATH.exists():
+        upload_file(s3_cfg, NIKKEIVI_PARQUET_PATH, "nikkei_vi_max_1d.parquet")
     upload_file(s3_cfg, MANIFEST_PATH, "manifest.json")
 
     # App Runnerのキャッシュをリフレッシュ
