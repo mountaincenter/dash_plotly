@@ -316,8 +316,16 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     )
 
     # システムメッセージとユーザープロンプトを追加
-    chat.append(system("あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。web_searchツールとx_searchツールを積極的に使用して、一次情報に基づいた事実のみを出力してください。"))
-    chat.append(user(prompt))
+    chat.append(system(
+        "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
+        "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
+        "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+    ))
+    chat.append(user(
+        prompt
+        + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
+        "5〜10銘柄では不十分です。"
+    ))
 
     # ストリーミング処理
     full_response = ""
