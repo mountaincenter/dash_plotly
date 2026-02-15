@@ -426,6 +426,10 @@ def extract_objects_fallback(json_str: str) -> list[dict[str, Any]]:
 def parse_grok_response(response: str) -> list[dict[str, Any]]:
     """Parse Grok's JSON response (extract first JSON array)"""
     print("[INFO] Parsing Grok response...")
+    print(f"[DEBUG] Raw response ({len(response)} chars):")
+    print(response[:1000])
+    if len(response) > 1000:
+        print(f"... (truncated, total {len(response)} chars)")
 
     # JSONブロックを抽出
     if "```json" in response:
@@ -594,6 +598,18 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         rows.append(row)
 
     df = pd.DataFrame(rows)
+
+    if df.empty:
+        print("[WARN] No stocks parsed from Grok response, returning empty DataFrame")
+        return pd.DataFrame(columns=[
+            "ticker", "code", "stock_name", "market", "sectors", "series",
+            "topixnewindexseries", "categories", "tags", "reason",
+            "date", "Close", "price_diff", "Volume", "vol_ratio",
+            "atr14_pct", "rsi9", "weekday", "score", "key_signal",
+            "source", "selected_time", "updated_at",
+            "sentiment_score", "policy_link", "has_mention", "mentioned_by",
+            "selection_score", "prompt_version", "grok_rank", "selection_rank",
+        ])
 
     # selection_scoreで降順ソート（Top5を上位に）
     df = df.sort_values("selection_score", ascending=False).reset_index(drop=True)
@@ -1077,18 +1093,39 @@ def main() -> int:
         print(f"[OK] Loaded XAI_API_KEY from {ENV_XAI_PATH}")
         print()
 
-        # 4. Query Grok with xAI SDK + web_search + x_search
-        response, tool_stats = query_grok(api_key, prompt)
-        print()
+        # 4. Query Grok with xAI SDK + web_search + x_search (0件時リトライ)
+        MAX_RETRIES = 3
+        grok_data = []
+        for attempt in range(1, MAX_RETRIES + 1):
+            print(f"[INFO] Grok API attempt {attempt}/{MAX_RETRIES}")
+            response, tool_stats = query_grok(api_key, prompt)
+            print()
 
-        # 5. Parse response
-        grok_data = parse_grok_response(response)
-        print()
+            # 5. Parse response
+            grok_data = parse_grok_response(response)
+            print()
+
+            if len(grok_data) > 0:
+                print(f"[OK] Got {len(grok_data)} stocks on attempt {attempt}")
+                break
+
+            if attempt < MAX_RETRIES:
+                print(f"[WARN] 0 stocks returned on attempt {attempt}, retrying...")
+            else:
+                print(f"[ERROR] 0 stocks returned after {MAX_RETRIES} attempts")
+                print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
+                return 1
 
         # 6. Convert to DataFrame (prompt_versionを追加)
         selected_date = context['next_trading_day_raw']
         df = convert_to_all_stocks_schema(grok_data, selected_date, selected_time, prompt_version)
         print()
+
+        if df.empty:
+            print("[WARN] Grok returned 0 stocks. Saving empty parquet and continuing pipeline.")
+            save_grok_trending(df, selected_time, should_merge=should_merge)
+            print(f"[OK] Saved empty: {GROK_TRENDING_PATH}")
+            return 0
 
         # 7. Filter and enrich with meta_jquants (ETF除外、stock_name正式名称化)
         print("[INFO] Filtering and enriching with meta_jquants...")
