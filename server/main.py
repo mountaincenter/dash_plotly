@@ -10,7 +10,7 @@ from server.routers.tech import router as tech_router
 from server.routers.scalping import router as scalping_router
 from server.routers.grok import router as grok_router
 from server.routers.dev_backtest import router as dev_backtest_router
-from server.routers.market_summary import router as market_summary_router
+
 from server.routers.dev_trading_recommendation import router as dev_trading_recommendation_router
 from server.routers.dev_recommendations import router as dev_recommendations_router
 from server.routers.dev_v3 import router as dev_v3_router
@@ -25,6 +25,7 @@ from server.routers.dev_analysis_custom import router as dev_analysis_custom_rou
 from server.routers.dev_intraday import router as dev_intraday_router
 from server.routers.fins import router as fins_router
 from server.routers.dev_ml_prediction import router as dev_ml_prediction_router
+from server.routers.tech_signals import router as tech_signals_router
 
 import os
 
@@ -96,7 +97,7 @@ app.include_router(tech_router, tags=["tech"])
 app.include_router(scalping_router, prefix="/scalping", tags=["scalping"])
 app.include_router(grok_router, tags=["grok"])
 app.include_router(dev_backtest_router, tags=["dev"])
-app.include_router(market_summary_router, tags=["market-summary"])
+
 app.include_router(dev_trading_recommendation_router, tags=["trading-recommendations"])
 app.include_router(dev_recommendations_router, prefix="/dev", tags=["recommendations"])
 app.include_router(dev_v3_router, tags=["v3"])
@@ -111,3 +112,4 @@ app.include_router(dev_analysis_custom_router, tags=["analysis-custom"])
 app.include_router(dev_intraday_router, tags=["intraday"])
 app.include_router(fins_router, tags=["fins"])
 app.include_router(dev_ml_prediction_router, tags=["ml-prediction"])
+app.include_router(tech_signals_router, tags=["tech-signals"])
