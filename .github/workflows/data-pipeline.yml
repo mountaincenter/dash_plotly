@@ -22,14 +22,6 @@ on:
         description: "Grok銘柄選定を強制実行（generate_grok_trending.pyを実行）"
         type: boolean
         default: false
-      force_market_summary:
-        description: "市場サマリー生成を強制実行（generate_market_summary.pyを実行）"
-        type: boolean
-        default: false
-      show_market_summary_in_slack:
-        description: "Slack通知に市場サマリーを表示（手動実行時のみ有効）"
-        type: boolean
-        default: false
       force_1645_mode:
         description: "16:45モードを強制（Grok選定スキップ、バックテスト実行）"
         type: boolean
@@ -764,69 +756,6 @@ jobs:
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
           fi
 
-      - name: Generate market summary
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true' && (github.event_name == 'schedule' || github.event.inputs.force_market_summary == 'true')
-        env:
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          ALLOW_GROK_API: "1"
-        run: |
-          # cron判定
-          if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
-            RUN_TIME="16:45"
-          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-            RUN_TIME="23:00"
-          else
-            RUN_TIME="manual"
-          fi
-
-          echo "📰 Generating market summary ($RUN_TIME run)..."
-
-          # 16:45は必ず生成、手動実行はforce_market_summary=trueで生成
-          SHOULD_GENERATE_SUMMARY=false
-          if [ "$RUN_TIME" = "16:45" ]; then
-            SHOULD_GENERATE_SUMMARY=true
-            echo "ℹ️  16:45 run - Market summary generation enabled"
-          elif [ "${{ github.event.inputs.force_market_summary }}" = "true" ]; then
-            SHOULD_GENERATE_SUMMARY=true
-            echo "ℹ️  Manual run with force_market_summary=true - Market summary generation enabled"
-          else
-            echo "ℹ️  Market summary generation skipped (not 16:45 and force_market_summary=false)"
-          fi
-
-          if [ "$SHOULD_GENERATE_SUMMARY" = "true" ]; then
-            python3 scripts/pipeline/generate_market_summary.py
-
-            if [ $? -eq 0 ]; then
-              echo "✅ Market summary generated successfully"
-
-              # 生成されたファイルを確認
-              DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-              RAW_FILE="data/parquet/market_summary/raw/${DATE}.md"
-              JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
-
-              if [ -f "$RAW_FILE" ] && [ -f "$JSON_FILE" ]; then
-                echo "✅ Files created:"
-                echo "   - $RAW_FILE"
-                echo "   - $JSON_FILE"
-
-                # 文字数確認
-                WORD_COUNT=$(wc -m < "$RAW_FILE")
-                echo "   Word count: $WORD_COUNT characters"
-              else
-                echo "❌ ERROR: Market summary files not found"
-                echo "Expected files:"
-                echo "  - $RAW_FILE"
-                echo "  - $JSON_FILE"
-                exit 1
-              fi
-            else
-              echo "❌ ERROR: Market summary generation failed"
-              exit 1
-            fi
-          else
-            echo "ℹ️  Skipping market summary (only runs at 16:45 JST)"
-          fi
-
       - name: ML Model Retraining (Friday only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -1210,7 +1139,6 @@ jobs:
 
           # GROK銘柄情報をフォーマット（23:00のみ）
           GROK_SECTION=""
-          MARKET_SUMMARY_SECTION=""
           BILLING_SECTION=""
 
           # xAI billing情報を読み込み
@@ -1233,29 +1161,6 @@ jobs:
               # ファイルから読み込み
               if [ -f "/tmp/grok_section.txt" ] && [ -s "/tmp/grok_section.txt" ]; then
                 GROK_SECTION=$(cat /tmp/grok_section.txt)
-              fi
-            fi
-          fi
-
-          # 16:45 または show_market_summary_in_slack=true → 市場サマリーを表示
-          if [ "${{ github.event.schedule }}" = "45 7 * * *" ] || [ "${{ github.event.inputs.show_market_summary_in_slack }}" = "true" ]; then
-            DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-            JSON_FILE="data/parquet/market_summary/structured/${DATE}.json"
-
-            if [ -f "$JSON_FILE" ]; then
-              # JSONから主要指数と注目ニュースを抽出してSlack用に整形
-              SUMMARY_TEXT=$(python3 scripts/format_market_summary_slack.py "$JSON_FILE" 2>/dev/null)
-
-              if [ $? -eq 0 ] && [ -n "$SUMMARY_TEXT" ]; then
-                # エスケープ処理
-                SUMMARY_TEXT_ESCAPED=$(echo "$SUMMARY_TEXT" | jq -Rs .)
-                MARKET_SUMMARY_SECTION=',{
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": '"$SUMMARY_TEXT_ESCAPED"'
-                  }
-                }'
               fi
             fi
           fi
@@ -1312,7 +1217,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$BILLING_SECTION$GROK_SECTION$MARKET_SUMMARY_SECTION"'
+              }'"$BILLING_SECTION$GROK_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
