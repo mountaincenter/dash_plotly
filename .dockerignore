@@ -8,8 +8,10 @@ __pycache__/
 .ipynb_checkpoints/
 .env
 data/parquet/
+data/reports/
 data/test_output/
 test_output/
+improvement/output/
 notebooks/
 terraform/
 .terraform/

@@ -19,10 +19,12 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from common_cfg.paths import REPORTS_DIR
+
 router = APIRouter()
 
 # ローカルパス
-REPORTS_LOCAL_DIR = ROOT / "improvement" / "output"
+REPORTS_LOCAL_DIR = REPORTS_DIR
 
 # S3 設定
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")

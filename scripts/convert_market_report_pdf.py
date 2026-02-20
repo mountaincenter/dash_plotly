@@ -15,6 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import shutil
+
+from common_cfg.paths import REPORTS_DIR
 from common_cfg.s3cfg import S3Config, load_s3_config
 from common_cfg.s3io import _init_s3_client
 
@@ -55,6 +58,15 @@ def upload_to_s3(html_path: Path) -> None:
         print(f"[ERROR] upload failed: {e}", file=sys.stderr)
 
 
+def copy_to_data_reports(html_path: Path) -> Path:
+    """HTML を data/reports/ にコピーする。"""
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = REPORTS_DIR / html_path.name
+    shutil.copy2(str(html_path), str(dest))
+    print(f"[OK] copied: {dest}")
+    return dest
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"Usage: python {sys.argv[0]} <html_file>", file=sys.stderr)
@@ -65,6 +77,7 @@ def main() -> None:
         print(f"[ERROR] ファイルが見つかりません: {html_path}", file=sys.stderr)
         sys.exit(1)
 
+    copy_to_data_reports(html_path)
     upload_to_s3(html_path)
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PARQUET_DIR = ROOT / "data" / "parquet"
+REPORTS_DIR = ROOT / "data" / "reports"
 MASTER_META_PARQUET = PARQUET_DIR / "meta.parquet"
 CORE30_META_PARQUET = MASTER_META_PARQUET  # backward compatibility alias
 

@@ -56,3 +56,6 @@ docker-compose.override.yml
 # keep only manifest.json under data/parquet
 data/parquet/*
 !data/parquet/manifest.json
+
+# レポートHTML（S3で管理、gitには載せない）
+data/reports/*.html
