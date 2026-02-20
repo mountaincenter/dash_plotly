@@ -997,6 +997,9 @@ def run_backtest() -> pd.DataFrame:
             "price_limit": row.get("price_limit"),
             "limit_price_upper": row.get("limit_price_upper"),
             "max_cost_100": row.get("max_cost_100"),
+            # ML予測（quintile分析用）
+            "prob_up": row.get("prob_up"),
+            "quintile": row.get("quintile"),
             # 指標カラム（generate_grok_trending.pyで計算）
             "rsi9": row.get("rsi9"),
             "atr14_pct": row.get("atr14_pct"),
