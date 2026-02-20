@@ -187,6 +187,19 @@ def main() -> None:
     save_local_manifest(html_path)
     upload_to_s3(html_path)
 
+    # App Runner キャッシュリフレッシュ
+    import urllib.request
+    import urllib.error
+
+    API_URL = "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/reports/refresh"
+    try:
+        req = urllib.request.Request(API_URL, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as response:
+            result = response.read().decode("utf-8")
+            print(f"[OK] キャッシュリフレッシュ完了: {result}")
+    except (urllib.error.URLError, Exception) as e:
+        print(f"[WARNING] キャッシュリフレッシュ失敗: {e}")
+
 
 if __name__ == "__main__":
     main()
