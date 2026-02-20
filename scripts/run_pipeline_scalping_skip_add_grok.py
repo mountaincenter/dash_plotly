@@ -87,12 +87,6 @@ class PipelineRunner:
             ("pipeline.extract_backtest_patterns", "バックテストパターン抽出（Grok学習用）"),
         ])
 
-        # 市場サマリー生成（16:00 JST実行時のみ）
-        if skip_grok:
-            self.steps.append(
-                ("pipeline.generate_market_summary", "市場サマリー生成（Grok API v1.3）")
-            )
-
         # Manifest生成・S3アップロード
         self.steps.append(
             ("pipeline.update_manifest", "Manifest生成・S3アップロード")
