@@ -90,10 +90,21 @@ def list_reports():
                 name = key.removeprefix(REPORTS_PREFIX)
                 if not name.endswith(".html"):
                     continue
+                # <title> を取得するため先頭 4KB だけ読む
+                title = name
+                try:
+                    head = s3.get_object(
+                        Bucket=S3_BUCKET, Key=key, Range="bytes=0-4095"
+                    )
+                    title = _extract_title_from_html(
+                        head["Body"].read().decode("utf-8", errors="ignore"), name
+                    )
+                except Exception:
+                    pass
                 reports.append({
                     "filename": name,
                     "date": _extract_date(name),
-                    "title": name,  # S3 からはタイトル取得しない（コスト）
+                    "title": title,
                     "size_bytes": obj["Size"],
                 })
             reports.sort(key=lambda r: r.get("date", ""), reverse=True)
