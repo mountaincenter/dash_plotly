@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import REPORTS_DIR
+from scripts.convert_market_report_pdf import upload_to_s3
 
 REPORT_DIR = ROOT / "improvement" / "output"
 ARCHIVE = ROOT / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
@@ -298,6 +299,8 @@ def main() -> None:
     dest = REPORTS_DIR / report_path.name
     dest.write_text(new_html, encoding="utf-8")
     print(f"[OK] {dest}")
+
+    upload_to_s3(dest)
 
 
 if __name__ == "__main__":
