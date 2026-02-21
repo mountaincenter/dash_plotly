@@ -514,59 +514,6 @@ jobs:
 
           echo "============================================================"
 
-      - name: Generate Static Signals and Backtest
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "============================================================"
-          echo "Static銘柄シグナル生成 & バックテスト (16:45 only)"
-          echo "============================================================"
-          echo ""
-          echo "📊 Step 1: Generating Static Signals..."
-          echo "  (S3 download/upload handled by common_cfg)"
-
-          # generate_static_signals.py:
-          #   - S3からstatic_backtest.parquetをダウンロード（-7%スキップルール用）
-          #   - シグナル生成
-          #   - S3にstatic_signals.parquetをアップロード
-          python3 scripts/pipeline/generate_static_signals.py
-
-          if [ $? -eq 0 ]; then
-            if [ -f "data/parquet/static_signals.parquet" ]; then
-              SIGNALS_COUNT=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/static_signals.parquet'); print(len(df))")
-              STRONG_BUY=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/static_signals.parquet'); print(len(df[df['signal']=='STRONG_BUY']))")
-              echo "  ✅ Generated: $SIGNALS_COUNT signals (STRONG_BUY: $STRONG_BUY)"
-
-              # STRONG_BUY銘柄をSlackタイトル用に保存
-              python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/static_signals.parquet'); sb=df[df['signal']=='STRONG_BUY']; open('/tmp/strong_buy_title.txt','w').write(' | '.join([f\"{r['ticker']}:{r['stock_name']}:¥{r['close']:,.0f}\" for _,r in sb.iterrows()]) if len(sb)>0 else 'なし')"
-            fi
-          else
-            echo "  ❌ Failed to generate static_signals.parquet"
-            exit 1
-          fi
-
-          echo ""
-          echo "📊 Step 2: Saving Static Backtest..."
-          echo "  (S3 download/upload handled by common_cfg)"
-
-          # save_static_backtest.py:
-          #   - S3から既存backtest結果をダウンロード
-          #   - バックテスト計算
-          #   - S3にstatic_backtest.parquetをアップロード
-          python3 scripts/pipeline/save_static_backtest.py
-
-          if [ $? -eq 0 ]; then
-            if [ -f "data/parquet/backtest/static_backtest.parquet" ]; then
-              BACKTEST_COUNT=$(python3 -c "import pandas as pd; df=pd.read_parquet('data/parquet/backtest/static_backtest.parquet'); print(len(df))")
-              echo "  ✅ Updated: $BACKTEST_COUNT records"
-            fi
-          else
-            echo "  ⚠️ Static backtest failed (non-critical)"
-          fi
-
-          echo ""
-          echo "✅ Static signals pipeline completed"
-          echo "============================================================"
-
       - name: Extract data statistics
         id: stats
         if: success()
@@ -605,23 +552,6 @@ jobs:
           echo "archive_total=$ARCHIVE_TOTAL" >> $GITHUB_OUTPUT
           echo "archive_dates=$ARCHIVE_DATES" >> $GITHUB_OUTPUT
 
-          # static_signals statistics (NEW)
-          STATIC_SIGNALS_COUNT=0
-          STATIC_STRONG_BUY=0
-          if [ -f "data/parquet/static_signals.parquet" ]; then
-            STATIC_SIGNALS_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/static_signals.parquet')))")
-            STATIC_STRONG_BUY=$(python -c "import pandas as pd; df=pd.read_parquet('data/parquet/static_signals.parquet'); print(len(df[df['signal']=='STRONG_BUY']))")
-          fi
-          echo "static_signals_count=$STATIC_SIGNALS_COUNT" >> $GITHUB_OUTPUT
-          echo "static_strong_buy=$STATIC_STRONG_BUY" >> $GITHUB_OUTPUT
-
-          # static_backtest statistics (NEW)
-          STATIC_BACKTEST_COUNT=0
-          if [ -f "data/parquet/backtest/static_backtest.parquet" ]; then
-            STATIC_BACKTEST_COUNT=$(python -c "import pandas as pd; print(len(pd.read_parquet('data/parquet/backtest/static_backtest.parquet')))")
-          fi
-          echo "static_backtest_count=$STATIC_BACKTEST_COUNT" >> $GITHUB_OUTPUT
-
           # scalping statistics (kept for compatibility, will be 0)
           ENTRY_COUNT=0
           ACTIVE_COUNT=0
@@ -652,8 +582,6 @@ jobs:
           echo "  - meta_jquants: $META_JQUANTS_COUNT stocks"
           echo "  - grok_trending: $GROK_COUNT stocks"
           echo "  - grok_archive: $ARCHIVE_TOTAL records across $ARCHIVE_DATES days"
-          echo "  - static_signals: $STATIC_SIGNALS_COUNT signals (STRONG_BUY: $STATIC_STRONG_BUY)"
-          echo "  - static_backtest: $STATIC_BACKTEST_COUNT records"
           echo "  - scalping_entry: $ENTRY_COUNT stocks (skipped)"
           echo "  - scalping_active: $ACTIVE_COUNT stocks (skipped)"
           echo "  - all_stocks: $ALL_STOCKS_COUNT stocks"
@@ -1165,19 +1093,10 @@ jobs:
             fi
           fi
 
-          # STRONG_BUY情報を読み込み（16:45のみ存在）
-          STRONG_BUY_TITLE=""
-          if [ -f "/tmp/strong_buy_title.txt" ] && [ -s "/tmp/strong_buy_title.txt" ]; then
-            STRONG_BUY_TITLE=$(cat /tmp/strong_buy_title.txt)
-          fi
-
           # タイトル構築
           SLACK_TITLE="✅ Data Pipeline Succeeded"
           if [ -n "$XAI_REMAINING" ]; then
             SLACK_TITLE="${SLACK_TITLE} | xAI: ${XAI_REMAINING}"
-          fi
-          if [ -n "$STRONG_BUY_TITLE" ]; then
-            SLACK_TITLE="${SLACK_TITLE} | STRONG_BUY: ${STRONG_BUY_TITLE}"
           fi
 
           MESSAGE='{
@@ -1205,7 +1124,7 @@ jobs:
                   {"type": "mrkdwn", "text": "*meta_jquants:*\n`${{ steps.stats.outputs.meta_jquants_count }}`銘柄"},
                   {"type": "mrkdwn", "text": "*all_stocks:*\n`${{ steps.stats.outputs.all_stocks_count }}`銘柄"},
                   {"type": "mrkdwn", "text": "*grok_trending:*\n`${{ steps.stats.outputs.grok_trending_count }}`銘柄"},
-                  {"type": "mrkdwn", "text": "*static_signals:*\n`${{ steps.stats.outputs.static_signals_count }}`件 (STRONG_BUY: `${{ steps.stats.outputs.static_strong_buy }}`)"}
+                  {"type": "mrkdwn", "text": "*static_signals:*\n`removed`"}
                 ]
               },
               {
