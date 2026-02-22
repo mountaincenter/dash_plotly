@@ -276,17 +276,16 @@ async def get_status():
     except Exception:
         pass
 
-    # CI
+    # CI（ローカル優先 → S3フォールバック）
     try:
         ci_path = MACRO_DIR / "estat_ci_index.parquet"
-        if ci_path.exists():
-            ci = pd.read_parquet(ci_path)
-            ci = ci[["date", "leading"]].sort_values("date")
-            ci["chg3m"] = ci["leading"].diff(3)
-            latest_ci = ci.dropna(subset=["chg3m"]).iloc[-1]
-            result["ci_latest"] = _safe_float(latest_ci["leading"], 1)
-            result["ci_chg3m"] = _safe_float(latest_ci["chg3m"], 2)
-            result["ci_expand"] = bool(latest_ci["chg3m"] > 0)
+        ci = _load_parquet(ci_path, "macro/estat_ci_index.parquet")
+        ci = ci[["date", "leading"]].sort_values("date")
+        ci["chg3m"] = ci["leading"].diff(3)
+        latest_ci = ci.dropna(subset=["chg3m"]).iloc[-1]
+        result["ci_latest"] = _safe_float(latest_ci["leading"], 1)
+        result["ci_chg3m"] = _safe_float(latest_ci["chg3m"], 2)
+        result["ci_expand"] = bool(latest_ci["chg3m"] > 0)
     except Exception:
         pass
 
