@@ -23,6 +23,7 @@ router = APIRouter()
 
 SIGNALS_FILE = PARQUET_DIR / "granville_ifd_signals.parquet"
 ARCHIVE_FILE = PARQUET_DIR / "backtest" / "granville_ifd_archive.parquet"
+OPTIM_FILE = PARQUET_DIR / "backtest" / "granville_ifd_optimization.parquet"
 INDEX_FILE = PARQUET_DIR / "index_prices_max_1d.parquet"
 MACRO_DIR = ROOT / "improvement" / "data" / "macro"
 
@@ -290,3 +291,28 @@ async def get_status():
         pass
 
     return result
+
+
+@router.get("/api/dev/granville/optimization")
+async def get_optimization():
+    """価格帯×シグナル種別×保有日数の最適化グリッド"""
+    df = _load_parquet(OPTIM_FILE, "backtest/granville_ifd_optimization.parquet")
+    if df.empty:
+        return {"grid": []}
+
+    grid = []
+    for _, r in df.iterrows():
+        grid.append({
+            "signal_type": r.get("signal_type", ""),
+            "price_band": r.get("price_band", ""),
+            "hold_days": _safe_int(r.get("hold_days", 0)),
+            "count": _safe_int(r.get("count", 0)),
+            "win_rate": _safe_float(r.get("win_rate", 0)),
+            "pf": _safe_float(r.get("pf", 0), 2),
+            "avg_ret": _safe_float(r.get("avg_ret", 0), 3),
+            "total_pnl": _safe_int(r.get("total_pnl", 0)),
+            "avg_pnl": _safe_int(r.get("avg_pnl", 0)),
+            "sl_rate": _safe_float(r.get("sl_rate", 0)),
+        })
+
+    return {"grid": grid}
