@@ -3,8 +3,11 @@
 backtest_granville_ifd.py
 グランビルIFDロング戦略: 完走済みトレードをアーカイブに追加
 
-毎営業日16:45実行。granville_ifd_signals.parquetから7営業日以上前の
-シグナルを取得し、実際の価格データでSL-3%判定+7日引け決済を実行。
+毎営業日16:45実行。granville_ifd_signals.parquetからシグナルを取得し、
+グランビル出口ルール + 翌日寄付決済を適用。
+  A: 終値≥SMA20 → 翌日寄付売り（SMA20回帰利確）
+  B: SMA5がSMA20を下抜け → 翌日寄付売り（デッドクロス撤退）
+  共通: SL -3%（IFD逆指値、ザラ場自動執行）/ 最大60営業日
 結果を granville_ifd_archive.parquet に append。
 
 パターン: save_backtest_to_archive.py (Grokと同じappend方式)
@@ -31,9 +34,9 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 SIGNALS_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
 ARCHIVE_PATH = BACKTEST_DIR / "granville_ifd_archive.parquet"
 
-SL_PCT = 3.0       # SL -3%
-HOLD_DAYS = 7       # 7営業日保有
-MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象（7営業日+余裕）
+SL_PCT = 3.0        # SL -3%（IFD逆指値）
+MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
+MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象
 
 S3_ARCHIVE_KEY = "backtest/granville_ifd_archive.parquet"
 
@@ -67,8 +70,12 @@ def load_archive(cfg) -> pd.DataFrame:
 
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
-                   signal_date: pd.Timestamp) -> dict | None:
-    """1トレードのIFD SL-3% / 7日引け決済をシミュレート"""
+                   signal_date: pd.Timestamp, signal_type: str) -> dict | None:
+    """1トレードをグランビル出口ルール+翌日寄付でシミュレート
+
+    A: 終値≥SMA20 → 翌日寄付売り / B: デッドクロス → 翌日寄付売り
+    共通: SL -3%（IFD逆指値）/ 最大60営業日
+    """
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
     if tk.empty:
         return None
@@ -77,15 +84,15 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
     opens = tk["Open"].values
     lows = tk["Low"].values
     closes = tk["Close"].values
+    sma5s = tk["sma5"].values
+    sma20s = tk["sma20"].values
     date_idx = {d: i for i, d in enumerate(dates)}
 
-    # signal_dateをnumpy datetime64に変換
     sd = np.datetime64(signal_date)
     if sd not in date_idx:
         return None
 
     idx = date_idx[sd]
-    # 翌営業日エントリー
     if idx + 1 >= len(dates):
         return None
 
@@ -97,30 +104,53 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
     entry_date = pd.Timestamp(dates[entry_idx])
     sl_price = entry_price * (1 - SL_PCT / 100)
 
-    # HOLD_DAYS日分チェック
-    exit_type = "expire"
-    exit_price = entry_price
-    exit_date = entry_date
-
-    for d in range(HOLD_DAYS):
+    for d in range(MAX_HOLD_DAYS):
         ci = entry_idx + d
         if ci >= len(dates):
-            break
+            return None  # データ不足、トレード未完了
 
+        # SL判定（IFD逆指値、ザラ場中に自動執行）
         if float(lows[ci]) <= sl_price:
-            exit_type = "SL"
-            exit_price = sl_price
-            exit_date = pd.Timestamp(dates[ci])
-            break
+            return _result(entry_date, dates[ci], entry_price, sl_price, "SL")
 
-        # 最終日は引け決済
-        if d == HOLD_DAYS - 1:
-            exit_price = float(closes[ci])
-            exit_date = pd.Timestamp(dates[ci])
+        # エントリー日は出口条件チェックしない
+        if d == 0:
+            continue
 
+        close_val = float(closes[ci])
+        sma5_val = float(sma5s[ci])
+        sma20_val = float(sma20s[ci])
+
+        # A: 終値≥SMA20 → 翌日寄付売り
+        if signal_type in ("A", "A+B") and close_val >= sma20_val:
+            if ci + 1 >= len(dates):
+                return None
+            return _result(entry_date, dates[ci + 1], entry_price,
+                           float(opens[ci + 1]), "SMA20_touch")
+
+        # デッドクロス（SMA5がSMA20を上から下に交差）→ 翌日寄付売り
+        prev_sma5 = float(sma5s[ci - 1])
+        prev_sma20 = float(sma20s[ci - 1])
+        if prev_sma5 >= prev_sma20 and sma5_val < sma20_val:
+            if ci + 1 >= len(dates):
+                return None
+            return _result(entry_date, dates[ci + 1], entry_price,
+                           float(opens[ci + 1]), "dead_cross")
+
+        # 最大保有日数到達 → 翌日寄付売り
+        if d == MAX_HOLD_DAYS - 1:
+            if ci + 1 >= len(dates):
+                return None
+            return _result(entry_date, dates[ci + 1], entry_price,
+                           float(opens[ci + 1]), "expire")
+
+    return None
+
+
+def _result(entry_date, exit_date_raw, entry_price, exit_price, exit_type):
+    exit_date = pd.Timestamp(exit_date_raw)
     ret_pct = (exit_price / entry_price - 1) * 100
     pnl_yen = int((exit_price - entry_price) * 100)  # 100株
-
     return {
         "entry_date": entry_date.strftime("%Y-%m-%d"),
         "exit_date": exit_date.strftime("%Y-%m-%d"),
@@ -179,14 +209,18 @@ def run_backtest() -> int:
     new_df = pd.DataFrame(new_signals)
     print(f"[INFO] New signals to backtest: {len(new_df)}")
 
-    # 4. 価格データ読み込み
+    # 4. 価格データ読み込み + SMA計算
     prices = pd.read_parquet(PARQUET_DIR / "prices_max_1d.parquet")
     prices["date"] = pd.to_datetime(prices["date"])
+    prices = prices.sort_values(["ticker", "date"])
+    g = prices.groupby("ticker")
+    prices["sma5"] = g["Close"].transform(lambda x: x.rolling(5).mean())
+    prices["sma20"] = g["Close"].transform(lambda x: x.rolling(20).mean())
 
     # 5. 各シグナルをバックテスト
     results = []
     for _, sig in new_df.iterrows():
-        trade = simulate_trade(prices, sig["ticker"], sig["signal_date"])
+        trade = simulate_trade(prices, sig["ticker"], sig["signal_date"], sig.get("signal_type", "A"))
         if trade is None:
             continue
 

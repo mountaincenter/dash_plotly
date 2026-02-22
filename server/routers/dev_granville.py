@@ -98,33 +98,6 @@ def _safe_float(v, decimals: int = 1) -> float:
         return 0.0
 
 
-# 価格帯×シグナル種別 → 最適保有日数（PF最大の保有日数）
-OPTIMAL_HOLD_DAYS: dict[tuple[str, str], int] = {
-    ("A", "~1000"): 14,
-    ("A", "1000~3000"): 14,
-    ("A", "3000~5000"): 5,
-    ("A", "5000~10000"): 10,
-    ("A", "10000~20000"): 5,
-    ("B", "~1000"): 14,
-    ("B", "1000~3000"): 14,
-    ("B", "3000~5000"): 7,
-    ("B", "5000~10000"): 10,
-    ("B", "10000~20000"): 7,
-}
-
-
-def _price_band(close: float) -> str:
-    if close < 1000:
-        return "~1000"
-    if close < 3000:
-        return "1000~3000"
-    if close < 5000:
-        return "3000~5000"
-    if close < 10000:
-        return "5000~10000"
-    return "10000~20000"
-
-
 @router.get("/api/dev/granville/signals")
 async def get_signals():
     """今日のシグナル（翌日エントリー候補）"""
@@ -137,20 +110,19 @@ async def get_signals():
 
     signals = []
     for _, r in rows.iterrows():
-        close = _safe_float(r.get("close", 0), 1)
         sig_type = r.get("signal_type", "")
-        band = _price_band(close)
-        hold = OPTIMAL_HOLD_DAYS.get((sig_type, band), 7)
+        # A: SMA20回帰利確→翌日寄付 / B: デッドクロス→翌日寄付
+        exit_rule = "SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "DC撤退"
         signals.append({
             "ticker": r.get("ticker", ""),
             "stock_name": r.get("stock_name", ""),
             "sector": r.get("sector", ""),
             "signal_type": sig_type,
-            "close": close,
+            "close": _safe_float(r.get("close", 0), 1),
             "sma20": _safe_float(r.get("sma20", 0), 2),
             "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
             "sl_price": _safe_float(r.get("sl_price", 0), 1),
-            "hold_days": hold,
+            "exit_rule": exit_rule,
         })
 
     return {
