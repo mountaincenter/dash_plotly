@@ -170,6 +170,68 @@ summary_data = {
 }
 summary_df = pd.DataFrame(summary_data)
 
+# --- 戦略タグ付け ---
+BACKTEST_DIR = PARQUET_DIR / "backtest"
+
+# Grok アーカイブから (backtest_date, ticker) ペアを取得
+grok_set = set()
+grok_arc_path = BACKTEST_DIR / "grok_trending_archive.parquet"
+if grok_arc_path.exists():
+    try:
+        grok_arc = pd.read_parquet(grok_arc_path)
+        grok_arc["backtest_date"] = pd.to_datetime(grok_arc["backtest_date"])
+        grok_set = set(zip(
+            grok_arc["backtest_date"].dt.date,
+            grok_arc["ticker"].str.replace(".T", "", regex=False)
+        ))
+        print(f"戦略タグ: Grokアーカイブ {len(grok_set)} 件読み込み")
+    except Exception as e:
+        print(f"戦略タグ: Grokアーカイブ読み込み失敗: {e}")
+
+# Granville IFD アーカイブから (entry_date, ticker) ペアを取得
+granville_set = set()
+granville_arc_path = BACKTEST_DIR / "granville_ifd_archive.parquet"
+if granville_arc_path.exists():
+    try:
+        gv_arc = pd.read_parquet(granville_arc_path)
+        gv_arc["entry_date"] = pd.to_datetime(gv_arc["entry_date"])
+        granville_set = set(zip(
+            gv_arc["entry_date"].dt.date,
+            gv_arc["ticker"].str.replace(".T", "", regex=False)
+        ))
+        print(f"戦略タグ: Granville IFDアーカイブ {len(granville_set)} 件読み込み")
+    except Exception as e:
+        print(f"戦略タグ: Granville IFDアーカイブ読み込み失敗: {e}")
+
+def tag_strategy(row):
+    key = (row["約定日"].date(), str(row["コード"]))
+    if key in grok_set:
+        return "grok"
+    if key in granville_set:
+        return "granville_ifd"
+    if row["約定日"] < pd.Timestamp("2025-12-22"):
+        return "llm"
+    return "other"
+
+daily_stock["戦略"] = daily_stock.apply(tag_strategy, axis=1)
+strategy_counts = daily_stock["戦略"].value_counts()
+print(f"戦略タグ付け完了: {dict(strategy_counts)}")
+
+# 戦略別集計をサマリーに追加
+for strategy in ["grok", "granville_ifd", "llm", "other"]:
+    s_df = daily_stock[daily_stock["戦略"] == strategy]
+    s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
+    s_count = len(s_df)
+    s_win = (s_df["実現損益"] > 0).sum() if len(s_df) > 0 else 0
+    s_win_rate = s_win / s_count * 100 if s_count > 0 else 0
+    for metric, val in [
+        (f"{strategy}_profit", s_profit),
+        (f"{strategy}_count", s_count),
+        (f"{strategy}_win", s_win),
+        (f"{strategy}_win_rate", s_win_rate),
+    ]:
+        summary_df = pd.concat([summary_df, pd.DataFrame({"metric": [metric], "value": [val]})], ignore_index=True)
+
 # daily_stock を保存用に整形
 parquet_df = daily_stock.copy()
 

@@ -128,10 +128,11 @@ def load_summary() -> pd.DataFrame:
 
 
 @router.get("/api/dev/stock-results/summary")
-async def get_stock_results_summary():
+async def get_stock_results_summary(strategy: Optional[str] = None):
     """
     取引結果サマリー
     - 全体統計、ロング/ショート別統計
+    - strategy: 戦略フィルター (grok / granville_ifd / llm / other)
     """
     df = load_stock_results()
     summary_df = load_summary()
@@ -139,11 +140,44 @@ async def get_stock_results_summary():
     if df.empty:
         raise HTTPException(status_code=404, detail="No stock results data found")
 
+    # 戦略フィルター適用
+    if strategy and '戦略' in df.columns:
+        df = df[df['戦略'] == strategy].copy()
+        if df.empty:
+            raise HTTPException(status_code=404, detail=f"No data for strategy: {strategy}")
+
     # サマリーをdict化
     summary = {}
     if not summary_df.empty:
         for _, row in summary_df.iterrows():
             summary[row['metric']] = row['value']
+
+    # 戦略フィルター適用時はサマリーを再計算
+    if strategy:
+        total_profit = df['実現損益'].sum()
+        total_count = len(df)
+        win_count = (df['実現損益'] > 0).sum()
+        lose_count = (df['実現損益'] < 0).sum()
+        win_rate = win_count / total_count * 100 if total_count > 0 else 0
+        long_df = df[df['売買'] == 'ロング']
+        short_df = df[df['売買'] == 'ショート']
+        summary = {
+            'total_profit': total_profit,
+            'total_count': total_count,
+            'win_count': win_count,
+            'lose_count': lose_count,
+            'win_rate': win_rate,
+            'long_profit': long_df['実現損益'].sum() if len(long_df) > 0 else 0,
+            'long_count': len(long_df),
+            'long_win': (long_df['実現損益'] > 0).sum() if len(long_df) > 0 else 0,
+            'long_lose': (long_df['実現損益'] < 0).sum() if len(long_df) > 0 else 0,
+            'long_win_rate': ((long_df['実現損益'] > 0).sum() / len(long_df) * 100) if len(long_df) > 0 else 0,
+            'short_profit': short_df['実現損益'].sum() if len(short_df) > 0 else 0,
+            'short_count': len(short_df),
+            'short_win': (short_df['実現損益'] > 0).sum() if len(short_df) > 0 else 0,
+            'short_lose': (short_df['実現損益'] < 0).sum() if len(short_df) > 0 else 0,
+            'short_win_rate': ((short_df['実現損益'] > 0).sum() / len(short_df) * 100) if len(short_df) > 0 else 0,
+        }
 
     # 日別集計（グラフ用）
     daily_stats = []
@@ -220,17 +254,42 @@ async def get_stock_results_summary():
         },
         "daily_stats": daily_stats,
         "loss_distribution": loss_distribution,
+        "strategy_summary": _build_strategy_summary(summary),
         "updated_at": _cache_timestamp.isoformat() if _cache_timestamp else None,
     }
 
 
+def _build_strategy_summary(summary: dict) -> list:
+    """戦略別サマリーを構築"""
+    strategies = []
+    for s in ["grok", "granville_ifd", "llm", "other"]:
+        profit = summary.get(f"{s}_profit", 0)
+        count = int(summary.get(f"{s}_count", 0))
+        win = int(summary.get(f"{s}_win", 0))
+        win_rate = summary.get(f"{s}_win_rate", 0)
+        if count > 0:
+            strategies.append({
+                "strategy": s,
+                "profit": float(profit),
+                "count": count,
+                "win": win,
+                "win_rate": float(win_rate),
+            })
+    return strategies
+
+
 @router.get("/api/dev/stock-results/daily")
-async def get_daily_results(view: str = "daily"):
+async def get_daily_results(view: str = "daily", strategy: Optional[str] = None):
     """
     日別/週別/月別の取引一覧
     view: daily, weekly, monthly
+    strategy: 戦略フィルター (grok / granville_ifd / llm / other)
     """
     df = load_stock_results()
+
+    # 戦略フィルター
+    if strategy and '戦略' in df.columns:
+        df = df[df['戦略'] == strategy].copy()
 
     if df.empty:
         raise HTTPException(status_code=404, detail="No stock results data found")

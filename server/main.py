@@ -27,6 +27,7 @@ from server.routers.fins import router as fins_router
 from server.routers.dev_ml_prediction import router as dev_ml_prediction_router
 from server.routers.tech_signals import router as tech_signals_router
 from server.routers.dev_reports import router as dev_reports_router
+from server.routers.dev_granville import router as dev_granville_router
 
 import os
 
@@ -115,3 +116,4 @@ app.include_router(fins_router, tags=["fins"])
 app.include_router(dev_ml_prediction_router, tags=["ml-prediction"])
 app.include_router(tech_signals_router, tags=["tech-signals"])
 app.include_router(dev_reports_router, tags=["dev-reports"])
+app.include_router(dev_granville_router, tags=["granville"])

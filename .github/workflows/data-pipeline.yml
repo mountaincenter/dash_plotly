@@ -684,6 +684,52 @@ jobs:
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
           fi
 
+      - name: Generate Granville IFD signals
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "============================================================"
+          echo "Generating Granville IFD signals (16:45 only)"
+          echo "============================================================"
+
+          # CI先行指数データ（improvement/data/macro/）がリポジトリにない場合はS3から取得
+          MACRO_DIR="improvement/data/macro"
+          CI_FILE="$MACRO_DIR/estat_ci_index.parquet"
+          if [ ! -f "$CI_FILE" ]; then
+            echo "📥 Downloading CI index from S3..."
+            mkdir -p "$MACRO_DIR"
+            aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}macro/estat_ci_index.parquet" \
+              "$CI_FILE" --only-show-errors 2>/dev/null || true
+          fi
+
+          python3 scripts/pipeline/generate_granville_signals.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Granville signal generation completed"
+          else
+            echo "⚠️ Granville signal generation failed (non-critical)"
+          fi
+
+      - name: Backtest Granville IFD archive
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "============================================================"
+          echo "Backtesting Granville IFD archive (16:45 only)"
+          echo "============================================================"
+
+          python3 scripts/pipeline/backtest_granville_ifd.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Granville backtest completed"
+          else
+            echo "⚠️ Granville backtest failed (non-critical)"
+          fi
+
+      - name: Format Granville Slack notification
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          python3 scripts/format_granville_slack.py || true
+
       - name: ML Model Retraining (Friday only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -1078,6 +1124,12 @@ jobs:
             BILLING_SECTION=",$(cat /tmp/billing_section.txt)"
           fi
 
+          # Granville IFD (16:45 only)
+          GRANVILLE_SECTION=""
+          if [ -f "/tmp/granville_section.txt" ] && [ -s "/tmp/granville_section.txt" ]; then
+            GRANVILLE_SECTION=$(cat /tmp/granville_section.txt)
+          fi
+
           # 23:00 または force_grok=true → GROK銘柄を表示
           if [ "${{ github.event.schedule }}" = "0 14 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
@@ -1136,7 +1188,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$BILLING_SECTION$GROK_SECTION"'
+              }'"$BILLING_SECTION$GROK_SECTION$GRANVILLE_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true

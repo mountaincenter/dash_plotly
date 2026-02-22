@@ -66,7 +66,8 @@ UPLOAD_FILES = [
     # 取引結果
     "stock_results.parquet",
     "stock_results_summary.parquet",
-    # Grok Analysis (backtest配下は除外 - s3-sync.ymlで保護される)
+    # グランビルIFDシグナル（backtest配下は除外 - backtest_granville_ifd.pyで直接S3アップロード）
+    "granville_ifd_signals.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
@@ -236,6 +237,29 @@ def upload_files_to_s3() -> bool:
     else:
         print(f"  [INFO] No backtest archive found (expected after first 16:00 run)")
 
+    granville_archive = backtest_dir / "granville_ifd_archive.parquet"
+    if granville_archive.exists():
+        upload_targets.append(granville_archive)
+        print(f"  [INFO] Added Granville IFD archive: granville_ifd_archive.parquet")
+
+    # CI先行指数（improvement/data/macro/ → S3: macro/estat_ci_index.parquet）
+    # base_dir外なので直接S3アップロード
+    ci_file = ROOT / "improvement" / "data" / "macro" / "estat_ci_index.parquet"
+    if ci_file.exists():
+        try:
+            from common_cfg.s3cfg import load_s3_config
+            import boto3
+            ci_cfg = load_s3_config()
+            ci_s3 = boto3.client("s3", region_name=ci_cfg.region, endpoint_url=ci_cfg.endpoint_url)
+            ci_key = f"{ci_cfg.prefix}macro/estat_ci_index.parquet"
+            ci_s3.upload_file(
+                str(ci_file), ci_cfg.bucket, ci_key,
+                ExtraArgs={"ContentType": "application/octet-stream", "CacheControl": "max-age=60", "ServerSideEncryption": "AES256"},
+            )
+            print(f"  [INFO] Uploaded CI index: {ci_key}")
+        except Exception as e:
+            print(f"  [WARN] CI index upload failed: {e}")
+
     # market_summary/ ディレクトリのファイルを追加
     market_summary_dir = PARQUET_DIR / "market_summary"
     if market_summary_dir.exists():
@@ -309,6 +333,8 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
+        keep_keys.add(prefix + "backtest/granville_ifd_archive.parquet")  # グランビルIFDアーカイブも保持
+        keep_keys.add(prefix + "macro/estat_ci_index.parquet")  # CI先行指数（グランビルIFDで使用）
         keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データ（v2.0.3）も保持
         keep_keys.add(prefix + "backtest/grok_analysis_merged_v2_1.parquet")  # バックテスト統合データ（v2.1）も保持
         keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
