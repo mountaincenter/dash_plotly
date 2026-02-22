@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 generate_meta.py
-静的銘柄（Core30 + 高市銘柄）のmeta.parquetを生成
+静的銘柄（Core30 + Large70 + 政策銘柄）のmeta.parquetを生成
 """
 
 from __future__ import annotations
@@ -23,9 +23,36 @@ from common_cfg.s3cfg import load_s3_config
 from scripts.lib.jquants_client import JQuantsClient
 
 
-def fetch_core30_from_jquants(client: JQuantsClient) -> pd.DataFrame:
-    """J-QuantsからCore30銘柄を取得"""
-    print("[INFO] Fetching Core30 stocks from J-Quants...")
+def fetch_core30_large70_from_local() -> pd.DataFrame:
+    """meta_jquants.parquetからCore30 + Large70銘柄を取得（APIフォールバック）"""
+    path = PARQUET_DIR / "meta_jquants.parquet"
+    if not path.exists():
+        raise FileNotFoundError(f"meta_jquants.parquet not found: {path}")
+
+    mj = pd.read_parquet(path)
+    target_scales = ["TOPIX Core30", "TOPIX Large70"]
+    stocks = mj[mj["topixnewindexseries"].isin(target_scales)].copy()
+
+    stocks["categories"] = stocks["topixnewindexseries"].apply(
+        lambda x: ["TOPIX_CORE30"] if x == "TOPIX Core30" else ["TOPIX_LARGE70"]
+    )
+    stocks["tags"] = stocks.apply(lambda x: [], axis=1)
+
+    cols = [
+        "ticker", "code", "stock_name", "market", "sectors", "series",
+        "topixnewindexseries", "categories", "tags"
+    ]
+    stocks = stocks[[c for c in cols if c in stocks.columns]].copy()
+
+    n_core30 = len(stocks[stocks["topixnewindexseries"] == "TOPIX Core30"])
+    n_large70 = len(stocks[stocks["topixnewindexseries"] == "TOPIX Large70"])
+    print(f"[OK] Loaded {len(stocks)} stocks from meta_jquants (Core30: {n_core30}, Large70: {n_large70})")
+    return stocks
+
+
+def fetch_core30_large70_from_jquants(client: JQuantsClient) -> pd.DataFrame:
+    """J-QuantsからCore30 + Large70銘柄を取得"""
+    print("[INFO] Fetching Core30 + Large70 stocks from J-Quants...")
 
     # 上場銘柄一覧を取得
     response = client.request("/listed/info")
@@ -35,39 +62,44 @@ def fetch_core30_from_jquants(client: JQuantsClient) -> pd.DataFrame:
 
     df = pd.DataFrame(response["info"])
 
-    # Core30フィルタ: ScaleCategory == "TOPIX Core30"
-    core30 = df[df["ScaleCategory"] == "TOPIX Core30"].copy()
+    # Core30 + Large70 フィルタ
+    target_scales = ["TOPIX Core30", "TOPIX Large70"]
+    stocks = df[df["ScaleCategory"].isin(target_scales)].copy()
 
-    if core30.empty:
-        raise RuntimeError("No Core30 stocks found in J-Quants data")
+    if stocks.empty:
+        raise RuntimeError("No Core30/Large70 stocks found in J-Quants data")
 
     # 必要なカラムを整形
     # 1. コードの5桁目の0を削除（例: 70110 -> 7011, 202A0 -> 202A）
-    core30["code"] = core30["Code"].astype(str).str.replace(r'^(.{4})0$', r'\1', regex=True)
-    core30["ticker"] = core30["code"] + ".T"
-    core30["stock_name"] = core30["CompanyName"]
+    stocks["code"] = stocks["Code"].astype(str).str.replace(r'^(.{4})0$', r'\1', regex=True)
+    stocks["ticker"] = stocks["code"] + ".T"
+    stocks["stock_name"] = stocks["CompanyName"]
 
     # 2. market の揺れを統一（プライム（内国株式）→ プライム）
-    core30["market"] = core30["MarketCodeName"].str.replace(r'（内国株式）$', '', regex=True)
+    stocks["market"] = stocks["MarketCodeName"].str.replace(r'（内国株式）$', '', regex=True)
 
     # 3. sectors=33業種、series=17業種
-    core30["sectors"] = core30["Sector33CodeName"]
-    core30["series"] = core30["Sector17CodeName"]
-    core30["topixnewindexseries"] = core30["ScaleCategory"]
+    stocks["sectors"] = stocks["Sector33CodeName"]
+    stocks["series"] = stocks["Sector17CodeName"]
+    stocks["topixnewindexseries"] = stocks["ScaleCategory"]
 
     # categories と tags を追加
-    core30["categories"] = core30.apply(lambda x: ["TOPIX_CORE30"], axis=1)
-    core30["tags"] = core30.apply(lambda x: [], axis=1)
+    stocks["categories"] = stocks["ScaleCategory"].apply(
+        lambda x: ["TOPIX_CORE30"] if x == "TOPIX Core30" else ["TOPIX_LARGE70"]
+    )
+    stocks["tags"] = stocks.apply(lambda x: [], axis=1)
 
     # 9カラム構造（静的銘柄のメタデータのみ）
     cols = [
         "ticker", "code", "stock_name", "market", "sectors", "series",
         "topixnewindexseries", "categories", "tags"
     ]
-    core30 = core30[cols].copy()
+    stocks = stocks[cols].copy()
 
-    print(f"[OK] Fetched {len(core30)} Core30 stocks")
-    return core30
+    n_core30 = len(stocks[stocks["topixnewindexseries"] == "TOPIX Core30"])
+    n_large70 = len(stocks[stocks["topixnewindexseries"] == "TOPIX Large70"])
+    print(f"[OK] Fetched {len(stocks)} stocks (Core30: {n_core30}, Large70: {n_large70})")
+    return stocks
 
 
 def load_policy_stocks() -> pd.DataFrame:
@@ -173,7 +205,7 @@ def main() -> int:
     load_dotenv_cascade()
 
     print("=" * 60)
-    print("Generate meta.parquet (Core30 + Policy)")
+    print("Generate meta.parquet (Core30 + Large70 + Policy)")
     print("=" * 60)
 
     # J-Quantsクライアント初期化
@@ -185,13 +217,14 @@ def main() -> int:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # Core30取得
-    print("\n[STEP 2] Fetching Core30 stocks...")
+    # Core30 + Large70 取得
+    print("\n[STEP 2] Fetching Core30 + Large70 stocks...")
     try:
-        core30 = fetch_core30_from_jquants(client)
+        core30 = fetch_core30_large70_from_jquants(client)
     except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
+        print(f"  ⚠ J-Quants API failed: {e}")
+        print("  [INFO] Falling back to meta_jquants.parquet...")
+        core30 = fetch_core30_large70_from_local()
 
     # 政策銘柄取得
     print("\n[STEP 3] Loading Policy stocks...")
@@ -244,8 +277,8 @@ def main() -> int:
     # サマリー
     print("\n" + "=" * 60)
     print(f"Total stocks: {len(meta)}")
-    print(f"Core30: {len(core30)}")
-    print(f"Policy: {len(policy)}")
+    print(f"Core30 + Large70: {len(core30)}")
+    print(f"Policy (unique): {len(policy)}")
     print("=" * 60)
 
     print("\n✅ meta.parquet generated and uploaded successfully!")
@@ -258,11 +291,11 @@ if __name__ == "__main__":
 
     データソース:
     - data/csv/policy_stock_issue.csv（Git管理、手動更新）
-    - J-Quants API（Core30のみ）
+    - J-Quants API（Core30 + Large70）
 
     実行タイミング:
     - policy_stock_issue.csv更新時
-    - Core30構成銘柄変更時
+    - Core30/Large70構成銘柄変更時
 
     GitHub Actions: 実行しない（静的データのため）
 
