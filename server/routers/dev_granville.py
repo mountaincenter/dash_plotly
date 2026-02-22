@@ -320,3 +320,178 @@ async def get_optimization():
         })
 
     return {"grid": grid}
+
+
+# --- 理論保有ポジション ---
+_pos_cache: Optional[dict] = None
+_pos_ts: Optional[datetime] = None
+POS_TTL = 300  # 5分
+
+BAD_SECTORS = ["医薬品", "輸送用機器", "小売業", "その他製品", "陸運業", "サービス業"]
+
+
+def _compute_positions() -> dict:
+    """価格データからシグナル検出→前方シミュレーション→保有+イグジット算出"""
+    global _pos_cache, _pos_ts
+    if _pos_cache and _pos_ts and (datetime.now() - _pos_ts).total_seconds() < POS_TTL:
+        return _pos_cache
+
+    # 価格 + SMA
+    p = pd.read_parquet(PARQUET_DIR / "prices_max_1d.parquet")
+    p["date"] = pd.to_datetime(p["date"])
+    m = pd.read_parquet(PARQUET_DIR / "meta.parquet")
+    m["sectors"] = m["sectors"].str.replace("･", "・", regex=False)
+    tickers = m["ticker"].tolist()
+    p = p[p["ticker"].isin(tickers)].copy()
+    p = p.sort_values(["ticker", "date"]).reset_index(drop=True)
+
+    g = p.groupby("ticker")
+    p["sma5"] = g["Close"].transform(lambda x: x.rolling(5).mean())
+    p["sma20"] = g["Close"].transform(lambda x: x.rolling(20).mean())
+    p["sma20_slope"] = g["sma20"].transform(lambda x: x.diff(3))
+    p["dev"] = (p["Close"] - p["sma20"]) / p["sma20"] * 100
+    p["prev_dev"] = g["dev"].shift(1)
+    p["prev_close"] = g["Close"].shift(1)
+    p = p.dropna(subset=["sma20"])
+    p = p.merge(m[["ticker", "sectors", "stock_name"]], on="ticker", how="left")
+
+    latest = p["date"].max()
+
+    # N225 uptrend（日付→bool）
+    idx = _load_parquet(INDEX_FILE, "index_prices_max_1d.parquet")
+    nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
+    nk["date"] = pd.to_datetime(nk["date"])
+    nk = nk.sort_values("date")
+    nk["sma20"] = nk["Close"].rolling(20).mean()
+    nk["uptrend"] = nk["Close"] > nk["sma20"]
+    uptrend_map = dict(zip(nk["date"].values, nk["uptrend"].values))
+
+    # CI expand（最新値のbool、月次なのでforward fill不要）
+    ci_ok = True
+    try:
+        ci = _load_parquet(MACRO_DIR / "estat_ci_index.parquet", "macro/estat_ci_index.parquet")
+        ci["chg3m"] = ci["leading"].diff(3)
+        ci_ok = bool(ci.dropna(subset=["chg3m"]).iloc[-1]["chg3m"] > 0)
+    except Exception:
+        pass
+
+    # 過去120日のシグナル検出
+    cutoff = latest - pd.Timedelta(days=120)
+    r = p[p["date"] >= cutoff].copy()
+
+    # sig_A / sig_B
+    r["sig_A"] = r["dev"].between(-8, -3) & (r["Close"] > r["prev_close"])
+    r["sig_B"] = (
+        (r["sma20_slope"] > 0) & (r["Close"] > r["sma20"])
+        & r["dev"].between(0, 2) & (r["prev_dev"] <= 0.5)
+        & (r["Close"] > r["prev_close"])
+    )
+
+    sigs = r[r["sig_A"] | r["sig_B"]].copy()
+    # フィルター
+    sigs = sigs[sigs["date"].map(lambda d: uptrend_map.get(np.datetime64(d), False))]
+    if not ci_ok:
+        sigs = sigs.iloc[0:0]
+    sigs = sigs[~sigs["sectors"].isin(BAD_SECTORS)]
+    sigs = sigs[sigs["Close"] < 20000]
+
+    if sigs.empty:
+        result = {"positions": [], "exits": [], "as_of": latest.strftime("%Y-%m-%d")}
+        _pos_cache, _pos_ts = result, datetime.now()
+        return result
+
+    sigs["sig_type"] = sigs.apply(
+        lambda x: "A+B" if x["sig_A"] and x["sig_B"] else ("A" if x["sig_A"] else "B"), axis=1
+    )
+
+    # 前方シミュレーション
+    positions, exits = [], []
+
+    for _, sig in sigs.iterrows():
+        tk = p[(p["ticker"] == sig["ticker"]) & (p["date"] > sig["date"])].sort_values("date")
+        if tk.empty:
+            continue
+
+        ep = float(tk.iloc[0]["Open"])
+        if pd.isna(ep) or ep <= 0:
+            continue
+        e_date = tk.iloc[0]["date"]
+        sl = ep * 0.97
+        st = sig["sig_type"]
+        exited = False
+        exit_today = None
+
+        for i in range(min(len(tk), 60)):
+            row = tk.iloc[i]
+            if float(row["Low"]) <= sl:
+                exited = True
+                break
+            if i == 0:
+                continue
+            cv, s5, s20 = float(row["Close"]), float(row["sma5"]), float(row["sma20"])
+
+            # A: SMA20回帰
+            if st in ("A", "A+B") and cv >= s20:
+                if row["date"] == latest:
+                    exit_today = "SMA20_touch"
+                exited = True
+                break
+
+            # デッドクロス
+            prev = tk.iloc[i - 1]
+            if float(prev["sma5"]) >= float(prev["sma20"]) and s5 < s20:
+                if row["date"] == latest:
+                    exit_today = "dead_cross"
+                exited = True
+                break
+
+            if i >= 59:
+                exited = True
+                break
+
+        if not exited:
+            cur = tk.iloc[-1]
+            cp = float(cur["Close"])
+            positions.append({
+                "ticker": sig["ticker"],
+                "stock_name": sig.get("stock_name", ""),
+                "signal_type": st,
+                "entry_date": e_date.strftime("%Y-%m-%d"),
+                "entry_price": _safe_float(ep, 1),
+                "current_price": _safe_float(cp, 1),
+                "unrealized_pct": _safe_float((cp / ep - 1) * 100, 2),
+                "unrealized_yen": _safe_int((cp - ep) * 100),
+                "sl_price": _safe_float(sl, 1),
+                "hold_days": len(tk),
+            })
+        elif exit_today:
+            cur = tk.iloc[-1]
+            cp = float(cur["Close"])
+            exits.append({
+                "ticker": sig["ticker"],
+                "stock_name": sig.get("stock_name", ""),
+                "signal_type": st,
+                "entry_date": e_date.strftime("%Y-%m-%d"),
+                "entry_price": _safe_float(ep, 1),
+                "current_price": _safe_float(cp, 1),
+                "ret_pct": _safe_float((cp / ep - 1) * 100, 2),
+                "pnl_yen": _safe_int((cp - ep) * 100),
+                "exit_type": exit_today,
+            })
+
+    result = {
+        "positions": positions,
+        "exits": exits,
+        "as_of": latest.strftime("%Y-%m-%d"),
+    }
+    _pos_cache, _pos_ts = result, datetime.now()
+    return result
+
+
+@router.get("/api/dev/granville/positions")
+async def get_positions():
+    """理論上の保有ポジション + 本日イグジットシグナル"""
+    try:
+        return _compute_positions()
+    except Exception as e:
+        return {"positions": [], "exits": [], "as_of": None, "error": str(e)}
