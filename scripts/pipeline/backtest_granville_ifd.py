@@ -4,7 +4,8 @@ backtest_granville_ifd.py
 グランビルIFDロング戦略: 完走済みトレードをアーカイブに追加
 
 毎営業日16:45実行。granville_ifd_signals.parquetからシグナルを取得し、
-グランビル出口ルール + 翌日寄付決済を適用。
+グランビル出口ルール + TP+10%利確 + 翌日寄付決済を適用。
+  TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
   A: 終値≥SMA20 → 翌日寄付売り（SMA20回帰利確）
   B: SMA5がSMA20を下抜け → 翌日寄付売り（デッドクロス撤退）
   共通: SL -3%（IFD逆指値、ザラ場自動執行）/ 最大60営業日
@@ -35,6 +36,7 @@ SIGNALS_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
 ARCHIVE_PATH = BACKTEST_DIR / "granville_ifd_archive.parquet"
 
 SL_PCT = 3.0        # SL -3%（IFD逆指値）
+TP_PCT = 10.0       # TP +10%（利確）
 MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
 MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象
 
@@ -71,8 +73,9 @@ def load_archive(cfg) -> pd.DataFrame:
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
                    signal_date: pd.Timestamp, signal_type: str) -> dict | None:
-    """1トレードをグランビル出口ルール+翌日寄付でシミュレート
+    """1トレードをTP+10% + グランビル出口ルール + 翌日寄付でシミュレート
 
+    TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
     A: 終値≥SMA20 → 翌日寄付売り / B: デッドクロス → 翌日寄付売り
     共通: SL -3%（IFD逆指値）/ 最大60営業日
     """
@@ -82,6 +85,7 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     dates = tk["date"].values
     opens = tk["Open"].values
+    highs = tk["High"].values
     lows = tk["Low"].values
     closes = tk["Close"].values
     sma5s = tk["sma5"].values
@@ -103,6 +107,7 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     entry_date = pd.Timestamp(dates[entry_idx])
     sl_price = entry_price * (1 - SL_PCT / 100)
+    tp_price = entry_price * (1 + TP_PCT / 100)
 
     for d in range(MAX_HOLD_DAYS):
         ci = entry_idx + d
@@ -112,6 +117,10 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
         # SL判定（IFD逆指値、ザラ場中に自動執行）
         if float(lows[ci]) <= sl_price:
             return _result(entry_date, dates[ci], entry_price, sl_price, "SL")
+
+        # TP+10%判定（ザラ場中に到達）
+        if float(highs[ci]) >= tp_price:
+            return _result(entry_date, dates[ci], entry_price, tp_price, "TP")
 
         # エントリー日は出口条件チェックしない
         if d == 0:

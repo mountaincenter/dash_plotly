@@ -111,8 +111,8 @@ async def get_signals():
     signals = []
     for _, r in rows.iterrows():
         sig_type = r.get("signal_type", "")
-        # A: SMA20回帰利確→翌日寄付 / B: デッドクロス→翌日寄付
-        exit_rule = "SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "DC撤退"
+        # TP+10% / A: SMA20回帰利確→翌日寄付 / B: デッドクロス→翌日寄付
+        exit_rule = "TP10% / SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "TP10% / DC撤退"
         signals.append({
             "ticker": r.get("ticker", ""),
             "stock_name": r.get("stock_name", ""),
@@ -297,29 +297,110 @@ async def get_status():
     return result
 
 
-@router.get("/api/dev/granville/optimization")
-async def get_optimization():
-    """価格帯×シグナル種別×保有日数の最適化グリッド"""
-    df = _load_parquet(OPTIM_FILE, "backtest/granville_ifd_optimization.parquet")
+@router.get("/api/dev/granville/comparison")
+async def get_comparison():
+    """3戦略（TP+10%, 7日引け, 利確なし）の比較統計"""
+    import numpy as np
+
+    df = load_archive()
     if df.empty:
-        return {"grid": []}
+        return {"strategies": []}
 
-    grid = []
-    for _, r in df.iterrows():
-        grid.append({
-            "signal_type": r.get("signal_type", ""),
-            "price_band": r.get("price_band", ""),
-            "hold_days": _safe_int(r.get("hold_days", 0)),
-            "count": _safe_int(r.get("count", 0)),
-            "win_rate": _safe_float(r.get("win_rate", 0)),
-            "pf": _safe_float(r.get("pf", 0), 2),
-            "avg_ret": _safe_float(r.get("avg_ret", 0), 3),
-            "total_pnl": _safe_int(r.get("total_pnl", 0)),
-            "avg_pnl": _safe_int(r.get("avg_pnl", 0)),
-            "sl_rate": _safe_float(r.get("sl_rate", 0)),
-        })
+    # アーカイブのシグナル情報を使い、7日引けと利確なしを再計算
+    p = _load_parquet(PARQUET_DIR / "prices_max_1d.parquet", "prices_max_1d.parquet")
+    if p.empty:
+        return {"strategies": []}
+    p["date"] = pd.to_datetime(p["date"])
+    p = p.sort_values(["ticker", "date"]).reset_index(drop=True)
+    g = p.groupby("ticker")
+    p["sma5"] = g["Close"].transform(lambda x: x.rolling(5).mean())
+    p["sma20"] = g["Close"].transform(lambda x: x.rolling(20).mean())
 
-    return {"grid": grid}
+    signals = df[["signal_date", "ticker", "signal_type"]].copy()
+
+    def sim_all(signals, p, tp_pct, use_7d=False):
+        results = []
+        for _, sig in signals.iterrows():
+            tk = p[p["ticker"] == sig["ticker"]].sort_values("date")
+            dates, opens, highs, lows, closes = tk["date"].values, tk["Open"].values, tk["High"].values, tk["Low"].values, tk["Close"].values
+            sma5s, sma20s = tk["sma5"].values, tk["sma20"].values
+            di = {d: i for i, d in enumerate(dates)}
+            sd = np.datetime64(sig["signal_date"])
+            if sd not in di: continue
+            idx = di[sd]
+            if idx + 1 >= len(dates): continue
+            ei = idx + 1
+            ep = float(opens[ei])
+            if np.isnan(ep) or ep <= 0: continue
+            ed = pd.Timestamp(dates[ei])
+            sl = ep * 0.97
+            tp_p = ep * (1 + tp_pct / 100) if tp_pct > 0 else None
+            st = sig["signal_type"]
+            ex_p = ex_d = ex_t = None
+            hold_limit = 7 if use_7d else 60
+            for d in range(hold_limit):
+                ci = ei + d
+                if ci >= len(dates): break
+                if float(lows[ci]) <= sl:
+                    ex_p, ex_d, ex_t = sl, pd.Timestamp(dates[ci]), "SL"; break
+                if tp_p and float(highs[ci]) >= tp_p:
+                    ex_p, ex_d, ex_t = tp_p, pd.Timestamp(dates[ci]), "TP"; break
+                if use_7d:
+                    if d == hold_limit - 1:
+                        ex_p, ex_d, ex_t = float(closes[ci]), pd.Timestamp(dates[ci]), "expire"; break
+                    continue
+                if d == 0: continue
+                cv, s5, s20 = float(closes[ci]), float(sma5s[ci]), float(sma20s[ci])
+                if st in ("A", "A+B") and cv >= s20:
+                    if ci + 1 < len(dates): ex_p, ex_d, ex_t = float(opens[ci + 1]), pd.Timestamp(dates[ci + 1]), "SMA20"
+                    break
+                if ci > 0:
+                    ps5, ps20 = float(sma5s[ci - 1]), float(sma20s[ci - 1])
+                    if ps5 >= ps20 and s5 < s20:
+                        if ci + 1 < len(dates): ex_p, ex_d, ex_t = float(opens[ci + 1]), pd.Timestamp(dates[ci + 1]), "DC"
+                        break
+                if d == 59:
+                    if ci + 1 < len(dates): ex_p, ex_d, ex_t = float(opens[ci + 1]), pd.Timestamp(dates[ci + 1]), "expire"
+                    break
+            if ex_p is None: continue
+            hold = (ex_d - ed).days
+            results.append({"entry_date": ed, "ret_pct": (ex_p / ep - 1) * 100, "pnl_yen": int((ex_p - ep) * 100), "hold_days": hold})
+        return pd.DataFrame(results)
+
+    def calc_stats(rdf, label, period_start=None):
+        if period_start:
+            rdf = rdf[rdf["entry_date"] >= period_start]
+        n = len(rdf)
+        if n == 0:
+            return {"label": label, "count": 0, "pnl": 0, "pf": 0, "win_rate": 0, "avg_hold": 0}
+        pnl = int(rdf["pnl_yen"].sum())
+        wr = round((rdf["ret_pct"] > 0).mean() * 100, 1)
+        w = rdf.loc[rdf["ret_pct"] > 0, "pnl_yen"].sum()
+        l = abs(rdf.loc[rdf["ret_pct"] <= 0, "pnl_yen"].sum())
+        pf = round(w / l, 2) if l > 0 else 999
+        hd = round(rdf["hold_days"].mean(), 1)
+        return {"label": label, "count": n, "pnl": pnl, "pf": pf, "win_rate": wr, "avg_hold": hd}
+
+    # TP+10%はアーカイブから直接
+    tp10_df = pd.DataFrame({
+        "entry_date": pd.to_datetime(df["entry_date"]),
+        "ret_pct": pd.to_numeric(df["ret_pct"], errors="coerce"),
+        "pnl_yen": pd.to_numeric(df["pnl_yen"], errors="coerce").fillna(0).astype(int),
+        "hold_days": (pd.to_datetime(df["exit_date"]) - pd.to_datetime(df["entry_date"])).dt.days,
+    })
+
+    d7_df = sim_all(signals, p, 0, use_7d=True)
+    nolim_df = sim_all(signals, p, 0, use_7d=False)
+
+    result = {}
+    for period_name, period_start in [("all", None), ("14m", "2025-01-01"), ("2026", "2026-01-01")]:
+        result[period_name] = [
+            calc_stats(tp10_df, "TP+10%", period_start),
+            calc_stats(d7_df, "7日引け", period_start),
+            calc_stats(nolim_df, "利確なし", period_start),
+        ]
+
+    return {"strategies": result}
 
 
 # --- 理論保有ポジション ---
@@ -417,6 +498,7 @@ def _compute_positions() -> dict:
             continue
         e_date = tk.iloc[0]["date"]
         sl = ep * 0.97
+        tp_price = ep * 1.10  # TP+10%
         st = sig["sig_type"]
         exited = False
         exit_today = None
@@ -424,6 +506,11 @@ def _compute_positions() -> dict:
         for i in range(min(len(tk), 60)):
             row = tk.iloc[i]
             if float(row["Low"]) <= sl:
+                exited = True
+                break
+            if float(row["High"]) >= tp_price:
+                if row["date"] == latest:
+                    exit_today = "TP"
                 exited = True
                 break
             if i == 0:
