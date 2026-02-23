@@ -4,10 +4,11 @@ backtest_granville_ifd.py
 グランビルIFDロング戦略: 完走済みトレードをアーカイブに追加
 
 毎営業日16:45実行。granville_ifd_signals.parquetからシグナルを取得し、
-グランビル出口ルール + TP+10%利確 + 翌日寄付決済を適用。
+グランビル出口ルール + TP+10%利確 + 7日マイナス損切り + 翌日寄付決済を適用。
   TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
   A: 終値≥SMA20 → 翌日寄付売り（SMA20回帰利確）
   B: SMA5がSMA20を下抜け → 翌日寄付売り（デッドクロス撤退）
+  7日マイナス損切り: 7営業日目終値 < エントリー価格 → 翌日寄付売り
   共通: SL -3%（IFD逆指値、ザラ場自動執行）/ 最大60営業日
 結果を granville_ifd_archive.parquet に append。
 
@@ -75,10 +76,11 @@ def load_archive(cfg) -> pd.DataFrame:
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
                    signal_date: pd.Timestamp, signal_type: str) -> dict | None:
-    """1トレードをTP+10% + グランビル出口ルール + 翌日寄付でシミュレート
+    """1トレードをTP+10% + グランビル出口ルール + 7日マイナス損切りでシミュレート
 
     TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
     A: 終値≥SMA20 → 翌日寄付売り / B: デッドクロス → 翌日寄付売り
+    7日マイナス: d==6で終値 < エントリー → 翌日寄付売り (time_cut)
     共通: SL -3%（IFD逆指値）/ 最大60営業日
     """
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
@@ -147,6 +149,13 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
                 return None
             return _result(entry_date, dates[ci + 1], entry_price,
                            float(opens[ci + 1]), "dead_cross")
+
+        # 7日経過マイナスなら翌朝損切り
+        if d == 6 and close_val < entry_price:
+            if ci + 1 >= len(dates):
+                return None
+            return _result(entry_date, dates[ci + 1], entry_price,
+                           float(opens[ci + 1]), "time_cut")
 
         # 最大保有日数到達 → 翌日寄付売り
         if d == MAX_HOLD_DAYS - 1:

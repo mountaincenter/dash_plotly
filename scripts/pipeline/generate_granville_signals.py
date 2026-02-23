@@ -281,6 +281,13 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 exited = True
                 break
 
+            # 7日経過マイナスなら翌朝損切り
+            if i == 6 and cv < ep:
+                if row["date"] == latest:
+                    exit_today = "time_cut"
+                exited = True
+                break
+
             if i >= 59:
                 exited = True
                 break
