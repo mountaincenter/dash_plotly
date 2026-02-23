@@ -32,6 +32,8 @@ from common_cfg.s3io import upload_file
 
 MACRO_DIR = ROOT / "improvement" / "data" / "macro"
 OUTPUT_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "granville_ifd_positions.parquet"
+S3_POSITIONS_KEY = "granville_ifd_positions.parquet"
 
 BAD_SECTORS = ["医薬品", "輸送用機器", "小売業", "その他製品", "陸運業", "サービス業"]
 
@@ -178,6 +180,167 @@ def generate_signals() -> pd.DataFrame:
     return out
 
 
+def generate_positions(ps: pd.DataFrame) -> None:
+    """過去120日のシグナルから保有ポジション+本日イグジットを前処理"""
+    print("\n[INFO] Generating positions...")
+
+    # ps は load_data() + detect_signals() 済みのDataFrame
+    latest = ps["date"].max()
+
+    # N225 uptrend マップ
+    idx = pd.read_parquet(PARQUET_DIR / "index_prices_max_1d.parquet")
+    nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
+    nk["date"] = pd.to_datetime(nk["date"])
+    nk = nk.sort_values("date")
+    nk["sma20"] = nk["Close"].rolling(20).mean()
+    nk["uptrend"] = nk["Close"] > nk["sma20"]
+    uptrend_map = dict(zip(nk["date"].values, nk["uptrend"].values))
+
+    # CI先行指数
+    ci_ok = True
+    try:
+        ci = pd.read_parquet(MACRO_DIR / "estat_ci_index.parquet")
+        ci = ci[["date", "leading"]].sort_values("date")
+        ci["chg3m"] = ci["leading"].diff(3)
+        ci_ok = bool(ci.dropna(subset=["chg3m"]).iloc[-1]["chg3m"] > 0)
+    except Exception:
+        pass
+
+    # 過去120日のシグナル
+    cutoff = latest - pd.Timedelta(days=120)
+    r = ps[ps["date"] >= cutoff].copy()
+
+    # 再検出（detect_signals済みなので sig_A/sig_B 列がある）
+    sigs = r[r["sig_A"] | r["sig_B"]].copy()
+
+    # フィルター
+    sigs = sigs[sigs["date"].map(lambda d: uptrend_map.get(np.datetime64(d), False))]
+    if not ci_ok:
+        sigs = sigs.iloc[0:0]
+    sigs = sigs[~sigs["sectors"].isin(BAD_SECTORS)]
+    sigs = sigs[sigs["Close"] < 20000]
+
+    if sigs.empty:
+        print("[INFO] No active signals in past 120 days")
+        empty = pd.DataFrame(columns=[
+            "status", "ticker", "stock_name", "signal_type",
+            "entry_date", "entry_price", "current_price",
+            "pct", "pnl", "sl_price", "hold_days", "exit_type", "as_of",
+        ])
+        empty.to_parquet(POSITIONS_PATH, index=False)
+        _upload_positions()
+        return
+
+    sigs["sig_type"] = sigs.apply(
+        lambda x: "A+B" if x["sig_A"] and x["sig_B"] else ("A" if x["sig_A"] else "B"), axis=1
+    )
+
+    # 前方シミュレーション
+    rows = []
+    for _, sig in sigs.iterrows():
+        tk = ps[(ps["ticker"] == sig["ticker"]) & (ps["date"] > sig["date"])].sort_values("date")
+        if tk.empty:
+            continue
+
+        ep = float(tk.iloc[0]["Open"])
+        if pd.isna(ep) or ep <= 0:
+            continue
+        e_date = tk.iloc[0]["date"]
+        sl = ep * 0.97
+        tp_price = ep * 1.10
+        st = sig["sig_type"]
+        exited = False
+        exit_today = None
+
+        for i in range(min(len(tk), 60)):
+            row = tk.iloc[i]
+            if float(row["Low"]) <= sl:
+                exited = True
+                break
+            if float(row["High"]) >= tp_price:
+                if row["date"] == latest:
+                    exit_today = "TP"
+                exited = True
+                break
+            if i == 0:
+                continue
+            cv, s5, s20 = float(row["Close"]), float(row["sma5"]), float(row["sma20"])
+
+            # A: SMA20回帰
+            if st in ("A", "A+B") and cv >= s20:
+                if row["date"] == latest:
+                    exit_today = "SMA20_touch"
+                exited = True
+                break
+
+            # DC
+            prev = tk.iloc[i - 1]
+            if float(prev["sma5"]) >= float(prev["sma20"]) and s5 < s20:
+                if row["date"] == latest:
+                    exit_today = "dead_cross"
+                exited = True
+                break
+
+            if i >= 59:
+                exited = True
+                break
+
+        if not exited:
+            cur = tk.iloc[-1]
+            cp = float(cur["Close"])
+            rows.append({
+                "status": "open",
+                "ticker": sig["ticker"],
+                "stock_name": sig.get("stock_name", ""),
+                "signal_type": st,
+                "entry_date": e_date,
+                "entry_price": round(ep, 1),
+                "current_price": round(cp, 1),
+                "pct": round((cp / ep - 1) * 100, 2),
+                "pnl": int((cp - ep) * 100),
+                "sl_price": round(sl, 1),
+                "hold_days": len(tk),
+                "exit_type": "",
+                "as_of": latest,
+            })
+        elif exit_today:
+            cur = tk.iloc[-1]
+            cp = float(cur["Close"])
+            rows.append({
+                "status": "exit",
+                "ticker": sig["ticker"],
+                "stock_name": sig.get("stock_name", ""),
+                "signal_type": st,
+                "entry_date": e_date,
+                "entry_price": round(ep, 1),
+                "current_price": round(cp, 1),
+                "pct": round((cp / ep - 1) * 100, 2),
+                "pnl": int((cp - ep) * 100),
+                "sl_price": 0,
+                "hold_days": 0,
+                "exit_type": exit_today,
+                "as_of": latest,
+            })
+
+    result = pd.DataFrame(rows)
+    result.to_parquet(POSITIONS_PATH, index=False)
+    open_count = (result["status"] == "open").sum()
+    exit_count = (result["status"] == "exit").sum()
+    print(f"[OK] Positions: {open_count} open, {exit_count} exits → {POSITIONS_PATH}")
+    _upload_positions()
+
+
+def _upload_positions() -> None:
+    """ポジションparquetをS3にアップロード"""
+    try:
+        cfg = load_s3_config()
+        if cfg and cfg.bucket:
+            upload_file(cfg, POSITIONS_PATH, S3_POSITIONS_KEY)
+            print(f"[OK] Uploaded to s3://{cfg.bucket}/{S3_POSITIONS_KEY}")
+    except Exception as e:
+        print(f"[WARN] S3 upload failed: {e}")
+
+
 def main() -> int:
     print("=" * 60)
     print("Generate Granville IFD Signals")
@@ -185,28 +348,73 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        signals = generate_signals()
+        # load_data + detect_signals を一度だけ実行し、シグナル生成とポジション計算で共有
+        print("[INFO] Loading data...")
+        ps = load_data()
+        ps = detect_signals(ps)
+
+        # --- シグナル生成 ---
+        latest_date = ps["date"].max()
+        print(f"[INFO] Latest date: {latest_date.date()}")
+        latest = ps[ps["date"] == latest_date].copy()
+        sig_mask = latest["sig_A"] | latest["sig_B"]
+        raw_signals = latest[sig_mask].copy()
+        print(f"[INFO] Raw signals: {len(raw_signals)} (sig_A={latest['sig_A'].sum()}, sig_B={latest['sig_B'].sum()})")
+
+        signals = raw_signals.copy()
+        if not signals.empty:
+            before = len(signals)
+            signals = signals[signals["market_uptrend"] == True]
+            print(f"[INFO] After uptrend filter: {len(signals)} (removed {before - len(signals)})")
+            before = len(signals)
+            signals = signals[signals["macro_ci_expand"] == True]
+            print(f"[INFO] After CI expand filter: {len(signals)} (removed {before - len(signals)})")
+            before = len(signals)
+            signals = signals[~signals["sectors"].isin(BAD_SECTORS)]
+            print(f"[INFO] After bad sectors filter: {len(signals)} (removed {before - len(signals)})")
+            before = len(signals)
+            signals = signals[signals["Close"] < 20000]
+            print(f"[INFO] After price < ¥20,000 filter: {len(signals)} (removed {before - len(signals)})")
 
         if signals.empty:
             print("[INFO] No signals to save (empty result)")
-            # 空でもファイルを作成（APIが404にならないように）
-            signals = pd.DataFrame(columns=[
+            out = pd.DataFrame(columns=[
                 "signal_date", "ticker", "stock_name", "sector", "signal_type",
                 "close", "sma20", "dev_from_sma20", "sma20_slope",
                 "entry_price_est", "sl_price", "market_uptrend", "ci_expand",
             ])
+        else:
+            def signal_type(row):
+                a, b = row["sig_A"], row["sig_B"]
+                if a and b:
+                    return "A+B"
+                return "A" if a else "B"
+            signals["signal_type"] = signals.apply(signal_type, axis=1)
+            out = pd.DataFrame({
+                "signal_date": signals["date"],
+                "ticker": signals["ticker"],
+                "stock_name": signals["stock_name"],
+                "sector": signals["sectors"],
+                "signal_type": signals["signal_type"],
+                "close": signals["Close"],
+                "sma20": signals["sma20"].round(2),
+                "dev_from_sma20": signals["dev_from_sma20"].round(3),
+                "sma20_slope": signals["sma20_slope"].round(4),
+                "entry_price_est": signals["Close"],
+                "sl_price": (signals["Close"] * 0.97).round(1),
+                "market_uptrend": signals["market_uptrend"],
+                "ci_expand": signals["macro_ci_expand"],
+            })
+            out = out.sort_values("dev_from_sma20").reset_index(drop=True)
 
         PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-        signals.to_parquet(OUTPUT_PATH, index=False)
-        print(f"[OK] Saved {len(signals)} signals to {OUTPUT_PATH}")
-
-        # S3アップロードはupdate_manifestで一括実行されるため、ここでは不要
-        # (UPLOAD_FILESに granville_ifd_signals.parquet を追加済み)
+        out.to_parquet(OUTPUT_PATH, index=False)
+        print(f"[OK] Saved {len(out)} signals to {OUTPUT_PATH}")
 
         print(f"\n{'=' * 60}")
-        if len(signals) > 0:
-            print(f"Signals: {len(signals)} candidates")
-            for _, row in signals.iterrows():
+        if len(out) > 0:
+            print(f"Signals: {len(out)} candidates")
+            for _, row in out.iterrows():
                 print(f"  {row['ticker']} {row['stock_name']} "
                       f"[{row['signal_type']}] ¥{row['close']:,.0f} "
                       f"SL ¥{row['sl_price']:,.0f} "
@@ -214,6 +422,9 @@ def main() -> int:
         else:
             print("No signals today")
         print("=" * 60)
+
+        # --- ポジション前処理 ---
+        generate_positions(ps)
 
         return 0
 
