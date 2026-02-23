@@ -41,6 +41,8 @@ MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
 MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象
 
 S3_ARCHIVE_KEY = "backtest/granville_ifd_archive.parquet"
+COMPARISON_PATH = BACKTEST_DIR / "granville_ifd_comparison.parquet"
+S3_COMPARISON_KEY = "backtest/granville_ifd_comparison.parquet"
 
 
 def load_signals_from_s3(cfg) -> pd.DataFrame:
@@ -301,7 +303,146 @@ def run_backtest() -> int:
         print(f"  PF: {pf}")
     print("=" * 60)
 
+    # 8. 比較データ生成（3戦略 × 3期間）
+    try:
+        _generate_comparison(merged, prices, cfg)
+    except Exception as e:
+        print(f"[WARN] Comparison generation failed: {e}")
+
     return 0
+
+
+def _simulate_alt(prices_df, ticker, signal_date, signal_type, tp_pct, use_7d):
+    """7日引け / 利確なし用のシミュレーション"""
+    tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
+    if tk.empty:
+        return None
+    dates = tk["date"].values
+    opens, highs, lows, closes = tk["Open"].values, tk["High"].values, tk["Low"].values, tk["Close"].values
+    sma5s, sma20s = tk["sma5"].values, tk["sma20"].values
+    date_idx = {d: i for i, d in enumerate(dates)}
+    sd = np.datetime64(signal_date)
+    if sd not in date_idx:
+        return None
+    idx = date_idx[sd]
+    if idx + 1 >= len(dates):
+        return None
+    ei = idx + 1
+    ep = float(opens[ei])
+    if np.isnan(ep) or ep <= 0:
+        return None
+    ed = pd.Timestamp(dates[ei])
+    sl = ep * 0.97
+    tp_p = ep * (1 + tp_pct / 100) if tp_pct > 0 else None
+    hold_limit = 7 if use_7d else 60
+
+    for d in range(hold_limit):
+        ci = ei + d
+        if ci >= len(dates):
+            return None
+        if float(lows[ci]) <= sl:
+            return _result(ed, dates[ci], ep, sl, "SL")
+        if tp_p and float(highs[ci]) >= tp_p:
+            return _result(ed, dates[ci], ep, tp_p, "TP")
+        if use_7d:
+            if d == hold_limit - 1:
+                return _result(ed, dates[ci], ep, float(closes[ci]), "expire")
+            continue
+        if d == 0:
+            continue
+        cv = float(closes[ci])
+        s5, s20 = float(sma5s[ci]), float(sma20s[ci])
+        if signal_type in ("A", "A+B") and cv >= s20:
+            if ci + 1 < len(dates):
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "SMA20_touch")
+            return None
+        ps5, ps20 = float(sma5s[ci - 1]), float(sma20s[ci - 1])
+        if ps5 >= ps20 and s5 < s20:
+            if ci + 1 < len(dates):
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "dead_cross")
+            return None
+        if d == 59:
+            if ci + 1 < len(dates):
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "expire")
+            return None
+    return None
+
+
+def _generate_comparison(archive_df, prices_df, cfg):
+    """3戦略の比較統計をparquetに保存"""
+    print("\n[INFO] Generating comparison data...")
+
+    archive_df = archive_df.copy()
+    for col in ["signal_date", "entry_date", "exit_date"]:
+        archive_df[col] = pd.to_datetime(archive_df[col])
+
+    # TP+10%はアーカイブから
+    tp10_entries = []
+    for _, r in archive_df.iterrows():
+        tp10_entries.append({
+            "entry_date": r["entry_date"],
+            "ret_pct": float(r["ret_pct"]),
+            "pnl_yen": int(r["pnl_yen"]),
+            "hold_days": (r["exit_date"] - r["entry_date"]).days,
+        })
+    tp10_df = pd.DataFrame(tp10_entries)
+
+    # 7日引け / 利確なし
+    signals = archive_df[["signal_date", "ticker", "signal_type"]].drop_duplicates()
+    d7_entries, nolim_entries = [], []
+
+    for _, sig in signals.iterrows():
+        r7 = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], 0, True)
+        if r7:
+            d7_entries.append({
+                "entry_date": pd.Timestamp(r7["entry_date"]),
+                "ret_pct": r7["ret_pct"],
+                "pnl_yen": r7["pnl_yen"],
+                "hold_days": (pd.Timestamp(r7["exit_date"]) - pd.Timestamp(r7["entry_date"])).days,
+            })
+        rn = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], 0, False)
+        if rn:
+            nolim_entries.append({
+                "entry_date": pd.Timestamp(rn["entry_date"]),
+                "ret_pct": rn["ret_pct"],
+                "pnl_yen": rn["pnl_yen"],
+                "hold_days": (pd.Timestamp(rn["exit_date"]) - pd.Timestamp(rn["entry_date"])).days,
+            })
+
+    d7_df = pd.DataFrame(d7_entries)
+    nolim_df = pd.DataFrame(nolim_entries)
+
+    def calc(rdf, label, period_start=None):
+        if period_start:
+            rdf = rdf[rdf["entry_date"] >= period_start]
+        n = len(rdf)
+        if n == 0:
+            return {"period": "", "label": label, "count": 0, "pnl": 0, "pf": 0.0, "win_rate": 0.0, "avg_hold": 0.0}
+        pnl = int(rdf["pnl_yen"].sum())
+        wr = round((rdf["ret_pct"] > 0).mean() * 100, 1)
+        w = rdf.loc[rdf["ret_pct"] > 0, "pnl_yen"].sum()
+        l = abs(rdf.loc[rdf["ret_pct"] <= 0, "pnl_yen"].sum())
+        pf = round(w / l, 2) if l > 0 else 999.0
+        hd = round(rdf["hold_days"].mean(), 1)
+        return {"period": "", "label": label, "count": n, "pnl": pnl, "pf": pf, "win_rate": wr, "avg_hold": hd}
+
+    rows = []
+    for period_name, period_start in [("all", None), ("14m", "2025-01-01"), ("2026", "2026-01-01")]:
+        for df, lbl in [(tp10_df, "TP+10%"), (d7_df, "7日引け"), (nolim_df, "利確なし")]:
+            r = calc(df, lbl, period_start)
+            r["period"] = period_name
+            rows.append(r)
+
+    comp_df = pd.DataFrame(rows)
+    comp_df.to_parquet(COMPARISON_PATH, index=False)
+    print(f"[OK] Comparison saved: {COMPARISON_PATH}")
+
+    if cfg and cfg.bucket:
+        try:
+            upload_file(cfg, COMPARISON_PATH, S3_COMPARISON_KEY)
+            print(f"[OK] Uploaded to S3: {S3_COMPARISON_KEY}")
+        except Exception as e:
+            print(f"[WARN] S3 upload failed: {e}")
 
 
 def main() -> int:
