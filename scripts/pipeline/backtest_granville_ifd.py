@@ -36,7 +36,7 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 SIGNALS_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
 ARCHIVE_PATH = BACKTEST_DIR / "granville_ifd_archive.parquet"
 
-SL_PCT = 3.0        # SL -3%（IFD逆指値）
+SL_PCT = 3.5        # SL -3.5%（IFD逆指値）
 TP_PCT = 10.0       # TP +10%（利確）
 MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
 MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象

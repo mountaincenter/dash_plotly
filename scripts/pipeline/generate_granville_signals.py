@@ -171,7 +171,7 @@ def generate_signals() -> pd.DataFrame:
         "dev_from_sma20": signals["dev_from_sma20"].round(3),
         "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"],
-        "sl_price": (signals["Close"] * 0.97).round(1),
+        "sl_price": (signals["Close"] * 0.965).round(1),
         "market_uptrend": signals["market_uptrend"],
         "ci_expand": signals["macro_ci_expand"],
     })
@@ -246,7 +246,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
         if pd.isna(ep) or ep <= 0:
             continue
         e_date = tk.iloc[0]["date"]
-        sl = ep * 0.97
+        sl = ep * 0.965
         tp_price = ep * 1.10
         st = sig["sig_type"]
         exited = False
@@ -408,7 +408,7 @@ def main() -> int:
                 "dev_from_sma20": signals["dev_from_sma20"].round(3),
                 "sma20_slope": signals["sma20_slope"].round(4),
                 "entry_price_est": signals["Close"],
-                "sl_price": (signals["Close"] * 0.97).round(1),
+                "sl_price": (signals["Close"] * 0.965).round(1),
                 "market_uptrend": signals["market_uptrend"],
                 "ci_expand": signals["macro_ci_expand"],
             })
