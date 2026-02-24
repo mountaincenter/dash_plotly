@@ -173,7 +173,7 @@ summary_df = pd.DataFrame(summary_data)
 # --- 戦略タグ付け ---
 BACKTEST_DIR = PARQUET_DIR / "backtest"
 
-# Grok アーカイブから (backtest_date, ticker) ペアを取得
+# Grok アーカイブ + 当日分 grok_trending から (date, ticker) ペアを取得
 grok_set = set()
 grok_arc_path = BACKTEST_DIR / "grok_trending_archive.parquet"
 if grok_arc_path.exists():
@@ -184,41 +184,44 @@ if grok_arc_path.exists():
             grok_arc["backtest_date"].dt.date,
             grok_arc["ticker"].str.replace(".T", "", regex=False)
         ))
-        print(f"戦略タグ: Grokアーカイブ {len(grok_set)} 件読み込み")
     except Exception as e:
         print(f"戦略タグ: Grokアーカイブ読み込み失敗: {e}")
 
-# Granville IFD アーカイブから (entry_date, ticker) ペアを取得
-granville_set = set()
-granville_arc_path = BACKTEST_DIR / "granville_ifd_archive.parquet"
-if granville_arc_path.exists():
+# grok_trending（当日・未アーカイブ分）も追加
+grok_trending_path = PARQUET_DIR / "grok_trending.parquet"
+if grok_trending_path.exists():
     try:
-        gv_arc = pd.read_parquet(granville_arc_path)
-        gv_arc["entry_date"] = pd.to_datetime(gv_arc["entry_date"])
-        granville_set = set(zip(
-            gv_arc["entry_date"].dt.date,
-            gv_arc["ticker"].str.replace(".T", "", regex=False)
+        gt = pd.read_parquet(grok_trending_path)
+        gt["date"] = pd.to_datetime(gt["date"])
+        gt_set = set(zip(
+            gt["date"].dt.date,
+            gt["ticker"].str.replace(".T", "", regex=False)
         ))
-        print(f"戦略タグ: Granville IFDアーカイブ {len(granville_set)} 件読み込み")
+        grok_set |= gt_set
     except Exception as e:
-        print(f"戦略タグ: Granville IFDアーカイブ読み込み失敗: {e}")
+        print(f"戦略タグ: grok_trending読み込み失敗: {e}")
+
+print(f"戦略タグ: Grok合計 {len(grok_set)} 件読み込み")
+
 
 def tag_strategy(row):
-    key = (row["約定日"].date(), str(row["コード"]))
-    if key in grok_set:
-        return "grok"
-    if key in granville_set:
-        return "granville_ifd"
-    if row["約定日"] < pd.Timestamp("2025-12-22"):
+    trade_date = row["約定日"]
+    # 12/22より前は全てLLM
+    if trade_date < pd.Timestamp("2025-12-22"):
         return "llm"
-    return "other"
+    # 2/24以降でgrok_setに不一致 → granville
+    key = (trade_date.date(), str(row["コード"]))
+    if trade_date >= pd.Timestamp("2026-02-24") and key not in grok_set:
+        return "granville"
+    # 12/22以降はgrok（照合一致 or 12/22-2/23の全件）
+    return "grok"
 
 daily_stock["戦略"] = daily_stock.apply(tag_strategy, axis=1)
 strategy_counts = daily_stock["戦略"].value_counts()
 print(f"戦略タグ付け完了: {dict(strategy_counts)}")
 
 # 戦略別集計をサマリーに追加
-for strategy in ["grok", "granville_ifd", "llm", "other"]:
+for strategy in ["grok", "granville", "llm", "other"]:
     s_df = daily_stock[daily_stock["戦略"] == strategy]
     s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
     s_count = len(s_df)
