@@ -79,6 +79,13 @@ class PipelineRunner:
                 ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
             )
 
+        # グランビルIFDシグナル生成 + バックテスト（16:00 JST実行時のみ）
+        if skip_grok:
+            self.steps.extend([
+                ("pipeline.generate_granville_signals", "グランビルIFDシグナル生成"),
+                ("pipeline.backtest_granville_ifd", "グランビルIFDバックテストアーカイブ"),
+            ])
+
         # バックテストメタ情報生成（常に実行）
         # 16:00 JST: backtest/アーカイブから計算
         # 23:00 JST: 新規選定直後に空のメタを生成（翌日16:00で上書きされる）

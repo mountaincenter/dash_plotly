@@ -1,0 +1,343 @@
+{
+  "execution_order": {
+    "23:00_JST": [
+      "create_meta_jquants",
+      "generate_grok_trending",
+      "create_all_stocks",
+      "fetch_prices",
+      "fetch_index_prices",
+      "fetch_currency_prices",
+      "update_topix_prices",
+      "update_sectors_prices",
+      "update_series_prices",
+      "generate_fins_data",
+      "enrich_grok_trending_prices",
+      "generate_intraday_analysis",
+      "save_grok_backtest_meta",
+      "extract_backtest_patterns",
+      "update_manifest"
+    ],
+    "23:00_JST_post_workflow": [
+      "add_market_cap_to_grok_trending",
+      "generate_grok_prices_max_1d",
+      "add_ml_prediction_to_grok_trending",
+      "generate_trading_recommendation_v2_1",
+      "update_day_trade_list"
+    ],
+    "16:45_JST": [
+      "create_meta_jquants",
+      "create_all_stocks",
+      "fetch_prices",
+      "fetch_index_prices",
+      "fetch_currency_prices",
+      "update_topix_prices",
+      "update_sectors_prices",
+      "update_series_prices",
+      "generate_fins_data",
+      "save_backtest_to_archive",
+      "save_grok_backtest_meta",
+      "extract_backtest_patterns",
+      "generate_market_summary",
+      "update_manifest"
+    ],
+    "16:45_JST_post_workflow": [
+      "generate_static_signals",
+      "save_static_backtest",
+      "merge_json_to_grok_analysis",
+      "update_grok_analysis_merged_v2_1"
+    ]
+  },
+  "scripts": {
+    "create_meta_jquants": {
+      "file": "create_meta_jquants.py",
+      "description": "Meta情報取得（J-Quants全銘柄）",
+      "inputs": ["J-Quants API /equities/master", "S3:meta_jquants.parquet"],
+      "outputs": ["meta_jquants.parquet"]
+    },
+    "generate_scalping": {
+      "file": "generate_scalping.py",
+      "description": "スキャルピング銘柄リスト生成（現在スキップ）",
+      "inputs": ["meta_jquants.parquet", "J-Quants API /equities/bars/daily"],
+      "outputs": ["scalping_entry.parquet", "scalping_active.parquet"]
+    },
+    "generate_grok_trending": {
+      "file": "generate_grok_trending.py",
+      "description": "Grok銘柄選定（xAI API, 23:00 JST専用）",
+      "inputs": [
+        "Grok API (x_search + web_search)",
+        "J-Quants API /markets/calendar",
+        "grok_backtest_patterns.parquet",
+        "grok_top_performers.parquet",
+        "grok_worst_performers.parquet",
+        "S3:meta_jquants.parquet",
+        "margin_code_master.parquet",
+        "jsf_seigenichiran.csv",
+        "S3:grok_day_trade_list.parquet"
+      ],
+      "outputs": ["grok_trending.parquet"]
+    },
+    "create_all_stocks": {
+      "file": "create_all_stocks.py",
+      "description": "銘柄統合（Meta + Scalping + Grok）",
+      "inputs": [
+        "S3:meta.parquet",
+        "scalping_entry.parquet",
+        "scalping_active.parquet",
+        "grok_trending.parquet",
+        "J-Quants API /equities/master"
+      ],
+      "outputs": ["all_stocks.parquet"]
+    },
+    "fetch_prices": {
+      "file": "fetch_prices.py",
+      "description": "価格データ取得（yfinance - 全銘柄）",
+      "inputs": ["all_stocks.parquet", "yfinance API"],
+      "outputs": [
+        "prices_5d_1m.parquet",
+        "prices_60d_15m.parquet",
+        "prices_60d_5m.parquet",
+        "prices_730d_1h.parquet",
+        "prices_max_1d.parquet",
+        "prices_max_1mo.parquet",
+        "tech_snapshot_1d.parquet"
+      ]
+    },
+    "fetch_index_prices": {
+      "file": "fetch_index_prices.py",
+      "description": "マーケット指標取得（yfinance - 指数/ETF/先物）",
+      "inputs": ["yfinance API (^N225, 1306.T, NKD=F等)"],
+      "outputs": [
+        "index_prices_60d_15m.parquet",
+        "index_prices_60d_5m.parquet",
+        "index_prices_730d_1h.parquet",
+        "index_prices_max_1d.parquet",
+        "index_prices_max_1mo.parquet",
+        "futures_prices_60d_15m.parquet",
+        "futures_prices_60d_5m.parquet",
+        "futures_prices_730d_1h.parquet",
+        "futures_prices_max_1d.parquet",
+        "futures_prices_max_1mo.parquet"
+      ]
+    },
+    "fetch_currency_prices": {
+      "file": "fetch_currency_prices.py",
+      "description": "為替レート取得（yfinance - FX）",
+      "inputs": ["yfinance API (JPY=X, EURJPY=X)"],
+      "outputs": [
+        "currency_prices_730d_1h.parquet",
+        "currency_prices_max_1d.parquet",
+        "currency_prices_max_1mo.parquet"
+      ]
+    },
+    "update_topix_prices": {
+      "file": "update_topix_prices.py",
+      "description": "TOPIX系指数データ取得（J-Quants Standard）",
+      "inputs": ["J-Quants API (codes: 0000,0500,0501,0502)"],
+      "outputs": ["topix_prices_max_1d.parquet"]
+    },
+    "update_sectors_prices": {
+      "file": "update_sectors_prices.py",
+      "description": "33業種別指数データ取得（J-Quants Standard）",
+      "inputs": ["J-Quants API (33 sector codes)", "S3:sectors_prices_max_1d.parquet"],
+      "outputs": ["sectors_prices_max_1d.parquet"]
+    },
+    "update_series_prices": {
+      "file": "update_series_prices.py",
+      "description": "TOPIX-17業種別指数データ取得（J-Quants Standard）",
+      "inputs": ["J-Quants API (17 series codes)", "S3:series_prices_max_1d.parquet"],
+      "outputs": ["series_prices_max_1d.parquet"]
+    },
+    "generate_fins_data": {
+      "file": "generate_fins_data.py",
+      "description": "財務データ＋決算発表日（J-Quants /fins/summary）",
+      "inputs": ["all_stocks.parquet", "J-Quants API /fins/summary"],
+      "outputs": ["financials.parquet", "announcements.parquet"]
+    },
+    "enrich_grok_trending_prices": {
+      "file": "enrich_grok_trending_prices.py",
+      "description": "grok_trending価格データ更新（23:00専用）",
+      "inputs": [
+        "grok_trending.parquet",
+        "prices_max_1d.parquet",
+        "index_prices_max_1d.parquet",
+        "futures_prices_60d_5m.parquet"
+      ],
+      "outputs": ["grok_trending.parquet (enriched)"]
+    },
+    "generate_intraday_analysis": {
+      "file": "generate_intraday_analysis.py",
+      "description": "日中分析データ事前計算（23:00専用）",
+      "inputs": [
+        "prices_60d_5m.parquet",
+        "prices_max_1d.parquet",
+        "all_stocks.parquet"
+      ],
+      "outputs": ["intraday_analysis.parquet", "intraday_averages.parquet"]
+    },
+    "save_backtest_to_archive": {
+      "file": "save_backtest_to_archive.py",
+      "description": "Grokバックテストアーカイブ保存（16:45専用）",
+      "inputs": [
+        "S3:grok_trending.parquet",
+        "prices_60d_5m.parquet",
+        "futures_prices_60d_5m.parquet",
+        "margin_code_master.parquet",
+        "jsf_seigenichiran.csv",
+        "S3:grok_day_trade_list.parquet",
+        "S3:backtest/grok_trending_archive.parquet",
+        "yfinance API",
+        "J-Quants API (/fins/summary, /equities/bars/daily, /markets/calendar)"
+      ],
+      "outputs": [
+        "backtest/grok_trending_YYYYMMDD.parquet",
+        "backtest/grok_trending_archive.parquet"
+      ]
+    },
+    "save_grok_backtest_meta": {
+      "file": "save_grok_backtest_meta.py",
+      "description": "Grokバックテストメタ情報生成",
+      "inputs": ["S3:backtest/grok_trending_*.parquet"],
+      "outputs": ["grok_backtest_meta.parquet", "grok_top_stocks.parquet"]
+    },
+    "extract_backtest_patterns": {
+      "file": "extract_backtest_patterns.py",
+      "description": "バックテストパターン抽出（Grok学習用）",
+      "inputs": ["S3:backtest/grok_trending_*.parquet"],
+      "outputs": [
+        "grok_backtest_patterns.parquet",
+        "grok_top_performers.parquet",
+        "grok_worst_performers.parquet"
+      ]
+    },
+    "generate_market_summary": {
+      "file": "generate_market_summary.py",
+      "description": "市場サマリー生成（Grok API, 16:45専用）",
+      "inputs": [
+        "topix_prices_max_1d.parquet",
+        "sectors_prices_max_1d.parquet",
+        "series_prices_max_1d.parquet",
+        "Grok API (web_search)"
+      ],
+      "outputs": [
+        "market_summary/raw/YYYY-MM-DD.md",
+        "market_summary/structured/YYYY-MM-DD.json"
+      ]
+    },
+    "update_manifest": {
+      "file": "update_manifest.py",
+      "description": "Manifest生成・S3一括アップロード",
+      "inputs": ["data/parquet/ 配下の全ファイル"],
+      "outputs": ["manifest.json", "S3: 全parquetアップロード"]
+    },
+    "add_market_cap_to_grok_trending": {
+      "file": "add_market_cap_to_grok_trending.py",
+      "description": "Grok銘柄に時価総額追加（23:00 post-workflow）",
+      "inputs": [
+        "grok_trending.parquet",
+        "prices_max_1d.parquet",
+        "J-Quants API (/fins/summary, /equities/bars/daily)"
+      ],
+      "outputs": ["grok_trending.parquet (market_cap追加)"]
+    },
+    "generate_grok_prices_max_1d": {
+      "file": "generate_grok_prices_max_1d.py",
+      "description": "Grok銘柄日足データ取得",
+      "inputs": [
+        "backtest/grok_trending_archive.parquet",
+        "grok_trending.parquet",
+        "yfinance API"
+      ],
+      "outputs": ["grok_prices_max_1d.parquet"]
+    },
+    "add_ml_prediction_to_grok_trending": {
+      "file": "add_ml_prediction_to_grok_trending.py",
+      "description": "Grok銘柄にML予測追加（23:00 post-workflow）",
+      "inputs": [
+        "grok_trending.parquet",
+        "grok_prices_max_1d.parquet",
+        "index_prices_max_1d.parquet",
+        "futures_prices_max_1d.parquet",
+        "currency_prices_max_1d.parquet",
+        "models/grok_lgbm_model.pkl",
+        "models/grok_lgbm_meta.json"
+      ],
+      "outputs": ["grok_trending.parquet (prob_up, quintile追加)"]
+    },
+    "generate_trading_recommendation_v2_1": {
+      "file": "generate_trading_recommendation_v2_1.py",
+      "description": "売買判断生成 v2.1（23:00 post-workflow）",
+      "inputs": [
+        "grok_trending.parquet",
+        "prices_max_1d.parquet",
+        "backtest/統計データ",
+        "J-Quants API (ROE, 営業利益成長率)"
+      ],
+      "outputs": ["trading_recommendation.json"]
+    },
+    "update_day_trade_list": {
+      "file": "update_day_trade_list.py",
+      "description": "デイトレードリスト更新（23:00 post-workflow）",
+      "inputs": [
+        "S3:grok_day_trade_list.parquet",
+        "S3:meta_jquants.parquet",
+        "grok_trending.parquet"
+      ],
+      "outputs": ["S3:grok_day_trade_list.parquet"]
+    },
+    "generate_static_signals": {
+      "file": "generate_static_signals.py",
+      "description": "Static銘柄シグナル生成（16:45 post-workflow）",
+      "inputs": [
+        "S3:backtest/static_backtest.parquet",
+        "yfinance API (Core30+政策銘柄, ^N225)"
+      ],
+      "outputs": ["static_signals.parquet"]
+    },
+    "save_static_backtest": {
+      "file": "save_static_backtest.py",
+      "description": "Staticバックテスト保存（16:45 post-workflow）",
+      "inputs": [
+        "static_signals.parquet",
+        "S3:backtest/static_backtest.parquet",
+        "yfinance API"
+      ],
+      "outputs": ["backtest/static_backtest.parquet"]
+    },
+    "generate_financials": {
+      "file": "generate_financials.py",
+      "description": "財務データ取得（generate_fins_dataで統合済み）",
+      "inputs": ["all_stocks.parquet", "J-Quants API /fins/summary"],
+      "outputs": ["financials.parquet"]
+    },
+    "generate_announcements": {
+      "file": "generate_announcements.py",
+      "description": "決算発表予定日推定（generate_fins_dataで統合済み）",
+      "inputs": ["all_stocks.parquet", "J-Quants API /fins/summary"],
+      "outputs": ["announcements.parquet"]
+    },
+    "generate_daily_report": {
+      "file": "generate_daily_report.py",
+      "description": "デイリーマーケットレポートHTML生成",
+      "inputs": [
+        "currency_prices_max_1d.parquet",
+        "futures_prices_max_1d.parquet",
+        "index_prices_max_1d.parquet",
+        "grok_top_stocks.parquet",
+        "grok_trending.parquet"
+      ],
+      "outputs": ["improvement/output/daily_report_YYYYMMDD.html"]
+    },
+    "merge_json_to_grok_analysis": {
+      "file": "merge_json_to_grok_analysis.py",
+      "description": "JSON分析データをGrok分析にマージ",
+      "inputs": ["JSON analysis files"],
+      "outputs": ["grok_analysis_merged.parquet"]
+    },
+    "update_grok_analysis_merged_v2_1": {
+      "file": "update_grok_analysis_merged_v2_1.py",
+      "description": "Grok分析データ v2.1更新",
+      "inputs": ["grok_analysis_merged.parquet"],
+      "outputs": ["grok_analysis_merged.parquet (v2.1)"]
+    }
+  }
+}

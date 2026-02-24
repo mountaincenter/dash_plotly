@@ -6,7 +6,7 @@ common_cfg.env: .env 系ファイルを必要に応じてロード
 """
 from pathlib import Path
 
-_ENV_NAMES = (".env.jquants", ".env.s3", ".env.xai", ".env.dev")
+_ENV_NAMES = (".env.jquants", ".env.s3", ".env.xai", ".env.edinet", ".env.estat", ".env.slack", ".env.dev")
 
 def _iter_search_dirs(max_up: int = 5):
     """CWD から親に向かって max_up 階層まで探索"""

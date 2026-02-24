@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット振り返り 2026/02/20（金）- 反落-642円・中東リスク・VI一時30超え</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background:rgba(251,191,36,0.15); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .timeline { position:relative; padding-left:28px; margin:16px 0; }
+  .timeline::before { content:''; position:absolute; left:8px; top:4px; bottom:4px; width:2px; background:var(--card-border); }
+  .timeline-item { position:relative; margin-bottom:16px; font-size:0.875rem; }
+  .timeline-item::before { content:''; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--card-border); border:2px solid var(--bg); }
+  .timeline-item.peak::before { background:var(--emerald); }
+  .timeline-item.drop::before { background:var(--rose); }
+  .timeline-item.neutral::before { background:var(--amber); }
+  .timeline-time { color:var(--text-muted); font-size:0.75rem; font-weight:600; }
+  .timeline-content { margin-top:2px; }
+  .factor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+  .factor-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:14px; }
+  .factor-card .factor-title { font-size:0.8rem; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+  .source-list { margin-top:12px; padding-left:20px; }
+  .source-list li { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+  .source-list a { color:var(--blue); text-decoration:none; }
+  .source-list a:hover { text-decoration:underline; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .comparison-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .comparison-bar .bar-label { min-width:120px; color:var(--text-muted); }
+  .comparison-bar .bar-track { flex:1; height:20px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; }
+  .comparison-bar .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .quote-box { border-left:3px solid var(--purple); padding:12px 16px; margin:12px 0; background:rgba(167,139,250,0.05); border-radius:0 8px 8px 0; font-size:0.85rem; color:var(--text-muted); font-style:italic; }
+  .quote-box .quote-source { margin-top:6px; font-style:normal; font-size:0.75rem; color:var(--purple); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .evidence-inference { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .evidence-unverified { background:rgba(251,113,133,0.12); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .evidence-legend { display:flex; gap:16px; margin-bottom:24px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; font-size:0.8rem; color:var(--text-muted); }
+  .evidence-legend-item { display:flex; align-items:center; gap:6px; }
+  .footnote { font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>マーケット振り返り 2026/02/20（金）<span class="badge badge-rose">反落-642円・中東リスク・VI一時30超え</span></h1>
+<div class="subtitle">中東地政学リスクの高まり+前日NY米株安（ダウ-267）で-488円のギャップダウンスタート。10:50に日中安値56,680まで下落後、後場は押し目買いで下げ渋り→大引け56,825（-642 / -1.12%）。TOPIX -1.13%（Prime-1.13% / Standard-0.58% / Growth-1.97%で成長株に大打撃）。日経VIは一時30.73まで急騰→引けで26.76に急低下（-2.31）。USD/JPY 155.46（円安維持）。連休前手じまい売りも重荷。</div>
+
+<div class="evidence-legend">
+  <div class="evidence-legend-item"><span class="evidence-label evidence-fact">事実</span> parquet / web検索 / 日銀APIで確認済み</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈・因果推定</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-unverified">未検証</span> ソースはあるが数値精度が未確認</div>
+</div>
+
+<!-- ===== 1. マーケットサマリー ===== -->
+<div class="section">
+  <h2>本日のマーケットサマリー <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均</div>
+      <div class="value num-neg">56,825</div>
+      <div class="sub">-642 (-1.12%) 反落</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX</div>
+      <div class="value num-neg">3,808.48</div>
+      <div class="sub">-43.61 (-1.13%) 反落</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY</div>
+      <div class="value num-neg">155.46円</div>
+      <div class="sub">前日比+0.49 円安方向</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">日経VI</div>
+      <div class="value num-pos">26.76</div>
+      <div class="sub">-2.31 (-7.9%) 一時30.73</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">日経225 高値（=寄付）</div>
+        <div class="value" style="font-size:1.2rem;">56,979</div>
+        <div class="sub">09:00 寄付が日中高値</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経225 安値</div>
+        <div class="value num-neg" style="font-size:1.2rem;">56,680</div>
+        <div class="sub">10:50 前場中盤</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Gap Down</div>
+        <div class="value num-neg" style="font-size:1.2rem;">-488</div>
+        <div class="sub">57,467 → 56,979（前日比）</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">騰落銘柄数（プライム）</div>
+        <div class="value num-neg" style="font-size:1.2rem;">296 : 1,262</div>
+        <div class="sub">値下がり79% <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">売買代金</div>
+        <div class="value" style="font-size:1.2rem;">7兆1,368億</div>
+        <div class="sub">前場3兆5,221億 <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経VI 日中高値</div>
+        <div class="value num-neg" style="font-size:1.2rem;">30.73</div>
+        <div class="sub">節目30を一時突破 <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>TOPIX サブ指数 <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>指数</th><th>終値</th><th>前日比</th><th>変化率</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row"><td>TOPIX</td><td>3,808.48</td><td class="num-neg">-43.61</td><td class="num-neg">-1.13%</td></tr>
+      <tr class="highlight-row"><td>TOPIX-Prime</td><td>1,962.45</td><td class="num-neg">-22.49</td><td class="num-neg">-1.13%</td></tr>
+      <tr><td>TOPIX-Standard</td><td>1,722.82</td><td class="num-neg">-10.11</td><td class="num-neg">-0.58%</td></tr>
+      <tr class="highlight-row"><td>TOPIX-Growth</td><td>971.67</td><td class="num-neg">-19.49</td><td class="num-neg">-1.97%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-danger" style="margin-top:16px;">
+    <strong>注目 <span class="evidence-label evidence-fact">事実</span>:</strong> Growth -1.97%が最大の下落幅。前日の+0.08%に続き成長株への逆風が継続。Standard -0.58%にとどまり中型株が相対的に堅調。Prime/Growthの-1%超に対するStandardの耐性は、地政学リスクの影響が大型・小型株に偏ることを示す。
+  </div>
+</div>
+
+<!-- ===== 2. 日中タイムライン ===== -->
+<div class="section">
+  <h2>日中タイムライン <span class="evidence-label evidence-fact">5分足parquetデータ</span> <span class="evidence-label evidence-inference">解説部分は推論</span></h2>
+
+  <div class="timeline">
+    <div class="timeline-item drop">
+      <div class="timeline-time">09:00 寄付（ギャップダウン -488）</div>
+      <div class="timeline-content">
+        56,979（前日比-488 / -0.85%）でギャップダウンスタート（事実）。寄付が日中高値。前日NY米株安（ダウ-267）＋中東地政学リスクで売り先行。
+      </div>
+    </div>
+    <div class="timeline-item drop">
+      <div class="timeline-time">09:00-10:50 前場の売り加速</div>
+      <div class="timeline-content">
+        <strong class="num-neg">56,979 → 56,680（-299 / 110分間）</strong>。中東イラン情勢の緊迫報道でリスク回避売りが加速（事実）。<span style="color:var(--amber);">日経VIは30.73まで急騰し節目30を突破、オプション市場で恐怖心理が一時的に高まった（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">10:50-11:30 前場引け</div>
+      <div class="timeline-content">
+        56,680 → 56,726（前場引け）で小幅反発（事実）。安値圏で押し目買いが入り始めた。前場売買代金3兆5,221億円と活発。
+      </div>
+    </div>
+    <div class="timeline-item peak">
+      <div class="timeline-time">12:30-14:30 後場の回復基調</div>
+      <div class="timeline-content">
+        <strong class="num-pos">56,726 → 56,800台（+100程度）</strong>。円安155円台が輸出関連を下支え（事実）。<span style="color:var(--amber);">日経VIが30.73→26.76に急低下し、リスク回避一服のシグナル。機関投資家の買い戻しが進んだ（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">15:00-15:25 大引け</div>
+      <div class="timeline-content">
+        56,825で着地（前日比-642）（事実）。安値56,680からは+145の回復。連休前の手じまい売りで上値は重いが、下値も堅い展開。日中値幅299円（0.53%）は比較的狭く、売り一巡後は膠着。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. 要因分析 ===== -->
+<div class="section">
+  <h2>-642円反落の要因分析 <span class="evidence-label evidence-inference">推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    以下の要因分析は複数のニュースソースの解釈を統合した推論です。値動き自体は事実ですが因果関係は証明されていません。
+  </p>
+
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因1</span> 中東地政学リスクの高まり <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        イラン情勢の緊迫が報じられ、リスク回避の売りが先行（事実）。<span style="color:var(--amber);">原油高→輸送用機器・空運に直撃。海外投資家を中心に持ち高調整の売りが加速（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因2</span> 前日NY米株安の波及 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        前日2/19の米市場でダウ平均-267ドル（49,395）（事実）。<span style="color:var(--amber);">地政学リスクで金融株が売られた流れが東京市場に波及し、寄付から-488のギャップダウン（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">支え</span> 円安155円台が輸出関連を下支え <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        USD/JPY 155.46円で推移し、前日比+0.49の円安（事実）。<span style="color:var(--amber);">非鉄金属+1.87%（資源高+円安）、海運+0.43%が数少ない上昇セクター。円安による輸出関連の採算改善が全面安を防いだ（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因3</span> 連休前手じまい売り <span class="evidence-label evidence-inference">推論</span></div>
+      <div class="factor-detail">
+        天皇誕生日の3連休前（2/21-23）で、週末リスク回避のポジション整理が進んだ（事実）。<span style="color:var(--amber);">個人投資家は様子見ムード。証券・商品先物取引業が-3.20%と最大の下落率で、トレーダーのリスク回避が顕著（推論）</span>。
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 前日の+323円続伸から一転、-642円の反落。中東リスク+米株安+連休前の三重苦で寄付から売り先行も、円安155円台と上場企業好決算が下支えし、安値56,680からは+145を回復。日経VIの日中30超え→引け26.76の急低下が示すように、「一時的な恐怖→冷静な回復」のパターン。
+    <div class="quote-source">— 筆者の解釈（複数ニュースソースから合成）</div>
+  </div>
+</div>
+
+<!-- ===== 4. セクター動向 ===== -->
+<div class="section">
+  <h2>セクター動向 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>上昇セクター（2業種のみ）</h3>
+      <table>
+        <thead><tr><th>セクター</th><th>終値</th><th>変化率</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row-green"><td><strong>非鉄金属</strong></td><td>5,289.47</td><td class="num-pos">+1.87%</td></tr>
+          <tr class="highlight-row-green"><td>海運業</td><td>1,958.99</td><td class="num-pos">+0.43%</td></tr>
+          <tr><td>医薬品</td><td>4,350.89</td><td class="num-neutral">+0.07%</td></tr>
+          <tr><td>機械</td><td>5,435.11</td><td class="num-neutral">+0.06%</td></tr>
+          <tr><td>建設業</td><td>3,212.90</td><td class="num-neutral">-0.02%</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 非鉄金属は3日連続で上昇率トップ。原油高+銅価格上昇+円安の三重メリット。海運も円安の恩恵。医薬品・機械はディフェンシブで小動き。
+      </p>
+    </div>
+    <div>
+      <h3>下落セクター</h3>
+      <table>
+        <thead><tr><th>セクター</th><th>終値</th><th>変化率</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td>繊維製品</td><td>1,003.41</td><td class="num-neg">-2.06%</td></tr>
+          <tr class="highlight-row"><td>その他金融業</td><td>1,449.22</td><td class="num-neg">-2.27%</td></tr>
+          <tr class="highlight-row"><td>空運業</td><td>258.32</td><td class="num-neg">-2.85%</td></tr>
+          <tr class="highlight-row"><td><strong>輸送用機器</strong></td><td>5,530.29</td><td class="num-neg">-3.03%</td></tr>
+          <tr class="highlight-row"><td><strong>証券・商品先物</strong></td><td>908.58</td><td class="num-neg">-3.20%</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 輸送用機器・空運は原油高による燃料費増が直撃。証券は連休前のリスク回避。金融セクター全般に売り圧力。
+      </p>
+    </div>
+  </div>
+
+  <h3>大型 vs 中小型</h3>
+  <table>
+    <thead><tr><th>区分</th><th>変化率</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row"><td>TOPIX-Prime（大型）</td><td class="num-neg"><strong>-1.13%</strong></td><td>地政学リスクの影響大</td></tr>
+      <tr><td>TOPIX-Standard（中型）</td><td class="num-neg">-0.58%</td><td>相対的に堅調</td></tr>
+      <tr class="highlight-row"><td>TOPIX-Growth（小型）</td><td class="num-neg"><strong>-1.97%</strong></td><td>最大の下落幅</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 5. N225 vs TOPIX 乖離 ===== -->
+<div class="section">
+  <h2>日経平均 vs TOPIX 乖離 <span class="badge badge-amber">ほぼ同水準 0.01%差</span> <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <div class="comparison-bar">
+    <div class="bar-label">日経225</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-red" style="width:50%;">-1.12%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">TOPIX</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-red" style="width:51%;">-1.13%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">乖離</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:5%; background:var(--amber);">0.01%</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h3>5日間のN225 vs TOPIX推移</h3>
+    <table>
+      <thead><tr><th>日付</th><th>日経225</th><th>TOPIX</th><th>乖離</th><th>方向</th></tr></thead>
+      <tbody>
+        <tr><td>2/16 (月)</td><td class="num-neg">-0.24%</td><td class="num-neg">-0.82%</td><td>0.58%</td><td>N225優位</td></tr>
+        <tr><td>2/17 (火)</td><td class="num-neg">-0.42%</td><td class="num-neg">-0.69%</td><td>0.27%</td><td>N225優位</td></tr>
+        <tr><td>2/18 (水)</td><td class="num-pos">+1.02%</td><td class="num-pos">+1.21%</td><td>0.19%</td><td>TOPIX優位</td></tr>
+        <tr><td>2/19 (木)</td><td class="num-pos">+0.57%</td><td class="num-pos">+1.18%</td><td>0.61%</td><td>TOPIX大幅優位</td></tr>
+        <tr class="highlight-row"><td><strong>2/20 (金)</strong></td><td class="num-neg"><strong>-1.12%</strong></td><td class="num-neg"><strong>-1.13%</strong></td><td><strong>0.01%</strong></td><td><strong>ほぼ同水準</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> 今日は乖離0.01%とほぼ同水準。水木の「TOPIX大幅優位」から一転。<br>
+    <span class="evidence-label evidence-inference">推論</span> 地政学リスクによる全面安は、バリュー/グロースの区別なく売りが入るため乖離が縮小。前日までの「大型バリューへの資金シフト」トレンドは一時停止。
+  </p>
+</div>
+
+<!-- ===== 6. 米株・海外要因 ===== -->
+<div class="section">
+  <h2>米株・海外要因（2/19 NY市場） <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>2/19 NY市場</h3>
+      <table>
+        <thead><tr><th>指数</th><th>動向</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td>ダウ平均</td><td class="num-neg">-267ドル（49,395）</td></tr>
+          <tr><td>主因</td><td>中東イラン情勢緊迫→金融株売り</td></tr>
+          <tr><td>CME日経先物（NKD）</td><td class="num-neg">57,055 → 56,840（-215）</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-fact">事実</span> NKD終値56,840は東京終値56,825とほぼ同水準（+14）。先物プレミアムは実質ゼロで、来週の方向感は中立。
+      </p>
+    </div>
+    <div>
+      <h3>中東リスクの影響 <span class="evidence-label evidence-inference">推論</span></h3>
+      <div class="alert-box alert-danger" style="margin-top:0;">
+        <strong>地政学リスク:</strong> イラン情勢の緊迫により、原油価格が上昇→輸送用機器-3.03%、空運業-2.85%に直撃。エネルギーコスト増加懸念が広がった。
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> ただし日経VIの30→26.76への急低下は、地政学リスクが「一過性」と市場が判断した可能性を示唆。恐怖の後に冷静さが戻るパターン。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 7. 為替 ===== -->
+<div class="section">
+  <h2>為替: 155円台維持・地政学リスク下でもドル買い優勢 <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <table>
+    <thead><tr><th>タイミング</th><th>USD/JPY</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>2/16 引け</td><td>152.78</td><td>152円台で膠着</td></tr>
+      <tr><td>2/17 引け</td><td>153.61</td><td>NY時間にドル買い戻し</td></tr>
+      <tr><td>2/19 引け</td><td>154.97</td><td>FOMC議事要旨タカ派→ドル買い</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/20 引け</strong></td><td><strong>155.46</strong></td><td><strong>日中154.88-155.51のレンジ</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>BOJ公式レート（日本銀行 時系列統計データ） <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>日付</th><th>中心相場 (&#165;/$)</th><th>17時時点スポット (&#165;/$)</th></tr></thead>
+    <tbody>
+      <tr><td>2/12 (水)</td><td>153.10</td><td>153.01</td></tr>
+      <tr><td>2/13 (木)</td><td>152.87</td><td>153.40</td></tr>
+      <tr><td>2/16 (月)</td><td>153.08</td><td>153.35</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/17 (火)</strong></td><td><strong>153.30</strong></td><td><strong>153.09</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">出典: 日本銀行 時系列統計データ検索サイト FM08（外国為替市況）<br>
+  BOJ公式データは2/17まで。FOMC議事要旨後の急速な円安（153円台→155円台）はparquetデータで確認。4営業日で約2.5円の円安進行。</p>
+
+  <div class="alert-box alert-info" style="margin-top:16px;">
+    <strong>円安の影響 <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>本日:</strong> 155円台維持が非鉄金属+1.87%の一因。地政学リスク下でもドル買い（安全資産）が円売りを上回る<br>
+    &bull; <strong>リスク:</strong> 来週の日銀金融政策決定会合（2/20-21）で追加利上げ観測が強まれば円高反転の可能性<br>
+    &bull; <strong>閾値:</strong> 156円超は為替介入警戒。153円割れは円高トレンド入り
+  </div>
+</div>
+
+<!-- ===== 7.5 短期金利（日銀API） ===== -->
+<div class="section">
+  <h2>短期金利: 無担保コールO/N物レート <span class="evidence-label evidence-fact">事実（日銀API）</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>日付</th><th>平均値 (年%)</th></tr></thead>
+        <tbody>
+          <tr><td>2/9 (月)</td><td>0.728</td></tr>
+          <tr><td>2/10 (月)</td><td>0.727</td></tr>
+          <tr><td>2/12 (水)</td><td>0.728</td></tr>
+          <tr><td>2/13 (木)</td><td>0.728</td></tr>
+          <tr><td>2/16 (月)</td><td>0.728</td></tr>
+          <tr class="highlight-row-amber"><td><strong>2/17 (火)</strong></td><td><strong>0.730</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="footnote">2/18以降のデータは未公表</p>
+    </div>
+    <div>
+      <div class="stat-card" style="margin-bottom:12px;">
+        <div class="label">政策金利目標</div>
+        <div class="value" style="font-size:1.3rem;">0.75%</div>
+        <div class="sub">2025/1/24 利上げ（0.50%→0.75%）</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">実効レート範囲（2月）</div>
+        <div class="value" style="font-size:1.3rem;">0.727 - 0.730%</div>
+        <div class="sub">政策金利目標近傍で安定</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">出典: 日本銀行 時系列統計データ検索サイト FM01（コールレート）STRDCLUCON（無担保コールO/N物レート平均値）<br>
+  日米金利差は米FFレート 4.25-4.50% vs 日本0.75%で約3.5-3.75%。来週の日銀会合が焦点。リフレ派・高田審議委員の交代により、利上げ方向への政策シフトが進む可能性。</p>
+</div>
+
+<!-- ===== 8. Grok選定結果 ===== -->
+<div class="section">
+  <h2>本日のGrok選定 25銘柄 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <h3>Quintile分布</h3>
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">Q1（下落予測）→ ショート</div>
+      <div class="value num-pos">11銘柄</div>
+      <div class="sub">高水準（直近平均13）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Q2-Q4（中間）</div>
+      <div class="value num-neutral">7銘柄</div>
+      <div class="sub">Q2:5 / Q3:1 / Q4:1</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Q5（上昇予測）→ 回避</div>
+      <div class="value num-neg">7銘柄</div>
+      <div class="sub">ショートしない</div>
+    </div>
+  </div>
+
+              <h3>Q1 ショート実績（11件） <span class="badge badge-emerald">P2: +14,800円</span></h3>
+  <table>
+    <thead><tr><th>銘柄</th><th class="r">買値</th><th>信用</th><th class="r">P1(寄→前引)</th><th class="r">P2(寄→大引)</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr><td>ダイナミックマッププラットフォーム (336A)</td><td class="r">703</td><td>いちにち 20,100</td><td class="r num-pos">+1,900</td><td class="r num-neg">-400</td><td class="num-neg">負</td></tr>
+      <tr class="highlight-row-green"><td>シンバイオ製薬 (4582)</td><td class="r">217</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-pos">+900</td><td class="r num-pos">+5,700</td><td class="num-pos">勝</td></tr>
+      <tr><td>ラバブルマーケティンググループ (9254)</td><td class="r">1,232</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-neutral">—</td><td class="r num-neg">-2,900</td><td class="num-neg">負</td></tr>
+      <tr><td>ＴＯＲＩＣＯ (7138)</td><td class="r">325</td><td>いちにち 60,100</td><td class="r num-pos">+2,300</td><td class="r num-pos">+2,300</td><td class="num-pos">勝</td></tr>
+      <tr><td>グラッドキューブ (9561)</td><td class="r">466</td><td>いちにち 1,700</td><td class="r num-neutral">—</td><td class="r num-neg">-200</td><td class="num-neg">負</td></tr>
+      <tr class="highlight-row-green"><td>ＰｏｓｔＰｒｉｍｅ (198A)</td><td class="r">332</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-pos">+6,000</td><td class="r num-pos">+6,800</td><td class="num-pos">勝</td></tr>
+      <tr><td>アーキテクツ・スタジオ・ジャパン (6085)</td><td class="r">1,772</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-neutral">—</td><td class="r num-neutral">0</td><td class="">引分</td></tr>
+      <tr><td>ハルメクホールディングス (7119)</td><td class="r">1,321</td><td>いちにち 100</td><td class="r num-neg">-1,200</td><td class="r num-neg">-2,200</td><td class="num-neg">負</td></tr>
+      <tr><td>まんだらけ (2652)</td><td class="r">363</td><td>いちにち 2,200</td><td class="r num-pos">+1,200</td><td class="r num-pos">+1,400</td><td class="num-pos">勝</td></tr>
+      <tr><td>ワンダープラネット (4199)</td><td class="r">1,546</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-pos">+13,900</td><td class="r num-pos">+4,700</td><td class="num-pos">勝</td></tr>
+      <tr><td>昭和システムエンジニアリング (4752)</td><td class="r">1,617</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-neg">-400</td><td class="r num-neg">-400</td><td class="num-neg">負</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Q2-Q4（7件） <span class="badge badge-amber">P2: +3,700円</span></h3>
+  <table>
+    <thead><tr><th>銘柄</th><th>Q</th><th class="r">買値</th><th>信用</th><th class="r">P1</th><th class="r">P2</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr><td>イーディーピー (7794)</td><td>Q2</td><td class="r">1,273</td><td><span class="tag tag-neutral">除0</span></td><td class="r num-neutral">—</td><td class="r num-neutral">0</td><td class="">引分</td></tr>
+      <tr class="highlight-row-green"><td>Ａｉロボティクス (247A)</td><td>Q3</td><td class="r">1,310</td><td>いちにち 61,500</td><td class="r num-neg">-500</td><td class="r num-pos">+2,300</td><td class="num-pos">勝</td></tr>
+      <tr class="highlight-row-green"><td>ＭＴＧ (7806)</td><td>Q2</td><td class="r">5,340</td><td>いちにち 3,600</td><td class="r num-neg">-3,000</td><td class="r num-pos">+7,000</td><td class="num-pos">勝</td></tr>
+      <tr><td>ＭＵＳＣＡＴ　ＧＲＯＵＰ (195A)</td><td>Q2</td><td class="r">971</td><td>いちにち 6,200</td><td class="r num-neg">-7,400</td><td class="r num-neg">-7,100</td><td class="num-neg">負</td></tr>
+      <tr><td>モンスターラボ (5255)</td><td>Q2</td><td class="r">106</td><td>いちにち 10,400</td><td class="r num-pos">+100</td><td class="r num-neg">-1,400</td><td class="num-neg">負</td></tr>
+      <tr><td>ビリングシステム (3623)</td><td>Q4</td><td class="r">1,111</td><td>いちにち 1,500</td><td class="r num-neutral">—</td><td class="r num-neg">-1,200</td><td class="num-neg">負</td></tr>
+      <tr class="highlight-row-green"><td>ラサ商事 (3023)</td><td>Q2</td><td class="r">2,377</td><td>いちにち 18,100</td><td class="r num-neutral">—</td><td class="r num-pos">+4,100</td><td class="num-pos">勝</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Q5 回避した利益（7件）— ショートしなかった銘柄</h3>
+  <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">マイナス＝株価上昇→回避正解（<span class="num-pos">緑</span>）｜プラス＝株価下落→機会損失（<span style="color:var(--amber);">黄</span>）｜除0＝そもそも取引不可</p>
+  <table>
+    <thead><tr><th>銘柄</th><th class="r">買値</th><th>信用</th><th class="r">P1(寄→前引)</th><th class="r">P2(寄→大引)</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row"><td>パワーエックス (485A)</td><td class="r">3,590</td><td>制度</td><td class="r num-neutral">—</td><td class="r " style="color:var(--amber);">+16,000</td><td class="" style="color:var(--amber);">機会損失</td></tr>
+      <tr class="highlight-row"><td>アイビーシー (3920)</td><td class="r">769</td><td>いちにち 300</td><td class="r num-neutral">—</td><td class="r num-pos">-15,400</td><td class="num-pos">回避正解</td></tr>
+      <tr class="highlight-row"><td>トライアルホールディングス (141A)</td><td class="r">4,410</td><td>いちにち 8,600</td><td class="r num-pos">-11,000</td><td class="r num-pos">-19,000</td><td class="num-pos">回避正解</td></tr>
+      <tr><td>ティーケーピー (3479)</td><td class="r">2,357</td><td><span class="tag tag-neutral">除0</span></td><td class="r " style="color:var(--amber);">+1,900</td><td class="r num-pos">-1,300</td><td class="num-neutral">取引不可</td></tr>
+      <tr class="highlight-row"><td>Ｓｙｎｓｐｅｃｔｉｖｅ (290A)</td><td class="r">1,340</td><td>いちにち 58,100</td><td class="r " style="color:var(--amber);">+3,700</td><td class="r " style="color:var(--amber);">+5,500</td><td class="" style="color:var(--amber);">機会損失</td></tr>
+      <tr><td>日本管財ホールディングス (9347)</td><td class="r">2,851</td><td>制度</td><td class="r " style="color:var(--amber);">+1,600</td><td class="r " style="color:var(--amber);">+1,700</td><td class="" style="color:var(--amber);">機会損失</td></tr>
+      <tr class="highlight-row"><td>ビーマップ (4316)</td><td class="r">1,208</td><td>いちにち 1,700</td><td class="r " style="color:var(--amber);">+3,600</td><td class="r " style="color:var(--amber);">+5,700</td><td class="" style="color:var(--amber);">機会損失</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:24px;">サマリー</h3>
+  <div class="grid-2" style="margin-top:8px;">
+    <div><div class="stat-card" style="border-left:3px solid var(--emerald);">
+      <div class="label">見かけ上のP2（全銘柄）</div>
+      <div class="value num-pos" style="font-size:1.3rem;">+11,700円</div>
+      <div class="sub">25件（14勝2分9敗）</div>
+    </div></div>
+    <div><div class="stat-card" style="border-left:3px solid var(--amber);">
+      <div class="label">実際に取引可能なP2（除0除外）</div>
+      <div class="value num-neg" style="font-size:1.3rem;">-900円</div>
+      <div class="sub">除0を除く17件のみで集計</div>
+    </div></div>
+  </div>
+  <table style="margin-top:16px;">
+    <thead><tr><th></th><th class="r">全体</th><th class="r">除0除外</th><th>差分の内訳</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Q1 ショート</strong></td><td class="r num-pos">+14,800（11件）</td><td class="r num-pos">+900（5件）</td><td>除0の6件が+13,900を占めていた</td></tr>
+      <tr><td>Q2-Q4</td><td class="r num-pos">+3,700（7件）</td><td class="r num-pos">+3,700（6件）</td><td>除0の1件が+0を占めていた</td></tr>
+      <tr><td>Q5 機会損失</td><td class="r " style="color:var(--amber);">-6,800（7件）</td><td class="r " style="color:var(--amber);">-5,500（6件）</td><td>除0の1件が-1,300を占めていた</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 9. 今後の判断材料 ===== -->
+<div class="section">
+  <h2>来週2/24(月)以降の判断材料 <span class="evidence-label evidence-inference">全体が推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    このセクションは全体が筆者の推論です。未来の値動きは予測不可能です。
+  </p>
+
+  <h3>来週の注目イベント <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>日付</th><th>イベント</th><th>重要度</th></tr></thead>
+    <tbody>
+      <tr><td>2/21 (土)</td><td>天皇誕生日（祝日 / 3連休）</td><td>—</td></tr>
+      <tr class="highlight-row"><td>2/25 (火)</td><td>米NVIDIA決算</td><td><strong>最高</strong></td></tr>
+      <tr><td>2/28 (金)</td><td>米セールスフォース決算</td><td><strong>高</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>注目材料</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 日銀リフレ派交代で利上げ観測</div>
+      <div class="factor-detail">
+        高田創審議委員が交代し、リフレ派の影響力が低下。金融政策が正常化方向へシフトする可能性 → 利上げ期待 → 長期金利上昇圧力。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> 上場企業4-12月最高益更新</div>
+      <div class="factor-detail">
+        上場企業の4-12月期純利益44兆1,739億円（前年比+6%）で3年連続最高益。ファンダメンタルズは良好で、下値を支える材料。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> NVIDIA決算（2/25）</div>
+      <div class="factor-detail">
+        AI関連半導体の動向を決定する最重要イベント。好決算なら半導体関連（TEL・ディスコ等）に追い風。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 中東リスク継続の可能性</div>
+      <div class="factor-detail">
+        イラン情勢が連休中に進展する場合、月曜のギャップダウンリスク。ただし本日のVI 30→26.76急低下は一過性リスクを示唆。
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>来週のポイント <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>3連休明け:</strong> 連休中の海外市場動向（地政学リスク・米株）で月曜の方向が決まる<br>
+    &bull; <strong>NVIDIA決算（2/25）:</strong> AI関連株の方向感を決定。前回決算後はNKDが大きく動いた<br>
+    &bull; <strong>日経VI:</strong> 26.76は「警戒緩和」水準。25以下に低下すれば安定相場、30再突破なら再度リスクオフ<br>
+    &bull; <strong>テクニカル:</strong> 56,680（本日安値）が短期サポート。57,467（前日終値=今日のギャップ上限）が当面のレジスタンス<br>
+    &bull; <strong>NKD:</strong> 56,840で東京終値とほぼ同水準 → 方向感なし、イベント待ち
+  </div>
+</div>
+
+<!-- ===== 10. 参照ソース ===== -->
+<div class="section">
+  <h2>参照ソース</h2>
+
+  <h3>マーケットデータ</h3>
+  <ul class="source-list">
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL201IG0Q6A220C2000000/" target="_blank">日経: 東証前引け 日経平均反落、地政学リスクで売り先行</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL2044J0Q6A220C2000000/" target="_blank">日経: 東証大引け 日経平均反落、中東リスク警戒</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://jp.reuters.com/markets/japan/2LYQTWHQ2RNY3GT26A7GC5M7FM-2026-02-20" target="_blank">Reuters: 東京株式市場 概況</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL200280Q6A220C2000000/" target="_blank">日経: 米国株反落、中東リスク警戒でダウ267ドル安</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>ニュース</h3>
+  <ul class="source-list">
+    <li><a href="https://business.nikkei.com/atcl/seminar/19/00122/00270" target="_blank">日経ビジネス: 日銀リフレ派審議委員交代</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/nkd/industry/article?DisplayType=1&n_m_code=142&ng=DGXZQOUB161LC0W6A210C2000000" target="_blank">日経: 上場企業4-12月最高益更新</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/nkd/company/article?DisplayType=2&ba=3&ng=DGKKZO94191170T00C26A2DTB000&scode=7259" target="_blank">日経: トヨタ部品8社 HV販売寄与で純利益上振れ</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>日本銀行 時系列統計データ <span class="evidence-label evidence-fact">事実</span></h3>
+  <ul class="source-list">
+    <li>FM01: 無担保コールO/N物レート平均値（STRDCLUCON）— <a href="https://www.stat-search.boj.or.jp/ssi/statistics/statistics-data-search.html" target="_blank">日本銀行 時系列統計データ検索サイト</a></li>
+    <li>FM08: 東京市場 ドル・円 中心相場（FXERD05）— 同上</li>
+    <li>データ取得日: 2026-02-20 / 公表最終日: 2/17</li>
+  </ul>
+
+  <h3>内部データ</h3>
+  <ul class="source-list">
+    <li>index_prices_max_1d.parquet — N225日足（Open/High/Low/Close）</li>
+    <li>topix_prices_max_1d.parquet — TOPIX / Prime / Standard / Growth 日足</li>
+    <li>currency_prices_max_1d.parquet — USD/JPY日足</li>
+    <li>futures_prices_max_1d.parquet — NKD先物日足</li>
+    <li>index_prices_60d_5m.parquet — N225 5分足（タイムライン構築）</li>
+    <li>nikkei_vi_max_1d.parquet — 日経VI</li>
+    <li>grok_trending.parquet — 本日のGrok選定銘柄（quintile含む）</li>
+    <li>market_analysis_20260219.html — 前回レポートとの連続性</li>
+  </ul>
+</div>
+
+<!-- ===== 11. 結論 ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-danger" style="margin-top:0;">
+    <strong>今日の要約:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> 日経平均 -642円（-1.12%）で反落。寄付56,979（ギャップダウン-488）→10:50安値56,680→後場回復→大引け56,825。TOPIX -1.13%（Prime-1.13% / Standard-0.58% / Growth-1.97%）。日経VI 26.76（一時30.73に急騰→急低下）。USD/JPY 155.46（円安維持）。売買代金7兆1,368億円。騰落296:1,262で全面安。<br>
+    <span class="evidence-label evidence-inference">推論</span> 中東地政学リスク+米株安+連休前手じまいの三重苦。ただしVIの30→26.76急低下が示すように、恐怖は一時的。円安155円台が下値を支え、安値からは+145を回復。
+  </div>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>Grok選定の評価 <span class="evidence-label evidence-fact">事実</span>:</strong><br>
+    Q1=11銘柄、Q5=7銘柄の分布。全面安の環境でQ1ショートには追い風の相場環境だった。<br>
+    シンバイオ製薬(RSI9=94.7)、ラブル(prob_up=0.111)が注目シグナル。個別P&Lはgrok_stock_resultsで確認。
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>来週のキーポイント <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>3連休:</strong> 連休中の地政学リスク動向が月曜のギャップを決める<br>
+    &bull; <strong>NVIDIA決算（2/25）:</strong> AI関連株の試金石。半導体セクターの方向感を決定<br>
+    &bull; <strong>日銀:</strong> リフレ派交代で利上げ期待。円高反転なら輸出関連に逆風<br>
+    &bull; <strong>テクニカル:</strong> 56,680サポート / 57,467レジスタンス。NKD 56,840は方向感なし<br>
+    &bull; <strong>好決算:</strong> 上場企業4-12月期最高益（44兆円）がファンダメンタルズの下支え
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-20 by Claude Code / 数値データはparquet（2026-02-20収録分）+ 日銀API/CSV（2026-02-20取得・最終公表2/17）、定性データはweb検索<br>
+  本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

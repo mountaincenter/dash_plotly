@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>週次マーケットレビュー 2026/02/09-02/13 - 選挙ラリー+4.96%も金曜反落</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background:rgba(251,191,36,0.15); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  .grid-5 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:12px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-4,.grid-5 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .factor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+  .factor-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:14px; }
+  .factor-card .factor-title { font-size:0.8rem; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .comparison-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .comparison-bar .bar-label { min-width:120px; color:var(--text-muted); }
+  .comparison-bar .bar-track { flex:1; height:20px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; }
+  .comparison-bar .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .quote-box { border-left:3px solid var(--purple); padding:12px 16px; margin:12px 0; background:rgba(167,139,250,0.05); border-radius:0 8px 8px 0; font-size:0.85rem; color:var(--text-muted); font-style:italic; }
+  .quote-box .quote-source { margin-top:6px; font-style:normal; font-size:0.75rem; color:var(--purple); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .evidence-inference { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .evidence-unverified { background:rgba(251,113,133,0.12); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .evidence-legend { display:flex; gap:16px; margin-bottom:24px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; font-size:0.8rem; color:var(--text-muted); }
+  .sector-bar { display:flex; align-items:center; gap:6px; margin:3px 0; font-size:0.78rem; }
+  .sector-bar .s-name { min-width:130px; color:var(--text-muted); text-align:right; }
+  .sector-bar .s-track { flex:1; height:16px; background:rgba(255,255,255,0.03); border-radius:3px; overflow:hidden; position:relative; }
+  .sector-bar .s-fill { height:100%; border-radius:3px; display:flex; align-items:center; padding:0 6px; font-size:0.65rem; font-weight:600; color:#fff; min-width:fit-content; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>週次マーケットレビュー 2026/02/09-13 <span class="badge badge-emerald">N225 +4.96%</span> <span class="badge badge-amber">選挙ラリー→金曜反落</span></h1>
+<div class="subtitle">衆院選ラリーで58,015円（史上最高値）到達も、金曜はGemini 3ショックで-698円。週間では+2,688円(+4.96%)と大幅高。TOPIX +3.24%。USD/JPY 156.78→153.38（-2.17%の円高）。日経VI 39.03→34.21（-12.4%低下）。4営業日（2/11祝日）。</div>
+
+<div class="evidence-legend">
+  <div style="display:flex; align-items:center; gap:6px;"><span class="evidence-label evidence-fact">事実</span> parquetデータ</div>
+  <div style="display:flex; align-items:center; gap:6px;"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈</div>
+  <div style="display:flex; align-items:center; gap:6px;"><span class="evidence-label evidence-unverified">未検証</span> web検索のみ</div>
+</div>
+
+<!-- ===== 1. 週間サマリー ===== -->
+<div class="section">
+  <h2>週間パフォーマンス <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均（週間）</div>
+      <div class="value num-pos">+4.96%</div>
+      <div class="sub">54,254 → 56,942（+2,688）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX（週間）</div>
+      <div class="value num-pos">+3.24%</div>
+      <div class="sub">3,699 → 3,819（+120）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY（週間）</div>
+      <div class="value num-neg">-2.17%</div>
+      <div class="sub">156.78 → 153.38（-3.40円）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">日経VI（週間）</div>
+      <div class="value num-pos">-12.35%</div>
+      <div class="sub">39.03 → 34.21（恐怖低下）</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">N225 週間高値</div>
+        <div class="value" style="font-size:1.2rem;">58,015</div>
+        <div class="sub">2/12（木）史上最高値</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">N225 週間安値</div>
+        <div class="value" style="font-size:1.2rem;">55,019</div>
+        <div class="sub">2/9（月）寄付直後</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">週間値幅</div>
+        <div class="value num-neg" style="font-size:1.2rem;">2,997</div>
+        <div class="sub">58,015 - 55,019（5.4%）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>週間の構図:</strong> 前半3日（月-木）で+3,386円上昇し史上最高値58,015到達 → 金曜に-698円反落。「行って来い」には至らず、週間+2,688円（+4.96%）のプラスで着地。TOPIXは+3.24%でN225劣後 → 値嵩株主導のラリー。
+  </div>
+</div>
+
+<!-- ===== 2. 日別パフォーマンス ===== -->
+<div class="section">
+  <h2>日別パフォーマンス <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th><th>N225 終値</th><th>前日比</th><th>TOPIX</th><th>前日比</th><th>USD/JPY</th><th>日経VI</th><th>NKD先物</th><th>主要イベント</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="opacity:0.6;">
+        <td>2/6 (金)</td><td>54,254</td><td class="num-neutral">前週末</td>
+        <td>3,699.00</td><td class="num-neutral">前週末</td>
+        <td>156.78</td><td>39.03</td><td>56,530</td><td class="num-neutral">基準日</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>2/9 (月)</strong></td><td><strong>56,364</strong></td><td class="num-pos"><strong>+2,110 (+3.89%)</strong></td>
+        <td>3,783.57</td><td class="num-pos">+84.57 (+2.29%)</td>
+        <td>157.24</td><td>35.82</td><td>57,245</td><td>衆院選ラリー・Extreme Market</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>2/10 (火)</strong></td><td><strong>57,651</strong></td><td class="num-pos"><strong>+1,287 (+2.28%)</strong></td>
+        <td>3,855.28</td><td class="num-pos">+71.71 (+1.90%)</td>
+        <td>156.13</td><td>35.77</td><td>57,900</td><td>続伸・ラリー継続</td>
+      </tr>
+      <tr>
+        <td>2/11 (水)</td><td colspan="4" style="text-align:center; color:var(--text-muted);">建国記念の日（祝日）</td>
+        <td>154.48</td><td>—</td><td>58,195</td><td>米雇用統計（+130,000）</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>2/12 (木)</strong></td><td><strong>57,640</strong></td><td class="num-neg"><strong>-11 (-0.02%)</strong></td>
+        <td>3,882.16</td><td class="num-pos">+26.88 (+0.70%)</td>
+        <td>153.27</td><td>34.10</td><td>56,775</td><td>58,015到達→失速・SQ値57,077確定</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>2/13 (金)</strong></td><td><strong>56,942</strong></td><td class="num-neg"><strong>-698 (-1.21%)</strong></td>
+        <td>3,818.85</td><td class="num-neg">-63.31 (-1.63%)</td>
+        <td>153.38</td><td>34.21</td><td>57,140</td><td>Gemini 3ショック・ミニSQ</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>週間リズム:</strong> 月+3.89% → 火+2.28% → 木-0.02% → 金-1.21%。前半の上昇モメンタムが日増しに減速し、金曜に反落。4営業日で「3勝1敗」だがP&L的には上昇幅＞下落幅で週間プラス。
+  </div>
+</div>
+
+<!-- ===== 3. 週間テーマ ===== -->
+<div class="section">
+  <h2>今週の3大テーマ <span class="evidence-label evidence-inference">推論</span></h2>
+
+  <div class="grid-3">
+    <div class="factor-card" style="border-top:3px solid var(--emerald);">
+      <div class="factor-title"><span class="tag tag-bull">Theme 1</span> 衆院選ラリー</div>
+      <div class="factor-detail">
+        高市政権誕生を好感し月曜+3.89%のExtreme Market。NKD先物は2/11に58,195まで上昇。2/12に史上初58,015円到達。選挙期待で4日間+4,375円（+8.2%）の異例ペース。
+      </div>
+    </div>
+    <div class="factor-card" style="border-top:3px solid var(--rose);">
+      <div class="factor-title"><span class="tag tag-bear">Theme 2</span> 円高加速（-3.40円）</div>
+      <div class="factor-detail">
+        USD/JPY 156.78→153.38。「高市=円安」の期待に反して円高が進行。米雇用統計後のドル売り+三村財務官の為替牽制。5営業日で-3.40円は異例のペース。
+      </div>
+    </div>
+    <div class="factor-card" style="border-top:3px solid var(--amber);">
+      <div class="factor-title"><span class="tag tag-neutral">Theme 3</span> Gemini 3 / SBG決算</div>
+      <div class="factor-detail">
+        金曜にGemini 3「SaaSの死」ショックでNYダウ-669。SBG決算は純利益3.17兆だがOpenAI投資益が大半で失望売り。週末前のリスクオフを加速。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 4. N225 vs TOPIX 週間比較 ===== -->
+<div class="section">
+  <h2>N225 vs TOPIX 週間乖離 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="comparison-bar">
+    <div class="bar-label">日経225（週間）</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:70%;">+4.96%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">TOPIX（週間）</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:46%;">+3.24%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">乖離</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:24%; background:var(--amber);">1.72%</div>
+    </div>
+  </div>
+
+  <h3>日別 N225-TOPIX 乖離の推移</h3>
+  <table>
+    <thead><tr><th>日付</th><th>N225</th><th>TOPIX</th><th>乖離</th><th>優位</th></tr></thead>
+    <tbody>
+      <tr><td>2/9 (月)</td><td class="num-pos">+3.89%</td><td class="num-pos">+2.29%</td><td>1.60%</td><td>N225</td></tr>
+      <tr><td>2/10 (火)</td><td class="num-pos">+2.28%</td><td class="num-pos">+1.90%</td><td>0.38%</td><td>N225（縮小）</td></tr>
+      <tr><td>2/12 (木)</td><td class="num-neg">-0.02%</td><td class="num-pos">+0.70%</td><td>0.72%</td><td>TOPIX（逆転）</td></tr>
+      <tr><td>2/13 (金)</td><td class="num-neg">-1.21%</td><td class="num-neg">-1.63%</td><td>0.42%</td><td>N225（再逆転）</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-inference">推論</span> 週前半はN225優位（値嵩株主導のラリー）→ 木曜にTOPIX優位（循環物色へ移行）→ 金曜にN225優位に戻る（大型株集中の売りでTOPIXが深く下落）。週間ではN225 +4.96% vs TOPIX +3.24%で値嵩株主導のラリーだった。
+  </p>
+</div>
+
+<!-- ===== 5. セクター別 週間パフォーマンス ===== -->
+<div class="section">
+  <h2>セクター別 週間騰落率 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <h3>上昇 Top10</h3>
+  <div style="margin:8px 0;">
+    <div class="sector-bar"><div class="s-name">非鉄金属</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:80%;">+12.02%</div></div></div>
+    <div class="sector-bar"><div class="s-name">不動産業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:59%;">+8.87%</div></div></div>
+    <div class="sector-bar"><div class="s-name">その他金融業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:49%;">+7.31%</div></div></div>
+    <div class="sector-bar"><div class="s-name">卸売業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:47%;">+7.05%</div></div></div>
+    <div class="sector-bar"><div class="s-name">機械</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:43%;">+6.49%</div></div></div>
+    <div class="sector-bar"><div class="s-name">電気・ガス業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:39%;">+5.83%</div></div></div>
+    <div class="sector-bar"><div class="s-name">パルプ・紙</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:38%;">+5.75%</div></div></div>
+    <div class="sector-bar"><div class="s-name">精密機器</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:31%;">+4.72%</div></div></div>
+    <div class="sector-bar"><div class="s-name">水産・農林業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:31%;">+4.69%</div></div></div>
+    <div class="sector-bar"><div class="s-name">医薬品</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:31%;">+4.66%</div></div></div>
+  </div>
+
+  <h3>下落 Bottom3</h3>
+  <div style="margin:8px 0;">
+    <div class="sector-bar"><div class="s-name">サービス業</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:28%;">-4.15%</div></div></div>
+    <div class="sector-bar"><div class="s-name">鉱業</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:21%;">-3.14%</div></div></div>
+    <div class="sector-bar"><div class="s-name">鉄鋼</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:18%;">-2.64%</div></div></div>
+  </div>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>セクター総括:</strong> 33業種中30業種がプラス。非鉄金属+12%がトップ（銅価格上昇+内需期待）。不動産+8.9%（不動産株の出遅れ修正）。マイナスはサービス業(-4.2%)・鉱業(-3.1%)・鉄鋼(-2.6%)の3業種のみ。<br>
+    <span class="evidence-label evidence-inference">推論</span> サービス業の下落はGemini 3「SaaSの死」ショックの影響。鉄鋼・鉱業は資源価格と連動。
+  </div>
+</div>
+
+<!-- ===== 6. 為替 週間推移 ===== -->
+<div class="section">
+  <h2>為替 週間推移: 3.40円の円高 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead><tr><th>日付</th><th>USD/JPY 終値</th><th>前日比</th><th>累計（2/6比）</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr style="opacity:0.6;"><td>2/6 (金)</td><td>156.78</td><td class="num-neutral">—</td><td>—</td><td>基準日</td></tr>
+      <tr><td>2/9 (月)</td><td>157.24</td><td class="num-pos">+0.46</td><td class="num-pos">+0.46</td><td>選挙ラリーでドル買い</td></tr>
+      <tr><td>2/10 (火)</td><td>156.13</td><td class="num-neg">-1.11</td><td class="num-neg">-0.65</td><td>円高転換</td></tr>
+      <tr><td>2/11 (水)</td><td>154.48</td><td class="num-neg">-1.65</td><td class="num-neg">-2.30</td><td>祝日中・雇用統計後急落</td></tr>
+      <tr class="highlight-row"><td>2/12 (木)</td><td>153.27</td><td class="num-neg">-1.21</td><td class="num-neg">-3.51</td><td>三村財務官 為替牽制</td></tr>
+      <tr><td>2/13 (金)</td><td>153.38</td><td class="num-pos">+0.11</td><td class="num-neg"><strong>-3.40</strong></td><td>CPI前で小動き</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-inference">推論</span> 月曜の157.24が週間高値。そこから4営業日で-3.86円の円高（152.28が安値）。「高市=円安」トレードは完全に不発で、株高+円高の異例パターンに。週末は153円台で膠着 → CPIで方向が決まる。
+  </p>
+</div>
+
+<!-- ===== 7. Extreme Market 週間総括 ===== -->
+<div class="section">
+  <h2>Extreme Market 週間総括 <span class="badge badge-amber">Day1→Day4 完走</span></h2>
+
+  <div class="alert-box alert-danger">
+    <strong>ルール:</strong> 先物 &gt;+3% の翌日からDay2とカウント。Day2-3はショート回避、Day4から再開検討。
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Day</th><th>日付</th><th>N225</th><th>判断</th><th>結果</th></tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td><strong>Extreme</strong></td><td>2/9 (月)</td><td class="num-pos">+3.89%</td>
+        <td>Extreme Market発動</td><td>ショート全回避</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>Day2</strong></td><td>2/10 (火)</td><td class="num-pos">+2.28%</td>
+        <td>回避（ルール通り）</td><td class="num-neg">保有ショート -32,100円</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>Day3</strong></td><td>2/12 (木)</td><td>-0.02%</td>
+        <td>静観（ルール通り）</td><td>損失回避（1月Day3は-201,300円）</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>Day4</strong></td><td>2/13 (金)</td><td class="num-neg">-1.21%</td>
+        <td>再開検討</td><td>N225下落 → ショート環境は良好</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 1月パターンとの比較: Day3まではほぼ同じ展開（Day3は微減で静観が正解）。Day4は1月+0.70%に対し2月-1.21%と真逆。外部ショック（Gemini 3）が入ったため、パターンの再現性はDay3までに限定される。n=2。
+    <div class="quote-source">— Extreme Marketルールの週間検証</div>
+  </div>
+</div>
+
+<!-- ===== 8. 先物（NKD）週間推移 ===== -->
+<div class="section">
+  <h2>CME先物（NKD）週間推移 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead><tr><th>日付</th><th>NKD終値</th><th>前日比</th><th>N225終値</th><th>先物-現物 乖離</th></tr></thead>
+    <tbody>
+      <tr style="opacity:0.6;"><td>2/6 (金)</td><td>56,530</td><td>—</td><td>54,254</td><td class="num-pos">+2,276</td></tr>
+      <tr><td>2/9 (月)</td><td>57,245</td><td class="num-pos">+715 (+1.26%)</td><td>56,364</td><td class="num-pos">+881</td></tr>
+      <tr><td>2/10 (火)</td><td>57,900</td><td class="num-pos">+655 (+1.14%)</td><td>57,651</td><td class="num-pos">+249</td></tr>
+      <tr><td>2/11 (水)</td><td>58,195</td><td class="num-pos">+295 (+0.51%)</td><td>—</td><td>—</td></tr>
+      <tr class="highlight-row"><td>2/12 (木)</td><td>56,775</td><td class="num-neg"><strong>-1,420 (-2.44%)</strong></td><td>57,640</td><td class="num-neg">-865</td></tr>
+      <tr><td>2/13 (金)</td><td>57,140</td><td class="num-pos">+365 (+0.64%)</td><td>56,942</td><td class="num-pos">+198</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> NKDは2/11（祝日中）に58,195の週間高値を記録。2/12に-1,420（-2.44%）の急落 → Gemini 3ショックを先行織り込み。2/13終値57,140は現物56,942に対し+198のプレミアム。<br>
+    <span class="evidence-label evidence-inference">推論</span> 先物プレミアム+198は小幅。CPI後に大きく動く可能性。
+  </p>
+</div>
+
+<!-- ===== 9. 翌週カレンダー ===== -->
+<div class="section">
+  <h2>翌週の注目イベント <span class="evidence-label evidence-inference">推論</span></h2>
+
+  <table>
+    <thead><tr><th>日付</th><th>イベント</th><th>影響度</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-amber">
+        <td>2/13 (金) 22:30</td><td>米CPI 1月</td><td style="color:var(--rose); font-weight:700;">最重要</td>
+        <td>予想: +0.3% m/m, +2.5% y/y。上振れ→ドル高+株安、下振れ→ドル安+株高</td>
+      </tr>
+      <tr>
+        <td>2/16 (月)</td><td>Day5 / CPI消化</td><td style="color:var(--amber);">高</td>
+        <td>Extreme Marketルール終了。CPI結果で方向が決まる</td>
+      </tr>
+      <tr>
+        <td>2/16-20</td><td>決算シーズン後半</td><td style="color:var(--amber);">中</td>
+        <td>2/13引け後も決算発表あり。個別材料に注目</td>
+      </tr>
+      <tr>
+        <td>2/19 (木)</td><td>FOMC議事要旨</td><td style="color:var(--blue);">中</td>
+        <td>1月会合分。利下げ見通しの手がかり</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>翌週のポイント:</strong><br>
+    &bull; 今夜の米CPI結果が最大の変数。CME先物の週末終値で月曜の方向を予測<br>
+    &bull; Extreme Marketルール終了 → 通常のgrok選定で運用再開<br>
+    &bull; N225は56,942で週末入り。56,000割れか57,500回復かで翌週の流れが変わる<br>
+    &bull; USD/JPY 153円台で膠着中 → CPI後にブレイク
+  </div>
+</div>
+
+<!-- ===== 10. 結論 ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-info" style="margin-top:0;">
+    <strong>週間総括:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> N225 +4.96%（54,254→56,942）。TOPIX +3.24%（3,699→3,819）。USD/JPY -2.17%（156.78→153.38）。日経VI -12.4%（39.03→34.21）。33セクター中30セクターがプラス。週間値幅2,997円。史上最高値58,015到達。<br>
+    <span class="evidence-label evidence-inference">推論</span> 衆院選ラリーが週前半を支配し、外部ショック（Gemini 3）が週末を打ち消した。「株高+円高」の異例パターンは「選挙期待≠円安」を示唆。
+  </div>
+
+  <div class="alert-box alert-success" style="margin-top:12px;">
+    <strong>Extreme Marketルール検証:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> Day2-3回避は正解（1月Day3の-201,300円を回避）。Day3静観判断はn=2で有効性が確認された。<br>
+    <span class="evidence-label evidence-inference">推論</span> Day4以降は外部要因が支配的でパターン再現性は限定的。ルールはDay3までの「回避」に価値がある。
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>翌週の判断:</strong><br>
+    &bull; 米CPI結果でシナリオ分岐（上振れ→株安継続 / 下振れ→反発）<br>
+    &bull; Extreme Marketルール終了 → 通常運用に復帰<br>
+    &bull; 56,000-58,000のレンジ内で推移する可能性が高い<br>
+    &bull; 縮小運用（100株・Q1優先）は継続
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-13 by Claude Code / 数値データはparquet（2026-02-06〜2026-02-13）<br>
+  セクターデータ: sectors_prices_max_1d.parquet（33業種） | 本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

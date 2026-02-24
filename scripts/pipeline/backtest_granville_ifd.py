@@ -30,48 +30,53 @@ if str(ROOT) not in sys.path:
 
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
-from common_cfg.s3io import upload_file, download_file
+from common_cfg.s3io import upload_file
 
 BACKTEST_DIR = PARQUET_DIR / "backtest"
-SIGNALS_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
 ARCHIVE_PATH = BACKTEST_DIR / "granville_ifd_archive.parquet"
 
-SL_PCT = 3.5        # SL -3.5%（IFD逆指値）
+SL_PCT = 3.0        # SL -3%（IFD逆指値）
 TP_PCT = 10.0       # TP +10%（利確）
 MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
-MIN_DAYS_AGO = 10   # シグナルから10日以上経過したものを対象
+MIN_DAYS_AGO = 1    # シグナル翌日にエントリーするので最低1日必要（未完了はsimulate_tradeがNone返却）
 
 S3_ARCHIVE_KEY = "backtest/granville_ifd_archive.parquet"
 COMPARISON_PATH = BACKTEST_DIR / "granville_ifd_comparison.parquet"
 S3_COMPARISON_KEY = "backtest/granville_ifd_comparison.parquet"
 
 
-def load_signals_from_s3(cfg) -> pd.DataFrame:
-    """S3からシグナルファイルを読み込み（本番用）"""
-    local_path = PARQUET_DIR / "granville_ifd_signals.parquet"
-    if local_path.exists():
-        return pd.read_parquet(local_path)
+def regenerate_all_signals(prices_df: pd.DataFrame) -> pd.DataFrame:
+    """価格データから全期間のシグナルを再生成（generate_granville_signals.pyと同じロジック）"""
+    from scripts.pipeline.generate_granville_signals import detect_signals, BAD_SECTORS
 
-    temp = PARQUET_DIR / "_tmp_granville_signals.parquet"
-    if download_file(cfg, "granville_ifd_signals.parquet", temp):
-        df = pd.read_parquet(temp)
-        temp.unlink(missing_ok=True)
-        return df
+    ps = detect_signals(prices_df)
 
-    return pd.DataFrame()
+    # 全日のシグナルを抽出
+    sig_mask = ps["sig_A"] | ps["sig_B"]
+    sigs = ps[sig_mask].copy()
 
+    # フィルター適用
+    sigs = sigs[sigs["market_uptrend"] == True]
+    sigs = sigs[sigs["macro_ci_expand"] == True]
+    sigs = sigs[~sigs["sectors"].isin(BAD_SECTORS)]
+    sigs = sigs[sigs["Close"] < 20000]
 
-def load_archive(cfg) -> pd.DataFrame:
-    """既存アーカイブを読み込み"""
-    # ローカル優先
-    if ARCHIVE_PATH.exists():
-        return pd.read_parquet(ARCHIVE_PATH)
+    # signal_type列
+    sigs["signal_type"] = sigs.apply(
+        lambda x: "A+B" if x["sig_A"] and x["sig_B"] else ("A" if x["sig_A"] else "B"), axis=1
+    )
 
-    # S3フォールバック
-    if download_file(cfg, S3_ARCHIVE_KEY, ARCHIVE_PATH):
-        return pd.read_parquet(ARCHIVE_PATH)
+    # 出力カラム整形
+    result = sigs[["date", "ticker", "stock_name", "sectors", "signal_type",
+                    "market_uptrend", "macro_ci_expand"]].copy()
+    result = result.rename(columns={
+        "date": "signal_date",
+        "sectors": "sector",
+        "macro_ci_expand": "ci_expand",
+    })
 
-    return pd.DataFrame()
+    return result
+
 
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
@@ -190,56 +195,30 @@ def run_backtest() -> int:
 
     cfg = load_s3_config()
 
-    # 1. シグナル読み込み
-    signals = load_signals_from_s3(cfg)
-    if signals.empty:
-        print("[INFO] No signals found, nothing to backtest")
-        return 0
+    # 1. 価格データ読み込み + シグナル再生成（generate_granville_signals.pyと同じロジック）
+    from scripts.pipeline.generate_granville_signals import load_data
+    print("[INFO] Loading price data and regenerating signals...")
+    ps = load_data()
 
+    # SMA5/SMA20はload_dataで計算済みだが、simulate_tradeに必要なので確認
+    if "sma5" not in ps.columns:
+        g = ps.groupby("ticker")
+        ps["sma5"] = g["Close"].transform(lambda x: x.rolling(5).mean())
+        ps["sma20"] = g["Close"].transform(lambda x: x.rolling(20).mean())
+
+    signals = regenerate_all_signals(ps)
     signals["signal_date"] = pd.to_datetime(signals["signal_date"])
-    print(f"[INFO] Loaded {len(signals)} signals")
+    print(f"[INFO] Regenerated {len(signals)} signals from price data")
 
-    # 2. 既存アーカイブ読み込み
-    archive = load_archive(cfg)
-    archived_keys = set()
-    if not archive.empty:
-        archive["signal_date"] = pd.to_datetime(archive["signal_date"])
-        archived_keys = set(zip(
-            archive["signal_date"].dt.date,
-            archive["ticker"]
-        ))
-        print(f"[INFO] Existing archive: {len(archive)} records")
-
-    # 3. バックテスト対象のシグナルを抽出
+    # 2. バックテスト対象: 10日以上前のシグナルのみ
     cutoff = pd.Timestamp.now() - pd.Timedelta(days=MIN_DAYS_AGO)
     eligible = signals[signals["signal_date"] <= cutoff].copy()
     print(f"[INFO] Eligible signals (>= {MIN_DAYS_AGO} days ago): {len(eligible)}")
 
-    # 既にアーカイブ済みを除外
-    new_signals = []
-    for _, row in eligible.iterrows():
-        key = (row["signal_date"].date(), row["ticker"])
-        if key not in archived_keys:
-            new_signals.append(row)
-
-    if not new_signals:
-        print("[INFO] No new signals to backtest")
-        return 0
-
-    new_df = pd.DataFrame(new_signals)
-    print(f"[INFO] New signals to backtest: {len(new_df)}")
-
-    # 4. 価格データ読み込み + SMA計算
-    prices = pd.read_parquet(PARQUET_DIR / "prices_max_1d.parquet")
-    prices["date"] = pd.to_datetime(prices["date"])
-    prices = prices.sort_values(["ticker", "date"])
-    g = prices.groupby("ticker")
-    prices["sma5"] = g["Close"].transform(lambda x: x.rolling(5).mean())
-    prices["sma20"] = g["Close"].transform(lambda x: x.rolling(20).mean())
-
-    # 5. 各シグナルをバックテスト
+    # 3. 全対象をバックテスト（アーカイブは毎回再生成）
+    prices = ps.copy()
     results = []
-    for _, sig in new_df.iterrows():
+    for _, sig in eligible.iterrows():
         trade = simulate_trade(prices, sig["ticker"], sig["signal_date"], sig.get("signal_type", "A"))
         if trade is None:
             continue
@@ -270,21 +249,9 @@ def run_backtest() -> int:
     print(f"  SL hit rate: {sl_hits.mean() * 100:.1f}%")
     print(f"  Total PnL: ¥{total_pnl:+,}")
 
-    # 6. アーカイブにappend
+    # 6. アーカイブ保存（毎回全件再生成）
     BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not archive.empty:
-        # 型統一
-        for col in ["signal_date", "entry_date", "exit_date"]:
-            if col in archive.columns:
-                archive[col] = archive[col].astype(str)
-            if col in new_results.columns:
-                new_results[col] = new_results[col].astype(str)
-
-        merged = pd.concat([archive, new_results], ignore_index=True)
-    else:
-        merged = new_results
-
+    merged = new_results
     merged.to_parquet(ARCHIVE_PATH, index=False)
     print(f"[OK] Archive saved: {len(merged)} total records → {ARCHIVE_PATH}")
 

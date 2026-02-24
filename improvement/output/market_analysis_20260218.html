@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット振り返り 2026/02/18（水）- 反発+577円・寄付が安値・VI30割れ</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background:rgba(251,191,36,0.15); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .timeline { position:relative; padding-left:28px; margin:16px 0; }
+  .timeline::before { content:''; position:absolute; left:8px; top:4px; bottom:4px; width:2px; background:var(--card-border); }
+  .timeline-item { position:relative; margin-bottom:16px; font-size:0.875rem; }
+  .timeline-item::before { content:''; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--card-border); border:2px solid var(--bg); }
+  .timeline-item.peak::before { background:var(--emerald); }
+  .timeline-item.drop::before { background:var(--rose); }
+  .timeline-item.neutral::before { background:var(--amber); }
+  .timeline-time { color:var(--text-muted); font-size:0.75rem; font-weight:600; }
+  .timeline-content { margin-top:2px; }
+  .factor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+  .factor-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:14px; }
+  .factor-card .factor-title { font-size:0.8rem; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+  .source-list { margin-top:12px; padding-left:20px; }
+  .source-list li { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+  .source-list a { color:var(--blue); text-decoration:none; }
+  .source-list a:hover { text-decoration:underline; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .comparison-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .comparison-bar .bar-label { min-width:120px; color:var(--text-muted); }
+  .comparison-bar .bar-track { flex:1; height:20px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; }
+  .comparison-bar .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .quote-box { border-left:3px solid var(--purple); padding:12px 16px; margin:12px 0; background:rgba(167,139,250,0.05); border-radius:0 8px 8px 0; font-size:0.85rem; color:var(--text-muted); font-style:italic; }
+  .quote-box .quote-source { margin-top:6px; font-style:normal; font-size:0.75rem; color:var(--purple); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .evidence-inference { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .evidence-unverified { background:rgba(251,113,133,0.12); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .evidence-legend { display:flex; gap:16px; margin-bottom:24px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; font-size:0.8rem; color:var(--text-muted); }
+  .evidence-legend-item { display:flex; align-items:center; gap:6px; }
+  .footnote { font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>マーケット振り返り 2026/02/18（水）<span class="badge badge-emerald">反発+577円・寄付安値・VI30割れ</span></h1>
+<div class="subtitle">前日NY上昇+高市首相指名期待で投資家心理改善。寄付56,734が安値→終日右肩上がり→13:45に57,393高値。大引け57,144（+577 / +1.02%）。TOPIX +1.21%、Growth +2.09%。全33業種中31業種上昇。日経VI 27.89で30割れ（18日ぶり）。特別国会で高市首相指名、今夜FOMC。</div>
+
+<div class="evidence-legend">
+  <div class="evidence-legend-item"><span class="evidence-label evidence-fact">事実</span> parquet / web検索 / 日銀APIで確認済み</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈・因果推定</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-unverified">未検証</span> ソースはあるが数値精度が未確認</div>
+</div>
+
+<!-- ===== 1. マーケットサマリー ===== -->
+<div class="section">
+  <h2>本日のマーケットサマリー <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均</div>
+      <div class="value num-pos">57,144</div>
+      <div class="sub">+577.35 (+1.02%) 反発</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX</div>
+      <div class="value num-pos">3,807.25</div>
+      <div class="sub">+45.70 (+1.21%) 反発</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY</div>
+      <div class="value num-neutral">153.61円</div>
+      <div class="sub">前日比+0.83 円安方向（2/17終値）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">日経VI</div>
+      <div class="value num-pos">27.89</div>
+      <div class="sub">-1.93 (-6.5%) <strong>30割れ</strong></div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">日経225 高値</div>
+        <div class="value num-pos" style="font-size:1.2rem;">57,393</div>
+        <div class="sub">13:45 後場（=天井）</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経225 安値</div>
+        <div class="value" style="font-size:1.2rem;">56,734</div>
+        <div class="sub">09:00 寄付（=底値）</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">安値→終値</div>
+        <div class="value num-pos" style="font-size:1.2rem;">+410</div>
+        <div class="sub">56,734 → 57,144（陽線・下ヒゲ）</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">売買代金（プライム・前場）</div>
+        <div class="value" style="font-size:1.2rem;">3兆1,160億</div>
+        <div class="sub">前場時点 <span class="evidence-label evidence-unverified">未検証</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">騰落銘柄数（プライム・前場）</div>
+        <div class="value num-pos" style="font-size:1.2rem;">1,252 : 約350</div>
+        <div class="sub">値上がり約80% <span class="evidence-label evidence-unverified">未検証</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経VI 30割れ</div>
+        <div class="value num-pos" style="font-size:1.2rem;">27.89</div>
+        <div class="sub">2/9以来18日ぶり <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>TOPIX サブ指数 <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>指数</th><th>終値</th><th>前日比</th><th>変化率</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-green"><td>TOPIX</td><td>3,807.25</td><td class="num-pos">+45.70</td><td class="num-pos">+1.21%</td></tr>
+      <tr class="highlight-row-green"><td>TOPIX-Prime</td><td>1,961.77</td><td class="num-pos">+23.51</td><td class="num-pos">+1.21%</td></tr>
+      <tr class="highlight-row-green"><td>TOPIX-Standard</td><td>1,719.50</td><td class="num-pos">+11.76</td><td class="num-pos">+0.69%</td></tr>
+      <tr class="highlight-row-green"><td>TOPIX-Growth</td><td>990.40</td><td class="num-pos">+20.24</td><td class="num-pos">+2.09%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-success" style="margin-top:16px;">
+    <strong>注目 <span class="evidence-label evidence-fact">事実</span>:</strong> 全市場区分がプラス。Prime +1.21%、Standard +0.69%、Growth +2.09%。2/16の「大型売り・中小型買い」から一転、全面高。ただしGrowthが引き続き最強で中小型への資金流入継続。日経VIが30を割り不安心理後退。
+  </div>
+</div>
+
+<!-- ===== 2. 日中タイムライン ===== -->
+<div class="section">
+  <h2>日中タイムライン <span class="evidence-label evidence-fact">5分足parquetデータ</span> <span class="evidence-label evidence-inference">解説部分は推論</span></h2>
+
+  <div class="timeline">
+    <div class="timeline-item peak">
+      <div class="timeline-time">09:00 寄付（=日中安値）</div>
+      <div class="timeline-content">
+        56,734（前日比+168 / +0.30%）でギャップアップ（事実）。シカゴ先物57,105からは下放れスタートだが、前日終値56,566は上回った（事実）。<strong class="num-pos">寄付が安値</strong>。
+      </div>
+    </div>
+    <div class="timeline-item peak">
+      <div class="timeline-time">09:00-09:30 前場序盤の急上昇</div>
+      <div class="timeline-content">
+        <strong class="num-pos">56,734 → 57,100（+366 / 30分間）</strong>。保険・銀行・非鉄が牽引（事実）。<span style="color:var(--amber);">特別国会での高市首相指名を織り込む買い。「政策に売りなし」（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">09:30-11:30 前場もみ合い</div>
+      <div class="timeline-content">
+        57,000-57,200のレンジで推移（事実）。前場終値57,253（+686）（事実）。<span style="color:var(--amber);">今夜のFOMCを控え上値追いには慎重（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item peak">
+      <div class="timeline-time">12:30-13:45 後場高値トライ</div>
+      <div class="timeline-content">
+        <strong class="num-pos">57,200 → 57,393（日中高値・13:45）</strong>。三菱重工に買いが集中（事実）。<span style="color:var(--amber);">防衛費増額期待＋高市政権の政策期待で防衛関連が物色（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">14:00-15:00 利益確定売り</div>
+      <div class="timeline-content">
+        57,393 → 57,100付近まで後退（事実）。<span style="color:var(--amber);">FOMC前のポジション調整。659円高から利確が出やすい水準（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">15:00-15:25 大引け</div>
+      <div class="timeline-content">
+        57,144で着地（前日比+577）（事実）。高値57,393からは-249だが、陽線引けで投資家心理は改善（推論）。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. 要因分析 ===== -->
+<div class="section">
+  <h2>+577円反発の要因分析 <span class="evidence-label evidence-inference">推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    以下の要因分析は複数のニュースソースの解釈を統合した推論です。値動き自体は事実ですが因果関係は証明されていません。
+  </p>
+
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">要因1</span> 前日NY上昇・投資家心理改善 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        前日のNY市場上昇（事実）。シカゴ日経先物57,105で東京前日比+539ポイント（事実）。<span style="color:var(--amber);">4日続落からの反発で短期的な売り疲れ感（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">要因2</span> 高市新首相指名への期待 <span class="evidence-label evidence-inference">推論</span></div>
+      <div class="factor-detail">
+        特別国会で高市早苗氏が首相に指名される見通し（事実）。防衛費増額・経済政策への期待（推論）。三菱重工への買いが象徴的（事実）。<span style="color:var(--amber);">「政策に売りなし」のアノマリー（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">要因3</span> 日経VI 30割れで不安後退 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        日経VI 27.89（-1.93）で2/9以来初の30割れ（事実）。恐怖指数が節目を下回ったことでリスクオンの雰囲気（推論）。オプション市場のプット売りが進んでいる可能性（推論）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">要因4</span> FOMC前の慎重姿勢が上値抑制 <span class="evidence-label evidence-inference">推論</span></div>
+      <div class="factor-detail">
+        今夜28:00のFOMC結果発表を控え（事実）。午後の利益確定で高値57,393から-249下落（事実）。<span style="color:var(--amber);">結果次第で明日の方向が決まるため、全力買いは見送り（推論）</span>。
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 4日続落の自律反発+高市政権期待+VI30割れのトリプル好材料。ただしFOMCという最大イベントを今夜に控えており、後場の伸び悩みは「結果を見てから」の姿勢。明日のFOMC通過後の値動きが本当の方向感を示す。
+    <div class="quote-source">— 筆者の解釈（複数ニュースソースから合成）</div>
+  </div>
+</div>
+
+<!-- ===== 4. セクター動向 ===== -->
+<div class="section">
+  <h2>セクター動向 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>上昇上位5業種</h3>
+      <table>
+        <thead><tr><th>業種</th><th>変化率</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row-green"><td>非鉄金属</td><td class="num-pos"><strong>+2.92%</strong></td></tr>
+          <tr class="highlight-row-green"><td>保険業</td><td class="num-pos"><strong>+2.86%</strong></td></tr>
+          <tr class="highlight-row-green"><td>医薬品</td><td class="num-pos">+2.48%</td></tr>
+          <tr><td>その他金融業</td><td class="num-pos">+2.08%</td></tr>
+          <tr><td>ガラス・土石製品</td><td class="num-pos">+2.01%</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:16px;">下落・軟調業種</h3>
+      <table>
+        <thead><tr><th>業種</th><th>変化率</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td>情報・通信業</td><td class="num-neg"><strong>-0.54%</strong></td></tr>
+          <tr class="highlight-row"><td>精密機器</td><td class="num-neg">-0.43%</td></tr>
+          <tr class="highlight-row"><td>水産・農林業</td><td class="num-neg">-0.20%</td></tr>
+          <tr><td>食料品</td><td class="num-pos">+0.41%</td></tr>
+          <tr><td>輸送用機器</td><td class="num-pos">+0.51%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>大型 vs 中小型</h3>
+      <table>
+        <thead><tr><th>区分</th><th>変化率</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row-green"><td>TOPIX-Prime（大型）</td><td class="num-pos"><strong>+1.21%</strong></td></tr>
+          <tr class="highlight-row-green"><td>TOPIX-Standard（中型）</td><td class="num-pos">+0.69%</td></tr>
+          <tr class="highlight-row-green"><td>TOPIX-Growth（小型）</td><td class="num-pos"><strong>+2.09%</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 全面高だがGrowth +2.09%が引き続き最強。保険・銀行の反発（前日売られた反動）と非鉄金属（銅価格上昇？）が目立つ。情報通信と精密のみマイナスで、利益確定が先行。
+      </p>
+
+      <h3 style="margin-top:16px;">注目個別 <span class="evidence-label evidence-unverified">未検証</span></h3>
+      <table>
+        <thead><tr><th>銘柄</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row-green"><td>三菱重工</td><td>防衛費増額期待で買い</td></tr>
+          <tr class="highlight-row-green"><td>イビデン</td><td>上昇</td></tr>
+          <tr class="highlight-row-green"><td>フジクラ</td><td>上昇</td></tr>
+          <tr class="highlight-row"><td>SBG</td><td>下落</td></tr>
+          <tr class="highlight-row"><td>資生堂</td><td>下落</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5. N225 vs TOPIX 乖離 ===== -->
+<div class="section">
+  <h2>日経平均 vs TOPIX 乖離 <span class="badge badge-emerald">全面高・TOPIX優位</span> <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <div class="comparison-bar">
+    <div class="bar-label">日経225</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:50%;">+1.02%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">TOPIX</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:60%;">+1.21%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">乖離</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:10%; background:var(--amber);">0.19%</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h3>5日間のN225 vs TOPIX推移</h3>
+    <table>
+      <thead><tr><th>日付</th><th>日経225</th><th>TOPIX</th><th>乖離</th><th>方向</th></tr></thead>
+      <tbody>
+        <tr><td>2/12 (木)</td><td class="num-neg">-0.02%</td><td class="num-pos">+0.70%</td><td>0.72%</td><td>TOPIX優位</td></tr>
+        <tr><td>2/13 (金)</td><td class="num-neg">-1.21%</td><td class="num-neg">-1.63%</td><td>0.42%</td><td>N225優位</td></tr>
+        <tr><td>2/16 (月)</td><td class="num-neg">-0.24%</td><td class="num-neg">-0.82%</td><td>0.58%</td><td>N225優位</td></tr>
+        <tr><td>2/17 (火)</td><td class="num-neg">-0.42%</td><td class="num-neg">-0.69%</td><td>0.27%</td><td>N225優位</td></tr>
+        <tr class="highlight-row-green"><td><strong>2/18 (水)</strong></td><td class="num-pos"><strong>+1.02%</strong></td><td class="num-pos"><strong>+1.21%</strong></td><td><strong>0.19%</strong></td><td><strong>TOPIX優位</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> 4日ぶりにTOPIXがN225を上回る。TOPIX +1.21% vs N225 +1.02%。銀行・保険の反発（大型バリュー）がTOPIXを押し上げた。<br>
+    <span class="evidence-label evidence-inference">推論</span> 前日まで売られた大型バリュー（銀行-3.44%→+1.99%）のリバウンドが寄与。TOPIXの方が銀行のウエイトが大きいため。
+  </p>
+</div>
+
+<!-- ===== 6. 米株・海外要因 ===== -->
+<div class="section">
+  <h2>米株・海外要因（2/17 NY市場） <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>シカゴ先物 2/17終値</h3>
+      <table>
+        <thead><tr><th>指数</th><th>終値</th><th>前日比</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row-green"><td>シカゴ日経先物</td><td>57,105</td><td class="num-pos"><strong>+330</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-fact">事実</span> シカゴ先物57,105は東京前日終値56,566から+539ポイント。ギャップアップの要因に。
+      </p>
+    </div>
+    <div>
+      <h3>今夜の注目 <span class="evidence-label evidence-fact">事実</span></h3>
+      <table>
+        <thead><tr><th>イベント</th><th>時間</th><th>注目度</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row"><td>FOMC会議声明</td><td>28:00</td><td><strong>最高</strong></td></tr>
+          <tr><td>パウエル議長記者会見</td><td>28:30</td><td><strong>最高</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 利下げ据え置き（0.25%維持）がコンセンサス。サプライズは声明文のトーンとドットチャート。ハト派なら円高+日本株売り、タカ派なら円安+日本株買いのシナリオ。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 7. 為替 ===== -->
+<div class="section">
+  <h2>為替: 153円台で小動き・FOMC待ち <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <table>
+    <thead><tr><th>タイミング</th><th>USD/JPY</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>2/13 引け</td><td>152.82</td><td>米CPI下振れ→ドル売り</td></tr>
+      <tr><td>2/16 引け</td><td>152.78</td><td>152円台で膠着</td></tr>
+      <tr><td>2/17 安値</td><td>152.70</td><td>東京時間に円高ピーク</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/17 引け</strong></td><td><strong>153.61</strong></td><td>NY時間にドル買い戻し</td></tr>
+    </tbody>
+  </table>
+
+  <h3>BOJ公式レート（日本銀行 時系列統計データ） <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>日付</th><th>中心相場 (¥/$)</th><th>17時時点スポット (¥/$)</th></tr></thead>
+    <tbody>
+      <tr><td>2/10 (月)</td><td>156.10</td><td>155.57</td></tr>
+      <tr><td>2/12 (水)</td><td>153.10</td><td>153.01</td></tr>
+      <tr><td>2/13 (木)</td><td>152.87</td><td>153.40</td></tr>
+      <tr><td>2/16 (月)</td><td>153.08</td><td>153.35</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/17 (火)</strong></td><td><strong>153.30</strong></td><td><strong>153.09</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">出典: 日本銀行 時系列統計データ検索サイト FM08（外国為替市況）FXERD05（中心相場）/ FXERD04（17時時点スポット）<br>
+  レポート内parquetデータ（153.61円）はNY時間の終値。BOJ公式の東京17時時点は153.09円。2/10→2/13で156円台→153円台へ急落（米CPI下振れ起因）後、153円台で膠着。</p>
+
+  <div class="alert-box alert-info" style="margin-top:16px;">
+    <strong>FOMC後の為替シナリオ <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; ハト派（利下げ示唆）→ USD/JPY 151-152円台 → 明日の日本株下押し要因<br>
+    &bull; タカ派（据え置き長期化）→ USD/JPY 154-155円台 → 明日の日本株追い風<br>
+    &bull; 現在153.61円は「どちらにも動ける」中立位置
+  </div>
+</div>
+
+<!-- ===== 7.5 短期金利（日銀API） ===== -->
+<div class="section">
+  <h2>短期金利: 無担保コールO/N物レート <span class="evidence-label evidence-fact">事実（日銀API）</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>日付</th><th>平均値 (年%)</th></tr></thead>
+        <tbody>
+          <tr><td>2/3 (月)</td><td>0.730</td></tr>
+          <tr><td>2/4 (火)</td><td>0.727</td></tr>
+          <tr><td>2/5 (水)</td><td>0.727</td></tr>
+          <tr><td>2/6 (木)</td><td>0.728</td></tr>
+          <tr><td>2/9 (月)</td><td>0.728</td></tr>
+          <tr><td>2/10 (月)</td><td>0.727</td></tr>
+          <tr><td>2/12 (水)</td><td>0.728</td></tr>
+          <tr><td>2/13 (木)</td><td>0.728</td></tr>
+          <tr><td>2/16 (月)</td><td>0.728</td></tr>
+          <tr class="highlight-row-amber"><td><strong>2/17 (火)</strong></td><td><strong>0.730</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="stat-card" style="margin-bottom:12px;">
+        <div class="label">政策金利目標</div>
+        <div class="value" style="font-size:1.3rem;">0.75%</div>
+        <div class="sub">2025/1/24 利上げ（0.50%→0.75%）</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">実効レート範囲（2月）</div>
+        <div class="value" style="font-size:1.3rem;">0.727 - 0.730%</div>
+        <div class="sub">政策金利目標近傍で安定</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">出典: 日本銀行 時系列統計データ検索サイト FM01（コールレート）STRDCLUCON（無担保コールO/N物レート平均値）<br>
+  今夜FOMCの結果次第で日米金利差が変動する可能性。現在の日米短期金利差は約3.5-3.75%（米FFレート 4.25-4.50% vs 日本0.75%）。</p>
+</div>
+
+<!-- ===== 8. Extreme Market パターン ===== -->
+<div class="section">
+  <h2>Extreme Market パターン <span class="badge badge-emerald">Day7 = +1.02%（通常モード）</span></h2>
+
+  <div class="alert-box alert-success">
+    <strong>ルール:</strong> 先物 &gt;+3% の翌日からDay2とカウント。Day2-3はショート回避、Day4から再開検討。Day5以降は通常モード。<br>
+    <strong>現在: Day7（完全に通常モード復帰）</strong>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th colspan="3" style="text-align:center;">2月パターン（2/9起点）</th>
+      </tr>
+      <tr>
+        <th></th><th>日付</th><th>N225</th><th>ショートP&L</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td><strong>Extreme</strong></td>
+        <td>2/9</td><td class="num-pos">+4.20%</td><td class="num-neg">-4,900円</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>Day2</strong></td>
+        <td>2/10</td><td class="num-pos">+2.28%</td><td class="num-neg">-32,600円</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>Day3</strong></td>
+        <td>2/12</td><td>-0.02%</td><td class="num-pos">+1,400円</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>Day4</strong></td>
+        <td>2/13</td><td class="num-neg">-1.21%</td><td class="num-pos">+26,200円</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>Day5</strong></td>
+        <td>2/16</td><td class="num-neg">-0.24%</td><td class="num-neg">-28,300円</td>
+      </tr>
+      <tr>
+        <td><strong>Day6</strong></td>
+        <td>2/17</td><td class="num-neg">-0.42%</td><td>集計中</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>Day7</strong></td>
+        <td><strong>2/18</strong></td><td class="num-pos"><strong>+1.02%</strong></td><td><strong>+5,300円 (8/12)</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> Day7（2/18）: N225 +1.02%の反発日にもかかわらず、ショートP&L +5,300円（Phase1 寄→引）。12トレード中8勝。<br>
+    <span class="evidence-label evidence-inference">推論</span> 指数が上がっても個別では下がる銘柄がある。Q1（prob_up低い）銘柄のショートが機能。指数の方向よりもquintile分布が重要という傾向が継続。
+  </p>
+</div>
+
+<!-- ===== 9. Grok選定結果 ===== -->
+<div class="section">
+  <h2>本日のGrok選定 27銘柄 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <h3>Quintile分布</h3>
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">Q1（下落予測）</div>
+      <div class="value num-pos">7銘柄</div>
+      <div class="sub">ショート向き</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Q2-Q3（中立）</div>
+      <div class="value num-neutral">12銘柄</div>
+      <div class="sub">Q2:3 / Q3:9</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Q4-Q5（上昇予測）</div>
+      <div class="value num-neg">8銘柄</div>
+      <div class="sub">Q4:1 / Q5:7 ショート不向き</div>
+    </div>
+  </div>
+
+  <h3>Phase1（寄→引）ショートP&L <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>銘柄</th><th>Q</th><th>買値</th><th>ショートP&L</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-green"><td>中村超硬 (6166)</td><td>Q1</td><td>1,088</td><td class="num-pos"><strong>+9,000</strong></td><td class="num-pos">勝</td></tr>
+      <tr class="highlight-row-green"><td>窪田製薬HD (4596)</td><td>Q1</td><td>250</td><td class="num-pos">+4,800</td><td class="num-pos">勝</td></tr>
+      <tr class="highlight-row-green"><td>大黒屋HD (6993)</td><td>Q3</td><td>148</td><td class="num-pos">+600</td><td class="num-pos">勝</td></tr>
+      <tr><td>巴工業 (6309)</td><td>Q3</td><td>2,099</td><td class="num-pos">+400</td><td class="num-pos">勝</td></tr>
+      <tr><td>ニューラルG (4056)</td><td>Q5</td><td>384</td><td class="num-pos">+300</td><td class="num-pos">勝</td></tr>
+      <tr><td>ミガロHD (5535)</td><td>Q5</td><td>405</td><td class="num-pos">+100</td><td class="num-pos">勝</td></tr>
+      <tr><td>enish (3667)</td><td>Q1</td><td>60</td><td class="num-pos">+100</td><td class="num-pos">勝</td></tr>
+      <tr><td>北浜CP (2134)</td><td>Q5</td><td>40</td><td class="num-pos">+100</td><td class="num-pos">勝</td></tr>
+      <tr><td>メディアリンクス (6659)</td><td>Q1</td><td>46</td><td class="num-neutral">0</td><td>引分</td></tr>
+      <tr><td>Sun Asterisk (4053)</td><td>Q5</td><td>420</td><td class="num-neg">-500</td><td class="num-neg">負</td></tr>
+      <tr><td>FPパートナー (7388)</td><td>Q5</td><td>2,329</td><td class="num-neg">-1,000</td><td class="num-neg">負</td></tr>
+      <tr class="highlight-row"><td>日本動物高度医療 (6039)</td><td>Q2</td><td>1,378</td><td class="num-neg"><strong>-8,600</strong></td><td class="num-neg">負</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">※ 約定なし（NaN）の15銘柄は省略。Phase1集計対象は12トレード。</p>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>ショートP&L合計: +5,300円（8勝3敗1分）</strong><br>
+    Q1銘柄のみ: +14,000円（4勝0敗1分）— Q1フィルターが有効<br>
+    Q5銘柄のみ: -1,000円（3勝2敗）— Q5でもショート勝ちする銘柄あり
+  </div>
+</div>
+
+<!-- ===== 10. 今後の判断材料 ===== -->
+<div class="section">
+  <h2>2/19(木)以降の判断材料 <span class="evidence-label evidence-inference">全体が推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    このセクションは全体が筆者の推論です。未来の値動きは予測不可能です。
+  </p>
+
+  <h3>今週残りの経済指標・政治イベント <span class="evidence-label evidence-fact">事実</span></h3>
+  <table>
+    <thead><tr><th>日付</th><th>時間</th><th>イベント</th><th>重要度</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row"><td>2/18 (水)</td><td>日中</td><td>特別国会・首相指名選挙（完了）</td><td><strong>高</strong></td></tr>
+      <tr class="highlight-row"><td>2/18 (水)</td><td>28:00</td><td>FOMC会議声明 + パウエル会見</td><td><strong>最高</strong></td></tr>
+      <tr><td>2/19 (木)</td><td>08:50</td><td>鉱工業生産（12月）</td><td>中</td></tr>
+      <tr class="highlight-row"><td>2/20 (金)</td><td>08:30</td><td>日本CPI（1月）</td><td><strong>高</strong></td></tr>
+      <tr class="highlight-row"><td>2/20 (金)</td><td>日中</td><td>施政方針演説</td><td><strong>高</strong></td></tr>
+      <tr class="highlight-row"><td>2/20 (金)</td><td>22:30</td><td>米PCEデフレーター（1月）</td><td><strong>高</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>ブル要因（ショートに対して逆風）</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 高市政権発足の政策期待</div>
+      <div class="factor-detail">
+        本日首相指名完了。2/20施政方針演説で具体策が出れば「高市トレード」加速（推論）。防衛・半導体・インフラに期待。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> VI30割れでリスクオン</div>
+      <div class="factor-detail">
+        日経VI 27.89で不安心理後退。30以下が定着すれば機関投資家のリスクテイク再開（推論）。
+      </div>
+    </div>
+  </div>
+
+  <h3>ベア要因（ショートに追い風）</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> FOMCリスク</div>
+      <div class="factor-detail">
+        タカ派ならドル高だが利下げ期待後退でNY売り→東京も連れ安リスク。声明文のトーン次第。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> 金曜の三重イベント</div>
+      <div class="factor-detail">
+        2/20: 日本CPI + 施政方針演説 + 米PCE。週末リスク回避 + イベント集中で金曜ボラ拡大。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> 反発の持続力に疑問</div>
+      <div class="factor-detail">
+        2/9から+4,375→-1,786→+577。57,000台で上値重い。今日の反発が自律反発か転換点かは明日以降に判明。
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>アクションプラン <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>FOMC結果が最優先。</strong>28:00の声明+会見を必ず確認してから明日のポジション判断<br>
+    &bull; <strong>grok選定:</strong> Q1=7銘柄と改善。Q1フィルターでショートエントリー継続が有効<br>
+    &bull; <strong>水曜日:</strong> 曜日別分析で水曜はショートP&L -14,100円（最悪）。今日+5,300円はQ1フィルターが効いた結果<br>
+    &bull; <strong>2/20 金曜:</strong> 三重イベント日。ポジションサイズ縮小を検討
+  </div>
+</div>
+
+<!-- ===== 11. 参照ソース ===== -->
+<div class="section">
+  <h2>参照ソース</h2>
+
+  <h3>マーケットデータ</h3>
+  <ul class="source-list">
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL180ITTY6A210C2000000/" target="_blank">日経: 日経平均株価、終値577円高 「政策に売りなし」で三菱重工に買い</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL180L80Y6A210C2000000/" target="_blank">日経: 日経平均株価反発、午前終値は686円高</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOFL1803G0Y6A210C2000000/" target="_blank">日経: 経済政策への期待が支え（先読み株式相場）</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>日本銀行 時系列統計データ <span class="evidence-label evidence-fact">事実</span></h3>
+  <ul class="source-list">
+    <li>FM01: 無担保コールO/N物レート平均値（STRDCLUCON）— <a href="https://www.stat-search.boj.or.jp/ssi/statistics/statistics-data-search.html" target="_blank">日本銀行 時系列統計データ検索サイト</a></li>
+    <li>FM08: 東京市場 ドル・円 中心相場（FXERD05）— 同上</li>
+    <li>FM08: 東京市場 ドル・円 17時時点スポット（FXERD04）— 同上</li>
+    <li>データ取得日: 2026-02-19 / API: <code>https://www.stat-search.boj.or.jp/api/v1/getDataCode</code></li>
+  </ul>
+
+  <h3>内部データ</h3>
+  <ul class="source-list">
+    <li>index_prices_max_1d.parquet — N225日足（Open/High/Low/Close）</li>
+    <li>topix_prices_max_1d.parquet — TOPIX / Prime / Standard / Growth 日足</li>
+    <li>currency_prices_max_1d.parquet — USD/JPY日足</li>
+    <li>futures_prices_max_1d.parquet — NKD先物日足</li>
+    <li>index_prices_60d_5m.parquet — N225 5分足（タイムライン構築）</li>
+    <li>nikkei_vi_max_1d.parquet — 日経VI</li>
+    <li>grok_trending_archive.parquet — Grok銘柄バックテスト</li>
+    <li>grok_trending.parquet — 本日のGrok選定銘柄（quintile含む）</li>
+    <li>market_analysis_20260216.html — 前回レポートとの連続性</li>
+  </ul>
+</div>
+
+<!-- ===== 12. 結論 ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-success" style="margin-top:0;">
+    <strong>今日の要約:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> 日経平均 +577円（+1.02%）で4日ぶり反発。寄付56,734が安値→終日買い優勢→13:45に57,393高値→大引け57,144。TOPIX +1.21%（Prime +1.21% / Standard +0.69% / Growth +2.09%）。全33業種中31業種上昇。日経VI 27.89で18日ぶりの30割れ。特別国会で高市首相指名。<br>
+    <span class="evidence-label evidence-inference">推論</span> 4日続落の自律反発 + 高市政権期待 + VI30割れの三重好材料。ただし今夜FOMCが最大の変数。
+  </div>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>Grok選定の改善 <span class="evidence-label evidence-fact">事実</span>:</strong><br>
+    今回はQ1=7銘柄が含まれ、2/16（全5銘柄Q5で全敗）から大幅改善。Q1のみでショートP&L +14,000円。指数+1.02%の反発日でもQ1ショートは機能した。<strong>Q1フィルターの有効性が再確認された。</strong>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>今週残りのキーポイント <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>今夜 FOMC (28:00):</strong> 今週最大のイベント。明日の相場を決定づける<br>
+    &bull; <strong>2/20 (金):</strong> 日本CPI + 施政方針演説 + 米PCEの三重イベント。週末前でポジション調整も重なる<br>
+    &bull; <strong>VI 27.89:</strong> 30割れ定着すれば不安心理後退→リスクオン→ショート環境悪化の可能性<br>
+    &bull; <strong>判断基準:</strong> FOMC結果 + 為替の方向 + grokのquintile分布
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-18 by Claude Code / 数値データはparquet（2026-02-18収録分）+ 日銀API（2026-02-19取得）、定性データはweb検索<br>
+  P&L符号はショート基準 (ショートP&L = -ロングP&L) | 本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

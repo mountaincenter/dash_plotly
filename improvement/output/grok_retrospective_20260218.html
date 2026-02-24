@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grok銘柄 ショート振り返り - 何を信じるべきだったか？</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-5 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:12px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-5 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .bar-chart { margin:12px 0; }
+  .bar-row { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .bar-row .bar-label { min-width:80px; color:var(--text-muted); text-align:right; }
+  .bar-row .bar-track { flex:1; height:24px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; position:relative; }
+  .bar-row .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; min-width:2px; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .bar-fill-amber { background:var(--amber); }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-best { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-worst { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>Grok銘柄 ショート振り返り — 何を信じるべきだったか？ <span class="badge badge-blue">2026/02/18</span></h1>
+<div class="subtitle">
+  grok_trending_archive.parquet 全1,068トレード（2025-11-04〜2026-02-18）を分析。<br>
+  始値エントリー→各時間帯イグジットでのショートP&L（100株単位）を検証。<br>
+  データソース: analysis-custom API (dev_analysis_custom.py → grok_trending_archive.parquet)
+</div>
+
+<!-- ===== 1. Overall Summary ===== -->
+<div class="section">
+  <h2>全体サマリー <span class="evidence-label evidence-fact">事実</span></h2>
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">Phase1 (寄→引)</div>
+      <div class="value num-pos">+1,043,724円</div>
+      <div class="sub">547/1026勝 (53%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">最適時間帯 (14:30)</div>
+      <div class="value num-pos">+1,534,666円</div>
+      <div class="sub">473/816勝 (58%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">最悪時間帯 (09:30)</div>
+      <div class="value num-pos">+232,910円</div>
+      <div class="sub">479/909勝 (53%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 2. Time Segment Analysis ===== -->
+<div class="section">
+  <h2>時間帯別ショートP&L <span class="evidence-label evidence-fact">事実</span></h2>
+  <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+    寄付（始値）でショートエントリー → 各時間帯の価格でイグジットした場合のP&L
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>イグジット時間</th>
+        <th>ショートP&L合計</th>
+        <th>勝率</th>
+        <th>平均P&L/トレード</th>
+        <th>評価</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>09:30</td><td class="num-pos">+232,910</td><td>479/909 (53%)</td><td>+256</td><td></td></tr>
+      <tr><td>10:00</td><td class="num-pos">+587,476</td><td>493/879 (56%)</td><td>+668</td><td></td></tr>
+      <tr><td>10:30</td><td class="num-pos">+793,028</td><td>468/845 (55%)</td><td>+938</td><td></td></tr>
+      <tr><td>11:00</td><td class="num-pos">+897,424</td><td>467/832 (56%)</td><td>+1,079</td><td></td></tr>
+      <tr><td>11:30</td><td class="num-pos">+992,924</td><td>543/1021 (53%)</td><td>+973</td><td></td></tr>
+      <tr><td>13:00</td><td class="num-pos">+1,242,694</td><td>484/841 (58%)</td><td>+1,478</td><td></td></tr>
+      <tr><td>13:30</td><td class="num-pos">+1,235,912</td><td>461/810 (57%)</td><td>+1,526</td><td></td></tr>
+      <tr><td>14:00</td><td class="num-pos">+1,315,164</td><td>470/822 (57%)</td><td>+1,600</td><td></td></tr>
+      <tr class="highlight-row-green"><td><strong>14:30</strong></td><td class="num-pos"><strong>+1,534,666</strong></td><td><strong>473/816 (58%)</strong></td><td><strong>+1,881</strong></td><td><span class="tag tag-best">BEST</span></td></tr>
+      <tr><td>15:00</td><td class="num-pos">+1,288,054</td><td>485/845 (57%)</td><td>+1,524</td><td></td></tr>
+      <tr><td>15:30 (引け)</td><td class="num-pos">+1,041,113</td><td>562/1068 (53%)</td><td>+975</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-success">
+    <strong>結論: 14:30イグジットが最適。</strong><br>
+    引けまで持つと+1,041,113→14:30で手仕舞えば+1,534,666（+47%改善）。<br>
+    15:00以降は利益が減少する傾向。大引けの買い戻し（引け成り注文）で利益が削られる。
+  </div>
+</div>
+
+<!-- ===== 3. Weekday Analysis ===== -->
+<div class="section">
+  <h2>曜日別ショートP&L <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr><th>曜日</th><th>件数</th><th>Phase1 P&L</th><th>勝率</th><th>Phase2 P&L</th><th>最適時間帯</th><th>評価</th></tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row-green">
+        <td><strong>月曜</strong></td><td>154</td>
+        <td class="num-pos"><strong>+247,450</strong></td><td>87/153 (57%)</td>
+        <td class="num-pos">+192,450</td><td>10:30 (+237,100)</td>
+        <td><span class="tag tag-best">GOOD</span></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>火曜</strong></td><td>247</td>
+        <td class="num-pos"><strong>+329,550</strong></td><td>135/238 (57%)</td>
+        <td class="num-pos">+620,050</td><td>14:30 (+637,040)</td>
+        <td><span class="tag tag-best">BEST</span></td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>水曜</strong></td><td>229</td>
+        <td class="num-neg"><strong>-14,100</strong></td><td>102/211 (48%)</td>
+        <td class="num-neg">-208,600</td><td>11:30 (-14,100)</td>
+        <td><span class="tag tag-worst">WORST</span></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>木曜</strong></td><td>246</td>
+        <td class="num-pos"><strong>+155,414</strong></td><td>127/237 (54%)</td>
+        <td class="num-pos">+232,613</td><td>14:30 (+392,724)</td>
+        <td><span class="tag tag-neutral">OK</span></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>金曜</strong></td><td>192</td>
+        <td class="num-pos"><strong>+325,410</strong></td><td>96/187 (51%)</td>
+        <td class="num-pos">+204,600</td><td>14:30 (+371,100)</td>
+        <td><span class="tag tag-best">GOOD</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-danger">
+    <strong>水曜日はショート禁止レベル。</strong><br>
+    Phase1 -14,100円、Phase2 -208,600円で唯一のマイナス曜日。<br>
+    今日（2/18水曜）は+5,300円で例外だったが、これはQ1フィルターの効果。<br>
+    水曜日にエントリーする場合はQ1のみに限定すべき。
+  </div>
+
+  <div class="alert-box alert-success">
+    <strong>火曜日が最強。</strong> Phase2 +620,050円で他曜日の2倍以上。14:30イグジットなら+637,040円。
+  </div>
+</div>
+
+<!-- ===== 4. ATR Analysis ===== -->
+<div class="section">
+  <h2>ATR14(%) 別ショートP&L <span class="evidence-label evidence-fact">事実</span></h2>
+  <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+    ATR14: 14日間の平均真の値幅（%）。ボラティリティの指標。高いほど値動きが大きい。
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>ATR14帯</th><th>件数</th><th>ショートP&L</th><th>勝率</th><th>平均P&L</th><th>評価</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0-2%</td><td>113</td><td class="num-pos">+11,300</td><td>57/108 (53%)</td><td>+105</td><td><span class="tag tag-neutral">薄い</span></td></tr>
+      <tr><td>2-4%</td><td>307</td><td class="num-pos">+41,050</td><td>135/296 (46%)</td><td>+139</td><td><span class="tag tag-neutral">薄い</span></td></tr>
+      <tr class="highlight-row-green"><td><strong>4-6%</strong></td><td>227</td><td class="num-pos"><strong>+198,750</strong></td><td>116/215 (54%)</td><td>+924</td><td><span class="tag tag-best">GOOD</span></td></tr>
+      <tr class="highlight-row"><td>6-8%</td><td>173</td><td class="num-neg">-132,650</td><td>85/166 (51%)</td><td>-799</td><td><span class="tag tag-worst">LOSS</span></td></tr>
+      <tr class="highlight-row-green"><td><strong>8-10%</strong></td><td>92</td><td class="num-pos"><strong>+158,574</strong></td><td>51/90 (57%)</td><td>+1,762</td><td><span class="tag tag-best">GOOD</span></td></tr>
+      <tr class="highlight-row-green"><td><strong>10%+</strong></td><td>149</td><td class="num-pos"><strong>+730,700</strong></td><td>99/144 (69%)</td><td>+5,074</td><td><span class="tag tag-best">BEST</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-success">
+    <strong>ATR 10%以上が圧倒的。</strong><br>
+    149件で+730,700円（全体の70%）。勝率69%。仕手株・急騰株は下がるときも激しい。<br>
+    ATR 4-6%も安定して利益。6-8%帯だけマイナスなのは「中途半端なボラ」の罠。
+  </div>
+
+  <div class="alert-box alert-warning">
+    <strong>ATRフィルター案:</strong> ATR &lt; 4% → エントリー見送り。ATR &gt; 10% → 積極エントリー。
+  </div>
+</div>
+
+<!-- ===== 5. RSI Analysis ===== -->
+<div class="section">
+  <h2>RSI(9) 別ショートP&L <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr><th>RSI帯</th><th>件数</th><th>ショートP&L</th><th>勝率</th><th>解釈</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0-20 (売られすぎ)</td><td>49</td><td class="num-pos">+50,200</td><td>28/48 (58%)</td><td>反発しない＝さらに下落</td></tr>
+      <tr><td>20-30</td><td>56</td><td class="num-pos">+100,150</td><td>30/53 (57%)</td><td>底抜けパターン</td></tr>
+      <tr><td>30-40</td><td>108</td><td class="num-pos">+109,440</td><td>49/102 (48%)</td><td>低勝率だが利益</td></tr>
+      <tr class="highlight-row-green"><td><strong>40-50</strong></td><td>146</td><td class="num-pos"><strong>+221,800</strong></td><td><strong>82/140 (59%)</strong></td><td><strong>最効率</strong></td></tr>
+      <tr class="highlight-row-green"><td><strong>50-60</strong></td><td>136</td><td class="num-pos"><strong>+253,624</strong></td><td><strong>74/129 (57%)</strong></td><td><strong>最大P&L</strong></td></tr>
+      <tr><td>60-70</td><td>160</td><td class="num-pos">+192,600</td><td>80/152 (53%)</td><td>まだ利益</td></tr>
+      <tr><td>70-80</td><td>145</td><td class="num-pos">+62,460</td><td>75/144 (52%)</td><td>利益薄い</td></tr>
+      <tr class="highlight-row"><td><strong>80+（買われすぎ）</strong></td><td>254</td><td class="num-pos">+4,050</td><td>119/244 (49%)</td><td><strong>ほぼ無利益</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-info">
+    <strong>直感に反する結果:</strong> RSI 80+（買われすぎ）をショートしても+4,050円しか取れない。<br>
+    <strong>最も稼げるのはRSI 40-60帯。</strong>「まだ下がるか微妙」な位置が実は一番おいしい。<br>
+    RSI 0-30（売られすぎ）でもプラスなのは「底抜け」パターン。仕手株の暴落局面。
+  </div>
+</div>
+
+<!-- ===== 6. Nikkei Change Correlation ===== -->
+<div class="section">
+  <h2>日経変化率 × ショートP&L <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr><th>日経変化率</th><th>件数</th><th>ショートP&L</th><th>勝率</th><th>評価</th></tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row-green"><td>&lt;-2%</td><td>29</td><td class="num-pos">+170,850</td><td>18/29 (62%)</td><td><span class="tag tag-best">暴落日</span></td></tr>
+      <tr><td>-2〜-1%</td><td>215</td><td class="num-pos">+146,110</td><td>106/215 (49%)</td><td></td></tr>
+      <tr class="highlight-row-green"><td><strong>-1〜-0.5%</strong></td><td>79</td><td class="num-pos"><strong>+206,300</strong></td><td><strong>48/71 (68%)</strong></td><td><span class="tag tag-best">最高効率</span></td></tr>
+      <tr class="highlight-row-green"><td><strong>-0.5〜0%</strong></td><td>219</td><td class="num-pos"><strong>+570,450</strong></td><td><strong>124/195 (64%)</strong></td><td><span class="tag tag-best">最大P&L</span></td></tr>
+      <tr><td>0〜+0.5%</td><td>195</td><td class="num-pos">+274,474</td><td>108/195 (55%)</td><td></td></tr>
+      <tr><td>+0.5〜+1%</td><td>24</td><td class="num-pos">+6,650</td><td>15/23 (65%)</td><td></td></tr>
+      <tr class="highlight-row"><td><strong>+1〜+2%</strong></td><td>203</td><td class="num-neg"><strong>-275,950</strong></td><td>85/203 (42%)</td><td><span class="tag tag-worst">危険</span></td></tr>
+      <tr class="highlight-row"><td>&gt;+2%</td><td>104</td><td class="num-neg">-55,160</td><td>43/95 (45%)</td><td><span class="tag tag-worst">危険</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-success">
+    <strong>ショート最適環境: 日経 -1%〜0%（小幅安〜横ばい）。</strong><br>
+    -0.5〜0%で+570,450円（勝率64%）、-1〜-0.5%で+206,300円（勝率68%）。<br>
+    大幅安（&lt;-2%）よりも小幅安の方がP&Lが良い。
+  </div>
+
+  <div class="alert-box alert-danger">
+    <strong>日経+1%以上の日はショート禁止。</strong><br>
+    +1〜2%で-275,950円（勝率42%）、+2%超で-55,160円（勝率45%）。<br>
+    全面高の日は個別もほぼ上がる。
+  </div>
+</div>
+
+<!-- ===== 7. Today's Application ===== -->
+<div class="section">
+  <h2>本日（2/18水）のGrok 27銘柄への適用 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <h3>今日の条件</h3>
+  <table>
+    <thead><tr><th>条件</th><th>値</th><th>ショートへの影響</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row"><td>曜日</td><td><strong>水曜</strong></td><td class="num-neg">WORST（水曜P&L -14,100円）</td></tr>
+      <tr><td>日経変化率</td><td>+1.02%</td><td class="num-neg">危険帯（+1〜2%で-275,950円）</td></tr>
+      <tr><td>Quintile分布</td><td>Q1=7, Q3=9, Q5=7</td><td class="num-pos">Q1が7銘柄でフィルター可能</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Quintile別結果（Phase1）</h3>
+  <table>
+    <thead><tr><th>Quintile</th><th>銘柄数</th><th>約定</th><th>ショートP&L</th><th>勝率</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-green"><td><strong>Q1</strong></td><td>7</td><td>4</td><td class="num-pos"><strong>+14,000</strong></td><td class="num-pos">3/4 (75%)</td></tr>
+      <tr><td>Q2</td><td>3</td><td>1</td><td class="num-neg">-8,600</td><td>0/1</td></tr>
+      <tr><td>Q3</td><td>9</td><td>2</td><td class="num-pos">0</td><td>1/2</td></tr>
+      <tr><td>Q4</td><td>1</td><td>0</td><td>—</td><td>—</td></tr>
+      <tr class="highlight-row"><td><strong>Q5</strong></td><td>7</td><td>5</td><td class="num-neg"><strong>-100</strong></td><td class="num-neg">3/5</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-success">
+    <strong>Q1フィルターの威力:</strong> 水曜+日経+1%という最悪環境でも、Q1のみなら+14,000円（75%勝率）。<br>
+    Q1以外を排除するだけで、-8,700円の損失を回避できた。
+  </div>
+</div>
+
+<!-- ===== 8. Optimal Strategy Summary ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論: 何を信じるべきか</h2>
+
+  <div class="alert-box alert-info" style="margin-top:0;">
+    <strong>信頼度ランキング（P&Lへの影響度順）:</strong>
+  </div>
+
+  <table>
+    <thead><tr><th>順位</th><th>シグナル</th><th>根拠</th><th>アクション</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-green">
+        <td><strong>1</strong></td>
+        <td><strong>Quintile (Q1フィルター)</strong></td>
+        <td>今日: Q1のみで+14,000円 vs 全体+5,300円</td>
+        <td><strong>Q1のみエントリー。Q4-Q5は絶対に避ける</strong></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>2</strong></td>
+        <td><strong>ATR14 &gt; 10%</strong></td>
+        <td>149件で+730,700円（勝率69%）</td>
+        <td><strong>高ATR銘柄を優先。ATR&lt;4%は見送り</strong></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>3</strong></td>
+        <td><strong>イグジット時間帯: 14:30</strong></td>
+        <td>引けより+493,553円改善</td>
+        <td><strong>14:30に手仕舞い。引けまで持たない</strong></td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>4</strong></td>
+        <td><strong>曜日: 水曜回避</strong></td>
+        <td>水曜のみマイナス（-14,100円）</td>
+        <td><strong>水曜はQ1のみ or 見送り</strong></td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>5</strong></td>
+        <td><strong>日経変化率: +1%以上で回避</strong></td>
+        <td>+1〜2%で-275,950円</td>
+        <td><strong>先物が+1%以上の朝は見送り検討</strong></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>RSI(9): 40-60帯が最適</td>
+        <td>RSI40-60で+475,424円</td>
+        <td>RSI80+は見送り（ほぼ無利益）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>複合フィルター案（未検証）:</strong><br>
+    Q1 + ATR&gt;4% + 水曜以外 + 日経&lt;+1% → この条件全てを満たすトレードのみエントリー<br>
+    <br>
+    <strong>本日の例:</strong><br>
+    &bull; 水曜 → 通常なら見送り<br>
+    &bull; 日経+1.02% → 危険帯<br>
+    &bull; しかしQ1フィルター適用で+14,000円 → <strong>Q1の信頼度が他のシグナルを上回る</strong>
+  </div>
+</div>
+
+<!-- ===== 9. Data Source ===== -->
+<div class="section">
+  <h2>データソース</h2>
+  <table>
+    <thead><tr><th>データ</th><th>ファイル / エンドポイント</th></tr></thead>
+    <tbody>
+      <tr><td>バックテストアーカイブ</td><td>grok_trending_archive.parquet (1,068行)</td></tr>
+      <tr><td>本日のGrok選定</td><td>grok_trending.parquet (27行, quintile含む)</td></tr>
+      <tr><td>時間帯別P&L</td><td>seg_0930〜seg_1530 (11セグメント)</td></tr>
+      <tr><td>API</td><td>GET /dev/analysis-custom/summary</td></tr>
+      <tr><td>Frontend</td><td>stock-frontend/app/dev/analysis-custom/page.tsx</td></tr>
+      <tr><td>Backend</td><td>dash_plotly/server/routers/dev_analysis_custom.py</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  generated at 2026-02-18 by Claude Code<br>
+  P&L符号はショート基準 (ショートP&L = -ロングP&L) | 100株単位 | 本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

@@ -429,6 +429,156 @@ class JQuantsFetcher:
 
         return df
 
+    # ── 需給データ (Standard プラン以上) ──
+
+    def get_margin_interest(
+        self,
+        code: str | None = None,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        信用取引週末残高を取得（週次・銘柄別）
+
+        Args:
+            code: 銘柄コード（5桁）。Noneの場合は全銘柄（大量）
+            from_date: 取得開始日
+            to_date: 取得終了日
+        """
+        params = {}
+        if code:
+            params["code"] = code
+        if from_date:
+            params["from"] = str(from_date)
+        if to_date:
+            params["to"] = str(to_date)
+
+        data = self.client.request_with_pagination(
+            "/markets/margin-interest", params=params
+        )
+        if not data:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
+    def get_margin_alert(
+        self,
+        date_val: str | date | None = None,
+        code: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        日々公表信用取引残高を取得（日次・注目銘柄のみ）
+
+        Args:
+            date_val: 取得日（YYYY-MM-DD）
+            code: 銘柄コード（5桁）
+        """
+        params = {}
+        if date_val:
+            params["date"] = str(date_val).replace("-", "")
+        if code:
+            params["code"] = code
+
+        data = self.client.request_with_pagination(
+            "/markets/margin-alert", params=params
+        )
+        if not data:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
+    def get_short_ratio(
+        self,
+        date_val: str | date | None = None,
+        sector33code: str | None = None,
+    ) -> pd.DataFrame:
+        """
+        業種別空売り比率を取得（日次）
+
+        Args:
+            date_val: 取得日（YYYY-MM-DD）
+            sector33code: 33業種コード
+        """
+        params = {}
+        if date_val:
+            params["date"] = str(date_val).replace("-", "")
+        if sector33code:
+            params["sector33code"] = sector33code
+
+        data = self.client.request_with_pagination(
+            "/markets/short-ratio", params=params
+        )
+        if not data:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
+    def get_short_sale_report(
+        self,
+        code: str | None = None,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        空売り残高報告を取得（銘柄別）
+
+        Args:
+            code: 銘柄コード（5桁）
+            from_date: 取得開始日
+            to_date: 取得終了日
+        """
+        params = {}
+        if code:
+            params["code"] = code
+        if from_date:
+            params["from"] = str(from_date)
+        if to_date:
+            params["to"] = str(to_date)
+
+        data = self.client.request_with_pagination(
+            "/markets/short-sale-report", params=params
+        )
+        if not data:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
+    def get_market_breakdown(
+        self,
+        date_val: str | date | None = None,
+    ) -> pd.DataFrame:
+        """
+        投資部門別売買動向を取得（Premiumプラン以上）
+
+        Args:
+            date_val: 取得日（YYYY-MM-DD）
+        """
+        params = {}
+        if date_val:
+            params["date"] = str(date_val).replace("-", "")
+
+        data = self.client.request("/markets/breakdown", params=params)
+        rows = data.get("data", [])
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rows)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
     def convert_to_yfinance_format(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         J-Quants形式のDataFrameをyfinance互換形式に変換

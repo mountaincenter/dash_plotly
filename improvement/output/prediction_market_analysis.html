@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予測市場データ活用分析</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #0f1520;
+    --bg-card: #111927;
+    --bg-card-hover: #152035;
+    --border: #1e2a3a;
+    --border-accent: #2a3f5f;
+    --text-primary: #e2e8f0;
+    --text-secondary: #8899aa;
+    --text-muted: #556677;
+    --accent-green: #00e676;
+    --accent-green-dim: #00e67630;
+    --accent-red: #ff1744;
+    --accent-red-dim: #ff174430;
+    --accent-amber: #ffab00;
+    --accent-amber-dim: #ffab0025;
+    --accent-blue: #448aff;
+    --accent-blue-dim: #448aff25;
+    --accent-cyan: #00e5ff;
+    --accent-cyan-dim: #00e5ff20;
+    --accent-purple: #b388ff;
+    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --sans: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+  }
+
+  html { font-size: 15px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 230, 118, 0.008) 2px,
+      rgba(0, 230, 118, 0.008) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-green), var(--accent-cyan), transparent);
+    animation: headerGlow 4s ease-in-out infinite;
+  }
+
+  @keyframes headerGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .header-meta .tag {
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    padding: 0.2em 0.7em;
+    border: 1px solid var(--accent-green);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.6rem;
+  }
+
+  .header .subtitle {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .header .subtitle a {
+    color: var(--accent-blue);
+    text-decoration: none;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    padding: 0.6rem 0;
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-inner {
+    display: flex;
+    gap: 0.3rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-inner::-webkit-scrollbar { display: none; }
+
+  .nav a {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.4em 0.8em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+  }
+
+  .nav a:hover {
+    color: var(--accent-green);
+    border-color: var(--accent-green);
+    background: var(--accent-green-dim);
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    padding: 3rem 0;
+    border-bottom: 1px solid var(--border);
+    animation: fadeUp 0.6s ease-out both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent-green);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-label::before {
+    content: '//';
+    color: var(--text-muted);
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── OVERVIEW BOX ── */
+  .overview-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-cyan);
+    padding: 1.5rem 1.8rem;
+    font-size: 0.92rem;
+    line-height: 1.9;
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  .overview-box strong {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .overview-box .stat-row {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .overview-box .stat {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .overview-box .stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent-green);
+    display: block;
+  }
+
+  .overview-box .stat-label {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── METHOD CARDS ── */
+  .methods-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .method-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+    position: relative;
+  }
+
+  .method-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+  }
+
+  .method-card-header {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .method-number {
+    font-family: var(--mono);
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 2.5rem;
+  }
+
+  .method-card:nth-child(1) .method-number { color: var(--accent-green); }
+  .method-card:nth-child(2) .method-number { color: var(--accent-amber); }
+  .method-card:nth-child(3) .method-number { color: var(--accent-purple); }
+
+  .method-card:nth-child(1) { border-top: 2px solid var(--accent-green); }
+  .method-card:nth-child(2) { border-top: 2px solid var(--accent-amber); }
+  .method-card:nth-child(3) { border-top: 2px solid var(--accent-purple); }
+
+  .method-card-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .method-card-header .en-name {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 0.15rem;
+  }
+
+  .method-card-body {
+    padding: 1.5rem;
+  }
+
+  .method-card-body p {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+    line-height: 1.8;
+  }
+
+  .method-card-body .formula-block {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1.2rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--accent-cyan);
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+
+  .process-list {
+    list-style: none;
+    counter-reset: process;
+    margin: 1rem 0;
+  }
+
+  .process-list li {
+    counter-increment: process;
+    position: relative;
+    padding: 0.5rem 0 0.5rem 2.8rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    border-left: 1px solid var(--border);
+    margin-left: 0.9rem;
+  }
+
+  .process-list li::before {
+    content: counter(process);
+    position: absolute;
+    left: -0.65rem;
+    top: 0.45rem;
+    width: 1.3rem;
+    height: 1.3rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-accent);
+    color: var(--accent-green);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .process-list li:last-child { border-left-color: transparent; }
+
+  .key-point {
+    background: var(--accent-green-dim);
+    border: 1px solid var(--accent-green);
+    padding: 0.8rem 1.2rem;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  .key-point::before {
+    content: 'KEY';
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--accent-green);
+    letter-spacing: 0.15em;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .finding-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+
+  .finding-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+  }
+
+  .finding-item .label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+
+  .finding-item .value {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .finding-item .value.negative { color: var(--accent-red); }
+  .finding-item .value.positive { color: var(--accent-green); }
+  .finding-item .value.neutral { color: var(--accent-amber); }
+
+  .finding-item .detail {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+
+  /* ── COMPARISON TABLE ── */
+  .table-wrapper {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  thead {
+    background: var(--bg-secondary);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.8rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: var(--bg-card-hover); }
+
+  .rating {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+  }
+
+  .rating-high { color: var(--accent-green); }
+  .rating-mid { color: var(--accent-amber); }
+  .rating-low { color: var(--accent-red); }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15em 0.6em;
+    letter-spacing: 0.05em;
+  }
+
+  .pill-green { background: var(--accent-green-dim); color: var(--accent-green); border: 1px solid var(--accent-green); }
+  .pill-amber { background: var(--accent-amber-dim); color: var(--accent-amber); border: 1px solid var(--accent-amber); }
+  .pill-red { background: var(--accent-red-dim); color: var(--accent-red); border: 1px solid var(--accent-red); }
+
+  /* ── ACTION PLAN ── */
+  .action-cards {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .action-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .action-card-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .action-card-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .priority-badge {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.2em 0.6em;
+    letter-spacing: 0.1em;
+  }
+
+  .priority-1 {
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    border: 1px solid var(--accent-green);
+  }
+
+  .priority-2 {
+    background: var(--accent-amber-dim);
+    color: var(--accent-amber);
+    border: 1px solid var(--accent-amber);
+  }
+
+  .priority-3 {
+    background: var(--accent-blue-dim);
+    color: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
+  }
+
+  .action-card-body {
+    padding: 1.2rem 1.5rem;
+  }
+
+  .action-items {
+    list-style: none;
+  }
+
+  .action-items li {
+    position: relative;
+    padding: 0.4rem 0 0.4rem 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .action-items li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    font-family: var(--mono);
+    color: var(--accent-green);
+    font-weight: 600;
+  }
+
+  .action-card:nth-child(2) .action-items li::before { color: var(--accent-amber); }
+  .action-card:nth-child(3) .action-items li::before { color: var(--accent-blue); }
+
+  .evolution-arrow {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--bg-primary);
+    border: 1px dashed var(--border-accent);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .evolution-arrow .from {
+    color: var(--accent-red);
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+
+  .evolution-arrow .arrow {
+    color: var(--accent-green);
+    font-size: 1.2rem;
+  }
+
+  .evolution-arrow .to {
+    color: var(--accent-green);
+    font-weight: 600;
+  }
+
+  /* ── TAKEAWAY ── */
+  .takeaway-box {
+    background: linear-gradient(135deg, var(--bg-card) 0%, #0d1f2d 100%);
+    border: 1px solid var(--accent-cyan);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .takeaway-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--accent-cyan-dim) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .takeaway-quote {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    position: relative;
+    color: var(--accent-cyan);
+    font-style: italic;
+  }
+
+  .takeaway-quote::before {
+    content: '"';
+    font-size: 3rem;
+    color: var(--accent-cyan);
+    opacity: 0.3;
+    position: absolute;
+    left: -0.5rem;
+    top: -1rem;
+    font-family: var(--mono);
+  }
+
+  .takeaway-body {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+    position: relative;
+  }
+
+  .takeaway-body strong {
+    color: var(--text-primary);
+  }
+
+  .highlight-green { color: var(--accent-green); font-weight: 600; }
+  .highlight-red { color: var(--accent-red); font-weight: 600; }
+  .highlight-cyan { color: var(--accent-cyan); font-weight: 600; }
+  .highlight-amber { color: var(--accent-amber); font-weight: 600; }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 2rem 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .footer span { color: var(--accent-green); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    html { font-size: 14px; }
+    .container { padding: 0 1rem; }
+    .header h1 { font-size: 1.5rem; }
+    .finding-grid { grid-template-columns: 1fr 1fr; }
+    .overview-box .stat-row { gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="container">
+  <header class="header">
+    <div class="header-meta">
+      <span class="tag">Analysis Report</span>
+      <span>2026-02-20</span>
+      <span>|</span>
+      <span>dash_plotly / improvement</span>
+    </div>
+    <h1>予測市場データ活用分析<br>ヘッジファンド手法 vs 現行システム</h1>
+    <div class="subtitle">
+      Source: <a href="https://x.com/RohOnChain/status/2023781142663754049" target="_blank">@RohOnChain</a>&nbsp;— How To Use Prediction Market Data Like Hedge Funds
+    </div>
+  </header>
+</div>
+
+<!-- ═══ NAV ═══ -->
+<nav class="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#overview">01_概要</a>
+      <a href="#methods">02_手法解説</a>
+      <a href="#comparison">03_適合性分析</a>
+      <a href="#action">04_アクションプラン</a>
+      <a href="#takeaway">05_結論</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ SECTION 1: OVERVIEW ═══ -->
+<div class="container">
+  <section class="section" id="overview">
+    <div class="section-label">Section 01</div>
+    <h2 class="section-title">記事の概要</h2>
+    <div class="overview-box">
+      <p>
+        <strong>Jon Becker</strong>が公開した予測市場データセット（Polymarket / Kalshi）を用い、
+        ヘッジファンドが実際に行っている<strong>3つの定量手法</strong>を解説した記事。
+        データは<strong>2020年</strong>から現在まで、MITライセンスで無償公開。
+      </p>
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-value">400M+</span>
+          <span class="stat-label">トレード数</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">36 GB</span>
+          <span class="stat-label">圧縮サイズ</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">72.1M</span>
+          <span class="stat-label">Kalshi分析対象</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">Parquet</span>
+          <span class="stat-label">データ形式</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 2: METHODS ═══ -->
+  <section class="section" id="methods">
+    <div class="section-label">Section 02</div>
+    <h2 class="section-title">3つの手法の解説</h2>
+
+    <div class="methods-grid">
+
+      <!-- Method 1 -->
+      <div class="method-card">
+        <div class="method-card-header">
+          <span class="method-number">01</span>
+          <div>
+            <h3>経験的Kelly基準 + Monte Carlo</h3>
+            <span class="en-name">Empirical Kelly Criterion with Monte Carlo Uncertainty Quantification</span>
+          </div>
+        </div>
+        <div class="method-card-body">
+          <p>
+            テキストブックのKelly公式はエッジを<span class="highlight-red">確定値</span>として扱う。
+            現実にはエッジは分布であり、不確実性を織り込んだポジションサイジングが必要。
+          </p>
+
+          <div class="formula-block">
+            f* = (p &times; b - q) / b &nbsp;&nbsp;&nbsp; <span style="color:var(--text-muted)">// textbook Kelly</span><br>
+            f_empirical = f_kelly &times; (1 - CV_edge) &nbsp;&nbsp;&nbsp; <span style="color:var(--text-muted)">// uncertainty-adjusted</span>
+          </div>
+
+          <ol class="process-list">
+            <li>過去のトレードからパターン一致する事例を抽出</li>
+            <li>実現リターン分布を構築（正規分布を仮定しない）</li>
+            <li>Monte Carloで10,000パスをリサンプリング（順序シャッフル）</li>
+            <li>各パスの最大ドローダウン分布を算出</li>
+            <li>不確実性調整: CV_edge（変動係数）でKelly分数をヘアカット</li>
+          </ol>
+
+          <div class="key-point">
+            リテール: Kellyの点推定でオーバーベット → <span class="highlight-red">40%ドローダウン</span><br>
+            機関投資家: 95パーセンタイルでサイジング → <span class="highlight-green">20%以下に抑制</span><br>
+            同じ戦略、同じエッジ。サイジング手法だけで結果が完全に分岐する。
+          </div>
+        </div>
+      </div>
+
+      <!-- Method 2 -->
+      <div class="method-card">
+        <div class="method-card-header">
+          <span class="method-number">02</span>
+          <div>
+            <h3>キャリブレーション・サーフェス分析</h3>
+            <span class="en-name">Calibration Surface Analysis Across Price and Time Dimensions</span>
+          </div>
+        </div>
+        <div class="method-card-body">
+          <p>
+            価格（インプライド確率）&times; 時間（満期までの残り時間）の<strong>2次元</strong>でキャリブレーションを分析。
+            ロングショットバイアスの実在と時間変動を測定する。
+          </p>
+
+          <div class="formula-block">
+            C(p, t) = empirical_probability(outcome | price=p, time_remaining=t)<br>
+            M(p, t) = C(p, t) - p/100 &nbsp;&nbsp;&nbsp; <span style="color:var(--text-muted)">// mispricing function</span>
+          </div>
+
+          <div class="finding-grid">
+            <div class="finding-item">
+              <div class="label">1セント契約</div>
+              <div class="value negative">-57%</div>
+              <div class="detail">実現勝率0.43% vs インプライド1%</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">50セント契約</div>
+              <div class="value negative">-2.65%</div>
+              <div class="detail">テイカーミスプライシング</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">テイカー負け水準</div>
+              <div class="value neutral">80 / 99</div>
+              <div class="detail">99価格水準中80で負の超過リターン</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">データサイズ</div>
+              <div class="value" style="color:var(--text-primary)">72.1M</div>
+              <div class="detail">Kalshiトレード分析</div>
+            </div>
+          </div>
+
+          <div class="key-point">
+            時間次元の仮説: ロングショットバイアスは満期までの時間で変化する。<br>
+            <span class="highlight-amber">初期</span>=小売センチメント支配（バイアス最大）→ <span class="highlight-cyan">中期</span>=情報蓄積で収束 → <span class="highlight-green">後期</span>=バイアス反転の可能性
+          </div>
+        </div>
+      </div>
+
+      <!-- Method 3 -->
+      <div class="method-card">
+        <div class="method-card-header">
+          <span class="method-number">03</span>
+          <div>
+            <h3>オーダーフロー分解</h3>
+            <span class="en-name">Order Flow Decomposition — Maker vs Taker Profitability</span>
+          </div>
+        </div>
+        <div class="method-card-body">
+          <p>
+            全トレードをメイカー（流動性提供者）とテイカー（流動性消費者）に分解し、収益性を比較。
+            テイカーは構造的に不利であることを実証。
+          </p>
+
+          <div class="finding-grid">
+            <div class="finding-item">
+              <div class="label">メイカー YES買い</div>
+              <div class="value positive">+0.77%</div>
+              <div class="detail">超過リターン</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">メイカー NO買い</div>
+              <div class="value positive">+1.25%</div>
+              <div class="detail">超過リターン</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">Cohen's d</div>
+              <div class="value neutral">&asymp; 0.02</div>
+              <div class="detail">予測力の差はほぼゼロ</div>
+            </div>
+            <div class="finding-item">
+              <div class="label">テイカー負け率</div>
+              <div class="value negative">80/99</div>
+              <div class="detail">価格水準でマイナス</div>
+            </div>
+          </div>
+
+          <div class="key-point">
+            メイカーは予測が上手いのではなく、<span class="highlight-green">構造的に有利</span>。
+            テイカーの「肯定的・ロングショット結果への偏好」がメイカーのエッジを生む。
+            富はテイカーからメイカーへ<strong>系統的に</strong>移転する。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 3: COMPARISON ═══ -->
+  <section class="section" id="comparison">
+    <div class="section-label">Section 03</div>
+    <h2 class="section-title">現行システムとの適合性分析</h2>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>手法</th>
+            <th>適用可能性</th>
+            <th>現状</th>
+            <th>ギャップ</th>
+            <th>難易度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--accent-green)">Kelly + Monte Carlo</strong></td>
+            <td><span class="rating rating-high">★★★★★</span><br><span class="pill pill-green">高</span></td>
+            <td>ポジションサイジング<span class="highlight-red">未実装</span><br>全銘柄100株固定</td>
+            <td>データは揃っている（archive parquet）<br>ロジックが完全に欠如</td>
+            <td><span class="pill pill-amber">中 2-3日</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--accent-amber)">Calibration Surface</strong></td>
+            <td><span class="rating rating-mid">★★★☆☆</span><br><span class="pill pill-amber">中</span></td>
+            <td>Quintile分析・時間帯別分析は既存</td>
+            <td>prob_upキャリブレーション曲線が未作成<br>曜日・市場環境別の分析が不足</td>
+            <td><span class="pill pill-green">低 1日</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--accent-purple)">Order Flow</strong></td>
+            <td><span class="rating rating-low">★☆☆☆☆</span><br><span class="pill pill-red">低</span></td>
+            <td>ドメインが異なる<br>（予測市場 vs 日本株デイトレ）</td>
+            <td>「構造的 vs 情報的エッジ」の<br>切り分けは参考になる</td>
+            <td style="color:var(--text-muted)">N/A</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 4: ACTION PLAN ═══ -->
+  <section class="section" id="action">
+    <div class="section-label">Section 04</div>
+    <h2 class="section-title">アクションプラン</h2>
+
+    <div class="action-cards">
+
+      <!-- Priority 1 -->
+      <div class="action-card">
+        <div class="action-card-header">
+          <h3>
+            <span class="priority-badge priority-1">P1</span>
+            ポジションサイジングの実装
+          </h3>
+          <span style="font-family:var(--mono);font-size:0.7rem;color:var(--accent-green)">HIGHEST IMPACT</span>
+        </div>
+        <div class="action-card-body">
+          <ul class="action-items">
+            <li><code>grok_trending_archive.parquet</code> の実績リターンからリターン分布を構築</li>
+            <li>Monte Carloで最大ドローダウン分布を算出（95パーセンタイル基準）</li>
+            <li><code>prob_up</code> 確信度別（0.3-0.4, 0.4-0.5 等）にKelly分数を算出</li>
+            <li>ATR・ボラティリティベースのサイジングルールを策定</li>
+          </ul>
+          <div class="evolution-arrow">
+            <span class="from">100株固定</span>
+            <span class="arrow">→</span>
+            <span class="to">リスク調整済みサイジング</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priority 2 -->
+      <div class="action-card">
+        <div class="action-card-header">
+          <h3>
+            <span class="priority-badge priority-2">P2</span>
+            MLモデルのキャリブレーション分析
+          </h3>
+        </div>
+        <div class="action-card-body">
+          <ul class="action-items">
+            <li><code>prob_up</code> vs 実現勝率のキャリブレーション曲線を作成</li>
+            <li>曜日別・市場環境別にキャリブレーションの変化を測定</li>
+            <li>「Grokスコア高い + prob_up低い」矛盾パターンの検出と分析</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Priority 3 -->
+      <div class="action-card">
+        <div class="action-card-header">
+          <h3>
+            <span class="priority-badge priority-3">P3</span>
+            エッジ帰属分析
+          </h3>
+          <span style="font-family:var(--mono);font-size:0.7rem;color:var(--text-muted)">参考レベル</span>
+        </div>
+        <div class="action-card-body">
+          <ul class="action-items">
+            <li>利益源泉の切り分け: 銘柄選定精度 vs エントリータイミング vs イグジットタイミング</li>
+            <li>既存の <code>exit_strategy_analysis</code> / <code>timing_analysis</code> の拡張</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ SECTION 5: TAKEAWAY ═══ -->
+  <section class="section" id="takeaway">
+    <div class="section-label">Section 05</div>
+    <h2 class="section-title">結論</h2>
+
+    <div class="takeaway-box">
+      <div class="takeaway-quote">
+        The Institutional Edge is not Information
+      </div>
+      <div class="takeaway-body">
+        <p>
+          機関投資家のエッジは情報ではなく<span class="highlight-green">プロセス</span>にある。
+          リスク管理、時間変動戦略、構造的ポジショニング — いずれも「より良い予測」ではなく「より良い運用」の領域。
+        </p>
+        <br>
+        <p>
+          現行システムは<strong>銘柄選定（情報側）</strong>が充実している:
+          Grok x_search、LightGBM予測モデル、テクニカルスコアリング、バックテスト蓄積。
+        </p>
+        <br>
+        <p>
+          一方で<strong>リスク管理（プロセス側）</strong>が<span class="highlight-red">完全に欠落</span>している:
+          ポジションサイジングなし、ドローダウン管理なし、ポートフォリオレベルの資本配分なし。
+        </p>
+        <br>
+        <p>
+          <span class="highlight-cyan">最大のインパクトはMethod 1のポジションサイジング実装。</span>
+          データは既に揃っており、ロジックを追加するだけで「情報」と「プロセス」の両輪が揃う。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>//</span> generated by dash_plotly analysis pipeline <span>|</span> 2026-02-20
+  </footer>
+</div>
+
+</body>
+</html>

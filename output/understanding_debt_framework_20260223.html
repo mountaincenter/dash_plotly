@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>理解負債フレームワーク - 2026/02/23</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --accent: #4fc3f7;
+    --accent2: #81c784;
+    --warn: #ffb74d;
+    --danger: #ef5350;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 40px 20px;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  h2 {
+    font-size: 1.3rem;
+    color: var(--accent);
+    margin: 48px 0 16px;
+    padding-left: 12px;
+    border-left: 3px solid var(--accent);
+  }
+  h3 {
+    font-size: 1.05rem;
+    color: #ccc;
+    margin: 28px 0 12px;
+  }
+  p { margin-bottom: 16px; }
+  .core-insight {
+    background: linear-gradient(135deg, #1a237e22, #0d47a122);
+    border: 1px solid #1a237e88;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin: 28px 0;
+    font-size: 1.1rem;
+    text-align: center;
+    color: #fff;
+  }
+  .core-insight strong { color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 28px;
+    font-size: 0.9rem;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:hover td { background: #ffffff06; }
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .tag-no { background: #1b5e2033; color: var(--accent2); }
+  .tag-border { background: #e6510022; color: var(--warn); }
+  .tag-yes { background: #b71c1c22; color: var(--danger); }
+  .book-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .book-card .num {
+    background: var(--accent);
+    color: #000;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .book-card .info { flex: 1; }
+  .book-card .title { font-weight: 700; color: #fff; }
+  .book-card .author { color: var(--text-muted); font-size: 0.85rem; }
+  .book-card .desc { margin-top: 6px; font-size: 0.9rem; color: var(--text); }
+  .axis-label {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+  }
+  .section-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0 32px;
+  }
+  .practice-box {
+    background: linear-gradient(135deg, #1b5e2011, #2e7d3211);
+    border: 1px solid #2e7d3255;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .practice-box h3 { color: var(--accent2); margin-top: 0; }
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+    font-size: 0.9rem;
+  }
+  .flow .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+  }
+  .flow .arrow { color: var(--accent); font-weight: 700; }
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>理解負債フレームワーク</h1>
+<div class="date">2026/02/23 - LLM時代に何を理解し、何を委任するか</div>
+
+<!-- ===== Core Insight ===== -->
+<div class="core-insight">
+  自分の能力を超えた処理が走った時、<br>
+  <strong>何を見れば正しいか間違いか判断できるか</strong><br>
+  それが理解すべきものの全て。それ以外は飛行機の揚力。
+</div>
+
+<!-- ===== Section 1 ===== -->
+<h2>1. 飛行機の比喩 - 何が理解負債で、何がそうでないか</h2>
+
+<p>飛行機がなぜ飛ぶかを理解しなくても、安全に目的地に到着できる。
+LLM を用いた開発でも同じ原理が成り立つ。</p>
+
+<table>
+  <thead>
+    <tr><th>レイヤー</th><th>飛行機</th><th>あなたのシステム</th><th>理解負債？</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>物理法則</td><td>揚力の方程式</td><td>Python のメモリ管理、TCP/IP</td>
+      <td><span class="tag tag-no">No</span></td>
+    </tr>
+    <tr>
+      <td>機体構造</td><td>エンジンの仕組み</td><td>Docker、AWS App Runner</td>
+      <td><span class="tag tag-no">No</span></td>
+    </tr>
+    <tr>
+      <td>操縦系統</td><td>自動操縦の制御ロジック</td><td>Dash/React のレンダリング、CSS</td>
+      <td><span class="tag tag-no">No</span></td>
+    </tr>
+    <tr>
+      <td>計器の読み方</td><td>高度計、燃料計</td><td>API のレスポンス形状、エラーコード</td>
+      <td><span class="tag tag-border">境界</span></td>
+    </tr>
+    <tr>
+      <td>目的地の選択</td><td>どこに行くか</td><td>どの戦略でどの銘柄を分析するか</td>
+      <td><span class="tag tag-yes">必須</span></td>
+    </tr>
+    <tr>
+      <td>天候判断</td><td>飛ぶか飛ばないか</td><td>データの信頼性、バックテストの限界</td>
+      <td><span class="tag tag-yes">必須</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>判断基準は1つ</h3>
+<p><strong>「それを理解していないと、間違った意思決定をするか？」</strong></p>
+<ul style="margin-left: 20px; margin-bottom: 16px;">
+  <li>No → 理解負債ではない。委任して良い</li>
+  <li>Yes → 理解負債。解消が必要</li>
+</ul>
+
+<!-- ===== Section 2 ===== -->
+<h2>2. 意思決定への影響度による分類</h2>
+
+<p>技術レイヤー（バックエンド / フロントエンド / インフラ）ではなく、
+<strong>意思決定への影響度</strong>で分類する。</p>
+
+<table>
+  <thead>
+    <tr><th>分類</th><th>具体例</th><th>対応</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="tag tag-yes">意思決定に直結</span></td>
+      <td>戦略ロジック、指標の意味、データの信頼性</td>
+      <td>理解必須</td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-border">デバッグ時に必要</span></td>
+      <td>API 契約、エラーの意味、データフロー</td>
+      <td>必要になったら学ぶ</td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-no">委任可能</span></td>
+      <td>実装詳細、構文、スタイリング、インフラ</td>
+      <td>Claude Code に任せる</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 3 ===== -->
+<h2>3. LLM 時代に価値が上がる能力</h2>
+
+<div class="core-insight">
+  実行力が無限に近づくほど、<strong>何を解くか（イシューの質）</strong>が成果の 100% を決める。<br>
+  間違ったイシュー + 完璧な実装 = 無価値<br>
+  正しいイシュー + LLM の実装 = 価値
+</div>
+
+<!-- ===== Section 4 ===== -->
+<h2>4. 推奨書籍 - 3つの軸</h2>
+
+<!-- Axis 1 -->
+<div class="section-group">
+  <span class="axis-label">軸1: イシューの質を上げる</span>
+  <p style="color: var(--text-muted); margin-bottom: 16px;">「解くべき問い」を正しく立てる力</p>
+
+  <div class="book-card">
+    <div class="num">1</div>
+    <div class="info">
+      <div class="title">イシューからはじめよ</div>
+      <div class="author">安宅和人</div>
+      <div class="desc">生産性の高い知的生産の出発点。「解く価値のある問い」を見極める思考法。</div>
+    </div>
+  </div>
+  <div class="book-card">
+    <div class="num">2</div>
+    <div class="info">
+      <div class="title">論点思考</div>
+      <div class="author">内田和成</div>
+      <div class="desc">そもそも「解くべき問い」を間違えていないかを問う本。イシューの上流。</div>
+    </div>
+  </div>
+  <div class="book-card">
+    <div class="num">3</div>
+    <div class="info">
+      <div class="title">仮説思考</div>
+      <div class="author">内田和成</div>
+      <div class="desc">イシューの次。「答えの仮説」を先に立ててから検証する思考法。</div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <span class="step">論点思考（問いを立てる）</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">イシューからはじめよ（解く価値を判断）</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">仮説思考（答えを先に立てて検証）</span>
+  </div>
+</div>
+
+<!-- Axis 2 -->
+<div class="section-group">
+  <span class="axis-label">軸2: 不確実性の中で判断する</span>
+  <p style="color: var(--text-muted); margin-bottom: 16px;">運と実力の区別、バイアスの認識、不完全情報下の意思決定</p>
+
+  <div class="book-card">
+    <div class="num">4</div>
+    <div class="info">
+      <div class="title">まぐれ - 投資家はなぜ、運を実力と勘違いするのか</div>
+      <div class="author">ナシーム・N・タレブ</div>
+      <div class="desc">モンテカルロの議論と直結。「たまたま勝った戦略」と「本質的に優位な戦略」の区別がテーマ。バックテスト結果を「実力」と誤認するリスクそのもの。</div>
+    </div>
+  </div>
+  <div class="book-card">
+    <div class="num">5</div>
+    <div class="info">
+      <div class="title">ファスト&amp;スロー</div>
+      <div class="author">ダニエル・カーネマン</div>
+      <div class="desc">人間の判断バイアスの体系。「なぜ自分が間違えるか」の地図。システム1（直感）とシステム2（論理）の使い分け。</div>
+    </div>
+  </div>
+  <div class="book-card">
+    <div class="num">6</div>
+    <div class="info">
+      <div class="title">Thinking in Bets</div>
+      <div class="author">Annie Duke</div>
+      <div class="desc">不完全情報下での意思決定。ポーカープロの思考法。「良い判断」と「良い結果」は別物であることを体系化。</div>
+    </div>
+  </div>
+</div>
+
+<!-- Axis 3 -->
+<div class="section-group">
+  <span class="axis-label">軸3: システムの振る舞いを直感で掴む</span>
+  <p style="color: var(--text-muted); margin-bottom: 16px;">コードを読めなくても全体の動きを予測する力</p>
+
+  <div class="book-card">
+    <div class="num">7</div>
+    <div class="info">
+      <div class="title">世界はシステムで動く</div>
+      <div class="author">ドネラ・メドウズ</div>
+      <div class="desc">フィードバックループ、遅延、非線形。コードを読まずにシステムの挙動を予測する思考法。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Section 5 ===== -->
+<h2>5. 書籍以外 - 最も効果的なトレーニング</h2>
+
+<div class="practice-box">
+  <h3>判断ログを取る</h3>
+  <p>一番効くのは「判断 → 結果 → 振り返り」のログを記録すること。</p>
+
+  <div class="flow">
+    <span class="step">判断</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">根拠</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">結果</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">振り返り</span>
+  </div>
+
+  <p style="margin-top: 16px;">例: 「この戦略が有効だと判断した → 根拠は X → 結果は Y → 判断は正しかった/間違っていた、なぜなら〜」</p>
+  <p>イシューの質・不確実性判断・システム思考の<strong>全てを同時に鍛える</strong>。<br>
+  書籍は地図、ログは実走。</p>
+</div>
+
+<footer>
+  Generated: 2026-02-23 / Claude Code session memo
+</footer>
+
+</div>
+</body>
+</html>

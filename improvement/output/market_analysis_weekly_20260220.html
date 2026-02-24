@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット週間振り返り 2026/02/16-20 - 一時最高値更新も週末反落・中東リスク</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background:rgba(251,191,36,0.15); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .timeline { position:relative; padding-left:28px; margin:16px 0; }
+  .timeline::before { content:''; position:absolute; left:8px; top:4px; bottom:4px; width:2px; background:var(--card-border); }
+  .timeline-item { position:relative; margin-bottom:16px; font-size:0.875rem; }
+  .timeline-item::before { content:''; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--card-border); border:2px solid var(--bg); }
+  .timeline-item.peak::before { background:var(--emerald); }
+  .timeline-item.drop::before { background:var(--rose); }
+  .timeline-item.neutral::before { background:var(--amber); }
+  .timeline-time { color:var(--text-muted); font-size:0.75rem; font-weight:600; }
+  .timeline-content { margin-top:2px; }
+  .factor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+  .factor-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:14px; }
+  .factor-card .factor-title { font-size:0.8rem; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+  .source-list { margin-top:12px; padding-left:20px; }
+  .source-list li { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+  .source-list a { color:var(--blue); text-decoration:none; }
+  .source-list a:hover { text-decoration:underline; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .comparison-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .comparison-bar .bar-label { min-width:120px; color:var(--text-muted); }
+  .comparison-bar .bar-track { flex:1; height:20px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; }
+  .comparison-bar .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .quote-box { border-left:3px solid var(--purple); padding:12px 16px; margin:12px 0; background:rgba(167,139,250,0.05); border-radius:0 8px 8px 0; font-size:0.85rem; color:var(--text-muted); font-style:italic; }
+  .quote-box .quote-source { margin-top:6px; font-style:normal; font-size:0.75rem; color:var(--purple); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .evidence-inference { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .evidence-unverified { background:rgba(251,113,133,0.12); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .evidence-legend { display:flex; gap:16px; margin-bottom:24px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; font-size:0.8rem; color:var(--text-muted); }
+  .evidence-legend-item { display:flex; align-items:center; gap:6px; }
+  .footnote { font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>週次マーケットレビュー 2026/02/16-20 <span class="badge badge-amber">週間-116円・最高値57,710→急反落</span></h1>
+<div class="subtitle">一時最高値57,710（2/19 13:20）を更新するも金曜に-642円の急反落。週間では日経平均 56,942→56,826（-116 / -0.20%）の小幅安。TOPIX 3,819→3,808（約-0.3%）。月火の調整→水木の急反発→金曜の中東リスクで急落と、激しい往来相場。USD/JPY 153円→155円台（FOMC議事要旨タカ派で円安進行）。売買代金合計 約34兆円。5営業日。</div>
+
+<div class="evidence-legend">
+  <div class="evidence-legend-item"><span class="evidence-label evidence-fact">事実</span> parquet / web検索で確認済み</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈・因果推定</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-unverified">未検証</span> ソースはあるが数値精度が未確認</div>
+</div>
+
+<!-- ===== 1. 週間パフォーマンス ===== -->
+<div class="section">
+  <h2>週間パフォーマンス <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均（週間）</div>
+      <div class="value num-neg">-0.20%</div>
+      <div class="sub">56,942 → 56,826（-116）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX（週間）</div>
+      <div class="value num-neg">-0.3%</div>
+      <div class="sub">3,819 → 3,808（-11）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY（週間）</div>
+      <div class="value num-neg">円安進行</div>
+      <div class="sub">~153円 → ~155.2円（+2円超）</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">売買代金（週間合計）</div>
+      <div class="value num-neutral">約34兆円</div>
+      <div class="sub">5営業日合計</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">N225 週間高値</div>
+        <div class="value num-pos" style="font-size:1.2rem;">57,710</div>
+        <div class="sub">2/19（木）13:20 一時最高値更新</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">N225 週間安値</div>
+        <div class="value num-neg" style="font-size:1.2rem;">56,354</div>
+        <div class="sub">2/17（火）前場</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">週間値幅</div>
+        <div class="value" style="font-size:1.2rem; color:var(--amber);">1,356</div>
+        <div class="sub">57,710 - 56,354（2.4%）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>週間の構図:</strong> 月火で利益確定売り（-136, -240）→ 水木で急反発（+577, +324）し一時最高値57,710更新 → 金曜に中東地政学リスクで-642円の急反落。「行って来い」となり週間-116円（-0.20%）のほぼ横ばいで着地。木曜の最高値から金曜の大引けまで-884円の急落。
+  </div>
+</div>
+
+<!-- ===== 2. 日別パフォーマンス ===== -->
+<div class="section">
+  <h2>日別パフォーマンス <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th><th>N225 終値</th><th>前日比</th><th>変化率</th><th>TOPIX</th><th>TOPIX%</th><th>主要イベント</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="opacity:0.6;">
+        <td>2/13 (金)</td><td>56,942</td><td class="num-neutral">前週末</td><td class="num-neutral">—</td>
+        <td>3,819.00</td><td class="num-neutral">前週末</td><td class="num-neutral">基準日</td>
+      </tr>
+      <tr>
+        <td><strong>2/16 (月)</strong></td><td><strong>56,806</strong></td><td class="num-neg"><strong>-136</strong></td><td class="num-neg">-0.24%</td>
+        <td>3,787.38</td><td class="num-neg">-0.82%</td><td>利益確定売り・円高(152-153円)</td>
+      </tr>
+      <tr>
+        <td><strong>2/17 (火)</strong></td><td><strong>56,566</strong></td><td class="num-neg"><strong>-240</strong></td><td class="num-neg">-0.42%</td>
+        <td>3,761.55</td><td class="num-neg">-0.68%</td><td>続落・週間安値56,354</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>2/18 (水)</strong></td><td><strong>57,144</strong></td><td class="num-pos"><strong>+577</strong></td><td class="num-pos">+1.02%</td>
+        <td>3,807.25</td><td class="num-pos">+1.21%</td><td>急反発・前日NY高・高市内閣発足</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>2/19 (木)</strong></td><td><strong>57,468</strong></td><td class="num-pos"><strong>+324</strong></td><td class="num-pos">+0.57%</td>
+        <td>3,852.09</td><td class="num-pos">+1.18%</td><td>続伸・57,710最高値更新→失速</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>2/20 (金)</strong></td><td><strong>56,826</strong></td><td class="num-neg"><strong>-642</strong></td><td class="num-neg">-1.12%</td>
+        <td>3,808.48</td><td class="num-neg">-1.13%</td><td>急反落・中東リスク・連休前手じまい</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>週間リズム:</strong> 月-0.24% → 火-0.42% → 水+1.02% → 木+0.57% → 金-1.12%。「2敗2勝1敗」の往来相場。水曜の+577円が週間最大の上昇幅、金曜の-642円が最大の下落幅。結果的に週間の最大上昇日と最大下落日がほぼ相殺し、小幅安(-116円)で着地。
+  </div>
+</div>
+
+<!-- ===== 3. 週間テーマ分析 ===== -->
+<div class="section">
+  <h2>今週の4大テーマ <span class="evidence-label evidence-inference">推論</span></h2>
+
+  <div class="factor-grid">
+    <div class="factor-card" style="border-top:3px solid var(--rose);">
+      <div class="factor-title"><span class="tag tag-bear">月〜火</span> 調整局面 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        前週の上昇からの過熱感で利益確定売りが先行。円高(152-153円台)も重荷。月曜-136円、火曜-240円と2日連続下落。火曜前場に週間安値56,354を記録。<span style="color:var(--amber);">前週+4.96%の反動と、CPI通過後のポジション調整が主因（推論）</span>。
+      </div>
+    </div>
+    <div class="factor-card" style="border-top:3px solid var(--emerald);">
+      <div class="factor-title"><span class="tag tag-bull">水</span> 急反発+577円 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        前日NY米株高を好感し大幅反発。高市第2次内閣発足への政策期待も追い風。円安反転（153円台半ば）が輸出関連を支援。TOPIX +1.21%とN225（+1.02%）を上回りバリュー主導の反発。
+      </div>
+    </div>
+    <div class="factor-card" style="border-top:3px solid var(--amber);">
+      <div class="factor-title"><span class="tag tag-neutral">木</span> 一時最高値更新→失速 <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="factor-detail">
+        FOMC議事要旨（1/27-28会合分）でタカ派サプライズ → ドル高→円安155円台。半導体堅調で13:20に57,710の一時最高値を更新。しかしアドバンテストのランサムウェア発生や利益確定売りで引けにかけて失速。上ヒゲ陰線。
+      </div>
+    </div>
+    <div class="factor-card" style="border-top:3px solid var(--rose);">
+      <div class="factor-title"><span class="tag tag-bear">金</span> 急反落-642円 <span class="evidence-label evidence-unverified">未検証</span></div>
+      <div class="factor-detail">
+        中東地政学リスク（イラン情勢）が浮上しリスク回避売り。前日の米株安（ダウ-267）も重荷。3連休前の手じまい売りも加速。前日の最高値圏から一転、-642円の急落で週末入り。
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 今週は「政策期待 vs 地政学リスク」の綱引きだった。水木の上昇要因（高市内閣・FOMC円安・半導体）は金曜の中東リスクで帳消しに。週間-116円は「材料の消化不良」を意味し、来週以降のイベント（日銀決定会合・エヌビディア決算）で方向感が出る。
+    <div class="quote-source">— 筆者の解釈（複数ニュースソースから合成）</div>
+  </div>
+</div>
+
+<!-- ===== 4. TOPIX サブ指数 週間比較 ===== -->
+<div class="section">
+  <h2>TOPIX サブ指数 週間比較 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead>
+      <tr><th>指数</th><th>2/16 (月)</th><th>2/17 (火)</th><th>2/18 (水)</th><th>2/19 (木)</th><th>2/20 (金)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TOPIX</strong></td>
+        <td class="num-neg">-0.82%</td><td class="num-neg">-0.68%</td>
+        <td class="num-pos">+1.21%</td><td class="num-pos">+1.18%</td>
+        <td class="num-neg">-1.13%</td>
+      </tr>
+      <tr>
+        <td><strong>Prime</strong></td>
+        <td class="num-neg">-0.82%</td><td class="num-neg">-0.68%</td>
+        <td class="num-pos">+1.21%</td><td class="num-pos">+1.18%</td>
+        <td class="num-neg">-1.13%</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>Standard</strong></td>
+        <td class="num-pos">+1.04%</td><td class="num-pos">+0.17%</td>
+        <td class="num-pos">+0.69%</td><td class="num-pos">+0.78%</td>
+        <td class="num-neg">-0.58%</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>Growth</strong></td>
+        <td class="num-pos">+2.47%</td><td class="num-neg">-0.03%</td>
+        <td class="num-pos">+2.09%</td><td class="num-pos">+0.08%</td>
+        <td class="num-neg">-1.97%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="grid-2" style="margin-top:16px;">
+    <div>
+      <h3>週間累計パフォーマンス（概算）</h3>
+      <div class="comparison-bar">
+        <div class="bar-label">TOPIX / Prime</div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-red" style="width:15%;">-0.3%</div>
+        </div>
+      </div>
+      <div class="comparison-bar">
+        <div class="bar-label">Standard</div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-green" style="width:60%;">+2.1%</div>
+        </div>
+      </div>
+      <div class="comparison-bar">
+        <div class="bar-label">Growth</div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-green" style="width:75%;">+2.6%</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:16px;">
+        <span class="evidence-label evidence-inference">推論</span> Standard・Growthは月曜に+1.04%/+2.47%と大型に逆行高。中小型株への物色が週前半に活発化。しかし金曜にGrowth -1.97%と最大の下落 → FOMC議事要旨タカ派＋地政学リスクの二重パンチが金利敏感な中小型に集中打。週間ではStandard/Growthが大型(Prime)をアウトパフォーム。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5. セクター動向 ===== -->
+<div class="section">
+  <h2>セクター動向（週間） <span class="evidence-label evidence-unverified">未検証</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>上昇セクター</h3>
+      <div style="margin:8px 0;">
+        <div class="sector-bar"><div class="s-name">非鉄金属</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:80%;">週間上昇（2週連続）</div></div></div>
+        <div class="sector-bar"><div class="s-name">海運業</div><div class="s-track"><div class="s-fill bar-fill-green" style="width:55%;">堅調</div></div></div>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 非鉄金属は資源高(銅価格上昇)+円安メリットで2週連続の上昇セクター。前週+12%に続く堅調さ。海運はバルチック海運指数の底打ちを好感。
+      </p>
+    </div>
+    <div>
+      <h3>下落セクター</h3>
+      <div style="margin:8px 0;">
+        <div class="sector-bar"><div class="s-name">証券・商品先物</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:70%;">金利変動懸念</div></div></div>
+        <div class="sector-bar"><div class="s-name">輸送用機器</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:55%;">地政学リスク・原油高</div></div></div>
+        <div class="sector-bar"><div class="s-name">空運業</div><div class="s-track"><div class="s-fill bar-fill-red" style="width:45%;">原油高コスト増</div></div></div>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+        <span class="evidence-label evidence-inference">推論</span> 証券はFOMC議事要旨のタカ派トーンで米金利上昇→ボラ拡大懸念。輸送用機器・空運は中東地政学リスクに伴う原油高がコスト増要因。金曜の急落で直撃。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. 為替 週間推移 ===== -->
+<div class="section">
+  <h2>為替 週間推移: 153円→155円台の円安進行 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <table>
+    <thead><tr><th>日付</th><th>USD/JPY（概算）</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr style="opacity:0.6;"><td>2/13 (金)</td><td>~153.4円</td><td>基準日（CPI下振れ後）</td></tr>
+      <tr><td>2/16 (月)</td><td>~153円</td><td>152-153円台で膠着</td></tr>
+      <tr class="highlight-row"><td>2/17 (火)</td><td>~152円後半</td><td>週間の円高ピーク</td></tr>
+      <tr><td>2/18 (水)</td><td>~153.5円</td><td>円安反転</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/19 (木)</strong></td><td><strong>~155円</strong></td><td><strong>FOMC議事要旨タカ派→ドル買い加速</strong></td></tr>
+      <tr><td>2/20 (金)</td><td>~155.1-155.2円</td><td>円安継続・地政学リスクでも維持</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> 火曜の152円後半が週間の円高ピーク。木曜のFOMC議事要旨で一部当局者が利上げ可能性に言及 → ドル高加速で155円台へ。金曜も地政学リスクの中で円安水準を維持。<br>
+    <span class="evidence-label evidence-inference">推論</span> 週間で約+2円の円安進行。米利上げリスクの顕在化で日米金利差拡大方向。156円超は為替介入警戒ライン。
+  </p>
+</div>
+
+<!-- ===== 7. 今週の注目ニュース ===== -->
+<div class="section">
+  <h2>今週の注目ニュース <span class="evidence-label evidence-fact">事実</span> <span class="evidence-label evidence-unverified">一部未検証</span></h2>
+
+  <table>
+    <thead><tr><th>#</th><th>ニュース</th><th>日付</th><th>影響</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-green">
+        <td>1</td>
+        <td><strong>高市第2次内閣発足</strong></td>
+        <td>2/18-19</td>
+        <td class="num-pos">政策期待で水木の株高を後押し</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td>2</td>
+        <td><strong>FOMC議事要旨タカ派</strong>（1/27-28会合分）</td>
+        <td>2/19</td>
+        <td style="color:var(--amber);">利上げ可能性言及 → ドル高・円安155円台</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>3</td>
+        <td><strong>中東地政学リスク（イラン情勢）</strong></td>
+        <td>2/20</td>
+        <td class="num-neg">リスク回避売りで-642円の急落を誘発</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>日銀リフレ派審議委員交代</strong></td>
+        <td>週中</td>
+        <td style="color:var(--amber);">利上げ観測の変化要因</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td>5</td>
+        <td><strong>上場企業4-12月最高益更新（44兆円）</strong></td>
+        <td>週中</td>
+        <td class="num-pos">ファンダメンタルズの強さを確認</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>6</td>
+        <td><strong>アドバンテスト ランサムウェア発生</strong></td>
+        <td>2/19</td>
+        <td class="num-neg">半導体セクターの重荷・木曜の失速要因</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-info" style="margin-top:12px;">
+    <strong>ニュース総括 <span class="evidence-label evidence-inference">推論</span>:</strong> 高市内閣発足とFOMC議事要旨のタカ派サプライズが水木の上昇を牽引。しかし金曜の中東リスク浮上で全てが帳消し。企業業績（4-12月最高益44兆円）というファンダメンタルズの強さはあるが、地政学リスクという外生的ショックには無力。
+  </div>
+</div>
+
+<!-- ===== 8. 来週の注目イベント ===== -->
+<div class="section">
+  <h2>来週の注目イベント <span class="evidence-label evidence-inference">推論</span></h2>
+
+  <table>
+    <thead><tr><th>日付</th><th>イベント</th><th>影響度</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr class="highlight-row-amber">
+        <td>2/21 (土)</td><td>日銀金融政策決定会合（終了後）</td><td style="color:var(--rose); font-weight:700;">最重要</td>
+        <td>利上げ判断。リフレ派交代の影響。結果は週明け月曜に消化</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td>2/25 (水)</td><td>エヌビディア決算</td><td style="color:var(--rose); font-weight:700;">最重要</td>
+        <td>AI相場の方向性を左右。半導体セクター全体に影響大</td>
+      </tr>
+      <tr>
+        <td>2/28 (土)</td><td>セールスフォース決算</td><td style="color:var(--amber);">高</td>
+        <td>SaaS市場の健全性を示す指標</td>
+      </tr>
+      <tr>
+        <td>2/23 (月)</td><td>3連休明け</td><td style="color:var(--amber);">高</td>
+        <td>中東地政学リスクの消化。週末の展開次第で大きくギャップ</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>来週のポイント <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>日銀決定会合:</strong> 利上げ据え置きならリスクオン、利上げなら円高→株安の可能性<br>
+    &bull; <strong>エヌビディア決算:</strong> 今週の最高値更新を牽引した半導体相場の試金石。ガイダンス次第で57,000突破 or 55,000割れのシナリオ分岐<br>
+    &bull; <strong>3連休明け:</strong> 金曜の中東リスクを週末にどう消化するか。イラン情勢のエスカレーションならリスクオフ継続<br>
+    &bull; <strong>テクニカル:</strong> 57,710（木曜高値）が上値レジスタンス、56,354（火曜安値）が下値サポート。このレンジをどちらにブレイクするかが来週の焦点
+  </div>
+</div>
+
+
+<!-- ===== 9. 結論 ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-info" style="margin-top:0;">
+    <strong>週間総括:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> N225 -0.20%（56,942→56,826 / -116円）。TOPIX -0.3%（3,819→3,808）。週間高値57,710（2/19 一時最高値更新）。週間安値56,354（2/17前場）。USD/JPY 153円→155円台（+2円超の円安）。売買代金合計 約34兆円。Standard/Growthが大型Prime をアウトパフォーム。上場企業4-12月最高益44兆円。<br>
+    <span class="evidence-label evidence-inference">推論</span> 「政策期待（高市内閣）+FOMC円安+半導体」が水木の上昇を牽引し一時最高値を更新したが、金曜の中東地政学リスクで全て帳消し。週間ほぼ横ばいは「材料の拮抗」を示す。
+  </div>
+
+  <div class="alert-box alert-success" style="margin-top:12px;">
+    <strong>ポジティブ材料 <span class="evidence-label evidence-fact">事実</span>:</strong><br>
+    &bull; 一時最高値57,710を更新（史上最高水準の更新は市場の地合いの強さ）<br>
+    &bull; 上場企業4-12月最高益44兆円（ファンダメンタルズが株高を裏付け）<br>
+    &bull; Standard/Growthの中小型株がアウトパフォーム（物色の裾野が拡大）<br>
+    &bull; 金曜の急落後も56,800台を維持（56,000割れは回避）
+  </div>
+
+  <div class="alert-box alert-danger" style="margin-top:12px;">
+    <strong>リスク要因 <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; 中東地政学リスク（イラン情勢）が3連休中にエスカレートする可能性<br>
+    &bull; FOMC議事要旨で米利上げリスクが顕在化（金利敏感株に逆風）<br>
+    &bull; 木曜の57,710→金曜の56,826は「最高値圏での売り圧力」を確認<br>
+    &bull; 日銀決定会合の結果次第で円高→株安の展開
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>来週の判断:</strong><br>
+    &bull; 日銀決定会合の結果（利上げ有無）が最初の分岐点<br>
+    &bull; エヌビディア決算（2/25）がAI・半導体相場の方向を決定<br>
+    &bull; 56,354-57,710のレンジ内で推移する可能性。ブレイク方向に追従<br>
+    &bull; 中東リスクの続報に注意。原油高→輸送/空運への逆風に注意
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-20 by Claude Code / 数値データはparquet + web検索ベース（2026-02-16〜2026-02-20）<br>
+  本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

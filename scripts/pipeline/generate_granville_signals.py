@@ -171,7 +171,7 @@ def generate_signals() -> pd.DataFrame:
         "dev_from_sma20": signals["dev_from_sma20"].round(3),
         "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"],
-        "sl_price": (signals["Close"] * 0.965).round(1),
+        "sl_price": (signals["Close"] * 0.97).round(1),
         "market_uptrend": signals["market_uptrend"],
         "ci_expand": signals["macro_ci_expand"],
     })
@@ -246,7 +246,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
         if pd.isna(ep) or ep <= 0:
             continue
         e_date = tk.iloc[0]["date"]
-        sl = ep * 0.965
+        sl = ep * 0.97
         tp_price = ep * 1.10
         st = sig["sig_type"]
         exited = False
@@ -255,6 +255,8 @@ def generate_positions(ps: pd.DataFrame) -> None:
         for i in range(min(len(tk), 60)):
             row = tk.iloc[i]
             if float(row["Low"]) <= sl:
+                if row["date"] == latest:
+                    exit_today = "SL"
                 exited = True
                 break
             if float(row["High"]) >= tp_price:
@@ -311,23 +313,28 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 "as_of": latest,
             })
         elif exit_today:
-            cur = tk.iloc[-1]
-            cp = float(cur["Close"])
-            rows.append({
-                "status": "exit",
-                "ticker": sig["ticker"],
-                "stock_name": sig.get("stock_name", ""),
-                "signal_type": st,
-                "entry_date": e_date,
-                "entry_price": round(ep, 1),
-                "current_price": round(cp, 1),
-                "pct": round((cp / ep - 1) * 100, 2),
-                "pnl": int((cp - ep) * 100),
-                "sl_price": 0,
-                "hold_days": 0,
-                "exit_type": exit_today,
-                "as_of": latest,
-            })
+            if exit_today in ("SL", "TP"):
+                # IFD注文: ザラ場中に約定済み → ポジションから除外（トレード一覧に計上済み）
+                pass
+            else:
+                # dead_cross/SMA20_touch/time_cut: 翌朝Open売り → イグジットシグナル
+                cur = tk.iloc[-1]
+                cp = float(cur["Close"])
+                rows.append({
+                    "status": "exit",
+                    "ticker": sig["ticker"],
+                    "stock_name": sig.get("stock_name", ""),
+                    "signal_type": st,
+                    "entry_date": e_date,
+                    "entry_price": round(ep, 1),
+                    "current_price": round(cp, 1),
+                    "pct": round((cp / ep - 1) * 100, 2),
+                    "pnl": int((cp - ep) * 100),
+                    "sl_price": 0,
+                    "hold_days": len(tk),
+                    "exit_type": exit_today,
+                    "as_of": latest,
+                })
 
     result = pd.DataFrame(rows)
     result.to_parquet(POSITIONS_PATH, index=False)
@@ -408,19 +415,49 @@ def main() -> int:
                 "dev_from_sma20": signals["dev_from_sma20"].round(3),
                 "sma20_slope": signals["sma20_slope"].round(4),
                 "entry_price_est": signals["Close"],
-                "sl_price": (signals["Close"] * 0.965).round(1),
+                "sl_price": (signals["Close"] * 0.97).round(1),
                 "market_uptrend": signals["market_uptrend"],
                 "ci_expand": signals["macro_ci_expand"],
             })
             out = out.sort_values("dev_from_sma20").reset_index(drop=True)
 
+        # --- 既存シグナルに追記（YAMLでS3→ローカル済み）---
         PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-        out.to_parquet(OUTPUT_PATH, index=False)
-        print(f"[OK] Saved {len(out)} signals to {OUTPUT_PATH}")
+
+        existing = pd.DataFrame()
+        if OUTPUT_PATH.exists():
+            try:
+                existing = pd.read_parquet(OUTPUT_PATH)
+                existing["signal_date"] = pd.to_datetime(existing["signal_date"])
+                print(f"[INFO] Existing signals: {len(existing)} rows")
+            except Exception:
+                pass
+
+        if not out.empty:
+            out["signal_date"] = pd.to_datetime(out["signal_date"])
+
+        if not existing.empty and not out.empty:
+            existing = existing[existing["signal_date"] != latest_date]
+            merged = pd.concat([existing, out], ignore_index=True)
+        elif not existing.empty:
+            merged = existing
+        else:
+            merged = out
+
+        # 30日超のシグナルを削除
+        cutoff_30d = pd.Timestamp.now() - pd.Timedelta(days=30)
+        before_purge = len(merged)
+        merged = merged[merged["signal_date"] >= cutoff_30d].reset_index(drop=True)
+        purged = before_purge - len(merged)
+        if purged > 0:
+            print(f"[INFO] Purged {purged} old signals (>30 days)")
+
+        merged.to_parquet(OUTPUT_PATH, index=False)
+        print(f"[OK] Saved {len(merged)} signals ({len(out)} new) to {OUTPUT_PATH}")
 
         print(f"\n{'=' * 60}")
         if len(out) > 0:
-            print(f"Signals: {len(out)} candidates")
+            print(f"Today: {len(out)} candidates")
             for _, row in out.iterrows():
                 print(f"  {row['ticker']} {row['stock_name']} "
                       f"[{row['signal_type']}] ¥{row['close']:,.0f} "
@@ -428,6 +465,7 @@ def main() -> int:
                       f"({row['dev_from_sma20']:+.1f}%)")
         else:
             print("No signals today")
+        print(f"Total: {len(merged)} signals (rolling 30d)")
         print("=" * 60)
 
         # --- ポジション前処理 ---

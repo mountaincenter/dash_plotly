@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>回帰分析レポート — ATR × 曜日 × 価格帯</title>
+<style>
+:root {
+  --bg: #09090b;
+  --card: #18181b;
+  --border: rgba(63,63,70,0.4);
+  --border-light: rgba(63,63,70,0.2);
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --emerald: #34d399;
+  --rose: #fb7185;
+  --sky: #38bdf8;
+  --amber: #fbbf24;
+  --blue: #3b82f6;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif;
+  background: var(--bg); color: var(--fg);
+  line-height: 1.6; min-height: 100vh;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+h2 { font-size: 15px; font-weight: 600; margin: 32px 0 12px; color: var(--sky); }
+h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; }
+.subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+p { font-size: 13px; margin-bottom: 12px; }
+
+.card {
+  position: relative; overflow: hidden;
+  border-radius: 12px; border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(24,24,27,0.5), rgba(24,24,27,0.8), rgba(24,24,27,0.5));
+  padding: 20px; margin-bottom: 16px;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+th {
+  padding: 8px 10px; border-bottom: 1px solid rgba(63,63,70,0.5);
+  color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap;
+}
+th.r { text-align: right; }
+th.l { text-align: left; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--border-light); font-variant-numeric: tabular-nums; }
+td.r { text-align: right; }
+td.l { text-align: left; }
+
+.pos { color: var(--emerald); }
+.neg { color: var(--rose); }
+.muted { color: var(--muted); }
+.bold { font-weight: 700; }
+.highlight { background: rgba(56,189,248,0.08); }
+
+.sig-3 { color: var(--emerald); font-weight: 700; }
+.sig-2 { color: var(--emerald); }
+.sig-1 { color: var(--amber); }
+.sig-dot { color: var(--muted); font-style: italic; }
+
+.conclusion-box {
+  background: rgba(26,35,50,0.8); border: 1px solid var(--blue);
+  border-radius: 12px; padding: 16px; margin-bottom: 24px;
+}
+.conclusion-box h3 { margin: 0 0 8px; color: #58a6ff; font-size: 14px; }
+.conclusion-box p { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.conclusion-box ul { font-size: 13px; color: var(--fg); padding-left: 20px; }
+.conclusion-box li { margin-bottom: 4px; }
+
+.warn-box {
+  background: rgba(50,35,20,0.8); border: 1px solid var(--amber);
+  border-radius: 12px; padding: 16px; margin-bottom: 24px;
+}
+.warn-box h3 { margin: 0 0 8px; color: var(--amber); font-size: 14px; }
+.warn-box p { font-size: 13px; color: var(--muted); }
+
+.r2-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.r2-bar .label { font-size: 12px; color: var(--muted); min-width: 120px; }
+.r2-bar .bar-bg { flex: 1; height: 16px; background: rgba(63,63,70,0.3); border-radius: 4px; overflow: hidden; }
+.r2-bar .bar-fill { height: 100%; border-radius: 4px; }
+.r2-bar .val { font-size: 12px; min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.footer { font-size: 11px; color: var(--muted); text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>回帰分析レポート</h1>
+<p class="subtitle">ATR × 曜日 × 価格帯 の説明力比較 — OLS重回帰分析 (951件, 2025-10-29 ~ 2026-02-03)</p>
+
+<!-- 結論 -->
+<div class="conclusion-box">
+<h3>結論</h3>
+<ul>
+<li><strong>ATR</strong>にはP&Lを予測するシグナルがある（p&lt;0.01）</li>
+<li><strong>曜日</strong>にはほぼシグナルがない（制度金曜を除き全て非有意）</li>
+<li><strong>価格帯</strong>はいちにち信用で強く効く（R²が6倍に改善）</li>
+<li>ただしR²=0.10 → P&L変動の<strong>90%は説明できない</strong></li>
+</ul>
+</div>
+
+<!-- 手法の説明 -->
+<h2>手法: OLS重回帰分析</h2>
+<div class="card">
+<p>各トレードのP&Lを目的変数、ATR（連続値）と曜日・価格帯（ダミー変数）を説明変数とした線形回帰。</p>
+<p style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; margin: 12px 0;">
+P&L = β₀ + β₁×ATR + β₂×火 + β₃×水 + ... + β₈×価格帯₁ + ... + ε
+</p>
+<p>各βのt検定で「その変数がP&Lに影響しているか」を判定する。</p>
+<table>
+<tr><th class="l">p値</th><th class="l">意味</th><th class="l">表記</th></tr>
+<tr><td class="l">p &lt; 0.001</td><td class="l">偶然では0.1%未満 → 非常に強い</td><td class="l sig-3">***</td></tr>
+<tr><td class="l">p &lt; 0.01</td><td class="l">偶然では1%未満 → 強い</td><td class="l sig-2">**</td></tr>
+<tr><td class="l">p &lt; 0.05</td><td class="l">偶然では5%未満 → 有意</td><td class="l sig-1">*</td></tr>
+<tr><td class="l">p &lt; 0.10</td><td class="l">境界的</td><td class="l sig-dot">.</td></tr>
+<tr><td class="l">p ≥ 0.10</td><td class="l">偶然の範囲 → 有意でない</td><td class="l muted"></td></tr>
+</table>
+</div>
+
+<!-- R²比較 -->
+<h2>モデル別 R² 比較</h2>
+<div class="card">
+<h3>制度信用 (359件)</h3>
+<div class="r2-bar"><span class="label">ATRのみ</span><div class="bar-bg"><div class="bar-fill" style="width:2.3%;background:var(--sky)"></div></div><span class="val">0.009</span></div>
+<div class="r2-bar"><span class="label">ATR+曜日</span><div class="bar-bg"><div class="bar-fill" style="width:7.3%;background:var(--sky)"></div></div><span class="val">0.029</span></div>
+<div class="r2-bar"><span class="label">ATR+価格帯</span><div class="bar-bg"><div class="bar-fill" style="width:5.0%;background:var(--amber)"></div></div><span class="val">0.020</span></div>
+<div class="r2-bar"><span class="label">ATR+曜日+価格帯</span><div class="bar-bg"><div class="bar-fill" style="width:10.0%;background:var(--emerald)"></div></div><span class="val">0.040</span></div>
+<p class="muted" style="margin-top:8px;">→ どのモデルもR²&lt;0.04。制度信用はATR・曜日・価格帯いずれも説明力が弱い。</p>
+</div>
+
+<div class="card">
+<h3>いちにち信用 (585件)</h3>
+<div class="r2-bar"><span class="label">ATRのみ</span><div class="bar-bg"><div class="bar-fill" style="width:3.8%;background:var(--sky)"></div></div><span class="val">0.015</span></div>
+<div class="r2-bar"><span class="label">ATR+曜日</span><div class="bar-bg"><div class="bar-fill" style="width:6.0%;background:var(--sky)"></div></div><span class="val">0.024</span></div>
+<div class="r2-bar"><span class="label highlight">ATR+価格帯</span><div class="bar-bg"><div class="bar-fill" style="width:22.5%;background:var(--amber)"></div></div><span class="val bold">0.090</span></div>
+<div class="r2-bar"><span class="label highlight">ATR+曜日+価格帯</span><div class="bar-bg"><div class="bar-fill" style="width:25.0%;background:var(--emerald)"></div></div><span class="val bold">0.100</span></div>
+<p class="muted" style="margin-top:8px;">→ 価格帯の追加でR²が0.015→0.090に<strong>6倍</strong>。曜日の追加（0.090→0.100）はほぼ寄与なし。</p>
+</div>
+
+<!-- フルモデル詳細 -->
+<h2>フルモデル詳細: ATR + 曜日 + 価格帯</h2>
+
+<div class="card">
+<h3>制度信用 (359件, R²=0.040)</h3>
+<p class="muted">基準: 月曜 × ~1,000円</p>
+<table>
+<tr><th class="l">変数</th><th class="r">係数 (β)</th><th class="r">p値</th><th class="l">有意</th><th class="l">解釈</th></tr>
+<tr><td class="l">ATR</td><td class="r">-519</td><td class="r">0.089</td><td class="l sig-dot">.</td><td class="l muted">境界的。ATR 1%あたり-519円</td></tr>
+<tr><td class="l">火</td><td class="r">+1,080</td><td class="r">0.647</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">水</td><td class="r">+2,029</td><td class="r">0.393</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">木</td><td class="r">+271</td><td class="r">0.904</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr class="highlight"><td class="l bold">金</td><td class="r bold pos">+5,792</td><td class="r">0.019</td><td class="l sig-1">*</td><td class="l">月曜比+5,792円。唯一有意</td></tr>
+<tr><td class="l">1000~3000</td><td class="r">+35</td><td class="r">0.984</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">3000~5000</td><td class="r">-1,290</td><td class="r">0.594</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">5000~10000</td><td class="r">-4,117</td><td class="r">0.121</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">10000~</td><td class="r">-4,584</td><td class="r">0.288</td><td class="l"></td><td class="l muted">非有意</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>いちにち信用 (585件, R²=0.100)</h3>
+<p class="muted">基準: 月曜 × ~1,000円</p>
+<table>
+<tr><th class="l">変数</th><th class="r">係数 (β)</th><th class="r">p値</th><th class="l">有意</th><th class="l">解釈</th></tr>
+<tr class="highlight"><td class="l bold">ATR</td><td class="r bold neg">-380</td><td class="r">0.002</td><td class="l sig-2">**</td><td class="l">ATR 1%あたり-380円。有意</td></tr>
+<tr><td class="l">火</td><td class="r">-2,141</td><td class="r">0.343</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">水</td><td class="r">+2,026</td><td class="r">0.381</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">木</td><td class="r">+648</td><td class="r">0.779</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr><td class="l">金</td><td class="r">-1,755</td><td class="r">0.453</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr class="highlight"><td class="l bold">1000~3000</td><td class="r bold neg">-3,456</td><td class="r">0.016</td><td class="l sig-1">*</td><td class="l">~1000比で-3,456円。やや不利</td></tr>
+<tr><td class="l">3000~5000</td><td class="r">-284</td><td class="r">0.925</td><td class="l"></td><td class="l muted">非有意</td></tr>
+<tr class="highlight"><td class="l bold">5000~10000</td><td class="r bold pos">+10,449</td><td class="r">0.009</td><td class="l sig-2">**</td><td class="l">~1000比で+10,449円。有利</td></tr>
+<tr class="highlight"><td class="l bold">10000~</td><td class="r bold neg">-35,143</td><td class="r">0.000</td><td class="l sig-3">***</td><td class="l">~1000比で-35,143円。大損の巣窟 (7件)</td></tr>
+</table>
+</div>
+
+<!-- 矛盾と注意点 -->
+<div class="warn-box">
+<h3>線形モデルの限界</h3>
+<p>ATRの回帰係数β=-380は「ATRが高いほどP&Lが悪化する線形傾向」を示す。しかしATR帯別の実データではATR≥10%で大幅プラスに反転している。</p>
+<p style="margin-top:8px;">これは<strong>中間帯（6-9%）の損失が線形の傾きを引き下げている</strong>ため。実態はV字型であり、線形回帰では捉えきれない。</p>
+<p style="margin-top:8px;">回帰分析は「ATRに情報がある / 曜日に情報がない」の<strong>証明</strong>として有用。具体的な閾値ルールの根拠としてはATR帯別集計の方が適切。</p>
+</div>
+
+<!-- カードとしての持ち方 -->
+<h2>実用的な位置づけ</h2>
+<div class="card">
+<table>
+<tr><th class="l">指標</th><th class="l">シグナル</th><th class="l">根拠</th><th class="l">使い方</th></tr>
+<tr class="highlight"><td class="l bold">ATR</td><td class="l pos">あり (p&lt;0.01)</td><td class="l">回帰で有意 + 帯別で閾値効果</td><td class="l">閾値ルール（≥10%で持切り）</td></tr>
+<tr><td class="l">価格帯</td><td class="l pos">いちにち信用のみ</td><td class="l">R²が6倍改善</td><td class="l">10,000円以上を避ける</td></tr>
+<tr><td class="l">曜日</td><td class="l neg">ほぼなし</td><td class="l">9/10の係数が非有意</td><td class="l">フィルタとしては使えない</td></tr>
+</table>
+</div>
+
+<div class="footer">
+Generated at <script>document.write(new Date().toLocaleString('ja-JP'))</script> | OLS重回帰分析 | データ: 951件 (制度359 / いちにち585) | 期間: 2025-10-29 ~ 2026-02-03
+</div>
+
+</div>
+</body>
+</html>

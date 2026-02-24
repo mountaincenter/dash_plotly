@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Grok銘柄 指標端緒分析</title>
+<style>
+body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+h1 { color: #f8fafc; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
+h2 { color: #93c5fd; margin-top: 32px; }
+.summary { display: flex; gap: 24px; margin: 16px 0; flex-wrap: wrap; }
+.stat { background: #1e293b; border-radius: 8px; padding: 12px 20px; min-width: 150px; }
+.stat-label { display: block; font-size: 12px; color: #94a3b8; }
+.stat-value { display: block; font-size: 22px; font-weight: bold; color: #f1f5f9; margin-top: 4px; }
+.section { margin-bottom: 32px; }
+table { border-collapse: collapse; width: 100%; max-width: 900px; }
+th { background: #1e293b; color: #94a3b8; padding: 8px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #334155; }
+td { padding: 8px 14px; border-bottom: 1px solid #1e293b; font-size: 14px; }
+tr:hover { background: #1e293b; }
+.note { color: #64748b; font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>Grok銘柄 指標端緒分析</h1>
+<p class="note">対象: grok_trending_archive（2025-10-29 〜 2026-02-19）<br>
+成果指標: ショート損益 = -phase2_return（寄付売→大引け買）</p>
+
+    <div class="summary">
+        <div class="stat"><span class="stat-label">対象レコード</span><span class="stat-value">1093</span></div>
+        <div class="stat"><span class="stat-label">有効（phase2あり）</span><span class="stat-value">1093</span></div>
+        <div class="stat"><span class="stat-label">全体ショート勝率</span><span class="stat-value">52.5%</span></div>
+        <div class="stat"><span class="stat-label">全体平均リターン</span><span class="stat-value">+0.80%</span></div>
+    </div>
+
+    <div class="section">
+        <h2>端緒判定サマリー</h2>
+        <table>
+            <thead><tr><th>指標</th><th>勝率スプレッド</th><th>リターンスプレッド</th><th>判定</th></tr></thead>
+            <tbody><tr><td>ATR</td><td>26.9pp</td><td>5.31pp</td><td><span style="color:#4ade80;font-weight:bold">端緒あり</span></td></tr><tr><td>RSI9日足</td><td>20.4pp</td><td>2.04pp</td><td><span style="color:#4ade80;font-weight:bold">端緒あり</span></td></tr><tr><td>RSI9五分足</td><td>16.3pp</td><td>1.70pp</td><td><span style="color:#4ade80;font-weight:bold">端緒あり</span></td></tr><tr><td>Q*</td><td>76.7pp</td><td>7.25pp</td><td><span style="color:#4ade80;font-weight:bold">端緒あり</span></td></tr></tbody></table></div>
+
+    <div class="section">
+        <h2>ATR (14日, %)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ATR帯</th>
+                    <th>件数</th>
+                    <th>ショート勝率</th>
+                    <th>平均リターン</th>
+                    <th>中央値</th>
+                    <th>平均損益/100株</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td>0-2%</td>
+            <td>116</td>
+            <td style="color:#fbbf24;font-weight:bold">50.0%</td>
+            <td style="color:#f87171">-0.05%</td>
+            <td style="color:#4ade80">+0.02%</td>
+            <td style="color:#f87171">-86円</td>
+        </tr>
+        <tr>
+            <td>2-4%</td>
+            <td>311</td>
+            <td style="color:#f87171;font-weight:bold">46.9%</td>
+            <td style="color:#f87171">-0.03%</td>
+            <td style="color:#9ca3af">-0.00%</td>
+            <td style="color:#f87171">-151円</td>
+        </tr>
+        <tr>
+            <td>4-6%</td>
+            <td>239</td>
+            <td style="color:#fbbf24;font-weight:bold">51.9%</td>
+            <td style="color:#4ade80">+0.43%</td>
+            <td style="color:#4ade80">+0.37%</td>
+            <td style="color:#4ade80">+204円</td>
+        </tr>
+        <tr>
+            <td>6-8%</td>
+            <td>177</td>
+            <td style="color:#f87171;font-weight:bold">45.8%</td>
+            <td style="color:#4ade80">+0.35%</td>
+            <td style="color:#9ca3af">-0.00%</td>
+            <td style="color:#f87171">-256円</td>
+        </tr>
+        <tr>
+            <td>8-10%</td>
+            <td>92</td>
+            <td style="color:#fbbf24;font-weight:bold">54.3%</td>
+            <td style="color:#f87171">-0.02%</td>
+            <td style="color:#4ade80">+0.46%</td>
+            <td style="color:#4ade80">+956円</td>
+        </tr>
+        <tr>
+            <td>10-15%</td>
+            <td>107</td>
+            <td style="color:#4ade80;font-weight:bold">72.0%</td>
+            <td style="color:#4ade80">+4.30%</td>
+            <td style="color:#4ade80">+3.67%</td>
+            <td style="color:#4ade80">+7,285円</td>
+        </tr>
+        <tr>
+            <td>15%+</td>
+            <td>44</td>
+            <td style="color:#4ade80;font-weight:bold">72.7%</td>
+            <td style="color:#4ade80">+5.26%</td>
+            <td style="color:#4ade80">+5.01%</td>
+            <td style="color:#4ade80">+4,675円</td>
+        </tr></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>RSI 9 日足</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>RSI帯</th>
+                    <th>件数</th>
+                    <th>ショート勝率</th>
+                    <th>平均リターン</th>
+                    <th>中央値</th>
+                    <th>平均損益/100株</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td>0-20</td>
+            <td>49</td>
+            <td style="color:#4ade80;font-weight:bold">63.3%</td>
+            <td style="color:#4ade80">+0.87%</td>
+            <td style="color:#4ade80">+0.80%</td>
+            <td style="color:#4ade80">+809円</td>
+        </tr>
+        <tr>
+            <td>20-30</td>
+            <td>57</td>
+            <td style="color:#4ade80;font-weight:bold">61.4%</td>
+            <td style="color:#4ade80">+1.74%</td>
+            <td style="color:#4ade80">+1.06%</td>
+            <td style="color:#4ade80">+2,089円</td>
+        </tr>
+        <tr>
+            <td>30-40</td>
+            <td>110</td>
+            <td style="color:#fbbf24;font-weight:bold">50.0%</td>
+            <td style="color:#4ade80">+0.26%</td>
+            <td style="color:#4ade80">+0.04%</td>
+            <td style="color:#4ade80">+1,620円</td>
+        </tr>
+        <tr>
+            <td>40-50</td>
+            <td>147</td>
+            <td style="color:#4ade80;font-weight:bold">61.2%</td>
+            <td style="color:#4ade80">+1.46%</td>
+            <td style="color:#4ade80">+0.79%</td>
+            <td style="color:#4ade80">+2,673円</td>
+        </tr>
+        <tr>
+            <td>50-60</td>
+            <td>143</td>
+            <td style="color:#fbbf24;font-weight:bold">55.2%</td>
+            <td style="color:#4ade80">+1.00%</td>
+            <td style="color:#4ade80">+0.38%</td>
+            <td style="color:#4ade80">+1,087円</td>
+        </tr>
+        <tr>
+            <td>60-70</td>
+            <td>163</td>
+            <td style="color:#fbbf24;font-weight:bold">52.1%</td>
+            <td style="color:#4ade80">+1.04%</td>
+            <td style="color:#4ade80">+0.53%</td>
+            <td style="color:#4ade80">+1,308円</td>
+        </tr>
+        <tr>
+            <td>70-80</td>
+            <td>149</td>
+            <td style="color:#fbbf24;font-weight:bold">53.0%</td>
+            <td style="color:#4ade80">+1.55%</td>
+            <td style="color:#4ade80">+0.31%</td>
+            <td style="color:#4ade80">+1,860円</td>
+        </tr>
+        <tr>
+            <td>80-100</td>
+            <td>261</td>
+            <td style="color:#f87171;font-weight:bold">42.9%</td>
+            <td style="color:#f87171">-0.30%</td>
+            <td style="color:#9ca3af">-0.00%</td>
+            <td style="color:#f87171">-895円</td>
+        </tr></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>RSI 9 五分足（前日終値時点）</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>RSI帯</th>
+                    <th>件数</th>
+                    <th>ショート勝率</th>
+                    <th>平均リターン</th>
+                    <th>中央値</th>
+                    <th>平均損益/100株</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td>0-20</td>
+            <td>24</td>
+            <td style="color:#fbbf24;font-weight:bold">54.2%</td>
+            <td style="color:#4ade80">+1.27%</td>
+            <td style="color:#4ade80">+1.15%</td>
+            <td style="color:#4ade80">+3,654円</td>
+        </tr>
+        <tr>
+            <td>20-30</td>
+            <td>66</td>
+            <td style="color:#f87171;font-weight:bold">48.5%</td>
+            <td style="color:#4ade80">+1.26%</td>
+            <td style="color:#9ca3af">-0.00%</td>
+            <td style="color:#4ade80">+359円</td>
+        </tr>
+        <tr>
+            <td>30-40</td>
+            <td>166</td>
+            <td style="color:#fbbf24;font-weight:bold">50.0%</td>
+            <td style="color:#4ade80">+0.74%</td>
+            <td style="color:#4ade80">+0.02%</td>
+            <td style="color:#4ade80">+1,017円</td>
+        </tr>
+        <tr>
+            <td>40-50</td>
+            <td>197</td>
+            <td style="color:#fbbf24;font-weight:bold">50.3%</td>
+            <td style="color:#4ade80">+0.20%</td>
+            <td style="color:#4ade80">+0.05%</td>
+            <td style="color:#4ade80">+506円</td>
+        </tr>
+        <tr>
+            <td>50-60</td>
+            <td>218</td>
+            <td style="color:#fbbf24;font-weight:bold">51.4%</td>
+            <td style="color:#4ade80">+0.62%</td>
+            <td style="color:#4ade80">+0.14%</td>
+            <td style="color:#4ade80">+721円</td>
+        </tr>
+        <tr>
+            <td>60-70</td>
+            <td>188</td>
+            <td style="color:#fbbf24;font-weight:bold">59.6%</td>
+            <td style="color:#4ade80">+1.02%</td>
+            <td style="color:#4ade80">+0.68%</td>
+            <td style="color:#4ade80">+654円</td>
+        </tr>
+        <tr>
+            <td>70-80</td>
+            <td>102</td>
+            <td style="color:#fbbf24;font-weight:bold">58.8%</td>
+            <td style="color:#4ade80">+1.90%</td>
+            <td style="color:#4ade80">+1.32%</td>
+            <td style="color:#4ade80">+4,738円</td>
+        </tr>
+        <tr>
+            <td>80-100</td>
+            <td>67</td>
+            <td style="color:#f87171;font-weight:bold">43.3%</td>
+            <td style="color:#4ade80">+1.13%</td>
+            <td style="color:#9ca3af">-0.00%</td>
+            <td style="color:#4ade80">+912円</td>
+        </tr></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Quintile（ML予測）</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Q*</th>
+                    <th>件数</th>
+                    <th>ショート勝率</th>
+                    <th>平均リターン</th>
+                    <th>中央値</th>
+                    <th>平均損益/100株</th>
+                </tr>
+            </thead>
+            <tbody>
+        <tr>
+            <td>Q1</td>
+            <td>579</td>
+            <td style="color:#4ade80;font-weight:bold">84.1%</td>
+            <td style="color:#4ade80">+3.89%</td>
+            <td style="color:#4ade80">+2.23%</td>
+            <td style="color:#4ade80">+5,611円</td>
+        </tr>
+        <tr>
+            <td>Q2</td>
+            <td>50</td>
+            <td style="color:#4ade80;font-weight:bold">62.0%</td>
+            <td style="color:#4ade80">+0.32%</td>
+            <td style="color:#4ade80">+0.92%</td>
+            <td style="color:#f87171">-1,692円</td>
+        </tr>
+        <tr>
+            <td>Q3</td>
+            <td>44</td>
+            <td style="color:#f87171;font-weight:bold">25.0%</td>
+            <td style="color:#f87171">-1.60%</td>
+            <td style="color:#f87171">-0.50%</td>
+            <td style="color:#f87171">-2,048円</td>
+        </tr>
+        <tr>
+            <td>Q4</td>
+            <td>39</td>
+            <td style="color:#f87171;font-weight:bold">35.9%</td>
+            <td style="color:#f87171">-1.71%</td>
+            <td style="color:#f87171">-1.98%</td>
+            <td style="color:#f87171">-2,015円</td>
+        </tr>
+        <tr>
+            <td>Q5</td>
+            <td>378</td>
+            <td style="color:#f87171;font-weight:bold">7.4%</td>
+            <td style="color:#f87171">-3.36%</td>
+            <td style="color:#f87171">-1.80%</td>
+            <td style="color:#f87171">-5,061円</td>
+        </tr></tbody>
+        </table>
+    </div>
+<p class="note">生成日時: 2026-02-20 15:14</p>
+</body>
+</html>

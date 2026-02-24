@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット振り返り 2026/02/13（金）- 続落-698円・前場755円急落→半値戻し→二段下げ</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background:rgba(251,191,36,0.15); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.3); }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .num-neutral { color:var(--text-muted); }
+  .highlight-row td { background:rgba(251,113,133,0.05); }
+  .highlight-row-green td { background:rgba(52,211,153,0.05); }
+  .highlight-row-amber td { background:rgba(251,191,36,0.05); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .timeline { position:relative; padding-left:28px; margin:16px 0; }
+  .timeline::before { content:''; position:absolute; left:8px; top:4px; bottom:4px; width:2px; background:var(--card-border); }
+  .timeline-item { position:relative; margin-bottom:16px; font-size:0.875rem; }
+  .timeline-item::before { content:''; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--card-border); border:2px solid var(--bg); }
+  .timeline-item.peak::before { background:var(--emerald); }
+  .timeline-item.drop::before { background:var(--rose); }
+  .timeline-item.neutral::before { background:var(--amber); }
+  .timeline-time { color:var(--text-muted); font-size:0.75rem; font-weight:600; }
+  .timeline-content { margin-top:2px; }
+  .factor-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
+  .factor-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:14px; }
+  .factor-card .factor-title { font-size:0.8rem; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+  .source-list { margin-top:12px; padding-left:20px; }
+  .source-list li { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+  .source-list a { color:var(--blue); text-decoration:none; }
+  .source-list a:hover { text-decoration:underline; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
+  .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
+  .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
+  .tag-neutral { background:rgba(251,191,36,0.12); color:var(--amber); }
+  .comparison-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:0.8rem; }
+  .comparison-bar .bar-label { min-width:120px; color:var(--text-muted); }
+  .comparison-bar .bar-track { flex:1; height:20px; background:rgba(255,255,255,0.03); border-radius:4px; overflow:hidden; }
+  .comparison-bar .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.7rem; font-weight:600; color:#fff; }
+  .bar-fill-green { background:var(--emerald); }
+  .bar-fill-red { background:var(--rose); }
+  .quote-box { border-left:3px solid var(--purple); padding:12px 16px; margin:12px 0; background:rgba(167,139,250,0.05); border-radius:0 8px 8px 0; font-size:0.85rem; color:var(--text-muted); font-style:italic; }
+  .quote-box .quote-source { margin-top:6px; font-style:normal; font-size:0.75rem; color:var(--purple); }
+  .evidence-label { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; vertical-align:middle; margin-left:8px; }
+  .evidence-fact { background:rgba(52,211,153,0.15); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .evidence-inference { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .evidence-unverified { background:rgba(251,113,133,0.12); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .evidence-legend { display:flex; gap:16px; margin-bottom:24px; padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; font-size:0.8rem; color:var(--text-muted); }
+  .evidence-legend-item { display:flex; align-items:center; gap:6px; }
+  .footnote { font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>マーケット振り返り 2026/02/13（金）<span class="badge badge-rose">続落-698円・ミニSQ・Day4</span></h1>
+<div class="subtitle">米Gemini 3ショックでNYダウ-669→東京ギャップダウン。前場09:50に56,652円まで急落（高値から-755）も後場に57,280まで回復。しかし14時台に二段下げで56,942着地。N225 -1.21% / TOPIX -1.63%。ミニSQ日。Day4は反落。</div>
+
+<div class="evidence-legend">
+  <div class="evidence-legend-item"><span class="evidence-label evidence-fact">事実</span> parquet / web検索で確認済み</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈・因果推定</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-unverified">未検証</span> ソースはあるが数値精度が未確認</div>
+</div>
+
+<!-- ===== 1. マーケットサマリー ===== -->
+<div class="section">
+  <h2>本日のマーケットサマリー <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均</div>
+      <div class="value num-neg">56,942</div>
+      <div class="sub">-697.87 (-1.21%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX</div>
+      <div class="value num-neg">3,818.85</div>
+      <div class="sub">-63.31 (-1.63%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY</div>
+      <div class="value num-neutral">153.38円</div>
+      <div class="sub">前日153.27 → ほぼ横ばい</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">日経VI</div>
+      <div class="value num-neutral">34.21</div>
+      <div class="sub">+0.11 (+0.32%) 30超15日目</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">日経225 高値</div>
+        <div class="value" style="font-size:1.2rem;">57,407</div>
+        <div class="sub">09:00 寄付直後にスパイク</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経225 安値</div>
+        <div class="value num-neg" style="font-size:1.2rem;">56,652</div>
+        <div class="sub">09:50 前場急落の底</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">高値→終値</div>
+        <div class="value num-neg" style="font-size:1.2rem;">-465</div>
+        <div class="sub">57,407 → 56,942（上ヒゲ）</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">売買代金（プライム）</div>
+        <div class="value" style="font-size:1.2rem;">10兆7,625億</div>
+        <div class="sub">4日連続9兆超 <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">騰落銘柄数（プライム）</div>
+        <div class="value num-neg" style="font-size:1.2rem;">267 : 1,305</div>
+        <div class="sub">上昇17% / 下落83% <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">ミニSQ値（2/13確定）</div>
+        <div class="value" style="font-size:1.2rem;">57,046</div>
+        <div class="sub">終値56,942 → SQ値下方乖離 <span class="evidence-label evidence-fact">事実</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-danger" style="margin-top:16px;">
+    <strong>注目 <span class="evidence-label evidence-fact">事実</span>:</strong> N225 -1.21% vs TOPIX -1.63% — TOPIX の方が深い。騰落267:1,305（下落83%）で文字通りの全面安。前日2/12は騰落1,058:503（上昇67%）だったので一夜で完全に反転した。
+  </div>
+</div>
+
+<!-- ===== 2. 日中タイムライン ===== -->
+<div class="section">
+  <h2>日中タイムライン <span class="evidence-label evidence-fact">5分足parquetデータ</span> <span class="evidence-label evidence-inference">解説部分は推論</span></h2>
+
+  <div class="timeline">
+    <div class="timeline-item drop">
+      <div class="timeline-time">09:00 寄付</div>
+      <div class="timeline-content">
+        57,197（前日比-443 / -0.77%）でギャップダウン。NYダウ-669の影響を織り込み（事実）。寄付直後に57,407まで一時スパイク（事実）。
+      </div>
+    </div>
+    <div class="timeline-item drop">
+      <div class="timeline-time">09:15-09:50 前場急落</div>
+      <div class="timeline-content">
+        <strong class="num-neg">57,407 → 56,652（-755 / 50分間）</strong>。09:15の5分足で-228円の急落が引き金（事実）。09:50に日中安値56,652到達（前日比-988 / -1.71%）。<span style="color:var(--amber);">Gemini 3ショック + SBG失望売り + ミニSQ先物売りの三重苦（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item peak">
+      <div class="timeline-time">10:00-11:30 前場回復</div>
+      <div class="timeline-content">
+        56,652 → 57,227（<strong class="num-pos">+575回復</strong>）。下落幅の76%を前場中に戻す（事実）。<span style="color:var(--amber);">SQ絡みのショートカバーと押し目買いが入った（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">12:30-14:10 後場もみ合い</div>
+      <div class="timeline-content">
+        57,150-57,280の狭いレンジで膠着（事実）。<span style="color:var(--amber);">今夜の米CPI（22:30 JST）を控えた様子見。午前の急落で方向感が出にくい（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item drop">
+      <div class="timeline-time">14:15-14:40 二段下げ</div>
+      <div class="timeline-content">
+        <strong class="num-neg">57,219 → 56,869（-350 / 25分間）</strong>。14:15から一気に崩れた（事実）。<span style="color:var(--amber);">大引け前の投げ売り・週末リスク回避のポジション調整（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">15:00+ 大引け</div>
+      <div class="timeline-content">
+        <strong>56,942</strong>（-698 / -1.21%）で着地。安値56,652から+290回復したが、14時台の二段下げで「下ヒゲ＋上ヒゲ」の十字線に近い形。3日ぶりの57,000円割れ。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. 698円安の要因分析 ===== -->
+<div class="section">
+  <h2>698円安の要因分析 <span class="evidence-label evidence-inference">推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    以下4要因は複数のニュースソースの解釈を統合した筆者の推論です。値動き自体は事実ですが因果関係は証明されていません。
+  </p>
+
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因1</span> NYダウ-669 / Gemini 3「SaaSの死」ショック</div>
+      <div class="factor-detail">
+        GoogleがGemini 3新モデルを発表（事実）。「AIがSaaSを代替する」との懸念でSaaS株が急落。Cisco -12.3%, Apple -5.0%（事実）。
+        NYダウ -669(-1.34%), NASDAQ -469(-2.03%)の大幅安を東京が直接反映（事実）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因2</span> SBG決算失望売り</div>
+      <div class="factor-detail">
+        SBG 4-12月期純利益3.17兆円（前年比5倍）と好決算に見えるが、OpenAI投資利益2.80兆円が大半（事実）。
+        実質的な事業利益は期待以下との見方で2/13は大幅安。日経マイナス寄与トップ級（推論）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因3</span> 選挙ラリー後の高値警戒感</div>
+      <div class="factor-detail">
+        2/9-12で日経+4,375円（+8.2%）上昇後（事実）。騰落レシオ5ヶ月ぶり高水準（日経報道、事実）。
+        2/12に58,015円タッチ→上ヒゲで短期天井感。4日連続の上昇後の利確が入りやすいタイミング（推論）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因4</span> ミニSQ + 米CPI前のリスクオフ</div>
+      <div class="factor-detail">
+        2/13はミニSQ日。SQ値57,046の攻防を巡る先物売りが前場の急落を増幅（推論）。
+        今夜22:30の米CPIを控え、週末リスクを取りたくないポジション調整（推論）。
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 2/12までは「選挙ラリー → 循環物色で底堅い」だったが、2/13は外部ショック（Gemini 3 + SBG失望）が加わり「利確の口実」を与えた。ただし安値56,652から+290回復して引けており、売り一辺倒ではない。
+    <div class="quote-source">— 筆者の解釈（複数ニュースソースから合成）</div>
+  </div>
+</div>
+
+<!-- ===== 4. N225 vs TOPIX 乖離 ===== -->
+<div class="section">
+  <h2>日経平均 vs TOPIX 乖離 <span class="badge badge-rose">ともに下落・TOPIX深い</span> <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <div class="comparison-bar">
+    <div class="bar-label">日経225</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-red" style="width:40%;">-1.21%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">TOPIX</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-red" style="width:54%;">-1.63%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">乖離</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:14%; background:var(--amber);">0.42%</div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h3>4日間のN225 vs TOPIX推移</h3>
+    <table>
+      <thead><tr><th>日付</th><th>日経225</th><th>TOPIX</th><th>乖離</th><th>方向</th></tr></thead>
+      <tbody>
+        <tr><td>2/9 (月)</td><td class="num-pos">+3.89%</td><td class="num-pos">+2.29%</td><td>1.60%</td><td>N225優位</td></tr>
+        <tr><td>2/10 (火)</td><td class="num-pos">+2.28%</td><td class="num-pos">+1.90%</td><td>0.38%</td><td>N225優位（縮小）</td></tr>
+        <tr><td>2/12 (木)</td><td class="num-neg">-0.02%</td><td class="num-pos">+0.70%</td><td>0.72%</td><td>TOPIX優位（逆転）</td></tr>
+        <tr class="highlight-row"><td><strong>2/13 (金)</strong></td><td class="num-neg"><strong>-1.21%</strong></td><td class="num-neg"><strong>-1.63%</strong></td><td><strong>0.42%</strong></td><td><strong>N225優位（再逆転）</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> 2/12はTOPIXが優位だったが、2/13はN225の方が下落が浅い。TOPIX -1.63% > N225 -1.21%。騰落267:1,305で全面安。<br>
+    <span class="evidence-label evidence-inference">推論</span> SBG等の大型株がTOPIXを直撃し、さらに中小型株も広く売られた（下落83%）。前日2/12の「循環物色で底堅い」ムードが一夜で崩壊。外部ショック（Gemini 3）の波及力の大きさを示す。
+  </p>
+</div>
+
+<!-- ===== 5. 米株急落・Google Gemini 3ショック ===== -->
+<div class="section">
+  <h2>米株急落・Google Gemini 3ショック（2/12 NY市場） <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>米国市場 2/12終値</h3>
+      <table>
+        <thead><tr><th>指数</th><th>終値</th><th>前日比</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td>NYダウ</td>
+            <td>49,452</td>
+            <td class="num-neg"><strong>-669 (-1.34%)</strong></td>
+          </tr>
+          <tr class="highlight-row">
+            <td>S&amp;P 500</td>
+            <td>—</td>
+            <td class="num-neg"><strong>-1.57%</strong></td>
+          </tr>
+          <tr class="highlight-row">
+            <td>NASDAQ</td>
+            <td>22,597</td>
+            <td class="num-neg"><strong>-469 (-2.03%)</strong></td>
+          </tr>
+          <tr><td>Cisco</td><td>—</td><td class="num-neg">-12.32%</td></tr>
+          <tr><td>Apple</td><td>—</td><td class="num-neg">-5.00%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Gemini 3の影響</h3>
+      <div class="factor-card" style="margin-bottom:8px;">
+        <div class="factor-title"><span class="tag tag-bear">1</span> 「SaaSの死」ナラティブ <span class="evidence-label evidence-fact">事実</span></div>
+        <div class="factor-detail">
+          GoogleがGemini 3新モデルを発表。AIがSaaSを代替するとの懸念が急浮上。SaaS銘柄が軒並み急落。Cisco決算悪化（-12.3%）も「AI代替」の文脈で解釈された。
+        </div>
+      </div>
+      <div class="factor-card" style="margin-bottom:8px;">
+        <div class="factor-title"><span class="tag tag-neutral">2</span> 半導体は相対的に底堅い <span class="evidence-label evidence-inference">推論</span></div>
+        <div class="factor-detail">
+          Gemini 3は「AIの進化」なので半導体需要にはポジティブ。しかし全体のリスクオフで巻き込まれた面も。東京のキオクシア好決算（営業利益7,996億、予想+52%超）は限定的な支えに。
+        </div>
+      </div>
+      <div class="factor-card">
+        <div class="factor-title"><span class="tag tag-bear">3</span> SBG決算と東京への波及 <span class="evidence-label evidence-fact">事実</span></div>
+        <div class="factor-detail">
+          SBG 4-12月期純利益3.17兆円だがOpenAI投資利益2.80兆円が主因（事実）。2/13は大幅安で日経・TOPIXともに押し下げ。日経ウエイト高の値嵩株が売られた。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-info">
+    <strong>ポイント <span class="evidence-label evidence-inference">推論</span>:</strong> Gemini 3ショックの本質は「AIがソフトウェアを食う」という構造的懸念。短期的にはSaaS売り・半導体買いの二極化が進む可能性。ただし東京市場ではSBG失望が主因で、Gemini 3の直接影響は限定的。
+  </div>
+</div>
+
+<!-- ===== 6. 為替 ===== -->
+<div class="section">
+  <h2>為替: 株急落でも円高進まず <span class="evidence-label evidence-fact">数値はparquet</span></h2>
+
+  <table>
+    <thead><tr><th>タイミング</th><th>USD/JPY</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>2/10 引け</td><td>156.13</td><td>選挙ラリー直後</td></tr>
+      <tr><td>2/11 雇用統計後</td><td>154.48</td><td>祝日中に円高進行</td></tr>
+      <tr><td>2/12 引け</td><td>153.27</td><td>3営業日続落</td></tr>
+      <tr class="highlight-row-amber"><td><strong>2/13 安値</strong></td><td>152.65</td><td>ほぼ前日並み</td></tr>
+      <tr><td>2/13 高値</td><td>153.60</td><td>一時ドル買い</td></tr>
+      <tr><td><strong>2/13 引け</strong></td><td><strong>153.38</strong></td><td>前日比+0.11（ほぼ横ばい）</td></tr>
+    </tbody>
+  </table>
+
+  <div class="factor-grid" style="margin-top:16px;">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">1</span> 株安でも円高にならず <span class="evidence-label evidence-inference">推論</span></div>
+      <div class="factor-detail">
+        日経-698円の大幅安にもかかわらず、USD/JPYは153円台で安定。2/10-12の3日間で156→153と3円の円高が進行済みで、追加の円買い余力が乏しかった可能性。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">2</span> 今夜の米CPIが蓋 <span class="evidence-label evidence-inference">推論</span></div>
+      <div class="factor-detail">
+        22:30の米CPI発表を控え、為替は方向感を出しにくい。CPIが強ければドル買い（円安）、弱ければドル売り（円高）。結果次第で153円を大きく離れる展開に。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 7. Extreme Market パターン比較 ===== -->
+<div class="section">
+  <h2>Extreme Market パターン比較 <span class="badge badge-amber">Day4 = -1.21%（1月と異なる展開）</span></h2>
+
+  <div class="alert-box alert-danger">
+    <strong>ルール:</strong> 先物 &gt;+3% の翌日からDay2とカウント。Day2-3はショート回避、Day4から再開検討。
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th colspan="4" style="text-align:center; border-right:1px solid var(--card-border);">1月パターン</th>
+        <th colspan="4" style="text-align:center;">2月パターン</th>
+      </tr>
+      <tr>
+        <th></th><th>日付</th><th>N225</th><th>ショートP&L</th><th style="border-right:1px solid var(--card-border);">勝率</th>
+        <th>日付</th><th>N225</th><th>ショートP&L</th><th>勝率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td><strong>Extreme</strong></td>
+        <td>1/13 (火)</td><td class="num-pos">+4.04%</td><td class="num-neg">-160,950円</td><td class="num-neg" style="border-right:1px solid var(--card-border);">3/21</td>
+        <td>2/9 (月)</td><td class="num-pos">+4.20%</td><td>-</td><td>静観</td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>Day2</strong></td>
+        <td>1/14 (水)</td><td class="num-pos">+1.17%</td><td class="num-neg">-37,000円</td><td class="num-neg" style="border-right:1px solid var(--card-border);">8/19</td>
+        <td>2/10 (火)</td><td class="num-pos">+2.28%</td><td class="num-neg">-32,100円</td><td class="num-neg">2/6</td>
+      </tr>
+      <tr class="highlight-row-amber">
+        <td><strong>Day3</strong></td>
+        <td>1/15 (木)</td><td class="num-neg">-0.35%</td><td class="num-neg"><strong>-201,300円</strong></td><td class="num-neg" style="border-right:1px solid var(--card-border);">7/20</td>
+        <td>2/12 (木)</td><td>-0.02%</td><td>静観</td><td>-</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>Day4</strong></td>
+        <td>1/16 (金)</td><td class="num-pos">+0.70%</td><td class="num-pos">+296,200円</td><td class="num-pos" style="border-right:1px solid var(--card-border);">17/21</td>
+        <td><strong>2/13 (金)</strong></td><td class="num-neg"><strong>-1.21%</strong></td><td>-</td><td>-</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.85rem; margin-top:12px;">
+    <span class="evidence-label evidence-fact">事実</span> 1月Day4（1/16金）はN225 +0.70%で「指数上昇 → ショート個別株で+296,200円」の好パターンだった。2月Day4（2/13金）はN225 <strong>-1.21%</strong>と大幅反落。<br>
+    <span class="evidence-label evidence-fact">事実</span> 1月と2月のDay4は同じ「金曜日」だが結果が真逆。1月は指数上昇+個別株下落、2月は指数下落。<br>
+    <span class="evidence-label evidence-inference">推論</span> Day4の方向はExtreme Marketのパターンでは予測できず、外部要因（2月はGemini 3ショック）が支配的。ただしN225 -1.21%の環境は個別ショートにとって追い風の可能性がある（個別株の下落率が大きい銘柄が出やすい）。Day4の勝敗判定は個別P&L集計後に確定。
+  </p>
+</div>
+
+<!-- ===== 8. 翌週展望 ===== -->
+<div class="section">
+  <h2>2/16(月) 翌週の判断材料 <span class="evidence-label evidence-inference">全体が推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    このセクションは全体が筆者の推論です。未来の値動きは予測不可能です。
+  </p>
+
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">米CPI（今夜22:30）</div>
+      <div class="value" style="font-size:1.1rem; color:var(--amber);">最重要</div>
+      <div class="sub">予想: +0.3% m/m, +2.5% y/y</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">CME先物（週末）</div>
+      <div class="value" style="font-size:1.1rem; color:var(--amber);">CPI次第</div>
+      <div class="sub">NKD 2/13終値: 57,140</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Day5（2/16月）</div>
+      <div class="value" style="font-size:1.1rem;">通常モード</div>
+      <div class="sub">Extreme Marketルール終了</div>
+    </div>
+  </div>
+
+  <h3>ブル要因（ショートに対して逆風）</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 選挙ラリーの底力</div>
+      <div class="factor-detail">
+        2/13は-698円だが、2/9起点で見ればまだ+580円(+1.0%)のプラス圏。56,000円台前半は押し目買いが入りやすい水準。キオクシア好決算も半導体セクターの下支え要因。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> CPIが弱い場合のリスクオン</div>
+      <div class="factor-detail">
+        CPIが予想（+0.3% m/m）を下回れば利下げ期待回復 → ドル安円高だが株高。翌週月曜にギャップアップで始まる可能性。
+      </div>
+    </div>
+  </div>
+
+  <h3>ベア要因（ショートに追い風）</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> Gemini 3ショックの継続</div>
+      <div class="factor-detail">
+        「SaaSの死」ナラティブが定着すれば、SaaS関連の日本株（freee、マネーフォワード等）にも波及。2/13で終わらない可能性。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> テクニカル調整の継続</div>
+      <div class="factor-detail">
+        58,015 → 56,652まで-1,363円の調整は4日間+4,375円上昇の31%。半値押し（55,827円）まではまだ余地がある。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> CPI上振れリスク</div>
+      <div class="factor-detail">
+        CPIが+0.4%超なら「higher for longer」確定。利下げ期待消滅 → ドル高円安だが株安。翌週さらなる売り圧力。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">?</span> 週末リスクプレミアム</div>
+      <div class="factor-detail">
+        CPI結果 + 週末の地政学リスクを織り込んで、月曜はギャップ（上下どちらか）が大きくなりやすい。
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:16px;">
+    <strong>アクションプラン <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; <strong>今夜:</strong> 米CPI 22:30発表を確認。予想(+0.3% m/m / +2.5% y/y)対比の上下振れで翌週の方向が決まる<br>
+    &bull; <strong>CME先物:</strong> CPI後のNKD先物水準を確認。2/13終値57,140からの乖離で月曜の寄付を予測<br>
+    &bull; <strong>2/16(月) = Day5以降:</strong> Extreme Marketルール終了。通常のgrok選定ルールで運用<br>
+    &bull; <strong>縮小運用継続:</strong> 100株・Q1銘柄優先。Day4の個別P&L集計結果を確認してから判断<br>
+    &bull; <strong>保有ポジション:</strong> サンコール(-3.46%)のロスカット判断は週明け
+  </div>
+</div>
+
+<!-- ===== 9. 参照ソース ===== -->
+<div class="section">
+  <h2>参照ソース</h2>
+
+  <h3>マーケットデータ</h3>
+  <ul class="source-list">
+    <li><a href="https://kabutan.jp/news/marketnews/?b=n202602131120" target="_blank">株探: 日経平均 続落、高値警戒感から利益確定売りが優勢</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.newsweekjapan.jp/headlines/business/2026/02/587538.php" target="_blank">Newsweek: 日経平均は続落、短期的な過熱感を警戒 決算反応まちまち</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>米国市場・Gemini 3</h3>
+  <ul class="source-list">
+    <li><a href="https://www.nikkei.com/article/DGXZQOGN12C650S6A210C2000000/" target="_blank">日経: NYダウ669ドル安 Gemini 3発表でSaaS株急落</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://kabutan.jp/news/marketnews/?b=n202602130137" target="_blank">株探: 米国市場 Gemini 3ショックでNASDAQ -2.03%</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>決算</h3>
+  <ul class="source-list">
+    <li><a href="https://www.nikkei.com/article/DGXZQOUC098XO0Z00C26A2000000/" target="_blank">日経: ソフトバンクG 4-12月期純利益3.17兆円</a> <span class="evidence-label evidence-fact">事実</span></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOUB120ZR0S6A210C2000000/" target="_blank">日経: キオクシア 通期営業利益見通し7,096-7,996億円</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>為替</h3>
+  <ul class="source-list">
+    <li><a href="https://www.oanda.jp/lab-education/market_news/2026_02_13_usdjpy/" target="_blank">OANDA: ドル円153円台 米CPI前で様子見</a> <span class="evidence-label evidence-fact">事実</span></li>
+  </ul>
+
+  <h3>内部データ</h3>
+  <ul class="source-list">
+    <li>index_prices_max_1d.parquet — N225日足（Open/High/Low/Close）</li>
+    <li>topix_prices_max_1d.parquet — TOPIX日足</li>
+    <li>currency_prices_max_1d.parquet — USD/JPY日足</li>
+    <li>futures_prices_max_1d.parquet — NKD先物日足</li>
+    <li>index_prices_60d_5m.parquet — N225 5分足（タイムライン構築）</li>
+    <li>nikkei_vi_max_1d.parquet — 日経VI（2/13データ未収録）</li>
+    <li>market_analysis_20260212.html — 前回レポートとの連続性</li>
+  </ul>
+</div>
+
+<!-- ===== 10. 結論 ===== -->
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-info" style="margin-top:0;">
+    <strong>今日の要約:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> 日経平均 -698円（-1.21%）で続落。前場09:50に56,652まで急落（高値から-755）も後場57,280まで回復。14時台に二段下げで56,942着地。TOPIX -1.63%で日経より深い。USD/JPY 153.38（ほぼ横ばい）。売買代金10.76兆円。ミニSQ値57,046。<br>
+    <span class="evidence-label evidence-inference">推論</span> 下落の主因はNYダウ-669（Gemini 3ショック）+ SBG決算失望の外部要因。選挙ラリーの調整としては58,015→56,652で-2.4%にとどまり、パニック売りではない。
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>Day4検証 <span class="evidence-label evidence-fact">事実</span>:</strong><br>
+    2/13はDay4。1月パターンではDay4（1/16金）が+296,200円の最良日だった。2月Day4はN225 -1.21%と真逆の展開。ただしN225下落 = 個別ショートに追い風の可能性あり。個別P&L集計で最終判定。<br>
+    <span class="evidence-label evidence-inference">推論</span> Day4の方向はExtremeパターンでは決まらず、その日の外部材料（Gemini 3）が支配的だった。n=2で結論は出せない。
+  </div>
+
+  <div class="alert-box alert-success" style="margin-top:12px;">
+    <strong>翌週 2/16(月)以降 <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    &bull; Extreme Marketルールは終了。通常モードに復帰<br>
+    &bull; 今夜の米CPI結果が翌週の方向を決定。上振れ→株安、下振れ→株高<br>
+    &bull; NKD先物2/13終値57,140 ← CPI後の変動に注目<br>
+    &bull; <strong>判断基準:</strong> CME先物水準 + CPI結果 + grok選定銘柄のQ1比率
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-13 by Claude Code / 数値データはparquet（2026-02-13収録分）、定性データはweb検索<br>
+  P&L符号はショート基準 (ショートP&L = -ロングP&L) | 本レポートは投資助言ではありません
+</footer>
+
+</body>
+</html>

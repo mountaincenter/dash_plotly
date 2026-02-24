@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>グランビルIFD バックテスト 2026年（完走分のみ）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0f172a; color:#e2e8f0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:24px; }
+h1 { font-size:22px; margin-bottom:8px; }
+.subtitle { color:#94a3b8; font-size:13px; margin-bottom:24px; }
+.cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+.card { background:#1e293b; border-radius:8px; padding:16px 20px; min-width:140px; }
+.card .label { color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+.card .value { font-size:28px; font-weight:bold; margin-top:4px; }
+.card .value.green { color:#4ade80; }
+.card .value.yellow { color:#facc15; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:#1e293b; padding:8px 10px; text-align:left; font-weight:600; color:#94a3b8; position:sticky; top:0; }
+td { padding:6px 10px; border-bottom:1px solid #1e293b; }
+tr:hover { background:#1e293b; }
+.section { margin-bottom:32px; }
+.section h2 { font-size:16px; margin-bottom:12px; color:#e2e8f0; }
+.rule { background:#1e293b; border-radius:8px; padding:16px; margin-bottom:24px; font-size:13px; line-height:1.8; }
+.rule span { color:#94a3b8; }
+.note { background:#1e293b; border-left:3px solid #facc15; padding:12px 16px; margin-bottom:24px; font-size:12px; color:#94a3b8; }
+</style>
+</head>
+<body>
+<h1>グランビルIFD バックテスト 2026年実績（完走分のみ）</h1>
+<div class="subtitle">A_dip_buy + B_sma_support / IFD SL-3% / 7営業日引け決済 / 100株</div>
+
+<div class="rule">
+<span>ルール:</span> シグナル翌日の寄付成行買い → IFD損切り-3% → 7営業日後の引け成行売り<br>
+<span>フィルター:</span> 日経225 &gt; SMA20 + CI先行指数3ヶ月↑<br>
+<span>除外セクター:</span> 医薬品・輸送用機器・小売業・その他製品・陸運業・サービス業<br>
+<span>除外条件:</span> データ最終日(2/20)までに7営業日保有を完了できないトレードは除外（8件）
+</div>
+
+<div class="cards">
+    <div class="card"><div class="label">トレード数</div><div class="value">92</div></div>
+    <div class="card"><div class="label">合計損益</div><div class="value green">¥+1,916,294</div></div>
+    <div class="card"><div class="label">平均損益/回</div><div class="value green">¥+20,829</div></div>
+    <div class="card"><div class="label">勝率</div><div class="value yellow">48.9%</div></div>
+    <div class="card"><div class="label">Profit Factor</div><div class="value green">3.13</div></div>
+</div>
+
+<div class="section">
+<h2>価格帯別サマリ</h2>
+<table>
+<thead><tr><th>株価帯</th><th>件数</th><th>勝率</th><th>PF</th><th>合計損益</th><th>平均損益</th><th>最大利益</th><th>最大損失</th></tr></thead>
+<tbody><tr>
+        <td>~¥1,000</td><td style="text-align:right">8</td>
+        <td style="text-align:right">25.0%</td>
+        <td style="text-align:right;color:#f87171;font-weight:bold">0.13</td>
+        <td style="text-align:right;color:#f87171;font-weight:bold">¥-5,140</td>
+        <td style="text-align:right">¥-642</td>
+        <td style="text-align:right;color:#4ade80">¥+650</td>
+        <td style="text-align:right;color:#f87171">¥-2,075</td>
+    </tr><tr>
+        <td>¥1,000~3,000</td><td style="text-align:right">20</td>
+        <td style="text-align:right">40.0%</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">2.33</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">¥+102,314</td>
+        <td style="text-align:right">¥+5,115</td>
+        <td style="text-align:right;color:#4ade80">¥+31,650</td>
+        <td style="text-align:right;color:#f87171">¥-8,928</td>
+    </tr><tr>
+        <td>¥3,000~5,000</td><td style="text-align:right">31</td>
+        <td style="text-align:right">48.4%</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">3.27</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">¥+388,774</td>
+        <td style="text-align:right">¥+12,541</td>
+        <td style="text-align:right;color:#4ade80">¥+128,100</td>
+        <td style="text-align:right;color:#f87171">¥-14,964</td>
+    </tr><tr>
+        <td>¥5,000~1万</td><td style="text-align:right">19</td>
+        <td style="text-align:right">63.2%</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">3.94</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">¥+330,331</td>
+        <td style="text-align:right">¥+17,385</td>
+        <td style="text-align:right;color:#4ade80">¥+146,000</td>
+        <td style="text-align:right;color:#f87171">¥-24,270</td>
+    </tr><tr>
+        <td>¥1万~</td><td style="text-align:right">14</td>
+        <td style="text-align:right">57.1%</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">3.06</td>
+        <td style="text-align:right;color:#4ade80;font-weight:bold">¥+1,100,015</td>
+        <td style="text-align:right">¥+78,572</td>
+        <td style="text-align:right;color:#4ade80">¥+436,000</td>
+        <td style="text-align:right;color:#f87171">¥-174,810</td>
+    </tr></tbody>
+</table>
+</div>
+
+<div class="section">
+<h2>全トレード一覧（92件）</h2>
+<table>
+<thead><tr><th>シグナル日</th><th>保有期間</th><th>型</th><th>銘柄</th><th>セクター</th><th>エントリー</th><th>損益(100株)</th><th>リターン</th><th>決済</th><th>累積損益</th></tr></thead>
+<tbody><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>高砂熱学工業</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥4,654</td>
+        <td style="text-align:right;color:#4ade80">¥+14,900</td>
+        <td style="text-align:right;color:#4ade80">+3.20%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+14,900</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>日本製鋼所</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥8,200</td>
+        <td style="text-align:right;color:#4ade80">¥+146,000</td>
+        <td style="text-align:right;color:#4ade80">+17.80%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+160,900</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/07</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ジーデップ・アドバンス</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥2,976</td>
+        <td style="text-align:right;color:#f87171">¥-8,928</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+151,972</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>川崎重工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥11,460</td>
+        <td style="text-align:right;color:#4ade80">¥+244,500</td>
+        <td style="text-align:right;color:#4ade80">+21.34%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+396,472</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＨＯＹＡ</td>
+        <td style="font-size:11px;color:#888">精密機器</td>
+        <td style="text-align:right">¥24,475</td>
+        <td style="text-align:right;color:#4ade80">¥+113,500</td>
+        <td style="text-align:right;color:#4ade80">+4.64%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+509,972</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＤＤＩ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥2,722</td>
+        <td style="text-align:right;color:#f87171">¥-6,150</td>
+        <td style="text-align:right;color:#f87171">-2.26%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+503,822</td>
+    </tr><tr>
+        <td>01/05</td><td>01/06→01/15</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東宝</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥7,950</td>
+        <td style="text-align:right;color:#4ade80">¥+9,500</td>
+        <td style="text-align:right;color:#4ade80">+1.19%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+513,322</td>
+    </tr><tr>
+        <td>01/06</td><td>01/07→01/16</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東宝</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥7,946</td>
+        <td style="text-align:right;color:#4ade80">¥+6,700</td>
+        <td style="text-align:right;color:#4ade80">+0.84%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+520,022</td>
+    </tr><tr>
+        <td>01/08</td><td>01/09→01/20</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>日本たばこ産業</td>
+        <td style="font-size:11px;color:#888">食料品</td>
+        <td style="text-align:right">¥5,693</td>
+        <td style="text-align:right;color:#4ade80">¥+12,800</td>
+        <td style="text-align:right;color:#4ade80">+2.25%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+532,822</td>
+    </tr><tr>
+        <td>01/08</td><td>01/09→01/20</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>野村総合研究所</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥6,100</td>
+        <td style="text-align:right;color:#f87171">¥-6,500</td>
+        <td style="text-align:right;color:#f87171">-1.07%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+526,322</td>
+    </tr><tr>
+        <td>01/08</td><td>01/09→01/20</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東宝</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥7,834</td>
+        <td style="text-align:right;color:#4ade80">¥+18,300</td>
+        <td style="text-align:right;color:#4ade80">+2.34%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+544,622</td>
+    </tr><tr>
+        <td>01/09</td><td>01/13→01/13</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥2,197</td>
+        <td style="text-align:right;color:#f87171">¥-6,591</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+538,031</td>
+    </tr><tr>
+        <td>01/09</td><td>01/13→01/21</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>アドバンテスト</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥21,495</td>
+        <td style="text-align:right;color:#4ade80">¥+27,500</td>
+        <td style="text-align:right;color:#4ade80">+1.28%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+565,531</td>
+    </tr><tr>
+        <td>01/13</td><td>01/14→01/16</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＤＤＩ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥2,721</td>
+        <td style="text-align:right;color:#f87171">¥-8,163</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+557,368</td>
+    </tr><tr>
+        <td>01/13</td><td>01/14→01/22</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東宝</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥7,997</td>
+        <td style="text-align:right;color:#4ade80">¥+3,500</td>
+        <td style="text-align:right;color:#4ade80">+0.44%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+560,868</td>
+    </tr><tr>
+        <td>01/14</td><td>01/15→01/19</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーグループ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥3,905</td>
+        <td style="text-align:right;color:#f87171">¥-11,715</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+549,153</td>
+    </tr><tr>
+        <td>01/14</td><td>01/15→01/19</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＤＤＩ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥2,714</td>
+        <td style="text-align:right;color:#f87171">¥-8,142</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+541,011</td>
+    </tr><tr>
+        <td>01/15</td><td>01/16→01/20</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥2,043</td>
+        <td style="text-align:right;color:#f87171">¥-6,129</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+534,882</td>
+    </tr><tr>
+        <td>01/16</td><td>01/19→01/21</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ダイキン工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥19,875</td>
+        <td style="text-align:right;color:#f87171">¥-59,625</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+475,257</td>
+    </tr><tr>
+        <td>01/16</td><td>01/19→01/20</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥2,043</td>
+        <td style="text-align:right;color:#f87171">¥-6,129</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+469,128</td>
+    </tr><tr>
+        <td>01/19</td><td>01/20→01/28</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＮＴＴ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥158</td>
+        <td style="text-align:right;color:#f87171">¥-340</td>
+        <td style="text-align:right;color:#f87171">-2.15%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+468,788</td>
+    </tr><tr>
+        <td>01/19</td><td>01/20→01/28</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ソフトバンク</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥218</td>
+        <td style="text-align:right;color:#f87171">¥-654</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+468,134</td>
+    </tr><tr>
+        <td>01/19</td><td>01/20→01/20</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>東京電力ホールディングス</td>
+        <td style="font-size:11px;color:#888">電気・ガス業</td>
+        <td style="text-align:right">¥692</td>
+        <td style="text-align:right;color:#f87171">¥-2,075</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+466,059</td>
+    </tr><tr>
+        <td>01/20</td><td>01/21→01/29</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>サンリオ</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥4,585</td>
+        <td style="text-align:right;color:#4ade80">¥+16,500</td>
+        <td style="text-align:right;color:#4ade80">+3.60%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+482,559</td>
+    </tr><tr>
+        <td>01/20</td><td>01/21→01/28</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＮＴＴ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥160</td>
+        <td style="text-align:right;color:#f87171">¥-479</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+482,080</td>
+    </tr><tr>
+        <td>01/22</td><td>01/23→01/26</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥1,973</td>
+        <td style="text-align:right;color:#f87171">¥-5,919</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+476,161</td>
+    </tr><tr>
+        <td>01/22</td><td>01/23→02/02</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>サンリオ</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥4,584</td>
+        <td style="text-align:right;color:#4ade80">¥+16,000</td>
+        <td style="text-align:right;color:#4ade80">+3.49%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+492,161</td>
+    </tr><tr>
+        <td>01/22</td><td>01/23→02/02</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＡＤＯＫＡＷＡ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥3,252</td>
+        <td style="text-align:right;color:#4ade80">¥+2,800</td>
+        <td style="text-align:right;color:#4ade80">+0.86%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+494,961</td>
+    </tr><tr>
+        <td>01/23</td><td>01/26→01/29</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>大成建設</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥15,600</td>
+        <td style="text-align:right;color:#f87171">¥-46,800</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+448,161</td>
+    </tr><tr>
+        <td>01/23</td><td>01/26→01/29</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>高砂熱学工業</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥4,615</td>
+        <td style="text-align:right;color:#f87171">¥-13,845</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+434,316</td>
+    </tr><tr>
+        <td>01/23</td><td>01/26→02/03</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥1,933</td>
+        <td style="text-align:right;color:#4ade80">¥+27,950</td>
+        <td style="text-align:right;color:#4ade80">+14.46%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+462,266</td>
+    </tr><tr>
+        <td>01/23</td><td>01/26→02/03</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>サンリオ</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥4,799</td>
+        <td style="text-align:right;color:#f87171">¥-8,500</td>
+        <td style="text-align:right;color:#f87171">-1.77%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+453,766</td>
+    </tr><tr>
+        <td>01/26</td><td>01/27→02/04</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>カプコン</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥3,587</td>
+        <td style="text-align:right;color:#f87171">¥-10,761</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+443,005</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→01/30</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>野村総合研究所</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥5,739</td>
+        <td style="text-align:right;color:#f87171">¥-17,217</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+425,788</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→01/28</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ジーデップ・アドバンス</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥3,005</td>
+        <td style="text-align:right;color:#f87171">¥-9,015</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+416,773</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→02/05</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>三菱電機</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,791</td>
+        <td style="text-align:right;color:#4ade80">¥+56,700</td>
+        <td style="text-align:right;color:#4ade80">+11.83%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+473,473</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→01/30</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>安川電機</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,988</td>
+        <td style="text-align:right;color:#f87171">¥-14,964</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+458,509</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→01/30</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＮＥＣ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥5,655</td>
+        <td style="text-align:right;color:#f87171">¥-16,965</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+441,544</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→02/05</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>富士通</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,045</td>
+        <td style="text-align:right;color:#f87171">¥-12,135</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+429,409</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→02/05</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥1,900</td>
+        <td style="text-align:right;color:#4ade80">¥+25,550</td>
+        <td style="text-align:right;color:#4ade80">+13.45%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+454,959</td>
+    </tr><tr>
+        <td>01/27</td><td>01/28→01/30</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>キーエンス</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥58,270</td>
+        <td style="text-align:right;color:#f87171">¥-174,810</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+280,149</td>
+    </tr><tr>
+        <td>01/28</td><td>01/29→02/06</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥1,900</td>
+        <td style="text-align:right;color:#4ade80">¥+26,250</td>
+        <td style="text-align:right;color:#4ade80">+13.82%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+306,399</td>
+    </tr><tr>
+        <td>01/28</td><td>01/29→02/04</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＡＤＯＫＡＷＡ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥3,220</td>
+        <td style="text-align:right;color:#f87171">¥-9,660</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+296,739</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>味の素</td>
+        <td style="font-size:11px;color:#888">食料品</td>
+        <td style="text-align:right">¥3,501</td>
+        <td style="text-align:right;color:#4ade80">¥+90,000</td>
+        <td style="text-align:right;color:#4ade80">+25.71%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+386,739</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>信越化学工業</td>
+        <td style="font-size:11px;color:#888">化学</td>
+        <td style="text-align:right">¥4,994</td>
+        <td style="text-align:right;color:#4ade80">¥+27,900</td>
+        <td style="text-align:right;color:#4ade80">+5.59%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+414,639</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/04</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>富士通</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,285</td>
+        <td style="text-align:right;color:#f87171">¥-12,855</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+401,784</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥1,954</td>
+        <td style="text-align:right;color:#4ade80">¥+31,650</td>
+        <td style="text-align:right;color:#4ade80">+16.20%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+433,434</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/04</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>キーエンス</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥56,780</td>
+        <td style="text-align:right;color:#f87171">¥-170,340</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+263,094</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ファナック</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥6,132</td>
+        <td style="text-align:right;color:#4ade80">¥+59,600</td>
+        <td style="text-align:right;color:#4ade80">+9.72%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+322,694</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>三菱重工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥4,550</td>
+        <td style="text-align:right;color:#4ade80">¥+42,000</td>
+        <td style="text-align:right;color:#4ade80">+9.23%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+364,694</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>川崎重工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥13,075</td>
+        <td style="text-align:right;color:#4ade80">¥+388,000</td>
+        <td style="text-align:right;color:#4ade80">+29.67%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+752,694</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>横浜フィナンシャルグループ</td>
+        <td style="font-size:11px;color:#888">銀行業</td>
+        <td style="text-align:right">¥1,405</td>
+        <td style="text-align:right;color:#4ade80">¥+22,700</td>
+        <td style="text-align:right;color:#4ade80">+16.16%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+775,394</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>三菱ＵＦＪフィナンシャル・グループ</td>
+        <td style="font-size:11px;color:#888">銀行業</td>
+        <td style="text-align:right">¥2,785</td>
+        <td style="text-align:right;color:#4ade80">¥+17,250</td>
+        <td style="text-align:right;color:#4ade80">+6.19%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+792,644</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/02</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>三井住友フィナンシャルグループ</td>
+        <td style="font-size:11px;color:#888">銀行業</td>
+        <td style="text-align:right">¥5,450</td>
+        <td style="text-align:right;color:#f87171">¥-16,350</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+776,294</td>
+    </tr><tr>
+        <td>01/29</td><td>01/30→02/09</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東京海上ホールディングス</td>
+        <td style="font-size:11px;color:#888">保険業</td>
+        <td style="text-align:right">¥5,720</td>
+        <td style="text-align:right;color:#4ade80">¥+40,800</td>
+        <td style="text-align:right;color:#4ade80">+7.13%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+817,094</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/02</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>信越化学工業</td>
+        <td style="font-size:11px;color:#888">化学</td>
+        <td style="text-align:right">¥5,222</td>
+        <td style="text-align:right;color:#f87171">¥-15,666</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+801,428</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/05</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ダイキン工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥18,970</td>
+        <td style="text-align:right;color:#f87171">¥-56,910</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+744,518</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/02</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＴＤＫ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥2,051</td>
+        <td style="text-align:right;color:#f87171">¥-6,153</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+738,365</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/02</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>村田製作所</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥3,242</td>
+        <td style="text-align:right;color:#f87171">¥-9,726</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+728,639</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/10</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーフィナンシャルグループ</td>
+        <td style="font-size:11px;color:#888">保険業</td>
+        <td style="text-align:right">¥156</td>
+        <td style="text-align:right;color:#4ade80">¥+90</td>
+        <td style="text-align:right;color:#4ade80">+0.58%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+728,729</td>
+    </tr><tr>
+        <td>01/30</td><td>02/02→02/04</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>ＫＡＤＯＫＡＷＡ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥3,262</td>
+        <td style="text-align:right;color:#f87171">¥-9,786</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+718,943</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>竹中工務店</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥15,090</td>
+        <td style="text-align:right;color:#f87171">¥-25,000</td>
+        <td style="text-align:right;color:#f87171">-1.66%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+693,943</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>高砂熱学工業</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥4,700</td>
+        <td style="text-align:right;color:#4ade80">¥+44,900</td>
+        <td style="text-align:right;color:#4ade80">+9.55%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+738,843</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>日本たばこ産業</td>
+        <td style="font-size:11px;color:#888">食料品</td>
+        <td style="text-align:right">¥5,790</td>
+        <td style="text-align:right;color:#4ade80">¥+29,700</td>
+        <td style="text-align:right;color:#4ade80">+5.13%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+768,543</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>信越化学工業</td>
+        <td style="font-size:11px;color:#888">化学</td>
+        <td style="text-align:right">¥5,130</td>
+        <td style="text-align:right;color:#4ade80">¥+36,900</td>
+        <td style="text-align:right;color:#4ade80">+7.19%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+805,443</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>三菱電機</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥5,150</td>
+        <td style="text-align:right;color:#4ade80">¥+44,000</td>
+        <td style="text-align:right;color:#4ade80">+8.54%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+849,443</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/04</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＮＥＣ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥5,167</td>
+        <td style="text-align:right;color:#f87171">¥-15,501</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+833,942</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/04</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>富士通</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,343</td>
+        <td style="text-align:right;color:#f87171">¥-13,029</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+820,913</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーグループ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥3,314</td>
+        <td style="text-align:right;color:#4ade80">¥+23,800</td>
+        <td style="text-align:right;color:#4ade80">+7.18%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+844,713</td>
+    </tr><tr>
+        <td>02/03</td><td>02/04→02/13</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>東京エレクトロン</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥40,580</td>
+        <td style="text-align:right;color:#4ade80">¥+141,000</td>
+        <td style="text-align:right;color:#4ade80">+3.47%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+985,713</td>
+    </tr><tr>
+        <td>02/04</td><td>02/05→02/13</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東映アニメーション</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥2,610</td>
+        <td style="text-align:right;color:#f87171">¥-7,830</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+977,883</td>
+    </tr><tr>
+        <td>02/04</td><td>02/05→02/06</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>伊藤忠商事</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥2,084</td>
+        <td style="text-align:right;color:#f87171">¥-6,252</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+971,631</td>
+    </tr><tr>
+        <td>02/04</td><td>02/05→02/16</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーフィナンシャルグループ</td>
+        <td style="font-size:11px;color:#888">保険業</td>
+        <td style="text-align:right">¥155</td>
+        <td style="text-align:right;color:#4ade80">¥+650</td>
+        <td style="text-align:right;color:#4ade80">+4.19%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+972,281</td>
+    </tr><tr>
+        <td>02/04</td><td>02/05→02/05</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>東京電力ホールディングス</td>
+        <td style="font-size:11px;color:#888">電気・ガス業</td>
+        <td style="text-align:right">¥620</td>
+        <td style="text-align:right;color:#f87171">¥-1,860</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+970,421</td>
+    </tr><tr>
+        <td>02/05</td><td>02/06→02/17</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>高砂熱学工業</td>
+        <td style="font-size:11px;color:#888">建設業</td>
+        <td style="text-align:right">¥4,752</td>
+        <td style="text-align:right;color:#4ade80">¥+26,100</td>
+        <td style="text-align:right;color:#4ade80">+5.49%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+996,521</td>
+    </tr><tr>
+        <td>02/05</td><td>02/06→02/17</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーグループ</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥3,418</td>
+        <td style="text-align:right;color:#4ade80">¥+6,900</td>
+        <td style="text-align:right;color:#4ade80">+2.02%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,003,421</td>
+    </tr><tr>
+        <td>02/05</td><td>02/06→02/17</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>サンリオ</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥4,656</td>
+        <td style="text-align:right;color:#4ade80">¥+128,100</td>
+        <td style="text-align:right;color:#4ade80">+27.51%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,131,521</td>
+    </tr><tr>
+        <td>02/05</td><td>02/06→02/17</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>電源開発</td>
+        <td style="font-size:11px;color:#888">電気・ガス業</td>
+        <td style="text-align:right">¥3,360</td>
+        <td style="text-align:right;color:#4ade80">¥+26,800</td>
+        <td style="text-align:right;color:#4ade80">+7.98%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,158,321</td>
+    </tr><tr>
+        <td>02/06</td><td>02/09→02/18</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ダイキン工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥18,800</td>
+        <td style="text-align:right;color:#4ade80">¥+140,000</td>
+        <td style="text-align:right;color:#4ade80">+7.45%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,298,321</td>
+    </tr><tr>
+        <td>02/06</td><td>02/09→02/18</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>伊藤忠商事</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥2,117</td>
+        <td style="text-align:right;color:#4ade80">¥+9,250</td>
+        <td style="text-align:right;color:#4ade80">+4.37%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,307,571</td>
+    </tr><tr>
+        <td>02/06</td><td>02/09→02/09</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソニーフィナンシャルグループ</td>
+        <td style="font-size:11px;color:#888">保険業</td>
+        <td style="text-align:right">¥157</td>
+        <td style="text-align:right;color:#f87171">¥-472</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,307,099</td>
+    </tr><tr>
+        <td>02/06</td><td>02/09→02/18</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ソフトバンクグループ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥4,340</td>
+        <td style="text-align:right;color:#f87171">¥-1,400</td>
+        <td style="text-align:right;color:#f87171">-0.32%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,305,699</td>
+    </tr><tr>
+        <td>02/09</td><td>02/10→02/19</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ジーデップ・アドバンス</td>
+        <td style="font-size:11px;color:#888">卸売業</td>
+        <td style="text-align:right">¥2,823</td>
+        <td style="text-align:right;color:#4ade80">¥+18,700</td>
+        <td style="text-align:right;color:#4ade80">+6.62%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,324,399</td>
+    </tr><tr>
+        <td>02/09</td><td>02/10→02/19</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ダイキン工業</td>
+        <td style="font-size:11px;color:#888">機械</td>
+        <td style="text-align:right">¥18,550</td>
+        <td style="text-align:right;color:#4ade80">¥+143,000</td>
+        <td style="text-align:right;color:#4ade80">+7.71%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,467,399</td>
+    </tr><tr>
+        <td>02/09</td><td>02/10→02/12</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>富士通</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,075</td>
+        <td style="text-align:right;color:#f87171">¥-12,225</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,455,174</td>
+    </tr><tr>
+        <td>02/09</td><td>02/10→02/19</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>キーエンス</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥55,860</td>
+        <td style="text-align:right;color:#4ade80">¥+436,000</td>
+        <td style="text-align:right;color:#4ade80">+7.81%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,891,174</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/20</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>信越化学工業</td>
+        <td style="font-size:11px;color:#888">化学</td>
+        <td style="text-align:right">¥5,400</td>
+        <td style="text-align:right;color:#4ade80">¥+35,000</td>
+        <td style="text-align:right;color:#4ade80">+6.48%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,926,174</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/12</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>富士通</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥4,056</td>
+        <td style="text-align:right;color:#f87171">¥-12,168</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,914,006</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/20</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>村田製作所</td>
+        <td style="font-size:11px;color:#888">電気機器</td>
+        <td style="text-align:right">¥3,307</td>
+        <td style="text-align:right;color:#4ade80">¥+36,800</td>
+        <td style="text-align:right;color:#4ade80">+11.13%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,950,806</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/20</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>ＫＤＤＩ</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥2,622</td>
+        <td style="text-align:right;color:#f87171">¥-600</td>
+        <td style="text-align:right;color:#f87171">-0.23%</td>
+        <td><span style="color:#888">期限</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,950,206</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/17</td>
+        <td><span style="background:#8b5cf6;padding:1px 6px;border-radius:3px;font-size:11px">B</span></td><td>東宝</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥8,090</td>
+        <td style="text-align:right;color:#f87171">¥-24,270</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,925,936</td>
+    </tr><tr>
+        <td>02/10</td><td>02/12→02/13</td>
+        <td><span style="background:#3b82f6;padding:1px 6px;border-radius:3px;font-size:11px">A</span></td><td>カプコン</td>
+        <td style="font-size:11px;color:#888">情報・通信業</td>
+        <td style="text-align:right">¥3,214</td>
+        <td style="text-align:right;color:#f87171">¥-9,642</td>
+        <td style="text-align:right;color:#f87171">-3.00%</td>
+        <td><span style="color:#f87171;font-weight:bold">SL</span></td>
+        <td style="text-align:right;color:#4ade80">¥+1,916,294</td>
+    </tr></tbody>
+</table>
+</div>
+
+</body>
+</html>

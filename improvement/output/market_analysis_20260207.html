@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット分析 2026/02/07 - 2/10(月)ショート判断</title>
+<style>
+  :root {
+    --bg: #09090b;
+    --card: #18181b;
+    --card-border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --emerald: #34d399;
+    --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185;
+    --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24;
+    --amber-bg: rgba(251,191,36,0.1);
+    --blue: #60a5fa;
+    --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+    line-height: 1.6;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-rose { background: var(--rose-bg); color: var(--rose); border: 1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+
+  .section {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 16px 0 8px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 12px 0;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--card-border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: nowrap;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .num-pos { color: var(--emerald); font-weight: 600; }
+  .num-neg { color: var(--rose); font-weight: 600; }
+  .num-neutral { color: var(--text-muted); }
+  .highlight-row td { background: rgba(251,113,133,0.05); }
+  .highlight-row-green td { background: rgba(52,211,153,0.05); }
+
+  .alert-box {
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+  .alert-danger {
+    background: var(--rose-bg);
+    border: 1px solid rgba(251,113,133,0.3);
+    color: var(--rose);
+  }
+  .alert-warning {
+    background: var(--amber-bg);
+    border: 1px solid rgba(251,191,36,0.3);
+    color: var(--amber);
+  }
+  .alert-info {
+    background: var(--blue-bg);
+    border: 1px solid rgba(96,165,250,0.3);
+    color: var(--blue);
+  }
+  .alert-success {
+    background: var(--emerald-bg);
+    border: 1px solid rgba(52,211,153,0.3);
+    color: var(--emerald);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .stat-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-card .label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+  }
+  .stat-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .stat-card .sub {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  .bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar {
+    height: 20px;
+    border-radius: 4px;
+    min-width: 2px;
+  }
+  .bar-pos { background: var(--emerald); }
+  .bar-neg { background: var(--rose); }
+  .bar-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    min-width: 60px;
+  }
+
+  .source-list {
+    margin-top: 12px;
+    padding-left: 20px;
+  }
+  .source-list li {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .source-list a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .source-list a:hover { text-decoration: underline; }
+
+  .timeline {
+    border-left: 2px solid var(--card-border);
+    padding-left: 20px;
+    margin: 16px 0;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .timeline-item::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--blue);
+    border-radius: 50%;
+    position: absolute;
+    left: -24px;
+    top: 6px;
+  }
+  .timeline-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .timeline-content {
+    font-size: 0.85rem;
+    margin-top: 2px;
+  }
+
+  .conclusion-box {
+    background: linear-gradient(135deg, rgba(251,113,133,0.08), rgba(251,191,36,0.08));
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 20px;
+  }
+  .conclusion-box h2 {
+    color: var(--amber);
+    margin-bottom: 16px;
+  }
+
+  .comparison-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    margin: 16px 0;
+  }
+  .comparison-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 16px;
+    flex: 1;
+    text-align: center;
+  }
+  .comparison-box .period {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .comparison-box .val {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  .arrow-icon {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+  }
+  .footnote {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<h1>マーケット分析レポート <span class="badge badge-rose">CAUTION</span></h1>
+<p class="subtitle">2026年2月7日(金) 作成 — 2/10(月)ショート判断のためのデータ整理</p>
+
+<!-- ===== Section 1: 現在の状況 ===== -->
+<div class="section">
+  <h2>1. 現在の市場環境</h2>
+
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">日経先物 (2/7)</div>
+      <div class="value num-pos">56,490円</div>
+      <div class="sub">前日比 +2,080円 (+3.8%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">CME日経先物</div>
+      <div class="value num-pos">~56,455円</div>
+      <div class="sub">レンジ 52,972-56,468</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">衆院選 投開票</div>
+      <div class="value" style="color:var(--amber)">明日 2/8</div>
+      <div class="sub">第51回総選挙 465議席</div>
+    </div>
+  </div>
+
+  <h3>直近イベント時系列</h3>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-date">1/6 — 中国レアアース対日規制強化</div>
+      <div class="timeline-content">高市首相の台湾発言への報復。軍民両用物資の対日輸出全面禁止。レアアースも事実上対象。規制3ヶ月で生産減少6,600億円の試算</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">1/9 — 解散総選挙報道 → 先物+1,510円急伸</div>
+      <div class="timeline-content">読売新聞が1/23通常国会冒頭解散を報道。夜間取引で53,590円（中心限月最高値）。ドル円158円台（1年ぶり円安）</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">1/13-16 — 解散報道後の4営業日</div>
+      <div class="timeline-content">ショート合計 -103,050円。詳細は下記セクション参照</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">1/23 — 衆議院解散</div>
+      <div class="timeline-content">通常国会冒頭で解散。1/27公示、2/8投開票に決定</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">2/5 — トランプ、高市支持を公式表明</div>
+      <div class="timeline-content">Truth Socialで「完全かつ全面的に支持」。3/19ホワイトハウスで日米首脳会談を発表。国賓待遇の可能性</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">2/7 — 先物+2,080円(+3.8%)</div>
+      <div class="timeline-content">選挙前の期待+トランプ支持表明で上昇。CME 56,455円付近</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">2/8 — 衆院選投開票</div>
+      <div class="timeline-content">自公維連立で過半数(233議席)獲得が大方の予想。高市首相は「過半数取れなければ即刻退陣」と明言</div>
+    </div>
+  </div>
+
+  <ul class="source-list">
+    <li><a href="https://www.nikkei.com/article/DGXZQOGN09CFJ0Z00C26A1000000/" target="_blank">日経: 円急落、一時158円台 日経平均先物急伸</a></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOGN05D7H0V00C26A2000000/" target="_blank">日経: トランプ氏、高市氏と3月19日に会談</a></li>
+    <li><a href="https://www.nippon.com/ja/japan-data/h02686/" target="_blank">nippon.com: 2026年衆院選が公示、2月8日投開票</a></li>
+    <li><a href="https://www.nikkei.com/article/DGXZQOGM067XX0W6A100C2000000/" target="_blank">日経: 中国、軍民両用物資の対日輸出規制を強化</a></li>
+  </ul>
+</div>
+
+<!-- ===== Section 2: 1/13-16 データ ===== -->
+<div class="section">
+  <h2>2. 前回の先例: 1/13-16 ショート戦績 <span class="badge badge-rose">解散報道後</span></h2>
+
+  <div class="alert-danger">
+    <strong>重要:</strong> grok_trending_archive.parquet のP&Lはロング基準。ショートP&L = -ロングP&L として符号反転済み。
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>先物変化率</th>
+        <th>件数</th>
+        <th>ショートP&L合計</th>
+        <th>勝率</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td>1/13 (火)</td>
+        <td class="num-pos">+4.04%</td>
+        <td>21</td>
+        <td class="num-neg">-160,950円</td>
+        <td class="num-neg">3/21</td>
+        <td><span class="badge badge-rose">extreme market</span></td>
+      </tr>
+      <tr class="highlight-row">
+        <td>1/14 (水)</td>
+        <td class="num-pos">+1.17%</td>
+        <td>19</td>
+        <td class="num-neg">-37,000円</td>
+        <td class="num-neg">8/19</td>
+        <td></td>
+      </tr>
+      <tr class="highlight-row">
+        <td>1/15 (木)</td>
+        <td class="num-neg">-0.35%</td>
+        <td>20</td>
+        <td class="num-neg">-201,300円</td>
+        <td class="num-neg">7/20</td>
+        <td>先物微マイナスでもショート負け</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td>1/16 (金)</td>
+        <td class="num-pos">+0.70%</td>
+        <td>21</td>
+        <td class="num-pos">+296,200円</td>
+        <td class="num-pos">19/21</td>
+        <td>反転・大勝利</td>
+      </tr>
+      <tr style="border-top: 2px solid var(--card-border);">
+        <td><strong>4日間合計</strong></td>
+        <td></td>
+        <td><strong>81</strong></td>
+        <td class="num-neg"><strong>-103,050円</strong></td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>信用区分別内訳 (大引P&L = phase2)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th colspan="3" style="text-align:center; border-right: 1px solid var(--card-border);">制度信用</th>
+        <th colspan="3" style="text-align:center;">いちにち信用</th>
+      </tr>
+      <tr>
+        <th></th>
+        <th>件数</th>
+        <th>ショートP&L</th>
+        <th style="border-right: 1px solid var(--card-border);">勝率</th>
+        <th>件数</th>
+        <th>ショートP&L</th>
+        <th>勝率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1/13</td>
+        <td>8</td>
+        <td class="num-neg">-74,450円</td>
+        <td class="num-neg" style="border-right: 1px solid var(--card-border);">0/8</td>
+        <td>13</td>
+        <td class="num-neg">-86,500円</td>
+        <td class="num-neg">3/13</td>
+      </tr>
+      <tr>
+        <td>1/14</td>
+        <td>3</td>
+        <td class="num-neg">-9,200円</td>
+        <td class="num-neg" style="border-right: 1px solid var(--card-border);">1/3</td>
+        <td>16</td>
+        <td class="num-neg">-27,800円</td>
+        <td>7/16</td>
+      </tr>
+      <tr>
+        <td>1/15</td>
+        <td>8</td>
+        <td class="num-neg">-41,100円</td>
+        <td class="num-neg" style="border-right: 1px solid var(--card-border);">1/8</td>
+        <td>12</td>
+        <td class="num-neg">-160,200円</td>
+        <td>6/12</td>
+      </tr>
+      <tr>
+        <td>1/16</td>
+        <td>5</td>
+        <td class="num-pos">+35,600円</td>
+        <td class="num-pos" style="border-right: 1px solid var(--card-border);">5/5</td>
+        <td>16</td>
+        <td class="num-pos">+260,600円</td>
+        <td class="num-pos">14/16</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-warning">
+    <strong>注目:</strong> 1/15は先物-0.35%（微マイナス）にもかかわらず、ショートが-201,300円の大損。先物の方向だけで判断できない。選挙イベント後は個別銘柄のモメンタムが3日間継続し、4日目にようやく反転した。
+  </div>
+</div>
+
+<!-- ===== Section 3: 先物バンド別分析 ===== -->
+<div class="section">
+  <h2>3. 先物変化率バンド別 ショート成績 <span class="badge badge-blue">全期間集計</span></h2>
+  <p class="footnote">データ期間: 2025-10-29 ~ 2026-02-03 (約60営業日)</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>先物変化率バンド</th>
+        <th>日数</th>
+        <th>ショートP&L合計</th>
+        <th>1日平均P&L</th>
+        <th>ビジュアル</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>&lt; -2%</td>
+        <td>3</td>
+        <td class="num-neg">-7,500円</td>
+        <td class="num-neg">-2,500円</td>
+        <td><div class="bar-container"><div class="bar bar-neg" style="width:5px;"></div></div></td>
+      </tr>
+      <tr>
+        <td>-2% ~ -1%</td>
+        <td>4</td>
+        <td class="num-pos">+93,250円</td>
+        <td class="num-pos">+23,313円</td>
+        <td><div class="bar-container"><div class="bar bar-pos" style="width:47px;"></div></div></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>-1% ~ 0%</strong></td>
+        <td>14</td>
+        <td class="num-pos">+394,100円</td>
+        <td class="num-pos">+28,150円</td>
+        <td><div class="bar-container"><div class="bar bar-pos" style="width:56px;"></div></div></td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td><strong>0% ~ +1%</strong></td>
+        <td>20</td>
+        <td class="num-pos">+1,511,230円</td>
+        <td class="num-pos">+75,562円</td>
+        <td><div class="bar-container"><div class="bar bar-pos" style="width:150px;"></div></div></td>
+      </tr>
+      <tr>
+        <td>+1% ~ +2%</td>
+        <td>16</td>
+        <td class="num-neg">-227,730円</td>
+        <td class="num-neg">-14,233円</td>
+        <td><div class="bar-container"><div class="bar bar-neg" style="width:28px;"></div></div></td>
+      </tr>
+      <tr class="highlight-row">
+        <td><strong>&gt; +2%</strong></td>
+        <td>3</td>
+        <td class="num-neg">-139,950円</td>
+        <td class="num-neg">-46,650円</td>
+        <td><div class="bar-container"><div class="bar bar-neg" style="width:93px;"></div></div></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-info">
+    <strong>構造的パターン:</strong><br>
+    ・ショートの稼ぎ頭は <strong>先物0~1%</strong> (20日で+1,511,230円、1日平均+75,562円)<br>
+    ・先物が大きく動く日は<strong>上下問わず</strong>ショートに不利<br>
+    ・<strong>&gt;+2%</strong> は1日平均 -46,650円で最悪のバンド<br>
+    ・現在の先物は <strong>+3.8%</strong> → 最悪バンドをさらに超える水準
+  </div>
+
+  <h3>先物 &gt; +2% の日の個別データ</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>先物変化率</th>
+        <th>件数</th>
+        <th>ショート大引P&L</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>2025-12-05</td>
+        <td class="num-pos">+2.67%</td>
+        <td>21</td>
+        <td class="num-pos">+11,300円</td>
+      </tr>
+      <tr class="highlight-row">
+        <td>2026-01-13</td>
+        <td class="num-pos">+4.04%</td>
+        <td>21</td>
+        <td class="num-neg">-160,950円</td>
+      </tr>
+      <tr>
+        <td>2026-02-03</td>
+        <td class="num-pos">+2.24%</td>
+        <td>3</td>
+        <td class="num-pos">+9,700円</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">3件中2件は微プラス。1/13の-160,950円は「解散報道サプライズ」固有の可能性がある。ただしサンプル数が少なすぎて一般化不可。</p>
+</div>
+
+<!-- ===== Section 4: 比較分析 ===== -->
+<div class="section">
+  <h2>4. 1/9-12 vs 2/7-8 比較</h2>
+
+  <div class="comparison-arrow">
+    <div class="comparison-box">
+      <div class="period">1/9 解散報道</div>
+      <div class="val num-pos">+1,510円</div>
+      <div class="period">→ 53,590円</div>
+      <div style="margin-top:8px; font-size:0.75rem; color:var(--text-muted);">サプライズ<br>ショートカバー集中</div>
+    </div>
+    <div class="arrow-icon">→</div>
+    <div class="comparison-box">
+      <div class="period">2/7 選挙前日</div>
+      <div class="val num-pos">+2,080円</div>
+      <div class="period">→ 56,490円</div>
+      <div style="margin-top:8px; font-size:0.75rem; color:var(--text-muted);">織り込み済み?<br>トランプ支持表明追加</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>項目</th>
+        <th>1/9-12 (解散報道時)</th>
+        <th>2/7-8 (選挙前)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>トリガー</td>
+        <td>解散報道 (サプライズ)</td>
+        <td>選挙投開票 + トランプ支持</td>
+      </tr>
+      <tr>
+        <td>サプライズ度</td>
+        <td class="num-neg">高い（夜間急伸）</td>
+        <td class="num-pos">低い（織り込み済み）</td>
+      </tr>
+      <tr>
+        <td>先物上昇幅</td>
+        <td>+1,510円 (+2.9%)</td>
+        <td>+2,080円 (+3.8%)</td>
+      </tr>
+      <tr>
+        <td>先物水準</td>
+        <td>53,590円</td>
+        <td>56,490円 (+5.4%高い)</td>
+      </tr>
+      <tr>
+        <td>翌営業日</td>
+        <td>1/13 (火) → ショート-160,950円</td>
+        <td>2/10 (月) → ?</td>
+      </tr>
+      <tr>
+        <td>ショート損失期間</td>
+        <td>3日間連続マイナス (1/13-15)</td>
+        <td>?</td>
+      </tr>
+      <tr>
+        <td>反転までの日数</td>
+        <td>4日目 (1/16金) で+296,200円</td>
+        <td>?</td>
+      </tr>
+      <tr>
+        <td>選挙結果の予測</td>
+        <td>解散は既報だが時期がサプライズ</td>
+        <td>自公維過半数が大方の予想</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-warning">
+    <strong>注意点:</strong> 今回は1/9と異なり「サプライズ」ではなく「予定された選挙」。市場は既に織り込んでいる可能性が高い。ただし先物+3.8%という上昇幅自体は1/9の+2.9%を上回っており、ショートへの逆風は同等以上。
+  </div>
+</div>
+
+<!-- ===== Section 5: シナリオ分析 ===== -->
+<div class="section">
+  <h2>5. 2/10(月) シナリオ別分析</h2>
+
+  <div class="grid-2">
+    <div style="background:var(--rose-bg); border:1px solid rgba(251,113,133,0.2); border-radius:8px; padding:16px;">
+      <h3 style="color:var(--rose); margin-top:0;">シナリオA: 自公維 過半数獲得 (メインシナリオ)</h3>
+      <p style="font-size:0.85rem; color:var(--text);">
+        ・予想通り → 「Sell the news」の可能性<br>
+        ・ただし先物は既に56,490円まで上昇済み<br>
+        ・3/19日米首脳会談への期待で下支え<br>
+        <br>
+        <strong>ショートへの影響:</strong><br>
+        ・GUスタートで寄付後に下落 → ショート有利のパターンもあり得る<br>
+        ・ただし1/13の先例では「GU後も上昇継続」でショート-160,950円<br>
+        ・先物バンド >+2% の平均は -46,650円/日
+      </p>
+    </div>
+    <div style="background:var(--emerald-bg); border:1px solid rgba(52,211,153,0.2); border-radius:8px; padding:16px;">
+      <h3 style="color:var(--emerald); margin-top:0;">シナリオB: 自公維 過半数割れ (サプライズ)</h3>
+      <p style="font-size:0.85rem; color:var(--text);">
+        ・高市首相「即刻退陣」を明言 → 政治不安<br>
+        ・先物急落の可能性<br>
+        ・中国レアアース問題もリスク要因として再浮上<br>
+        <br>
+        <strong>ショートへの影響:</strong><br>
+        ・GDスタート → ショートに順風<br>
+        ・先物下落日 (0~-1%) はショート平均+28,150円/日<br>
+        ・ただし解散時勢力 自公維230 vs 過半数233 → 3議席差なので微妙
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Section 6: 結論 ===== -->
+<div class="conclusion-box">
+  <h2>6. 結論: 2/10(月) の判断</h2>
+
+  <div class="grid-3">
+    <div class="stat-card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="label">先物 +3.8% 時のリスク</div>
+      <div class="value num-neg">高</div>
+      <div class="sub">バンド >+2% は平均-46,650円/日</div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(251,191,36,0.3);">
+      <div class="label">1/13先例の損失</div>
+      <div class="value num-neg">-160,950円</div>
+      <div class="sub">先物+4.04%時、21件中3勝</div>
+    </div>
+    <div class="stat-card" style="border-color: rgba(251,191,36,0.3);">
+      <div class="label">損失継続期間</div>
+      <div class="value" style="color:var(--amber);">3日間</div>
+      <div class="sub">1/13-15で計-399,250円</div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; font-size:0.9rem; line-height:1.8;">
+    <p><strong>データに基づく判断:</strong></p>
+    <table>
+      <thead>
+        <tr>
+          <th>選択肢</th>
+          <th>根拠</th>
+          <th>リスク</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-amber">見送り</span></td>
+          <td>先物>+2%の日は平均-46,650円。1/13先例で-160,950円。選挙後モメンタム3日継続のリスク</td>
+          <td>反転時(1/16型)の+296,200円を逃す</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">縮小運用</span></td>
+          <td>件数を制限(例: いちにち信用のみ、ATR低め銘柄のみ)。損失を限定しつつ参加</td>
+          <td>中途半端で損失は発生するが規模は抑制</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-rose">通常運用</span></td>
+          <td>12/5(先物+2.67%)ではショート+11,300円。必ずしも負けない</td>
+          <td>1/13型なら-160,950円、3日間累計-399,250円</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert-danger" style="margin-top:16px;">
+      <strong>追加考慮事項:</strong><br>
+      ・選挙結果は2/8(日)夜に判明。2/9(月)朝までにCME先物の反応を確認可能<br>
+      ・自公維過半数確実 + CMEさらに上昇 → 見送りが安全<br>
+      ・自公維過半数割れ + CME急落 → ショートに順風、通常運用でOK<br>
+      ・「織り込み済み」で先物横ばい → 先物0~1%バンド入りなら通常運用（最も稼げるバンド）
+    </div>
+
+    <div class="alert-success" style="margin-top:12px;">
+      <strong>最終アクション:</strong><br>
+      2/9(日)夜～2/10(月)朝のCME先物の水準を確認し、<br>
+      ・先物変化率が <strong>+2%以上</strong> のまま → <strong>見送り or 大幅縮小</strong><br>
+      ・先物変化率が <strong>0~+1%</strong> に落ち着く → <strong>通常運用</strong>（最も収益性が高いバンド）<br>
+      ・先物変化率が <strong>マイナス</strong> → <strong>通常運用</strong>
+    </div>
+  </div>
+</div>
+
+<p class="footnote" style="margin-top:24px; text-align:center;">
+  Data source: grok_trending_archive.parquet (2025-10-29 ~ 2026-02-03, 60営業日, 951トレード)<br>
+  P&L符号はショート基準に反転済み (ショートP&L = -ロングP&L)<br>
+  本レポートは投資助言ではありません
+</p>
+
+</body>
+</html>

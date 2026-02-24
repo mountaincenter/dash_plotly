@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中東地政学リスク深掘り: イラン情勢と3連休リスク (2026-02-20)</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --border: #2a2d3a;
+  --text: #e4e4e7;
+  --text-muted: #9ca3af;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --emerald: #10b981;
+  --blue: #3b82f6;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.7; padding: 24px; max-width: 960px; margin: 0 auto;
+}
+h1 { font-size: 1.5rem; margin-bottom: 4px; }
+h2 {
+  font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+h3 { font-size: 1rem; margin-top: 20px; margin-bottom: 8px; color: var(--amber); }
+p, li { font-size: 0.88rem; margin-bottom: 8px; }
+ul { padding-left: 20px; }
+.subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px; }
+.alert-box {
+  background: rgba(239,68,68,0.12); border: 1px solid var(--red);
+  border-radius: 8px; padding: 16px; margin: 16px 0;
+}
+.alert-box .label { color: var(--red); font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.warn-box {
+  background: rgba(245,158,11,0.10); border: 1px solid var(--amber);
+  border-radius: 8px; padding: 16px; margin: 16px 0;
+}
+.warn-box .label { color: var(--amber); font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.info-box {
+  background: rgba(59,130,246,0.10); border: 1px solid var(--blue);
+  border-radius: 8px; padding: 16px; margin: 16px 0;
+}
+.info-box .label { color: var(--blue); font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.timeline {
+  border-left: 3px solid var(--border); padding-left: 20px; margin: 16px 0;
+}
+.timeline .event {
+  position: relative; margin-bottom: 16px;
+}
+.timeline .event::before {
+  content: ""; position: absolute; left: -26px; top: 6px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--amber); border: 2px solid var(--bg);
+}
+.timeline .event.red::before { background: var(--red); }
+.timeline .event.blue::before { background: var(--blue); }
+.timeline .date { font-weight: 700; font-size: 0.82rem; color: var(--amber); }
+.timeline .event.red .date { color: var(--red); }
+.timeline .event.blue .date { color: var(--blue); }
+.timeline .desc { font-size: 0.85rem; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.85rem; }
+th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; }
+th { background: var(--surface); font-weight: 600; }
+.r { text-align: right; }
+.num-pos { color: var(--emerald); }
+.num-neg { color: var(--red); }
+.source {
+  font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;
+}
+.source a { color: var(--blue); text-decoration: none; }
+.source a:hover { text-decoration: underline; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-card {
+  background: var(--surface); border-radius: 8px; padding: 16px;
+}
+.stat-card .label { font-size: 0.75rem; color: var(--text-muted); }
+.stat-card .value { font-size: 1.3rem; font-weight: 700; margin: 4px 0; }
+.stat-card .sub { font-size: 0.75rem; color: var(--text-muted); }
+.scenario { background: var(--surface); border-radius: 8px; padding: 16px; margin: 8px 0; }
+.scenario .title { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.tag-red { background: rgba(239,68,68,0.2); color: var(--red); }
+.tag-amber { background: rgba(245,158,11,0.2); color: var(--amber); }
+.tag-emerald { background: rgba(16,185,129,0.2); color: var(--emerald); }
+hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+footer { font-size: 0.72rem; color: var(--text-muted); margin-top: 32px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>中東地政学リスク深掘り: イラン情勢</h1>
+<div class="subtitle">2026年2月20日（木）作成 &#8212; 3連休（2/21-23）前の投資判断材料</div>
+
+<!-- ===== エグゼクティブサマリー ===== -->
+<div class="alert-box">
+  <div class="label">CRITICAL: 3連休中のエスカレーション・リスク</div>
+  <p>2/21(土)〜2/23(月・天皇誕生日)の3連休中、東京市場は反応不能。CNNは米軍が「土曜日にも攻撃可能な態勢」と報道。五輪閉会式(2/22)、ラマダン、一般教書演説(2/25)が抑止要因だが、トランプは「10〜15日以内」の最後通牒を発出済み。</p>
+</div>
+
+<!-- ===== マーケットインパクト ===== -->
+<h2>現在のマーケット反応</h2>
+<div class="grid-2">
+  <div><div class="stat-card" style="border-left:3px solid var(--amber);">
+    <div class="label">金（Gold）</div>
+    <div class="value" style="color:var(--amber);">$5,008.86</div>
+    <div class="sub">史上初の$5,000突破 &#8212; イラン緊張が直接要因</div>
+  </div></div>
+  <div><div class="stat-card" style="border-left:3px solid var(--red);">
+    <div class="label">原油（WTI / Brent）</div>
+    <div class="value">$66.48 / $71.71</div>
+    <div class="sub">ホルムズ海峡一部閉鎖で上昇圧力</div>
+  </div></div>
+</div>
+<div class="source">
+  出典:
+  <a href="https://edition.cnn.com/2026/02/19/investing/oil-gold-prices-us-iran-tensions">CNN Business (2026/02/19)</a> |
+  <a href="https://www.bloomberg.com/news/articles/2026-02-19/gold-steadies-near-5-000-as-iran-risks-fed-outlook-in-focus">Bloomberg (2026/02/19)</a> |
+  <a href="https://www.fxleaders.com/news/2026/02/20/gold-price-reclaims-5000-as-trumps-iran-ultimatum-ignites-safe-haven-firestorm-whats-next/">FX Leaders (2026/02/20)</a>
+</div>
+<p style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">
+  アナリスト見通し: Goldman Sachs → Q4 2026末に$5,400、BMO(強気) → 脱ドル化進展なら$6,500も視野
+</p>
+
+<!-- ===== 時系列 ===== -->
+<h2>イラン情勢タイムライン（直近）</h2>
+<div class="timeline">
+  <div class="event">
+    <div class="date">2025年12月28日</div>
+    <div class="desc">イラン国内で商店主を中心にデモ発生。経済危機（インフレ・通貨下落・エネルギー不足）が背景。全国に拡大。</div>
+    <div class="source">出典: <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Iranian_protests">Wikipedia - 2025-2026 Iranian protests</a> | <a href="https://www.britannica.com/event/2026-Iranian-Protests">Britannica</a></div>
+  </div>
+  <div class="event red">
+    <div class="date">2026年1月8-9日</div>
+    <div class="desc">治安部隊による大規模弾圧。HRANA（米拠点の人権団体）によると確認済み死者6,964人、うち抗議者6,473人。1月8-9日だけで30,000〜36,500人が殺害されたとの報告も。</div>
+    <div class="source">出典: <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Iranian_protests">Wikipedia</a> | <a href="https://www.npr.org/2026/01/07/g-s1-104862/protesters-iran">NPR (2026/01/07)</a></div>
+  </div>
+  <div class="event">
+    <div class="date">2026年1月2日</div>
+    <div class="desc">イラク民兵組織（シーア派）約800名がイラン政府支援のために展開。</div>
+    <div class="source">出典: <a href="https://www.ncr-iran.org/en/news/iran-protests/iran-remains-on-the-brink-as-explosive-unrest-defies-state-crackdown/">NCRI</a></div>
+  </div>
+  <div class="event blue">
+    <div class="date">2026年2月6日（第1回ジュネーブ協議）</div>
+    <div class="desc">米イラン間の核協議が開始。オマーン仲介。クシュナー、ウィトコフが米側特使。</div>
+    <div class="source">出典: <a href="https://www.bloomberg.com/news/articles/2026-02-17/iran-us-to-meet-for-second-round-of-nuclear-talks-in-geneva">Bloomberg</a></div>
+  </div>
+  <div class="event">
+    <div class="date">2026年2月11日</div>
+    <div class="desc">ペゼシュキアン大統領が抗議活動への弾圧について国民に謝罪。</div>
+    <div class="source">出典: <a href="https://www.iranintl.com/en/202602181447">Iran International (2026/02/18)</a></div>
+  </div>
+  <div class="event blue">
+    <div class="date">2026年2月17日（第2回ジュネーブ協議）</div>
+    <div class="desc">「基本原則」で一致するも合意には至らず。イラン外相アラグチは「合意草案を交換し2週間以内に第3回協議」と発表。同日、イランがホルムズ海峡を部分的に閉鎖。</div>
+    <div class="source">
+      出典:
+      <a href="https://www.axios.com/2026/02/17/trump-iran-nuclear-deal-talks-geneva-progress">Axios (2026/02/17)</a> |
+      <a href="https://www.washingtonpost.com/world/2026/02/17/iran-talks-geneva-nuclear-trump/">Washington Post (2026/02/17)</a> |
+      <a href="https://www.aljazeera.com/news/liveblog/2026/2/17/us-iran-talks-set-to-begin-at-omans-embassy-in-switzerland">Al Jazeera (2026/02/17)</a> |
+      <a href="https://www.cnbc.com/2026/02/17/iran-us-strait-of-hormuz-oil-nuclear-talks-geneva.html">CNBC (2026/02/17)</a>
+    </div>
+  </div>
+  <div class="event red">
+    <div class="date">2026年2月18-20日</div>
+    <div class="desc">トランプ「10〜15日以内に意味のある合意を」と最後通牒。CNN報道: 米軍は土曜日(2/21)にも攻撃可能な態勢だが、具体的な標的リストは未受領。2003年イラク戦争以来最大の中東軍事展開（空母打撃群2隻、戦闘機、空中給油機）。</div>
+    <div class="source">
+      出典:
+      <a href="https://www.cnn.com/2026/02/20/politics/us-military-iran-strikes-ready">CNN (2026/02/20)</a> |
+      <a href="https://www.nbcnews.com/world/iran/us-iran-hold-high-stakes-nuclear-talks-geneva-threat-war-looms-rcna259304">NBC News</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3連休リスク ===== -->
+<h2>3連休中のリスク評価</h2>
+
+<div class="warn-box">
+  <div class="label">日本市場の空白: 2/21(土) 〜 2/23(月・天皇誕生日)</div>
+  <p>東京証券取引所は月曜休場。3連休中に中東情勢が急変した場合、火曜(2/24)のギャップダウン/アップで対応せざるを得ない。先物・CFDでのヘッジのみ可能。</p>
+</div>
+
+<h3>エスカレーション抑止要因（3つ）</h3>
+<table>
+  <thead><tr><th>要因</th><th>内容</th><th>有効期限</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>冬季五輪閉会式</td>
+      <td>2/22(日)にヴェローナで閉会式。欧州当局者は「閉会式前の攻撃はない」と見解。国際的な平和の象徴期間中の軍事行動は回避される可能性。</td>
+      <td class="r">2/22まで</td>
+    </tr>
+    <tr>
+      <td>ラマダン</td>
+      <td>2/18(水)から開始。中東の米同盟国がラマダン中の攻撃に反対。イスラム世界への敬意の観点から抑制要因。</td>
+      <td class="r">約1ヶ月</td>
+    </tr>
+    <tr>
+      <td>一般教書演説</td>
+      <td>トランプの一般教書演説は2/25(火)。内政メッセージの発信台として位置付け。直前の軍事行動はアジェンダを奪う可能性。</td>
+      <td class="r">2/25まで</td>
+    </tr>
+  </tbody>
+</table>
+<div class="source">
+  出典: <a href="https://www.cnn.com/2026/02/20/politics/us-military-iran-strikes-ready">CNN (2026/02/20)</a>
+</div>
+
+<h3>エスカレーション促進要因</h3>
+<table>
+  <thead><tr><th>要因</th><th>評価</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>トランプの「10〜15日」最後通牒</td>
+      <td>2/20起算で3月初旬がデッドライン。交渉が不調なら軍事オプションが現実化。</td>
+    </tr>
+    <tr>
+      <td>過去最大級の軍事展開</td>
+      <td>空母打撃群2隻を含む2003年イラク戦争以来の大規模展開。ただし標的リストは未配布＝最終決定は未了。</td>
+    </tr>
+    <tr>
+      <td>ホルムズ海峡一部閉鎖</td>
+      <td>2/17にイランが部分閉鎖を実施。全面閉鎖なら世界の原油輸送量の約20%に影響。</td>
+    </tr>
+    <tr>
+      <td>イラン国内不安定</td>
+      <td>大規模抗議活動（死者数千人）により政権の求心力低下。外圧への対応能力が限定的。</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== シナリオ分析 ===== -->
+<h2>週末〜来週のシナリオ分析</h2>
+
+<div class="scenario">
+  <div class="title"><span class="tag tag-emerald">メインシナリオ（確率: 55-60%）</span> 緊張継続・現状維持</div>
+  <p>五輪閉会式・ラマダン・一般教書演説の3要因が短期的な抑止力として機能。交渉が「進展中」の状態で次回協議（2週間以内）まで持越し。</p>
+  <ul>
+    <li>市場影響: 限定的。金は$5,000前後で推移、原油も現水準。</li>
+    <li>日本株: 火曜日に通常取引再開。ギャップリスクは小。</li>
+  </ul>
+</div>
+
+<div class="scenario">
+  <div class="title"><span class="tag tag-amber">リスクシナリオ（確率: 25-30%）</span> 交渉決裂・制裁強化</div>
+  <p>イランが合意草案の提出を拒否、またはホルムズ海峡での挑発行為が拡大。追加制裁を発動するが軍事行動は回避。</p>
+  <ul>
+    <li>市場影響: 金$5,100-5,200、原油WTI $70超。リスクオフ。</li>
+    <li>日本株: 火曜日にギャップダウンの可能性。防衛・資源関連は上昇。</li>
+  </ul>
+</div>
+
+<div class="scenario">
+  <div class="title"><span class="tag tag-red">テールリスク（確率: 10-15%）</span> 軍事衝突</div>
+  <p>限定的空爆またはイランの挑発行為に対する報復。CNN報道では「土曜日にも攻撃可能」だが標的リスト未配布のため即時攻撃の蓋然性は低い。</p>
+  <ul>
+    <li>市場影響: 金$5,300+、原油急騰（ホルムズ封鎖なら$90+）。世界的リスクオフ。</li>
+    <li>日本株: 火曜日に大幅ギャップダウン。日経平均 -3%〜-5%も想定。</li>
+  </ul>
+</div>
+
+<!-- ===== イラン国内情勢 ===== -->
+<h2>イラン国内情勢の深掘り</h2>
+
+<h3>2025-2026年抗議活動の経緯</h3>
+<ul>
+  <li><strong>発端（2025/12/28）:</strong> 商店主のストライキから始まり、学生・市民に波及。背景にはインフレ、通貨暴落、電力・ガス供給不安定。</li>
+  <li><strong>弾圧（2026/1/8-9）:</strong> 治安部隊が大規模鎮圧。HRANAの確認済み死者数は6,964人。</li>
+  <li><strong>外国勢力関与:</strong> イラク・シーア派民兵約800名がイラン政府支援のため展開。</li>
+  <li><strong>大統領の謝罪（2/11）:</strong> ペゼシュキアン大統領が弾圧について国民に謝罪。体制内での亀裂を示唆。</li>
+</ul>
+<div class="source">
+  出典:
+  <a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Iranian_protests">Wikipedia</a> |
+  <a href="https://www.britannica.com/event/2026-Iranian-Protests">Britannica</a> |
+  <a href="https://www.stimson.org/2026/in-iran-protests-information-spreads-faster-than-organization/">Stimson Center</a> |
+  <a href="https://commonslibrary.parliament.uk/research-briefings/cbp-10462/">UK House of Commons Library</a>
+</div>
+
+<h3>体制の脆弱性</h3>
+<div class="info-box">
+  <div class="label">専門家の見解</div>
+  <p>Iran International の報道によると、専門家らは「イランは恒常的な不安定期に入った」と分析。分散型の「小さなきっかけ」と深まる経済・正統性の圧力により、弾圧だけでは抑えきれない状況が続いている。スペイン王立エルカノ研究所も「レジリエンスと政治的封じ込めの限界」を指摘。</p>
+</div>
+<div class="source">
+  出典:
+  <a href="https://www.iranintl.com/en/202602181447">Iran International (2026/02/18)</a> |
+  <a href="https://www.realinstitutoelcano.org/en/analyses/irans-2025-26-protests-resilience-and-political-containment/">Real Instituto Elcano</a> |
+  <a href="https://www.iranintl.com/en/202601029081">Iran International (2026/01)</a>
+</div>
+
+<!-- ===== 核交渉の詳細 ===== -->
+<h2>核交渉の現状</h2>
+
+<table>
+  <thead><tr><th>項目</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>第1回協議</td><td>2月初旬・ジュネーブ（オマーン大使館）</td></tr>
+    <tr><td>第2回協議</td><td>2月17日・ジュネーブ。「基本原則」で合意するもブレイクスルーなし</td></tr>
+    <tr><td>米側特使</td><td>ジャレッド・クシュナー、スティーブ・ウィトコフ</td></tr>
+    <tr><td>イラン側</td><td>アラグチ外相</td></tr>
+    <tr><td>仲介国</td><td>オマーン</td></tr>
+    <tr><td>次のステップ</td><td>両者が合意草案を作成・交換し、2週間以内に第3回協議</td></tr>
+    <tr><td>トランプの最後通牒</td><td>「10〜15日で意味のある合意を」（2/20発言）</td></tr>
+  </tbody>
+</table>
+
+<div class="warn-box">
+  <div class="label">交渉の温度感</div>
+  <p>Washington Post は「ブレイクスルーなしで進行」と報道。Axios は「進展」と報道するも具体的合意内容は不明。「基本原則の一致」は実質的に「これから本格交渉」を意味する。トランプのデッドライン（10-15日）と次回協議（2週間以内）のタイミングがほぼ重なり、3月初旬が最大の分水嶺。</p>
+</div>
+<div class="source">
+  出典:
+  <a href="https://www.washingtonpost.com/world/2026/02/17/iran-talks-geneva-nuclear-trump/">Washington Post (2026/02/17)</a> |
+  <a href="https://www.axios.com/2026/02/17/trump-iran-nuclear-deal-talks-geneva-progress">Axios (2026/02/17)</a> |
+  <a href="https://www.nbcnews.com/world/iran/us-iran-hold-high-stakes-nuclear-talks-geneva-threat-war-looms-rcna259304">NBC News</a>
+</div>
+
+<!-- ===== 軍事展開 ===== -->
+<h2>米軍の中東展開状況</h2>
+
+<table>
+  <thead><tr><th>戦力</th><th>状況</th></tr></thead>
+  <tbody>
+    <tr><td>空母打撃群</td><td>2隻が中東に展開中。2003年イラク戦争以来最大規模。</td></tr>
+    <tr><td>戦闘機・空中給油機</td><td>大量配備中。</td></tr>
+    <tr><td>標的リスト</td><td>未配布。トランプが「引き金を引いていない」ことを示唆。</td></tr>
+    <tr><td>攻撃準備状況</td><td>CNN: 「土曜日にも攻撃可能」だが、タイムラインは週末以降に延びる可能性が高い。</td></tr>
+  </tbody>
+</table>
+<div class="source">
+  出典: <a href="https://www.cnn.com/2026/02/20/politics/us-military-iran-strikes-ready">CNN (2026/02/20)</a>
+</div>
+
+<!-- ===== 投資家向け注意点 ===== -->
+<h2>投資家向けチェックリスト</h2>
+
+<table>
+  <thead><tr><th>項目</th><th>確認事項</th></tr></thead>
+  <tbody>
+    <tr><td>ポジション管理</td><td>3連休前にレバレッジ縮小を検討。特にエネルギー・防衛セクターのボラティリティに注意。</td></tr>
+    <tr><td>ヘッジ手段</td><td>日経225先物・CFDは連休中も取引可能。VIX関連ETFも検討対象。</td></tr>
+    <tr><td>情報収集</td><td>週末はCNN、BBC、Al Jazeera、Reuters のライブフィードを定期確認。</td></tr>
+    <tr><td>注目指標</td><td>金価格($5,000ライン)、WTI($70突破有無)、ドル円(リスクオフ円高)。</td></tr>
+    <tr><td>注目セクター</td><td>防衛(7011, 7012)、資源(INPEX 1605)、金鉱山(住友鉱山 5713)。ショート候補: 空運(9201, 9202)、旅行。</td></tr>
+    <tr><td>最重要日程</td><td>2/25(火)一般教書演説、3月初旬=トランプ最後通牒期限、第3回核協議。</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ===== 全出典一覧 ===== -->
+<h2>出典一覧（一次情報源）</h2>
+<table>
+  <thead><tr><th>メディア</th><th>記事</th><th>日付</th></tr></thead>
+  <tbody>
+    <tr><td>CNN</td><td><a href="https://www.cnn.com/2026/02/20/politics/us-military-iran-strikes-ready">US military ready for potential strikes on Iran</a></td><td>2026/02/20</td></tr>
+    <tr><td>CNN Business</td><td><a href="https://edition.cnn.com/2026/02/19/investing/oil-gold-prices-us-iran-tensions">Oil prices jump and gold hits $5,000</a></td><td>2026/02/19</td></tr>
+    <tr><td>Bloomberg</td><td><a href="https://www.bloomberg.com/news/articles/2026-02-19/gold-steadies-near-5-000-as-iran-risks-fed-outlook-in-focus">Gold Steadies Near $5,000</a></td><td>2026/02/19</td></tr>
+    <tr><td>Bloomberg</td><td><a href="https://www.bloomberg.com/news/articles/2026-02-17/iran-us-to-meet-for-second-round-of-nuclear-talks-in-geneva">Iran, US Second Round of Nuclear Talks</a></td><td>2026/02/17</td></tr>
+    <tr><td>Washington Post</td><td><a href="https://www.washingtonpost.com/world/2026/02/17/iran-talks-geneva-nuclear-trump/">Iran nuclear talks proceed without breakthrough</a></td><td>2026/02/17</td></tr>
+    <tr><td>Axios</td><td><a href="https://www.axios.com/2026/02/17/trump-iran-nuclear-deal-talks-geneva-progress">U.S. and Iran say progress made</a></td><td>2026/02/17</td></tr>
+    <tr><td>NBC News</td><td><a href="https://www.nbcnews.com/world/iran/us-iran-hold-high-stakes-nuclear-talks-geneva-threat-war-looms-rcna259304">U.S. and Iran tout progress in nuclear talks</a></td><td>2026/02/17</td></tr>
+    <tr><td>Al Jazeera</td><td><a href="https://www.aljazeera.com/news/liveblog/2026/2/17/us-iran-talks-set-to-begin-at-omans-embassy-in-switzerland">US-Iran talks: Tehran says understanding reached</a></td><td>2026/02/17</td></tr>
+    <tr><td>CNBC</td><td><a href="https://www.cnbc.com/2026/02/17/iran-us-strait-of-hormuz-oil-nuclear-talks-geneva.html">Iran partially closes Strait of Hormuz</a></td><td>2026/02/17</td></tr>
+    <tr><td>FX Leaders</td><td><a href="https://www.fxleaders.com/news/2026/02/20/gold-price-reclaims-5000-as-trumps-iran-ultimatum-ignites-safe-haven-firestorm-whats-next/">Gold Reclaims $5,000</a></td><td>2026/02/20</td></tr>
+    <tr><td>Iran International</td><td><a href="https://www.iranintl.com/en/202602181447">Experts say Iran entering era of constant unrest</a></td><td>2026/02/18</td></tr>
+    <tr><td>Stimson Center</td><td><a href="https://www.stimson.org/2026/in-iran-protests-information-spreads-faster-than-organization/">Iran Protests: Information Spreads Faster</a></td><td>2026</td></tr>
+    <tr><td>UK House of Commons</td><td><a href="https://commonslibrary.parliament.uk/research-briefings/cbp-10462/">Iran protests 2026: UK and intl response</a></td><td>2026</td></tr>
+    <tr><td>Elcano Royal Institute</td><td><a href="https://www.realinstitutoelcano.org/en/analyses/irans-2025-26-protests-resilience-and-political-containment/">Iran's 2025-26 protests analysis</a></td><td>2026</td></tr>
+    <tr><td>NPR</td><td><a href="https://www.npr.org/2026/01/07/g-s1-104862/protesters-iran">Security forces clash with protesters</a></td><td>2026/01/07</td></tr>
+    <tr><td>Britannica</td><td><a href="https://www.britannica.com/event/2026-Iranian-Protests">2026 Iranian Protests</a></td><td>2026</td></tr>
+    <tr><td>Wikipedia</td><td><a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Iranian_protests">2025-2026 Iranian protests</a></td><td>継続更新</td></tr>
+    <tr><td>Wikipedia</td><td><a href="https://en.wikipedia.org/wiki/2025%E2%80%932026_Iran%E2%80%93United_States_negotiations">2025-2026 Iran-US negotiations</a></td><td>継続更新</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  作成: 2026-02-20 &#8212; Web検索による一次情報源に基づく分析 &#8212; 投資助言ではありません
+</footer>
+
+</body>
+</html>

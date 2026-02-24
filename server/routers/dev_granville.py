@@ -197,13 +197,13 @@ async def get_trades(view: str = "daily"):
         return {"view": view, "results": []}
 
     if view == "monthly":
-        group_col = df["entry_date"].dt.strftime("%Y-%m")
+        group_col = df["exit_date"].dt.strftime("%Y-%m")
     elif view == "weekly":
-        group_col = df["entry_date"].dt.strftime("%Y/W%W")
+        group_col = df["exit_date"].dt.strftime("%Y/W%W")
     elif view == "by-stock":
         group_col = df["ticker"]
     else:
-        group_col = df["entry_date"].dt.strftime("%Y-%m-%d")
+        group_col = df["exit_date"].dt.strftime("%Y-%m-%d")
 
     results = []
     for key, gdf in df.groupby(group_col):
@@ -351,6 +351,7 @@ async def get_positions():
                 "unrealized_yen": _safe_int(r["pnl"]),
                 "sl_price": _safe_float(r["sl_price"], 1),
                 "hold_days": _safe_int(r["hold_days"]),
+                "exit_type": r.get("exit_type", ""),
             })
         elif r["status"] == "exit":
             exits.append({

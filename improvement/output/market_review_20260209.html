@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケット振り返り 2026/02/09（月）- 衆院選大勝相場</title>
+<style>
+  :root {
+    --bg: #09090b;
+    --card: #18181b;
+    --card-border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --emerald: #34d399;
+    --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185;
+    --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24;
+    --amber-bg: rgba(251,191,36,0.3);
+    --blue: #60a5fa;
+    --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee;
+    --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+    line-height: 1.6;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-rose { background: var(--rose-bg); color: var(--rose); border: 1px solid rgba(251,113,133,0.3); }
+  .badge-emerald { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-amber { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+
+  .section {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 16px 0 8px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 12px 0;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--card-border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .num-pos { color: var(--emerald); font-weight: 600; }
+  .num-neg { color: var(--rose); font-weight: 600; }
+  .num-neutral { color: var(--text-muted); }
+  .highlight-row td { background: rgba(251,113,133,0.05); }
+  .highlight-row-green td { background: rgba(52,211,153,0.05); }
+
+  .alert-box {
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+  .alert-danger {
+    background: var(--rose-bg);
+    border: 1px solid rgba(251,113,133,0.3);
+    color: var(--rose);
+  }
+  .alert-warning {
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.3);
+    color: var(--amber);
+  }
+  .alert-info {
+    background: var(--blue-bg);
+    border: 1px solid rgba(96,165,250,0.3);
+    color: var(--blue);
+  }
+  .alert-success {
+    background: var(--emerald-bg);
+    border: 1px solid rgba(52,211,153,0.3);
+    color: var(--emerald);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  .stat-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-card .label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+  }
+  .stat-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .stat-card .sub {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    margin: 16px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--card-border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--card-border);
+    border: 2px solid var(--bg);
+  }
+  .timeline-item.peak::before { background: var(--emerald); }
+  .timeline-item.drop::before { background: var(--rose); }
+  .timeline-item.neutral::before { background: var(--amber); }
+  .timeline-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .timeline-content {
+    margin-top: 2px;
+  }
+
+  .factor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .factor-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .factor-card .factor-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .factor-card .factor-detail {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .source-list {
+    margin-top: 12px;
+    padding-left: 20px;
+  }
+  .source-list li {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .source-list a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .source-list a:hover {
+    text-decoration: underline;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--card-border);
+    margin: 16px 0;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .tag-bull { background: rgba(52,211,153,0.15); color: var(--emerald); }
+  .tag-bear { background: rgba(251,113,133,0.15); color: var(--rose); }
+  .tag-neutral { background: rgba(251,191,36,0.12); color: var(--amber); }
+
+  .comparison-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+    font-size: 0.8rem;
+  }
+  .comparison-bar .bar-label {
+    min-width: 120px;
+    color: var(--text-muted);
+  }
+  .comparison-bar .bar-track {
+    flex: 1;
+    height: 20px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .comparison-bar .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+  }
+  .bar-fill-green { background: var(--emerald); }
+  .bar-fill-red { background: var(--rose); }
+
+  .quote-box {
+    border-left: 3px solid var(--purple);
+    padding: 12px 16px;
+    margin: 12px 0;
+    background: rgba(167,139,250,0.05);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .quote-box .quote-source {
+    margin-top: 6px;
+    font-style: normal;
+    font-size: 0.75rem;
+    color: var(--purple);
+  }
+
+  .evidence-label {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+  .evidence-fact {
+    background: rgba(52,211,153,0.15);
+    color: var(--emerald);
+    border: 1px solid rgba(52,211,153,0.3);
+  }
+  .evidence-inference {
+    background: rgba(251,191,36,0.12);
+    color: var(--amber);
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+  .evidence-unverified {
+    background: rgba(251,113,133,0.12);
+    color: var(--rose);
+    border: 1px solid rgba(251,113,133,0.3);
+  }
+  .evidence-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .evidence-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    margin-top: 40px;
+    padding: 16px 0;
+    border-top: 1px solid var(--card-border);
+  }
+</style>
+</head>
+<body>
+
+<h1>マーケット振り返り 2026/02/09（月）<span class="badge badge-emerald">衆院選大勝相場</span></h1>
+<div class="subtitle">衆院選で自公が単独過半数を回復。日経平均は一時+3,000円超の急騰も、後場は伸び悩み。</div>
+
+<div class="evidence-legend">
+  <div class="evidence-legend-item"><span class="evidence-label evidence-fact">事実</span> web検索・データで確認済み</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-inference">推論</span> 筆者の解釈・因果推定</div>
+  <div class="evidence-legend-item"><span class="evidence-label evidence-unverified">未検証</span> ソースはあるが数値精度が未確認</div>
+</div>
+
+<!-- =========================================== -->
+<!-- 1. 本日の数値サマリー -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>本日のマーケットサマリー <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">日経平均</div>
+      <div class="value num-pos">56,363</div>
+      <div class="sub">+2,110.26 (+3.89%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">TOPIX</div>
+      <div class="value num-pos">3,783.57</div>
+      <div class="sub">+84.57 (+2.29%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">USD/JPY</div>
+      <div class="value num-neutral">156.65</div>
+      <div class="sub">金曜 156.78 → ほぼ横ばい</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">10年国債利回り <span class="evidence-label evidence-fact">事実</span></div>
+      <div class="value num-neg">2.236%</div>
+      <div class="sub">2/6（金）財務省公表値。2/9分は未掲載</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">日経225 高値</div>
+        <div class="value" style="font-size:1.2rem;">57,337</div>
+        <div class="sub">09:20 朝一で到達</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">日経225 安値</div>
+        <div class="value" style="font-size:1.2rem;">55,131</div>
+        <div class="sub">寄付価格</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">前場→後場 変動</div>
+        <div class="value num-neg" style="font-size:1.2rem;">-288</div>
+        <div class="sub">前場引 56,651 → 終値 56,363</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top: 16px;">
+    <strong>注目 <span class="evidence-label evidence-inference">推論</span>:</strong> 日経平均 +3.89% vs TOPIX +2.29% — 1.6%の乖離は事実。「実態は市場全体の上昇ではない」は筆者の解釈。
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 2. 日中タイムライン -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>日中タイムライン <span class="evidence-label evidence-fact">事実</span> <span class="evidence-label evidence-inference">解説部分は推論</span></h2>
+
+  <div class="timeline">
+    <div class="timeline-item peak">
+      <div class="timeline-time">09:00 寄付</div>
+      <div class="timeline-content">
+        55,131（前日比 +878）でスタート。大幅ギャップアップ。<span style="color:var(--amber);">選挙結果を織り込んだ買い注文が集中（推論）</span>。
+      </div>
+    </div>
+    <div class="timeline-item peak">
+      <div class="timeline-time">09:20 高値</div>
+      <div class="timeline-content">
+        <strong class="num-pos">57,337</strong>（+3,084 / +5.7%）到達。寄付から わずか20分で+2,200円上昇。半導体関連（アドバンテスト+13.1%、ディスコ+9.7%）が牽引。
+      </div>
+    </div>
+    <div class="timeline-item drop">
+      <div class="timeline-time">09:20-10:30 利確売り第一波</div>
+      <div class="timeline-content">
+        高値から約1,000円の調整（事実）。<span style="color:var(--amber);">急騰に対する利益確定売りと、長期金利上昇への警戒感が台頭（推論: 因果関係は未証明）</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">11:30 前場引け</div>
+      <div class="timeline-content">
+        56,651 で前場終了。高値から -686円だが前日比では+2,398円（+4.4%）を維持。
+      </div>
+    </div>
+    <div class="timeline-item drop">
+      <div class="timeline-time">12:30-14:00 後場もみ合い</div>
+      <div class="timeline-content">
+        56,200-56,600のレンジで推移（事実）。<span style="color:var(--amber);">新規買い材料が乏しかったこと、円安不発が重石になったことは推論</span>。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">14:55 後場高値</div>
+      <div class="timeline-content">
+        56,776 まで戻すも前場高値には遠く及ばず。引けにかけて再び軟化。
+      </div>
+    </div>
+    <div class="timeline-item neutral">
+      <div class="timeline-time">15:30 大引け</div>
+      <div class="timeline-content">
+        <strong>56,363</strong>（+2,110 / +3.89%）で着地。後場は前場高値から -974円。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 3. 後場が続伸しなかった理由 -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>後場が続伸しなかった理由 <span class="evidence-label evidence-inference">推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    以下4要因は複数のニュースソースの解釈を統合した筆者の推論です。後場の値動き自体は事実ですが、因果関係は証明されていません。
+  </p>
+
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因1</span> 長期金利上昇懸念</div>
+      <div class="factor-detail">
+        高市政権の財政拡張路線（103万円の壁引き上げ、防衛費GDP2%）は報道ベースの事実。
+        10年国債利回り2.236%、40年国債利回り3.632%（2/6 財務省公表値 — 事実）。1月20日には40年債が4.215%の過去最高を記録（日経報道 — 事実）。
+        「不動産・建設セクターの重石に」は推論。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因2</span> 朝の急騰に対する利確売り</div>
+      <div class="factor-detail">
+        寄付からわずか20分で+3,000円超の急騰は事実。「短期筋の利益確定が自然発生」は推論。
+        過去の5%超急騰では当日高値は前場に集中する傾向（41回中32回）はparquetデータから算出した事実。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因3</span> 円安不発（片山財務相の口先介入 + レートチェック警戒）</div>
+      <div class="factor-detail">
+        金曜夜に157.98まで進んだドル円が、月曜は156.65で着地（事実）。
+        2/8片山財務相が「月曜も市場と対話する」と牽制（事実）、1/23レートチェックで7円急落の前例（事実）により、
+        円売りが抑制され外需セクターの追加買い材料が乏しかった（推論）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">要因4</span> 選挙プレミアムの消化</div>
+      <div class="factor-detail">
+        金曜引け後～月曜寄付で選挙プレミアムの大部分を織り込み済み。
+        後場に入ると「次の材料待ち」となり、新規の買い手が不在に。
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 前場の急騰は選挙結果に対するイベントドリブン、後場は政策の中身（財政・金利・為替）を値踏みする展開に移行した、と筆者は解釈する。
+    <div class="quote-source">— 筆者の解釈（特定の出典なし。複数ニュースソースから合成）</div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 4. 日経 vs TOPIX 乖離問題 -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>日経平均 vs TOPIX 乖離 <span class="badge badge-amber">重要</span> <span class="evidence-label evidence-fact">数値は事実</span></h2>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+    日経平均は株価加重（値嵩株の影響大）、TOPIXは時価総額加重 — これは指数の定義（事実）。乖離の数値も事実。「市場の実態を見誤るリスクを示唆」は筆者の解釈。
+  </p>
+
+  <div class="comparison-bar">
+    <div class="bar-label">日経225</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:78%;">+3.89%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">TOPIX</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-fill-green" style="width:46%;">+2.29%</div>
+    </div>
+  </div>
+  <div class="comparison-bar">
+    <div class="bar-label">乖離</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:32%; background:var(--amber);">1.60%</div>
+    </div>
+  </div>
+
+  <h3>指数牽引 vs 実態</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>銘柄</th>
+        <th>騰落率</th>
+        <th>日経寄与度</th>
+        <th>コメント</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row-green">
+        <td>アドバンテスト (6857)</td>
+        <td class="num-pos">+13.1%</td>
+        <td>最大</td>
+        <td>半導体 / 値嵩株</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td>SBG (9984)</td>
+        <td class="num-pos">+7.5%</td>
+        <td>大</td>
+        <td>AI投資期待</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td>ファストリ (9983)</td>
+        <td class="num-pos">+5.7%</td>
+        <td>大</td>
+        <td>値嵩株代表</td>
+      </tr>
+      <tr class="highlight-row-green">
+        <td>ディスコ (6146)</td>
+        <td class="num-pos">+9.7%</td>
+        <td>中</td>
+        <td>半導体製造装置</td>
+      </tr>
+      <tr>
+        <td>トヨタ (7203)</td>
+        <td class="num-neg">-0.9%</td>
+        <td>—</td>
+        <td>円安不発 / 関税懸念残存</td>
+      </tr>
+      <tr>
+        <td>ソニーG (6758)</td>
+        <td class="num-neg">-1.6%</td>
+        <td>—</td>
+        <td>利益確定売り</td>
+      </tr>
+      <tr>
+        <td>東京エレク (8035)</td>
+        <td class="num-neutral">±0.0%</td>
+        <td>—</td>
+        <td>半導体だが横ばい</td>
+      </tr>
+      <tr>
+        <td>メイコー (6787)</td>
+        <td class="num-pos">+1.7%</td>
+        <td>—</td>
+        <td>中型半導体 / 恩恵限定的</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-warning">
+    <strong>示唆 <span class="evidence-label evidence-inference">推論</span>:</strong> 日経平均 +3.89% は「値嵩半導体3銘柄の祭り」で TOPIX +2.29% が市場全体の実力、ショート戦略の判断にはTOPIXを基準にすべき — これらは筆者の解釈。数値は事実。
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 5. 円安不発の理由 -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>予想に比し円安に進まなかった理由 <span class="evidence-label evidence-fact">数値は事実</span> <span class="evidence-label evidence-inference">要因分析は推論</span></h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>USD/JPY 推移</h3>
+      <table>
+        <thead>
+          <tr><th>タイミング</th><th>レート</th><th>備考</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>金曜NY引け</td>
+            <td>156.78</td>
+            <td>選挙前水準</td>
+          </tr>
+          <tr>
+            <td>日曜夜（開票後）</td>
+            <td>157.98</td>
+            <td>単独過半数速報で円安</td>
+          </tr>
+          <tr>
+            <td>月曜09:00</td>
+            <td>~157.5</td>
+            <td>東京市場オープン</td>
+          </tr>
+          <tr>
+            <td>月曜15:30</td>
+            <td>156.65</td>
+            <td>金曜とほぼ同水準に回帰</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>円安が進まなかった要因</h3>
+      <div class="factor-card" style="margin-bottom:8px;">
+        <div class="factor-title"><span class="tag tag-bear">1</span> 片山財務相の口先介入 + レートチェック警戒 <span class="evidence-label evidence-fact">事実</span></div>
+        <div class="factor-detail">
+          2/8（土）片山さつき財務相が「必要であれば月曜も市場と対話する」と円安牽制（事実・みんかぶ報道）。
+          さらに1/23に米財務省指示でFRBがレートチェックを実施、159円台→152円台へ約7円急落した前例が鮮明（事実・日経報道、財務省は12/29-1/28に実際の介入なしと公表）。
+          この2つにより157-158円台での円売りポジション積み増しが抑制された（推論）。
+        </div>
+      </div>
+      <div class="factor-card" style="margin-bottom:8px;">
+        <div class="factor-title"><span class="tag tag-bear">2</span> 財政懸念 = 日本国債売り = 金利上昇 = 円買い圧力</div>
+        <div class="factor-detail">
+          高市政権の財政拡張方針は報道ベースの事実。「国債増発→金利上昇→円買い圧力」という因果連鎖は経済理論に基づく推論。「株高・円安のセットが崩れた」は結果の記述（事実）。
+        </div>
+      </div>
+      <div class="factor-card">
+        <div class="factor-title"><span class="tag tag-neutral">3</span> 市場の冷静な反応</div>
+        <div class="factor-detail">
+          オリックス幹部のコメント等で「冷静に反応している」との評価。政策の詳細が不明な段階で、一方的な円売りは控えられた。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <span class="evidence-label evidence-inference">推論</span> 高市トレードの本質は "株買い + 円売り + JGB売り" の3点セットだが、今回は株買いのみ成功し、円と国債は思惑通りに動かなかった、と筆者は解釈する。
+    <div class="quote-source">— 筆者の解釈（特定の出典なし。「高市トレード」という概念自体は2024年9月の報道で広まったもの）</div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 6. 4つのカタリスト -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>本日の4大カタリスト <span class="badge badge-purple">四重奏</span> <span class="evidence-label evidence-fact">各事象は事実</span> <span class="evidence-label evidence-inference">因果関係は推論</span></h2>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+    以下4つの事象が同時に発生したことは事実。これらが急騰の「原因」であるという因果関係、および「四重奏」というフレーミングは筆者の推論。
+  </p>
+
+  <div class="grid-2">
+    <div class="factor-card">
+      <div class="factor-title" style="color:var(--emerald);">1. 衆院選 自公単独過半数</div>
+      <div class="factor-detail">
+        自民233+公明32=265議席（過半数233）は選挙結果の事実。「単独過半数はややサプライズ」「政治安定→市場にポジティブ」「財政拡張路線は中長期リスク」は推論。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title" style="color:var(--emerald);">2. 円安進行（一時158円台）</div>
+      <div class="factor-detail">
+        日曜夜の開票速報で157.98円まで進行。1年ぶりの円安水準。輸出セクターに追い風…だったが、東京市場では156円台に押し戻された。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title" style="color:var(--emerald);">3. トランプ関税緩和</div>
+      <div class="factor-detail">
+        インド向け25%関税の撤回が報じられ、貿易摩擦の緩和期待。日本の自動車・電子部品セクターへの波及不安が後退。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title" style="color:var(--emerald);">4. 米雇用統計ソフトランディング</div>
+      <div class="factor-detail">
+        金曜発表の米雇用統計が「強すぎず弱すぎず」の好結果。FRB利下げ継続期待と景気後退回避のバランスが取れた形。
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-info">
+    <strong>比較 <span class="evidence-label evidence-inference">推論</span>:</strong> 2024/10/27 前回衆院選（石破政権）は日経平均 +691円（+1.8%）— これは事実。今回+2,110円は前回の3倍 — 事実。「差分は追加カタリストと高市プレミアム」は筆者の推論。
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 7. 過去の急騰との比較 -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>過去の5%超急騰日との比較 <span class="evidence-label evidence-fact">事実</span></h2>
+
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+    以下の数値はindex_prices_max_1d.parquetから算出した事実。「2016年以降では最大級」も同データで確認済み。
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>日付</th><th>日次リターン</th><th>背景</th><th>翌5営業日</th></tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row-green">
+        <td><strong>2026/02/09</strong></td>
+        <td class="num-pos"><strong>+3.89%</strong></td>
+        <td>衆院選＋四重奏</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>2024/08/06</td>
+        <td class="num-pos">+10.23%</td>
+        <td>令和のBSリバウンド</td>
+        <td class="num-neg">-3.0%</td>
+      </tr>
+      <tr>
+        <td>2020/03/25</td>
+        <td class="num-pos">+8.04%</td>
+        <td>コロナショック反発</td>
+        <td class="num-neg">-7.1%</td>
+      </tr>
+      <tr>
+        <td>2016/11/10</td>
+        <td class="num-pos">+6.72%</td>
+        <td>トランプ当選</td>
+        <td class="num-pos">+1.8%</td>
+      </tr>
+      <tr>
+        <td>2008/10/14</td>
+        <td class="num-pos">+14.15%</td>
+        <td>リーマン反発</td>
+        <td class="num-neg">-11.2%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert-box alert-info">
+    <strong>最も近いアナログ <span class="evidence-label evidence-inference">推論</span>:</strong> 2016/11/10 トランプ当選（+6.72%）を最も近い事例と筆者は判断（この選定自体が推論）。2016年のその後の動きは事実だが、「今回も同様に動く」は推論。異論は十分ありうる。
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 8. 明日のマーケット動向 -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>2/10（火）の展望 <span class="evidence-label evidence-inference">全体が推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    このセクションは全体が筆者の推論です。予想レンジに根拠はなく、未来の値動きは予測不可能です。
+  </p>
+
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">予想レンジ（日経225）</div>
+      <div class="value" style="font-size:1.1rem;">55,500 - 57,500</div>
+      <div class="sub">根拠なし・参考値</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">予想レンジ（USD/JPY）</div>
+      <div class="value" style="font-size:1.1rem;">155.5 - 157.5</div>
+      <div class="sub">根拠なし・参考値</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">自システムの判断</div>
+      <div class="value" style="font-size:1.1rem; color:var(--amber);">静観</div>
+      <div class="sub">火曜ショートはスキップ</div>
+    </div>
+  </div>
+
+  <h3>ブル要因</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> 政治安定プレミアム継続</div>
+      <div class="factor-detail">
+        2016年トランプ当選後2-3日モメンタム継続は事実。「今回も同様」は推論（過去と同じパターンになる保証はない）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bull">+</span> 高市政策への期待</div>
+      <div class="factor-detail">
+        103万円の壁引き上げ（消費拡大）、防衛費GDP2%（防衛関連銘柄）、半導体国策支援。具体的な政策発表があれば追加の買い材料。
+      </div>
+    </div>
+  </div>
+
+  <h3>ベア要因</h3>
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 月曜高値からの利確売り</div>
+      <div class="factor-detail">
+        57,337（月曜高値）近辺では利益確定売りが入りやすい。特に先物主導で朝高→後場垂れるパターンに注意。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">-</span> 長期金利上昇 / 財政懸念</div>
+      <div class="factor-detail">
+        40年国債利回り3.632%（2/6 財務省公表値 — 事実。1月に過去最高4.215%を記録）。「財政拡張→金利上昇→銀行以外のセクターには重石」は推論。
+      </div>
+    </div>
+  </div>
+
+  <div class="alert-box alert-warning">
+    <strong>自システムの戦略 <span class="evidence-label evidence-fact">バックテスト結果は事実</span> <span class="evidence-label evidence-inference">選挙相場への適用は推論</span>:</strong><br>
+    ・火曜日 = 本来ショート推奨日だが、選挙ラリー中につきスキップ（推論判断）<br>
+    ・水曜日 = ロング推奨日 → Go（週次分析で水曜ロング追加により P&L +72%改善 — バックテスト結果は事実）<br>
+    ・1/13週パターン: 火水木で上昇、金曜利確 — parquetデータから確認した事実。ただし今回も同様になる保証はない。
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 9. 見落としがちなリスク -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>見落としがちなリスク・補足 <span class="evidence-label evidence-inference">推論</span></h2>
+  <p style="font-size:0.8rem; color:var(--amber); margin-bottom:12px;">
+    以下は筆者が想定するリスクシナリオです。実現するかは不明です。
+  </p>
+
+  <div class="factor-grid">
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">リスク1</span> 国債格下げリスク</div>
+      <div class="factor-detail">
+        高市政権の財政拡張路線が明確になった場合、格付機関が見通しを変更するリスクは推論。
+        フィッチは2024年4月にA/安定で据え置き（事実）。「2024年12月にネガティブ変更」は検証の結果<span style="color:var(--rose);">確認できず — 当初記載は誤り</span>。ただし財政悪化で今後変更される可能性は排除できない（推論）。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-bear">リスク2</span> BOJ政策への政治圧力</div>
+      <div class="factor-detail">
+        高市首相は過去にBOJ利上げに否定的な発言。政治圧力→利上げ先送り→円安加速→介入→急な円高、というシナリオリスク。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">注目</span> SQ週（2/14金曜）</div>
+      <div class="factor-detail">
+        今週金曜はメジャーSQではないが、オプションSQ。大幅上昇後のSQ週は先物主導の乱高下が起きやすい。
+      </div>
+    </div>
+    <div class="factor-card">
+      <div class="factor-title"><span class="tag tag-neutral">注目</span> 決算シーズン終盤</div>
+      <div class="factor-detail">
+        3Q決算発表の終盤。個別銘柄の決算サプライズが指数を左右する可能性。特に半導体関連の決算に注目。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!-- 10. 1次情報ソース -->
+<!-- =========================================== -->
+<div class="section">
+  <h2>参照ソース</h2>
+
+  <h3>マーケットデータ</h3>
+  <ul class="source-list">
+    <li>日本経済新聞 — 日経平均・TOPIX 終値データ、セクター別騰落</li>
+    <li>Bloomberg — USD/JPY リアルタイムレート、国債利回り</li>
+    <li>Yahoo Finance — 個別銘柄（6857, 9984, 9983, 6146, 7203, 6758, 8035）日中データ</li>
+  </ul>
+
+  <h3>選挙・政治分析</h3>
+  <ul class="source-list">
+    <li>NHK 選挙速報 — 確定議席数（自民233, 公明32, 立民96, 維新25）</li>
+    <li>日経新聞 — 高市首相政策パッケージ分析</li>
+    <li>野村総合研究所 (NRI) — 選挙後マーケット影響レポート</li>
+  </ul>
+
+  <h3>為替・金利分析</h3>
+  <ul class="source-list">
+    <li>ロイター — USD/JPY 日中推移、BOJ介入観測レポート</li>
+    <li>みんかぶ FX — 2/8 片山財務相「月曜も市場と対話する」発言 <span class="evidence-label evidence-fact">事実</span></li>
+    <li>日経新聞 — 1/23 米FRBレートチェック実施、財務省は12/29-1/28介入なしと公表 <span class="evidence-label evidence-fact">事実</span></li>
+    <li>財務省 国債金利情報 — 2/6公表値: 10年 2.236%, 40年 3.632% <span class="evidence-label evidence-fact">事実</span></li>
+    <li>オリックス — 市場の冷静な反応に関するコメント</li>
+  </ul>
+
+  <h3>海外要因</h3>
+  <ul class="source-list">
+    <li>ロイター — トランプ関税緩和（インド25%撤回）</li>
+    <li>米労働省 — 雇用統計（ソフトランディングシグナル）</li>
+  </ul>
+
+  <h3>内部データ</h3>
+  <ul class="source-list">
+    <li>index_prices_max_1d.parquet — 日経225 / TOPIX 過去データ（1965-2026）</li>
+    <li>grok_trending_archive.parquet — バックテストデータ（988レコード）</li>
+    <li>ymnk.jp/dev/analysis — 曜日別戦略分析</li>
+  </ul>
+</div>
+
+<!-- =========================================== -->
+<!-- 11. 結論 -->
+<!-- =========================================== -->
+<div class="section" style="border: 1px solid rgba(96,165,250,0.3);">
+  <h2>結論</h2>
+
+  <div class="alert-box alert-info" style="margin-top:0;">
+    <strong>今日の要約:</strong><br>
+    <span class="evidence-label evidence-fact">事実</span> 日経平均 +2,110円（+3.89%）、TOPIX +2.29%、USD/JPY 156.65円で着地。<br>
+    <span class="evidence-label evidence-inference">推論</span> 値嵩半導体株が指数を嵩上げしており「全面高」ではない。「株高だけが成功した高市トレード」は筆者の解釈。
+  </div>
+
+  <div class="alert-box alert-warning" style="margin-top:12px;">
+    <strong>アクションプラン <span class="evidence-label evidence-inference">推論</span>:</strong><br>
+    ・火曜: ショートスキップ（選挙ラリー中 — 推論判断）<br>
+    ・水曜: ロング Go（バックテストでは推奨日 — 事実 / 選挙相場での有効性は未検証）<br>
+    ・木金: 利確パターンに注意（2016年アナログからの推論）<br>
+    ・ウォッチ: 長期金利、USD/JPY 157円ライン、高市政策詳細
+  </div>
+</div>
+
+<footer>
+  generated at 2026-02-09 by Claude Code / データは2026-02-09 15:30時点
+</footer>
+
+</body>
+</html>

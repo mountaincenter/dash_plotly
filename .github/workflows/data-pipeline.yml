@@ -702,10 +702,26 @@ jobs:
               "$CI_FILE" --only-show-errors 2>/dev/null || true
           fi
 
+          # S3から既存シグナルをダウンロード（蓄積用）
+          SIGNALS_FILE="data/parquet/granville_ifd_signals.parquet"
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" > /dev/null 2>&1; then
+            echo "📥 Downloading existing signals from S3..."
+            aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" \
+              "$SIGNALS_FILE" --only-show-errors
+            EXISTING_COUNT=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('$SIGNALS_FILE')))")
+            echo "✅ Downloaded existing signals: $EXISTING_COUNT rows"
+          fi
+
           python3 scripts/pipeline/generate_granville_signals.py
 
           if [ $? -eq 0 ]; then
             echo "✅ Granville signal generation completed"
+            # S3にアップロード
+            aws s3 cp "$SIGNALS_FILE" \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" \
+              --only-show-errors
+            echo "✅ Uploaded granville_ifd_signals.parquet to S3"
           else
             echo "⚠️ Granville signal generation failed (non-critical)"
           fi

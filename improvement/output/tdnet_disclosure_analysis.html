@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TDnet開示 x ショートP&L分析（大引け）| 968トレード</title>
+<style>
+:root{--bg:#09090b;--card:#18181b;--card-border:#27272a;--text:#fafafa;--text-muted:#a1a1aa;--emerald:#34d399;--emerald-bg:rgba(52,211,153,0.1);--rose:#fb7185;--rose-bg:rgba(251,113,133,0.1);--amber:#fbbf24;--amber-bg:rgba(251,191,36,0.15);--blue:#60a5fa;--blue-bg:rgba(96,165,250,0.1);--purple:#a78bfa;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;line-height:1.6;padding:24px;max-width:1200px;margin:0 auto;}
+h1{font-size:1.4rem;margin-bottom:8px;}
+.subtitle{color:var(--text-muted);font-size:0.82rem;margin-bottom:16px;}
+.filter-bar{display:flex;gap:8px;margin-bottom:24px;}
+.filter-btn{padding:6px 16px;border-radius:6px;border:1px solid var(--card-border);background:var(--card);color:var(--text-muted);cursor:pointer;font-size:0.82rem;transition:all 0.2s;}
+.filter-btn.active{background:var(--blue-bg);color:var(--blue);border-color:rgba(96,165,250,0.4);font-weight:600;}
+.filter-btn:hover{border-color:var(--blue);}
+.section{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:24px;margin-bottom:20px;}
+.section h2{font-size:1.05rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.section h3{font-size:0.9rem;color:var(--text-muted);margin:16px 0 8px 0;}
+table{width:100%;border-collapse:collapse;font-size:0.82rem;margin:12px 0;}
+th{text-align:left;padding:8px 10px;background:rgba(255,255,255,0.03);color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--card-border);white-space:nowrap;}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.05);}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.num-pos{color:var(--emerald);font-weight:600;}
+.num-neg{color:var(--rose);font-weight:600;}
+.num-neutral{color:var(--text-muted);}
+.highlight-row td{background:rgba(251,113,133,0.05);}
+.highlight-row-green td{background:rgba(52,211,153,0.05);}
+.badge{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;}
+.badge-rose{background:var(--rose-bg);color:var(--rose);border:1px solid rgba(251,113,133,0.3);}
+.badge-emerald{background:var(--emerald-bg);color:var(--emerald);border:1px solid rgba(52,211,153,0.3);}
+.alert-box{border-radius:8px;padding:16px;margin:16px 0;font-size:0.85rem;line-height:1.7;}
+.alert-danger{background:var(--rose-bg);border:1px solid rgba(251,113,133,0.3);color:var(--rose);}
+.alert-info{background:var(--blue-bg);border:1px solid rgba(96,165,250,0.3);color:var(--blue);}
+.alert-success{background:var(--emerald-bg);border:1px solid rgba(52,211,153,0.3);color:var(--emerald);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+.stat-card{background:rgba(255,255,255,0.02);border:1px solid var(--card-border);border-radius:8px;padding:16px;text-align:center;}
+.stat-card .label{color:var(--text-muted);font-size:0.7rem;margin-bottom:4px;}
+.stat-card .value{font-size:1.4rem;font-weight:700;}
+.stat-card .sub{color:var(--text-muted);font-size:0.7rem;margin-top:2px;}
+.danger-tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(251,113,133,0.15);color:var(--rose);border:1px solid rgba(251,113,133,0.3);margin-left:6px;}
+.safe-tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(52,211,153,0.15);color:var(--emerald);border:1px solid rgba(52,211,153,0.3);margin-left:6px;}
+.footnote{font-size:0.72rem;color:var(--text-muted);margin-top:8px;font-style:italic;}
+.filter-content{display:none;}
+.filter-content.active{display:block;}
+footer{text-align:center;color:var(--text-muted);font-size:0.7rem;margin-top:40px;padding:16px 0;border-top:1px solid var(--card-border);}
+</style></head><body>
+
+<h1>TDnet適時開示 x ショートP&L 分析（大引け15:30）</h1>
+<div class="subtitle">期間: 2025-11-04 - 2026-02-18（67営業日）| 対象: analysis同等フィルタ（制度/いちにち信用のみ, 2025-11-04~）| 開示データ: yanoshin TDnet API 4541件 | P&L = ショート大引け（符号反転済）</div>
+
+<div class="filter-bar">
+<button class="filter-btn active" onclick="switchFilter('all')">全体（968件）</button>
+<button class="filter-btn" onclick="switchFilter('ex0')">除0株（817件）</button>
+</div>
+
+
+<div class="filter-content" data-filter="all">
+<div class="section">
+<h2>開示あり vs なし <span class="badge badge-emerald">開示あり=ショート有利</span></h2>
+<div class="grid-3">
+<div class="stat-card"><div class="label">全体</div><div class="value"><span class="num-pos">+1,175,413</span>円</div><div class="sub">968件 | 平均+1,214円 | 勝率60.2%</div></div>
+<div class="stat-card" style="border-color:rgba(96,165,250,0.3);"><div class="label">開示あり（5日以内）</div><div class="value"><span class="num-pos">+545,150</span>円</div><div class="sub">352件 | 平均+1,548円 | 勝率64.2%</div></div>
+<div class="stat-card" style="border-color:rgba(52,211,153,0.3);"><div class="label">開示なし</div><div class="value"><span class="num-pos">+630,263</span>円</div><div class="sub">616件 | 平均+1,023円 | 勝率58.0%</div></div>
+</div>
+<div class="alert-box alert-success" style="margin-top:16px;"><strong>開示あり vs なし 平均差: +525円/トレード</strong>（ショート有利）</div>
+</div>
+
+<div class="section">
+<h2>開示種類別ショートP&L（大引け）</h2>
+<table><thead><tr><th>開示種類</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th><th>判定</th></tr></thead><tbody>
+<tr class="highlight-row"><td>上場維持基準</td><td>2</td><td><span class="num-neg">-7,500</span>円</td><td><span class="num-neg">-3,750</span>円</td><td><span class="num-neg">0.0%</span></td><td></td></tr><tr class="highlight-row"><td>配当関連</td><td>16</td><td><span class="num-neg">-22,700</span>円</td><td><span class="num-neg">-1,418</span>円</td><td><span class="">43.8%</span></td><td><span class="danger-tag">注意</span></td></tr><tr class="highlight-row"><td>経過報告</td><td>14</td><td><span class="num-neg">-19,600</span>円</td><td><span class="num-neg">-1,400</span>円</td><td><span class="num-pos">71.4%</span></td><td><span class="danger-tag">注意</span></td></tr><tr class="highlight-row"><td>株主総会関連</td><td>13</td><td><span class="num-neg">-12,500</span>円</td><td><span class="num-neg">-961</span>円</td><td><span class="num-pos">69.2%</span></td><td></td></tr><tr class=""><td>株主優待</td><td>9</td><td><span class="num-neg">-4,500</span>円</td><td><span class="num-neg">-500</span>円</td><td><span class="num-pos">77.8%</span></td><td></td></tr><tr class=""><td>株式分割</td><td>3</td><td><span class="num-neg">-1,000</span>円</td><td><span class="num-neg">-333</span>円</td><td><span class="num-pos">66.7%</span></td><td></td></tr><tr class=""><td>自社株買い</td><td>13</td><td><span class="num-pos">+3,300</span>円</td><td><span class="num-pos">+253</span>円</td><td><span class="num-pos">61.5%</span></td><td></td></tr><tr class=""><td>その他</td><td>140</td><td><span class="num-pos">+60,050</span>円</td><td><span class="num-pos">+428</span>円</td><td><span class="num-pos">59.3%</span></td><td></td></tr><tr class="highlight-row-green"><td>M&A(買収)</td><td>38</td><td><span class="num-pos">+27,850</span>円</td><td><span class="num-pos">+732</span>円</td><td><span class="num-pos">57.9%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>決算説明資料</td><td>95</td><td><span class="num-pos">+129,950</span>円</td><td><span class="num-pos">+1,367</span>円</td><td><span class="num-pos">64.2%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>自社株処分</td><td>11</td><td><span class="num-pos">+19,850</span>円</td><td><span class="num-pos">+1,804</span>円</td><td><span class="num-pos">72.7%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>営業外損益</td><td>5</td><td><span class="num-pos">+10,200</span>円</td><td><span class="num-pos">+2,040</span>円</td><td><span class="num-pos">100.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>新株予約権</td><td>35</td><td><span class="num-pos">+79,300</span>円</td><td><span class="num-pos">+2,265</span>円</td><td><span class="num-pos">71.4%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>人事・役員</td><td>10</td><td><span class="num-pos">+25,900</span>円</td><td><span class="num-pos">+2,590</span>円</td><td><span class="num-pos">60.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>中期経営計画</td><td>6</td><td><span class="num-pos">+15,700</span>円</td><td><span class="num-pos">+2,616</span>円</td><td><span class="num-pos">83.3%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>決算短信</td><td>165</td><td><span class="num-pos">+435,350</span>円</td><td><span class="num-pos">+2,638</span>円</td><td><span class="num-pos">63.6%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>業績予想修正</td><td>65</td><td><span class="num-pos">+178,000</span>円</td><td><span class="num-pos">+2,738</span>円</td><td><span class="">53.8%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>訂正開示</td><td>3</td><td><span class="num-pos">+8,800</span>円</td><td><span class="num-pos">+2,933</span>円</td><td><span class="num-pos">66.7%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>特別損失</td><td>21</td><td><span class="num-pos">+75,100</span>円</td><td><span class="num-pos">+3,576</span>円</td><td><span class="num-pos">71.4%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>配当予想修正</td><td>15</td><td><span class="num-pos">+86,800</span>円</td><td><span class="num-pos">+5,786</span>円</td><td><span class="num-pos">93.3%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>第三者割当</td><td>8</td><td><span class="num-pos">+51,800</span>円</td><td><span class="num-pos">+6,475</span>円</td><td><span class="num-pos">75.0%</span></td><td><span class="safe-tag">良好</span></td></tr>
+</tbody></table>
+<p class="footnote">1トレードが複数種類に該当する場合あり。件数合計は全体と一致しない。</p>
+</div>
+
+<div class="section">
+<h2>開示-取引の経過日数別</h2>
+<div class="grid-2"><div>
+<h3>全開示</h3><table><thead><tr><th>経過</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class=""><td><strong>0日後</strong></td><td>144</td><td><span class="num-pos">+176,350</span>円</td><td><span class="num-pos">+1,224</span>円</td><td><span class="num-pos">61.8%</span></td></tr><tr class=""><td><strong>1日後</strong></td><td>41</td><td><span class="num-pos">+61,500</span>円</td><td><span class="num-pos">+1,500</span>円</td><td><span class="num-pos">73.2%</span></td></tr><tr class=""><td><strong>2日後</strong></td><td>44</td><td><span class="num-pos">+243,850</span>円</td><td><span class="num-pos">+5,542</span>円</td><td><span class="num-pos">75.0%</span></td></tr><tr class=""><td><strong>3日後</strong></td><td>56</td><td><span class="num-pos">+51,950</span>円</td><td><span class="num-pos">+927</span>円</td><td><span class="num-pos">67.9%</span></td></tr><tr class="highlight-row"><td><strong>4日後</strong></td><td>31</td><td><span class="num-neg">-53,900</span>円</td><td><span class="num-neg">-1,738</span>円</td><td><span class="">51.6%</span></td></tr><tr class=""><td><strong>5日後</strong></td><td>36</td><td><span class="num-pos">+65,400</span>円</td><td><span class="num-pos">+1,816</span>円</td><td><span class="num-pos">55.6%</span></td></tr><tr class="highlight-row-green"><td><strong>開示なし</strong></td><td>616</td><td><span class="num-pos">+630,263</span>円</td><td><span class="num-pos">+1,023</span>円</td><td><span class="num-pos">58.0%</span></td></tr>
+</tbody></table></div><div>
+<h3>決算短信のみ</h3><table><thead><tr><th>経過</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class=""><td><strong>決算0日後</strong></td><td>75</td><td><span class="num-pos">+204,200</span>円</td><td><span class="num-pos">+2,722</span>円</td><td><span class="num-pos">62.7%</span></td></tr><tr class=""><td><strong>決算1日後</strong></td><td>16</td><td><span class="num-pos">+23,200</span>円</td><td><span class="num-pos">+1,450</span>円</td><td><span class="num-pos">68.8%</span></td></tr><tr class=""><td><strong>決算2日後</strong></td><td>21</td><td><span class="num-pos">+182,350</span>円</td><td><span class="num-pos">+8,683</span>円</td><td><span class="num-pos">81.0%</span></td></tr><tr class=""><td><strong>決算3日後</strong></td><td>23</td><td><span class="num-neg">-7,500</span>円</td><td><span class="num-neg">-326</span>円</td><td><span class="">52.2%</span></td></tr><tr class="highlight-row"><td><strong>決算4日後</strong></td><td>18</td><td><span class="num-neg">-17,700</span>円</td><td><span class="num-neg">-983</span>円</td><td><span class="num-pos">55.6%</span></td></tr><tr class=""><td><strong>決算5日後</strong></td><td>12</td><td><span class="num-pos">+50,800</span>円</td><td><span class="num-pos">+4,233</span>円</td><td><span class="num-pos">66.7%</span></td></tr>
+</tbody></table>
+</div></div></div>
+
+<div class="section">
+<h2>開示の組み合わせパターン（3件以上）</h2>
+<div class="grid-2"><div>
+<h3>ワースト（ショート不利）</h3><table><thead><tr><th>パターン</th><th>件数</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 業績予想修正 + 決算短信</td><td>4</td><td><span class="num-neg">-6,650</span>円</td><td><span class="num-neg">25.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 決算短信 + 決算説明資料 + 特別損失 + 経過報告</td><td>3</td><td><span class="num-neg">-6,033</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">株主総会関連</td><td>3</td><td><span class="num-neg">-4,600</span>円</td><td><span class="num-pos">66.7%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 経過報告</td><td>3</td><td><span class="num-neg">-3,933</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">M&A(買収) + その他 + 決算短信 + 決算説明資料</td><td>3</td><td><span class="num-neg">-2,366</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">自社株買い</td><td>7</td><td><span class="num-neg">-2,114</span>円</td><td><span class="num-pos">57.1%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 業績予想修正</td><td>3</td><td><span class="num-neg">-1,600</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">第三者割当</td><td>3</td><td><span class="num-neg">-1,300</span>円</td><td><span class="num-pos">66.7%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 業績予想修正 + 決算短信 + 決算説明資料</td><td>4</td><td><span class="num-neg">-1,100</span>円</td><td><span class="">50.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">決算短信 + 決算説明資料</td><td>20</td><td><span class="num-neg">-1,085</span>円</td><td><span class="num-pos">70.0%</span></td></tr>
+</tbody></table></div><div>
+<h3>ベスト（ショート有利）</h3><table><thead><tr><th>パターン</th><th>件数</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class="highlight-row-green"><td style="font-size:0.75rem;">業績予想修正 + 決算短信</td><td>11</td><td><span class="num-pos">+8,690</span>円</td><td><span class="num-pos">72.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">決算短信</td><td>28</td><td><span class="num-pos">+8,139</span>円</td><td><span class="num-pos">64.3%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">業績予想修正 + 決算短信 + 決算説明資料</td><td>12</td><td><span class="num-pos">+3,616</span>円</td><td><span class="">41.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">その他 + 新株予約権</td><td>4</td><td><span class="num-pos">+2,825</span>円</td><td><span class="">50.0%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">M&A(買収)</td><td>13</td><td><span class="num-pos">+1,242</span>円</td><td><span class="num-pos">61.5%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">新株予約権</td><td>13</td><td><span class="num-pos">+1,223</span>円</td><td><span class="num-pos">76.9%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">その他</td><td>61</td><td><span class="num-pos">+1,157</span>円</td><td><span class="num-pos">63.9%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">M&A(買収) + 新株予約権</td><td>3</td><td><span class="num-pos">+1,066</span>円</td><td><span class="num-pos">66.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">自社株処分</td><td>5</td><td><span class="num-pos">+930</span>円</td><td><span class="">40.0%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">決算短信 + 特別損失</td><td>6</td><td><span class="num-pos">+533</span>円</td><td><span class="num-pos">83.3%</span></td></tr>
+</tbody></table></div></div></div>
+
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+<h2>フィルター適用シミュレーション</h2>
+<table><thead><tr><th>フィルター</th><th>除外数</th><th>除外分P&L</th><th>残り件数</th><th>残りP&L</th><th>残り平均</th><th>残り勝率</th></tr></thead><tbody>
+<tr style="border-bottom:2px solid var(--card-border);"><td><strong>現状（なし）</strong></td><td>-</td><td>-</td><td>968</td><td><span class="num-pos">+1,175,413</span>円</td><td><span class="num-pos">+1,214</span>円</td><td>60.2%</td></tr><tr><td>決算短信3日以内</td><td>135</td><td><span class="num-pos">+402,250</span>円</td><td>833</td><td><span class="num-pos">+773,163</span>円</td><td><span class="num-pos">+928</span>円</td><td>59.5%</td></tr><tr><td>配当予想修正</td><td>15</td><td><span class="num-pos">+86,800</span>円</td><td>953</td><td><span class="num-pos">+1,088,613</span>円</td><td><span class="num-pos">+1,142</span>円</td><td>59.7%</td></tr><tr><td>第三者割当</td><td>8</td><td><span class="num-pos">+51,800</span>円</td><td>960</td><td><span class="num-pos">+1,123,613</span>円</td><td><span class="num-pos">+1,170</span>円</td><td>60.1%</td></tr><tr><td>決算3日+配当修正</td><td>144</td><td><span class="num-pos">+437,950</span>円</td><td>824</td><td><span class="num-pos">+737,463</span>円</td><td><span class="num-pos">+894</span>円</td><td>59.1%</td></tr>
+</tbody></table>
+</div>
+</div>
+
+<div class="filter-content" data-filter="ex0">
+<div class="section">
+<h2>開示あり vs なし <span class="badge badge-emerald">開示あり=ショート有利</span></h2>
+<div class="grid-3">
+<div class="stat-card"><div class="label">全体</div><div class="value"><span class="num-pos">+946,813</span>円</div><div class="sub">817件 | 平均+1,158円 | 勝率58.8%</div></div>
+<div class="stat-card" style="border-color:rgba(96,165,250,0.3);"><div class="label">開示あり（5日以内）</div><div class="value"><span class="num-pos">+501,950</span>円</div><div class="sub">312件 | 平均+1,608円 | 勝率64.4%</div></div>
+<div class="stat-card" style="border-color:rgba(52,211,153,0.3);"><div class="label">開示なし</div><div class="value"><span class="num-pos">+444,863</span>円</div><div class="sub">505件 | 平均+880円 | 勝率55.2%</div></div>
+</div>
+<div class="alert-box alert-success" style="margin-top:16px;"><strong>開示あり vs なし 平均差: +728円/トレード</strong>（ショート有利）</div>
+</div>
+
+<div class="section">
+<h2>開示種類別ショートP&L（大引け）</h2>
+<table><thead><tr><th>開示種類</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th><th>判定</th></tr></thead><tbody>
+<tr class="highlight-row"><td>上場維持基準</td><td>1</td><td><span class="num-neg">-4,300</span>円</td><td><span class="num-neg">-4,300</span>円</td><td><span class="num-neg">0.0%</span></td><td></td></tr><tr class="highlight-row"><td>配当関連</td><td>16</td><td><span class="num-neg">-22,700</span>円</td><td><span class="num-neg">-1,418</span>円</td><td><span class="">43.8%</span></td><td><span class="danger-tag">注意</span></td></tr><tr class="highlight-row"><td>経過報告</td><td>11</td><td><span class="num-neg">-14,900</span>円</td><td><span class="num-neg">-1,354</span>円</td><td><span class="num-pos">72.7%</span></td><td><span class="danger-tag">注意</span></td></tr><tr class=""><td>株式分割</td><td>2</td><td><span class="num-neg">-1,000</span>円</td><td><span class="num-neg">-500</span>円</td><td><span class="">50.0%</span></td><td></td></tr><tr class=""><td>その他</td><td>120</td><td><span class="num-pos">+21,050</span>円</td><td><span class="num-pos">+175</span>円</td><td><span class="num-pos">59.2%</span></td><td></td></tr><tr class=""><td>自社株買い</td><td>13</td><td><span class="num-pos">+3,300</span>円</td><td><span class="num-pos">+253</span>円</td><td><span class="num-pos">61.5%</span></td><td></td></tr><tr class=""><td>株主優待</td><td>7</td><td><span class="num-pos">+2,000</span>円</td><td><span class="num-pos">+285</span>円</td><td><span class="num-pos">85.7%</span></td><td></td></tr><tr class=""><td>株主総会関連</td><td>10</td><td><span class="num-pos">+3,100</span>円</td><td><span class="num-pos">+310</span>円</td><td><span class="num-pos">80.0%</span></td><td></td></tr><tr class="highlight-row-green"><td>M&A(買収)</td><td>37</td><td><span class="num-pos">+34,350</span>円</td><td><span class="num-pos">+928</span>円</td><td><span class="num-pos">59.5%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>決算説明資料</td><td>91</td><td><span class="num-pos">+88,650</span>円</td><td><span class="num-pos">+974</span>円</td><td><span class="num-pos">64.8%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>特別損失</td><td>19</td><td><span class="num-pos">+26,300</span>円</td><td><span class="num-pos">+1,384</span>円</td><td><span class="num-pos">68.4%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>第三者割当</td><td>5</td><td><span class="num-pos">+7,200</span>円</td><td><span class="num-pos">+1,440</span>円</td><td><span class="num-pos">80.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>自社株処分</td><td>11</td><td><span class="num-pos">+19,850</span>円</td><td><span class="num-pos">+1,804</span>円</td><td><span class="num-pos">72.7%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>営業外損益</td><td>5</td><td><span class="num-pos">+10,200</span>円</td><td><span class="num-pos">+2,040</span>円</td><td><span class="num-pos">100.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>新株予約権</td><td>32</td><td><span class="num-pos">+75,300</span>円</td><td><span class="num-pos">+2,353</span>円</td><td><span class="num-pos">68.8%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>人事・役員</td><td>10</td><td><span class="num-pos">+25,900</span>円</td><td><span class="num-pos">+2,590</span>円</td><td><span class="num-pos">60.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>決算短信</td><td>154</td><td><span class="num-pos">+415,050</span>円</td><td><span class="num-pos">+2,695</span>円</td><td><span class="num-pos">64.3%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>訂正開示</td><td>3</td><td><span class="num-pos">+8,800</span>円</td><td><span class="num-pos">+2,933</span>円</td><td><span class="num-pos">66.7%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>中期経営計画</td><td>5</td><td><span class="num-pos">+14,700</span>円</td><td><span class="num-pos">+2,940</span>円</td><td><span class="num-pos">80.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>業績予想修正</td><td>60</td><td><span class="num-pos">+188,400</span>円</td><td><span class="num-pos">+3,140</span>円</td><td><span class="num-pos">55.0%</span></td><td><span class="safe-tag">良好</span></td></tr><tr class="highlight-row-green"><td>配当予想修正</td><td>15</td><td><span class="num-pos">+86,800</span>円</td><td><span class="num-pos">+5,786</span>円</td><td><span class="num-pos">93.3%</span></td><td><span class="safe-tag">良好</span></td></tr>
+</tbody></table>
+<p class="footnote">1トレードが複数種類に該当する場合あり。件数合計は全体と一致しない。</p>
+</div>
+
+<div class="section">
+<h2>開示-取引の経過日数別</h2>
+<div class="grid-2"><div>
+<h3>全開示</h3><table><thead><tr><th>経過</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class=""><td><strong>0日後</strong></td><td>127</td><td><span class="num-pos">+183,050</span>円</td><td><span class="num-pos">+1,441</span>円</td><td><span class="num-pos">62.2%</span></td></tr><tr class=""><td><strong>1日後</strong></td><td>34</td><td><span class="num-pos">+54,000</span>円</td><td><span class="num-pos">+1,588</span>円</td><td><span class="num-pos">73.5%</span></td></tr><tr class=""><td><strong>2日後</strong></td><td>41</td><td><span class="num-pos">+169,650</span>円</td><td><span class="num-pos">+4,137</span>円</td><td><span class="num-pos">75.6%</span></td></tr><tr class=""><td><strong>3日後</strong></td><td>49</td><td><span class="num-pos">+74,550</span>円</td><td><span class="num-pos">+1,521</span>円</td><td><span class="num-pos">65.3%</span></td></tr><tr class="highlight-row"><td><strong>4日後</strong></td><td>27</td><td><span class="num-neg">-51,000</span>円</td><td><span class="num-neg">-1,888</span>円</td><td><span class="">51.9%</span></td></tr><tr class=""><td><strong>5日後</strong></td><td>34</td><td><span class="num-pos">+71,700</span>円</td><td><span class="num-pos">+2,108</span>円</td><td><span class="num-pos">58.8%</span></td></tr><tr class="highlight-row-green"><td><strong>開示なし</strong></td><td>505</td><td><span class="num-pos">+444,863</span>円</td><td><span class="num-pos">+880</span>円</td><td><span class="num-pos">55.2%</span></td></tr>
+</tbody></table></div><div>
+<h3>決算短信のみ</h3><table><thead><tr><th>経過</th><th>件数</th><th>合計P&L</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class=""><td><strong>決算0日後</strong></td><td>70</td><td><span class="num-pos">+211,400</span>円</td><td><span class="num-pos">+3,020</span>円</td><td><span class="num-pos">64.3%</span></td></tr><tr class=""><td><strong>決算1日後</strong></td><td>14</td><td><span class="num-pos">+23,900</span>円</td><td><span class="num-pos">+1,707</span>円</td><td><span class="num-pos">71.4%</span></td></tr><tr class=""><td><strong>決算2日後</strong></td><td>20</td><td><span class="num-pos">+133,850</span>円</td><td><span class="num-pos">+6,692</span>円</td><td><span class="num-pos">80.0%</span></td></tr><tr class=""><td><strong>決算3日後</strong></td><td>21</td><td><span class="num-pos">+26,700</span>円</td><td><span class="num-pos">+1,271</span>円</td><td><span class="">52.4%</span></td></tr><tr class="highlight-row"><td><strong>決算4日後</strong></td><td>17</td><td><span class="num-neg">-31,600</span>円</td><td><span class="num-neg">-1,858</span>円</td><td><span class="">52.9%</span></td></tr><tr class=""><td><strong>決算5日後</strong></td><td>12</td><td><span class="num-pos">+50,800</span>円</td><td><span class="num-pos">+4,233</span>円</td><td><span class="num-pos">66.7%</span></td></tr>
+</tbody></table>
+</div></div></div>
+
+<div class="section">
+<h2>開示の組み合わせパターン（3件以上）</h2>
+<div class="grid-2"><div>
+<h3>ワースト（ショート不利）</h3><table><thead><tr><th>パターン</th><th>件数</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 業績予想修正 + 決算短信</td><td>4</td><td><span class="num-neg">-6,650</span>円</td><td><span class="num-neg">25.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 決算短信 + 決算説明資料 + 特別損失 + 経過報告</td><td>3</td><td><span class="num-neg">-6,033</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">M&A(買収) + その他 + 決算短信 + 決算説明資料</td><td>3</td><td><span class="num-neg">-2,366</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">自社株買い</td><td>7</td><td><span class="num-neg">-2,114</span>円</td><td><span class="num-pos">57.1%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 業績予想修正 + 決算短信 + 決算説明資料</td><td>4</td><td><span class="num-neg">-1,100</span>円</td><td><span class="">50.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">決算短信 + 決算説明資料</td><td>20</td><td><span class="num-neg">-1,085</span>円</td><td><span class="num-pos">70.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">その他 + 決算短信</td><td>4</td><td><span class="num-neg">-775</span>円</td><td><span class="">50.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">新株予約権 + 自社株買い</td><td>3</td><td><span class="num-neg">-166</span>円</td><td><span class="num-neg">33.3%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">株主優待</td><td>5</td><td><span class="num-pos">+140</span>円</td><td><span class="num-pos">80.0%</span></td></tr><tr class="highlight-row"><td style="font-size:0.75rem;">決算説明資料</td><td>6</td><td><span class="num-pos">+166</span>円</td><td><span class="num-pos">83.3%</span></td></tr>
+</tbody></table></div><div>
+<h3>ベスト（ショート有利）</h3><table><thead><tr><th>パターン</th><th>件数</th><th>平均P&L</th><th>勝率</th></tr></thead><tbody>
+<tr class="highlight-row-green"><td style="font-size:0.75rem;">業績予想修正 + 決算短信</td><td>9</td><td><span class="num-pos">+10,511</span>円</td><td><span class="num-pos">66.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">決算短信</td><td>24</td><td><span class="num-pos">+10,425</span>円</td><td><span class="num-pos">70.8%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">業績予想修正 + 決算短信 + 決算説明資料</td><td>12</td><td><span class="num-pos">+3,616</span>円</td><td><span class="">41.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">その他 + 新株予約権</td><td>4</td><td><span class="num-pos">+2,825</span>円</td><td><span class="">50.0%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">M&A(買収)</td><td>13</td><td><span class="num-pos">+1,242</span>円</td><td><span class="num-pos">61.5%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">新株予約権</td><td>11</td><td><span class="num-pos">+1,090</span>円</td><td><span class="num-pos">72.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">M&A(買収) + 新株予約権</td><td>3</td><td><span class="num-pos">+1,066</span>円</td><td><span class="num-pos">66.7%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">自社株処分</td><td>5</td><td><span class="num-pos">+930</span>円</td><td><span class="">40.0%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">決算短信 + 特別損失</td><td>5</td><td><span class="num-pos">+580</span>円</td><td><span class="num-pos">80.0%</span></td></tr><tr class="highlight-row-green"><td style="font-size:0.75rem;">経過報告</td><td>5</td><td><span class="num-pos">+460</span>円</td><td><span class="num-pos">100.0%</span></td></tr>
+</tbody></table></div></div></div>
+
+<div class="section" style="border:1px solid rgba(96,165,250,0.3);">
+<h2>フィルター適用シミュレーション</h2>
+<table><thead><tr><th>フィルター</th><th>除外数</th><th>除外分P&L</th><th>残り件数</th><th>残りP&L</th><th>残り平均</th><th>残り勝率</th></tr></thead><tbody>
+<tr style="border-bottom:2px solid var(--card-border);"><td><strong>現状（なし）</strong></td><td>-</td><td>-</td><td>817</td><td><span class="num-pos">+946,813</span>円</td><td><span class="num-pos">+1,158</span>円</td><td>58.8%</td></tr><tr><td>決算短信3日以内</td><td>125</td><td><span class="num-pos">+395,850</span>円</td><td>692</td><td><span class="num-pos">+550,963</span>円</td><td><span class="num-pos">+796</span>円</td><td>57.5%</td></tr><tr><td>配当予想修正</td><td>15</td><td><span class="num-pos">+86,800</span>円</td><td>802</td><td><span class="num-pos">+860,013</span>円</td><td><span class="num-pos">+1,072</span>円</td><td>58.1%</td></tr><tr><td>第三者割当</td><td>5</td><td><span class="num-pos">+7,200</span>円</td><td>812</td><td><span class="num-pos">+939,613</span>円</td><td><span class="num-pos">+1,157</span>円</td><td>58.6%</td></tr><tr><td>決算3日+配当修正</td><td>134</td><td><span class="num-pos">+431,550</span>円</td><td>683</td><td><span class="num-pos">+515,263</span>円</td><td><span class="num-pos">+754</span>円</td><td>57.0%</td></tr>
+</tbody></table>
+</div>
+</div>
+
+<footer>
+生成: 2026-02-19 16:35 | データソース: yanoshin TDnet API + grok_trending_archive.parquet | フィルタ: dev_analysis.py L170-184, L267-272 準拠
+</footer>
+
+<script>
+function switchFilter(f) {
+    document.querySelectorAll('.filter-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.filter-btn').forEach(el => el.classList.remove('active'));
+    document.querySelector('[data-filter="'+f+'"]').classList.add('active');
+    event.target.classList.add('active');
+}
+document.querySelector('[data-filter="all"]').classList.add('active');
+</script>
+</body></html>

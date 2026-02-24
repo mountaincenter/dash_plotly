@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQ（特別清算指数）ガイド</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3348;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa3;
+    --accent: #6c8aff;
+    --accent-dim: rgba(108,138,255,0.12);
+    --green: #4ade80;
+    --red: #f87171;
+    --orange: #fb923c;
+    --yellow: #facc15;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 40px 20px;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .section-num {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #fff;
+  }
+  p { margin-bottom: 14px; color: var(--text); }
+  .highlight {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .highlight strong { color: var(--accent); }
+  .formula {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.95rem;
+    text-align: center;
+    color: var(--yellow);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .tag-major { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-mini { background: rgba(108,138,255,0.15); color: var(--accent); }
+  .tag-high { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-mid { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .tag-low { background: rgba(74,222,128,0.15); color: var(--green); }
+  ul {
+    padding-left: 20px;
+    margin: 12px 0;
+  }
+  li {
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  li strong { color: #fff; }
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    margin: 16px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 7px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .timeline-label {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.85rem;
+  }
+  .timeline-desc {
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    margin-top: 2px;
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .card-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .text-red { color: var(--red); }
+  .text-green { color: var(--green); }
+  .text-orange { color: var(--orange); }
+  .text-accent { color: var(--accent); }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+  .note {
+    background: rgba(251,146,60,0.08);
+    border: 1px solid rgba(251,146,60,0.2);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+  .note::before {
+    content: '⚠';
+    margin-right: 8px;
+  }
+  .footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>SQ（特別清算指数）ガイド</h1>
+<p class="subtitle">先物・オプション取引の清算メカニズムと株式市場への影響</p>
+
+<!-- Section 1 -->
+<div class="section">
+  <div class="section-num">SECTION 1</div>
+  <h2>SQとは</h2>
+  <p><strong>SQ = Special Quotation（特別清算指数）</strong></p>
+  <p>先物・オプション取引の最終決済に使われる清算価格のこと。満期日（限月の第2金曜日）の寄り付きで、対象となる全構成銘柄の始値を使って算出される特別な指数。</p>
+
+  <div class="highlight">
+    <strong>ポイント：</strong>SQは「価格」ではなく「清算の仕組み」。先物やオプションを満期まで持ち越した場合、この値で強制的に損益が確定する。
+  </div>
+
+  <div class="formula">
+    SQ値 = SQ日の各構成銘柄の始値から算出した指数値
+  </div>
+
+  <p>対象となるデリバティブ：</p>
+  <table>
+    <tr><th>商品</th><th>対象指数</th><th>SQ</th></tr>
+    <tr><td>日経225先物 / mini / micro</td><td>日経平均株価</td><td><span class="tag tag-major">メジャーSQ</span></td></tr>
+    <tr><td>日経225オプション</td><td>日経平均株価</td><td><span class="tag tag-major">メジャーSQ</span></td></tr>
+    <tr><td>日経225 mini（毎月限月）</td><td>日経平均株価</td><td><span class="tag tag-mini">ミニSQ</span></td></tr>
+    <tr><td>TOPIX先物</td><td>TOPIX</td><td><span class="tag tag-major">メジャーSQ</span></td></tr>
+  </table>
+</div>
+
+<!-- Section 2 -->
+<div class="section">
+  <div class="section-num">SECTION 2</div>
+  <h2>なぜSQがあるのか</h2>
+  <p>先物・オプションは「将来の価格を約束する契約」であり、必ず決済期限が必要。SQはその決済を公正かつ一律に行うための仕組み。</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">反対売買で決済</div>
+      <p style="font-size:0.88rem">満期前に反対売買（買い→売り、売り→買い）すれば自分のタイミングで利確・損切りできる。大半のトレーダーはこちら。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">SQで自動決済</div>
+      <p style="font-size:0.88rem">満期まで持ち越すとSQ値で強制決済。意図せず持ち越した場合もこの値で確定する。選択の余地なし。</p>
+    </div>
+  </div>
+
+  <p>SQが必要な理由：</p>
+  <ul>
+    <li><strong>公正な決済</strong> — 全銘柄の始値で算出するため、特定銘柄の操作で歪めにくい</li>
+    <li><strong>ポジション整理の強制</strong> — 無期限に持ち越せると市場に未決済ポジションが蓄積し、システミックリスクになる</li>
+    <li><strong>現物市場との連動</strong> — SQ値は現物の始値ベースなので、先物と現物の価格乖離が定期的にリセットされる</li>
+  </ul>
+</div>
+
+<!-- Section 3 -->
+<div class="section">
+  <div class="section-num">SECTION 3</div>
+  <h2>SQの時期</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">ミニSQ</div>
+      <div class="card-value text-accent">毎月 第2金曜</div>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-top:8px">日経225mini（毎月限月）の清算日。影響は相対的に小さい。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">メジャーSQ</div>
+      <div class="card-value text-red">3・6・9・12月 第2金曜</div>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-top:8px">先物本体 + オプションが同時清算。大量の売買が集中し、大きなボラティリティを生む。</p>
+    </div>
+  </div>
+
+  <p><strong>2026年のメジャーSQ：</strong></p>
+  <table>
+    <tr><th>月</th><th>SQ日</th><th>種別</th></tr>
+    <tr><td>3月</td><td>3/13（金）</td><td><span class="tag tag-major">メジャー</span></td></tr>
+    <tr><td>6月</td><td>6/12（金）</td><td><span class="tag tag-major">メジャー</span></td></tr>
+    <tr><td>9月</td><td>9/11（金）</td><td><span class="tag tag-major">メジャー</span></td></tr>
+    <tr><td>12月</td><td>12/11（金）</td><td><span class="tag tag-major">メジャー</span></td></tr>
+  </table>
+
+  <div class="note">
+    明日 <strong>2/13（金）</strong>は2月のミニSQ日。メジャーではないが、SQ週の値動きの癖は出る。
+  </div>
+</div>
+
+<!-- Section 4 -->
+<div class="section">
+  <div class="section-num">SECTION 4</div>
+  <h2>SQの値動きへの影響</h2>
+
+  <h3 style="font-size:1rem;margin:16px 0 12px;color:var(--orange);">SQ週の特徴的なパターン</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-label">月曜〜水曜（SQ前半）</div>
+      <div class="timeline-desc">ポジション調整の売買が増加。先物と現物の裁定取引（アービトラージ）が活発化し、先物主導で現物が振らされやすい。方向感が定まらずレンジ内で乱高下するケースが多い。</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">木曜（SQ前日）</div>
+      <div class="timeline-desc">ロールオーバー（限月乗り換え）の最終日。大口のポジション整理で出来高急増。引けにかけて急な値動きが出やすい。</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">金曜 寄り付き（SQ当日）</div>
+      <div class="timeline-desc"><strong>SQ値算出のための売買が寄り付きに集中。</strong>日経225構成銘柄は寄り付きの出来高が通常の数倍に膨れる。「寄り天」や「寄り底」になりやすい。</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-label">金曜 寄り後〜引け</div>
+      <div class="timeline-desc">SQ算出が完了すると清算売買が終わり、出来高が急減。方向感がなくなり膠着するか、新たなトレンドが始まる。</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3 style="font-size:1rem;margin:16px 0 12px;color:var(--orange);">影響度の違い</h3>
+
+  <table>
+    <tr><th>種別</th><th>寄り付き出来高</th><th>ボラティリティ</th><th>個別株への波及</th></tr>
+    <tr>
+      <td><span class="tag tag-major">メジャーSQ</span></td>
+      <td><span class="tag tag-high">極大</span></td>
+      <td><span class="tag tag-high">大</span></td>
+      <td><span class="tag tag-high">225構成銘柄中心に大</span></td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-mini">ミニSQ</span></td>
+      <td><span class="tag tag-mid">やや増</span></td>
+      <td><span class="tag tag-mid">中</span></td>
+      <td><span class="tag tag-low">限定的</span></td>
+    </tr>
+  </table>
+
+  <hr class="divider">
+
+  <h3 style="font-size:1rem;margin:16px 0 12px;color:var(--orange);">主な現象</h3>
+  <ul>
+    <li><strong>SQに向けたマグネット効果</strong> — オプションの建玉が多い行使価格（マックスペイン）に向かって指数が引き寄せられる傾向。SQ週は特定の価格帯に張り付きやすい。</li>
+    <li><strong>裁定解消売り / 買い</strong> — 先物と現物の価格差（ベーシス）を利用した裁定ポジションがSQで強制決済されるため、現物に大量の売り・買いが出る。裁定買い残が多い時は「裁定解消売り」で下落圧力。</li>
+    <li><strong>幻のSQ</strong> — SQ値が当日の高値を上回る（または安値を下回る）ケース。寄り付きの瞬間だけ異常な価格がつき、ザラ場では一度もその水準に到達しない現象。大口の思惑が絡む。</li>
+  </ul>
+</div>
+
+<!-- Section 5 -->
+<div class="section">
+  <div class="section-num">SECTION 5</div>
+  <h2>SQ通過後の需給</h2>
+
+  <p>SQ通過は<strong>需給のリセットポイント</strong>として機能する。</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">SQ前</div>
+      <ul style="font-size:0.85rem;padding-left:16px">
+        <li>ヘッジ目的の売買が混在</li>
+        <li>裁定ポジションが現物を歪める</li>
+        <li>オプション売り手のヘッジが指数を抑制/押上げ</li>
+        <li>方向感が出にくい（レンジ相場）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">SQ後</div>
+      <ul style="font-size:0.85rem;padding-left:16px">
+        <li>清算売買が消え、出来高が正常化</li>
+        <li>裁定ポジションがリセットされる</li>
+        <li>新限月の建玉が始まる</li>
+        <li><strong>本来の需給が表面化しやすい</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h3 style="font-size:1rem;margin:16px 0 12px;color:var(--orange);">SQ通過後のトレード戦略への影響</h3>
+
+  <ul>
+    <li><strong>トレンド発生</strong> — SQ前にレンジで抑えられていた方向感が、SQ通過後に一気に出ることがある。特にメジャーSQ後は新たなトレンドの起点になりやすい。</li>
+    <li><strong>出来高減少</strong> — SQ通過直後は材料不足で閑散相場になることも多い。個別株のボラが下がり、短期ショートの値幅が取りにくくなる場合がある。</li>
+    <li><strong>裁定残の変化</strong> — SQで裁定ポジションが解消された後、新たに裁定が組まれるまでの間は裁定起因の売り買いが減少し、現物市場が素直に動きやすい。</li>
+    <li><strong>個別株への影響</strong> — SQ当日は指数寄与度の高い銘柄（ファーストリテイリング、東京エレクトロン等）が寄り付きで大きく振られるが、小型株への直接的影響は小さい。ただし地合い全体のセンチメントには影響する。</li>
+  </ul>
+
+  <div class="note">
+    明日のミニSQ（2/13）は小型grok銘柄のショートには直接影響しにくい。ただし寄り付きの日経225が大きく動いた場合、地合い連動で個別株の寄り値が振られる可能性はある。サンコール・ネクセラの寄り売りは、SQ起因の寄り付きボラに注意。
+  </div>
+</div>
+
+<div class="footer">
+  SQ Guide — 2026/02/12 作成
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>グランビル押し目買い × IFO分析</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: #0a0e17; color: #c8d6e5; line-height: 1.6; padding: 20px; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { color: #fff; font-size: 1.6rem; margin-bottom: 4px; }
+h2 { color: #5dade2; font-size: 1.2rem; margin: 30px 0 12px; border-left: 4px solid #5dade2; padding-left: 10px; }
+h3 { color: #aab7c4; font-size: 1rem; margin: 20px 0 8px; }
+.subtitle { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 20px; }
+.card { background: #141b2d; border-radius: 8px; padding: 20px; margin-bottom: 16px; border: 1px solid #1e2a3a; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.badge-green { background: #1a3a2a; color: #2ecc71; }
+.badge-blue { background: #1a2a3a; color: #3498db; }
+.badge-yellow { background: #3a3a1a; color: #f1c40f; }
+.badge-red { background: #3a1a1a; color: #e74c3c; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 12px 0; }
+.stat { background: #0d1321; border-radius: 6px; padding: 12px; text-align: center; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: #fff; }
+.stat-label { font-size: 0.75rem; color: #7f8c8d; margin-top: 2px; }
+.stat-green .stat-value { color: #2ecc71; }
+.stat-red .stat-value { color: #e74c3c; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { background: #0d1321; color: #7f8c8d; text-align: right; padding: 8px 10px; font-weight: 500; border-bottom: 1px solid #1e2a3a; }
+th:first-child { text-align: left; }
+td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #1a2030; }
+td:first-child { text-align: left; color: #fff; }
+tr:hover { background: #1a2540; }
+.highlight { background: #1a2a3a !important; }
+.highlight td { color: #fff; font-weight: 600; }
+.positive { color: #2ecc71; }
+.negative { color: #e74c3c; }
+.neutral { color: #f1c40f; }
+.bar-container { display: flex; align-items: center; gap: 6px; }
+.bar { height: 14px; border-radius: 3px; min-width: 2px; }
+.bar-mfe { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+.bar-mae { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+.regime-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.regime-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0d1321; border-radius: 6px; }
+.regime-label { color: #7f8c8d; font-size: 0.85rem; }
+.regime-value { font-weight: 600; }
+.section-note { color: #7f8c8d; font-size: 0.8rem; margin: 8px 0; font-style: italic; }
+.recommended { border: 2px solid #f39c12 !important; }
+.recommended-tag { position: absolute; top: -10px; right: 12px; background: #f39c12; color: #000; font-size: 0.7rem; font-weight: 700; padding: 1px 8px; border-radius: 8px; }
+.card-relative { position: relative; }
+.divider { border: none; border-top: 1px solid #1e2a3a; margin: 24px 0; }
+.flex-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.flex-row > * { flex: 1; min-width: 300px; }
+.signal-tag { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; margin-right: 6px; }
+.signal-a { background: #1a3a2a; color: #2ecc71; }
+.signal-d { background: #2a1a3a; color: #9b59b6; }
+footer { text-align: center; color: #4a5568; font-size: 0.75rem; margin-top: 40px; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>グランビル押し目買い × IFO分析</h1>
+<p class="subtitle">A_dip_buy (SMA20 -3~-8%乖離+反発) × 日経上昇トレンド × 寄付IFOエントリー | meta.parquet 73銘柄 × 日足</p>
+
+<!-- 現在のマクロレジーム -->
+<h2>現在のマクロレジーム (2026-02-20)</h2>
+<div class="card">
+  <div class="regime-grid">
+    <div class="regime-item">
+      <span class="regime-label">日経225 vs SMA20</span>
+      <span class="regime-value positive">+3.01% ↑上昇</span>
+    </div>
+    <div class="regime-item">
+      <span class="regime-label">CI先行指数 3ヶ月</span>
+      <span class="regime-value positive">+2.2 拡大</span>
+    </div>
+    <div class="regime-item">
+      <span class="regime-label">DI一致指数</span>
+      <span class="regime-value negative">25.0 後退</span>
+    </div>
+    <div class="regime-item">
+      <span class="regime-label">JGB10年利回り</span>
+      <span class="regime-value neutral">+0.585 金利上昇</span>
+    </div>
+    <div class="regime-item">
+      <span class="regime-label">USD/JPY 3ヶ月</span>
+      <span class="regime-value positive">+5.30 円安</span>
+    </div>
+    <div class="regime-item">
+      <span class="regime-label">失業率 3ヶ月</span>
+      <span class="regime-value neutral">±0.0 横ばい</span>
+    </div>
+  </div>
+  <p class="section-note">判定: 日経上昇 + CI拡大 + 円安 → バックテストで有効な環境</p>
+</div>
+
+<!-- MFE / MAE 分布 -->
+<h2>MFE / MAE 分布（全期間 5,893件）</h2>
+<p class="section-note">寄付エントリー後、日中High/Lowベースの最大順行幅(MFE)・最大逆行幅(MAE)</p>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>期間</th>
+        <th>MFE 25%</th>
+        <th>MFE 中央値</th>
+        <th>MFE 75%</th>
+        <th>MFE 90%</th>
+        <th>MAE 25%</th>
+        <th>MAE 中央値</th>
+        <th>MAE 75%</th>
+        <th>MAE 90%</th>
+        <th>勝率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1日</td>
+        <td class="positive">+0.27%</td><td class="positive">+0.80%</td><td class="positive">+1.62%</td><td class="positive">+2.71%</td>
+        <td class="negative">0.36%</td><td class="negative">0.91%</td><td class="negative">1.68%</td><td class="negative">2.67%</td>
+        <td>44.4%</td>
+      </tr>
+      <tr>
+        <td>3日</td>
+        <td class="positive">+0.69%</td><td class="positive">+1.76%</td><td class="positive">+3.57%</td><td class="positive">+6.00%</td>
+        <td class="negative">0.79%</td><td class="negative">1.78%</td><td class="negative">3.33%</td><td class="negative">5.39%</td>
+        <td>49.0%</td>
+      </tr>
+      <tr class="highlight">
+        <td>5日</td>
+        <td class="positive">+0.97%</td><td class="positive">+2.50%</td><td class="positive">+4.91%</td><td class="positive">+8.37%</td>
+        <td class="negative">1.04%</td><td class="negative">2.35%</td><td class="negative">4.51%</td><td class="negative">7.32%</td>
+        <td>50.4%</td>
+      </tr>
+      <tr>
+        <td>7日</td>
+        <td class="positive">+1.23%</td><td class="positive">+3.13%</td><td class="positive">+6.03%</td><td class="positive">+10.37%</td>
+        <td class="negative">1.23%</td><td class="negative">2.90%</td><td class="negative">5.41%</td><td class="negative">8.64%</td>
+        <td>51.2%</td>
+      </tr>
+      <tr>
+        <td>10日</td>
+        <td class="positive">+1.61%</td><td class="positive">+3.92%</td><td class="positive">+7.56%</td><td class="positive">+12.50%</td>
+        <td class="negative">1.51%</td><td class="negative">3.52%</td><td class="negative">6.61%</td><td class="negative">10.78%</td>
+        <td>52.1%</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="section-note">読み方: 5日間でMFE中央値+2.50%（半分のトレードが+2.5%以上の利益チャンスあり）、MAE中央値2.35%（半分のトレードが-2.35%以上の含み損を経験）</p>
+</div>
+
+<!-- MFE/MAE ビジュアル -->
+<div class="card">
+  <h3>MFE vs MAE バランス（中央値）</h3>
+  <table>
+    <thead><tr><th>期間</th><th>MFE中央値</th><th colspan="2">ビジュアル</th><th>MAE中央値</th><th>MFE/MAE比</th></tr></thead>
+    <tbody>
+      <tr><td>1日</td><td class="positive">+0.80%</td>
+        <td><div class="bar-container"><div class="bar bar-mfe" style="width:32px"></div></div></td>
+        <td><div class="bar-container"><div class="bar bar-mae" style="width:36px"></div></div></td>
+        <td class="negative">0.91%</td><td>0.88</td></tr>
+      <tr><td>3日</td><td class="positive">+1.76%</td>
+        <td><div class="bar-container"><div class="bar bar-mfe" style="width:70px"></div></div></td>
+        <td><div class="bar-container"><div class="bar bar-mae" style="width:71px"></div></div></td>
+        <td class="negative">1.78%</td><td>0.99</td></tr>
+      <tr class="highlight"><td>5日</td><td class="positive">+2.50%</td>
+        <td><div class="bar-container"><div class="bar bar-mfe" style="width:100px"></div></div></td>
+        <td><div class="bar-container"><div class="bar bar-mae" style="width:94px"></div></div></td>
+        <td class="negative">2.35%</td><td class="positive">1.06</td></tr>
+      <tr><td>7日</td><td class="positive">+3.13%</td>
+        <td><div class="bar-container"><div class="bar bar-mfe" style="width:125px"></div></div></td>
+        <td><div class="bar-container"><div class="bar bar-mae" style="width:116px"></div></div></td>
+        <td class="negative">2.90%</td><td class="positive">1.08</td></tr>
+      <tr><td>10日</td><td class="positive">+3.92%</td>
+        <td><div class="bar-container"><div class="bar bar-mfe" style="width:157px"></div></div></td>
+        <td><div class="bar-container"><div class="bar bar-mae" style="width:141px"></div></div></td>
+        <td class="negative">3.52%</td><td class="positive">1.11</td></tr>
+    </tbody>
+  </table>
+  <p class="section-note">MFE/MAE比 > 1.0: 利益方向への動きが損失方向より大きい → 5日以上でエッジ発生</p>
+</div>
+
+<hr class="divider">
+
+<!-- IFO シミュレーション -->
+<h2>IFOシミュレーション（直近5年 × 上昇トレンド, 1,495件）</h2>
+<p class="section-note">エントリー: 翌日寄付成行 / 損切り・利確: 日中High/Lowで判定 / タイムアウト: 最終日終値決済</p>
+
+<!-- 5日保有 -->
+<div class="card">
+  <div class="card-header">
+    <h3>保有上限: 5日</h3>
+    <span class="badge badge-blue">A_dip_buy</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>SL%</th><th>TP%</th><th>件数</th><th>勝率</th><th>平均%</th><th>累計%</th><th>PF</th><th>TO</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1.5</td><td>2.5</td><td>1,495</td><td>42.7%</td><td class="positive">+0.150</td><td class="positive">+224.9</td><td>1.24</td><td>101</td></tr>
+      <tr><td>1.5</td><td>3.0</td><td>1,495</td><td>40.1%</td><td class="positive">+0.190</td><td class="positive">+284.2</td><td>1.34</td><td>147</td></tr>
+      <tr><td>1.5</td><td>4.0</td><td>1,495</td><td>37.8%</td><td class="positive">+0.281</td><td class="positive">+419.6</td><td class="positive">1.62</td><td>237</td></tr>
+      <tr><td>1.5</td><td>5.0</td><td>1,495</td><td>36.1%</td><td class="positive">+0.289</td><td class="positive">+431.4</td><td class="positive">1.88</td><td>329</td></tr>
+      <tr><td>2.0</td><td>3.0</td><td>1,495</td><td>47.7%</td><td class="positive">+0.279</td><td class="positive">+416.7</td><td>1.37</td><td>231</td></tr>
+      <tr><td>2.0</td><td>4.0</td><td>1,495</td><td>45.9%</td><td class="positive">+0.416</td><td class="positive">+621.5</td><td class="positive">1.70</td><td>343</td></tr>
+      <tr><td>2.0</td><td>5.0</td><td>1,495</td><td>44.1%</td><td class="positive">+0.439</td><td class="positive">+655.8</td><td class="positive">1.98</td><td>457</td></tr>
+      <tr class="highlight"><td>2.5</td><td>3.0</td><td>1,495</td><td>52.8%</td><td class="positive">+0.330</td><td class="positive">+493.5</td><td>1.34</td><td>299</td></tr>
+      <tr><td>2.5</td><td>4.0</td><td>1,495</td><td>50.6%</td><td class="positive">+0.456</td><td class="positive">+681.6</td><td class="positive">1.64</td><td>426</td></tr>
+      <tr><td>2.5</td><td>5.0</td><td>1,495</td><td>48.7%</td><td class="positive">+0.476</td><td class="positive">+712.3</td><td class="positive">1.90</td><td>550</td></tr>
+      <tr><td>3.0</td><td>3.0</td><td>1,495</td><td>56.1%</td><td class="positive">+0.354</td><td class="positive">+529.4</td><td>1.28</td><td>370</td></tr>
+      <tr><td>3.0</td><td>4.0</td><td>1,495</td><td>53.8%</td><td class="positive">+0.492</td><td class="positive">+735.2</td><td class="positive">1.55</td><td>510</td></tr>
+      <tr><td>3.0</td><td>5.0</td><td>1,495</td><td>51.9%</td><td class="positive">+0.515</td><td class="positive">+769.4</td><td class="positive">1.80</td><td>645</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 7日保有 -->
+<div class="card">
+  <div class="card-header">
+    <h3>保有上限: 7日</h3>
+    <span class="badge badge-blue">A_dip_buy</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>SL%</th><th>TP%</th><th>件数</th><th>勝率</th><th>平均%</th><th>累計%</th><th>PF</th><th>TO</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1.5</td><td>3.0</td><td>1,495</td><td>39.3%</td><td class="positive">+0.225</td><td class="positive">+335.8</td><td>1.30</td><td>67</td></tr>
+      <tr><td>1.5</td><td>4.0</td><td>1,495</td><td>36.3%</td><td class="positive">+0.338</td><td class="positive">+505.1</td><td class="positive">1.52</td><td>135</td></tr>
+      <tr><td>2.0</td><td>3.0</td><td>1,495</td><td>47.3%</td><td class="positive">+0.310</td><td class="positive">+463.0</td><td>1.35</td><td>111</td></tr>
+      <tr><td>2.0</td><td>4.0</td><td>1,495</td><td>44.3%</td><td class="positive">+0.465</td><td class="positive">+695.1</td><td class="positive">1.59</td><td>194</td></tr>
+      <tr><td>2.0</td><td>5.0</td><td>1,495</td><td>41.9%</td><td class="positive">+0.479</td><td class="positive">+716.2</td><td class="positive">1.81</td><td>303</td></tr>
+      <tr class="highlight"><td>2.5</td><td>3.0</td><td>1,495</td><td>53.0%</td><td class="positive">+0.377</td><td class="positive">+564.3</td><td>1.35</td><td>156</td></tr>
+      <tr><td>2.5</td><td>4.0</td><td>1,495</td><td>49.3%</td><td class="positive">+0.517</td><td class="positive">+773.5</td><td class="positive">1.56</td><td>258</td></tr>
+      <tr><td>2.5</td><td>5.0</td><td>1,495</td><td>46.8%</td><td class="positive">+0.529</td><td class="positive">+790.7</td><td class="positive">1.76</td><td>383</td></tr>
+      <tr><td>3.0</td><td>4.0</td><td>1,495</td><td>53.5%</td><td class="positive">+0.564</td><td class="positive">+843.3</td><td class="positive">1.53</td><td>327</td></tr>
+      <tr><td>3.0</td><td>5.0</td><td>1,495</td><td>50.9%</td><td class="positive">+0.583</td><td class="positive">+871.2</td><td class="positive">1.73</td><td>458</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr class="divider">
+
+<!-- 推奨ルール候補 -->
+<h2>IFOルール候補</h2>
+
+<div class="flex-row">
+  <div class="card card-relative recommended">
+    <span class="recommended-tag">バランス型</span>
+    <h3>SL 2.5% / TP 3.0% / 5日</h3>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value">52.8%</div><div class="stat-label">勝率</div></div>
+      <div class="stat stat-green"><div class="stat-value">+0.330%</div><div class="stat-label">平均リターン</div></div>
+      <div class="stat"><div class="stat-value">1.34</div><div class="stat-label">PF</div></div>
+      <div class="stat"><div class="stat-value">299</div><div class="stat-label">タイムアウト</div></div>
+    </div>
+    <p class="section-note">勝率50%超 × PF 1.3超。心理的に扱いやすいバランス。IFO設定がシンプル。</p>
+  </div>
+
+  <div class="card">
+    <h3>SL 2.0% / TP 4.0% / 5日</h3>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value">45.9%</div><div class="stat-label">勝率</div></div>
+      <div class="stat stat-green"><div class="stat-value">+0.416%</div><div class="stat-label">平均リターン</div></div>
+      <div class="stat"><div class="stat-value">1.70</div><div class="stat-label">PF</div></div>
+      <div class="stat"><div class="stat-value">343</div><div class="stat-label">タイムアウト</div></div>
+    </div>
+    <p class="section-note">勝率は低いが1回の利益が大きい。損小利大型。PF 1.70は優秀。</p>
+  </div>
+
+  <div class="card">
+    <h3>SL 2.5% / TP 4.0% / 7日</h3>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value">49.3%</div><div class="stat-label">勝率</div></div>
+      <div class="stat stat-green"><div class="stat-value">+0.517%</div><div class="stat-label">平均リターン</div></div>
+      <div class="stat"><div class="stat-value">1.56</div><div class="stat-label">PF</div></div>
+      <div class="stat"><div class="stat-value">258</div><div class="stat-label">タイムアウト</div></div>
+    </div>
+    <p class="section-note">7日保有で利益を伸ばす。タイムアウト少なめ。平均+0.517%は最高水準。</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- シグナル別比較 -->
+<h2>シグナル別比較（SL 2.5% / TP 3.0% / 5日）</h2>
+<div class="card">
+  <table>
+    <thead><tr><th>シグナル</th><th>条件</th><th>件数</th><th>勝率</th><th>平均%</th><th>PF</th><th>TO</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="signal-tag signal-a">A_dip_buy</span></td>
+        <td>SMA20 -3~-8%乖離 + 反発</td>
+        <td>1,495</td><td>52.8%</td><td class="positive">+0.330%</td><td>1.34</td><td>299</td>
+      </tr>
+      <tr>
+        <td><span class="signal-tag signal-d">D_deep_dip</span></td>
+        <td>SMA20 -5%以上乖離 + 反発</td>
+        <td>669</td><td>49.5%</td><td class="positive">+0.194%</td><td>1.18</td><td>106</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="section-note">A_dip_buyが全指標で優位。D_deep_dipは件数少なくPFも低い。A_dip_buyに集中が合理的。</p>
+</div>
+
+<!-- 現在のシグナル状況 -->
+<h2>現在のシグナル状況（2/20終値時点）</h2>
+
+<div class="card">
+  <h3>発火中 <span class="badge badge-green">2銘柄</span></h3>
+  <table>
+    <thead><tr><th>銘柄</th><th>シグナル</th><th>終値</th><th>SMA20</th><th>乖離%</th><th>RSI14</th></tr></thead>
+    <tbody>
+      <tr class="highlight">
+        <td>カプコン (9697.T)</td>
+        <td><span class="signal-tag signal-a">A</span><span class="signal-tag signal-d">D</span></td>
+        <td>3,148</td><td>3,366</td><td class="negative">-6.47%</td><td>24.2</td>
+      </tr>
+      <tr>
+        <td>KADOKAWA (9468.T)</td>
+        <td><span class="signal-tag signal-d">D</span></td>
+        <td>2,788</td><td>3,108</td><td class="negative">-10.28%</td><td>24.2</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>反発待ち候補 <span class="badge badge-yellow">主要5銘柄</span></h3>
+  <p class="section-note">24日に前日比プラスで始まれば A_dip_buy 条件成立の可能性</p>
+  <table>
+    <thead><tr><th>銘柄</th><th>終値</th><th>SMA20</th><th>乖離%</th><th>RSI14</th></tr></thead>
+    <tbody>
+      <tr><td>任天堂 (7974.T)</td><td>8,587</td><td>9,240</td><td class="negative">-7.07%</td><td>28.8</td></tr>
+      <tr><td>レーザーテック (6920.T)</td><td>30,640</td><td>32,641</td><td class="negative">-6.13%</td><td>29.1</td></tr>
+      <tr><td>日立製作所 (6501.T)</td><td>4,930</td><td>5,223</td><td class="negative">-5.61%</td><td>39.8</td></tr>
+      <tr><td>ソニーG (6758.T)</td><td>3,336</td><td>3,479</td><td class="negative">-4.10%</td><td>44.4</td></tr>
+      <tr><td>セブン&アイ (3382.T)</td><td>2,191</td><td>2,268</td><td class="negative">-3.38%</td><td>47.6</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr class="divider">
+
+<!-- 戦略サマリー -->
+<h2>戦略ルール（案）</h2>
+<div class="card">
+  <table>
+    <thead><tr><th>項目</th><th>ルール</th></tr></thead>
+    <tbody>
+      <tr><td>対象銘柄</td><td>meta.parquet 73銘柄（Core30 + 政策銘柄）</td></tr>
+      <tr><td>地合い条件</td><td>日経225終値 > SMA20（上昇トレンド）</td></tr>
+      <tr><td>マクロ条件</td><td>CI先行指数 3ヶ月変化 > 0（拡大局面）※推奨</td></tr>
+      <tr><td>エントリー条件</td><td>SMA20から -3% ~ -8% 乖離 かつ 前日比プラス（反発確認）</td></tr>
+      <tr><td>エントリー方法</td><td>翌営業日 寄付成行（IFO注文）</td></tr>
+      <tr><td>利確 (TP)</td><td>エントリー価格 +3.0%</td></tr>
+      <tr><td>損切り (SL)</td><td>エントリー価格 -2.5%</td></tr>
+      <tr><td>タイムアウト</td><td>5営業日後の終値で強制決済</td></tr>
+      <tr><td>期待値</td><td>勝率52.8% / 平均+0.33% / PF 1.34</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  Generated: 2026-02-22 | Data: meta.parquet 73銘柄 × prices_max_1d × e-Stat CI/DI × FRED JGB/USDJPY
+</footer>
+
+</div>
+</body>
+</html>
