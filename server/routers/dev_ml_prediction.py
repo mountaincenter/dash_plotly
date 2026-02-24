@@ -270,7 +270,7 @@ def get_short_recommendation(prob: float, threshold: float = 0.40) -> dict:
         return {"recommendation": "strong_short", "reason": "株価下落確率が非常に高い"}
     elif prob <= threshold:
         return {"recommendation": "short", "reason": "株価下落確率が高い"}
-    elif prob <= 0.55:
+    elif prob <= 0.61:
         return {"recommendation": "neutral", "reason": "方向性が不明確"}
     else:
         return {"recommendation": "avoid", "reason": "株価上昇予測のためショート回避"}

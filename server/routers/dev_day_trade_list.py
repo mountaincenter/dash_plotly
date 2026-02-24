@@ -317,14 +317,14 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 
 
 def get_quintile(prob: float) -> str:
-    """prob_upから5分位を返す（学習時の分布に基づく近似）"""
-    if prob <= 0.32:
+    """prob_upから5分位を返す（Walk-Forward CV等分割境界）"""
+    if prob <= 0.16:
         return "Q1"
-    elif prob <= 0.40:
+    elif prob <= 0.30:
         return "Q2"
-    elif prob <= 0.48:
+    elif prob <= 0.45:
         return "Q3"
-    elif prob <= 0.55:
+    elif prob <= 0.61:
         return "Q4"
     else:
         return "Q5"
