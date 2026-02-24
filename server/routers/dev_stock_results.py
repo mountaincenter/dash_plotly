@@ -132,7 +132,7 @@ async def get_stock_results_summary(strategy: Optional[str] = None):
     """
     取引結果サマリー
     - 全体統計、ロング/ショート別統計
-    - strategy: 戦略フィルター (grok / granville_ifd / llm / other)
+    - strategy: 戦略フィルター (grok / granville / llm)
     """
     df = load_stock_results()
     summary_df = load_summary()
@@ -262,7 +262,7 @@ async def get_stock_results_summary(strategy: Optional[str] = None):
 def _build_strategy_summary(summary: dict) -> list:
     """戦略別サマリーを構築"""
     strategies = []
-    for s in ["grok", "granville_ifd", "llm", "other"]:
+    for s in ["grok", "granville", "llm"]:
         profit = summary.get(f"{s}_profit", 0)
         count = int(summary.get(f"{s}_count", 0))
         win = int(summary.get(f"{s}_win", 0))
@@ -283,7 +283,7 @@ async def get_daily_results(view: str = "daily", strategy: Optional[str] = None)
     """
     日別/週別/月別の取引一覧
     view: daily, weekly, monthly
-    strategy: 戦略フィルター (grok / granville_ifd / llm / other)
+    strategy: 戦略フィルター (grok / granville / llm)
     """
     df = load_stock_results()
 

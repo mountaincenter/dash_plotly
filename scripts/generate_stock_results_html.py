@@ -221,7 +221,7 @@ strategy_counts = daily_stock["戦略"].value_counts()
 print(f"戦略タグ付け完了: {dict(strategy_counts)}")
 
 # 戦略別集計をサマリーに追加
-for strategy in ["grok", "granville", "llm", "other"]:
+for strategy in ["grok", "granville", "llm"]:
     s_df = daily_stock[daily_stock["戦略"] == strategy]
     s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
     s_count = len(s_df)
