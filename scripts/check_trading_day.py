@@ -88,6 +88,33 @@ def check_trading_window() -> tuple[bool, bool, str]:
 
     in_window = window_start <= now_jst <= window_end
 
+    # JQuantsデータ未公開対策: 16:00-18:00に実行時、latest_trading_dayが
+    # 前日の場合、JQuantsカレンダーで今日が営業日か確認する
+    if not in_window and 16 <= now_jst.hour <= 18:
+        today = now_jst.date()
+        today_str = today.strftime("%Y-%m-%d")
+        try:
+            cal_resp = fetcher.client.request(
+                "/markets/calendar",
+                params={"from": today_str, "to": today_str}
+            )
+            cal_data = cal_resp.get("data", [])
+            today_is_trading = any(
+                d["Date"] == today_str and d["HolDiv"] == "1"
+                for d in cal_data
+            )
+        except Exception:
+            today_is_trading = False
+
+        if today_is_trading:
+            window_start_today = now_jst.replace(hour=16, minute=0, second=0, microsecond=0)
+            window_end_today = window_start_today + timedelta(hours=11)
+            in_window = window_start_today <= now_jst <= window_end_today
+            if in_window:
+                print(f"ℹ️  JQuants data not yet available for today ({today_str})")
+                print(f"   JQuants calendar confirms today is a trading day")
+                latest_trading_day_str = today_str
+
     if in_window:
         print("✅ Within execution window")
     else:
