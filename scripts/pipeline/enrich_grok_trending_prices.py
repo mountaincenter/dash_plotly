@@ -154,8 +154,9 @@ def calc_extreme_market_info() -> dict:
         return result
 
     futures_df = pd.read_parquet(FUTURES_PRICES_PATH)
+    futures_df = futures_df[futures_df["ticker"] == "NKD=F"]
     if futures_df.empty or len(futures_df) < 1:
-        print("[WARN] futures_prices_60d_5m.parquet is empty")
+        print("[WARN] NKD=F data not found in futures_prices_60d_5m.parquet")
         return result
 
     futures_df = futures_df.sort_values("date")
