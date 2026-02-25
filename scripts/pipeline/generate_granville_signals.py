@@ -91,7 +91,7 @@ def load_data() -> pd.DataFrame:
     idx = pd.read_parquet(PARQUET_DIR / "index_prices_max_1d.parquet")
     nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
     nk["date"] = pd.to_datetime(nk["date"])
-    nk = nk.sort_values("date").rename(columns={"Close": "nk225_close"})
+    nk = nk.sort_values("date").dropna(subset=["Close"]).rename(columns={"Close": "nk225_close"})
     nk["nk225_sma20"] = nk["nk225_close"].rolling(20).mean()
     nk["market_uptrend"] = nk["nk225_close"] > nk["nk225_sma20"]
 
@@ -225,7 +225,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
     idx = pd.read_parquet(PARQUET_DIR / "index_prices_max_1d.parquet")
     nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
     nk["date"] = pd.to_datetime(nk["date"])
-    nk = nk.sort_values("date")
+    nk = nk.sort_values("date").dropna(subset=["Close"])
     nk["sma20"] = nk["Close"].rolling(20).mean()
     nk["uptrend"] = nk["Close"] > nk["sma20"]
     uptrend_map = dict(zip(nk["date"].values, nk["uptrend"].values))

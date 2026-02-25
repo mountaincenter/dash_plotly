@@ -268,6 +268,7 @@ async def get_status():
             nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
             nk["date"] = pd.to_datetime(nk["date"])
             nk = nk.sort_values("date")
+            nk = nk.dropna(subset=["Close"])
             nk["sma20"] = nk["Close"].rolling(20).mean()
             latest = nk.dropna(subset=["sma20"]).iloc[-1]
             result["nk225_close"] = _safe_float(latest["Close"], 2)

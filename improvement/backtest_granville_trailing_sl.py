@@ -84,7 +84,7 @@ def load_signals():
     idx = pd.read_parquet(ROOT / "data/parquet/index_prices_max_1d.parquet")
     nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
     nk["date"] = pd.to_datetime(nk["date"])
-    nk = nk.sort_values("date").rename(columns={"Close": "nk225_close"})
+    nk = nk.sort_values("date").dropna(subset=["Close"]).rename(columns={"Close": "nk225_close"})
     nk["nk225_sma20"] = nk["nk225_close"].rolling(20).mean()
     nk["market_uptrend"] = nk["nk225_close"] > nk["nk225_sma20"]
 
