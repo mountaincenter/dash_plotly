@@ -66,6 +66,8 @@ UPLOAD_FILES = [
     # 取引結果
     "stock_results.parquet",
     "stock_results_summary.parquet",
+    # 日経VI
+    "nikkei_vi_max_1d.parquet",
     # グランビルIFDシグナル（backtest配下は除外 - backtest_granville_ifd.pyで直接S3アップロード）
     "granville_ifd_signals.parquet",
 ]
