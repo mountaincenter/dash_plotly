@@ -70,6 +70,8 @@ def get_price_range_label(price: float | None, price_ranges: list | None = None)
 
 # 手動除外日リスト（極端相場基準に引っかからないが除外すべき日）
 MANUAL_EXCLUDE_DATES = [
+    "2026-01-13",  # 先物+4%でis_extreme_market=Trueだが念のため明示
+    "2026-01-14",  # 日経+3.1%の大幅上昇日（先物基準では検出されず）
     "2026-01-15",  # 前日1/14が日経+3.1%の大幅上昇、当日ショート-3.64%の異常日
 ]
 

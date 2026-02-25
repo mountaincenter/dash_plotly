@@ -686,21 +686,12 @@ jobs:
 
       - name: Generate Granville IFD signals
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        env:
+          ESTAT_API_KEY: ${{ secrets.ESTAT_API_KEY }}
         run: |
           echo "============================================================"
           echo "Generating Granville IFD signals (16:45 only)"
           echo "============================================================"
-
-          # CI先行指数データ（improvement/data/macro/）がリポジトリにない場合はS3から取得
-          MACRO_DIR="improvement/data/macro"
-          CI_FILE="$MACRO_DIR/estat_ci_index.parquet"
-          if [ ! -f "$CI_FILE" ]; then
-            echo "📥 Downloading CI index from S3..."
-            mkdir -p "$MACRO_DIR"
-            aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}macro/estat_ci_index.parquet" \
-              "$CI_FILE" --only-show-errors 2>/dev/null || true
-          fi
 
           # S3から既存シグナルをダウンロード（蓄積用）
           SIGNALS_FILE="data/parquet/granville_ifd_signals.parquet"

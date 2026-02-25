@@ -19,6 +19,9 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+import os
+import requests
+
 import numpy as np
 import pandas as pd
 
@@ -26,16 +29,49 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from common_cfg.env import load_dotenv_cascade
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_file
 
-MACRO_DIR = ROOT / "improvement" / "data" / "macro"
+load_dotenv_cascade()
 OUTPUT_PATH = PARQUET_DIR / "granville_ifd_signals.parquet"
 POSITIONS_PATH = PARQUET_DIR / "granville_ifd_positions.parquet"
 S3_POSITIONS_KEY = "granville_ifd_positions.parquet"
 
 BAD_SECTORS = ["医薬品", "輸送用機器", "小売業", "その他製品", "陸運業", "サービス業"]
+
+
+def fetch_ci_leading() -> pd.DataFrame:
+    """e-Stat APIからCI先行指数を取得"""
+    api_key = os.getenv("ESTAT_API_KEY")
+    if not api_key:
+        print("  ⚠️ ESTAT_API_KEY未設定、CI先行指数スキップ")
+        return pd.DataFrame(columns=["date", "ci_leading", "ci_leading_chg3m"])
+
+    resp = requests.get(
+        "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData",
+        params={"appId": api_key, "statsDataId": "0003446461", "cdTab": "100", "limit": 100000},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    values = resp.json()["GET_STATS_DATA"]["STATISTICAL_DATA"]["DATA_INF"]["VALUE"]
+
+    rows = []
+    for v in values:
+        tc = v["@time"]
+        cat = v.get("@cat01")
+        if cat != "100":  # leading のみ
+            continue
+        val = v.get("$")
+        if val == "-" or val is None:
+            continue
+        year, month = int(tc[:4]), int(tc[8:10])
+        rows.append({"date": pd.Timestamp(year=year, month=month, day=1), "ci_leading": float(val)})
+
+    ci = pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
+    ci["ci_leading_chg3m"] = ci["ci_leading"].diff(3)
+    return ci
 
 
 def load_data() -> pd.DataFrame:
@@ -59,10 +95,8 @@ def load_data() -> pd.DataFrame:
     nk["nk225_sma20"] = nk["nk225_close"].rolling(20).mean()
     nk["market_uptrend"] = nk["nk225_close"] > nk["nk225_sma20"]
 
-    # CI先行指数
-    ci = pd.read_parquet(MACRO_DIR / "estat_ci_index.parquet")
-    ci = ci[["date", "leading"]].rename(columns={"leading": "ci_leading"})
-    ci["ci_leading_chg3m"] = ci["ci_leading"].diff(3)
+    # CI先行指数（e-Stat API）
+    ci = fetch_ci_leading()
 
     # 日次ベースでCI先行指数をforward fill
     daily = pd.DataFrame({"date": ps["date"].drop_duplicates().sort_values()})
@@ -196,13 +230,12 @@ def generate_positions(ps: pd.DataFrame) -> None:
     nk["uptrend"] = nk["Close"] > nk["sma20"]
     uptrend_map = dict(zip(nk["date"].values, nk["uptrend"].values))
 
-    # CI先行指数
+    # CI先行指数（e-Stat API）
     ci_ok = True
     try:
-        ci = pd.read_parquet(MACRO_DIR / "estat_ci_index.parquet")
-        ci = ci[["date", "leading"]].sort_values("date")
-        ci["chg3m"] = ci["leading"].diff(3)
-        ci_ok = bool(ci.dropna(subset=["chg3m"]).iloc[-1]["chg3m"] > 0)
+        ci = fetch_ci_leading()
+        if not ci.empty:
+            ci_ok = bool(ci.dropna(subset=["ci_leading_chg3m"]).iloc[-1]["ci_leading_chg3m"] > 0)
     except Exception:
         pass
 
