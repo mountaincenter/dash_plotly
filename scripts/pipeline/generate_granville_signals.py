@@ -280,6 +280,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
             continue
         e_date = tk.iloc[0]["date"]
         sl = ep * 0.97
+        trail_sl = sl  # trail_1/2: エントリー翌日以降、含み益の半分をSLに
         tp_price = ep * 1.10
         st = sig["sig_type"]
         exited = False
@@ -327,6 +328,10 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 exited = True
                 break
 
+            # trail_1/2: 翌日以降、含み益があればSLを entry + 含み益/2 に引き上げ
+            if i >= 1 and cv > ep:
+                trail_sl = max(trail_sl, ep + (cv - ep) / 2)
+
         if not exited:
             cur = tk.iloc[-1]
             cp = float(cur["Close"])
@@ -341,6 +346,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 "pct": round((cp / ep - 1) * 100, 2),
                 "pnl": int((cp - ep) * 100),
                 "sl_price": round(sl, 1),
+                "trail_sl": round(trail_sl, 1),
                 "hold_days": len(tk),
                 "exit_type": "",
                 "as_of": latest,
@@ -364,6 +370,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
                     "pct": round((cp / ep - 1) * 100, 2),
                     "pnl": int((cp - ep) * 100),
                     "sl_price": 0,
+                    "trail_sl": 0,
                     "hold_days": len(tk),
                     "exit_type": exit_today,
                     "as_of": latest,

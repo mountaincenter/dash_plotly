@@ -351,6 +351,7 @@ async def get_positions():
                 "unrealized_pct": _safe_float(r["pct"], 2),
                 "unrealized_yen": _safe_int(r["pnl"]),
                 "sl_price": _safe_float(r["sl_price"], 1),
+                "trail_sl": _safe_float(r.get("trail_sl", r["sl_price"]), 1),
                 "hold_days": _safe_int(r["hold_days"]),
                 "exit_type": r.get("exit_type", ""),
             })
