@@ -81,12 +81,13 @@ def regenerate_all_signals(prices_df: pd.DataFrame) -> pd.DataFrame:
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
                    signal_date: pd.Timestamp, signal_type: str) -> dict | None:
-    """1トレードをTP+10% + グランビル出口ルール + 7日マイナス損切りでシミュレート
+    """1トレードをTP+10% + trail_1/2 SL + グランビル出口ルール + 7日マイナス損切りでシミュレート
 
     TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
+    trail_1/2: エントリー翌日以降、含み益の半分をSLに引き上げ
     A: 終値≥SMA20 → 翌日寄付売り / B: デッドクロス → 翌日寄付売り
     7日マイナス: d==6で終値 < エントリー → 翌日寄付売り (time_cut)
-    共通: SL -3%（IFD逆指値）/ 最大60営業日
+    共通: SL -3%（IFD逆指値、初期値）/ 最大60営業日
     """
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
     if tk.empty:
@@ -116,6 +117,7 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     entry_date = pd.Timestamp(dates[entry_idx])
     sl_price = entry_price * (1 - SL_PCT / 100)
+    trail_sl = sl_price  # trail_1/2: 含み益の半分をSLに引き上げ
     tp_price = entry_price * (1 + TP_PCT / 100)
 
     for d in range(MAX_HOLD_DAYS):
@@ -123,9 +125,9 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
         if ci >= len(dates):
             return None  # データ不足、トレード未完了
 
-        # SL判定（IFD逆指値、ザラ場中に自動執行）
-        if float(lows[ci]) <= sl_price:
-            return _result(entry_date, dates[ci], entry_price, sl_price, "SL")
+        # SL判定（trail_sl使用、ザラ場中に自動執行）
+        if float(lows[ci]) <= trail_sl:
+            return _result(entry_date, dates[ci], entry_price, trail_sl, "SL")
 
         # TP+10%判定（ザラ場中に到達）
         if float(highs[ci]) >= tp_price:
@@ -138,6 +140,10 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
         close_val = float(closes[ci])
         sma5_val = float(sma5s[ci])
         sma20_val = float(sma20s[ci])
+
+        # trail_1/2: 含み益があればSLを entry + 含み益/2 に引き上げ
+        if close_val > entry_price:
+            trail_sl = max(trail_sl, entry_price + (close_val - entry_price) / 2)
 
         # A: 終値≥SMA20 → 翌日寄付売り
         if signal_type in ("A", "A+B") and close_val >= sma20_val:

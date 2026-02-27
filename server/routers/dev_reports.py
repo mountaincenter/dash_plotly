@@ -42,10 +42,13 @@ def _s3_client():
 
 
 def _extract_date(filename: str) -> str:
-    """ファイル名から YYYY-MM-DD を抽出。"""
+    """ファイル名から YYYY-MM-DD を抽出。YYYYMM（月次）にも対応。"""
     m = re.search(r"(\d{4})(\d{2})(\d{2})", filename)
     if m:
         return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    m = re.search(r"(\d{4})(\d{2})", filename)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-01"
     return ""
 
 
