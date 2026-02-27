@@ -23,10 +23,10 @@ from common_cfg.paths import REPORTS_DIR
 
 router = APIRouter()
 
-# ローカルパス
-REPORTS_LOCAL_DIR = REPORTS_DIR
+# 環境判定: ローカルにディレクトリがあれば開発、なければ本番（S3）
+_IS_LOCAL = REPORTS_DIR.exists()
 
-# S3 設定
+# S3 設定（本番用）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 REPORTS_PREFIX = "reports/"
@@ -66,71 +66,73 @@ def _resolve_html_name(filename: str) -> str:
 
 @router.get("/api/dev/reports")
 def list_reports():
-    """レポート一覧。S3 の reports/ プレフィックスを列挙。ローカルはローカルを列挙。"""
-    reports: list[dict] = []
+    """レポート一覧。開発=ローカル、本番=S3。完全分離。"""
+    if _IS_LOCAL:
+        return {"reports": _list_local()}
+    return {"reports": _list_s3()}
 
-    # ローカル（開発環境）
-    if REPORTS_LOCAL_DIR.exists():
-        for f in sorted(REPORTS_LOCAL_DIR.glob("market_analysis*.html"), reverse=True):
+
+def _list_local() -> list[dict]:
+    reports = []
+    for f in REPORTS_DIR.glob("market_analysis*.html"):
+        reports.append({
+            "filename": f.name,
+            "date": _extract_date(f.name),
+            "title": _extract_title_from_html(
+                f.read_text(encoding="utf-8", errors="ignore"), f.name
+            ),
+            "size_bytes": f.stat().st_size,
+        })
+    reports.sort(key=lambda r: r.get("date", ""), reverse=True)
+    return reports
+
+
+def _list_s3() -> list[dict]:
+    reports = []
+    try:
+        s3 = _s3_client()
+        resp = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=REPORTS_PREFIX)
+        for obj in resp.get("Contents", []):
+            key = obj["Key"]
+            name = key.removeprefix(REPORTS_PREFIX)
+            if not name.endswith(".html"):
+                continue
+            title = name
+            try:
+                head = s3.get_object(
+                    Bucket=S3_BUCKET, Key=key, Range="bytes=0-4095"
+                )
+                title = _extract_title_from_html(
+                    head["Body"].read().decode("utf-8", errors="ignore"), name
+                )
+            except Exception:
+                pass
             reports.append({
-                "filename": f.name,
-                "date": _extract_date(f.name),
-                "title": _extract_title_from_html(
-                    f.read_text(encoding="utf-8", errors="ignore"), f.name
-                ),
-                "size_bytes": f.stat().st_size,
+                "filename": name,
+                "date": _extract_date(name),
+                "title": title,
+                "size_bytes": obj["Size"],
             })
-
-    # S3（本番環境: ローカルにファイルがなければ）
-    if not reports:
-        try:
-            s3 = _s3_client()
-            resp = s3.list_objects_v2(
-                Bucket=S3_BUCKET, Prefix=REPORTS_PREFIX
-            )
-            for obj in resp.get("Contents", []):
-                key = obj["Key"]
-                name = key.removeprefix(REPORTS_PREFIX)
-                if not name.endswith(".html"):
-                    continue
-                # <title> を取得するため先頭 4KB だけ読む
-                title = name
-                try:
-                    head = s3.get_object(
-                        Bucket=S3_BUCKET, Key=key, Range="bytes=0-4095"
-                    )
-                    title = _extract_title_from_html(
-                        head["Body"].read().decode("utf-8", errors="ignore"), name
-                    )
-                except Exception:
-                    pass
-                reports.append({
-                    "filename": name,
-                    "date": _extract_date(name),
-                    "title": title,
-                    "size_bytes": obj["Size"],
-                })
-            reports.sort(key=lambda r: r.get("date", ""), reverse=True)
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"S3 list failed: {exc}")
-
-    return {"reports": reports}
+        reports.sort(key=lambda r: r.get("date", ""), reverse=True)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"S3 list failed: {exc}")
+    return reports
 
 
 @router.get("/api/dev/reports/{filename}/view")
 def view_report(filename: str):
-    """HTML レポートを返す。ローカル優先、なければS3。"""
+    """HTML レポートを返す。開発=ローカル、本番=S3。"""
     html_name = _resolve_html_name(filename)
 
-    # ローカル
-    local_path = REPORTS_LOCAL_DIR / html_name
-    if local_path.exists():
+    if _IS_LOCAL:
+        local_path = REPORTS_DIR / html_name
+        if not local_path.exists():
+            raise HTTPException(status_code=404, detail=f"Not found: {html_name}")
         return HTMLResponse(
             content=local_path.read_text(encoding="utf-8"),
             media_type="text/html",
         )
 
-    # S3
     try:
         s3 = _s3_client()
         resp = s3.get_object(
@@ -139,26 +141,26 @@ def view_report(filename: str):
         html = resp["Body"].read().decode("utf-8")
         return HTMLResponse(content=html, media_type="text/html")
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=f"HTML not found: {exc}")
+        raise HTTPException(status_code=404, detail=f"Not found: {exc}")
 
 
 @router.get("/api/dev/reports/{filename}/download")
 def download_report(filename: str):
-    """HTML をダウンロード。ローカル優先、なければ presigned URL。"""
+    """HTML をダウンロード。開発=FileResponse、本番=presigned URL。"""
     html_name = _resolve_html_name(filename)
     if not html_name.endswith(".html"):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    # ローカル
-    local_path = REPORTS_LOCAL_DIR / html_name
-    if local_path.exists():
+    if _IS_LOCAL:
+        local_path = REPORTS_DIR / html_name
+        if not local_path.exists():
+            raise HTTPException(status_code=404, detail=f"Not found: {html_name}")
         return FileResponse(
             path=str(local_path),
             media_type="text/html; charset=utf-8",
             filename=html_name,
         )
 
-    # S3 presigned URL
     try:
         s3 = _s3_client()
         url = s3.generate_presigned_url(
