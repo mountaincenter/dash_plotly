@@ -89,7 +89,7 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str], np.ndarray, np.ndarray]:
+def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str], np.ndarray, np.ndarray, np.ndarray]:
     """学習用データを準備（時系列順にソート）"""
     print("\n[INFO] Preparing data...")
 
@@ -118,6 +118,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     X = df_clean[available_features].copy()
     y = df_clean[TARGET_COLUMN].astype(int).values
     dates = df_clean['backtest_date'].values
+    tickers = df_clean['ticker'].values
 
     # SHORT損益（-profit = ショート視点の損益）
     pnl_col = 'profit_per_100_shares_phase2'
@@ -128,7 +129,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
 
     print(f"  Target distribution: Win={y.sum()}, Lose={len(y)-y.sum()} (Win rate: {y.mean()*100:.1f}%)")
 
-    return X, y, available_features, dates, pnl_values
+    return X, y, available_features, dates, pnl_values, tickers
 
 
 def train_and_evaluate(
@@ -137,6 +138,7 @@ def train_and_evaluate(
     feature_names: list[str],
     dates: np.ndarray,
     pnl_values: np.ndarray,
+    tickers: np.ndarray,
 ) -> tuple[lgb.LGBMClassifier, dict]:
     """
     時系列Walk-Forward CVで学習・評価
@@ -147,6 +149,7 @@ def train_and_evaluate(
         feature_names: 特徴量名
         dates: 日付配列（ソート済み）
         pnl_values: SHORT損益配列（-profit_per_100_shares_phase2）
+        tickers: 銘柄コード配列
 
     Returns:
         best_model: 全データで学習したモデル
@@ -179,6 +182,8 @@ def train_and_evaluate(
     all_preds = []
     all_true = []
     all_pnl = []
+    all_dates = []
+    all_tickers = []
 
     print(f"  Total weeks: {len(unique_weeks)}")
     print(f"  Min train weeks: {min_train_weeks}")
@@ -201,6 +206,8 @@ def train_and_evaluate(
         all_preds.extend(y_pred_proba)
         all_true.extend(y_test)
         all_pnl.extend(pnl_values[test_mask])
+        all_dates.extend(dates[test_mask])
+        all_tickers.extend(tickers[test_mask])
 
         if len(np.unique(y_test)) > 1:
             auc = roc_auc_score(y_test, y_pred_proba)
@@ -279,6 +286,18 @@ def train_and_evaluate(
     print(f"  Grade boundaries: {grade_boundaries}")
     print(f"  G1+G2 SHORT: {metrics['g12_count']} samples, WR={metrics['g12_win_rate']*100:.1f}%, PnL=¥{metrics['g12_pnl_total']:,.0f}")
 
+    # WFCV予測をparquet保存
+    wfcv_df = pd.DataFrame({
+        'backtest_date': all_dates,
+        'ticker': all_tickers,
+        'ml_prob': all_preds,
+        'ml_grade': np.asarray(grades),
+    })
+    wfcv_path = MODEL_DIR / "wfcv_predictions.parquet"
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    wfcv_df.to_parquet(wfcv_path, index=False)
+    print(f"\n✓ WFCV predictions saved: {wfcv_path} ({len(wfcv_df)} rows)")
+
     # 全データで最終モデルを学習
     print("\n[INFO] Training final model on all data...")
     final_model = lgb.LGBMClassifier(**params)
@@ -338,10 +357,10 @@ def main():
     df = load_data()
 
     # データ準備
-    X, y, feature_names, dates, pnl_values = prepare_data(df)
+    X, y, feature_names, dates, pnl_values, tickers = prepare_data(df)
 
     # 学習・評価（時系列CV）
-    best_model, metrics = train_and_evaluate(X, y, feature_names, dates, pnl_values)
+    best_model, metrics = train_and_evaluate(X, y, feature_names, dates, pnl_values, tickers)
 
     # 特徴量重要度
     print_feature_importance(best_model, feature_names)

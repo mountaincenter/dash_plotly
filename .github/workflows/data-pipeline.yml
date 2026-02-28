@@ -861,6 +861,12 @@ jobs:
             --only-show-errors
           echo "  ✅ archive_with_features.parquet"
 
+          aws s3 cp \
+            models/wfcv_predictions.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/wfcv_predictions.parquet" \
+            --only-show-errors
+          echo "  ✅ wfcv_predictions.parquet"
+
           echo ""
           echo "============================================================"
           echo "✅ ML Model Retraining completed!"
