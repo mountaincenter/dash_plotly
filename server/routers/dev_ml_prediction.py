@@ -1,26 +1,13 @@
 """
-開発用: ML予測API
+開発用: ML予測API（28特徴量 / 4クラスGrade方式）
 
 grok_trending.parquetの銘柄に対して騰落確率を予測
-- GET /dev/ml/prediction: 当日銘柄の騰落確率を返す
+- GET /dev/ml/prediction: 当日銘柄の騰落確率とGradeを返す
 
-データソース:
-- 日足: grok_prices_max_1d.parquet
-- 市場: index_prices_max_1d.parquet, futures_prices_max_1d.parquet, currency_prices_max_1d.parquet
-
-=== 重要: prob_up の解釈（ショート戦略） ===
-
-【モデルの出力】
-- prob_up = 株価上昇確率（ロング基準で計算）
-- phase2_win = 終値 > 始値（ロング利益）
-
-【ショート戦略での使い方】
-- prob_up 高い → 株価上昇予測 → ショート損失リスク高 → 避ける
-- prob_up 低い → 株価下落予測 → ショート利益期待 → 推奨
-
-【実運用】
-- prob_up下位の銘柄をショート対象として選定
-- prob_up上位の銘柄はショート回避
+Grade方式（ショート視点）:
+- G1+G2: 機械的SHORT推奨
+- G3: 裁量判断
+- G4: SKIP（ショート回避）
 """
 
 from fastapi import APIRouter, HTTPException
@@ -193,87 +180,102 @@ def calc_market_features(target_date: pd.Timestamp, market_data: dict) -> dict:
     return features
 
 
-def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame) -> dict:
-    """価格ベース特徴量を計算"""
+def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame, buy_price: float = None) -> dict:
+    """価格ベース特徴量を計算（28特徴量対応）"""
     ticker_prices = prices_df[
         (prices_df['ticker'] == ticker) &
         (prices_df['date'] < target_date)
     ].sort_values('date').tail(60)
 
-    # NaN行を除外
     ticker_prices = ticker_prices.dropna(subset=['Close'])
 
     if len(ticker_prices) < 5:
         return None
 
     closes = ticker_prices['Close'].values
+    opens = ticker_prices['Open'].values
     volumes = ticker_prices['Volume'].values
     highs = ticker_prices['High'].values
     lows = ticker_prices['Low'].values
 
     features = {}
 
-    # ボラティリティ
     returns = np.diff(closes) / closes[:-1]
     features['volatility_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
-    features['volatility_10d'] = np.std(returns[-10:]) * 100 if len(returns) >= 10 else np.nan
-    features['volatility_20d'] = np.std(returns[-20:]) * 100 if len(returns) >= 20 else np.nan
 
-    # 移動平均乖離率
     ma5 = np.mean(closes[-5:])
     ma25 = np.mean(closes[-25:]) if len(closes) >= 25 else np.nan
-    prev_close = closes[-1]
+    features['ma5_deviation'] = (closes[-1] - ma5) / ma5 * 100
+    features['ma25_deviation'] = (closes[-1] - ma25) / ma25 * 100 if not np.isnan(ma25) else np.nan
+    features['prev_day_return'] = (closes[-1] - closes[-2]) / closes[-2] * 100 if len(closes) >= 2 else np.nan
 
-    features['ma5_deviation'] = (prev_close - ma5) / ma5 * 100
-    features['ma25_deviation'] = (prev_close - ma25) / ma25 * 100 if not np.isnan(ma25) else np.nan
-
-    # リターン
-    if len(closes) >= 2:
-        features['prev_day_return'] = (closes[-1] - closes[-2]) / closes[-2] * 100
-    else:
-        features['prev_day_return'] = np.nan
-
-    features['return_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
-    features['return_10d'] = (closes[-1] - closes[-10]) / closes[-10] * 100 if len(closes) >= 10 else np.nan
-
-    # 出来高比
     if len(volumes) >= 5:
         avg_vol_5d = np.mean(volumes[-5:])
         features['volume_ratio_5d'] = volumes[-1] / avg_vol_5d if avg_vol_5d > 0 else np.nan
     else:
         features['volume_ratio_5d'] = np.nan
 
-    # 価格レンジ
     if len(highs) >= 5 and len(lows) >= 5:
-        high_5d = np.max(highs[-5:])
-        low_5d = np.min(lows[-5:])
-        features['price_range_5d'] = (high_5d - low_5d) / low_5d * 100 if low_5d > 0 else np.nan
+        features['price_range_5d'] = (np.max(highs[-5:]) - np.min(lows[-5:])) / np.min(lows[-5:]) * 100 if np.min(lows[-5:]) > 0 else np.nan
     else:
         features['price_range_5d'] = np.nan
+
+    # 前日OHLCV特徴量
+    prev_range = highs[-1] - lows[-1]
+    features['prev_close_position'] = (closes[-1] - lows[-1]) / prev_range if prev_range > 0 else 0.5
+    features['gap_ratio'] = (buy_price - closes[-1]) / closes[-1] if closes[-1] > 0 and buy_price else 0
+    features['prev_candle'] = (closes[-1] - opens[-1]) / opens[-1] if opens[-1] > 0 else 0
+
+    # MACD Histogram
+    close_s = pd.Series(closes)
+    ema12 = close_s.ewm(span=12, adjust=False, min_periods=12).mean()
+    ema26 = close_s.ewm(span=26, adjust=False, min_periods=26).mean()
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm(span=9, adjust=False, min_periods=9).mean()
+    hist = macd_line - signal
+    features['macd_hist'] = float(hist.iloc[-1]) if not np.isnan(hist.iloc[-1]) else np.nan
+
+    # Bollinger Bands %B
+    if len(closes) >= 20:
+        ma20 = close_s.rolling(20, min_periods=20).mean()
+        sd20 = close_s.rolling(20, min_periods=20).std(ddof=0)
+        upper = ma20 + 2.0 * sd20
+        lower = ma20 - 2.0 * sd20
+        bb_range = (upper - lower).replace(0, np.nan)
+        pctb = (close_s - lower) / bb_range
+        features['bb_pctb'] = float(pctb.iloc[-1]) if not np.isnan(pctb.iloc[-1]) else np.nan
+    else:
+        features['bb_pctb'] = np.nan
+
+    # Volume Trend
+    if len(volumes) >= 20:
+        vol_s = pd.Series(volumes.astype(float))
+        vol_ma5 = vol_s.rolling(5).mean()
+        vol_ma20 = vol_s.rolling(20).mean()
+        vt = vol_ma5 / vol_ma20.replace(0, np.nan)
+        features['vol_trend'] = float(vt.iloc[-1]) if not np.isnan(vt.iloc[-1]) else np.nan
+    else:
+        features['vol_trend'] = np.nan
 
     return features
 
 
-def get_short_recommendation(prob: float, threshold: float = 0.40) -> dict:
-    """
-    prob_upからショート推奨度を判定
+def get_grade(prob: float, boundaries: list[float]) -> str:
+    """prob_upからGrade (G1-G4) を返す"""
+    for i, b in enumerate(boundaries):
+        if prob <= b:
+            return f"G{i + 1}"
+    return f"G{len(boundaries)}"
 
-    Args:
-        prob: 株価上昇確率（ロング基準）
-        threshold: ショート推奨閾値（デフォルト0.40）
 
-    Returns:
-        recommendation: ショート推奨度
-        reason: 理由
-    """
-    if prob <= 0.25:
-        return {"recommendation": "strong_short", "reason": "株価下落確率が非常に高い"}
-    elif prob <= threshold:
-        return {"recommendation": "short", "reason": "株価下落確率が高い"}
-    elif prob <= 0.61:
-        return {"recommendation": "neutral", "reason": "方向性が不明確"}
+def get_short_recommendation(grade: str) -> dict:
+    """GradeからSHORT推奨度を判定"""
+    if grade in ('G1', 'G2'):
+        return {"recommendation": "short", "reason": f"{grade}: 機械的SHORT推奨"}
+    elif grade == 'G3':
+        return {"recommendation": "neutral", "reason": "G3: 裁量判断"}
     else:
-        return {"recommendation": "avoid", "reason": "株価上昇予測のためショート回避"}
+        return {"recommendation": "avoid", "reason": "G4: SKIP（ショート回避）"}
 
 
 @router.get("/dev/ml/prediction")
@@ -289,6 +291,7 @@ async def get_ml_prediction():
     # モデル読み込み
     model, meta = load_model()
     feature_names = meta['feature_names']
+    grade_boundaries = meta.get('grade_boundaries', [0.25, 0.40, 0.55, 1.0])
 
     # データ読み込み
     grok_df = load_grok_trending()
@@ -309,40 +312,34 @@ async def get_ml_prediction():
     for _, row in grok_df.iterrows():
         ticker = row['ticker']
         stock_name = row.get('stock_name', '')
+        close_price = row.get('Close')
 
-        # 既存特徴量
         existing_features = {
             'grok_rank': row.get('grok_rank'),
             'selection_score': row.get('selection_score'),
-            'buy_price': row.get('Close'),
+            'buy_price': close_price,
             'market_cap': row.get('market_cap'),
             'atr14_pct': row.get('atr14_pct'),
             'vol_ratio': row.get('vol_ratio'),
             'rsi9': row.get('rsi9'),
-            'weekday': row.get('weekday'),
             'nikkei_change_pct': row.get('nikkei_change_pct'),
             'futures_change_pct': row.get('futures_change_pct'),
-            'shortable': 1 if row.get('shortable') else 0,
-            'day_trade': 1 if row.get('day_trade') else 0,
         }
 
-        # 価格ベース特徴量
-        price_features = calc_price_features(ticker, target_date, prices_df)
+        price_features = calc_price_features(ticker, target_date, prices_df, buy_price=close_price)
 
         if price_features is None:
             predictions.append({
                 'ticker': ticker,
                 'stock_name': stock_name,
                 'prob_up': None,
-                'confidence': 'unknown',
+                'grade': None,
                 'error': '価格データ不足'
             })
             continue
 
-        # 全特徴量を結合（既存 + 価格 + 市場）
         all_features = {**existing_features, **price_features, **market_features}
 
-        # 特徴量ベクトル作成
         feature_vector = []
         missing_features = []
 
@@ -354,17 +351,16 @@ async def get_ml_prediction():
             else:
                 feature_vector.append(float(val))
 
-        # 予測
         try:
             X = pd.DataFrame([feature_vector], columns=feature_names)
-            if 'weekday' in X.columns:
-                X['weekday'] = X['weekday'].astype('category')
             prob = model.predict_proba(X)[0][1]
-            short_rec = get_short_recommendation(prob)
+            grade = get_grade(prob, grade_boundaries)
+            short_rec = get_short_recommendation(grade)
             predictions.append({
                 'ticker': ticker,
                 'stock_name': stock_name,
                 'prob_up': round(float(prob), 3),
+                'grade': grade,
                 'short_recommendation': short_rec['recommendation'],
                 'short_reason': short_rec['reason'],
                 'missing_features': missing_features if missing_features else None
@@ -374,6 +370,7 @@ async def get_ml_prediction():
                 'ticker': ticker,
                 'stock_name': stock_name,
                 'prob_up': None,
+                'grade': None,
                 'short_recommendation': 'error',
                 'error': str(e)
             })
@@ -381,8 +378,8 @@ async def get_ml_prediction():
     # ショート推奨順にソート（prob_up低い順 = ショート推奨順）
     predictions.sort(key=lambda x: x.get('prob_up') or 1.0)
 
-    # 推奨銘柄数をカウント
-    short_recommended = len([p for p in predictions if p.get('short_recommendation') in ['strong_short', 'short']])
+    # G1+G2の銘柄数をカウント
+    short_recommended = len([p for p in predictions if p.get('grade') in ('G1', 'G2')])
 
     return JSONResponse(content={
         'date': target_date.strftime('%Y-%m-%d'),
@@ -390,8 +387,8 @@ async def get_ml_prediction():
         'total_stocks': len(grok_df),
         'predicted_stocks': len([p for p in predictions if p.get('prob_up') is not None]),
         'short_recommended': short_recommended,
-        'strategy': 'SHORT',
-        'threshold': 0.40,
+        'strategy': 'SHORT_4CLASS',
+        'grade_boundaries': grade_boundaries,
         'predictions': predictions,
         'generated_at': datetime.now().isoformat()
     })

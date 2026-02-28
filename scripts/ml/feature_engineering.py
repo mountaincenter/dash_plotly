@@ -128,7 +128,8 @@ def calc_market_features(
             continue
 
         df = market_data[key]
-        df_past = df[df['date'] < target_date].tail(30)
+        # 休場日(Close=NaN)を除外してから計算
+        df_past = df[df['date'] < target_date].dropna(subset=['Close']).tail(30)
 
         if len(df_past) < 5:
             features[f'{key}_vol_5d'] = np.nan

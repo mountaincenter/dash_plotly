@@ -273,8 +273,8 @@ def calc_market_features(target_date: pd.Timestamp, market_data: dict) -> dict:
     return features
 
 
-def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame) -> dict:
-    """価格ベース特徴量を計算"""
+def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame, buy_price: float = None) -> dict:
+    """価格ベース特徴量を計算（28特徴量対応）"""
     ticker_prices = prices_df[
         (prices_df['ticker'] == ticker) &
         (prices_df['date'] < target_date)
@@ -284,6 +284,7 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
         return None
 
     closes = ticker_prices['Close'].values
+    opens = ticker_prices['Open'].values
     volumes = ticker_prices['Volume'].values
     highs = ticker_prices['High'].values
     lows = ticker_prices['Low'].values
@@ -291,16 +292,12 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     features = {}
     returns = np.diff(closes) / closes[:-1]
     features['volatility_5d'] = np.std(returns[-5:]) * 100 if len(returns) >= 5 else np.nan
-    features['volatility_10d'] = np.std(returns[-10:]) * 100 if len(returns) >= 10 else np.nan
-    features['volatility_20d'] = np.std(returns[-20:]) * 100 if len(returns) >= 20 else np.nan
 
     ma5 = np.mean(closes[-5:])
     ma25 = np.mean(closes[-25:]) if len(closes) >= 25 else np.nan
     features['ma5_deviation'] = (closes[-1] - ma5) / ma5 * 100
     features['ma25_deviation'] = (closes[-1] - ma25) / ma25 * 100 if not np.isnan(ma25) else np.nan
     features['prev_day_return'] = (closes[-1] - closes[-2]) / closes[-2] * 100 if len(closes) >= 2 else np.nan
-    features['return_5d'] = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 else np.nan
-    features['return_10d'] = (closes[-1] - closes[-10]) / closes[-10] * 100 if len(closes) >= 10 else np.nan
 
     if len(volumes) >= 5:
         avg_vol_5d = np.mean(volumes[-5:])
@@ -313,29 +310,61 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     else:
         features['price_range_5d'] = np.nan
 
+    # 前日OHLCV特徴量
+    prev_range = highs[-1] - lows[-1]
+    features['prev_close_position'] = (closes[-1] - lows[-1]) / prev_range if prev_range > 0 else 0.5
+    features['gap_ratio'] = (buy_price - closes[-1]) / closes[-1] if closes[-1] > 0 and buy_price else 0
+    features['prev_candle'] = (closes[-1] - opens[-1]) / opens[-1] if opens[-1] > 0 else 0
+
+    # MACD Histogram
+    close_s = pd.Series(closes)
+    ema12 = close_s.ewm(span=12, adjust=False, min_periods=12).mean()
+    ema26 = close_s.ewm(span=26, adjust=False, min_periods=26).mean()
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm(span=9, adjust=False, min_periods=9).mean()
+    hist = macd_line - signal
+    features['macd_hist'] = float(hist.iloc[-1]) if not np.isnan(hist.iloc[-1]) else np.nan
+
+    # Bollinger Bands %B
+    if len(closes) >= 20:
+        ma20 = close_s.rolling(20, min_periods=20).mean()
+        sd20 = close_s.rolling(20, min_periods=20).std(ddof=0)
+        upper = ma20 + 2.0 * sd20
+        lower = ma20 - 2.0 * sd20
+        bb_range = (upper - lower).replace(0, np.nan)
+        pctb = (close_s - lower) / bb_range
+        features['bb_pctb'] = float(pctb.iloc[-1]) if not np.isnan(pctb.iloc[-1]) else np.nan
+    else:
+        features['bb_pctb'] = np.nan
+
+    # Volume Trend
+    if len(volumes) >= 20:
+        vol_s = pd.Series(volumes.astype(float))
+        vol_ma5 = vol_s.rolling(5).mean()
+        vol_ma20 = vol_s.rolling(20).mean()
+        vt = vol_ma5 / vol_ma20.replace(0, np.nan)
+        features['vol_trend'] = float(vt.iloc[-1]) if not np.isnan(vt.iloc[-1]) else np.nan
+    else:
+        features['vol_trend'] = np.nan
+
     return features
 
 
-def get_quintile(prob: float) -> str:
-    """prob_upから5分位を返す（Walk-Forward CV等分割境界）"""
-    if prob <= 0.16:
-        return "Q1"
-    elif prob <= 0.30:
-        return "Q2"
-    elif prob <= 0.45:
-        return "Q3"
-    elif prob <= 0.61:
-        return "Q4"
-    else:
-        return "Q5"
+def get_grade(prob: float, boundaries: list[float]) -> str:
+    """prob_upからGrade (G1-G4) を返す"""
+    for i, b in enumerate(boundaries):
+        if prob <= b:
+            return f"G{i + 1}"
+    return f"G{len(boundaries)}"
 
 
 def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: pd.DataFrame) -> dict:
-    """grok_dfの各銘柄に対してML予測を実行"""
+    """grok_dfの各銘柄に対してML予測を実行（28特徴量/4クラスGrade方式）"""
     if model is None:
         return {}
 
     feature_names = meta['feature_names']
+    grade_boundaries = meta.get('grade_boundaries', [0.25, 0.40, 0.55, 1.0])
     target_date = pd.to_datetime(grok_df['date'].iloc[0])
     market_data = load_market_data()
     market_features = calc_market_features(target_date, market_data)
@@ -344,25 +373,23 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
     for _, row in grok_df.iterrows():
         ticker = row['ticker']
+        close_price = row.get('Close')
 
         existing_features = {
             'grok_rank': row.get('grok_rank'),
             'selection_score': row.get('selection_score'),
-            'buy_price': row.get('Close'),
+            'buy_price': close_price,
             'market_cap': row.get('market_cap'),
             'atr14_pct': row.get('atr14_pct'),
             'vol_ratio': row.get('vol_ratio'),
             'rsi9': row.get('rsi9'),
-            'weekday': row.get('weekday'),
             'nikkei_change_pct': row.get('nikkei_change_pct'),
             'futures_change_pct': row.get('futures_change_pct'),
-            'shortable': 1 if row.get('shortable') else 0,
-            'day_trade': 1 if row.get('day_trade') else 0,
         }
 
-        price_features = calc_price_features(ticker, target_date, prices_df)
+        price_features = calc_price_features(ticker, target_date, prices_df, buy_price=close_price)
         if price_features is None:
-            results[ticker] = {'prob_up': None, 'quintile': None}
+            results[ticker] = {'prob_up': None, 'grade': None}
             continue
 
         all_features = {**existing_features, **price_features, **market_features}
@@ -377,15 +404,13 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
         try:
             X = pd.DataFrame([feature_vector], columns=feature_names)
-            if 'weekday' in X.columns:
-                X['weekday'] = X['weekday'].astype('category')
             prob = model.predict_proba(X)[0][1]
             results[ticker] = {
                 'prob_up': round(float(prob), 3),
-                'quintile': get_quintile(prob)
+                'grade': get_grade(prob, grade_boundaries)
             }
         except Exception:
-            results[ticker] = {'prob_up': None, 'quintile': None}
+            results[ticker] = {'prob_up': None, 'grade': None}
 
     return results
 
@@ -546,7 +571,7 @@ async def get_day_trade_list():
     Returns:
     - total: 総銘柄数
     - summary: {shortable, day_trade, ng}
-    - stocks: 銘柄リスト（appearance_count, prob_up, quintile付き）
+    - stocks: 銘柄リスト（appearance_count, prob_up, grade付き）
     """
     grok_df = load_grok_trending()
     day_trade_df = load_day_trade_list()
@@ -628,11 +653,11 @@ async def get_day_trade_list():
 
         # ML予測結果を取得（parquetファイルのカラムを優先、なければ動的計算）
         prob_up = row.get('prob_up') if pd.notna(row.get('prob_up')) else None
-        quintile = row.get('quintile') if pd.notna(row.get('quintile')) else None
+        grade = row.get('grade') if pd.notna(row.get('grade')) else None
         if prob_up is None:
             ml_result = ml_predictions.get(ticker, {})
             prob_up = ml_result.get('prob_up')
-            quintile = ml_result.get('quintile')
+            grade = ml_result.get('grade')
 
         stocks.append({
             "ticker": ticker,
@@ -643,7 +668,7 @@ async def get_day_trade_list():
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "prob_up": prob_up,
-            "quintile": quintile,
+            "grade": grade,
             "shortable": shortable,
             "day_trade": day_trade,
             "ng": ng,

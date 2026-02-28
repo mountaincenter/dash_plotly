@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 train_model.py
-LightGBMで騰落確率予測モデルを学習
+LightGBMで騰落確率予測モデルを学習（28特徴量 / 4クラス Grade方式）
 
-=== 重要: 損益計算とショート戦略の解釈 ===
+=== 損益計算とショート戦略の解釈 ===
 
 【archiveの損益計算（ロング基準）】
 - buy_price = 寄付（Open）
@@ -14,13 +14,11 @@ LightGBMで騰落確率予測モデルを学習
 【モデルの出力】
 - prob_up = phase2_win=True の確率 = 株価上昇確率
 
-【ショート戦略での解釈】
-- prob_up 高い → 株価上昇予測 → ショート損失 → 避けるべき
-- prob_up 低い → 株価下落予測 → ショート利益 → ショート推奨
-
-【CV結果の読み方（ショート視点）】
-- prob_up上位20%: ロング勝率65.7% → ショート勝率34.3% → 避ける
-- prob_up下位20%: ロング勝率13.4% → ショート勝率86.6% → 推奨
+【4クラス Grade方式（ショート視点）】
+- G1 (prob_up下位25%): 機械的SHORT推奨
+- G2 (25-50%): 機械的SHORT推奨
+- G3 (50-75%): 裁量判断
+- G4 (上位25%): SKIP（ショート回避）
 """
 
 from __future__ import annotations
@@ -35,7 +33,6 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import (
     roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
 )
@@ -45,30 +42,31 @@ from common_cfg.paths import PARQUET_DIR
 FEATURES_PATH = PARQUET_DIR / "ml" / "archive_with_features.parquet"
 MODEL_DIR = ROOT / "models"
 
-# 使用する特徴量
+# 使用する特徴量（28個）
 FEATURE_COLUMNS = [
-    # 既存特徴量
+    # Grok由来
     'grok_rank', 'selection_score', 'buy_price', 'market_cap',
-    'atr14_pct', 'vol_ratio', 'rsi9', 'weekday',
+    'atr14_pct', 'vol_ratio', 'rsi9',
     'nikkei_change_pct', 'futures_change_pct',
-    'shortable', 'day_trade',
     # 銘柄個別の価格特徴量
-    'volatility_5d', 'volatility_10d', 'volatility_20d',
-    'ma5_deviation', 'ma25_deviation',
-    'prev_day_return', 'return_5d', 'return_10d',
-    'volume_ratio_5d', 'price_range_5d',
-    # 市場特徴量（日経、TOPIX、先物、ドル円）
-    'nikkei_vol_5d', 'nikkei_ret_5d', 'nikkei_ma5_dev',
-    'topix_vol_5d', 'topix_ret_5d', 'topix_ma5_dev',
-    'futures_vol_5d', 'futures_ret_5d', 'futures_ma5_dev',
-    'usdjpy_vol_5d', 'usdjpy_ret_5d', 'usdjpy_ma5_dev',
+    'volatility_5d', 'ma5_deviation', 'ma25_deviation',
+    'prev_day_return', 'volume_ratio_5d', 'price_range_5d',
+    # 市場特徴量
+    'nikkei_vol_5d', 'nikkei_ret_5d',
+    'topix_vol_5d', 'topix_ret_5d',
+    'futures_ret_5d',
+    'usdjpy_vol_5d', 'usdjpy_ret_5d',
+    # 前日OHLCV由来
+    'prev_close_position', 'gap_ratio', 'prev_candle',
+    # テクニカル指標
+    'macd_hist', 'bb_pctb', 'vol_trend',
 ]
 
 # 目的変数
 TARGET_COLUMN = 'phase2_win'
 
-# ショート推奨閾値
-SHORT_RECOMMEND_THRESHOLD = 0.40
+# 4クラスGrade数
+N_GRADES = 4
 
 
 def load_data() -> pd.DataFrame:
@@ -91,7 +89,7 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str], np.ndarray]:
+def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str], np.ndarray, np.ndarray]:
     """学習用データを準備（時系列順にソート）"""
     print("\n[INFO] Preparing data...")
 
@@ -117,44 +115,44 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     df_clean = df_clean.sort_values('backtest_date').reset_index(drop=True)
     print(f"  Date range: {df_clean['backtest_date'].min().date()} ~ {df_clean['backtest_date'].max().date()}")
 
-    # カテゴリカル変数をcategory型に変換（LightGBMのcategorical_feature用）
     X = df_clean[available_features].copy()
-    if 'weekday' in X.columns:
-        X['weekday'] = X['weekday'].astype('category')
-
     y = df_clean[TARGET_COLUMN].astype(int).values
     dates = df_clean['backtest_date'].values
 
+    # SHORT損益（-profit = ショート視点の損益）
+    pnl_col = 'profit_per_100_shares_phase2'
+    if pnl_col in df_clean.columns:
+        pnl_values = (-df_clean[pnl_col]).values
+    else:
+        pnl_values = np.zeros(len(y))
+
     print(f"  Target distribution: Win={y.sum()}, Lose={len(y)-y.sum()} (Win rate: {y.mean()*100:.1f}%)")
 
-    return X, y, available_features, dates
+    return X, y, available_features, dates, pnl_values
 
 
 def train_and_evaluate(
     X: pd.DataFrame,
     y: np.ndarray,
     feature_names: list[str],
-    dates: np.ndarray
+    dates: np.ndarray,
+    pnl_values: np.ndarray,
 ) -> tuple[lgb.LGBMClassifier, dict]:
     """
     時系列Walk-Forward CVで学習・評価
 
     Args:
-        X: 特徴量（DataFrame、weekdayはcategory型）
+        X: 特徴量DataFrame
         y: 目的変数
         feature_names: 特徴量名
         dates: 日付配列（ソート済み）
+        pnl_values: SHORT損益配列（-profit_per_100_shares_phase2）
 
     Returns:
         best_model: 全データで学習したモデル
         metrics: 評価指標
     """
     print("\n[INFO] Training with Time-Series Walk-Forward CV...")
-
-    # カテゴリカル特徴量
-    cat_features = [col for col in ['weekday'] if col in X.columns]
-    if cat_features:
-        print(f"  Categorical features: {cat_features}")
 
     # LightGBMパラメータ
     params = {
@@ -180,6 +178,7 @@ def train_and_evaluate(
     acc_scores = []
     all_preds = []
     all_true = []
+    all_pnl = []
 
     print(f"  Total weeks: {len(unique_weeks)}")
     print(f"  Min train weeks: {min_train_weeks}")
@@ -196,11 +195,12 @@ def train_and_evaluate(
         X_test, y_test = X[test_mask], y[test_mask]
 
         model = lgb.LGBMClassifier(**params)
-        model.fit(X_train, y_train, categorical_feature=cat_features if cat_features else 'auto')
+        model.fit(X_train, y_train)
 
         y_pred_proba = model.predict_proba(X_test)[:, 1]
         all_preds.extend(y_pred_proba)
         all_true.extend(y_test)
+        all_pnl.extend(pnl_values[test_mask])
 
         if len(np.unique(y_test)) > 1:
             auc = roc_auc_score(y_test, y_pred_proba)
@@ -208,6 +208,7 @@ def train_and_evaluate(
 
     all_preds = np.array(all_preds)
     all_true = np.array(all_true)
+    all_pnl = np.array(all_pnl)
 
     # 全体評価
     overall_auc = roc_auc_score(all_true, all_preds)
@@ -217,35 +218,43 @@ def train_and_evaluate(
     overall_rec = recall_score(all_true, y_pred, zero_division=0)
     overall_f1 = f1_score(all_true, y_pred, zero_division=0)
 
-    # ショート戦略の評価（prob_up <= 0.40）
-    short_mask = all_preds <= SHORT_RECOMMEND_THRESHOLD
-    if short_mask.sum() > 0:
-        short_win_rate = (all_true[short_mask] == 0).mean()  # phase2_win=False がショート勝ち
-    else:
-        short_win_rate = 0
+    # 4クラスGrade分析（ショート視点）
+    grade_labels = ['G1', 'G2', 'G3', 'G4']
+    grades = pd.qcut(all_preds, N_GRADES, labels=grade_labels, duplicates='drop')
 
-    # 5分位分析（ショート視点）
-    # prob_up低い順 = ショート推奨順にソート
-    quintile_results = []
-    quintiles = pd.qcut(all_preds, 5, labels=['Q1(低)', 'Q2', 'Q3', 'Q4', 'Q5(高)'], duplicates='drop')
+    # Grade境界値を記録
+    grade_boundaries = []
+    for g in grade_labels:
+        mask = grades == g
+        if mask.sum() > 0:
+            grade_boundaries.append(float(all_preds[mask].max()))
+    # 最後のG4は1.0
+    grade_boundaries[-1] = 1.0
 
-    print(f"\n[5分位分析（ショート視点）]")
-    print(f"  Q1(prob低) = ショート推奨, Q5(prob高) = ショート回避")
-    print(f"  {'分位':<10} {'件数':<8} {'ショート勝率':<12} {'ロング勝率':<12}")
+    grade_results = []
+    print(f"\n[4クラスGrade分析（ショート視点）]")
+    print(f"  G1+G2 = 機械的SHORT, G3 = 裁量, G4 = SKIP")
+    print(f"  {'Grade':<8} {'件数':<8} {'SHORT勝率':<12} {'SHORT損益(¥)':<15}")
 
-    for q in ['Q1(低)', 'Q2', 'Q3', 'Q4', 'Q5(高)']:
-        mask = quintiles == q
+    for g in grade_labels:
+        mask = grades == g
         if mask.sum() > 0:
             count = int(mask.sum())
-            long_win_rate = all_true[mask].mean()  # phase2_win=True率
-            short_win_rate_q = 1 - long_win_rate   # ショート勝率
-            quintile_results.append({
-                'quintile': q,
+            short_wr = float((all_true[mask] == 0).mean())
+            short_pnl = float(all_pnl[mask].sum())
+            grade_results.append({
+                'grade': g,
                 'count': count,
-                'short_win_rate': float(short_win_rate_q),
-                'long_win_rate': float(long_win_rate),
+                'short_win_rate': short_wr,
+                'short_pnl_total': short_pnl,
             })
-            print(f"  {q:<10} {count:<8} {short_win_rate_q*100:<12.1f}% {long_win_rate*100:<12.1f}%")
+            print(f"  {g:<8} {count:<8} {short_wr*100:<12.1f}% {short_pnl:>12,.0f}")
+
+    # G1+G2 合計
+    g12_mask = (grades == 'G1') | (grades == 'G2')
+    g12_wr = float((all_true[g12_mask] == 0).mean()) if g12_mask.sum() > 0 else 0
+    g12_pnl = float(all_pnl[g12_mask].sum()) if g12_mask.sum() > 0 else 0
+    print(f"  {'G1+G2':<8} {int(g12_mask.sum()):<8} {g12_wr*100:<12.1f}% {g12_pnl:>12,.0f}")
 
     metrics = {
         'auc_mean': overall_auc,
@@ -254,23 +263,26 @@ def train_and_evaluate(
         'precision_mean': overall_prec,
         'recall_mean': overall_rec,
         'f1_mean': overall_f1,
-        'short_win_rate': short_win_rate,
-        'short_count': int(short_mask.sum()),
+        'g12_win_rate': g12_wr,
+        'g12_count': int(g12_mask.sum()),
+        'g12_pnl_total': g12_pnl,
         'total_evaluated': len(all_true),
         'cv_method': 'time_series_walk_forward',
-        'quintile_analysis': quintile_results,
+        'n_grades': N_GRADES,
+        'grade_boundaries': grade_boundaries,
+        'grade_analysis': grade_results,
     }
 
     print(f"\n[Time-Series CV Summary]")
     print(f"  Evaluated samples: {len(all_true)}")
     print(f"  AUC: {metrics['auc_mean']:.4f}")
-    print(f"  Accuracy: {metrics['accuracy_mean']:.4f}")
-    print(f"  Short (prob<=0.40): {metrics['short_count']} samples, {metrics['short_win_rate']*100:.1f}% win rate")
+    print(f"  Grade boundaries: {grade_boundaries}")
+    print(f"  G1+G2 SHORT: {metrics['g12_count']} samples, WR={metrics['g12_win_rate']*100:.1f}%, PnL=¥{metrics['g12_pnl_total']:,.0f}")
 
     # 全データで最終モデルを学習
     print("\n[INFO] Training final model on all data...")
     final_model = lgb.LGBMClassifier(**params)
-    final_model.fit(X, y, categorical_feature=cat_features if cat_features else 'auto')
+    final_model.fit(X, y)
 
     return final_model, metrics
 
@@ -303,10 +315,11 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
         'target': TARGET_COLUMN,
         'metrics': metrics,
         'n_features': len(feature_names),
-        'short_recommend_threshold': SHORT_RECOMMEND_THRESHOLD,
+        'n_grades': N_GRADES,
+        'grade_boundaries': metrics.get('grade_boundaries', []),
         'notes': {
-            'strategy': 'SHORT',
-            'interpretation': 'prob_up低い = 株価下落予測 = ショート推奨',
+            'strategy': 'SHORT_4CLASS',
+            'interpretation': 'G1+G2=機械的SHORT, G3=裁量, G4=SKIP',
             'stuck_excluded': True,
         }
     }
@@ -325,10 +338,10 @@ def main():
     df = load_data()
 
     # データ準備
-    X, y, feature_names, dates = prepare_data(df)
+    X, y, feature_names, dates, pnl_values = prepare_data(df)
 
     # 学習・評価（時系列CV）
-    best_model, metrics = train_and_evaluate(X, y, feature_names, dates)
+    best_model, metrics = train_and_evaluate(X, y, feature_names, dates, pnl_values)
 
     # 特徴量重要度
     print_feature_importance(best_model, feature_names)
