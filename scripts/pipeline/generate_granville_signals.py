@@ -4,23 +4,32 @@ generate_granville_signals.py
 グランビルIFDロング戦略: 翌日エントリー候補シグナル生成
 
 毎営業日16:45実行。prices_max_1d.parquet等から
-sig_A(押し目買い) / sig_B(SMA支持反発) を検出し、
+sig_A(押し目買い) / sig_B(SMA支持反発) / B4(深い逆張り) を検出し、
 フィルター適用後に granville_ifd_signals.parquet を出力。
 
-フィルター:
-  - market_uptrend: N225 > SMA20
-  - ci_expand: CI先行指数3ヶ月変化 > 0
-  - bad_sectors除外
-  - 株価 < ¥20,000
+=== レジーム分岐 ===
+Uptrend (N225 > SMA20):
+  - sig_A + sig_B（従来ルール）
+  - フィルター: uptrend + CI拡大 + 悪セクター除外 + ¥2万未満
+
+Downtrend (N225 < SMA20):
+  - B4 + sig_A（乖離反発系）→ 12年+3,175万, 勝率68.6%
+  - フィルター: 悪セクター除外 + ¥2万未満（uptrend不要）
+
+=== Tier ===
+T1: B4（SMA20下降 + 乖離<-8%）→ 勝率70%, 平均+4,420円
+T2: sigA deep（乖離-5%~-8%）
+T3: sigA moderate（乖離-3%~-5%）
+T4: sigB（SMA支持反発, uptrend時のみ）
+
+=== IFDパラメータ ===
+SL: -3%（IFD逆指値）、保有: 7営業日引け成行売り
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 from datetime import datetime
-
-import os
-import requests
 
 import numpy as np
 import pandas as pd
@@ -42,34 +51,18 @@ S3_POSITIONS_KEY = "granville_ifd_positions.parquet"
 BAD_SECTORS = ["医薬品", "輸送用機器", "小売業", "その他製品", "陸運業", "サービス業"]
 
 
-def fetch_ci_leading() -> pd.DataFrame:
-    """e-Stat APIからCI先行指数を取得"""
-    api_key = os.getenv("ESTAT_API_KEY")
-    if not api_key:
-        print("  ⚠️ ESTAT_API_KEY未設定、CI先行指数スキップ")
+CI_PARQUET = PARQUET_DIR / "macro" / "estat_ci_index.parquet"
+
+
+def load_ci_leading() -> pd.DataFrame:
+    """ローカルparquetからCI先行指数を読み込み"""
+    if not CI_PARQUET.exists():
+        print(f"  ⚠️ {CI_PARQUET} が存在しない、CI先行指数スキップ")
         return pd.DataFrame(columns=["date", "ci_leading", "ci_leading_chg3m"])
 
-    resp = requests.get(
-        "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData",
-        params={"appId": api_key, "statsDataId": "0003446461", "cdTab": "100", "limit": 100000},
-        timeout=60,
-    )
-    resp.raise_for_status()
-    values = resp.json()["GET_STATS_DATA"]["STATISTICAL_DATA"]["DATA_INF"]["VALUE"]
-
-    rows = []
-    for v in values:
-        tc = v["@time"]
-        cat = v.get("@cat01")
-        if cat != "100":  # leading のみ
-            continue
-        val = v.get("$")
-        if val == "-" or val is None:
-            continue
-        year, month = int(tc[:4]), int(tc[8:10])
-        rows.append({"date": pd.Timestamp(year=year, month=month, day=1), "ci_leading": float(val)})
-
-    ci = pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
+    ci = pd.read_parquet(CI_PARQUET)
+    ci["date"] = pd.to_datetime(ci["date"])
+    ci = ci[["date", "leading"]].rename(columns={"leading": "ci_leading"}).sort_values("date").reset_index(drop=True)
     ci["ci_leading_chg3m"] = ci["ci_leading"].diff(3)
     return ci
 
@@ -96,7 +89,7 @@ def load_data() -> pd.DataFrame:
     nk["market_uptrend"] = nk["nk225_close"] > nk["nk225_sma20"]
 
     # CI先行指数（e-Stat API）
-    ci = fetch_ci_leading()
+    ci = load_ci_leading()
 
     # 日次ベースでCI先行指数をforward fill
     daily = pd.DataFrame({"date": ps["date"].drop_duplicates().sort_values()})
@@ -123,11 +116,14 @@ def load_data() -> pd.DataFrame:
 
 
 def detect_signals(df: pd.DataFrame) -> pd.DataFrame:
-    """sig_A(押し目買い) / sig_B(SMA支持反発) を検出"""
+    """sig_A(押し目買い) / sig_B(SMA支持反発) / B4(深い逆張り) を検出"""
     df = df.copy()
     dev = df["dev_from_sma20"]
     sma_up = df["sma20_up"]
     above = df["Close"] > df["sma20"]
+
+    # B4: SMA20下降中 + 乖離 < -8%（深い逆張り、downtrend主力）
+    df["sig_B4"] = (~sma_up) & (dev < -8)
 
     # sig_A: 乖離-8%〜-3%、終値上昇
     df["sig_A"] = (dev.between(-8, -3)) & (df["Close"] > df["prev_close"])
@@ -233,7 +229,7 @@ def generate_positions(ps: pd.DataFrame) -> None:
     # CI先行指数（e-Stat API）
     ci_ok = True
     try:
-        ci = fetch_ci_leading()
+        ci = load_ci_leading()
         if not ci.empty:
             ci_ok = bool(ci.dropna(subset=["ci_leading_chg3m"]).iloc[-1]["ci_leading_chg3m"] > 0)
     except Exception:
@@ -280,8 +276,6 @@ def generate_positions(ps: pd.DataFrame) -> None:
             continue
         e_date = tk.iloc[0]["date"]
         sl = ep * 0.97
-        trail_sl = sl  # trail_1/2: エントリー翌日以降、含み益の半分をSLに
-        tp_price = ep * 1.10
         st = sig["sig_type"]
         exited = False
         exit_today = None
@@ -291,11 +285,6 @@ def generate_positions(ps: pd.DataFrame) -> None:
             if float(row["Low"]) <= sl:
                 if row["date"] == latest:
                     exit_today = "SL"
-                exited = True
-                break
-            if float(row["High"]) >= tp_price:
-                if row["date"] == latest:
-                    exit_today = "TP"
                 exited = True
                 break
             if i == 0:
@@ -328,10 +317,6 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 exited = True
                 break
 
-            # trail_1/2: 翌日以降、含み益があればSLを entry + 含み益/2 に引き上げ
-            if i >= 1 and cv > ep:
-                trail_sl = max(trail_sl, ep + (cv - ep) / 2)
-
         if not exited:
             cur = tk.iloc[-1]
             cp = float(cur["Close"])
@@ -346,13 +331,12 @@ def generate_positions(ps: pd.DataFrame) -> None:
                 "pct": round((cp / ep - 1) * 100, 2),
                 "pnl": int((cp - ep) * 100),
                 "sl_price": round(sl, 1),
-                "trail_sl": round(trail_sl, 1),
                 "hold_days": len(tk),
                 "exit_type": "",
                 "as_of": latest,
             })
         elif exit_today:
-            if exit_today in ("SL", "TP"):
+            if exit_today == "SL":
                 # IFD注文: ザラ場中に約定済み → ポジションから除外（トレード一覧に計上済み）
                 pass
             else:
@@ -370,7 +354,6 @@ def generate_positions(ps: pd.DataFrame) -> None:
                     "pct": round((cp / ep - 1) * 100, 2),
                     "pnl": int((cp - ep) * 100),
                     "sl_price": 0,
-                    "trail_sl": 0,
                     "hold_days": len(tk),
                     "exit_type": exit_today,
                     "as_of": latest,
@@ -411,18 +394,38 @@ def main() -> int:
         latest_date = ps["date"].max()
         print(f"[INFO] Latest date: {latest_date.date()}")
         latest = ps[ps["date"] == latest_date].copy()
-        sig_mask = latest["sig_A"] | latest["sig_B"]
+
+        # レジーム判定
+        is_uptrend = bool(latest["market_uptrend"].iloc[0]) if not latest.empty else False
+        regime = "Uptrend" if is_uptrend else "Downtrend"
+        print(f"[INFO] Regime: {regime}")
+
+        if is_uptrend:
+            # Uptrend: sig_A + sig_B（従来ルール）
+            sig_mask = latest["sig_A"] | latest["sig_B"]
+        else:
+            # Downtrend: B4 + sig_A（乖離反発系、uptrend不要）
+            sig_mask = latest["sig_B4"] | latest["sig_A"]
+
         raw_signals = latest[sig_mask].copy()
-        print(f"[INFO] Raw signals: {len(raw_signals)} (sig_A={latest['sig_A'].sum()}, sig_B={latest['sig_B'].sum()})")
+        print(f"[INFO] Raw signals: {len(raw_signals)} "
+              f"(B4={latest['sig_B4'].sum()}, sig_A={latest['sig_A'].sum()}, sig_B={latest['sig_B'].sum()})")
 
         signals = raw_signals.copy()
         if not signals.empty:
-            before = len(signals)
-            signals = signals[signals["market_uptrend"] == True]
-            print(f"[INFO] After uptrend filter: {len(signals)} (removed {before - len(signals)})")
-            before = len(signals)
-            signals = signals[signals["macro_ci_expand"] == True]
-            print(f"[INFO] After CI expand filter: {len(signals)} (removed {before - len(signals)})")
+            if is_uptrend:
+                # Uptrend: uptrend + CI フィルター必須
+                before = len(signals)
+                signals = signals[signals["market_uptrend"] == True]
+                print(f"[INFO] After uptrend filter: {len(signals)} (removed {before - len(signals)})")
+                before = len(signals)
+                signals = signals[signals["macro_ci_expand"] == True]
+                print(f"[INFO] After CI expand filter: {len(signals)} (removed {before - len(signals)})")
+            else:
+                # Downtrend: uptrend/CIフィルター不要（B4+sigAはdowntrendが主力）
+                print(f"[INFO] Downtrend mode: skipping uptrend/CI filters")
+
+            # 共通フィルター
             before = len(signals)
             signals = signals[~signals["sectors"].isin(BAD_SECTORS)]
             print(f"[INFO] After bad sectors filter: {len(signals)} (removed {before - len(signals)})")
@@ -433,23 +436,39 @@ def main() -> int:
         if signals.empty:
             print("[INFO] No signals to save (empty result)")
             out = pd.DataFrame(columns=[
-                "signal_date", "ticker", "stock_name", "sector", "signal_type",
+                "signal_date", "ticker", "stock_name", "sector", "signal_type", "tier",
                 "close", "sma20", "dev_from_sma20", "sma20_slope",
                 "entry_price_est", "sl_price", "market_uptrend", "ci_expand",
             ])
         else:
             def signal_type(row):
+                if row.get("sig_B4", False):
+                    return "B4"
                 a, b = row["sig_A"], row["sig_B"]
                 if a and b:
                     return "A+B"
                 return "A" if a else "B"
+
+            def assign_tier(row):
+                if row.get("sig_B4", False):
+                    return "T1"  # B4: 勝率70%, 平均+4,420円
+                dev = row["dev_from_sma20"]
+                if row["sig_A"]:
+                    if dev <= -5:
+                        return "T2"  # sigA deep
+                    return "T3"  # sigA moderate
+                return "T4"  # sigB
+
             signals["signal_type"] = signals.apply(signal_type, axis=1)
+            signals["tier"] = signals.apply(assign_tier, axis=1)
+
             out = pd.DataFrame({
                 "signal_date": signals["date"],
                 "ticker": signals["ticker"],
                 "stock_name": signals["stock_name"],
                 "sector": signals["sectors"],
                 "signal_type": signals["signal_type"],
+                "tier": signals["tier"],
                 "close": signals["Close"],
                 "sma20": signals["sma20"].round(2),
                 "dev_from_sma20": signals["dev_from_sma20"].round(3),
@@ -459,7 +478,7 @@ def main() -> int:
                 "market_uptrend": signals["market_uptrend"],
                 "ci_expand": signals["macro_ci_expand"],
             })
-            out = out.sort_values("dev_from_sma20").reset_index(drop=True)
+            out = out.sort_values(["tier", "dev_from_sma20"]).reset_index(drop=True)
 
         # --- 既存シグナルに追記（YAMLでS3→ローカル済み）---
         PARQUET_DIR.mkdir(parents=True, exist_ok=True)

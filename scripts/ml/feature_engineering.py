@@ -157,6 +157,7 @@ def calc_price_features(
     ticker: str,
     target_date: pd.Timestamp,
     prices_df: pd.DataFrame,
+    buy_price: float | None = None,
     lookback_days: int = 60
 ) -> dict:
     """
@@ -192,6 +193,12 @@ def calc_price_features(
             'return_10d': np.nan,
             'volume_ratio_5d': np.nan,
             'price_range_5d': np.nan,
+            'prev_close_position': np.nan,
+            'gap_ratio': np.nan,
+            'prev_candle': np.nan,
+            'macd_hist': np.nan,
+            'bb_pctb': np.nan,
+            'vol_trend': np.nan,
         }
 
     closes = ticker_prices['Close'].values
@@ -241,6 +248,54 @@ def calc_price_features(
     else:
         features['price_range_5d'] = np.nan
 
+    # --- 以下、train_model.py の28特徴量に含まれる6特徴量 ---
+
+    opens = ticker_prices['Open'].values
+
+    # prev_close_position: 前日引け位置 (close - low) / (high - low)
+    prev_range = highs[-1] - lows[-1]
+    features['prev_close_position'] = (closes[-1] - lows[-1]) / prev_range if prev_range > 0 else 0.5
+
+    # gap_ratio: 当日ギャップ率 (buy_price - prev_close) / prev_close
+    if buy_price is not None and closes[-1] > 0:
+        features['gap_ratio'] = (buy_price - closes[-1]) / closes[-1]
+    else:
+        features['gap_ratio'] = 0
+
+    # prev_candle: 前日陰陽線 (close - open) / open
+    features['prev_candle'] = (closes[-1] - opens[-1]) / opens[-1] if opens[-1] > 0 else 0
+
+    # MACD Histogram
+    close_s = pd.Series(closes)
+    ema12 = close_s.ewm(span=12, adjust=False, min_periods=12).mean()
+    ema26 = close_s.ewm(span=26, adjust=False, min_periods=26).mean()
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm(span=9, adjust=False, min_periods=9).mean()
+    hist = macd_line - signal
+    features['macd_hist'] = float(hist.iloc[-1]) if not np.isnan(hist.iloc[-1]) else np.nan
+
+    # Bollinger Bands %B
+    if len(closes) >= 20:
+        ma20 = close_s.rolling(20, min_periods=20).mean()
+        sd20 = close_s.rolling(20, min_periods=20).std(ddof=0)
+        upper = ma20 + 2.0 * sd20
+        lower = ma20 - 2.0 * sd20
+        bb_range = (upper - lower).replace(0, np.nan)
+        pctb = (close_s - lower) / bb_range
+        features['bb_pctb'] = float(pctb.iloc[-1]) if not np.isnan(pctb.iloc[-1]) else np.nan
+    else:
+        features['bb_pctb'] = np.nan
+
+    # Volume Trend (vol_ma5 / vol_ma20)
+    if len(volumes) >= 20:
+        vol_s = pd.Series(volumes.astype(float))
+        vol_ma5 = vol_s.rolling(5).mean()
+        vol_ma20 = vol_s.rolling(20).mean()
+        vt = vol_ma5 / vol_ma20.replace(0, np.nan)
+        features['vol_trend'] = float(vt.iloc[-1]) if not np.isnan(vt.iloc[-1]) else np.nan
+    else:
+        features['vol_trend'] = np.nan
+
     return features
 
 
@@ -277,7 +332,7 @@ def create_features(
         target_date = row['backtest_date']
 
         # 価格ベース特徴量（銘柄個別）
-        price_features = calc_price_features(ticker, target_date, prices_df)
+        price_features = calc_price_features(ticker, target_date, prices_df, buy_price=row.get('buy_price'))
 
         # 市場特徴量（日付ごとにキャッシュ）
         date_key = target_date.strftime('%Y-%m-%d')
@@ -316,7 +371,9 @@ def get_feature_columns() -> list[str]:
         'volatility_5d', 'volatility_10d', 'volatility_20d',
         'ma5_deviation', 'ma25_deviation',
         'prev_day_return', 'return_5d', 'return_10d',
-        'volume_ratio_5d', 'price_range_5d'
+        'volume_ratio_5d', 'price_range_5d',
+        'prev_close_position', 'gap_ratio', 'prev_candle',
+        'macd_hist', 'bb_pctb', 'vol_trend',
     ]
 
     # 市場特徴量（日経、TOPIX、先物、ドル円）

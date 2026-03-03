@@ -33,6 +33,14 @@ python3 scripts/...     # パイプライン実行
 - `docs/workflow_execution_flow.md`
 - `.github/workflows/data-pipeline.yml`
 
+## マーケットレポート作成時の必須手順
+
+レポート作成の**最初のステップ**として以下を実行すること。サマリー起点でもこの手順は省略禁止。
+
+1. `MEMORY/market_report_rules.md` を全文読む
+2. `data/reports/` の直近レポートHTMLを精読する（セクション構成、カード数、テーブルカラム、表示形式を全て確認）
+3. 直近レポートと同じ粒度・構造で作成する。カード数・テーブル構造が異なる場合は作成前に差分を報告する
+
 ---
 
 ※ 行動制約ルール (Behavioral Constraints) は親ディレクトリの CLAUDE.md を参照

@@ -110,16 +110,21 @@ async def get_signals():
     signals = []
     for _, r in rows.iterrows():
         sig_type = r.get("signal_type", "")
+        tier = r.get("tier", "")
         # TP+10% / A: SMA20回帰利確→翌日寄付 / B: デッドクロス→翌日寄付
-        exit_rule = "TP10% / SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "TP10% / DC撤退"
+        exit_rule = "SL-3% / 7日引け" if sig_type == "B4" else (
+            "SL-3% / SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "SL-3% / DC撤退"
+        )
         signals.append({
             "ticker": r.get("ticker", ""),
             "stock_name": r.get("stock_name", ""),
             "sector": r.get("sector", ""),
             "signal_type": sig_type,
+            "tier": tier,
             "close": _safe_float(r.get("close", 0), 1),
             "sma20": _safe_float(r.get("sma20", 0), 2),
             "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
+            "sma20_slope": _safe_float(r.get("sma20_slope", 0), 2),
             "sl_price": _safe_float(r.get("sl_price", 0), 1),
             "exit_rule": exit_rule,
         })

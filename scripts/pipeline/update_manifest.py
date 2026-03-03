@@ -70,6 +70,8 @@ UPLOAD_FILES = [
     "nikkei_vi_max_1d.parquet",
     # グランビルIFDシグナル（backtest配下は除外 - backtest_granville_ifd.pyで直接S3アップロード）
     "granville_ifd_signals.parquet",
+    # カレンダーアノマリー分析（金曜生成）
+    "market_anomaly.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"

@@ -737,6 +737,29 @@ jobs:
         run: |
           python3 scripts/format_granville_slack.py || true
 
+      - name: Generate market anomaly data (Friday only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          # 金曜日かどうかを判定（JST基準）
+          DAY_OF_WEEK=$(TZ=Asia/Tokyo date +%u)  # 1=月曜, 5=金曜
+
+          if [ "$DAY_OF_WEEK" != "5" ]; then
+            echo "ℹ️  Today is not Friday (day=$DAY_OF_WEEK). Skipping market anomaly generation."
+            exit 0
+          fi
+
+          echo "============================================================"
+          echo "📊 Generating market anomaly data (Friday 16:45)"
+          echo "============================================================"
+
+          python3 scripts/pipeline/generate_market_anomaly.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Market anomaly generation completed"
+          else
+            echo "⚠️ Market anomaly generation failed (non-critical)"
+          fi
+
       - name: ML Model Retraining (Friday only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |

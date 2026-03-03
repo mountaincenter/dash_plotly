@@ -4,12 +4,12 @@ backtest_granville_ifd.py
 グランビルIFDロング戦略: 完走済みトレードをアーカイブに追加
 
 毎営業日16:45実行。granville_ifd_signals.parquetからシグナルを取得し、
-グランビル出口ルール + TP+10%利確 + 7日マイナス損切り + 翌日寄付決済を適用。
-  TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
+グランビル出口ルール(Pattern C) + 7日マイナス損切り + 翌日寄付決済を適用。
   A: 終値≥SMA20 → 翌日寄付売り（SMA20回帰利確）
   B: SMA5がSMA20を下抜け → 翌日寄付売り（デッドクロス撤退）
   7日マイナス損切り: 7営業日目終値 < エントリー価格 → 翌日寄付売り
   共通: SL -3%（IFD逆指値、ザラ場自動執行）/ 最大60営業日
+  TP/trailなし: バックテスト検証でTP+10%もtrail_1/2もPnL減少を確認済み
 結果を granville_ifd_archive.parquet に append。
 
 パターン: save_backtest_to_archive.py (Grokと同じappend方式)
@@ -36,7 +36,6 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 ARCHIVE_PATH = BACKTEST_DIR / "granville_ifd_archive.parquet"
 
 SL_PCT = 3.0        # SL -3%（IFD逆指値）
-TP_PCT = 10.0       # TP +10%（利確）
 MAX_HOLD_DAYS = 60  # 最大保有日数（安全弁）
 MIN_DAYS_AGO = 1    # シグナル翌日にエントリーするので最低1日必要（未完了はsimulate_tradeがNone返却）
 
@@ -81,13 +80,11 @@ def regenerate_all_signals(prices_df: pd.DataFrame) -> pd.DataFrame:
 
 def simulate_trade(prices_df: pd.DataFrame, ticker: str,
                    signal_date: pd.Timestamp, signal_type: str) -> dict | None:
-    """1トレードをTP+10% + trail_1/2 SL + グランビル出口ルール + 7日マイナス損切りでシミュレート
+    """1トレードをPattern C（SL -3% + グランビル出口ルール + 7日マイナス損切り）でシミュレート
 
-    TP: 高値≥エントリー+10% → その価格で利確（ザラ場自動執行）
-    trail_1/2: エントリー翌日以降、含み益の半分をSLに引き上げ
     A: 終値≥SMA20 → 翌日寄付売り / B: デッドクロス → 翌日寄付売り
     7日マイナス: d==6で終値 < エントリー → 翌日寄付売り (time_cut)
-    共通: SL -3%（IFD逆指値、初期値）/ 最大60営業日
+    共通: SL -3%（IFD逆指値）/ 最大60営業日 / TP・trailなし
     """
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
     if tk.empty:
@@ -95,7 +92,6 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     dates = tk["date"].values
     opens = tk["Open"].values
-    highs = tk["High"].values
     lows = tk["Low"].values
     closes = tk["Close"].values
     sma5s = tk["sma5"].values
@@ -117,21 +113,15 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     entry_date = pd.Timestamp(dates[entry_idx])
     sl_price = entry_price * (1 - SL_PCT / 100)
-    trail_sl = sl_price  # trail_1/2: 含み益の半分をSLに引き上げ
-    tp_price = entry_price * (1 + TP_PCT / 100)
 
     for d in range(MAX_HOLD_DAYS):
         ci = entry_idx + d
         if ci >= len(dates):
             return None  # データ不足、トレード未完了
 
-        # SL判定（trail_sl使用、ザラ場中に自動執行）
-        if float(lows[ci]) <= trail_sl:
-            return _result(entry_date, dates[ci], entry_price, trail_sl, "SL")
-
-        # TP+10%判定（ザラ場中に到達）
-        if float(highs[ci]) >= tp_price:
-            return _result(entry_date, dates[ci], entry_price, tp_price, "TP")
+        # SL判定（IFD逆指値、ザラ場中に自動執行）
+        if float(lows[ci]) <= sl_price:
+            return _result(entry_date, dates[ci], entry_price, sl_price, "SL")
 
         # エントリー日は出口条件チェックしない
         if d == 0:
@@ -140,10 +130,6 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
         close_val = float(closes[ci])
         sma5_val = float(sma5s[ci])
         sma20_val = float(sma20s[ci])
-
-        # trail_1/2: 含み益があればSLを entry + 含み益/2 に引き上げ
-        if close_val > entry_price:
-            trail_sl = max(trail_sl, entry_price + (close_val - entry_price) / 2)
 
         # A: 終値≥SMA20 → 翌日寄付売り
         if signal_type in ("A", "A+B") and close_val >= sma20_val:
@@ -294,13 +280,13 @@ def run_backtest() -> int:
     return 0
 
 
-def _simulate_alt(prices_df, ticker, signal_date, signal_type, tp_pct, use_7d):
-    """7日引け / 利確なし用のシミュレーション"""
+def _simulate_alt(prices_df, ticker, signal_date, signal_type, use_7d):
+    """7日引け / SLのみ用の比較シミュレーション"""
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
     if tk.empty:
         return None
     dates = tk["date"].values
-    opens, highs, lows, closes = tk["Open"].values, tk["High"].values, tk["Low"].values, tk["Close"].values
+    opens, lows, closes = tk["Open"].values, tk["Low"].values, tk["Close"].values
     sma5s, sma20s = tk["sma5"].values, tk["sma20"].values
     date_idx = {d: i for i, d in enumerate(dates)}
     sd = np.datetime64(signal_date)
@@ -315,7 +301,6 @@ def _simulate_alt(prices_df, ticker, signal_date, signal_type, tp_pct, use_7d):
         return None
     ed = pd.Timestamp(dates[ei])
     sl = ep * 0.97
-    tp_p = ep * (1 + tp_pct / 100) if tp_pct > 0 else None
     hold_limit = 7 if use_7d else 60
 
     for d in range(hold_limit):
@@ -324,8 +309,6 @@ def _simulate_alt(prices_df, ticker, signal_date, signal_type, tp_pct, use_7d):
             return None
         if float(lows[ci]) <= sl:
             return _result(ed, dates[ci], ep, sl, "SL")
-        if tp_p and float(highs[ci]) >= tp_p:
-            return _result(ed, dates[ci], ep, tp_p, "TP")
         if use_7d:
             if d == hold_limit - 1:
                 return _result(ed, dates[ci], ep, float(closes[ci]), "expire")
@@ -351,30 +334,30 @@ def _simulate_alt(prices_df, ticker, signal_date, signal_type, tp_pct, use_7d):
 
 
 def _generate_comparison(archive_df, prices_df, cfg):
-    """3戦略の比較統計をparquetに保存"""
+    """3戦略の比較統計をparquetに保存（Pattern C vs 7日引け vs シグナル出口のみ）"""
     print("\n[INFO] Generating comparison data...")
 
     archive_df = archive_df.copy()
     for col in ["signal_date", "entry_date", "exit_date"]:
         archive_df[col] = pd.to_datetime(archive_df[col])
 
-    # TP+10%はアーカイブから
-    tp10_entries = []
+    # Pattern C（メイン戦略）はアーカイブから
+    main_entries = []
     for _, r in archive_df.iterrows():
-        tp10_entries.append({
+        main_entries.append({
             "entry_date": r["entry_date"],
             "ret_pct": float(r["ret_pct"]),
             "pnl_yen": int(r["pnl_yen"]),
             "hold_days": (r["exit_date"] - r["entry_date"]).days,
         })
-    tp10_df = pd.DataFrame(tp10_entries)
+    main_df = pd.DataFrame(main_entries)
 
-    # 7日引け / 利確なし
+    # 7日引け / シグナル出口のみ（7d time_cutなし）
     signals = archive_df[["signal_date", "ticker", "signal_type"]].drop_duplicates()
-    d7_entries, nolim_entries = [], []
+    d7_entries, sig_only_entries = [], []
 
     for _, sig in signals.iterrows():
-        r7 = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], 0, True)
+        r7 = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], True)
         if r7:
             d7_entries.append({
                 "entry_date": pd.Timestamp(r7["entry_date"]),
@@ -382,9 +365,9 @@ def _generate_comparison(archive_df, prices_df, cfg):
                 "pnl_yen": r7["pnl_yen"],
                 "hold_days": (pd.Timestamp(r7["exit_date"]) - pd.Timestamp(r7["entry_date"])).days,
             })
-        rn = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], 0, False)
+        rn = _simulate_alt(prices_df, sig["ticker"], sig["signal_date"], sig["signal_type"], False)
         if rn:
-            nolim_entries.append({
+            sig_only_entries.append({
                 "entry_date": pd.Timestamp(rn["entry_date"]),
                 "ret_pct": rn["ret_pct"],
                 "pnl_yen": rn["pnl_yen"],
@@ -392,7 +375,7 @@ def _generate_comparison(archive_df, prices_df, cfg):
             })
 
     d7_df = pd.DataFrame(d7_entries)
-    nolim_df = pd.DataFrame(nolim_entries)
+    sig_only_df = pd.DataFrame(sig_only_entries)
 
     def calc(rdf, label, period_start=None):
         if period_start:
@@ -410,7 +393,7 @@ def _generate_comparison(archive_df, prices_df, cfg):
 
     rows = []
     for period_name, period_start in [("all", None), ("14m", "2025-01-01"), ("2026", "2026-01-01")]:
-        for df, lbl in [(tp10_df, "TP+10%"), (d7_df, "7日引け"), (nolim_df, "利確なし")]:
+        for df, lbl in [(main_df, "Pattern C"), (d7_df, "7日引け"), (sig_only_df, "シグナル出口のみ")]:
             r = calc(df, lbl, period_start)
             r["period"] = period_name
             rows.append(r)
