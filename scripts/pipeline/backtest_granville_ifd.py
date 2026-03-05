@@ -54,7 +54,11 @@ def regenerate_all_signals(prices_df: pd.DataFrame) -> pd.DataFrame:
     sig_mask = ps["sig_A"] | ps["sig_B"]
     sigs = ps[sig_mask].copy()
 
-    # フィルターなし（全シグナルで発射台を確認）
+    # フィルター適用（日次パイプライン用）
+    sigs = sigs[sigs["market_uptrend"] == True]
+    sigs = sigs[sigs["macro_ci_expand"] == True]
+    sigs = sigs[~sigs["sectors"].isin(BAD_SECTORS)]
+    sigs = sigs[sigs["Close"] < 20000]
 
     # signal_type列
     sigs["signal_type"] = sigs.apply(
