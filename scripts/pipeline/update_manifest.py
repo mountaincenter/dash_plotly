@@ -371,8 +371,8 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
             # market_summary/raw/YYYY-MM-DD.md パターンにマッチするファイルは保持
             if re.match(rf"{prefix}market_summary/raw/\d{{4}}-\d{{2}}-\d{{2}}\.md$", key):
                 keep_keys.add(key)
-            # market_summary/structured/YYYY-MM-DD.json パターンにマッチするファイルは保持
-            if re.match(rf"{prefix}market_summary/structured/\d{{4}}-\d{{2}}-\d{{2}}\.json$", key):
+            # market_summary/structured/ 配下の全JSONを保持
+            if re.match(rf"{prefix}market_summary/structured/.*\.json$", key):
                 keep_keys.add(key)
 
         # 削除対象のファイルを抽出

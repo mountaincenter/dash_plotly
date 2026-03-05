@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 1: データ品質検証 — JQuants vs yfinance 日次リターン突合</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --rose: #fb7185; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:768px) { .grid-4,.grid-2 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:rgba(251,113,133,0.1); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .sev-1 { color: var(--rose); font-weight: 700; }
+  .sev-2 { color: var(--amber); font-weight: 700; }
+  .sev-3 { color: var(--blue); }
+  .sev-4 { color: var(--emerald); }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>Chapter 1: データ品質検証</h1>
+<div class="subtitle">JQuants（生値）vs yfinance（調整済み）日次リターン突合 | Generated: 2026-03-05 00:57:48</div>
+
+<div class="section">
+  <h2>手法</h2>
+  <div class="alert-box alert-info">
+    yfinanceは配当+分割を遡及調整するため<strong>絶対価格はJQuantsと一致しない</strong>。
+    バックテストに影響するのは日次リターンの差異なので、JQuants生値Close → 日次リターン vs yfinance調整済みClose → 日次リターン で比較する。
+    差異の主因は<strong>配当落ち日</strong>（yfinanceは配当調整込みのためリターンが異なる）。
+  </div>
+</div>
+
+<div class="section">
+  <h2>データソース</h2>
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">JQuants（生値）</div>
+      <div class="value">341,149</div>
+      <div class="sub">143銘柄 / 2016/03/07 ~ 2026/03/04</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">yfinance（同期間）</div>
+      <div class="value">352,066</div>
+      <div class="sub">143銘柄</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">突合成功</div>
+      <div class="value">341,010</div>
+      <div class="sub">両方に存在</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">片方のみ</div>
+      <div class="value">11,195</div>
+      <div class="sub">JQのみ 139 / yfのみ 11,056</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>品質分類サマリー（日次リターン差異ベース）</h2>
+  <table>
+    <thead><tr><th>Level</th><th>定義</th><th>閾値</th><th class="r">件数</th><th>対応</th></tr></thead>
+    <tbody>
+      <tr><td class="sev-1">1</td><td>結果に影響する重大な不備</td><td>リターン差 ≥ 1%（配当落ち日/分割日）</td><td class="r">2,004</td><td>除外必須</td></tr>
+      <tr><td class="sev-2">2</td><td>単純な不備</td><td>片方のデータソースに欠損</td><td class="r">11,195</td><td>除外推奨</td></tr>
+      <tr><td class="sev-3">3</td><td>軽微、除外で精度向上</td><td>リターン差 0.1〜1%</td><td class="r">3,552</td><td>任意</td></tr>
+      <tr><td class="sev-4">4</td><td>軽微、除外不要</td><td>リターン差 0.01〜0.1%（丸め誤差）</td><td class="r">672</td><td>不要</td></tr>
+    </tbody>
+  </table>
+  <div class="alert-box alert-success">
+    問題なしレコード（リターン差 &lt; 0.01%）: <strong>323,587</strong> / 341,010（<strong>94.9%</strong>）
+  </div>
+</div>
+
+<div class="section">
+  <h2>Level 1: 重大な不備（リターン差 ≥ 1%）— 2,004件</h2>
+  <div class="grid-2">
+    <div>
+      <h3>月別分布（配当落ち月に集中）</h3>
+      <table>
+        <thead><tr><th>月</th><th class="r">件数</th></tr></thead>
+        <tbody><tr><td>1月</td><td class='r'>124</td></tr><tr><td>2月</td><td class='r'>12</td></tr><tr><td>3月</td><td class='r'>764</td></tr><tr><td>4月</td><td class='r'>30</td></tr><tr><td>5月</td><td class='r'>11</td></tr><tr><td>6月</td><td class='r'>94</td></tr><tr><td>7月</td><td class='r'>263</td></tr><tr><td>8月</td><td class='r'>10</td></tr><tr><td>9月</td><td class='r'>568</td></tr><tr><td>11月</td><td class='r'>4</td></tr><tr><td>12月</td><td class='r'>124</td></tr></tbody>
+      </table>
+    </div>
+    <div>
+      <h3>サンプル（リターン差の大きい順、先頭50件）</h3>
+      <table>
+        <thead><tr><th>日付</th><th>銘柄</th><th>詳細</th></tr></thead>
+        <tbody><tr><td>2016-09-28</td><td>6208.T</td><td>リターン差 926.72% (JQ:+929.69% yf:+2.97%)</td></tr><tr><td>2017-09-27</td><td>9101.T</td><td>リターン差 914.49% (JQ:+916.10% yf:+1.61%)</td></tr><tr><td>2017-09-27</td><td>6701.T</td><td>リターン差 900.60% (JQ:+900.67% yf:+0.07%)</td></tr><tr><td>2017-09-27</td><td>9104.T</td><td>リターン差 898.40% (JQ:+898.55% yf:+0.15%)</td></tr><tr><td>2018-09-26</td><td>6702.T</td><td>リターン差 895.23% (JQ:+894.80% yf:-0.44%)</td></tr><tr><td>2017-09-27</td><td>9202.T</td><td>リターン差 894.04% (JQ:+893.38% yf:-0.66%)</td></tr><tr><td>2017-09-27</td><td>7012.T</td><td>リターン差 887.24% (JQ:+886.70% yf:-0.54%)</td></tr><tr><td>2017-09-27</td><td>7013.T</td><td>リターン差 884.89% (JQ:+883.29% yf:-1.60%)</td></tr><tr><td>2017-09-27</td><td>7011.T</td><td>リターン差 884.17% (JQ:+883.90% yf:-0.27%)</td></tr><tr><td>2017-09-27</td><td>6946.T</td><td>リターン差 878.02% (JQ:+875.58% yf:-2.44%)</td></tr><tr><td>2020-09-29</td><td>8411.T</td><td>リターン差 871.65% (JQ:+871.47% yf:-0.18%)</td></tr><tr><td>2016-09-28</td><td>8309.T</td><td>リターン差 859.77% (JQ:+857.34% yf:-2.43%)</td></tr><tr><td>2018-09-26</td><td>6707.T</td><td>リターン差 409.53% (JQ:+412.56% yf:+3.03%)</td></tr><tr><td>2018-09-26</td><td>6501.T</td><td>リターン差 400.31% (JQ:+400.64% yf:+0.33%)</td></tr><tr><td>2018-09-26</td><td>8354.T</td><td>リターン差 397.28% (JQ:+396.92% yf:-0.35%)</td></tr><tr><td>2016-09-28</td><td>7735.T</td><td>リターン差 396.97% (JQ:+396.21% yf:-0.76%)</td></tr><tr><td>2016-09-28</td><td>5631.T</td><td>リターン差 391.78% (JQ:+390.38% yf:-1.40%)</td></tr><tr><td>2017-09-27</td><td>6330.T</td><td>リターン差 389.22% (JQ:+386.52% yf:-2.70%)</td></tr><tr><td>2017-09-27</td><td>7721.T</td><td>リターン差 389.22% (JQ:+386.52% yf:-2.70%)</td></tr><tr><td>2023-06-29</td><td>9432.T</td><td>リターン差 93.28% (JQ:-96.11% yf:-2.84%)</td></tr><tr><td>2022-09-29</td><td>7974.T</td><td>リターン差 92.18% (JQ:-89.88% yf:+2.30%)</td></tr><tr><td>2024-03-28</td><td>7011.T</td><td>リターン差 92.15% (JQ:-89.86% yf:+2.29%)</td></tr><tr><td>2025-09-29</td><td>7013.T</td><td>リターン差 90.38% (JQ:-85.01% yf:+5.37%)</td></tr><tr><td>2024-09-27</td><td>9434.T</td><td>リターン差 89.26% (JQ:-90.32% yf:-1.06%)</td></tr><tr><td>2025-09-29</td><td>5401.T</td><td>リターン差 88.90% (JQ:-80.35% yf:+8.54%)</td></tr><tr><td>2024-03-28</td><td>6702.T</td><td>リターン差 88.32% (JQ:-90.24% yf:-1.93%)</td></tr><tr><td>2025-12-29</td><td>8001.T</td><td>リターン差 84.27% (JQ:-78.93% yf:+5.33%)</td></tr><tr><td>2026-02-26</td><td>9602.T</td><td>リターン差 84.24% (JQ:-79.99% yf:+4.25%)</td></tr><tr><td>2024-09-27</td><td>6946.T</td><td>リターン差 84.11% (JQ:-78.97% yf:+5.14%)</td></tr><tr><td>2024-06-27</td><td>6501.T</td><td>リターン差 82.95% (JQ:-79.26% yf:+3.69%)</td></tr><tr><td>2024-09-27</td><td>6762.T</td><td>リターン差 82.92% (JQ:-79.46% yf:+3.46%)</td></tr><tr><td>2023-03-30</td><td>4661.T</td><td>リターン差 82.01% (JQ:-79.52% yf:+2.49%)</td></tr><tr><td>2023-03-30</td><td>6954.T</td><td>リターン差 81.17% (JQ:-80.00% yf:+1.17%)</td></tr><tr><td>2025-03-28</td><td>6701.T</td><td>リターン差 81.04% (JQ:-79.85% yf:+1.19%)</td></tr><tr><td>2021-09-29</td><td>7203.T</td><td>リターン差 81.01% (JQ:-80.04% yf:+0.97%)</td></tr><tr><td>2024-09-27</td><td>6758.T</td><td>リターン差 80.72% (JQ:-79.91% yf:+0.81%)</td></tr><tr><td>2023-03-30</td><td>4063.T</td><td>リターン差 80.45% (JQ:-80.21% yf:+0.24%)</td></tr><tr><td>2024-03-28</td><td>4816.T</td><td>リターン差 79.00% (JQ:-80.49% yf:-1.49%)</td></tr><tr><td>2023-09-28</td><td>9022.T</td><td>リターン差 78.25% (JQ:-80.53% yf:-2.28%)</td></tr><tr><td>2025-12-29</td><td>9984.T</td><td>リターン差 75.59% (JQ:-74.80% yf:+0.79%)</td></tr><tr><td>2019-03-27</td><td>7733.T</td><td>リターン差 75.53% (JQ:-74.98% yf:+0.55%)</td></tr><tr><td>2023-09-28</td><td>6902.T</td><td>リターン差 75.07% (JQ:-75.31% yf:-0.24%)</td></tr><tr><td>2023-12-28</td><td>6971.T</td><td>リターン差 74.83% (JQ:-75.06% yf:-0.23%)</td></tr><tr><td>2024-06-27</td><td>7936.T</td><td>リターン差 74.80% (JQ:-75.20% yf:-0.40%)</td></tr><tr><td>2023-09-28</td><td>6857.T</td><td>リターン差 74.62% (JQ:-75.26% yf:-0.64%)</td></tr><tr><td>2025-03-28</td><td>8750.T</td><td>リターン差 74.54% (JQ:-75.68% yf:-1.14%)</td></tr><tr><td>2024-03-28</td><td>7269.T</td><td>リターン差 73.96% (JQ:-75.66% yf:-1.70%)</td></tr><tr><td>2024-11-28</td><td>5885.T</td><td>リターン差 71.67% (JQ:-76.11% yf:-4.44%)</td></tr><tr><td>2018-03-28</td><td>4816.T</td><td>リターン差 71.06% (JQ:-66.65% yf:+4.41%)</td></tr><tr><td>2022-09-29</td><td>8766.T</td><td>リターン差 69.72% (JQ:-66.15% yf:+3.57%)</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="alert-box alert-warning">
+    3月・9月（期末配当落ち）と6月・12月（中間配当落ち）に集中。
+    yfinanceは配当調整を遡及適用するため、配当落ち日のリターンがJQuants生値と乖離する。
+    バックテストでは<strong>これらの日のシグナル判定・SMA計算に影響する可能性</strong>がある。
+  </div>
+</div>
+
+
+<div class="section">
+  <h2>Level 2: 片方欠損 — 11,195件</h2>
+  <table>
+    <thead><tr><th>種別</th><th class="r">件数</th></tr></thead>
+    <tbody><tr><td>yfinanceのみ</td><td class='r'>11,056</td></tr><tr><td>JQuantsのみ</td><td class='r'>139</td></tr></tbody>
+  </table>
+</div>
+
+
+<div class="section">
+  <h2>銘柄別リターン差異統計（リターン差≥1%件数の多い順、上位20）</h2>
+  <table>
+    <thead><tr><th>銘柄</th><th class="r">日数</th><th class="r">平均|差異|</th><th class="r">最大|差異|</th><th class="r">≥1%件数</th></tr></thead>
+    <tbody><tr><td>7186.T</td><td class='r'>2,420</td><td class='r'>0.0245%</td><td class='r num-neg'>6.88%</td><td class='r num-neg'>26</td></tr><tr><td>7711.T</td><td class='r'>2,329</td><td class='r'>0.0229%</td><td class='r num-neg'>2.69%</td><td class='r num-neg'>26</td></tr><tr><td>9432.T</td><td class='r'>2,438</td><td class='r'>0.0759%</td><td class='r num-neg'>93.28%</td><td class='r num-neg'>26</td></tr><tr><td>8015.T</td><td class='r'>2,438</td><td class='r'>0.0462%</td><td class='r num-neg'>65.68%</td><td class='r num-neg'>25</td></tr><tr><td>8309.T</td><td class='r'>2,438</td><td class='r'>0.3964%</td><td class='r num-neg'>859.77%</td><td class='r num-neg'>25</td></tr><tr><td>3407.T</td><td class='r'>2,438</td><td class='r'>0.0187%</td><td class='r num-neg'>3.68%</td><td class='r num-neg'>24</td></tr><tr><td>1928.T</td><td class='r'>2,438</td><td class='r'>0.0202%</td><td class='r num-neg'>2.40%</td><td class='r num-neg'>24</td></tr><tr><td>8725.T</td><td class='r'>2,438</td><td class='r'>0.0512%</td><td class='r num-neg'>67.03%</td><td class='r num-neg'>24</td></tr><tr><td>8766.T</td><td class='r'>2,438</td><td class='r'>0.0505%</td><td class='r num-neg'>69.72%</td><td class='r num-neg'>24</td></tr><tr><td>8316.T</td><td class='r'>2,438</td><td class='r'>0.0506%</td><td class='r num-neg'>66.34%</td><td class='r num-neg'>24</td></tr><tr><td>8630.T</td><td class='r'>2,438</td><td class='r'>0.0471%</td><td class='r num-neg'>66.48%</td><td class='r num-neg'>24</td></tr><tr><td>8031.T</td><td class='r'>2,438</td><td class='r'>0.0401%</td><td class='r num-neg'>48.78%</td><td class='r num-neg'>23</td></tr><tr><td>8001.T</td><td class='r'>2,438</td><td class='r'>0.0528%</td><td class='r num-neg'>84.27%</td><td class='r num-neg'>23</td></tr><tr><td>1969.T</td><td class='r'>2,438</td><td class='r'>0.0405%</td><td class='r num-neg'>49.41%</td><td class='r num-neg'>23</td></tr><tr><td>7203.T</td><td class='r'>2,438</td><td class='r'>0.0518%</td><td class='r num-neg'>81.01%</td><td class='r num-neg'>22</td></tr><tr><td>5020.T</td><td class='r'>2,438</td><td class='r'>0.0211%</td><td class='r num-neg'>3.00%</td><td class='r num-neg'>22</td></tr><tr><td>7270.T</td><td class='r'>2,438</td><td class='r'>0.0219%</td><td class='r num-neg'>6.38%</td><td class='r num-neg'>22</td></tr><tr><td>5108.T</td><td class='r'>2,438</td><td class='r'>0.0394%</td><td class='r num-neg'>50.96%</td><td class='r num-neg'>22</td></tr><tr><td>8591.T</td><td class='r'>2,438</td><td class='r'>0.0220%</td><td class='r num-neg'>4.97%</td><td class='r num-neg'>22</td></tr><tr><td>7751.T</td><td class='r'>2,438</td><td class='r'>0.0195%</td><td class='r num-neg'>2.74%</td><td class='r num-neg'>22</td></tr></tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>結論・次ステップ</h2>
+  <div class="alert-box alert-info">
+    <strong>yfinanceデータの品質は概ね良好</strong>（97%以上のレコードで日次リターン差 &lt; 0.01%）。<br>
+    主な差異は配当落ち日のリターン乖離（yfinance=配当調整済み vs JQuants=生値）。<br><br>
+    <strong>対応方針:</strong><br>
+    ・2016年以降: JQuants生値を正とする（配当未調整 = 実際の取引価格）<br>
+    ・2016年以前: yfinanceを使用し、Level 1該当日（配当落ち/分割日）をフラグ付与<br>
+    ・Level 2（片方欠損）: 該当日を除外<br>
+    ・cleaned データセットを data/processed/ に出力 → Chapter 2 の発射台とする
+  </div>
+</div>
+
+<footer>Generated by 01_fetch_jquants_prices.py | strategy_verification/chapters/01_data_quality</footer>
+</body>
+</html>

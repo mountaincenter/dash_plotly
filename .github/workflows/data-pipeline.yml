@@ -1043,6 +1043,39 @@ jobs:
           echo "✅ Grok Analysis Data generation completed"
           echo "   File size: $FILE_SIZE"
 
+      - name: Generate market report data
+        if: success()
+        run: |
+          echo "============================================================"
+          echo "📊 Generating market report data JSON"
+          echo "============================================================"
+
+          # 必要なparquetがなければS3からダウンロード
+          for f in index_prices_max_1d topix_prices_max_1d currency_prices_max_1d \
+                   nikkei_vi_max_1d sectors_prices_max_1d futures_prices_max_1d \
+                   grok_trending market_anomaly; do
+            FILE="data/parquet/${f}.parquet"
+            if [ ! -f "$FILE" ]; then
+              echo "  📥 Downloading ${f}.parquet from S3..."
+              aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}${f}.parquet" "$FILE" --only-show-errors || echo "  ⚠️ ${f}.parquet not found"
+            fi
+          done
+
+          # backtest archive
+          mkdir -p data/parquet/backtest
+          if [ ! -f "data/parquet/backtest/grok_trending_archive.parquet" ]; then
+            aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
+              data/parquet/backtest/grok_trending_archive.parquet --only-show-errors || echo "  ⚠️ archive not found"
+          fi
+
+          python3 scripts/pipeline/generate_market_report_data.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Market report data generated"
+          else
+            echo "⚠️ Market report data generation failed (non-critical)"
+          fi
+
       - name: Check xAI billing
         if: success()
         env:

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 3: SL最適化 — ルール別最適SL幅の導出</title>
+<script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --rose: #fb7185; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1400px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:768px) { .grid-4,.grid-2 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .stat-card.card-pos { border-color:rgba(52,211,153,0.4); }
+  .stat-card.card-pos .value { color:var(--emerald); }
+  .stat-card.card-neg { border-color:rgba(251,113,133,0.4); }
+  .stat-card.card-neg .value { color:var(--rose); }
+  .stat-card.card-warn { border-color:rgba(251,191,36,0.4); }
+  .stat-card.card-warn .value { color:var(--amber); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-info { background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-success { background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .chart { width:100%; min-height:320px; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>Chapter 3: SL最適化</h1>
+<div class="subtitle">LONG B1-B4 | MAE分布ベース | 59,307 trades | Generated: 2026-03-05 01:59:46</div>
+
+<!-- Summary -->
+<div class="section">
+  <h2>結論</h2>
+  <div class="grid-4">
+    <div class="stat-card card-warn"><div class="label">現行 SL-3% 一律</div><div class="value">PF 1.39</div><div class="sub">PnL +7,158万</div></div>
+    <div class="stat-card card-pos"><div class="label">全体最適 一律SL</div><div class="value">なし</div><div class="sub">PF 1.53 / PnL +10,573万</div></div>
+    <div class="stat-card card-pos"><div class="label">ルール別最適SL</div><div class="value">PnL +9,616万</div><div class="sub">B1@-1.5% / B2@-1.5% / B3@-2.0% / B4@なし</div></div>
+    <div class="stat-card "><div class="label">SLなし</div><div class="value">PF 1.53</div><div class="sub">PnL +10,573万</div></div>
+  </div>
+</div>
+
+<!-- MAE Percentile Overview -->
+<div class="section">
+  <h2>MAEパーセンタイル分布（ルール別）</h2>
+  <table>
+    <thead><tr><th>ルール</th><th class="r">件数</th><th class="r">p10</th><th class="r">p25</th><th class="r">p50</th><th class="r">p75</th><th class="r">p90</th><th class="r">最適SL</th><th class="r">最適PF</th></tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td class="r">19,535</td><td class="r">-5.06%</td><td class="r">-3.35%</td><td class="r">-2.04%</td><td class="r">-1.06%</td><td class="r">-0.42%</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">1.37</td></tr><tr><td><strong>B2</strong></td><td class="r">21,082</td><td class="r">-4.16%</td><td class="r">-2.65%</td><td class="r">-1.48%</td><td class="r">-0.70%</td><td class="r">-0.23%</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">1.32</td></tr><tr><td><strong>B3</strong></td><td class="r">8,062</td><td class="r">-4.22%</td><td class="r">-2.90%</td><td class="r">-1.84%</td><td class="r">-0.97%</td><td class="r">-0.39%</td><td class="r" style="color:var(--emerald);font-weight:700">-2.0%</td><td class="r">1.53</td></tr><tr><td><strong>B4</strong></td><td class="r">10,628</td><td class="r">-23.23%</td><td class="r">-12.17%</td><td class="r">-5.41%</td><td class="r">-1.91%</td><td class="r">-0.45%</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">2.26</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-info">
+    B4は逆張り戦略のため、MAE中央値が-5.4%と深い。一律SL-3%ではB4トレードの65%が切られる。<br>
+    <strong>ルール別にSL幅を設定することでPnLを最大化できる。</strong>
+  </div>
+</div>
+
+<!-- Per-rule sections -->
+
+<div class="section">
+  <h2>B1: SLシミュレーション</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>SL</th><th class="r">SL到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均リターン</th></tr></thead>
+        <tbody><tr style="background:rgba(52,211,153,0.1)"><td>-1.5% <span style="color:var(--emerald);font-size:0.7rem">★最適</span></td><td class="r">63.2%</td><td class="r">23.2%</td><td class="r ">1.37</td><td class="r num-pos">+1,355万</td><td class="r">+0.401%</td></tr><tr><td>-2.0%</td><td class="r">50.8%</td><td class="r">27.1%</td><td class="r ">1.34</td><td class="r num-pos">+2,054万</td><td class="r">+0.438%</td></tr><tr><td>-2.5%</td><td class="r">39.5%</td><td class="r">29.6%</td><td class="r ">1.32</td><td class="r num-pos">+2,037万</td><td class="r">+0.450%</td></tr><tr style="background:rgba(96,165,250,0.08)"><td>-3.0% <span style="color:var(--blue);font-size:0.7rem">現行</span></td><td class="r">30.1%</td><td class="r">31.2%</td><td class="r ">1.31</td><td class="r num-pos">+2,074万</td><td class="r">+0.462%</td></tr><tr><td>-3.5%</td><td class="r">23.1%</td><td class="r">32.1%</td><td class="r ">1.29</td><td class="r num-pos">+2,032万</td><td class="r">+0.454%</td></tr><tr><td>-4.0%</td><td class="r">17.7%</td><td class="r">32.6%</td><td class="r ">1.27</td><td class="r num-pos">+1,950万</td><td class="r">+0.437%</td></tr><tr><td>-5.0%</td><td class="r">10.4%</td><td class="r">33.2%</td><td class="r ">1.27</td><td class="r num-pos">+1,955万</td><td class="r">+0.439%</td></tr><tr><td>-6.0%</td><td class="r">6.1%</td><td class="r">33.5%</td><td class="r ">1.26</td><td class="r num-pos">+2,086万</td><td class="r">+0.435%</td></tr><tr><td>-8.0%</td><td class="r">2.5%</td><td class="r">33.8%</td><td class="r ">1.26</td><td class="r num-pos">+2,098万</td><td class="r">+0.432%</td></tr><tr><td>-10.0%</td><td class="r">1.0%</td><td class="r">33.8%</td><td class="r ">1.25</td><td class="r num-pos">+2,036万</td><td class="r">+0.428%</td></tr><tr><td>-15.0%</td><td class="r">0.3%</td><td class="r">33.9%</td><td class="r ">1.25</td><td class="r num-pos">+2,024万</td><td class="r">+0.423%</td></tr><tr><td>なし</td><td class="r">0.0%</td><td class="r">33.9%</td><td class="r ">1.25</td><td class="r num-pos">+2,013万</td><td class="r">+0.423%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="chart-B1" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B2: SLシミュレーション</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>SL</th><th class="r">SL到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均リターン</th></tr></thead>
+        <tbody><tr style="background:rgba(52,211,153,0.1)"><td>-1.5% <span style="color:var(--emerald);font-size:0.7rem">★最適</span></td><td class="r">49.6%</td><td class="r">32.6%</td><td class="r ">1.32</td><td class="r num-pos">+1,647万</td><td class="r">+0.288%</td></tr><tr><td>-2.0%</td><td class="r">37.0%</td><td class="r">36.8%</td><td class="r ">1.29</td><td class="r num-pos">+1,756万</td><td class="r">+0.297%</td></tr><tr><td>-2.5%</td><td class="r">27.4%</td><td class="r">39.1%</td><td class="r ">1.27</td><td class="r num-pos">+1,956万</td><td class="r">+0.295%</td></tr><tr style="background:rgba(96,165,250,0.08)"><td>-3.0% <span style="color:var(--blue);font-size:0.7rem">現行</span></td><td class="r">20.2%</td><td class="r">40.2%</td><td class="r ">1.26</td><td class="r num-pos">+2,136万</td><td class="r">+0.290%</td></tr><tr><td>-3.5%</td><td class="r">14.9%</td><td class="r">40.9%</td><td class="r ">1.25</td><td class="r num-pos">+2,148万</td><td class="r">+0.287%</td></tr><tr><td>-4.0%</td><td class="r">11.0%</td><td class="r">41.3%</td><td class="r ">1.24</td><td class="r num-pos">+2,131万</td><td class="r">+0.285%</td></tr><tr><td>-5.0%</td><td class="r">6.2%</td><td class="r">41.7%</td><td class="r ">1.23</td><td class="r num-pos">+2,009万</td><td class="r">+0.277%</td></tr><tr><td>-6.0%</td><td class="r">3.5%</td><td class="r">41.9%</td><td class="r ">1.23</td><td class="r num-pos">+2,030万</td><td class="r">+0.274%</td></tr><tr><td>-8.0%</td><td class="r">1.3%</td><td class="r">42.0%</td><td class="r ">1.23</td><td class="r num-pos">+2,014万</td><td class="r">+0.277%</td></tr><tr><td>-10.0%</td><td class="r">0.6%</td><td class="r">42.0%</td><td class="r ">1.23</td><td class="r num-pos">+1,990万</td><td class="r">+0.272%</td></tr><tr><td>-15.0%</td><td class="r">0.1%</td><td class="r">42.1%</td><td class="r ">1.23</td><td class="r num-pos">+1,999万</td><td class="r">+0.272%</td></tr><tr><td>なし</td><td class="r">0.0%</td><td class="r">42.1%</td><td class="r ">1.23</td><td class="r num-pos">+2,000万</td><td class="r">+0.273%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="chart-B2" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B3: SLシミュレーション</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>SL</th><th class="r">SL到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均リターン</th></tr></thead>
+        <tbody><tr><td>-1.5%</td><td class="r">59.8%</td><td class="r">26.3%</td><td class="r num-pos">1.52</td><td class="r num-pos">+1,018万</td><td class="r">+0.535%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>-2.0% <span style="color:var(--emerald);font-size:0.7rem">★最適</span></td><td class="r">45.2%</td><td class="r">30.8%</td><td class="r num-pos">1.53</td><td class="r num-pos">+1,138万</td><td class="r">+0.623%</td></tr><tr><td>-2.5%</td><td class="r">33.3%</td><td class="r">32.7%</td><td class="r ">1.48</td><td class="r num-pos">+1,170万</td><td class="r">+0.618%</td></tr><tr style="background:rgba(96,165,250,0.08)"><td>-3.0% <span style="color:var(--blue);font-size:0.7rem">現行</span></td><td class="r">23.1%</td><td class="r">34.0%</td><td class="r ">1.45</td><td class="r num-pos">+1,088万</td><td class="r">+0.611%</td></tr><tr><td>-3.5%</td><td class="r">16.6%</td><td class="r">34.6%</td><td class="r ">1.43</td><td class="r num-pos">+1,108万</td><td class="r">+0.603%</td></tr><tr><td>-4.0%</td><td class="r">11.8%</td><td class="r">35.0%</td><td class="r ">1.43</td><td class="r num-pos">+1,110万</td><td class="r">+0.604%</td></tr><tr><td>-5.0%</td><td class="r">5.9%</td><td class="r">35.3%</td><td class="r ">1.42</td><td class="r num-pos">+1,070万</td><td class="r">+0.600%</td></tr><tr><td>-6.0%</td><td class="r">3.3%</td><td class="r">35.5%</td><td class="r ">1.45</td><td class="r num-pos">+1,122万</td><td class="r">+0.637%</td></tr><tr><td>-8.0%</td><td class="r">1.2%</td><td class="r">35.7%</td><td class="r ">1.45</td><td class="r num-pos">+1,096万</td><td class="r">+0.640%</td></tr><tr><td>-10.0%</td><td class="r">0.5%</td><td class="r">35.7%</td><td class="r ">1.45</td><td class="r num-pos">+1,096万</td><td class="r">+0.644%</td></tr><tr><td>-15.0%</td><td class="r">0.2%</td><td class="r">35.7%</td><td class="r ">1.45</td><td class="r num-pos">+1,093万</td><td class="r">+0.643%</td></tr><tr><td>なし</td><td class="r">0.0%</td><td class="r">35.8%</td><td class="r ">1.45</td><td class="r num-pos">+1,083万</td><td class="r">+0.640%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="chart-B3" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B4: SLシミュレーション</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>SL</th><th class="r">SL到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均リターン</th></tr></thead>
+        <tbody><tr><td>-1.5%</td><td class="r">78.8%</td><td class="r">21.1%</td><td class="r num-pos">1.84</td><td class="r num-pos">+1,133万</td><td class="r">+1.000%</td></tr><tr><td>-2.0%</td><td class="r">74.2%</td><td class="r">25.7%</td><td class="r num-pos">1.73</td><td class="r num-pos">+1,476万</td><td class="r">+1.079%</td></tr><tr><td>-2.5%</td><td class="r">69.6%</td><td class="r">30.1%</td><td class="r num-pos">1.68</td><td class="r num-pos">+1,754万</td><td class="r">+1.190%</td></tr><tr style="background:rgba(96,165,250,0.08)"><td>-3.0% <span style="color:var(--blue);font-size:0.7rem">現行</span></td><td class="r">65.7%</td><td class="r">34.0%</td><td class="r num-pos">1.63</td><td class="r num-pos">+1,860万</td><td class="r">+1.237%</td></tr><tr><td>-3.5%</td><td class="r">62.2%</td><td class="r">37.4%</td><td class="r num-pos">1.59</td><td class="r num-pos">+2,050万</td><td class="r">+1.277%</td></tr><tr><td>-4.0%</td><td class="r">58.6%</td><td class="r">40.9%</td><td class="r num-pos">1.57</td><td class="r num-pos">+2,358万</td><td class="r">+1.343%</td></tr><tr><td>-5.0%</td><td class="r">52.3%</td><td class="r">46.6%</td><td class="r num-pos">1.54</td><td class="r num-pos">+2,698万</td><td class="r">+1.425%</td></tr><tr><td>-6.0%</td><td class="r">46.7%</td><td class="r">51.4%</td><td class="r num-pos">1.53</td><td class="r num-pos">+2,929万</td><td class="r">+1.504%</td></tr><tr><td>-8.0%</td><td class="r">37.5%</td><td class="r">58.3%</td><td class="r num-pos">1.54</td><td class="r num-pos">+3,237万</td><td class="r">+1.640%</td></tr><tr><td>-10.0%</td><td class="r">30.7%</td><td class="r">62.5%</td><td class="r num-pos">1.54</td><td class="r num-pos">+3,466万</td><td class="r">+1.727%</td></tr><tr><td>-15.0%</td><td class="r">19.1%</td><td class="r">67.0%</td><td class="r num-pos">1.58</td><td class="r num-pos">+3,466万</td><td class="r">+1.894%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>なし <span style="color:var(--emerald);font-size:0.7rem">★最適</span></td><td class="r">0.0%</td><td class="r">70.7%</td><td class="r num-pos">2.26</td><td class="r num-pos">+5,476万</td><td class="r">+3.001%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="chart-B4" class="chart"></div>
+  </div>
+</div>
+
+<!-- Period Analysis -->
+<div class="section">
+  <h2>期間別: 最適SL推移（全体 vs 足元）</h2>
+  <table>
+    <thead><tr><th>ルール</th><th class="r">件数</th><th class="r">最適SL</th><th class="r">最適PF</th><th class="r">最適PnL</th><th class="r">現行-3% PF/PnL</th><th class="r">差分</th></tr></thead>
+    <tbody><tr><td colspan="7" style="background:rgba(255,255,255,0.05);font-weight:700;padding-top:12px">全体</td></tr><tr><td>B1</td><td class="r">19,535</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">1.37</td><td class="r">+1,355万</td><td class="r">1.31 / +2,074万</td><td class="r num-neg">-719万</td></tr><tr><td>B2</td><td class="r">21,082</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">1.32</td><td class="r">+1,647万</td><td class="r">1.26 / +2,136万</td><td class="r num-neg">-489万</td></tr><tr><td>B3</td><td class="r">8,062</td><td class="r" style="color:var(--emerald);font-weight:700">-2.0%</td><td class="r">1.53</td><td class="r">+1,138万</td><td class="r">1.45 / +1,088万</td><td class="r num-pos">+50万</td></tr><tr><td>B4</td><td class="r">10,628</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">2.26</td><td class="r">+5,476万</td><td class="r">1.63 / +1,860万</td><td class="r num-pos">+3,617万</td></tr><tr><td colspan="7" style="background:rgba(255,255,255,0.05);font-weight:700;padding-top:12px">直近10年 (2017-2026)</td></tr><tr><td>B1</td><td class="r">7,808</td><td class="r" style="color:var(--emerald);font-weight:700">-6.0%</td><td class="r">1.44</td><td class="r">+2,057万</td><td class="r">1.43 / +1,861万</td><td class="r num-pos">+196万</td></tr><tr><td>B2</td><td class="r">8,656</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">1.48</td><td class="r">+1,469万</td><td class="r">1.46 / +2,015万</td><td class="r num-neg">-546万</td></tr><tr><td>B3</td><td class="r">4,171</td><td class="r" style="color:var(--emerald);font-weight:700">-2.0%</td><td class="r">1.64</td><td class="r">+959万</td><td class="r">1.58 / +936万</td><td class="r num-pos">+24万</td></tr><tr><td>B4</td><td class="r">3,132</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">3.03</td><td class="r">+4,247万</td><td class="r">2.03 / +1,472万</td><td class="r num-pos">+2,776万</td></tr><tr><td colspan="7" style="background:rgba(255,255,255,0.05);font-weight:700;padding-top:12px">直近7年 (2020-2026)</td></tr><tr><td>B1</td><td class="r">5,441</td><td class="r" style="color:var(--emerald);font-weight:700">-6.0%</td><td class="r">1.55</td><td class="r">+1,885万</td><td class="r">1.52 / +1,607万</td><td class="r num-pos">+279万</td></tr><tr><td>B2</td><td class="r">5,977</td><td class="r" style="color:var(--emerald);font-weight:700">-2.5%</td><td class="r">1.57</td><td class="r">+1,654万</td><td class="r">1.56 / +1,849万</td><td class="r num-neg">-195万</td></tr><tr><td>B3</td><td class="r">2,624</td><td class="r" style="color:var(--emerald);font-weight:700">-2.0%</td><td class="r">1.85</td><td class="r">+841万</td><td class="r">1.78 / +827万</td><td class="r num-pos">+14万</td></tr><tr><td>B4</td><td class="r">2,391</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">3.22</td><td class="r">+3,926万</td><td class="r">2.29 / +1,408万</td><td class="r num-pos">+2,518万</td></tr><tr><td colspan="7" style="background:rgba(255,255,255,0.05);font-weight:700;padding-top:12px">直近5年 (2022-2026)</td></tr><tr><td>B1</td><td class="r">3,665</td><td class="r" style="color:var(--emerald);font-weight:700">-6.0%</td><td class="r">1.58</td><td class="r">+1,627万</td><td class="r">1.54 / +1,272万</td><td class="r num-pos">+355万</td></tr><tr><td>B2</td><td class="r">4,132</td><td class="r" style="color:var(--emerald);font-weight:700">-2.5%</td><td class="r">1.52</td><td class="r">+1,407万</td><td class="r">1.49 / +1,551万</td><td class="r num-neg">-144万</td></tr><tr><td>B3</td><td class="r">1,924</td><td class="r" style="color:var(--emerald);font-weight:700">-1.5%</td><td class="r">2.06</td><td class="r">+585万</td><td class="r">1.99 / +731万</td><td class="r num-neg">-146万</td></tr><tr><td>B4</td><td class="r">1,484</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">6.20</td><td class="r">+3,140万</td><td class="r">2.99 / +1,288万</td><td class="r num-pos">+1,852万</td></tr><tr><td colspan="7" style="background:rgba(255,255,255,0.05);font-weight:700;padding-top:12px">直近3年 (2024-2026)</td></tr><tr><td>B1</td><td class="r">1,882</td><td class="r" style="color:var(--emerald);font-weight:700">-6.0%</td><td class="r">1.74</td><td class="r">+1,378万</td><td class="r">1.69 / +1,262万</td><td class="r num-pos">+116万</td></tr><tr><td>B2</td><td class="r">2,124</td><td class="r" style="color:var(--emerald);font-weight:700">-2.5%</td><td class="r">1.67</td><td class="r">+1,042万</td><td class="r">1.65 / +1,018万</td><td class="r num-pos">+24万</td></tr><tr><td>B3</td><td class="r">934</td><td class="r" style="color:var(--emerald);font-weight:700">-2.0%</td><td class="r">1.96</td><td class="r">+362万</td><td class="r">1.89 / +395万</td><td class="r num-neg">-33万</td></tr><tr><td>B4</td><td class="r">954</td><td class="r" style="color:var(--emerald);font-weight:700">なし</td><td class="r">6.77</td><td class="r">+2,691万</td><td class="r">3.47 / +1,055万</td><td class="r num-pos">+1,636万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-info">
+    <strong>最適SLは3年〜10年で安定</strong>: B1=-6%, B4=なし はどのウィンドウでも一貫。<br>
+    B4は足元ほどPFが向上（全体2.26→直近3年6.77）。戦略の劣化は見られない。<br>
+    <strong>一律SL-3%は全期間で次善策。ルール別SLで改善余地あり。</strong>
+  </div>
+</div>
+
+<!-- B4 Risk -->
+<div class="section">
+  <h2>B4 リスク分析（SLなし推奨の注意点）</h2>
+  <h3>最悪MAEトップ5</h3>
+  <table>
+    <thead><tr><th>銘柄</th><th>エントリー日</th><th class="r">エントリー価格</th><th class="r">MAE</th><th class="r">MFE</th><th class="r">リターン</th><th class="r">保有日</th></tr></thead>
+    <tbody><tr><td>9983.T</td><td>2000-06-28</td><td class="r">2677</td><td class="r num-neg">-79.8%</td><td class="r">+5.3%</td><td class="r">-9.3%</td><td class="r">34d</td></tr><tr><td>9501.T</td><td>2011-03-22</td><td class="r">1098</td><td class="r num-neg">-73.4%</td><td class="r">+7.0%</td><td class="r">-57.1%</td><td class="r">34d</td></tr><tr><td>9501.T</td><td>2011-03-23</td><td class="r">1060</td><td class="r num-neg">-72.5%</td><td class="r">+10.8%</td><td class="r">-55.6%</td><td class="r">33d</td></tr><tr><td>5631.T</td><td>2008-09-16</td><td class="r">6042</td><td class="r num-neg">-70.8%</td><td class="r">+0.0%</td><td class="r">-52.8%</td><td class="r">36d</td></tr><tr><td>5631.T</td><td>2008-09-24</td><td class="r">5653</td><td class="r num-neg">-68.8%</td><td class="r">+0.0%</td><td class="r">-49.6%</td><td class="r">30d</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    <strong>生存者バイアスに注意:</strong> この分析は現在のTOPIX構成143銘柄が対象。<br>
+    過去26年で上場廃止・倒産した銘柄はデータに含まれていない。<br>
+    B4（乖離率-8%超で買い）は倒産直前の銘柄でも発火する。<br>
+    <strong>実運用では B4 にも緩めのSL（-15%〜-20%）を検討</strong>し、壊滅的損失を防ぐべき。
+  </div>
+</div>
+
+<!-- Recovery Analysis -->
+<div class="section">
+  <h2>SLで切られるトレードの特性</h2>
+  <table>
+    <thead><tr><th>ルール</th><th class="r">SL到達件数</th><th class="r">一時含み益あり率</th><th class="r">平均MFE</th><th class="r">生存組の勝率</th></tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td class="r">12,350件 (63.2%)</td><td class="r">94%</td><td class="r">+3.61%</td><td class="r">63.1%</td></tr><tr><td><strong>B2</strong></td><td class="r">10,459件 (49.6%)</td><td class="r">92%</td><td class="r">+1.96%</td><td class="r">64.8%</td></tr><tr><td><strong>B3</strong></td><td class="r">3,645件 (45.2%)</td><td class="r">95%</td><td class="r">+2.41%</td><td class="r">56.1%</td></tr><tr><td>B4</td><td colspan="4">SLなし推奨</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    SLで切られるトレードの90%以上が<strong>一時的に含み益を経験</strong>している。<br>
+    これはSL幅の問題というより、<strong>利確タイミング（Chapter 4）</strong>との組み合わせで改善すべき課題。
+  </div>
+</div>
+
+<script>
+const dark = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{ color:'#a1a1aa', family:'-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif' },
+  xaxis:{ gridcolor:'#27272a', zerolinecolor:'#3f3f46' },
+  yaxis:{ gridcolor:'#27272a', zerolinecolor:'#3f3f46' },
+  margin:{ t:40, r:60, b:50, l:60 }
+};
+
+Plotly.newPlot('chart-B1', [
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1.370025216321016, 1.3448938454113937, 1.3211930679531905, 1.3116490462565025, 1.2941362443022497, 1.274615420158614, 1.2676843102290203, 1.2608440382282549, 1.2561456339992378, 1.2523265317113645, 1.2484347118619772], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#34d399', size:8 }, line:{ color:'#34d399' } },
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1354.78963297, 2054.23582168, 2037.26653191, 2073.84611038, 2032.01058915, 1950.11407256, 1954.95286137, 2085.5597681000004, 2098.30870436, 2036.2676041000002, 2023.7728285899996], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } }
+], {
+  ...dark,
+  title: { text: 'B1: PF & PnL vs SL幅', font:{ size:13, color:'#fafafa' } },
+  xaxis: { ...dark.xaxis, title:'SL幅 (%)', dtick:1 },
+  yaxis: { ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2: { title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  shapes: [{ type:'line', x0:1.5, x1:1.5, y0:0, y1:1, yref:'paper', line:{ color:'#34d399', width:2, dash:'dash' } }],
+  annotations: [{ x:1.5, y:1, yref:'paper', text:'最適', showarrow:false, font:{ color:'#34d399', size:10 }, yanchor:'bottom' }],
+  legend: { x:0.7, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode: 'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('chart-B2', [
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1.3189642992410247, 1.2933447837323082, 1.2735221045107052, 1.2589989399953572, 1.2501372932128065, 1.244731288522499, 1.233112637542066, 1.2280180539010197, 1.230816518076088, 1.2256194399280624, 1.2250613745269052], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#6ee7b7', size:8 }, line:{ color:'#6ee7b7' } },
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1646.9216571399998, 1756.48371838, 1955.84259245, 2135.88725993, 2148.37743279, 2131.2306300200003, 2009.4088996199998, 2029.5027418099999, 2013.51695476, 1989.5505420900001, 1999.2636040300001], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } }
+], {
+  ...dark,
+  title: { text: 'B2: PF & PnL vs SL幅', font:{ size:13, color:'#fafafa' } },
+  xaxis: { ...dark.xaxis, title:'SL幅 (%)', dtick:1 },
+  yaxis: { ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2: { title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  shapes: [{ type:'line', x0:1.5, x1:1.5, y0:0, y1:1, yref:'paper', line:{ color:'#34d399', width:2, dash:'dash' } }],
+  annotations: [{ x:1.5, y:1, yref:'paper', text:'最適', showarrow:false, font:{ color:'#34d399', size:10 }, yanchor:'bottom' }],
+  legend: { x:0.7, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode: 'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('chart-B3', [
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1.5151847361561908, 1.5256566259539988, 1.4802606932010487, 1.4528062327367697, 1.4338901122298209, 1.4283086633764004, 1.4215631992111952, 1.4454800971775132, 1.4471610729112483, 1.4514802602994652, 1.448975064827706], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#a7f3d0', size:8 }, line:{ color:'#a7f3d0' } },
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1018.0807193599999, 1137.66880877, 1170.39760164, 1088.16789342, 1108.04584817, 1110.07273316, 1069.51004365, 1122.2339281599998, 1096.4630009, 1096.22138836, 1092.77764152], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } }
+], {
+  ...dark,
+  title: { text: 'B3: PF & PnL vs SL幅', font:{ size:13, color:'#fafafa' } },
+  xaxis: { ...dark.xaxis, title:'SL幅 (%)', dtick:1 },
+  yaxis: { ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2: { title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  shapes: [{ type:'line', x0:2.0, x1:2.0, y0:0, y1:1, yref:'paper', line:{ color:'#34d399', width:2, dash:'dash' } }],
+  annotations: [{ x:2.0, y:1, yref:'paper', text:'最適', showarrow:false, font:{ color:'#34d399', size:10 }, yanchor:'bottom' }],
+  legend: { x:0.7, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode: 'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('chart-B4', [
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1.8436797509393796, 1.7256849742227152, 1.6821251866905123, 1.6260843865900714, 1.5850961653662632, 1.5712293548718708, 1.5425210637073266, 1.5327950796025163, 1.5360260705056252, 1.5412939114059705, 1.5819295085798053], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#fbbf24', size:8 }, line:{ color:'#fbbf24' } },
+  { x: [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0], y: [1133.37461189, 1475.8903564500001, 1753.9348881500002, 1859.83001246, 2050.263199, 2358.28311632, 2698.32589547, 2928.75505901, 3236.5942889299995, 3466.21463651, 3466.31957768], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } }
+], {
+  ...dark,
+  title: { text: 'B4: PF & PnL vs SL幅', font:{ size:13, color:'#fafafa' } },
+  xaxis: { ...dark.xaxis, title:'SL幅 (%)', dtick:1 },
+  yaxis: { ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2: { title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  shapes: [{ type:'line', x0:999.0, x1:999.0, y0:0, y1:1, yref:'paper', line:{ color:'#34d399', width:2, dash:'dash' } }],
+  annotations: [{ x:999.0, y:1, yref:'paper', text:'最適', showarrow:false, font:{ color:'#34d399', size:10 }, yanchor:'bottom' }],
+  legend: { x:0.7, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode: 'overlay'
+}, { responsive:true });
+
+</script>
+
+<footer>Generated by 04_sl_optimization.py | strategy_verification/chapters/03_sl_optimization</footer>
+</body>
+</html>

@@ -54,11 +54,7 @@ def regenerate_all_signals(prices_df: pd.DataFrame) -> pd.DataFrame:
     sig_mask = ps["sig_A"] | ps["sig_B"]
     sigs = ps[sig_mask].copy()
 
-    # フィルター適用
-    sigs = sigs[sigs["market_uptrend"] == True]
-    sigs = sigs[sigs["macro_ci_expand"] == True]
-    sigs = sigs[~sigs["sectors"].isin(BAD_SECTORS)]
-    sigs = sigs[sigs["Close"] < 20000]
+    # フィルターなし（全シグナルで発射台を確認）
 
     # signal_type列
     sigs["signal_type"] = sigs.apply(
@@ -92,6 +88,7 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
 
     dates = tk["date"].values
     opens = tk["Open"].values
+    highs = tk["High"].values
     lows = tk["Low"].values
     closes = tk["Close"].values
     sma5s = tk["sma5"].values
@@ -114,14 +111,38 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
     entry_date = pd.Timestamp(dates[entry_idx])
     sl_price = entry_price * (1 - SL_PCT / 100)
 
+    # overnight gap: signal_date終値 → entry_date始値
+    prev_close = float(closes[idx])
+    overnight_gap_pct = (entry_price / prev_close - 1) * 100 if prev_close > 0 else 0.0
+
+    # MAE/MFE追跡
+    min_low = entry_price
+    max_high = entry_price
+    mae_day = 0
+    mfe_day = 0
+
     for d in range(MAX_HOLD_DAYS):
         ci = entry_idx + d
         if ci >= len(dates):
             return None  # データ不足、トレード未完了
 
+        # MAE/MFE更新
+        current_low = float(lows[ci])
+        current_high = float(highs[ci])
+        if current_low < min_low:
+            min_low = current_low
+            mae_day = d
+        if current_high > max_high:
+            max_high = current_high
+            mfe_day = d
+
+        mae_pct = (min_low / entry_price - 1) * 100
+        mfe_pct = (max_high / entry_price - 1) * 100
+
         # SL判定（IFD逆指値、ザラ場中に自動執行）
-        if float(lows[ci]) <= sl_price:
-            return _result(entry_date, dates[ci], entry_price, sl_price, "SL")
+        if current_low <= sl_price:
+            return _result(entry_date, dates[ci], entry_price, sl_price, "SL",
+                           mae_pct, mfe_pct, mae_day, mfe_day, d, overnight_gap_pct)
 
         # エントリー日は出口条件チェックしない
         if d == 0:
@@ -136,7 +157,8 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
             if ci + 1 >= len(dates):
                 return None
             return _result(entry_date, dates[ci + 1], entry_price,
-                           float(opens[ci + 1]), "SMA20_touch")
+                           float(opens[ci + 1]), "SMA20_touch",
+                           mae_pct, mfe_pct, mae_day, mfe_day, d + 1, overnight_gap_pct)
 
         # デッドクロス（SMA5がSMA20を上から下に交差）→ 翌日寄付売り
         prev_sma5 = float(sma5s[ci - 1])
@@ -145,26 +167,30 @@ def simulate_trade(prices_df: pd.DataFrame, ticker: str,
             if ci + 1 >= len(dates):
                 return None
             return _result(entry_date, dates[ci + 1], entry_price,
-                           float(opens[ci + 1]), "dead_cross")
+                           float(opens[ci + 1]), "dead_cross",
+                           mae_pct, mfe_pct, mae_day, mfe_day, d + 1, overnight_gap_pct)
 
         # 7日経過マイナスなら翌朝損切り
         if d == 6 and close_val < entry_price:
             if ci + 1 >= len(dates):
                 return None
             return _result(entry_date, dates[ci + 1], entry_price,
-                           float(opens[ci + 1]), "time_cut")
+                           float(opens[ci + 1]), "time_cut",
+                           mae_pct, mfe_pct, mae_day, mfe_day, d + 1, overnight_gap_pct)
 
         # 最大保有日数到達 → 翌日寄付売り
         if d == MAX_HOLD_DAYS - 1:
             if ci + 1 >= len(dates):
                 return None
             return _result(entry_date, dates[ci + 1], entry_price,
-                           float(opens[ci + 1]), "expire")
+                           float(opens[ci + 1]), "expire",
+                           mae_pct, mfe_pct, mae_day, mfe_day, d + 1, overnight_gap_pct)
 
     return None
 
 
-def _result(entry_date, exit_date_raw, entry_price, exit_price, exit_type):
+def _result(entry_date, exit_date_raw, entry_price, exit_price, exit_type,
+            mae_pct, mfe_pct, mae_day, mfe_day, exit_day, overnight_gap_pct):
     exit_date = pd.Timestamp(exit_date_raw)
     ret_pct = (exit_price / entry_price - 1) * 100
     pnl_yen = int((exit_price - entry_price) * 100)  # 100株
@@ -176,6 +202,12 @@ def _result(entry_date, exit_date_raw, entry_price, exit_price, exit_type):
         "ret_pct": round(ret_pct, 3),
         "pnl_yen": pnl_yen,
         "exit_type": exit_type,
+        "mae_pct": round(mae_pct, 3),
+        "mfe_pct": round(mfe_pct, 3),
+        "mae_day": mae_day,
+        "mfe_day": mfe_day,
+        "exit_day": exit_day,
+        "overnight_gap_pct": round(overnight_gap_pct, 3),
     }
 
 
@@ -281,7 +313,7 @@ def run_backtest() -> int:
 
 
 def _simulate_alt(prices_df, ticker, signal_date, signal_type, use_7d):
-    """7日引け / SLのみ用の比較シミュレーション"""
+    """7日引け / SLのみ用の比較シミュレーション（MAE/MFEはダミー値）"""
     tk = prices_df[prices_df["ticker"] == ticker].sort_values("date")
     if tk.empty:
         return None
@@ -302,16 +334,17 @@ def _simulate_alt(prices_df, ticker, signal_date, signal_type, use_7d):
     ed = pd.Timestamp(dates[ei])
     sl = ep * 0.97
     hold_limit = 7 if use_7d else 60
+    _z = 0.0  # ダミー値（比較用なのでMAE/MFEは使わない）
 
     for d in range(hold_limit):
         ci = ei + d
         if ci >= len(dates):
             return None
         if float(lows[ci]) <= sl:
-            return _result(ed, dates[ci], ep, sl, "SL")
+            return _result(ed, dates[ci], ep, sl, "SL", _z, _z, 0, 0, d, _z)
         if use_7d:
             if d == hold_limit - 1:
-                return _result(ed, dates[ci], ep, float(closes[ci]), "expire")
+                return _result(ed, dates[ci], ep, float(closes[ci]), "expire", _z, _z, 0, 0, d, _z)
             continue
         if d == 0:
             continue
@@ -319,16 +352,16 @@ def _simulate_alt(prices_df, ticker, signal_date, signal_type, use_7d):
         s5, s20 = float(sma5s[ci]), float(sma20s[ci])
         if signal_type in ("A", "A+B") and cv >= s20:
             if ci + 1 < len(dates):
-                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "SMA20_touch")
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "SMA20_touch", _z, _z, 0, 0, d + 1, _z)
             return None
         ps5, ps20 = float(sma5s[ci - 1]), float(sma20s[ci - 1])
         if ps5 >= ps20 and s5 < s20:
             if ci + 1 < len(dates):
-                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "dead_cross")
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "dead_cross", _z, _z, 0, 0, d + 1, _z)
             return None
         if d == 59:
             if ci + 1 < len(dates):
-                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "expire")
+                return _result(ed, dates[ci + 1], ep, float(opens[ci + 1]), "expire", _z, _z, 0, 0, d + 1, _z)
             return None
     return None
 
