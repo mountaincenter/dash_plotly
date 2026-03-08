@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>グランビル4法則 × レジーム × SMA期間 全網羅</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e0e0e0; font-family: 'SF Mono', 'Consolas', monospace; padding: 24px; }
+  h1 { font-size: 20px; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 16px; color: #ccc; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+  .signal-desc { display: grid; grid-template-columns: 60px 1fr 1fr; gap: 4px 16px; font-size: 12px; color: #aaa; margin-bottom: 20px; padding: 12px; background: #111118; border-radius: 6px; }
+  .signal-desc .label { color: #fff; font-weight: bold; }
+  .signal-desc .cond { color: #8be9fd; }
+  .signal-desc .exit { color: #ffb86c; }
+
+  /* ヒートマップテーブル */
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  th { background: #16161e; color: #888; font-size: 11px; font-weight: 600; padding: 8px 10px; text-align: right; border-bottom: 2px solid #333; }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { padding: 7px 10px; font-size: 13px; text-align: right; border-bottom: 1px solid #1a1a24; }
+  td:first-child { text-align: left; color: #ccc; font-weight: 600; }
+  td:nth-child(2) { text-align: left; }
+  tr:hover { background: #1a1a2e; }
+
+  .up { color: #50fa7b; }
+  .dn { color: #ff5555; }
+  .regime-up { background: #0d1f0d; }
+  .regime-dn { background: #1f0d0d; }
+
+  /* PF色分け */
+  .pf-danger { color: #ff5555; font-weight: bold; }
+  .pf-weak { color: #f1fa8c; }
+  .pf-ok { color: #8be9fd; }
+  .pf-good { color: #50fa7b; }
+  .pf-great { color: #00ff88; font-weight: bold; }
+
+  /* PnL色分け */
+  .pnl-neg { color: #ff5555; }
+  .pnl-pos { color: #50fa7b; }
+  .pnl-big { color: #00ff88; font-weight: bold; font-size: 14px; }
+
+  /* ベストセル */
+  .best-cell { background: #1a2f1a !important; border: 1px solid #50fa7b; }
+  .worst-cell { background: #2f1a1a !important; border: 1px solid #ff5555; }
+
+  /* ヒートマップ by SMA */
+  .heatmap-section { margin-bottom: 28px; }
+  .heatmap-title { font-size: 14px; color: #bd93f9; margin-bottom: 8px; }
+
+  /* サマリーカード */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .card { background: #111118; border-radius: 8px; padding: 16px; border: 1px solid #222; }
+  .card-title { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+  .card-value { font-size: 24px; font-weight: bold; }
+  .card-sub { font-size: 12px; color: #666; margin-top: 4px; }
+
+  /* 結論 */
+  .conclusion { background: #111118; border: 1px solid #bd93f9; border-radius: 8px; padding: 20px; margin-top: 24px; }
+  .conclusion h3 { color: #bd93f9; margin-bottom: 12px; font-size: 15px; }
+  .conclusion table { width: auto; }
+  .conclusion td, .conclusion th { padding: 6px 14px; font-size: 13px; }
+
+  .legend { display: flex; gap: 20px; font-size: 11px; color: #888; margin-bottom: 16px; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<h1>グランビル4法則 × レジーム × SMA期間</h1>
+<p class="subtitle">全48セル網羅（1999-2026、143銘柄、同一銘柄重複除去、SLなし理論値）</p>
+
+<div class="section">
+  <div class="section-title">シグナル定義</div>
+  <div class="signal-desc">
+    <div class="label">B1</div>
+    <div class="cond">前日Close&lt;SMA20 → 当日Close&gt;SMA20、SMA上昇（ゴールデンクロス）</div>
+    <div class="exit">Exit: Close &lt; SMA20</div>
+    <div class="label">B2</div>
+    <div class="cond">SMA上昇、乖離-5%〜0%、Close&lt;SMA20、陽線（押し目買い）</div>
+    <div class="exit">Exit: Close &lt; SMA20</div>
+    <div class="label">B3</div>
+    <div class="cond">SMA上昇、Close&gt;SMA20、乖離0-3%、乖離縮小、陽線（SMA支持）</div>
+    <div class="exit">Exit: Close &lt; SMA20</div>
+    <div class="label">B4</div>
+    <div class="cond">乖離 &lt; -8%、陽線（大幅乖離からの反発）</div>
+    <div class="exit">Exit: Close &gt;= SMA20（平均回帰）</div>
+  </div>
+  <div class="legend">
+    <span>レジーム判定: N225 &gt; SMA(N) → Uptrend / N225 &lt; SMA(N) → Downtrend</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">法則別サマリー（全レジーム合算）</div>
+  <div class="cards">
+    <div class="card">
+      <div class="card-title">B1 ゴールデンクロス</div>
+      <div class="card-value up">+2,020万</div>
+      <div class="card-sub">19,896件 / PF 1.28 / 勝率33.9%</div>
+      <div class="card-sub">Upでのみ機能、Dnは損失</div>
+    </div>
+    <div class="card">
+      <div class="card-title">B2 押し目買い</div>
+      <div class="card-value up">+2,011万</div>
+      <div class="card-sub">21,437件 / PF 1.39 / 勝率42.1%</div>
+      <div class="card-sub">最短保有4.8d、件数最多</div>
+    </div>
+    <div class="card">
+      <div class="card-title">B3 SMA支持反発</div>
+      <div class="card-value" style="color:#8be9fd">+1,066万</div>
+      <div class="card-sub">8,197件 / PF 1.38 / 勝率35.7%</div>
+      <div class="card-sub">件数少、インパクト限定的</div>
+    </div>
+    <div class="card" style="border-color:#50fa7b">
+      <div class="card-title">B4 大幅乖離反発</div>
+      <div class="card-value pnl-big">+5,535万</div>
+      <div class="card-sub">10,844件 / PF 2.25 / 勝率70.7%</div>
+      <div class="card-sub">全法則中最強。Dnで真価発揮</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">全網羅テーブル（SMA期間別）</div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#00ff88"></span> PF ≥ 2.0</span>
+    <span><span class="dot" style="background:#50fa7b"></span> PF 1.5-2.0</span>
+    <span><span class="dot" style="background:#8be9fd"></span> PF 1.2-1.5</span>
+    <span><span class="dot" style="background:#f1fa8c"></span> PF 1.0-1.2</span>
+    <span><span class="dot" style="background:#ff5555"></span> PF &lt; 1.0（損失）</span>
+  </div>
+
+  <script>
+    const data = [
+      // [sma, rule, regime, n, wr, pf, pnl, hold]
+      [5,"B1","Up",13109,35.5,1.52,2440,9.9],[5,"B1","Dn",6542,30.6,0.83,-427,6.9],
+      [5,"B2","Up",12089,43.9,1.65,1818,5.6],[5,"B2","Dn",9089,39.6,1.08,193,3.7],
+      [5,"B3","Up",4704,37.4,1.60,909,11.3],[5,"B3","Dn",3377,33.4,1.13,173,8.6],
+      [5,"B4","Up",5955,72.8,2.66,3741,11.5],[5,"B4","Dn",4736,67.8,1.82,1756,13.2],
+      [10,"B1","Up",12004,35.1,1.47,2080,9.9],[10,"B1","Dn",7647,31.9,0.98,-67,7.2],
+      [10,"B2","Up",10408,42.9,1.57,1385,5.6],[10,"B2","Dn",10770,41.2,1.23,625,4.0],
+      [10,"B3","Up",5113,36.8,1.48,809,11.1],[10,"B3","Dn",2968,33.9,1.24,273,8.6],
+      [10,"B4","Up",3257,71.4,2.03,1582,11.6],[10,"B4","Dn",7434,70.2,2.37,3916,12.6],
+      [20,"B1","Up",12159,35.0,1.46,2078,9.6],[20,"B1","Dn",7492,32.0,0.98,-66,7.6],
+      [20,"B2","Up",10836,43.0,1.54,1331,5.5],[20,"B2","Dn",10342,41.0,1.25,680,4.0],
+      [20,"B3","Up",5773,36.2,1.51,962,10.7],[20,"B3","Dn",2308,34.7,1.13,120,8.8],
+      [20,"B4","Up",1723,66.7,1.37,427,13.0],[20,"B4","Dn",8968,71.3,2.57,5071,12.1],
+      [50,"B1","Up",13243,34.6,1.39,1972,9.3],[50,"B1","Dn",6408,32.3,1.02,39,8.0],
+      [50,"B2","Up",13173,42.8,1.66,2106,5.2],[50,"B2","Dn",8005,40.7,0.95,-94,4.1],
+      [50,"B3","Up",6250,35.8,1.47,979,10.5],[50,"B3","Dn",1831,35.4,1.14,102,9.0],
+      [50,"B4","Up",1535,66.4,1.68,669,13.8],[50,"B4","Dn",9156,71.3,2.42,4829,12.0],
+      [75,"B1","Up",13082,34.9,1.36,1868,9.3],[75,"B1","Dn",6569,31.9,1.07,144,8.1],
+      [75,"B2","Up",13345,42.4,1.54,1835,5.1],[75,"B2","Dn",7833,41.4,1.10,175,4.3],
+      [75,"B3","Up",6188,36.1,1.44,954,10.6],[75,"B3","Dn",1893,34.6,1.20,128,9.0],
+      [75,"B4","Up",1716,66.7,1.75,830,13.9],[75,"B4","Dn",8975,71.3,2.42,4668,12.0],
+      [200,"B1","Up",12735,34.3,1.32,1738,9.1],[200,"B1","Dn",6916,33.1,1.15,274,8.4],
+      [200,"B2","Up",13328,41.8,1.48,1733,4.9],[200,"B2","Dn",7850,42.4,1.18,278,4.5],
+      [200,"B3","Up",6129,35.9,1.50,1063,10.6],[200,"B3","Dn",1952,35.0,1.03,19,8.9],
+      [200,"B4","Up",2464,67.3,1.96,1311,13.7],[200,"B4","Dn",8227,71.6,2.38,4187,11.9],
+    ];
+
+    const smas = [5,10,20,50,75,200];
+    const maxPnl = Math.max(...data.map(d=>d[6]));
+    const minPnl = Math.min(...data.map(d=>d[6]));
+
+    function pfClass(pf) {
+      if (pf < 1.0) return 'pf-danger';
+      if (pf < 1.2) return 'pf-weak';
+      if (pf < 1.5) return 'pf-ok';
+      if (pf < 2.0) return 'pf-good';
+      return 'pf-great';
+    }
+    function pnlClass(pnl) {
+      if (pnl < 0) return 'pnl-neg';
+      if (pnl >= 3000) return 'pnl-big';
+      return 'pnl-pos';
+    }
+    function pnlBg(pnl) {
+      if (pnl < 0) {
+        const r = Math.min(255, 40 + Math.round(Math.abs(pnl) / Math.abs(minPnl) * 30));
+        return `rgba(${r}, 15, 15, 0.3)`;
+      }
+      const g = Math.min(255, 20 + Math.round(pnl / maxPnl * 40));
+      return `rgba(15, ${g}, 15, 0.3)`;
+    }
+
+    let html = '';
+    for (const sma of smas) {
+      const subset = data.filter(d => d[0] === sma);
+      html += '<div class="heatmap-section">';
+      html += '<div class="heatmap-title">レジーム判定: N225 vs SMA' + sma + '</div>';
+      html += '<table><thead><tr><th>法則</th><th>レジーム</th><th>件数</th><th>勝率</th><th>PF</th><th>PnL(万円)</th><th>平均保有</th></tr></thead><tbody>';
+      for (const row of subset) {
+        const [s, rule, regime, n, wr, pf, pnl, hold] = row;
+        const regClass = regime === 'Up' ? 'regime-up' : 'regime-dn';
+        const isBest = pnl === maxPnl;
+        const isWorst = pnl === minPnl;
+        const rowClass = isBest ? 'best-cell' : (isWorst ? 'worst-cell' : regClass);
+        html += '<tr class="' + rowClass + '">';
+        html += '<td>' + rule + '</td>';
+        html += '<td><span class="' + (regime==='Up'?'up':'dn') + '">' + (regime==='Up'?'▲ Uptrend':'▼ Downtrend') + '</span></td>';
+        html += '<td>' + n.toLocaleString() + '</td>';
+        html += '<td>' + wr.toFixed(1) + '%</td>';
+        html += '<td class="' + pfClass(pf) + '">' + pf.toFixed(2) + '</td>';
+        html += '<td class="' + pnlClass(pnl) + '" style="background:' + pnlBg(pnl) + '">' + (pnl>=0?'+':'') + pnl.toLocaleString() + '</td>';
+        html += '<td>' + hold.toFixed(1) + 'd</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table></div>';
+    }
+    document.write(html);
+  </script>
+</div>
+
+<div class="conclusion">
+  <h3>読み取れる構造</h3>
+  <table>
+    <thead>
+      <tr><th></th><th>Uptrend</th><th>Downtrend</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>B1 (GC)</td>
+        <td class="up">主力（PF 1.3-1.5、+1,700〜2,400万）</td>
+        <td class="dn">損失 or 損益なし（PF 0.8-1.1）</td>
+      </tr>
+      <tr>
+        <td>B2 (押し目)</td>
+        <td class="up">補助（PF 1.5-1.7、短期4-5d）</td>
+        <td style="color:#f1fa8c">微益〜損失（SMA50でPF 0.95）</td>
+      </tr>
+      <tr>
+        <td>B3 (SMA支持)</td>
+        <td style="color:#8be9fd">中程度（PF 1.4-1.6、件数少）</td>
+        <td style="color:#f1fa8c">微益（PF 1.0-1.2、件数さらに少）</td>
+      </tr>
+      <tr>
+        <td style="font-weight:bold">B4 (乖離反発)</td>
+        <td style="color:#8be9fd">件数少（SMA20で1,723件）</td>
+        <td class="pnl-big">圧倒的（PF 2.4-2.6、+3,900〜5,000万）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #333;">
+    <h3>SMA期間の影響</h3>
+    <ul style="font-size: 13px; color: #ccc; padding-left: 20px; line-height: 1.8;">
+      <li><strong>B4 × Downtrend</strong>: SMA20でPF 2.57/+5,071万が最大。SMA期間が長いほどDowntrend判定が遅れ、B4の件数は増えるがPFが下がる</li>
+      <li><strong>B1 × Uptrend</strong>: SMA5でPF 1.52/+2,440万が最大。SMA期間が長いほどPF低下（SMA200でPF 1.32）</li>
+      <li><strong>B2 × Uptrend</strong>: SMA50でPnL +2,106万が最大だが、SMA5でPF 1.65が最高。PnLとPFが別のSMAで最適化</li>
+      <li><strong>B1 × Downtrend</strong>: 全SMAでPF ≤ 1.15。<span class="dn">このセルは使わない</span></li>
+    </ul>
+  </div>
+
+  <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #333;">
+    <h3>未検証事項（次のステップ）</h3>
+    <ul style="font-size: 13px; color: #888; padding-left: 20px; line-height: 1.8;">
+      <li>SL -3% 付きでの全セル再検証</li>
+      <li>資金制約（¥500万）込みの同時保有シミュレーション</li>
+      <li>B2/B3の採用可否（B1/B4に加えるべきか）</li>
+      <li>レジーム判定をUptrend/Downtrendで別のSMAにする可能性</li>
+      <li>CI先行指数フィルターの有効性</li>
+    </ul>
+  </div>
+</div>
+
+<div style="margin-top: 20px; color: #555; font-size: 11px;">
+  生成: 2026-03-02 / データ: granville_8rules_trades.parquet (60,374 LONG trades) / SLなし理論値
+</div>
+
+</body>
+</html>

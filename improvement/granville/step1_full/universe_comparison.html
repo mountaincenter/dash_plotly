@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 1 Full: ユニバース比較検証</title>
+<style>
+  :root {
+    --bg:#0a0a0f; --card:#13131a; --border:#1e1e2e; --text:#e0e0e8; --muted:#8888a0;
+    --accent:#6366f1; --green:#22c55e; --green-dim:rgba(34,197,94,0.15);
+    --red:#ef4444; --red-dim:rgba(239,68,68,0.15); --gold:#f59e0b; --gold-dim:rgba(245,158,11,0.12);
+    --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.12); --cyan:#06b6d4; --purple:#a855f7;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;}
+  .slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 80px;border-bottom:1px solid var(--border);position:relative;}
+  .slide-number{position:absolute;top:30px;right:40px;font-size:13px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .slide h1{font-size:48px;font-weight:700;margin-bottom:16px;letter-spacing:-1px;}
+  .slide h2{font-size:32px;font-weight:600;margin-bottom:12px;}
+  .hero{text-align:center;align-items:center;}
+  .hero h1{font-size:52px;}
+  .subtitle{font-size:20px;color:var(--muted);margin-bottom:40px;max-width:800px;}
+  .verdict{display:inline-block;padding:10px 28px;border-radius:8px;font-size:17px;font-weight:600;margin:6px 4px;}
+  .verdict.green{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.3);}
+  .verdict.red{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+  .verdict.gold{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(245,158,11,0.3);}
+  .metrics{display:flex;gap:20px;flex-wrap:wrap;margin:28px 0;}
+  .mc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 28px;flex:1;min-width:180px;}
+  .mc .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+  .mc .value{font-size:36px;font-weight:700;letter-spacing:-1px;}
+  .mc .detail{font-size:13px;color:var(--muted);margin-top:4px;}
+  .mc.hl{border-color:var(--green);box-shadow:0 0 25px rgba(34,197,94,0.1);}
+  .narrative{font-size:17px;max-width:850px;margin:16px 0;line-height:1.8;}
+  .narrative strong{color:#fff;}
+  .evidence{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:16px 0;}
+  .evidence .title{font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:20px 0;}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin:20px 0;}
+  .insight{background:linear-gradient(135deg,rgba(99,102,241,0.06),rgba(6,182,212,0.06));border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:20px 24px;margin:16px 0;max-width:900px;}
+  .insight h4{color:var(--accent);font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+  .pos{color:var(--green);}
+  .neg{color:var(--red);}
+  .conclusion-card{background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,197,94,0.08));border:1px solid rgba(99,102,241,0.3);border-radius:20px;padding:36px;margin:24px 0;max-width:900px;}
+  .footnote{font-size:12px;color:var(--muted);margin-top:20px;padding-top:12px;border-top:1px solid var(--border);}
+  .progress{position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:100;}
+  .progress .dot{width:10px;height:10px;border-radius:50%;background:var(--border);cursor:pointer;transition:all 0.3s;}
+  .progress .dot:hover,.progress .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+
+  /* Chart bars */
+  .chart{margin:20px 0;max-width:860px;}
+  .chart-title{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+  .crow{display:flex;align-items:center;margin:4px 0;height:34px;}
+  .crow .cl{width:120px;font-size:13px;color:var(--muted);text-align:right;padding-right:12px;flex-shrink:0;}
+  .crow .ct{flex:1;height:100%;background:#151520;border-radius:4px;position:relative;overflow:hidden;}
+  .crow .cf{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:13px;font-weight:600;color:#fff;transition:width 0.5s ease;}
+  .crow .cv{width:100px;font-size:12px;padding-left:8px;color:var(--muted);flex-shrink:0;}
+  .crow.active .ct{box-shadow:0 0 12px rgba(34,197,94,0.2);}
+
+  /* Matrix table */
+  .tt-matrix{border-collapse:collapse;font-size:14px;margin:16px 0;width:100%;}
+  .tt-matrix th,.tt-matrix td{padding:10px 16px;text-align:center;}
+  .tt-matrix th{background:#151520;color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;}
+  .tt-matrix td{border-bottom:1px solid #1a1a25;}
+  .tt-matrix .pass{background:var(--green-dim);color:var(--green);font-weight:700;}
+  .tt-matrix .fail{background:var(--red-dim);color:var(--red);font-weight:700;}
+  .tt-matrix .warn{background:var(--gold-dim);color:var(--gold);font-weight:700;}
+  .tt-matrix .dim{opacity:0.4;}
+  .tt-matrix .left{text-align:left;}
+
+  /* Heatmap cell */
+  .hm{border-radius:6px;padding:8px 12px;text-align:center;font-weight:700;font-size:18px;}
+
+  @media(max-width:900px){.two-col,.three-col{grid-template-columns:1fr;}.slide{padding:40px 24px;}.slide h1{font-size:36px;}}
+</style>
+</head>
+<body>
+
+<nav class="progress" id="nav">
+  <div class="dot" onclick="goto(0)" title="結論"></div>
+  <div class="dot" onclick="goto(1)" title="3ユニバース"></div>
+  <div class="dot" onclick="goto(2)" title="PF矛盾"></div>
+  <div class="dot" onclick="goto(3)" title="セグメント"></div>
+  <div class="dot" onclick="goto(4)" title="レジーム"></div>
+  <div class="dot" onclick="goto(5)" title="年別"></div>
+  <div class="dot" onclick="goto(6)" title="判定"></div>
+</nav>
+
+<!-- ========== SLIDE 0: 結論 ========== -->
+<section class="slide hero" id="s0">
+  <span class="slide-number">Step 1 Full / Universe</span>
+  <h1>TOPIX構成銘柄が<br>最適ユニバース</h1>
+  <p class="subtitle">143銘柄→1,660銘柄に拡張。PnL 5倍、PF改善。非TOPIXはデータ品質問題で不採用。</p>
+
+  <div style="margin:24px 0;">
+    <span class="verdict green">TOPIX 1,660銘柄: PF 1.48 / PnL +36,303万</span>
+    <span class="verdict red">非TOPIX 2,104銘柄: PF/PnL 矛盾 → 不採用</span>
+  </div>
+
+  <div class="metrics" style="max-width:900px;">
+    <div class="mc">
+      <div class="label">143銘柄（現行）</div>
+      <div class="value">1.40</div>
+      <div class="detail">PnL +7,199万 / 60,351 trades</div>
+    </div>
+    <div class="mc hl">
+      <div class="label">TOPIX 1,660銘柄</div>
+      <div class="value pos">1.48</div>
+      <div class="detail">PnL +36,303万 / 640,423 trades</div>
+    </div>
+    <div class="mc" style="border-color:var(--red);opacity:0.6;">
+      <div class="label">全銘柄 3,764</div>
+      <div class="value neg" style="font-size:28px;">破綻</div>
+      <div class="detail">PF 2.88 なのに PnL -625,795万</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 1: 3 Universes ========== -->
+<section class="slide" id="s1">
+  <span class="slide-number">01 / Three Universes</span>
+  <h2>3つのユニバースで<br>グランビル8法則を検証した</h2>
+
+  <div style="max-width:900px;">
+    <table class="tt-matrix">
+      <tr>
+        <th>ユニバース</th>
+        <th>銘柄数</th>
+        <th>LONG trades</th>
+        <th>PF</th>
+        <th>avg PnL</th>
+        <th>Total PnL万</th>
+        <th>判定</th>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:600;">143銘柄（現行）</td>
+        <td>143</td>
+        <td>60,351</td>
+        <td style="font-size:18px;">1.40</td>
+        <td class="pos">+1,192</td>
+        <td class="pos" style="font-size:18px;">+7,199</td>
+        <td>基準</td>
+      </tr>
+      <tr style="background:rgba(34,197,94,0.05);">
+        <td class="left" style="font-weight:600;color:var(--green);">TOPIX構成（推奨）</td>
+        <td style="color:var(--green);">1,660</td>
+        <td>640,423</td>
+        <td class="pass" style="font-size:18px;">1.48</td>
+        <td class="pos">+566</td>
+        <td class="pass" style="font-size:20px;">+36,303</td>
+        <td class="pass">採用</td>
+      </tr>
+      <tr style="opacity:0.6;">
+        <td class="left" style="font-weight:600;color:var(--red);">全銘柄</td>
+        <td>3,764</td>
+        <td>1,227,591</td>
+        <td class="fail" style="font-size:18px;">2.88*</td>
+        <td class="neg">-5,097</td>
+        <td class="fail" style="font-size:18px;">-625,795</td>
+        <td class="fail">不採用</td>
+      </tr>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;">* PF 2.88 は%ベース計算。金額ベースでは大幅マイナス（後述）</p>
+  </div>
+
+  <div class="two-col" style="max-width:900px;margin-top:24px;">
+    <div>
+      <div class="chart-title">LONG PnL（万円）</div>
+      <div class="chart">
+        <div class="crow"><div class="cl">143銘柄</div><div class="ct"><div class="cf" style="width:20%;background:linear-gradient(90deg,#4b5563,#6b7280);">+7,199</div></div></div>
+        <div class="crow active"><div class="cl" style="color:var(--green);font-weight:700;">TOPIX</div><div class="ct"><div class="cf" style="width:100%;background:linear-gradient(90deg,#16a34a,#22c55e);">+36,303</div></div></div>
+        <div class="crow"><div class="cl" style="color:var(--red);">全銘柄</div><div class="ct"><div class="cf" style="width:0%;background:var(--red);"></div></div><div class="cv" style="color:var(--red);">-625,795</div></div>
+      </div>
+    </div>
+    <div class="insight" style="margin:0;">
+      <h4>読み方</h4>
+      <p style="font-size:15px;">
+        143銘柄 → TOPIXへの拡張で<strong>PnLが5倍</strong>。<br>
+        銘柄を増やしたことでエッジが<strong>希薄化せず強化</strong>された。<br><br>
+        全銘柄に広げると<strong>PnLが崩壊</strong>。<br>
+        非TOPIX銘柄が大量のノイズを持ち込んでいる。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 2: PF/PnL Paradox ========== -->
+<section class="slide" id="s2">
+  <span class="slide-number">02 / PF Paradox</span>
+  <h2>PF が高いのに PnL がマイナス？</h2>
+  <p class="subtitle">非TOPIX銘柄のデータ品質問題が PF 計算を歪めている。</p>
+
+  <div class="two-col" style="max-width:900px;">
+    <div>
+      <div class="chart-title">法則別: 全銘柄 PF vs PnL</div>
+      <table class="tt-matrix">
+        <tr><th>法則</th><th>PF</th><th>PnL万</th><th>矛盾?</th></tr>
+        <tr><td>B1</td><td style="color:var(--green);">2.53</td><td class="neg">-149,555</td><td class="fail">PF &gt; 1 なのに損失</td></tr>
+        <tr><td>B2</td><td style="color:var(--green);">3.88</td><td class="pos">+8,251</td><td style="color:var(--muted);">整合</td></tr>
+        <tr><td>B3</td><td style="color:var(--green);">2.76</td><td class="pos">+15,045</td><td style="color:var(--muted);">整合</td></tr>
+        <tr><td>B4</td><td style="color:var(--green);">2.51</td><td class="neg">-499,537</td><td class="fail">PF &gt; 1 なのに損失</td></tr>
+      </table>
+    </div>
+    <div class="evidence" style="margin:0;">
+      <div class="title">原因: 価格×%リターンの乖離</div>
+      <p style="font-size:15px;">
+        <strong>PF</strong> = 勝ちの%合計 / 負けの%合計<br>
+        <strong>PnL</strong> = 株価 × 100株 × %リターン<br><br>
+        <span style="color:var(--cyan);">50円の株が +200% → PnL +10,000円</span><br>
+        <span style="color:var(--red);">30,000円の株が -3% → PnL -90,000円</span><br><br>
+        低価格小型株の巨大な%リターンが<br>
+        <strong>PFを上方にバイアス</strong>するが、<br>
+        金額では大型株の損失が圧倒的に大きい。<br><br>
+        <span style="font-size:13px;color:var(--muted);">
+          全銘柄のうち 91,178 trades が entry &lt; 100円<br>
+          27,615 trades が entry &lt; 50円
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <div class="insight" style="max-width:900px;">
+    <h4>結論</h4>
+    <p style="font-size:15px;">
+      PF単体での評価は<strong>同一価格帯の銘柄群</strong>でのみ有効。<br>
+      価格帯が50円〜50,000円に分散するユニバースでは<strong>PFが信頼できない指標</strong>になる。<br>
+      TOPIX構成銘柄なら価格帯がある程度揃っているため、PFとPnLが整合する。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 3: Segment Matrix ========== -->
+<section class="slide" id="s3">
+  <span class="slide-number">03 / Segments</span>
+  <h2>セグメント別 LONG: どこにエッジがあるか</h2>
+
+  <div style="max-width:900px;">
+    <table class="tt-matrix">
+      <tr>
+        <th>セグメント</th>
+        <th>銘柄数</th>
+        <th>B1</th>
+        <th>B2</th>
+        <th>B3</th>
+        <th>B4</th>
+        <th>LONG計 PF</th>
+        <th>PnL万</th>
+      </tr>
+      <tr>
+        <td class="left">Core30</td><td>31</td>
+        <td>1.36</td><td>1.34</td><td>1.58</td><td>1.45</td>
+        <td style="font-weight:700;">1.41</td>
+        <td class="pos">+2,775</td>
+      </tr>
+      <tr>
+        <td class="left">Large70</td><td>69</td>
+        <td>1.26</td><td>1.20</td><td>1.49</td><td>1.63</td>
+        <td style="font-weight:700;">1.35</td>
+        <td class="pos">+3,139</td>
+      </tr>
+      <tr>
+        <td class="left">Mid400</td><td>396</td>
+        <td>1.32</td><td>1.21</td><td>1.39</td><td>1.66</td>
+        <td style="font-weight:700;">1.38</td>
+        <td class="pos">+9,878</td>
+      </tr>
+      <tr style="background:rgba(34,197,94,0.04);">
+        <td class="left" style="color:var(--green);">Small 1</td><td>494</td>
+        <td style="color:var(--green);">1.45</td><td>1.34</td><td class="pass">1.63</td><td>1.66</td>
+        <td class="pass" style="font-size:16px;">1.50</td>
+        <td class="pos" style="font-weight:700;">+10,841</td>
+      </tr>
+      <tr style="background:rgba(34,197,94,0.04);">
+        <td class="left" style="color:var(--green);">Small 2</td><td>670</td>
+        <td>1.41</td><td>1.31</td><td>1.57</td><td class="pass">1.95</td>
+        <td class="pass" style="font-size:16px;">1.55</td>
+        <td class="pos" style="font-weight:700;">+9,668</td>
+      </tr>
+      <tr style="border-top:2px solid var(--border);">
+        <td class="left" style="color:var(--gold);">Prime Other</td><td>41</td>
+        <td>1.50</td><td>1.32</td><td>1.63</td><td>1.85</td>
+        <td style="font-weight:700;color:var(--gold);">1.58</td>
+        <td class="pos">+736</td>
+      </tr>
+      <tr style="opacity:0.5;">
+        <td class="left" style="color:var(--red);">Standard</td><td>1,461</td>
+        <td class="fail">4.08*</td><td class="fail">8.43*</td><td class="fail">5.12*</td><td class="fail">3.69*</td>
+        <td class="fail">5.04*</td>
+        <td class="neg" style="font-weight:700;">-665,905</td>
+      </tr>
+      <tr style="opacity:0.5;">
+        <td class="left">Growth</td><td>602</td>
+        <td>1.31</td><td>1.25</td><td>1.84</td><td>1.56</td>
+        <td style="font-weight:700;">1.45</td>
+        <td class="pos">+3,069</td>
+      </tr>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;">* Standard の PF は価格バイアスにより虚偽の高値。PnL -66.6億が実態。</p>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="insight" style="margin:0;">
+      <h4>TOPIX内の発見</h4>
+      <p style="font-size:15px;">
+        <strong>Small 1 / Small 2 が最も強い</strong>。<br>
+        PF 1.50 / 1.55、PnL +10,841 / +9,668万。<br><br>
+        特に <strong>B4 (乖離反発) が Small 2 で PF 1.95</strong>。<br>
+        小型株の急落→反発パターンが最も顕著。<br><br>
+        Core30/Large70 は PF 1.35-1.41 で控えめだが安定。
+      </p>
+    </div>
+    <div class="insight" style="margin:0;">
+      <h4>Prime Other の可能性</h4>
+      <p style="font-size:15px;">
+        TOPIX外のプライム市場41銘柄は<strong>PF 1.58</strong>。<br>
+        小サンプルだがエッジは強い。<br><br>
+        <strong>Growth (PF 1.45)</strong> もエッジはあるが、<br>
+        銘柄の新陳代謝が激しく<br>
+        バックテストの信頼性に注意が必要。<br><br>
+        Standard は<strong>完全に不採用</strong>。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 4: TOPIX Regime ========== -->
+<section class="slide" id="s4">
+  <span class="slide-number">04 / TOPIX Regime</span>
+  <h2>TOPIX 1,660銘柄: レジーム × 法則</h2>
+  <p class="subtitle">143銘柄で確認したレジーム特性が、1,660銘柄でも再現するか。</p>
+
+  <div style="max-width:900px;">
+    <div class="three-col">
+      <div></div>
+      <div style="text-align:center;"><span style="background:rgba(34,197,94,0.15);color:var(--green);padding:4px 16px;border-radius:6px;font-size:13px;font-weight:600;">UPTREND</span></div>
+      <div style="text-align:center;"><span style="background:rgba(239,68,68,0.15);color:var(--red);padding:4px 16px;border-radius:6px;font-size:13px;font-weight:600;">DOWNTREND</span></div>
+    </div>
+
+    <table class="tt-matrix">
+      <tr>
+        <th>法則</th>
+        <th>PF</th><th>PnL万</th><th>trades</th>
+        <th>PF</th><th>PnL万</th><th>trades</th>
+        <th>判定</th>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:700;">B1 (GC)</td>
+        <td class="pass">1.49</td><td class="pos">+8,242</td><td>133,822</td>
+        <td>1.23</td><td class="pos">+2,081</td><td>80,572</td>
+        <td style="color:var(--green);">Up主力</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:700;">B2 (押し目)</td>
+        <td>1.37</td><td class="pos">+4,075</td><td>120,944</td>
+        <td>1.20</td><td class="pos">+2,428</td><td>103,676</td>
+        <td style="color:var(--muted);">両方OK</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:700;">B3 (SMA支持)</td>
+        <td class="pass">1.59</td><td class="pos">+4,474</td><td>59,818</td>
+        <td>1.39</td><td class="pos">+1,112</td><td>20,980</td>
+        <td style="color:var(--green);">Up主力</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:700;">B4 (乖離反発)</td>
+        <td>1.67</td><td class="pos">+1,221</td><td>22,544</td>
+        <td class="pass" style="font-size:18px;">1.79</td><td class="pos" style="font-weight:700;">+12,668</td><td>98,067</td>
+        <td style="color:var(--cyan);">Down主力</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div style="background:var(--green-dim);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:20px;text-align:center;">
+      <div style="font-size:13px;color:var(--muted);">Uptrend 最強シグナル</div>
+      <div style="font-size:14px;color:var(--green);margin:4px 0;">B1 (GC) + B3 (SMA支持)</div>
+      <div style="font-size:28px;font-weight:700;color:var(--green);">PF 1.49 / 1.59</div>
+      <div style="font-size:13px;color:var(--green);">合計 +12,716万</div>
+    </div>
+    <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);border-radius:12px;padding:20px;text-align:center;">
+      <div style="font-size:13px;color:var(--muted);">Downtrend 最強シグナル</div>
+      <div style="font-size:14px;color:var(--cyan);margin:4px 0;">B4 (乖離反発)</div>
+      <div style="font-size:28px;font-weight:700;color:var(--cyan);">PF 1.79</div>
+      <div style="font-size:13px;color:var(--cyan);">単独 +12,668万</div>
+    </div>
+  </div>
+
+  <div class="insight" style="max-width:900px;">
+    <h4>143銘柄版との一致</h4>
+    <p style="font-size:15px;">
+      143銘柄: B1 Up PF 1.42 → TOPIX: <strong>1.49</strong>（改善）<br>
+      143銘柄: B4 Down PF 1.70 → TOPIX: <strong>1.79</strong>（改善）<br><br>
+      レジーム×法則の構造は<strong>完全に再現</strong>。サンプル増加でPFも改善。<br>
+      <strong>エッジはユニバース拡張で希薄化しない</strong>ことが確認できた。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 5: Year by Year ========== -->
+<section class="slide" id="s5">
+  <span class="slide-number">05 / Year by Year</span>
+  <h2>年別LONG PnL: 143銘柄 vs TOPIX</h2>
+  <p class="subtitle">TOPIX拡張で全ての年のPnLがスケールアップ。構造は同一。</p>
+
+  <div style="max-width:900px;">
+    <table class="tt-matrix" style="font-size:13px;">
+      <tr>
+        <th>年</th>
+        <th colspan="2" style="color:var(--muted);">143銘柄</th>
+        <th colspan="2" style="color:var(--green);">TOPIX 1,660</th>
+        <th>倍率</th>
+      </tr>
+      <tr>
+        <th></th><th>PnL万</th><th>PF</th><th>PnL万</th><th>PF</th><th></th>
+      </tr>
+      <tr><td>2014</td><td>-44</td><td>1.12</td><td class="pos">+748</td><td>1.45</td><td style="color:var(--green);">PF改善</td></tr>
+      <tr><td>2015</td><td>+106</td><td>1.09</td><td class="pos">+889</td><td>1.31</td><td style="color:var(--green);">PF改善</td></tr>
+      <tr><td>2016</td><td>-68</td><td>1.14</td><td class="pos" style="font-weight:700;">+1,634</td><td>1.60</td><td style="color:var(--green);">逆転</td></tr>
+      <tr><td>2017</td><td>+452</td><td>1.76</td><td class="pos" style="font-weight:700;">+2,911</td><td>1.80</td><td>6.4x</td></tr>
+      <tr><td>2018</td><td class="neg">-155</td><td>0.84</td><td class="neg">-1,173</td><td>0.95</td><td style="color:var(--gold);">共に損</td></tr>
+      <tr><td>2019</td><td>+293</td><td>1.19</td><td class="pos">+1,083</td><td>1.21</td><td>3.7x</td></tr>
+      <tr><td>2020</td><td>+583</td><td>1.53</td><td class="pos">+1,316</td><td>1.24</td><td>2.3x</td></tr>
+      <tr><td>2021</td><td>+265</td><td>1.46</td><td class="pos">+417</td><td>1.17</td><td>1.6x</td></tr>
+      <tr><td>2022</td><td class="neg">-172</td><td>1.16</td><td class="neg">-1,439</td><td>0.93</td><td style="color:var(--gold);">共に損</td></tr>
+      <tr><td>2023</td><td class="pos" style="font-weight:700;">+1,284</td><td>2.18</td><td class="pos" style="font-weight:700;">+3,708</td><td>1.61</td><td>2.9x</td></tr>
+      <tr><td>2024</td><td class="pos">+1,021</td><td>1.94</td><td class="pos" style="font-weight:700;">+3,188</td><td>1.50</td><td>3.1x</td></tr>
+      <tr><td>2025</td><td class="pos" style="font-weight:700;">+1,978</td><td>2.03</td><td class="pos" style="font-weight:700;font-size:16px;">+10,618</td><td style="font-weight:700;">2.20</td><td style="color:var(--green);font-weight:700;">5.4x</td></tr>
+    </table>
+  </div>
+
+  <div class="insight" style="max-width:900px;">
+    <h4>重要な観察</h4>
+    <p style="font-size:15px;">
+      <strong>損失年（2018, 2022）は両方で損失</strong>。エッジが消える市場環境は共通。<br>
+      <strong>利益年のスケールが3-6倍</strong>。銘柄数が11.6倍なのに倍率が3-6倍に収まるのは、エッジが小型株に偏っているから。<br>
+      <strong>2025年が突出</strong>: TOPIX版で+10,618万（143銘柄版の5.4倍）。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 6: 最終判定 ========== -->
+<section class="slide" id="s6">
+  <span class="slide-number">06 / Decision</span>
+  <h2>ユニバース判定: TOPIX構成銘柄</h2>
+  <p class="subtitle">Step 2 の結論を更新。以降の検証は1,660銘柄で実施。</p>
+
+  <div class="conclusion-card">
+    <h3 style="margin-bottom:16px;">確定事項</h3>
+    <table class="tt-matrix" style="width:100%;">
+      <tr><th>項目</th><th>値</th><th>根拠</th></tr>
+      <tr>
+        <td class="left" style="font-weight:600;">ユニバース</td>
+        <td style="color:var(--green);font-weight:700;font-size:18px;">TOPIX構成 1,660銘柄</td>
+        <td style="font-size:13px;">Core30 + Large70 + Mid400 + Small1 + Small2</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:600;">LONG PF</td>
+        <td style="color:var(--green);font-weight:700;font-size:18px;">1.48</td>
+        <td style="font-size:13px;">143銘柄版(1.40)から+0.08改善</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:600;">LONG PnL</td>
+        <td style="color:var(--green);font-weight:700;font-size:18px;">+36,303万</td>
+        <td style="font-size:13px;">143銘柄版(+7,199万)の5.0倍</td>
+      </tr>
+      <tr>
+        <td class="left" style="font-weight:600;">最強組合せ</td>
+        <td style="font-weight:600;">B4 Down: PF 1.79</td>
+        <td style="font-size:13px;">単独+12,668万。Small2でPF 1.95</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="evidence" style="margin:0;">
+      <div class="title">不採用: 非TOPIX</div>
+      <p style="font-size:15px;">
+        <strong>Standard (1,461銘柄)</strong>: PFとPnLが矛盾。<br>
+        低価格株の%バイアスでPFが虚偽の高値。<br>
+        PnL -665,905万。完全不採用。<br><br>
+        <strong>Growth (602銘柄)</strong>: PF 1.45でエッジはあるが、<br>
+        上場/廃止のサバイバーシップバイアス懸念。<br>
+        将来的に検証対象にする可能性あり。
+      </p>
+    </div>
+    <div class="evidence" style="margin:0;">
+      <div class="title">次のステップ</div>
+      <p style="font-size:15px;">
+        <strong>Step 2.5 (Exit最適化)</strong><br>
+        → 1,660銘柄データで再検証<br><br>
+        <strong>Step 3 (資金制約)</strong><br>
+        → 同時保有の平均・最大数が増加するため<br>
+        　 資金配分ルールの再設計が必要<br><br>
+        <strong>データ更新</strong><br>
+        → prices/ の8セグメントparquetを<br>
+        　 定期更新する仕組みの構築
+      </p>
+    </div>
+  </div>
+
+  <div class="footnote" style="max-width:900px;">
+    データ: step1/trades_sl3.parquet (143銘柄) × step1_full/trades_full_sl3.parquet (3,765銘柄)<br>
+    価格ソース: yfinance (period=max, interval=1d) / SL-3% / SMA20 / MAX_HOLD=60<br>
+    セグメント分類: meta_jquants.parquet の topixnewindexseries + market<br>
+    生成: 2026-03-02 / Step 1 Full Universe Comparison
+  </div>
+</section>
+
+<script>
+const slides=document.querySelectorAll('.slide'),dots=document.querySelectorAll('.dot');
+function goto(i){slides[i].scrollIntoView({behavior:'smooth'});}
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=Array.from(slides).indexOf(e.target);dots.forEach((d,j)=>d.classList.toggle('active',j===i));}});},{threshold:0.5});
+slides.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

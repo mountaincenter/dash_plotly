@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<title>Step 2.5.1 ATRフィルター 直近3週間検証</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--purple:#bc8cff;--orange:#f0883e}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;padding:20px;max-width:1500px;margin:0 auto}
+h1{font-size:1.3em;margin-bottom:6px}
+.sub{color:var(--dim);font-size:0.82em;margin-bottom:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px}
+.card h3{font-size:0.85em;color:var(--dim);margin-bottom:6px}
+.card .val{font-size:1.4em;font-weight:700}
+.up{color:var(--green)}.down{color:var(--red)}.neu{color:var(--yellow)}.open-c{color:var(--purple)}
+table{width:100%;border-collapse:collapse;font-size:0.8em;margin-bottom:20px}
+th{background:var(--card);color:var(--dim);text-align:left;padding:7px 5px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap}
+td{padding:6px 5px;border-bottom:1px solid var(--border)}
+tr:hover{background:rgba(88,166,255,0.05)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.pass{color:var(--green);font-weight:700}.fail{color:var(--dim)}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:0.78em;font-weight:600}
+.tag-b1{background:rgba(63,185,80,0.15);color:var(--green)}
+.tag-b3{background:rgba(88,166,255,0.15);color:var(--blue)}
+.tag-b4{background:rgba(240,136,62,0.15);color:var(--orange)}
+.tag-sl{background:rgba(248,81,73,0.15);color:var(--red)}
+.tag-sig{background:rgba(188,140,255,0.15);color:var(--purple)}
+.tag-exp{background:rgba(139,148,158,0.15);color:var(--dim)}
+.tag-open{background:rgba(188,140,255,0.2);color:var(--purple);border:1px solid var(--purple)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px}
+.section h2{font-size:1em;margin-bottom:10px;color:var(--blue)}
+.highlight{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.3);border-radius:8px;padding:14px;margin-bottom:20px}
+.highlight h3{color:var(--green);font-size:0.95em;margin-bottom:8px}
+.highlight p{font-size:0.85em;line-height:1.6}
+.footer{margin-top:20px;padding-top:12px;border-top:1px solid var(--border);font-size:0.72em;color:var(--dim)}
+</style></head><body>
+<h1>Step 2.5.1: ATRフィルター × 直近3週間シグナル</h1>
+<p class="sub">期間: 2026/02/09 ~ 02/26 | 対象: B1(Uptrend) + B3(Uptrend) + B4(Downtrend) | SL: -3% | Exit: シグナル/7日expire | 未精算は3/2終値ベース含み損益</p>
+<div class="cards">
+<div class="card"><h3>フィルターなし</h3>
+<div class="val down">確定 -22,478円</div>
+<div class="val open-c" style="font-size:1.1em">含み +21,150円</div>
+<div style="font-size:0.78em;color:var(--dim);margin-top:4px">確定28件(12勝16敗 PF=0.87) + OPEN 9件</div></div>
+<div class="card"><h3>ATR<3.0%</h3>
+<div class="val up">確定 +40,534円</div>
+<div class="val open-c" style="font-size:1.1em">含み +9,600円</div>
+<div style="font-size:0.78em;color:var(--dim);margin-top:4px">確定12件(8勝4敗 PF=3.77) + OPEN 6件</div></div>
+<div class="card"><h3>ATR<2.5%</h3>
+<div class="val up">確定 +35,950円</div>
+<div class="val open-c" style="font-size:1.1em">含み +30,250円</div>
+<div style="font-size:0.78em;color:var(--dim);margin-top:4px">確定6件(5勝1敗 PF=999) + OPEN 4件</div></div>
+<div class="card"><h3>ATR<2.0%</h3>
+<div class="val up">確定 +12,700円</div>
+<div class="val open-c" style="font-size:1.1em">含み +26,300円</div>
+<div style="font-size:0.78em;color:var(--dim);margin-top:4px">確定4件(3勝1敗 PF=999) + OPEN 2件</div></div>
+</div>
+<div class="section"><h2>全シグナル一覧</h2>
+<table><thead><tr><th>日付</th><th>法則</th><th>銘柄</th><th>ATR%</th><th>Entry</th><th>現値/Exit</th><th>保有日</th><th>確定損益</th><th>含み損益</th><th>ret%</th><th>状態</th><th><2.0</th><th><2.5</th><th><3.0</th></tr></thead><tbody>
+<tr><td>02/09</td><td><span class="tag tag-b1">B1</span></td><td>2168.T パソナグループ</td><td class="num">2.6%</td><td class="num">2,072</td><td class="num">2,010</td><td class="num">2日</td><td class="num down">-6,216</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/09</td><td><span class="tag tag-b1">B1</span></td><td>5631.T 日本製鋼所</td><td class="num">4.3%</td><td class="num">9,156</td><td class="num">8,881</td><td class="num">4日</td><td class="num down">-27,468</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/09</td><td><span class="tag tag-b1">B1</span></td><td>8053.T 住友商事</td><td class="num">3.5%</td><td class="num">6,390</td><td class="num">6,265</td><td class="num">11日</td><td class="num down">-12,500</td><td class="num ">—</td><td class="num down">-2.0%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/09</td><td><span class="tag tag-b3">B3</span></td><td>8001.T 伊藤忠商事</td><td class="num">2.5%</td><td class="num">2,077</td><td class="num">2,250</td><td class="num">13日</td><td class="num up">+17,250</td><td class="num ">—</td><td class="num up">+8.3%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/10</td><td><span class="tag tag-b1">B1</span></td><td>3042.T セキュアヴェイル</td><td class="num">3.3%</td><td class="num">378</td><td class="num">337</td><td class="num">2日</td><td class="num down">-4,100</td><td class="num ">—</td><td class="num down">-10.8%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/10</td><td><span class="tag tag-b1">B1</span></td><td>4063.T 信越化学工業</td><td class="num">3.4%</td><td class="num">5,400</td><td class="num">6,003</td><td class="num">11日</td><td class="num up">+60,300</td><td class="num ">—</td><td class="num up">+11.2%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/10</td><td><span class="tag tag-b1">B1</span></td><td>6965.T 浜松ホトニクス</td><td class="num">3.4%</td><td class="num">1,760</td><td class="num">1,707</td><td class="num">1日</td><td class="num down">-5,280</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/10</td><td><span class="tag tag-b1">B1</span></td><td>6981.T 村田製作所</td><td class="num">4.1%</td><td class="num">3,307</td><td class="num">3,315</td><td class="num">2日</td><td class="num up">+800</td><td class="num ">—</td><td class="num up">+0.2%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/16</td><td><span class="tag tag-b1">B1</span></td><td>186A.T アストロスケール</td><td class="num">7.5%</td><td class="num">1,045</td><td class="num">1,014</td><td class="num">0日</td><td class="num down">-3,135</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/16</td><td><span class="tag tag-b1">B1</span></td><td>5401.T 日本製鉄</td><td class="num">4.2%</td><td class="num">675</td><td class="num">645</td><td class="num">6日</td><td class="num down">-3,000</td><td class="num ">—</td><td class="num down">-4.4%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/16</td><td><span class="tag tag-b1">B1</span></td><td>6232.T ACSL</td><td class="num">4.7%</td><td class="num">1,180</td><td class="num">1,145</td><td class="num">0日</td><td class="num down">-3,540</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/18</td><td><span class="tag tag-b1">B1</span></td><td>5108.T ブリヂストン</td><td class="num">2.7%</td><td class="num">3,676</td><td class="num">3,747</td><td class="num">6日</td><td class="num up">+7,100</td><td class="num ">—</td><td class="num up">+1.9%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/18</td><td><span class="tag tag-b1">B1</span></td><td>8308.T りそなホールディ</td><td class="num">4.4%</td><td class="num">1,971</td><td class="num">1,912</td><td class="num">2日</td><td class="num down">-5,913</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/18</td><td><span class="tag tag-b1">B1</span></td><td>8411.T みずほフィナンシ</td><td class="num">3.8%</td><td class="num">7,100</td><td class="num">6,850</td><td class="num">4日</td><td class="num down">-25,000</td><td class="num ">—</td><td class="num down">-3.5%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/18</td><td><span class="tag tag-b1">B1</span></td><td>9735.T セコム</td><td class="num">2.9%</td><td class="num">5,939</td><td class="num">6,045</td><td class="num">6日</td><td class="num up">+10,600</td><td class="num ">—</td><td class="num up">+1.8%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/19</td><td><span class="tag tag-b1">B1</span></td><td>6506.T 安川電機</td><td class="num">4.1%</td><td class="num">5,121</td><td class="num">5,165</td><td class="num">3日</td><td class="num up">+4,472</td><td class="num ">—</td><td class="num up">+0.9%</td><td><span class="tag tag-sig">signal</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/19</td><td><span class="tag tag-b3">B3</span></td><td>2914.T 日本たばこ産業</td><td class="num">1.9%</td><td class="num">5,987</td><td class="num">6,035</td><td class="num">5日</td><td class="num up">+4,800</td><td class="num ">—</td><td class="num up">+0.8%</td><td><span class="tag tag-exp">expire</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/20</td><td><span class="tag tag-b1">B1</span></td><td>7711.T 助川電気工業</td><td class="num">7.8%</td><td class="num">7,800</td><td class="num">7,566</td><td class="num">0日</td><td class="num down">-23,400</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/24</td><td><span class="tag tag-b1">B1</span></td><td>6857.T アドバンテスト</td><td class="num">5.0%</td><td class="num">26,765</td><td class="num">27,015</td><td class="num">2日</td><td class="num up">+25,000</td><td class="num ">—</td><td class="num up">+0.9%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/24</td><td><span class="tag tag-b1">B1</span></td><td>9021.T 西日本旅客鉄道</td><td class="num">1.9%</td><td class="num">3,361</td><td class="num">3,400</td><td class="num">2日</td><td class="num up">+3,900</td><td class="num ">—</td><td class="num up">+1.2%</td><td><span class="tag tag-exp">expire</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/24</td><td><span class="tag tag-b3">B3</span></td><td>9022.T 東海旅客鉄道</td><td class="num">2.6%</td><td class="num">4,639</td><td class="num">4,623</td><td class="num">2日</td><td class="num down">-1,600</td><td class="num ">—</td><td class="num down">-0.3%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b1">B1</span></td><td>6506.T 安川電機</td><td class="num">4.6%</td><td class="num">5,555</td><td class="num">5,388</td><td class="num">0日</td><td class="num down">-16,665</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b1">B1</span></td><td>6707.T サンケン電気</td><td class="num">3.8%</td><td class="num">7,861</td><td class="num">7,625</td><td class="num">1日</td><td class="num down">-23,583</td><td class="num ">—</td><td class="num down">-3.0%</td><td><span class="tag tag-sl">sl</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b1">B1</span></td><td>8053.T 住友商事</td><td class="num">3.0%</td><td class="num">6,518</td><td class="num">6,450</td><td class="num">1日</td><td class="num down">-6,800</td><td class="num ">—</td><td class="num down">-1.0%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>2502.T アサヒグループホ</td><td class="num">1.7%</td><td class="num">1,720</td><td class="num">1,720</td><td class="num">1日</td><td class="num neu">+0</td><td class="num ">—</td><td class="num neu">+0.0%</td><td><span class="tag tag-exp">expire</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>4452.T 花王</td><td class="num">1.8%</td><td class="num">6,620</td><td class="num">6,660</td><td class="num">1日</td><td class="num up">+4,000</td><td class="num ">—</td><td class="num up">+0.6%</td><td><span class="tag tag-exp">expire</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>6902.T デンソー</td><td class="num">2.5%</td><td class="num">2,226</td><td class="num">2,240</td><td class="num">1日</td><td class="num up">+1,500</td><td class="num ">—</td><td class="num up">+0.7%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>8725.T ＭＳ＆ＡＤインシ</td><td class="num">2.1%</td><td class="num">4,294</td><td class="num">4,354</td><td class="num">1日</td><td class="num up">+6,000</td><td class="num ">—</td><td class="num up">+1.4%</td><td><span class="tag tag-exp">expire</span></td><td class="fail">✗</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>7011.T 三菱重工業</td><td class="num">4.1%</td><td class="num">4,900</td><td class="num">5,195</td><td class="num">1日</td><td class="num ">—</td><td class="num up">+29,500</td><td class="num up">+6.0%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8060.T キヤノンマーケテ</td><td class="num">2.1%</td><td class="num">6,933</td><td class="num">6,994</td><td class="num">1日</td><td class="num ">—</td><td class="num up">+6,100</td><td class="num up">+0.9%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8306.T 三菱ＵＦＪフィナ</td><td class="num">2.9%</td><td class="num">2,934</td><td class="num">2,820</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-11,450</td><td class="num down">-3.9%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8309.T 三井住友トラスト</td><td class="num">2.5%</td><td class="num">5,417</td><td class="num">5,325</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-9,200</td><td class="num down">-1.7%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8316.T 三井住友フィナン</td><td class="num">3.2%</td><td class="num">5,886</td><td class="num">5,727</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-15,900</td><td class="num down">-2.7%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8331.T 千葉銀行</td><td class="num">3.5%</td><td class="num">2,264</td><td class="num">2,244</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-2,050</td><td class="num down">-0.9%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="fail">✗</td><td class="fail">✗</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>9433.T ＫＤＤＩ</td><td class="num">2.1%</td><td class="num">2,684</td><td class="num">2,663</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-2,150</td><td class="num down">-0.8%</td><td><span class="tag tag-open">OPEN</span></td><td class="fail">✗</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b3">B3</span></td><td>6201.T 豊田自動織機</td><td class="num">1.1%</td><td class="num">20,225</td><td class="num">20,535</td><td class="num">1日</td><td class="num ">—</td><td class="num up">+31,000</td><td class="num up">+1.5%</td><td><span class="tag tag-open">OPEN</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b3">B3</span></td><td>9021.T 西日本旅客鉄道</td><td class="num">1.8%</td><td class="num">3,400</td><td class="num">3,353</td><td class="num">1日</td><td class="num ">—</td><td class="num down">-4,700</td><td class="num down">-1.4%</td><td><span class="tag tag-open">OPEN</span></td><td class="pass">✓</td><td class="pass">✓</td><td class="pass">✓</td></tr>
+</tbody></table></div>
+<div class="section"><h2>ATR% < 2.5 通過銘柄（推奨フィルター）</h2>
+<table><thead><tr><th>日付</th><th>法則</th><th>銘柄</th><th>ATR%</th><th>Entry</th><th>現値/Exit</th><th>保有日</th><th>確定損益</th><th>含み損益</th><th>ret%</th><th>状態</th></tr></thead><tbody>
+<tr><td>02/09</td><td><span class="tag tag-b3">B3</span></td><td>8001.T 伊藤忠商事</td><td class="num">2.5%</td><td class="num">2,077</td><td class="num">2,250</td><td class="num">13日</td><td class="num up">+17,250</td><td>—</td><td class="num up">+8.3%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/19</td><td><span class="tag tag-b3">B3</span></td><td>2914.T 日本たばこ産業</td><td class="num">1.9%</td><td class="num">5,987</td><td class="num">6,035</td><td class="num">5日</td><td class="num up">+4,800</td><td>—</td><td class="num up">+0.8%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/24</td><td><span class="tag tag-b1">B1</span></td><td>9021.T 西日本旅客鉄道</td><td class="num">1.9%</td><td class="num">3,361</td><td class="num">3,400</td><td class="num">2日</td><td class="num up">+3,900</td><td>—</td><td class="num up">+1.2%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>2502.T アサヒグループホ</td><td class="num">1.7%</td><td class="num">1,720</td><td class="num">1,720</td><td class="num">1日</td><td class="num neu">+0</td><td>—</td><td class="num neu">+0.0%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>4452.T 花王</td><td class="num">1.8%</td><td class="num">6,620</td><td class="num">6,660</td><td class="num">1日</td><td class="num up">+4,000</td><td>—</td><td class="num up">+0.6%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/25</td><td><span class="tag tag-b3">B3</span></td><td>8725.T ＭＳ＆ＡＤインシ</td><td class="num">2.1%</td><td class="num">4,294</td><td class="num">4,354</td><td class="num">1日</td><td class="num up">+6,000</td><td>—</td><td class="num up">+1.4%</td><td><span class="tag tag-exp">expire</span></td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>8060.T キヤノンマーケテ</td><td class="num">2.1%</td><td class="num">6,933</td><td class="num">6,994</td><td class="num">1日</td><td>—</td><td class="num up">+6,100</td><td class="num up">+0.9%</td><td><span class="tag tag-open">OPEN</span></td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b1">B1</span></td><td>9433.T ＫＤＤＩ</td><td class="num">2.1%</td><td class="num">2,684</td><td class="num">2,663</td><td class="num">1日</td><td>—</td><td class="num down">-2,150</td><td class="num down">-0.8%</td><td><span class="tag tag-open">OPEN</span></td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b3">B3</span></td><td>6201.T 豊田自動織機</td><td class="num">1.1%</td><td class="num">20,225</td><td class="num">20,535</td><td class="num">1日</td><td>—</td><td class="num up">+31,000</td><td class="num up">+1.5%</td><td><span class="tag tag-open">OPEN</span></td></tr>
+<tr><td>02/26</td><td><span class="tag tag-b3">B3</span></td><td>9021.T 西日本旅客鉄道</td><td class="num">1.8%</td><td class="num">3,400</td><td class="num">3,353</td><td class="num">1日</td><td>—</td><td class="num down">-4,700</td><td class="num down">-1.4%</td><td><span class="tag tag-open">OPEN</span></td></tr>
+<tr style="border-top:2px solid var(--border);font-weight:700"><td colspan="7">合計</td><td class="num up">+35,950円</td><td class="num open-c">+30,250円</td><td colspan="2">確定6件(5勝1敗) + OPEN 4件</td></tr>
+</tbody></table></div>
+<div class="highlight">
+<h3>検証結果</h3>
+<p>
+<strong>フィルターなし(37件)</strong>: 高ATR銘柄のSL-3%ヒットが多発し損失<br>
+<strong>ATR < 2.5%(推奨)</strong>: 低ボラ銘柄に絞ることでSLヒット率が下がり損益改善<br>
+<strong>ATR < 2.0%</strong>: さらに絞れるがシグナル数が減りすぎる<br>
+<br>
+<strong>B4(Downtrend, ATR>6.0)</strong>: 直近3週間はUptrendのためシグナルゼロ<br>
+<strong>OPEN</strong>は2/26シグナル→2/27エントリーの未精算ポジション（3/2終値ベース含み損益）
+</p></div>
+<div class="footer">生成: 2026/03/03 | データ: trades_sl3.parquet + prices_max_1d.parquet(~3/2) | ATR: B1/B3→ATR14%≤閾値, B4→ATR14%≥6.0%</div></body></html>

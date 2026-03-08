@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Granville Step2 ユニバース比較</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 24px 32px;
+}
+h1 { font-size: 22px; color: #fff; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 8px; }
+.subtitle { color: #888; font-size: 12px; margin-bottom: 32px; }
+h2 { font-size: 16px; color: #ccc; margin-top: 40px; margin-bottom: 16px; border-left: 3px solid #555; padding-left: 12px; }
+h3 { font-size: 14px; color: #aaa; margin-top: 20px; margin-bottom: 8px; }
+section { margin-bottom: 40px; }
+.note { color: #777; font-size: 11px; margin-bottom: 12px; }
+.table-container { overflow-x: auto; margin-bottom: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th { background: #16161e; color: #aaa; padding: 8px 10px; text-align: center; border: 1px solid #2a2a35; font-weight: 600; white-space: nowrap; }
+td { padding: 6px 10px; border: 1px solid #2a2a35; white-space: nowrap; }
+.num { text-align: right; }
+.center { text-align: center; }
+tr:hover { background: rgba(255,255,255,0.03); }
+.group-header { background: #1a1a25; color: #ccc; font-size: 13px; }
+.total-row { background: #16161e; border-top: 2px solid #444; font-weight: bold; }
+.conclusion-box { background: #111118; border: 1px solid #2a2a35; border-left: 4px solid #44cc44; border-radius: 4px; padding: 16px 20px; margin-bottom: 16px; }
+.conclusion-title { font-size: 14px; font-weight: bold; color: #44cc44; margin-bottom: 8px; }
+.conclusion-box ul { margin-left: 20px; }
+.conclusion-box li { margin-bottom: 4px; }
+.cards-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.card { background: #111118; border: 1px solid #2a2a35; border-radius: 6px; padding: 16px 20px; flex: 1; min-width: 260px; }
+.card-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+.card-value { font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 6px; }
+.card-detail { font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+<h1>Granville 8法則 Step2 ユニバース比較</h1>
+<div class="subtitle">
+    分析対象: 5ユニバース × 4株価帯 × 3SLバリアント × 5ルール × 3レジーム |
+    メインSL: SL-3% | 生成日: 2026-03-02
+</div>
+<section>
+<h2>1. ユニバース比較サマリー（SL-3%, 株価帯: 制限なし, レジーム: 全体）</h2>
+<p class="note">各ユニバースのルール別パフォーマンス。セル: トレード数 / PF / 平均損益</p>
+<div class="table-container"><table>
+<tr><th>ユニバース</th>
+<th>B1</th>
+<th>B2</th>
+<th>B3</th>
+<th>B4</th>
+<th>LONG合計</th>
+</tr>
+<tr>
+<td><b>Core30</b></td>
+<td class="num">4,382 / <span style="color:#44cccc">1.36</span> / ¥+1,784</td>
+<td class="num">4,810 / <span style="color:#44cccc">1.35</span> / ¥+2,335</td>
+<td class="num">1,975 / <span style="color:#44cc44">1.59</span> / ¥+1,886</td>
+<td class="num">2,197 / <span style="color:#44cccc">1.45</span> / ¥+2,280</td>
+<td class="num">13,364 / <span style="color:#44cccc">1.41</span> / ¥+2,079</td>
+</tr>
+<tr>
+<td><b>TOPIX100</b></td>
+<td class="num">14,497 / <span style="color:#cccc44">1.29</span> / ¥+1,182</td>
+<td class="num">15,781 / <span style="color:#cccc44">1.24</span> / ¥+1,175</td>
+<td class="num">6,476 / <span style="color:#44cc44">1.52</span> / ¥+1,623</td>
+<td class="num">6,813 / <span style="color:#44cc44">1.57</span> / ¥+1,889</td>
+<td class="num">43,567 / <span style="color:#44cccc">1.37</span> / ¥+1,356</td>
+</tr>
+<tr>
+<td><b>政策銘柄</b></td>
+<td class="num">9,596 / <span style="color:#44cccc">1.37</span> / ¥+1,360</td>
+<td class="num">10,292 / <span style="color:#44cccc">1.32</span> / ¥+1,286</td>
+<td class="num">3,454 / <span style="color:#44cccc">1.40</span> / ¥+1,129</td>
+<td class="num">6,451 / <span style="color:#44cc44">1.64</span> / ¥+1,880</td>
+<td class="num">29,793 / <span style="color:#44cccc">1.44</span> / ¥+1,420</td>
+</tr>
+<tr>
+<td><b>Core30+政策銘柄</b></td>
+<td class="num">11,084 / <span style="color:#44cccc">1.38</span> / ¥+1,545</td>
+<td class="num">11,891 / <span style="color:#44cccc">1.32</span> / ¥+1,532</td>
+<td class="num">4,166 / <span style="color:#44cccc">1.44</span> / ¥+964</td>
+<td class="num">7,107 / <span style="color:#44cc44">1.64</span> / ¥+2,041</td>
+<td class="num">34,248 / <span style="color:#44cccc">1.44</span> / ¥+1,573</td>
+</tr>
+<tr class="total-row">
+<td><b>全銘柄</b></td>
+<td class="num">19,879 / <span style="color:#44cccc">1.32</span> / ¥+1,047</td>
+<td class="num">21,434 / <span style="color:#cccc44">1.26</span> / ¥+997</td>
+<td class="num">8,194 / <span style="color:#44cccc">1.45</span> / ¥+1,321</td>
+<td class="num">10,844 / <span style="color:#44cc44">1.65</span> / ¥+1,752</td>
+<td class="num">60,351 / <span style="color:#44cccc">1.40</span> / ¥+1,193</td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>2. 株価帯の影響（SL-3%, ユニバース: 全銘柄, レジーム: 全体）</h2>
+<p class="note">株価帯を制限した場合のパフォーマンス変化。高価格株の影響を確認</p>
+<div class="table-container"><table>
+<tr><th>株価帯</th>
+<th>B1</th>
+<th>B2</th>
+<th>B3</th>
+<th>B4</th>
+<th>LONG合計</th>
+</tr>
+<tr>
+<td><b><5000</b></td>
+<td class="num">18,670 / <span style="color:#44cccc">1.31</span> / ¥+492</td>
+<td class="num">20,206 / <span style="color:#cccc44">1.24</span> / ¥+313</td>
+<td class="num">7,663 / <span style="color:#44cccc">1.45</span> / ¥+913</td>
+<td class="num">10,296 / <span style="color:#44cc44">1.64</span> / ¥+1,119</td>
+<td class="num">56,835 / <span style="color:#44cccc">1.39</span> / ¥+599</td>
+</tr>
+<tr>
+<td><b><10000</b></td>
+<td class="num">19,296 / <span style="color:#44cccc">1.31</span> / ¥+562</td>
+<td class="num">20,796 / <span style="color:#cccc44">1.25</span> / ¥+415</td>
+<td class="num">7,948 / <span style="color:#44cccc">1.45</span> / ¥+989</td>
+<td class="num">10,545 / <span style="color:#44cc44">1.65</span> / ¥+1,420</td>
+<td class="num">58,585 / <span style="color:#44cccc">1.40</span> / ¥+722</td>
+</tr>
+<tr>
+<td><b><20000</b></td>
+<td class="num">19,601 / <span style="color:#44cccc">1.32</span> / ¥+760</td>
+<td class="num">21,129 / <span style="color:#cccc44">1.25</span> / ¥+520</td>
+<td class="num">8,086 / <span style="color:#44cccc">1.45</span> / ¥+1,300</td>
+<td class="num">10,686 / <span style="color:#44cc44">1.65</span> / ¥+1,547</td>
+<td class="num">59,502 / <span style="color:#44cccc">1.40</span> / ¥+890</td>
+</tr>
+<tr class="total-row">
+<td><b>制限なし</b></td>
+<td class="num">19,879 / <span style="color:#44cccc">1.32</span> / ¥+1,047</td>
+<td class="num">21,434 / <span style="color:#cccc44">1.26</span> / ¥+997</td>
+<td class="num">8,194 / <span style="color:#44cccc">1.45</span> / ¥+1,321</td>
+<td class="num">10,844 / <span style="color:#44cc44">1.65</span> / ¥+1,752</td>
+<td class="num">60,351 / <span style="color:#44cccc">1.40</span> / ¥+1,193</td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>3. ユニバース × 株価帯 クロス集計（B1, Uptrend, SL-3%）</h2>
+<p class="note">B1（GC系）のUptrend環境でのPFヒートマップ。低価格帯で効率的な組み合わせを探索</p>
+<div class="table-container"><table>
+<tr><th>ユニバース \ 株価帯</th>
+<th><5000</th>
+<th><10000</th>
+<th><20000</th>
+<th>制限なし</th>
+</tr>
+<tr>
+<td><b>Core30</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.47<br><span style="font-size:10px;color:#888">2,408件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.48<br><span style="font-size:10px;color:#888">2,523件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.47<br><span style="font-size:10px;color:#888">2,616件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.50<br><span style="font-size:10px;color:#888">2,709件</span></td>
+</tr>
+<tr>
+<td><b>TOPIX100</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.38<br><span style="font-size:10px;color:#888">8,390件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.38<br><span style="font-size:10px;color:#888">8,683件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.39<br><span style="font-size:10px;color:#888">8,864件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.39<br><span style="font-size:10px;color:#888">9,038件</span></td>
+</tr>
+<tr>
+<td><b>政策銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.48<br><span style="font-size:10px;color:#888">5,590件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.46<br><span style="font-size:10px;color:#888">5,811件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.48<br><span style="font-size:10px;color:#888">5,910件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.49<br><span style="font-size:10px;color:#888">5,999件</span></td>
+</tr>
+<tr>
+<td><b>Core30+政策銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.49<br><span style="font-size:10px;color:#888">6,430件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.47<br><span style="font-size:10px;color:#888">6,682件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.49<br><span style="font-size:10px;color:#888">6,802件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.50<br><span style="font-size:10px;color:#888">6,915件</span></td>
+</tr>
+<tr>
+<td><b>全銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.42<br><span style="font-size:10px;color:#888">11,627件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.41<br><span style="font-size:10px;color:#888">12,038件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.42<br><span style="font-size:10px;color:#888">12,236件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.42<br><span style="font-size:10px;color:#888">12,410件</span></td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>4. ユニバース × 株価帯 クロス集計（B4, Downtrend, SL-3%）</h2>
+<p class="note">B4（乖離反発系）のDowntrend環境でのPFヒートマップ。逆張り戦略の最適組み合わせ</p>
+<div class="table-container"><table>
+<tr><th>ユニバース \ 株価帯</th>
+<th><5000</th>
+<th><10000</th>
+<th><20000</th>
+<th>制限なし</th>
+</tr>
+<tr>
+<td><b>Core30</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.43<br><span style="font-size:10px;color:#888">1,801件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.48<br><span style="font-size:10px;color:#888">1,848件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.48<br><span style="font-size:10px;color:#888">1,901件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.49<br><span style="font-size:10px;color:#888">1,944件</span></td>
+</tr>
+<tr>
+<td><b>TOPIX100</b></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.61<br><span style="font-size:10px;color:#888">5,734件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.63<br><span style="font-size:10px;color:#888">5,840件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.63<br><span style="font-size:10px;color:#888">5,938件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.62<br><span style="font-size:10px;color:#888">6,067件</span></td>
+</tr>
+<tr>
+<td><b>政策銘柄</b></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.66<br><span style="font-size:10px;color:#888">5,173件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.68<br><span style="font-size:10px;color:#888">5,303件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.67<br><span style="font-size:10px;color:#888">5,377件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.67<br><span style="font-size:10px;color:#888">5,464件</span></td>
+</tr>
+<tr>
+<td><b>Core30+政策銘柄</b></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.66<br><span style="font-size:10px;color:#888">5,692件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.68<br><span style="font-size:10px;color:#888">5,838件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.67<br><span style="font-size:10px;color:#888">5,928件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.67<br><span style="font-size:10px;color:#888">6,019件</span></td>
+</tr>
+<tr>
+<td><b>全銘柄</b></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.69<br><span style="font-size:10px;color:#888">8,922件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.71<br><span style="font-size:10px;color:#888">9,109件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.70<br><span style="font-size:10px;color:#888">9,224件</span></td>
+<td class="center" style="background:#113a11; color:#44cc44; font-weight:bold">1.70<br><span style="font-size:10px;color:#888">9,353件</span></td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>5. ユニバース × 株価帯 クロス集計（LONG合計, 全体, SL-3%）</h2>
+<p class="note">全ルール合計の総合パフォーマンス。運用全体の最適ユニバース・株価帯</p>
+<div class="table-container"><table>
+<tr><th>ユニバース \ 株価帯</th>
+<th><5000</th>
+<th><10000</th>
+<th><20000</th>
+<th>制限なし</th>
+</tr>
+<tr>
+<td><b>Core30</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.37<br><span style="font-size:10px;color:#888">12,017件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.40<br><span style="font-size:10px;color:#888">12,527件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.40<br><span style="font-size:10px;color:#888">12,972件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.41<br><span style="font-size:10px;color:#888">13,364件</span></td>
+</tr>
+<tr>
+<td><b>TOPIX100</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.35<br><span style="font-size:10px;color:#888">40,642件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.36<br><span style="font-size:10px;color:#888">41,870件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.37<br><span style="font-size:10px;color:#888">42,718件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.37<br><span style="font-size:10px;color:#888">43,567件</span></td>
+</tr>
+<tr>
+<td><b>政策銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.43<br><span style="font-size:10px;color:#888">27,911件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.43<br><span style="font-size:10px;color:#888">28,882件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.44<br><span style="font-size:10px;color:#888">29,354件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.44<br><span style="font-size:10px;color:#888">29,793件</span></td>
+</tr>
+<tr>
+<td><b>Core30+政策銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.43<br><span style="font-size:10px;color:#888">31,977件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.43<br><span style="font-size:10px;color:#888">33,104件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.44<br><span style="font-size:10px;color:#888">33,698件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.44<br><span style="font-size:10px;color:#888">34,248件</span></td>
+</tr>
+<tr>
+<td><b>全銘柄</b></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.39<br><span style="font-size:10px;color:#888">56,835件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.40<br><span style="font-size:10px;color:#888">58,585件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.40<br><span style="font-size:10px;color:#888">59,502件</span></td>
+<td class="center" style="background:#112a2a; color:#44cccc; font-weight:bold">1.40<br><span style="font-size:10px;color:#888">60,351件</span></td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>6. レジーム別詳細（SL-3%, 株価帯: 制限なし）</h2>
+<p class="note">各ユニバースでレジーム効果が維持されるか確認。B1-B4 × Uptrend/Downtrend</p>
+<h3>Core30</h3>
+<div class="table-container"><table>
+<tr><th>ルール</th><th>レジーム</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th></tr>
+<tr>
+<td class="center"><b>B1</b></td>
+<td>Uptrend</td>
+<td class="num">2,709</td>
+<td class="num">32.7%</td>
+<td class="num" style="color:#44cccc">1.50</td>
+<td class="num">¥+2,093</td>
+<td class="num">+567</td>
+<td class="num">9.1日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">1,673</td>
+<td class="num">31.3%</td>
+<td class="num" style="color:#cccc44">1.16</td>
+<td class="num">¥+1,284</td>
+<td class="num">+215</td>
+<td class="num">8.0日</td>
+</tr>
+<tr>
+<td class="center"><b>B2</b></td>
+<td>Uptrend</td>
+<td class="num">2,340</td>
+<td class="num">40.6%</td>
+<td class="num" style="color:#44cccc">1.49</td>
+<td class="num">¥+2,815</td>
+<td class="num">+659</td>
+<td class="num">5.3日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">2,470</td>
+<td class="num">42.3%</td>
+<td class="num" style="color:#cccc44">1.23</td>
+<td class="num">¥+1,881</td>
+<td class="num">+465</td>
+<td class="num">4.6日</td>
+</tr>
+<tr>
+<td class="center"><b>B3</b></td>
+<td>Uptrend</td>
+<td class="num">1,464</td>
+<td class="num">33.5%</td>
+<td class="num" style="color:#44cc44">1.63</td>
+<td class="num">¥+1,721</td>
+<td class="num">+252</td>
+<td class="num">10.8日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">511</td>
+<td class="num">34.2%</td>
+<td class="num" style="color:#44cccc">1.47</td>
+<td class="num">¥+2,361</td>
+<td class="num">+121</td>
+<td class="num">9.6日</td>
+</tr>
+<tr>
+<td class="center"><b>B4</b></td>
+<td>Uptrend</td>
+<td class="num">253</td>
+<td class="num">30.4%</td>
+<td class="num" style="color:#cccc44">1.21</td>
+<td class="num">¥-4,441</td>
+<td class="num">-112</td>
+<td class="num">4.1日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">1,944</td>
+<td class="num">32.2%</td>
+<td class="num" style="color:#44cccc">1.49</td>
+<td class="num">¥+3,155</td>
+<td class="num">+613</td>
+<td class="num">3.7日</td>
+</tr>
+<tr class="total-row">
+</table></div>
+<h3>TOPIX100</h3>
+<div class="table-container"><table>
+<tr><th>ルール</th><th>レジーム</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th></tr>
+<tr>
+<td class="center"><b>B1</b></td>
+<td>Uptrend</td>
+<td class="num">9,038</td>
+<td class="num">32.3%</td>
+<td class="num" style="color:#44cccc">1.39</td>
+<td class="num">¥+1,441</td>
+<td class="num">+1,302</td>
+<td class="num">8.8日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">5,459</td>
+<td class="num">31.6%</td>
+<td class="num" style="color:#cccc44">1.13</td>
+<td class="num">¥+753</td>
+<td class="num">+411</td>
+<td class="num">8.0日</td>
+</tr>
+<tr>
+<td class="center"><b>B2</b></td>
+<td>Uptrend</td>
+<td class="num">7,897</td>
+<td class="num">40.4%</td>
+<td class="num" style="color:#44cccc">1.36</td>
+<td class="num">¥+1,166</td>
+<td class="num">+921</td>
+<td class="num">5.0日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">7,884</td>
+<td class="num">41.3%</td>
+<td class="num" style="color:#cccc44">1.13</td>
+<td class="num">¥+1,184</td>
+<td class="num">+933</td>
+<td class="num">4.5日</td>
+</tr>
+<tr>
+<td class="center"><b>B3</b></td>
+<td>Uptrend</td>
+<td class="num">4,780</td>
+<td class="num">34.7%</td>
+<td class="num" style="color:#44cc44">1.54</td>
+<td class="num">¥+1,699</td>
+<td class="num">+812</td>
+<td class="num">10.8日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">1,696</td>
+<td class="num">35.7%</td>
+<td class="num" style="color:#44cccc">1.45</td>
+<td class="num">¥+1,411</td>
+<td class="num">+239</td>
+<td class="num">9.9日</td>
+</tr>
+<tr>
+<td class="center"><b>B4</b></td>
+<td>Uptrend</td>
+<td class="num">746</td>
+<td class="num">31.2%</td>
+<td class="num" style="color:#cccc44">1.15</td>
+<td class="num">¥-501</td>
+<td class="num">-37</td>
+<td class="num">4.6日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">6,067</td>
+<td class="num">34.3%</td>
+<td class="num" style="color:#44cc44">1.62</td>
+<td class="num">¥+2,183</td>
+<td class="num">+1,324</td>
+<td class="num">3.9日</td>
+</tr>
+<tr class="total-row">
+</table></div>
+<h3>政策銘柄</h3>
+<div class="table-container"><table>
+<tr><th>ルール</th><th>レジーム</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th></tr>
+<tr>
+<td class="center"><b>B1</b></td>
+<td>Uptrend</td>
+<td class="num">5,999</td>
+<td class="num">30.4%</td>
+<td class="num" style="color:#44cccc">1.49</td>
+<td class="num">¥+1,695</td>
+<td class="num">+1,017</td>
+<td class="num">8.4日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">3,597</td>
+<td class="num">30.4%</td>
+<td class="num" style="color:#cccc44">1.20</td>
+<td class="num">¥+802</td>
+<td class="num">+289</td>
+<td class="num">7.5日</td>
+</tr>
+<tr>
+<td class="center"><b>B2</b></td>
+<td>Uptrend</td>
+<td class="num">5,274</td>
+<td class="num">39.6%</td>
+<td class="num" style="color:#44cc44">1.51</td>
+<td class="num">¥+1,362</td>
+<td class="num">+718</td>
+<td class="num">4.9日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">5,018</td>
+<td class="num">40.2%</td>
+<td class="num" style="color:#cccc44">1.15</td>
+<td class="num">¥+1,206</td>
+<td class="num">+605</td>
+<td class="num">4.4日</td>
+</tr>
+<tr>
+<td class="center"><b>B3</b></td>
+<td>Uptrend</td>
+<td class="num">2,507</td>
+<td class="num">33.3%</td>
+<td class="num" style="color:#44cccc">1.50</td>
+<td class="num">¥+1,257</td>
+<td class="num">+315</td>
+<td class="num">9.7日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">947</td>
+<td class="num">31.7%</td>
+<td class="num" style="color:#cccc44">1.15</td>
+<td class="num">¥+788</td>
+<td class="num">+75</td>
+<td class="num">8.6日</td>
+</tr>
+<tr>
+<td class="center"><b>B4</b></td>
+<td>Uptrend</td>
+<td class="num">987</td>
+<td class="num">32.8%</td>
+<td class="num" style="color:#44cccc">1.46</td>
+<td class="num">¥-134</td>
+<td class="num">-13</td>
+<td class="num">4.3日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">5,464</td>
+<td class="num">33.5%</td>
+<td class="num" style="color:#44cc44">1.67</td>
+<td class="num">¥+2,244</td>
+<td class="num">+1,226</td>
+<td class="num">3.9日</td>
+</tr>
+<tr class="total-row">
+</table></div>
+<h3>Core30+政策銘柄</h3>
+<div class="table-container"><table>
+<tr><th>ルール</th><th>レジーム</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th></tr>
+<tr>
+<td class="center"><b>B1</b></td>
+<td>Uptrend</td>
+<td class="num">6,915</td>
+<td class="num">30.8%</td>
+<td class="num" style="color:#44cc44">1.50</td>
+<td class="num">¥+2,022</td>
+<td class="num">+1,398</td>
+<td class="num">8.5日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">4,169</td>
+<td class="num">30.6%</td>
+<td class="num" style="color:#cccc44">1.19</td>
+<td class="num">¥+755</td>
+<td class="num">+315</td>
+<td class="num">7.6日</td>
+</tr>
+<tr>
+<td class="center"><b>B2</b></td>
+<td>Uptrend</td>
+<td class="num">6,093</td>
+<td class="num">39.8%</td>
+<td class="num" style="color:#44cc44">1.50</td>
+<td class="num">¥+1,504</td>
+<td class="num">+916</td>
+<td class="num">4.9日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">5,798</td>
+<td class="num">40.3%</td>
+<td class="num" style="color:#cccc44">1.15</td>
+<td class="num">¥+1,562</td>
+<td class="num">+906</td>
+<td class="num">4.4日</td>
+</tr>
+<tr>
+<td class="center"><b>B3</b></td>
+<td>Uptrend</td>
+<td class="num">3,043</td>
+<td class="num">32.5%</td>
+<td class="num" style="color:#44cccc">1.49</td>
+<td class="num">¥+876</td>
+<td class="num">+266</td>
+<td class="num">9.8日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">1,123</td>
+<td class="num">32.5%</td>
+<td class="num" style="color:#cccc44">1.29</td>
+<td class="num">¥+1,204</td>
+<td class="num">+135</td>
+<td class="num">9.1日</td>
+</tr>
+<tr>
+<td class="center"><b>B4</b></td>
+<td>Uptrend</td>
+<td class="num">1,088</td>
+<td class="num">32.9%</td>
+<td class="num" style="color:#44cccc">1.45</td>
+<td class="num">¥-186</td>
+<td class="num">-20</td>
+<td class="num">4.3日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">6,019</td>
+<td class="num">33.6%</td>
+<td class="num" style="color:#44cc44">1.67</td>
+<td class="num">¥+2,443</td>
+<td class="num">+1,471</td>
+<td class="num">3.9日</td>
+</tr>
+<tr class="total-row">
+</table></div>
+<h3>全銘柄</h3>
+<div class="table-container"><table>
+<tr><th>ルール</th><th>レジーム</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th></tr>
+<tr>
+<td class="center"><b>B1</b></td>
+<td>Uptrend</td>
+<td class="num">12,410</td>
+<td class="num">31.3%</td>
+<td class="num" style="color:#44cccc">1.42</td>
+<td class="num">¥+1,298</td>
+<td class="num">+1,611</td>
+<td class="num">8.5日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">7,469</td>
+<td class="num">31.1%</td>
+<td class="num" style="color:#cccc44">1.16</td>
+<td class="num">¥+629</td>
+<td class="num">+470</td>
+<td class="num">7.8日</td>
+</tr>
+<tr>
+<td class="center"><b>B2</b></td>
+<td>Uptrend</td>
+<td class="num">10,952</td>
+<td class="num">39.9%</td>
+<td class="num" style="color:#44cccc">1.41</td>
+<td class="num">¥+982</td>
+<td class="num">+1,075</td>
+<td class="num">4.9日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">10,482</td>
+<td class="num">40.7%</td>
+<td class="num" style="color:#cccc44">1.12</td>
+<td class="num">¥+1,012</td>
+<td class="num">+1,061</td>
+<td class="num">4.4日</td>
+</tr>
+<tr>
+<td class="center"><b>B3</b></td>
+<td>Uptrend</td>
+<td class="num">6,020</td>
+<td class="num">33.8%</td>
+<td class="num" style="color:#44cccc">1.50</td>
+<td class="num">¥+1,400</td>
+<td class="num">+843</td>
+<td class="num">10.3日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">2,174</td>
+<td class="num">34.3%</td>
+<td class="num" style="color:#44cccc">1.33</td>
+<td class="num">¥+1,101</td>
+<td class="num">+239</td>
+<td class="num">9.5日</td>
+</tr>
+<tr>
+<td class="center"><b>B4</b></td>
+<td>Uptrend</td>
+<td class="num">1,491</td>
+<td class="num">32.2%</td>
+<td class="num" style="color:#44cccc">1.32</td>
+<td class="num">¥+259</td>
+<td class="num">+39</td>
+<td class="num">4.5日</td>
+</tr>
+<tr>
+<td class="center"><b></b></td>
+<td>Downtrend</td>
+<td class="num">9,353</td>
+<td class="num">34.4%</td>
+<td class="num" style="color:#44cc44">1.70</td>
+<td class="num">¥+1,990</td>
+<td class="num">+1,861</td>
+<td class="num">4.0日</td>
+</tr>
+<tr class="total-row">
+</table></div>
+</section>
+<section>
+<h2>7. SL比較（TOPIX100, 株価帯: 制限なし, レジーム: 全体）</h2>
+<p class="note">ストップロス設定の比較。SLなし / SL-3% / SL-5% のパフォーマンス差</p>
+<div class="table-container"><table>
+<tr><th>SL</th><th>ルール</th><th>トレード数</th><th>勝率</th><th>PF</th><th>平均損益</th><th>合計損益(万)</th><th>平均保有</th><th>SL発動率</th></tr>
+<tr>
+<td><b>SLなし</b></td>
+<td><b>B1</b></td>
+<td class="num">14,497</td>
+<td class="num">34.4%</td>
+<td class="num" style="color:#cccc44">1.22</td>
+<td class="num">¥+1,129</td>
+<td class="num">+1,637</td>
+<td class="num">9.4日</td>
+<td class="num">0.0%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B2</b></td>
+<td class="num">15,781</td>
+<td class="num">42.4%</td>
+<td class="num" style="color:#cccc44">1.21</td>
+<td class="num">¥+1,129</td>
+<td class="num">+1,782</td>
+<td class="num">5.1日</td>
+<td class="num">0.0%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B3</b></td>
+<td class="num">6,476</td>
+<td class="num">36.4%</td>
+<td class="num" style="color:#44cc44">1.50</td>
+<td class="num">¥+1,594</td>
+<td class="num">+1,032</td>
+<td class="num">11.1日</td>
+<td class="num">0.0%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B4</b></td>
+<td class="num">6,813</td>
+<td class="num">70.8%</td>
+<td class="num" style="color:#00ff66">2.28</td>
+<td class="num">¥+6,416</td>
+<td class="num">+4,372</td>
+<td class="num">12.6日</td>
+<td class="num">0.0%</td>
+</tr>
+<tr class="total-row">
+<td><b></b></td>
+<td><b>LONG合計</b></td>
+<td class="num">43,567</td>
+<td class="num">43.3%</td>
+<td class="num" style="color:#44cc44">1.50</td>
+<td class="num">¥+2,025</td>
+<td class="num">+8,823</td>
+<td class="num">8.6日</td>
+<td class="num">0.0%</td>
+</tr>
+<tr><td colspan="9" style="background:#0a0a0f; height:4px; border:none;"></td></tr>
+<tr>
+<td><b>SL-3%</b></td>
+<td><b>B1</b></td>
+<td class="num">14,497</td>
+<td class="num">32.0%</td>
+<td class="num" style="color:#cccc44">1.29</td>
+<td class="num">¥+1,182</td>
+<td class="num">+1,713</td>
+<td class="num">8.5日</td>
+<td class="num">27.8%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B2</b></td>
+<td class="num">15,781</td>
+<td class="num">40.8%</td>
+<td class="num" style="color:#cccc44">1.24</td>
+<td class="num">¥+1,175</td>
+<td class="num">+1,854</td>
+<td class="num">4.7日</td>
+<td class="num">18.7%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B3</b></td>
+<td class="num">6,476</td>
+<td class="num">35.0%</td>
+<td class="num" style="color:#44cc44">1.52</td>
+<td class="num">¥+1,623</td>
+<td class="num">+1,051</td>
+<td class="num">10.6日</td>
+<td class="num">21.2%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B4</b></td>
+<td class="num">6,813</td>
+<td class="num">34.0%</td>
+<td class="num" style="color:#44cc44">1.57</td>
+<td class="num">¥+1,889</td>
+<td class="num">+1,287</td>
+<td class="num">4.0日</td>
+<td class="num">65.7%</td>
+</tr>
+<tr class="total-row">
+<td><b></b></td>
+<td><b>LONG合計</b></td>
+<td class="num">43,567</td>
+<td class="num">36.0%</td>
+<td class="num" style="color:#44cccc">1.37</td>
+<td class="num">¥+1,356</td>
+<td class="num">+5,906</td>
+<td class="num">6.7日</td>
+<td class="num">29.4%</td>
+</tr>
+<tr><td colspan="9" style="background:#0a0a0f; height:4px; border:none;"></td></tr>
+<tr>
+<td><b>SL-5%</b></td>
+<td><b>B1</b></td>
+<td class="num">14,497</td>
+<td class="num">33.8%</td>
+<td class="num" style="color:#cccc44">1.24</td>
+<td class="num">¥+1,062</td>
+<td class="num">+1,540</td>
+<td class="num">9.2日</td>
+<td class="num">8.5%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B2</b></td>
+<td class="num">15,781</td>
+<td class="num">42.1%</td>
+<td class="num" style="color:#cccc44">1.22</td>
+<td class="num">¥+1,117</td>
+<td class="num">+1,763</td>
+<td class="num">5.0日</td>
+<td class="num">5.2%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B3</b></td>
+<td class="num">6,476</td>
+<td class="num">36.2%</td>
+<td class="num" style="color:#44cc44">1.50</td>
+<td class="num">¥+1,648</td>
+<td class="num">+1,067</td>
+<td class="num">11.0日</td>
+<td class="num">4.7%</td>
+</tr>
+<tr>
+<td><b></b></td>
+<td><b>B4</b></td>
+<td class="num">6,813</td>
+<td class="num">46.4%</td>
+<td class="num" style="color:#44cccc">1.47</td>
+<td class="num">¥+2,878</td>
+<td class="num">+1,961</td>
+<td class="num">5.7日</td>
+<td class="num">52.5%</td>
+</tr>
+<tr class="total-row">
+<td><b></b></td>
+<td><b>LONG合計</b></td>
+<td class="num">43,567</td>
+<td class="num">39.2%</td>
+<td class="num" style="color:#44cccc">1.33</td>
+<td class="num">¥+1,453</td>
+<td class="num">+6,331</td>
+<td class="num">7.4日</td>
+<td class="num">13.6%</td>
+</tr>
+</table></div>
+</section>
+<section>
+<h2>8. Step 2 結論</h2>
+<div class="conclusion-box">
+<div class="conclusion-title">資金制約下の最適ユニバース</div>
+<ul>
+<li>PF最高: <b>Core30+政策銘柄</b>（PF 1.44, 平均損益 ¥+1,573）</li>
+<li>Core30: PF 1.41, 13,364トレード, 合計 +2,779万</li>
+</ul>
+</div>
+<div class="conclusion-box">
+<div class="conclusion-title">最大PnLのユニバース</div>
+<ul>
+<li>合計損益最大: <b>全銘柄</b>（合計 +7,199万, PF 1.40）</li>
+<li>TOPIX100: 合計 +5,906万, PF 1.37, 43,567トレード</li>
+</ul>
+</div>
+<div class="conclusion-box">
+<div class="conclusion-title">株価帯の影響</div>
+<ul>
+<li><5000: PF 1.39, 平均損益 ¥+599, 合計 +3,403万</li>
+<li><10000: PF 1.40, 平均損益 ¥+722, 合計 +4,231万</li>
+<li><20000: PF 1.40, 平均損益 ¥+890, 合計 +5,293万</li>
+<li>制限なし: PF 1.40, 平均損益 ¥+1,193, 合計 +7,199万</li>
+</ul>
+</div>
+<div class="conclusion-box">
+<div class="conclusion-title">Step 2.5 への提言</div>
+<ul>
+<li>PF効率とトレード数のバランスが取れたユニバースを選定基盤とする</li>
+<li>株価帯フィルタは過学習リスクがあるため、制限なしをデフォルトとして検証継続</li>
+<li>SL-3%をベースラインとして固定し、エントリーフィルタの追加検証に進む</li>
+<li>レジーム別のルール適用（Uptrend→B1, Downtrend→B4）の有効性を全ユニバースで確認</li>
+</ul>
+</div>
+</section>
+</body>
+</html>

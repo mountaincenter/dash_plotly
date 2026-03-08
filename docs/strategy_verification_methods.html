@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>トレード戦略の検証手法ガイド — MAE/MFE・Exit Timing・レジーム分解・WFO</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.1);
+    --rose: #fb7185; --rose-bg: rgba(251,113,133,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.15);
+    --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.1);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,0.1);
+    --cyan: #22d3ee; --cyan-bg: rgba(34,211,238,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.8; padding:24px; max-width:960px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:4px; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+  .badge-blue { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(96,165,250,0.3); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(167,139,250,0.3); }
+  .badge-amber { background:var(--amber-bg); color:var(--amber); border:1px solid rgba(251,191,36,0.3); }
+  .badge-emerald { background:var(--emerald-bg); color:var(--emerald); border:1px solid rgba(52,211,153,0.3); }
+  .badge-rose { background:var(--rose-bg); color:var(--rose); border:1px solid rgba(251,113,133,0.3); }
+  .badge-cyan { background:var(--cyan-bg); color:var(--cyan); border:1px solid rgba(34,211,238,0.3); }
+
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:28px; margin-bottom:24px; }
+  .section h2 { font-size:1.15rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .section h3 { font-size:0.95rem; margin:20px 0 8px 0; color:var(--text); }
+  .section h4 { font-size:0.85rem; margin:14px 0 6px 0; color:var(--text-muted); font-weight:600; }
+
+  .intro-box { background:var(--blue-bg); border:1px solid rgba(96,165,250,0.3); border-radius:8px; padding:20px; margin-bottom:24px; font-size:0.9rem; line-height:1.9; color:var(--blue); }
+  .intro-box strong { color:var(--text); }
+
+  .concept-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:20px; margin:16px 0; }
+  .concept-card .term { font-size:1rem; font-weight:700; margin-bottom:8px; }
+  .concept-card .en { color:var(--text-muted); font-size:0.8rem; font-weight:400; }
+  .concept-card .definition { font-size:0.875rem; color:var(--text-muted); line-height:1.8; margin-bottom:12px; }
+  .concept-card .example { font-size:0.85rem; background:rgba(255,255,255,0.03); border-radius:6px; padding:14px; line-height:1.7; }
+  .concept-card .example-label { font-size:0.75rem; font-weight:600; color:var(--amber); margin-bottom:6px; }
+
+  .method-block { margin:20px 0; }
+  .method-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .method-number { background:var(--blue); color:#000; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
+
+  .qa-block { margin:12px 0; }
+  .qa-q { font-size:0.875rem; font-weight:600; color:var(--amber); margin-bottom:6px; display:flex; align-items:flex-start; gap:6px; }
+  .qa-a { font-size:0.875rem; color:var(--text-muted); line-height:1.8; margin-bottom:16px; padding-left:22px; }
+  .qa-a strong { color:var(--text); }
+
+  .app-impact { background:rgba(52,211,153,0.05); border:1px solid rgba(52,211,153,0.2); border-radius:8px; padding:16px; margin:16px 0; }
+  .app-impact .impact-label { font-size:0.75rem; font-weight:600; color:var(--emerald); margin-bottom:8px; }
+  .app-impact .impact-content { font-size:0.85rem; color:var(--text-muted); line-height:1.8; }
+  .app-impact .impact-content strong { color:var(--text); }
+
+  .warning-box { background:var(--rose-bg); border:1px solid rgba(251,113,133,0.3); border-radius:8px; padding:16px; margin:16px 0; font-size:0.85rem; color:var(--rose); line-height:1.8; }
+
+  .diagram { background:rgba(255,255,255,0.03); border:1px solid var(--card-border); border-radius:8px; padding:20px; margin:16px 0; font-family:'SF Mono','Fira Code','Consolas',monospace; font-size:0.8rem; line-height:1.6; color:var(--text-muted); overflow-x:auto; white-space:pre; }
+  .diagram .highlight { color:var(--emerald); font-weight:600; }
+  .diagram .highlight-rose { color:var(--rose); font-weight:600; }
+  .diagram .highlight-amber { color:var(--amber); font-weight:600; }
+  .diagram .highlight-blue { color:var(--blue); font-weight:600; }
+
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.85rem; }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+
+  .flow-container { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:16px 0; }
+  .flow-step { background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:8px; padding:10px 16px; font-size:0.8rem; text-align:center; }
+  .flow-step .step-num { font-size:0.7rem; color:var(--text-muted); }
+  .flow-step .step-label { font-weight:600; margin-top:2px; }
+  .flow-arrow { color:var(--text-muted); font-size:1.2rem; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .grid-2 { grid-template-columns:1fr; } }
+
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.3rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+
+  .toc { margin:16px 0 32px 0; }
+  .toc-item { display:block; color:var(--blue); text-decoration:none; font-size:0.875rem; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+  .toc-item:hover { color:var(--text); }
+  .toc-item .toc-num { color:var(--text-muted); margin-right:8px; }
+
+  .summary-table td:first-child { font-weight:600; white-space:nowrap; }
+
+  footer { color:var(--text-muted); font-size:0.75rem; margin-top:40px; padding-top:20px; border-top:1px solid var(--card-border); text-align:center; }
+</style>
+</head>
+<body>
+
+<h1>トレード戦略の検証手法ガイド</h1>
+<p class="subtitle">バックテスト結果を「信じていい数字」にするための5つの手法 — 基礎用語・目的・現アプリへの適用</p>
+
+<!-- ===== 前書き ===== -->
+<div class="intro-box">
+  <strong>このドキュメントの目的</strong><br>
+  バックテストで「PF 2.14」「勝率58%」といった数字が出ても、それが実運用で再現する保証はない。<br>
+  検証手法とは、<strong>バックテスト結果を疑い、どこまで信用できるかを定量的に測る技術</strong>のこと。<br>
+  ここでは5つの手法を、何をしているのか → なぜ必要か → 現アプリでやるとどうなるか、の順で説明する。
+</div>
+
+<!-- ===== 目次 ===== -->
+<div class="section">
+  <h2>目次</h2>
+  <nav class="toc">
+    <a href="#glossary" class="toc-item"><span class="toc-num">0.</span>基礎用語</a>
+    <a href="#method1" class="toc-item"><span class="toc-num">1.</span>MAE / MFE 分析 — SLと利確の妥当性検証</a>
+    <a href="#method2" class="toc-item"><span class="toc-num">2.</span>Exit Timing 分析 — 保有期間の妥当性検証</a>
+    <a href="#method3" class="toc-item"><span class="toc-num">3.</span>条件別PnL分解 — エッジが効く条件の特定</a>
+    <a href="#method4" class="toc-item"><span class="toc-num">4.</span>ギャップリスク分析 — SLが機能しない場面の定量化</a>
+    <a href="#method5" class="toc-item"><span class="toc-num">5.</span>期間安定性検証 — 結果が偏っていないかの確認</a>
+    <a href="#priority" class="toc-item"><span class="toc-num">6.</span>優先度まとめ</a>
+    <a href="#flow" class="toc-item"><span class="toc-num">7.</span>検証(1) → 検知(3) の全体フロー</a>
+  </nav>
+</div>
+
+<!-- ===== 0. 基礎用語 ===== -->
+<div class="section" id="glossary">
+  <h2><span class="badge badge-purple">用語</span> 0. 基礎用語</h2>
+
+  <div class="grid-2">
+    <div class="concept-card">
+      <div class="term">MAE <span class="en">Maximum Adverse Excursion</span></div>
+      <div class="definition">
+        エントリーしてからexit（決済）するまでの間に、<strong>価格が最も不利な方向に動いた幅</strong>。<br>
+        ロングなら「保有中の最安値 − エントリー価格」。
+      </div>
+      <div class="example">
+        <div class="example-label">具体例</div>
+        1,000円で買い → 保有中に950円まで下落 → 最終的に1,050円で決済<br>
+        <strong>MAE = -5.0%</strong>（950円まで逆行した）<br>
+        <strong>結果 = +5.0%</strong>（勝ちトレード）<br>
+        → 勝ったが、途中で-5%の含み損に耐える必要があった
+      </div>
+    </div>
+
+    <div class="concept-card">
+      <div class="term">MFE <span class="en">Maximum Favorable Excursion</span></div>
+      <div class="definition">
+        エントリーしてからexitするまでの間に、<strong>価格が最も有利な方向に動いた幅</strong>。<br>
+        ロングなら「保有中の最高値 − エントリー価格」。
+      </div>
+      <div class="example">
+        <div class="example-label">具体例</div>
+        1,000円で買い → 保有中に1,080円まで上昇 → 最終的に1,020円で決済<br>
+        <strong>MFE = +8.0%</strong>（1,080円まで順行した）<br>
+        <strong>結果 = +2.0%</strong>（+2%で終了）<br>
+        → +8%まで行ったのに+2%しか取れなかった。<strong>6%分の利益を逃した</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="concept-card">
+      <div class="term">PF <span class="en">Profit Factor</span></div>
+      <div class="definition">
+        総利益 ÷ 総損失（絶対値）。<br>
+        <strong>1.0以上</strong>なら利益が損失を上回っている。<strong>2.0以上</strong>は優秀とされる。
+      </div>
+      <div class="example">
+        <div class="example-label">具体例</div>
+        勝ちトレード合計: +500万円 / 負けトレード合計: -250万円<br>
+        <strong>PF = 500 ÷ 250 = 2.0</strong>
+      </div>
+    </div>
+
+    <div class="concept-card">
+      <div class="term">WFO <span class="en">Walk-Forward Optimization</span></div>
+      <div class="definition">
+        バックテスト期間を「学習期間」と「検証期間」に分けて<strong>時系列順にスライド</strong>しながら繰り返す手法。<br>
+        過学習を検出するための標準的な方法。
+      </div>
+      <div class="example">
+        <div class="example-label">具体例</div>
+        14ヶ月のデータを4回に分けてテスト:<br>
+        ① 1-9月で学習 → 10-12月で検証<br>
+        ② 4-12月で学習 → 1-3月で検証<br>
+        ③ 7-3月で学習 → 4-6月で検証 ...<br>
+        → 検証期間が毎回プラスなら頑健。1回でもマイナスなら要注意。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="concept-card">
+      <div class="term">OOS <span class="en">Out-of-Sample</span></div>
+      <div class="definition">
+        戦略の設計・最適化に使わなかった期間のデータ。<br>
+        「カンニングしていないテスト」に相当する。OOSでも利益が出れば戦略の信頼性が高い。
+      </div>
+    </div>
+
+    <div class="concept-card">
+      <div class="term">レジーム <span class="en">Market Regime</span></div>
+      <div class="definition">
+        市場の「状態」のこと。上昇トレンド / 下降トレンド / レンジ / 高ボラ / 低ボラなど。<br>
+        戦略はレジームによって効いたり効かなかったりする。
+      </div>
+    </div>
+  </div>
+
+  <div class="concept-card">
+    <div class="term">ギャップ <span class="en">Gap</span></div>
+    <div class="definition">
+      前日終値と翌日始値の間の価格差。夜間に発生したニュース・先物変動が原因。<br>
+      <strong>ストップロスはギャップを飛び越える</strong>。SL -3%を設定しても、ギャップダウン-5%で始まれば-5%で約定する。
+    </div>
+    <div class="example">
+      <div class="example-label">2026/03/04 トレンドマイクロの実例</div>
+      エントリー: 5,230円 / SL設定: 5,073円（-3%）<br>
+      PTS（夜間取引）: 5,026円（-3.9%）<br>
+      → SL -3%を設定していたが、<strong>ギャップダウンにより-3.9%で約定する見込み</strong>。<br>
+      SLは「最大損失の保証」ではなく「通常時の損切りライン」に過ぎない。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 1. MAE/MFE分析 ===== -->
+<div class="section" id="method1">
+  <h2>
+    <span class="badge badge-blue">手法1</span>
+    MAE / MFE 分析 — SLと利確の妥当性検証
+  </h2>
+
+  <div class="method-block">
+    <div class="qa-block">
+      <div class="qa-q">Q. 何をしているのか？</div>
+      <div class="qa-a">
+        全トレードについて、<strong>保有中の最大逆行（MAE）と最大順行（MFE）を記録</strong>する。<br>
+        バックテスト結果は「エントリー価格」と「exit価格」しか記録しないことが多いが、
+        MAE/MFE は<strong>途中経過</strong>を記録する。<br><br>
+        これにより「勝ちトレードの途中でどれだけ含み損が出ていたか」「負けトレードの途中でどこまで含み益があったか」がわかる。
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Q. なぜする必要があるのか？</div>
+      <div class="qa-a">
+        <strong>SL（ストップロス）の幅が適切かどうかを判断するため。</strong><br><br>
+
+        SL -3%が適切かどうかは「感覚」では判断できない。MAE分析により以下がわかる：<br><br>
+
+        <strong>パターンA: SLが狭すぎる場合</strong><br>
+        → 勝ちトレードの多くがMAE -2.5%〜-3.5%を記録している<br>
+        → つまり「一度-3%まで逆行してSLに刈られたが、その後反発して+5%まで行った」トレードが多い<br>
+        → <strong>SLを-4%に広げれば、これらのトレードを救える可能性がある</strong><br><br>
+
+        <strong>パターンB: SLが適切な場合</strong><br>
+        → 勝ちトレードのMAEは-1%〜-2%に集中、負けトレードのMAEは-3%以深に集中<br>
+        → 勝ちと負けがSLラインで綺麗に分離されている<br>
+        → <strong>SL -3%は妥当</strong><br><br>
+
+        MFE分析は「利確タイミング」に使う：<br>
+        → MFEが+6%に到達するトレードが多いのに、7日引けで+2%になっている<br>
+        → <strong>途中で利確すれば成績が改善する可能性がある</strong>
+      </div>
+    </div>
+  </div>
+
+  <h3>MAE/MFE散布図の読み方</h3>
+  <div class="diagram">
+  MFE（最大順行）
+   +8% |                              <span class="highlight">● ● ●</span>     ← 勝ちトレード（MFE大、MAE小）
+       |                        <span class="highlight">● ● ●</span>             理想的。逆行が小さく順行が大きい
+   +6% |                  <span class="highlight">● ●</span>   <span class="highlight">●</span>
+       |            <span class="highlight">●</span>  <span class="highlight">● ●</span>
+   +4% |        <span class="highlight">●</span>  <span class="highlight">● ●</span>                          <span class="highlight-amber">SLライン</span>
+       |      <span class="highlight">●</span> <span class="highlight">●</span>                                  ↓
+   +2% |    <span class="highlight">●</span> <span class="highlight">●</span>                    <span class="highlight-amber">:</span>
+       |  <span class="highlight">●</span>                          <span class="highlight-amber">:</span>
+    0% |---<span class="highlight-rose">●</span>--<span class="highlight-rose">●</span>---<span class="highlight-rose">●</span>----<span class="highlight-rose">●</span>--------<span class="highlight-amber">:</span>---<span class="highlight-rose">●</span>---<span class="highlight-rose">●</span>---<span class="highlight-rose">●</span>--- ← MFE≒0: 一度も含み益が出なかった
+       +-----|-----|-----|-----<span class="highlight-amber">|</span>-----|-----|-----|---→ MAE（最大逆行）
+      0%   -1%   -2%   -3%  <span class="highlight-amber">SL</span>   -4%   -5%   -6%
+
+  <span class="highlight">●</span> 勝ちトレード   <span class="highlight-rose">●</span> 負けトレード
+
+  注目ポイント:
+  ・SLライン（-3%）の左側に<span class="highlight">●</span>が多い → SLに刈られず利益確定できた = SL妥当
+  ・SLライン付近に<span class="highlight">●</span>が多い → ギリギリ生き残ったが危険 = SLが狭い可能性
+  ・SLラインの右側に<span class="highlight-rose">●</span>しかない → SLで正しく損切りできている = SL妥当
+  ・SLラインの右側に<span class="highlight">●</span>がある → SLで刈られた後に反発した = <span class="highlight-rose">SLが狭すぎる</span></div>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリで実行すると何がわかるか</div>
+    <div class="impact-content">
+      <strong>対象: Granville IFD戦略</strong>（SL -3%, 最大7営業日保有）<br><br>
+      現在のアーカイブ（granville_ifd_archive.parquet）は14カラムで、entry_price と exit_price しか記録していない。
+      保有期間中の日足High/LowからMAE/MFEを計算して追加すれば：<br><br>
+      ・<strong>SL -3%で刈られたトレード（exit_type=SL）のうち、その後MFEが+3%以上に到達したケースの割合</strong> → SLが狭すぎるかの判定<br>
+      ・<strong>勝ちトレードのMAE分布</strong> → 勝ちの大半がMAE -1%以内なら、SLを-2%に狭めても成績が落ちない可能性<br>
+      ・<strong>MFEと最終リターンの差</strong> → 途中で利確すべきだった利益の逸失額<br><br>
+      必要な追加データ: なし（既存の日足parquetにHigh/Lowがある）<br>
+      追加カラム: mae_pct, mfe_pct, mae_day, mfe_day
+    </div>
+  </div>
+</div>
+
+<!-- ===== 2. Exit Timing ===== -->
+<div class="section" id="method2">
+  <h2>
+    <span class="badge badge-blue">手法2</span>
+    Exit Timing 分析 — 保有期間の妥当性検証
+  </h2>
+
+  <div class="method-block">
+    <div class="qa-block">
+      <div class="qa-q">Q. 何をしているのか？</div>
+      <div class="qa-a">
+        各トレードが<strong>何日目にexitしたか</strong>と、<strong>何日目に利益のピーク（MFE）に到達したか</strong>を記録する。<br><br>
+        保有期間の設定が「7営業日」であるとき、実際の利益のピークがDay 2-3に集中しているなら、
+        7日間持つ意味がない。むしろDay 4以降は利益が削られている可能性がある。
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Q. なぜする必要があるのか？</div>
+      <div class="qa-a">
+        <strong>最適な保有日数を特定するため。</strong><br><br>
+
+        現在の「7営業日引け」は固定ルール。だが実際にはトレードごとに値動きのパターンが異なる：<br><br>
+
+        <strong>即効型</strong>: Day 1-2で+4%まで行き、以後は横ばいか下落 → 早めに利確すべき<br>
+        <strong>遅効型</strong>: Day 1-4は横ばい、Day 5-7で急伸 → 7日保有が正解<br>
+        <strong>即死型</strong>: Day 1で-3% SLに到達 → 保有期間の問題ではなくエントリーの問題<br><br>
+
+        これらの比率がわかれば、最適な保有日数や「途中利確ルール」の導入可否が判断できる。
+      </div>
+    </div>
+  </div>
+
+  <h3>日別リターン推移の見方</h3>
+  <div class="diagram">
+  平均含み損益（%）
+   +3% |               <span class="highlight">*</span>
+       |           <span class="highlight">*</span>       <span class="highlight">*</span>
+   +2% |       <span class="highlight">*</span>               <span class="highlight">*</span>      ← Day 3がピーク。7日引けでは利益が減少
+       |   <span class="highlight">*</span>                       <span class="highlight">*</span>
+   +1% |                                   <span class="highlight">*</span>  ← 最終exit（7日引け）
+       |
+    0% <span class="highlight-amber">*</span>------|------|------|------|------|------|------
+       Entry  Day1   Day2   Day3   Day4   Day5   Day6   Day7
+
+  もしこの形なら → 7日保有は長すぎる。<strong>Day 3-4での利確ルール追加</strong>を検討すべき</div>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリで実行すると何がわかるか</div>
+    <div class="impact-content">
+      <strong>対象: Granville IFD戦略</strong><br><br>
+      現在 exit_type（SL / SMA20_touch / dead_cross / time_cut）は記録しているが、<strong>何日目にexitしたか（exit_day）は未記録</strong>。<br><br>
+      追加すべき分析：<br>
+      ・<strong>exit_day の分布</strong> → Day 1で即SLが多いなら、エントリーフィルターの問題<br>
+      ・<strong>MFE到達日の分布</strong> → 利益ピークが何日目に来るか → 保有期間の最適化根拠<br>
+      ・<strong>Day別の平均リターン曲線</strong> → 上図のような形で「何日目から利益が削られ始めるか」を可視化<br><br>
+      追加カラム: exit_day（1-7）, mfe_day（1-7）
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. 条件別PnL分解 ===== -->
+<div class="section" id="method3">
+  <h2>
+    <span class="badge badge-blue">手法3</span>
+    条件別PnL分解 — エッジが効く条件の特定
+  </h2>
+
+  <div class="method-block">
+    <div class="qa-block">
+      <div class="qa-q">Q. 何をしているのか？</div>
+      <div class="qa-a">
+        全トレードを<strong>条件ごとにグループ分け</strong>して、各グループのPnL・勝率・PFを比較する。<br><br>
+        「全体で勝っている」だけでは不十分。<strong>どの条件で勝っていて、どの条件で負けているか</strong>を分離する。<br>
+        負けている条件を除外すれば、戦略全体の成績が改善する。
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Q. なぜする必要があるのか？</div>
+      <div class="qa-a">
+        <strong>戦略のエッジ（優位性）がどの条件に依存しているかを特定するため。</strong><br><br>
+
+        バックテストで「PF 2.14、14ヶ月で+418万」と出ても、内訳を見ると：<br><br>
+
+        ・uptrend時: PF 3.2, +380万（利益の91%がここ）<br>
+        ・downtrend時: PF 1.1, +38万（ほぼトントン）<br><br>
+
+        この場合、「この戦略はuptrend時に強い」が正確な結論。downtrend時に使うかどうかは別途判断が必要。<br><br>
+
+        分解軸の例：<br>
+        ・<strong>市場レジーム</strong>: uptrend / downtrend（N225 vs SMA20）<br>
+        ・<strong>シグナル種別</strong>: Tier 1（B4） / Tier 2（sigA deep）/ Tier 3（sigA mod）/ Tier 4（sigB）<br>
+        ・<strong>セクター</strong>: 業種ごとの勝率・PF<br>
+        ・<strong>先物変動</strong>: 前日先物変動 &gt;3% / &lt;3%（Grokが機能しない閾値の検証）<br>
+        ・<strong>曜日</strong>: 月〜金で偏りがあるか<br>
+        ・<strong>ボラティリティ</strong>: VI水準ごとの成績差
+      </div>
+    </div>
+  </div>
+
+  <h3>分解テーブルの例</h3>
+  <table>
+    <thead>
+      <tr><th>条件</th><th class="r">件数</th><th class="r">勝率</th><th class="r">PF</th><th class="r">平均損益</th><th class="r">合計損益</th><th>判定</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>全体</td><td class="r">350</td><td class="r">58%</td><td class="r">2.14</td><td class="r num-pos">+11,943</td><td class="r num-pos">+4,180,000</td><td></td></tr>
+      <tr style="background:rgba(52,211,153,0.04)"><td>Uptrend</td><td class="r">180</td><td class="r">65%</td><td class="r num-pos">3.20</td><td class="r num-pos">+21,111</td><td class="r num-pos">+3,800,000</td><td><span class="badge badge-emerald">主力</span></td></tr>
+      <tr style="background:rgba(251,191,36,0.04)"><td>Downtrend</td><td class="r">170</td><td class="r">50%</td><td class="r">1.10</td><td class="r num-pos">+2,235</td><td class="r num-pos">+380,000</td><td><span class="badge badge-amber">要注意</span></td></tr>
+      <tr><td colspan="7" style="height:8px; border:none;"></td></tr>
+      <tr style="background:rgba(52,211,153,0.04)"><td>Tier 1 (B4)</td><td class="r">80</td><td class="r">68%</td><td class="r num-pos">3.50</td><td class="r num-pos">+18,000</td><td class="r num-pos">+1,440,000</td><td><span class="badge badge-emerald">最強</span></td></tr>
+      <tr><td>Tier 2 (sigA deep)</td><td class="r">90</td><td class="r">60%</td><td class="r num-pos">2.30</td><td class="r num-pos">+13,000</td><td class="r num-pos">+1,170,000</td><td></td></tr>
+      <tr><td>Tier 3 (sigA mod)</td><td class="r">100</td><td class="r">55%</td><td class="r">1.80</td><td class="r num-pos">+9,500</td><td class="r num-pos">+950,000</td><td></td></tr>
+      <tr style="background:rgba(251,113,133,0.04)"><td>Tier 4 (sigB)</td><td class="r">80</td><td class="r">45%</td><td class="r num-neg">0.90</td><td class="r num-neg">-7,750</td><td class="r num-neg">-620,000</td><td><span class="badge badge-rose">除外候補</span></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">※ 数値はイメージ。実データでの検証が必要。</p>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリで実行すると何がわかるか</div>
+    <div class="impact-content">
+      <strong>対象: Granville IFD / Grok 両方</strong><br><br>
+
+      <strong>Granville IFD</strong>: アーカイブに market_uptrend, ci_expand, signal_type, sector が既にある。
+      これらを軸に分解するだけで「どのTierが本当に稼いでいるか」「downtrend時は止めるべきか」が判明する。<br><br>
+
+      <strong>Grok</strong>: アーカイブに futures_change_pct, is_extreme_market が既にある。
+      「先物変動 &gt;3%の日」だけ抽出してPnLを見れば、<strong>戦争ラリーや選挙相場でGrokが機能しない閾値を定量化</strong>できる。<br><br>
+
+      追加データ: 不要（既存カラムで分解可能）
+    </div>
+  </div>
+</div>
+
+<!-- ===== 4. ギャップリスク ===== -->
+<div class="section" id="method4">
+  <h2>
+    <span class="badge badge-blue">手法4</span>
+    ギャップリスク分析 — SLが機能しない場面の定量化
+  </h2>
+
+  <div class="method-block">
+    <div class="qa-block">
+      <div class="qa-q">Q. 何をしているのか？</div>
+      <div class="qa-a">
+        <strong>前日引け→翌日寄りの価格差（ギャップ）を全トレードで記録</strong>し、
+        SLが想定通りに機能したかどうかを検証する。<br><br>
+        SL -3%を設定していても、ギャップダウンで-5%から始まれば-5%で約定する。
+        この「SLの滑り（スリッページ）」がどれだけ発生しているかを定量化する。
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Q. なぜする必要があるのか？</div>
+      <div class="qa-a">
+        <strong>バックテストの「SL -3%」が実運用でも-3%で約定する保証はないから。</strong><br><br>
+
+        バックテストでは「始値がSL以下なら始値で約定」とモデル化されることが多い。
+        これは正しいが、<strong>「SLに引っかかるケースのうち何割がギャップ由来か」は別途確認が必要</strong>。<br><br>
+
+        もしSL発動の40%がギャップ由来で、平均スリッページが-1.5%だとすると：<br>
+        → バックテスト上の「SL -3%」は実質「SL -4.5%」で約定している<br>
+        → <strong>バックテストの損失額は現実を正しく反映していない可能性</strong><br><br>
+
+        逆にギャップが小さい銘柄（大型株、流動性高い）だけに絞れば、SLの信頼性が上がる。
+      </div>
+    </div>
+  </div>
+
+  <h3>ギャップリスクの構造</h3>
+  <div class="diagram">
+  前日引け                  翌日寄り
+
+  ケース1: 通常のSL発動（ギャップなし）
+  ────<span class="highlight-amber">●</span>SL(-3%)──────<span class="highlight-rose">●</span>寄り(-2.5%)──→ SL価格で約定。想定通り。
+          ↑ SL設定       ↑ 寄りがSL以上なのでSL到達時点で約定
+
+  ケース2: ギャップダウンでSL突破
+  ────<span class="highlight-amber">●</span>SL(-3%)──<span class="highlight-rose">✕</span>──────<span class="highlight-rose">●</span>寄り(-5%)──→ 寄り値で約定。<span class="highlight-rose">-5%の損失</span>
+          ↑ SL設定  ↑ SLを飛び越え   ↑ ここで初めて約定可能
+
+  ケース3: ストップ安（流動性消失）
+  ────<span class="highlight-amber">●</span>SL(-3%)──<span class="highlight-rose">✕</span>──────<span class="highlight-rose">✕</span>──────<span class="highlight-rose">●</span>翌々日(-12%)──→ <span class="highlight-rose">約定すらできない</span>
+          ↑ SL設定  ↑ ストップ安で値がつかない         ↑ やっと約定</div>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリで実行すると何がわかるか</div>
+    <div class="impact-content">
+      <strong>対象: Granville IFD戦略</strong><br><br>
+
+      現在 exit_type=SL のトレードは記録されているが、<strong>SL価格と実際のexit価格の差（スリッページ）は未記録</strong>。<br><br>
+
+      追加すべき分析：<br>
+      ・<strong>SLトレードのスリッページ分布</strong> → SL発動時、平均何%余計に損しているか<br>
+      ・<strong>保有期間中の最大ギャップダウン</strong> → 夜間リスクの大きさ<br>
+      ・<strong>ギャップサイズ vs 銘柄の時価総額・流動性</strong> → 大型株に絞ればギャップリスクは減るか<br><br>
+
+      現在の「株価2万円未満」フィルターは流動性と無関係。<strong>出来高や時価総額でのフィルター追加</strong>の根拠データになる。<br><br>
+
+      追加カラム: overnight_gap_pct, sl_slippage_pct
+    </div>
+  </div>
+
+  <div class="warning-box">
+    <strong>注意:</strong> ギャップリスクはバックテストでは過小評価されやすい。
+    バックテストは「始値で約定」を前提とするが、実際には寄り付き直後の板が薄く、
+    成行注文が想定より不利な価格で約定することがある。特に小型株・低出来高銘柄で顕著。
+  </div>
+</div>
+
+<!-- ===== 5. 期間安定性 ===== -->
+<div class="section" id="method5">
+  <h2>
+    <span class="badge badge-blue">手法5</span>
+    期間安定性検証 — 結果が偏っていないかの確認
+  </h2>
+
+  <div class="method-block">
+    <div class="qa-block">
+      <div class="qa-q">Q. 何をしているのか？</div>
+      <div class="qa-a">
+        バックテスト全体の結果を<strong>四半期・月単位に分割</strong>して、
+        各期間のPnL・勝率・PFを比較する。<br><br>
+        全期間で均等に利益が出ているのか、特定の1-2ヶ月に利益が集中しているのかを確認する。
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Q. なぜする必要があるのか？</div>
+      <div class="qa-a">
+        <strong>「たまたま良い期間に助けられただけ」でないかを確認するため。</strong><br><br>
+
+        例えば14ヶ月で+418万のうち：<br><br>
+
+        <strong>パターンA（安定型）</strong>: 12ヶ月中10ヶ月がプラス、最大マイナス月が-30万 → 頑健<br>
+        <strong>パターンB（偏り型）</strong>: 2025年8月の急落相場で+350万、他の月は合計+68万 → 脆弱<br><br>
+
+        パターンBの場合、あの急落がなければPF 1.2程度の凡庸な戦略。
+        将来同じような急落が来る保証はないので、<strong>この戦略を「強い」と判断するのは危険</strong>。<br><br>
+
+        分割の粒度：<br>
+        ・<strong>月別</strong>: 最低限。14ヶ月なら14データポイント<br>
+        ・<strong>四半期別</strong>: トレンドの変化を大きく捉える<br>
+        ・<strong>年別</strong>: 12年の長期データがあるGranville 8法則分析では可能<br><br>
+
+        <strong>判定基準</strong>: 月単位でプラスの割合が70%以上なら安定的。50%以下なら特定月への依存度が高い。
+      </div>
+    </div>
+  </div>
+
+  <h3>月別PnLの見方</h3>
+  <div class="diagram">
+  月別 PnL（万円）
+
+  +80 |          <span class="highlight">█</span>
+  +60 |    <span class="highlight">█</span>    <span class="highlight">█</span>                        <span class="highlight">█</span>
+  +40 |    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>         <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>         <span class="highlight">█</span>
+  +20 |    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>    <span class="highlight">█</span>
+    0 |----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----<span class="highlight">█</span>----
+  -20 |                   <span class="highlight-rose">█</span>                             <span class="highlight-rose">█</span>
+  -40 |
+       Jan   Feb   Mar   Apr   May   Jun   Jul   Aug   Sep
+       2025                                              2026
+
+  安定型: 12ヶ月中10ヶ月プラス（83%）。マイナス月も-20万以内。<span class="highlight">頑健</span>。</div>
+
+  <div class="diagram">
+  月別 PnL（万円）    ← <span class="highlight-rose">偏り型の例（危険）</span>
+
+ +350 |                                            <span class="highlight">█</span>  ← 急落相場で大勝ち
+  +60 |
+  +40 |
+  +20 |    <span class="highlight">█</span>              <span class="highlight">█</span>         <span class="highlight">█</span>
+    0 |----<span class="highlight">█</span>----<span class="highlight-rose">█</span>----<span class="highlight-rose">█</span>----<span class="highlight">█</span>----<span class="highlight-rose">█</span>----<span class="highlight">█</span>----<span class="highlight-rose">█</span>----<span class="highlight">█</span>----<span class="highlight-rose">█</span>----
+  -20 |         <span class="highlight-rose">█</span>    <span class="highlight-rose">█</span>         <span class="highlight-rose">█</span>              <span class="highlight-rose">█</span>    <span class="highlight-rose">█</span>
+  -40 |         <span class="highlight-rose">█</span>                                  <span class="highlight-rose">█</span>
+       Jan   Feb   Mar   Apr   May   Jun   Jul   Aug   Sep
+
+  偏り型: 8月に+350万、他の月は合計+68万。<span class="highlight-rose">8月の急落がなければ凡庸な戦略</span>。</div>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリで実行すると何がわかるか</div>
+    <div class="impact-content">
+      <strong>対象: Granville IFD / Grok 両方</strong><br><br>
+
+      <strong>Granville IFD</strong>: サーバーAPIのsummaryに月別統計は既にある。
+      ただし「月単位のプラス率」「最大マイナス月」「上位3ヶ月で利益の何%を占めるか」は未計算。
+      これを追加すれば安定性を一目で判断できる。<br><br>
+
+      <strong>Grok</strong>: backtest/summaryに日別統計はあるが、月別のPF・勝率は未集計。
+      4ヶ月分（2025/11〜2026/02）と期間が短いため、月別より<strong>週別</strong>が適切。<br><br>
+
+      <strong>重要な検証ポイント</strong>: Granville IFDの+418万のうち、uptrend月とdowntrend月の内訳。
+      もし利益の90%がuptrend月に集中していれば、downtrend時は戦略を停止すべき根拠になる。<br><br>
+
+      追加データ: 不要（既存アーカイブで計算可能）
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. 優先度まとめ ===== -->
+<div class="section" id="priority">
+  <h2><span class="badge badge-amber">判断</span> 6. 優先度まとめ</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>優先度</th>
+        <th>手法</th>
+        <th>答える問い</th>
+        <th>実装コスト</th>
+        <th>インパクト</th>
+        <th>追加データ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:rgba(52,211,153,0.05)">
+        <td><span class="badge badge-emerald">1</span></td>
+        <td><strong>MAE/MFE</strong></td>
+        <td>SL -3%は正しいか</td>
+        <td>低（4カラム追加）</td>
+        <td>最大</td>
+        <td>不要</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.04)">
+        <td><span class="badge badge-emerald">2</span></td>
+        <td><strong>Exit Timing</strong></td>
+        <td>7日保有は長すぎないか</td>
+        <td>低（2カラム追加）</td>
+        <td>大</td>
+        <td>不要</td>
+      </tr>
+      <tr style="background:rgba(251,191,36,0.04)">
+        <td><span class="badge badge-amber">3</span></td>
+        <td><strong>条件別PnL分解</strong></td>
+        <td>どの条件で効いているか</td>
+        <td>低（集計追加のみ）</td>
+        <td>大</td>
+        <td>不要</td>
+      </tr>
+      <tr style="background:rgba(251,191,36,0.04)">
+        <td><span class="badge badge-amber">4</span></td>
+        <td><strong>ギャップリスク</strong></td>
+        <td>SLが滑る頻度と大きさ</td>
+        <td>低（2カラム追加）</td>
+        <td>中〜大</td>
+        <td>不要</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-purple">5</span></td>
+        <td><strong>期間安定性</strong></td>
+        <td>特定月に偏っていないか</td>
+        <td>低（集計追加のみ）</td>
+        <td>中</td>
+        <td>不要</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="intro-box" style="margin-top:20px;">
+    <strong>全手法に共通するポイント:</strong> 追加データの取得は不要。既存のアーカイブ（日足High/Low/Open/Close）だけで全て計算できる。
+    問題は「データがない」ことではなく、「データはあるが分析していない」こと。
+  </div>
+</div>
+
+<!-- ===== 7. 全体フロー ===== -->
+<div class="section" id="flow">
+  <h2><span class="badge badge-cyan">構造</span> 7. 検証(1) → 検知(3) の全体フロー</h2>
+
+  <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:16px;">
+    検証手法（本ドキュメント）は「1. 検証」のフェーズ。ここで見つけた知見を「3. 検知」のルールに落として初めて運用に活きる。
+  </p>
+
+  <div class="diagram">
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  <span class="highlight-blue">1. 検証フェーズ（本ドキュメントの手法）</span>                          │
+  │                                                                 │
+  │  バックテストアーカイブ                                           │
+  │       ↓                                                         │
+  │  MAE/MFE分析 → 「SL -3%で刈られた後+5%反発が15%ある」             │
+  │  Exit Timing → 「MFEピークはDay 3。Day 7引けでは利益が30%減」      │
+  │  条件別分解  → 「先物&gt;3%の日はGrok勝率32%、PF 0.6」               │
+  │  ギャップ    → 「SL発動の25%がギャップ由来。平均スリッページ-1.2%」 │
+  │  期間安定性  → 「12ヶ月中10ヶ月プラス。安定」                      │
+  │                                                                 │
+  │  → <span class="highlight">知見の確定</span>（数字で裏付けられた事実）                      │
+  └──────────────────────┬──────────────────────────────────────────┘
+                         │
+                    知見をルール化
+                         │
+                         ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  <span class="highlight-amber">3. 検知フェーズ（リアルタイム監視）</span>                            │
+  │                                                                 │
+  │  日次パイプラインに組み込むルール:                                 │
+  │                                                                 │
+  │  ・先物変動 &gt;3% → Grokシグナル無効化アラート                      │
+  │  ・直近20件の勝率 &lt;40% → 戦略劣化警告                            │
+  │  ・3ヶ月連続マイナス → 戦略停止検討アラート                        │
+  │  ・ギャップダウン &gt;-2% の翌日 → SLスリッページ警告                 │
+  │                                                                 │
+  │  → <span class="highlight-rose">異常検知</span> → 人間が判断 → 対応                             │
+  └──────────────────────┬──────────────────────────────────────────┘
+                         │
+                    新しい異常パターン発見
+                         │
+                         ▼
+                  <span class="highlight-blue">1. に戻って検証</span>（ループ）</div>
+
+  <div class="app-impact">
+    <div class="impact-label">現アプリでの実装イメージ</div>
+    <div class="impact-content">
+      <strong>Phase 1（検証）</strong>: バックテストスクリプトにMAE/MFE等のカラム追加 → アーカイブparquet更新<br>
+      <strong>Phase 2（可視化）</strong>: サーバーAPIとフロントエンドに分析ビュー追加<br>
+      <strong>Phase 3（検知）</strong>: 日次パイプラインに閾値チェック追加 → フロントエンドにアラート表示<br><br>
+
+      Phase 1-2で検証結果を見てから、Phase 3の閾値を人間が決める。<br>
+      <strong>Phase 3の閾値をAIに決めさせない</strong>。それが記事の言うHuman-in-the-Loopの核心。
+    </div>
+  </div>
+</div>
+
+<footer>
+  Strategy Verification Methods Guide — 2026/03/04 作成<br>
+  参考: 「AIエージェントを使ったアルゴリズムトレード開発におけるHuman-in-the-Loop」
+</footer>
+
+</body>
+</html>

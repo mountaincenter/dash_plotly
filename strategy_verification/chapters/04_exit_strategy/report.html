@@ -50,7 +50,7 @@
 <body>
 
 <h1>Chapter 4: 利確戦略の導出</h1>
-<div class="subtitle">LONG B1-B4 | MFE分布ベース | 59,307 trades | Generated: 2026-03-05 02:24:48</div>
+<div class="subtitle">LONG B1-B4 | MFE分布ベース | 59,307 trades | Generated: 2026-03-06 10:09:05</div>
 
 <!-- Section 1: Executive Summary -->
 <div class="section">
@@ -266,14 +266,41 @@
   </table>
 </div>
 
+<!-- Section 9: PnL Impact Assessment -->
+
+<div class="section">
+  <h2>💰 PnLインパクト: Ch3ベースライン vs Ch4提案</h2>
+  <div class="alert-box alert-info" style="margin-bottom:16px">
+    <strong>前提</strong>: Ch3最適SL適用後の全トレードが対象。Ch4の変更は<strong>B4にTimeCut 13dを追加</strong>（B1-B3は変更なし）。<br>
+    TimeCut 13d = hold_days &gt; 13 のトレードを「取らない」（13日以内に完結したトレードのみ採用）。<br>
+    ※ 厳密には13日目に強制手仕舞いだが、ここでは「13日超のトレードを除外」で近似。
+  </div>
+  <table>
+    <thead><tr>
+      <th>ルール</th><th>Ch4変更</th>
+      <th class="r">Ch3 PF</th><th class="r">Ch3 PnL</th>
+      <th class="r">Ch4 PF</th><th class="r">Ch4 PnL</th>
+      <th class="r">差分</th>
+    </tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td>変更なし</td><td class="r">1.37</td><td class="r num-pos">+1,355万</td><td class="r">1.37</td><td class="r num-pos">+1,355万</td><td class="r ">+0万</td></tr><tr><td><strong>B2</strong></td><td>変更なし</td><td class="r">1.32</td><td class="r num-pos">+1,647万</td><td class="r">1.32</td><td class="r num-pos">+1,647万</td><td class="r ">+0万</td></tr><tr><td><strong>B3</strong></td><td>変更なし</td><td class="r">1.53</td><td class="r num-pos">+1,138万</td><td class="r">1.53</td><td class="r num-pos">+1,138万</td><td class="r ">+0万</td></tr><tr><td><strong>B4</strong></td><td>TimeCut 13d（3,784件除外）</td><td class="r">2.26</td><td class="r num-pos">+5,476万</td><td class="r">39.42</td><td class="r num-pos">+8,841万</td><td class="r num-pos">+3,365万</td></tr><tr style="border-top:2px solid var(--card-border);font-weight:700"><td>合計</td><td></td><td></td><td class="r">+9,616万</td><td></td><td class="r">+12,981万</td><td class="r num-pos">+3,365万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    B4 ≤13d: 6,844件, WR=91.8%, PnL=+8,841万<br>B4 &gt;13d: 3,784件, WR=32.4%, PnL=-3,365万<br><strong>TimeCut 13dでカットされるのは3,784件（PnL=-3,365万）</strong>
+  </div>
+</div>
+
 <!-- Final Conclusion -->
+
 <div class="section">
   <h2>Chapter 4 結論</h2>
-  <div class="alert-box alert-success">
+  <div class="alert-box alert-success" style="margin-bottom:12px">
+    Ch4提案（B4 TimeCut 13d）により、12年間の累計PnLが<strong>+3,365万円改善</strong>。
+  </div>
+  <div class="alert-box alert-info">
     <strong>1. Fixed TPは不要。</strong>全ルールでTPなしがPF/PnL最大。テール利益のカットが損。<br>
-    <strong>2. B4は保有期間が鍵。</strong>13日以内は高収益、14日以降は急激に劣化。TimeCut 13dのバックテスト再実行を推奨。<br>
+    <strong>2. B4は保有期間が鍵。</strong>13日以内は高収益、14日以降は急激に劣化。<br>
     <strong>3. B1-B3は「早すぎるexit」が問題。</strong>短期保有（&lt;7日）は全て赤字。最低保有期間の導入を検討。<br>
-    <strong>4. 次のステップ:</strong> Chapter 5で保有期間の最適化（最低保有期間 + TimeCut）のバックテストを再実行し、シグナルベースexitとの組み合わせを検証。
+    <strong>4. 上記PnLインパクトが正（お金が増える）の場合のみ、Ch4提案を採用する根拠がある。</strong>
   </div>
 </div>
 

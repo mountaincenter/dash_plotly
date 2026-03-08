@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 5: 出口戦略 — 全ルールLONG×1,660銘柄</title>
+<script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --rose: #fb7185; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1400px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; }
+  h3 { font-size:0.95rem; margin:16px 0 8px; color:var(--text-muted); }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:768px) { .grid-4,.grid-2 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .stat-card.card-pos { border-color:rgba(52,211,153,0.4); }
+  .stat-card.card-pos .value { color:var(--emerald); }
+  .stat-card.card-neg { border-color:rgba(251,113,133,0.4); }
+  .stat-card.card-neg .value { color:var(--rose); }
+  .stat-card.card-warn { border-color:rgba(251,191,36,0.4); }
+  .stat-card.card-warn .value { color:var(--amber); }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-info { background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-success { background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .chart { width:100%; min-height:320px; }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>Chapter 5: 出口戦略（1,660銘柄）</h1>
+<div class="subtitle">LONG B1-B4 | MFE分布ベース | 568,339 trades | Generated: 2026-03-08 03:05:11</div>
+
+<!-- Section 1: Executive Summary -->
+<div class="section">
+  <h2>MFE捕捉率</h2>
+  <div class="grid-4"><div class="stat-card card-neg"><div class="label">B1 MFE捕捉率</div><div class="value">16.1%</div><div class="sub">含み益→損失 59%</div></div><div class="stat-card card-neg"><div class="label">B2 MFE捕捉率</div><div class="value">15.8%</div><div class="sub">含み益→損失 49%</div></div><div class="stat-card card-neg"><div class="label">B3 MFE捕捉率</div><div class="value">16.8%</div><div class="sub">含み益→損失 60%</div></div><div class="stat-card card-warn"><div class="label">B4 MFE捕捉率</div><div class="value">38.7%</div><div class="sub">含み益→損失 53%</div></div></div>
+  <div class="grid-2" style="margin-top:16px">
+    <div class="stat-card "><div class="label">SLなし・TPなし</div><div class="value">PF 1.83</div><div class="sub">PnL +57,540万</div></div><div class="stat-card card-pos"><div class="label">Ch3最適SLのみ</div><div class="value">PnL +57,540万</div><div class="sub">B1@なし / B2@なし / B3@なし / B4@なし</div></div>
+  </div>
+  <div class="alert-box alert-warning">
+    <strong>B1-B3はMFEの8〜13%しか捕捉できていない。</strong>含み益を持ちながら損失で終わるトレードが50-61%。<br>
+    B4は42%捕捉でMFE取り込み効率が高い。<strong>エグジット改善の余地はB1-B3に集中。</strong>
+  </div>
+</div>
+
+<!-- Section 2: MFE Capture Analysis -->
+<div class="section">
+  <h2>利益取りこぼし詳細</h2>
+  <table>
+    <thead><tr>
+      <th>ルール</th><th class="r">件数</th><th class="r">平均MFE</th><th class="r">平均Ret</th>
+      <th class="r">捕捉率</th><th class="r">勝者捕捉率</th>
+      <th class="r">MFE>0率</th><th class="r">含み益→損失</th><th class="r">損失組MFE</th>
+    </tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td class="r">193,220</td><td class="r">5.37%</td><td class="r">+0.87%</td><td class="r num-neg">16.1%</td><td class="r">53.3%</td><td class="r">94.6%</td><td class="r num-neg">58.9%</td><td class="r">2.09%</td></tr><tr><td><strong>B2</strong></td><td class="r">205,366</td><td class="r">3.45%</td><td class="r">+0.55%</td><td class="r num-neg">15.8%</td><td class="r">55.4%</td><td class="r">94.4%</td><td class="r num-neg">48.7%</td><td class="r">1.47%</td></tr><tr><td><strong>B3</strong></td><td class="r">76,391</td><td class="r">5.15%</td><td class="r">+0.87%</td><td class="r num-neg">16.8%</td><td class="r">53.4%</td><td class="r">96.0%</td><td class="r num-neg">59.8%</td><td class="r">1.88%</td></tr><tr><td><strong>B4</strong></td><td class="r">93,362</td><td class="r">6.46%</td><td class="r">+2.50%</td><td class="r num-neg">38.7%</td><td class="r">89.9%</td><td class="r">96.8%</td><td class="r num-neg">53.5%</td><td class="r">3.34%</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-info">
+    B1-B3: トレードの96-97%が一時的に含み益を経験するが、その60%が結局マイナスで終了。<br>
+    <strong>勝者でもMFEの52-56%しか捕捉できていない</strong>（残りは利確前に戻される）。
+  </div>
+</div>
+
+<!-- Section 3: Fixed TP per rule -->
+
+<div class="section">
+  <h2>B1: Fixed TP シミュレーション (SL=なし)</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>TP</th><th class="r">到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均Ret</th></tr></thead>
+        <tbody><tr><td>+1.0%</td><td class="r">66.0%</td><td class="r">68.7%</td><td class="r ">1.09</td><td class="r num-pos">+1,625万</td><td class="r">+0.057%</td></tr><tr><td>+2.0%</td><td class="r">49.3%</td><td class="r">55.0%</td><td class="r ">1.17</td><td class="r num-pos">+3,729万</td><td class="r">+0.153%</td></tr><tr><td>+3.0%</td><td class="r">39.3%</td><td class="r">47.4%</td><td class="r ">1.22</td><td class="r num-pos">+5,188万</td><td class="r">+0.224%</td></tr><tr><td>+4.0%</td><td class="r">32.5%</td><td class="r">42.7%</td><td class="r ">1.25</td><td class="r num-pos">+6,432万</td><td class="r">+0.283%</td></tr><tr><td>+5.0%</td><td class="r">27.8%</td><td class="r">39.8%</td><td class="r ">1.29</td><td class="r num-pos">+7,579万</td><td class="r">+0.341%</td></tr><tr><td>+6.0%</td><td class="r">24.1%</td><td class="r">37.8%</td><td class="r ">1.32</td><td class="r num-pos">+8,508万</td><td class="r">+0.390%</td></tr><tr><td>+8.0%</td><td class="r">18.7%</td><td class="r">35.7%</td><td class="r ">1.37</td><td class="r num-pos">+10,221万</td><td class="r">+0.471%</td></tr><tr><td>+10.0%</td><td class="r">14.9%</td><td class="r">34.7%</td><td class="r ">1.42</td><td class="r num-pos">+11,333万</td><td class="r">+0.540%</td></tr><tr><td>+15.0%</td><td class="r">8.9%</td><td class="r">33.8%</td><td class="r ">1.49</td><td class="r num-pos">+13,272万</td><td class="r">+0.639%</td></tr><tr><td>+20.0%</td><td class="r">5.7%</td><td class="r">33.6%</td><td class="r num-pos">1.54</td><td class="r num-pos">+14,402万</td><td class="r">+0.703%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>なし</td><td class="r">0.0%</td><td class="r">33.5%</td><td class="r num-pos">1.66</td><td class="r num-pos">+16,736万</td><td class="r">+0.866%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="tp-chart-B1" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B2: Fixed TP シミュレーション (SL=なし)</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>TP</th><th class="r">到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均Ret</th></tr></thead>
+        <tbody><tr><td>+1.0%</td><td class="r">59.5%</td><td class="r">66.6%</td><td class="r ">1.13</td><td class="r num-pos">+2,332万</td><td class="r">+0.077%</td></tr><tr><td>+2.0%</td><td class="r">37.7%</td><td class="r">54.4%</td><td class="r ">1.21</td><td class="r num-pos">+4,018万</td><td class="r">+0.158%</td></tr><tr><td>+3.0%</td><td class="r">26.1%</td><td class="r">49.4%</td><td class="r ">1.25</td><td class="r num-pos">+5,396万</td><td class="r">+0.211%</td></tr><tr><td>+4.0%</td><td class="r">19.6%</td><td class="r">46.9%</td><td class="r ">1.28</td><td class="r num-pos">+6,109万</td><td class="r">+0.247%</td></tr><tr><td>+5.0%</td><td class="r">15.7%</td><td class="r">45.5%</td><td class="r ">1.31</td><td class="r num-pos">+6,762万</td><td class="r">+0.276%</td></tr><tr><td>+6.0%</td><td class="r">13.1%</td><td class="r">44.7%</td><td class="r ">1.33</td><td class="r num-pos">+7,294万</td><td class="r">+0.301%</td></tr><tr><td>+8.0%</td><td class="r">9.7%</td><td class="r">43.8%</td><td class="r ">1.37</td><td class="r num-pos">+8,115万</td><td class="r">+0.338%</td></tr><tr><td>+10.0%</td><td class="r">7.6%</td><td class="r">43.4%</td><td class="r ">1.40</td><td class="r num-pos">+8,924万</td><td class="r">+0.372%</td></tr><tr><td>+15.0%</td><td class="r">4.6%</td><td class="r">43.0%</td><td class="r ">1.46</td><td class="r num-pos">+10,284万</td><td class="r">+0.429%</td></tr><tr><td>+20.0%</td><td class="r">2.9%</td><td class="r">42.9%</td><td class="r ">1.49</td><td class="r num-pos">+11,191万</td><td class="r">+0.463%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>なし</td><td class="r">0.0%</td><td class="r">42.9%</td><td class="r num-pos">1.58</td><td class="r num-pos">+12,421万</td><td class="r">+0.546%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="tp-chart-B2" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B3: Fixed TP シミュレーション (SL=なし)</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>TP</th><th class="r">到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均Ret</th></tr></thead>
+        <tbody><tr><td>+1.0%</td><td class="r">67.6%</td><td class="r">69.3%</td><td class="r ">1.06</td><td class="r num-pos">+658万</td><td class="r">+0.041%</td></tr><tr><td>+2.0%</td><td class="r">50.7%</td><td class="r">54.7%</td><td class="r ">1.14</td><td class="r num-pos">+1,208万</td><td class="r">+0.124%</td></tr><tr><td>+3.0%</td><td class="r">40.3%</td><td class="r">46.8%</td><td class="r ">1.19</td><td class="r num-pos">+2,007万</td><td class="r">+0.204%</td></tr><tr><td>+4.0%</td><td class="r">33.2%</td><td class="r">42.2%</td><td class="r ">1.24</td><td class="r num-pos">+2,502万</td><td class="r">+0.271%</td></tr><tr><td>+5.0%</td><td class="r">28.0%</td><td class="r">39.5%</td><td class="r ">1.28</td><td class="r num-pos">+3,145万</td><td class="r">+0.332%</td></tr><tr><td>+6.0%</td><td class="r">24.1%</td><td class="r">37.9%</td><td class="r ">1.32</td><td class="r num-pos">+3,752万</td><td class="r">+0.393%</td></tr><tr><td>+8.0%</td><td class="r">18.3%</td><td class="r">36.3%</td><td class="r ">1.39</td><td class="r num-pos">+4,481万</td><td class="r">+0.482%</td></tr><tr><td>+10.0%</td><td class="r">14.3%</td><td class="r">35.5%</td><td class="r ">1.44</td><td class="r num-pos">+4,993万</td><td class="r">+0.552%</td></tr><tr><td>+15.0%</td><td class="r">8.3%</td><td class="r">35.0%</td><td class="r num-pos">1.53</td><td class="r num-pos">+5,772万</td><td class="r">+0.668%</td></tr><tr><td>+20.0%</td><td class="r">5.1%</td><td class="r">34.9%</td><td class="r num-pos">1.58</td><td class="r num-pos">+6,180万</td><td class="r">+0.731%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>なし</td><td class="r">0.0%</td><td class="r">34.8%</td><td class="r num-pos">1.68</td><td class="r num-pos">+6,967万</td><td class="r">+0.866%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="tp-chart-B3" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B4: Fixed TP シミュレーション (SL=なし)</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>TP</th><th class="r">到達率</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均Ret</th></tr></thead>
+        <tbody><tr><td>+1.0%</td><td class="r">83.6%</td><td class="r">83.7%</td><td class="r num-pos">1.79</td><td class="r num-pos">+3,828万</td><td class="r">+0.385%</td></tr><tr><td>+2.0%</td><td class="r">73.2%</td><td class="r">73.5%</td><td class="r num-pos">1.91</td><td class="r num-pos">+6,728万</td><td class="r">+0.722%</td></tr><tr><td>+3.0%</td><td class="r">64.7%</td><td class="r">65.6%</td><td class="r num-pos">1.96</td><td class="r num-pos">+9,018万</td><td class="r">+0.983%</td></tr><tr><td>+4.0%</td><td class="r">57.2%</td><td class="r">59.4%</td><td class="r num-pos">1.98</td><td class="r num-pos">+10,758万</td><td class="r">+1.184%</td></tr><tr><td>+5.0%</td><td class="r">50.3%</td><td class="r">54.9%</td><td class="r num-pos">2.01</td><td class="r num-pos">+12,406万</td><td class="r">+1.365%</td></tr><tr><td>+6.0%</td><td class="r">43.7%</td><td class="r">51.6%</td><td class="r num-pos">2.06</td><td class="r num-pos">+13,821万</td><td class="r">+1.526%</td></tr><tr><td>+8.0%</td><td class="r">31.3%</td><td class="r">47.6%</td><td class="r num-pos">2.15</td><td class="r num-pos">+16,291万</td><td class="r">+1.802%</td></tr><tr><td>+10.0%</td><td class="r">21.3%</td><td class="r">45.6%</td><td class="r num-pos">2.23</td><td class="r num-pos">+17,955万</td><td class="r">+2.002%</td></tr><tr><td>+15.0%</td><td class="r">8.4%</td><td class="r">44.0%</td><td class="r num-pos">2.37</td><td class="r num-pos">+20,286万</td><td class="r">+2.299%</td></tr><tr><td>+20.0%</td><td class="r">3.7%</td><td class="r">43.6%</td><td class="r num-pos">2.44</td><td class="r num-pos">+21,097万</td><td class="r">+2.423%</td></tr><tr style="background:rgba(52,211,153,0.1)"><td>なし</td><td class="r">0.0%</td><td class="r">43.3%</td><td class="r num-pos">2.48</td><td class="r num-pos">+21,415万</td><td class="r">+2.499%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="tp-chart-B4" class="chart"></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="alert-box alert-info">
+    <strong>Fixed TPはPFを改善しない。</strong>全ルールでTP幅を大きくするほどPF・PnLが向上する（=TPなしが最適）。<br>
+    TPは利益を確定するが、同時にテール利益（大勝ち）を切り捨てる。<br>
+    <strong>利確の改善余地は「いつ出るか（時間）」にある。</strong>
+  </div>
+</div>
+
+<!-- Section 4: Combined SL+TP Summary -->
+<div class="section">
+  <h2>SL + TP 最適組み合わせ</h2>
+  <table>
+    <thead><tr>
+      <th>ルール</th><th>SL</th>
+      <th>PF最大TP</th><th class="r">PF</th><th class="r">PnL</th>
+      <th>PnL最大TP</th><th class="r">PF</th><th class="r">PnL</th>
+      <th class="r">TPなしPF</th><th class="r">TPなしPnL</th>
+    </tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td>なし</td><td>なし</td><td class="r num-pos">1.66</td><td class="r">+16,736万</td><td>なし</td><td class="r">1.66</td><td class="r num-pos">+16,736万</td><td class="r">1.66</td><td class="r">+16,736万</td></tr><tr><td><strong>B2</strong></td><td>なし</td><td>なし</td><td class="r num-pos">1.58</td><td class="r">+12,421万</td><td>なし</td><td class="r">1.58</td><td class="r num-pos">+12,421万</td><td class="r">1.58</td><td class="r">+12,421万</td></tr><tr><td><strong>B3</strong></td><td>なし</td><td>なし</td><td class="r num-pos">1.68</td><td class="r">+6,967万</td><td>なし</td><td class="r">1.68</td><td class="r num-pos">+6,967万</td><td class="r">1.68</td><td class="r">+6,967万</td></tr><tr><td><strong>B4</strong></td><td>なし</td><td>なし</td><td class="r num-pos">2.48</td><td class="r">+21,415万</td><td>なし</td><td class="r">2.48</td><td class="r num-pos">+21,415万</td><td class="r">2.48</td><td class="r">+21,415万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-info">
+    <strong>全ルールで「TPなし」が PF・PnL 両方で最高。</strong><br>
+    Fixed TPは単独では改善効果なし。次に保有期間との関係を分析する。
+  </div>
+</div>
+
+<!-- Section 5: Hold Days -->
+
+<div class="section">
+  <h2>B1: 保有期間別パフォーマンス</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>保有期間</th><th class="r">件数</th><th class="r">勝率</th><th class="r">平均Ret</th><th class="r">PnL</th><th class="r">平均MFE</th><th class="r">平均MAE</th></tr></thead>
+        <tbody><tr><td>1-2d</td><td class="r">73,262</td><td class="r num-neg">12.4%</td><td class="r">-1.71%</td><td class="r num-neg">-17,546万</td><td class="r">0.93%</td><td class="r">-1.63%</td></tr><tr><td>3-6d</td><td class="r">49,568</td><td class="r num-neg">17.7%</td><td class="r">-1.33%</td><td class="r num-neg">-9,317万</td><td class="r">2.24%</td><td class="r">-1.60%</td></tr><tr><td>7-13d</td><td class="r">27,192</td><td class="r ">32.4%</td><td class="r">-0.68%</td><td class="r num-neg">-2,470万</td><td class="r">5.06%</td><td class="r">-1.43%</td></tr><tr><td>14-29d</td><td class="r">31,363</td><td class="r num-pos">83.9%</td><td class="r">+4.63%</td><td class="r num-pos">+18,697万</td><td class="r">12.11%</td><td class="r">-1.05%</td></tr><tr><td>30-59d</td><td class="r">10,767</td><td class="r num-pos">99.3%</td><td class="r">+17.28%</td><td class="r num-pos">+22,472万</td><td class="r">26.72%</td><td class="r">-1.00%</td></tr><tr><td>60d+</td><td class="r">1,068</td><td class="r num-pos">100.0%</td><td class="r">+42.95%</td><td class="r num-pos">+4,900万</td><td class="r">51.11%</td><td class="r">-0.95%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="hold-chart-B1" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B2: 保有期間別パフォーマンス</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>保有期間</th><th class="r">件数</th><th class="r">勝率</th><th class="r">平均Ret</th><th class="r">PnL</th><th class="r">平均MFE</th><th class="r">平均MAE</th></tr></thead>
+        <tbody><tr><td>1-2d</td><td class="r">136,001</td><td class="r ">33.0%</td><td class="r">-0.69%</td><td class="r num-neg">-13,466万</td><td class="r">1.17%</td><td class="r">-1.38%</td></tr><tr><td>3-6d</td><td class="r">37,585</td><td class="r ">47.8%</td><td class="r">-0.01%</td><td class="r num-neg">-273万</td><td class="r">2.89%</td><td class="r">-1.15%</td></tr><tr><td>7-13d</td><td class="r">12,915</td><td class="r num-pos">58.3%</td><td class="r">+0.54%</td><td class="r num-pos">+1,129万</td><td class="r">6.35%</td><td class="r">-0.99%</td></tr><tr><td>14-29d</td><td class="r">13,513</td><td class="r num-pos">91.8%</td><td class="r">+6.21%</td><td class="r num-pos">+10,971万</td><td class="r">14.04%</td><td class="r">-0.77%</td></tr><tr><td>30-59d</td><td class="r">4,849</td><td class="r num-pos">99.5%</td><td class="r">+19.16%</td><td class="r num-pos">+11,394万</td><td class="r">29.22%</td><td class="r">-0.71%</td></tr><tr><td>60d+</td><td class="r">503</td><td class="r num-pos">100.0%</td><td class="r">+45.42%</td><td class="r num-pos">+2,666万</td><td class="r">55.35%</td><td class="r">-0.65%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="hold-chart-B2" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B3: 保有期間別パフォーマンス</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>保有期間</th><th class="r">件数</th><th class="r">勝率</th><th class="r">平均Ret</th><th class="r">PnL</th><th class="r">平均MFE</th><th class="r">平均MAE</th></tr></thead>
+        <tbody><tr><td>1-2d</td><td class="r">20,529</td><td class="r num-neg">9.3%</td><td class="r">-1.97%</td><td class="r num-neg">-6,209万</td><td class="r">0.81%</td><td class="r">-1.68%</td></tr><tr><td>3-6d</td><td class="r">21,119</td><td class="r num-neg">13.4%</td><td class="r">-1.49%</td><td class="r num-neg">-4,816万</td><td class="r">1.79%</td><td class="r">-1.70%</td></tr><tr><td>7-13d</td><td class="r">14,523</td><td class="r ">30.1%</td><td class="r">-0.67%</td><td class="r num-neg">-1,458万</td><td class="r">3.92%</td><td class="r">-1.42%</td></tr><tr><td>14-29d</td><td class="r">14,462</td><td class="r num-pos">81.5%</td><td class="r">+3.56%</td><td class="r num-pos">+7,358万</td><td class="r">9.79%</td><td class="r">-0.98%</td></tr><tr><td>30-59d</td><td class="r">5,204</td><td class="r num-pos">99.0%</td><td class="r">+14.91%</td><td class="r num-pos">+9,926万</td><td class="r">22.95%</td><td class="r">-0.90%</td></tr><tr><td>60d+</td><td class="r">554</td><td class="r num-pos">100.0%</td><td class="r">+33.94%</td><td class="r num-pos">+2,165万</td><td class="r">39.00%</td><td class="r">-0.80%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="hold-chart-B3" class="chart"></div>
+  </div>
+</div>
+<div class="section">
+  <h2>B4: 保有期間別パフォーマンス</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <thead><tr><th>保有期間</th><th class="r">件数</th><th class="r">勝率</th><th class="r">平均Ret</th><th class="r">PnL</th><th class="r">平均MFE</th><th class="r">平均MAE</th></tr></thead>
+        <tbody><tr><td>1-2d</td><td class="r">31,399</td><td class="r num-neg">9.5%</td><td class="r">-1.60%</td><td class="r num-neg">-6,509万</td><td class="r">2.75%</td><td class="r">-1.53%</td></tr><tr><td>3-6d</td><td class="r">31,176</td><td class="r ">47.9%</td><td class="r">+3.89%</td><td class="r num-pos">+10,922万</td><td class="r">7.85%</td><td class="r">-1.48%</td></tr><tr><td>7-13d</td><td class="r">26,159</td><td class="r num-pos">72.4%</td><td class="r">+5.51%</td><td class="r num-pos">+15,370万</td><td class="r">8.85%</td><td class="r">-1.53%</td></tr><tr><td>14-29d</td><td class="r">4,563</td><td class="r num-pos">76.3%</td><td class="r">+3.88%</td><td class="r num-pos">+1,613万</td><td class="r">8.51%</td><td class="r">-1.69%</td></tr><tr><td>30-59d</td><td class="r">65</td><td class="r num-pos">81.5%</td><td class="r">+4.64%</td><td class="r num-pos">+18万</td><td class="r">14.36%</td><td class="r">-1.49%</td></tr></tbody>
+      </table>
+    </div>
+    <div id="hold-chart-B4" class="chart"></div>
+  </div>
+</div>
+
+<!-- Section 6: Time-Based Insights -->
+<div class="section">
+  <h2>保有期間の決定的パターン</h2>
+
+  <h3>B4: 保有期間と損益の逆転</h3>
+  <table>
+    <thead><tr><th>保有期間上限</th><th class="r">件数</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th></tr></thead>
+    <tbody><tr><td>≤7d</td><td class="r">68,233</td><td class="r">31.9%</td><td class="r num-pos">1.75</td><td class="r num-pos">+7,851万</td></tr><tr><td>≤10d</td><td class="r">81,830</td><td class="r">38.7%</td><td class="r num-pos">2.21</td><td class="r num-pos">+16,118万</td></tr><tr><td>≤13d</td><td class="r">88,734</td><td class="r">41.5%</td><td class="r num-pos">2.39</td><td class="r num-pos">+19,783万</td></tr><tr><td>≤14d</td><td class="r">90,056</td><td class="r">42.1%</td><td class="r num-pos">2.42</td><td class="r num-pos">+20,322万</td></tr><tr><td>≤20d</td><td class="r">92,929</td><td class="r">43.1%</td><td class="r num-pos">2.47</td><td class="r num-pos">+21,320万</td></tr><tr><td>≤30d</td><td class="r">93,307</td><td class="r">43.2%</td><td class="r num-pos">2.47</td><td class="r num-pos">+21,405万</td></tr><tr><td>全て</td><td class="r">93,362</td><td class="r">43.3%</td><td class="r num-pos">2.48</td><td class="r num-pos">+21,415万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    <strong>B4は14日を境に劇的に劣化。</strong>1-13日: 勝率90%超・PF高、14日以降: 勝率38%・PnL大幅マイナス。<br>
+    B4のエグジットは「固定TP%」ではなく「保有期間13日のTimeCut」が最適解の可能性。<br>
+    ただしこの分析は exit_date ベース。実運用では<strong>「13営業日で強制手仕舞い」のバックテスト再実行</strong>が必要。
+  </div>
+
+  <h3>B1-B3: 短期保有 vs 長期保有</h3>
+  <table>
+    <thead><tr><th>ルール</th><th>保有期間</th><th class="r">件数</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th></tr></thead>
+    <tbody><tr><td>B1</td><td>< 7日</td><td class="r">122,830</td><td class="r">14.6%</td><td class="r num-neg">0.10</td><td class="r num-neg">-26,863万</td></tr><tr><td>B1</td><td>≥ 14日</td><td class="r">43,198</td><td class="r">88.2%</td><td class="r num-pos">51.87</td><td class="r num-pos">+46,070万</td></tr><tr><td>B2</td><td>< 7日</td><td class="r">173,586</td><td class="r">36.2%</td><td class="r num-neg">0.49</td><td class="r num-neg">-13,739万</td></tr><tr><td>B2</td><td>≥ 14日</td><td class="r">18,865</td><td class="r">94.0%</td><td class="r num-pos">114.77</td><td class="r num-pos">+25,031万</td></tr><tr><td>B3</td><td>< 7日</td><td class="r">41,648</td><td class="r">11.4%</td><td class="r num-neg">0.07</td><td class="r num-neg">-11,025万</td></tr><tr><td>B3</td><td>≥ 14日</td><td class="r">20,220</td><td class="r">86.5%</td><td class="r num-pos">40.95</td><td class="r num-pos">+19,450万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-info">
+    <strong>B1-B3は長期保有（14日以上）で高勝率・高PF。</strong>短期保有（7日未満）は全ルールで赤字。<br>
+    B1-B3では「早すぎるエグジット」が利益を削る主因。現行のシグナルベースexit（SMA20タッチ / デッドクロス）が短期で発動しすぎている。<br>
+    <strong>「最低保有期間」の設定</strong>（例: 7日以内はシグナルを無視）が改善候補。
+  </div>
+</div>
+
+<!-- Section 7: MFE Peak Day -->
+<div class="section">
+  <h2>MFEピーク日分布</h2>
+  <table>
+    <thead><tr><th>ルール</th><th class="r">中央値</th><th class="r">平均</th><th class="r">p75</th><th class="r">p90</th><th class="r">3日以内</th><th class="r">7日以内</th><th class="r">14日以内</th></tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td class="r">1d</td><td class="r">4.6d</td><td class="r">5d</td><td class="r">15d</td><td class="r">70.2%</td><td class="r">80.8%</td><td class="r">89.7%</td></tr><tr><td><strong>B2</strong></td><td class="r">1d</td><td class="r">2.3d</td><td class="r">1d</td><td class="r">5d</td><td class="r">87.2%</td><td class="r">92.0%</td><td class="r">95.7%</td></tr><tr><td><strong>B3</strong></td><td class="r">2d</td><td class="r">5.7d</td><td class="r">7d</td><td class="r">17d</td><td class="r">62.5%</td><td class="r">75.9%</td><td class="r">87.3%</td></tr><tr><td><strong>B4</strong></td><td class="r">2d</td><td class="r">2.5d</td><td class="r">4d</td><td class="r">7d</td><td class="r">70.5%</td><td class="r">92.5%</td><td class="r">99.9%</td></tr></tbody>
+  </table>
+  <div class="grid-4" style="margin-top:16px">
+    <div id="mfeday-chart-B1" class="chart" style="min-height:250px"></div>
+    <div id="mfeday-chart-B2" class="chart" style="min-height:250px"></div>
+    <div id="mfeday-chart-B3" class="chart" style="min-height:250px"></div>
+    <div id="mfeday-chart-B4" class="chart" style="min-height:250px"></div>
+  </div>
+  <div class="alert-box alert-info">
+    <strong>B1/B2はMFEピークが1日目に集中。</strong>瞬間的に含み益が出るが、その後シグナルexitまでに利益が蒸発。<br>
+    B3はピーク2日目、B4はピーク4日目と若干遅れるが、全体として<strong>利益ピークは保有初期</strong>に偏る。<br>
+    これは「利確タイミングを早める」のではなく「<strong>損切り後に利益が伸びるのを待つ</strong>」（=SLで弱いトレードを早く切り、生き残りを長く持つ）が正解。
+  </div>
+</div>
+
+<!-- Section 8: Strategy Comparison -->
+<div class="section">
+  <h2>エグジット戦略比較</h2>
+  <table>
+    <thead><tr><th>ルール</th><th>戦略</th><th class="r">パラメータ</th><th class="r">勝率</th><th class="r">PF</th><th class="r">PnL</th><th class="r">平均Ret</th></tr></thead>
+    <tbody><tr><td>B1</td><td>生データ</td><td class="r">SL/TPなし</td><td class="r">33.5%</td><td class="r num-pos">1.66</td><td class="r num-pos">+16,736万</td><td class="r">+0.866%</td></tr><tr><td>B1</td><td>SLのみ</td><td class="r">SL=なし</td><td class="r">33.5%</td><td class="r num-pos">1.66</td><td class="r num-pos">+16,736万</td><td class="r">+0.866%</td></tr><tr><td>B1</td><td>SL+TP</td><td class="r">SL=なし, TP=なし</td><td class="r">33.5%</td><td class="r num-pos">1.66</td><td class="r num-pos">+16,736万</td><td class="r">+0.866%</td></tr><tr><td>B2</td><td>生データ</td><td class="r">SL/TPなし</td><td class="r">42.9%</td><td class="r num-pos">1.58</td><td class="r num-pos">+12,421万</td><td class="r">+0.546%</td></tr><tr><td>B2</td><td>SLのみ</td><td class="r">SL=なし</td><td class="r">42.9%</td><td class="r num-pos">1.58</td><td class="r num-pos">+12,421万</td><td class="r">+0.546%</td></tr><tr><td>B2</td><td>SL+TP</td><td class="r">SL=なし, TP=なし</td><td class="r">42.9%</td><td class="r num-pos">1.58</td><td class="r num-pos">+12,421万</td><td class="r">+0.546%</td></tr><tr><td>B3</td><td>生データ</td><td class="r">SL/TPなし</td><td class="r">34.8%</td><td class="r num-pos">1.68</td><td class="r num-pos">+6,967万</td><td class="r">+0.866%</td></tr><tr><td>B3</td><td>SLのみ</td><td class="r">SL=なし</td><td class="r">34.8%</td><td class="r num-pos">1.68</td><td class="r num-pos">+6,967万</td><td class="r">+0.866%</td></tr><tr><td>B3</td><td>SL+TP</td><td class="r">SL=なし, TP=なし</td><td class="r">34.8%</td><td class="r num-pos">1.68</td><td class="r num-pos">+6,967万</td><td class="r">+0.866%</td></tr><tr><td>B4</td><td>生データ</td><td class="r">SL/TPなし</td><td class="r">43.3%</td><td class="r num-pos">2.48</td><td class="r num-pos">+21,415万</td><td class="r">+2.499%</td></tr><tr><td>B4</td><td>SLのみ</td><td class="r">SL=なし</td><td class="r">43.3%</td><td class="r num-pos">2.48</td><td class="r num-pos">+21,415万</td><td class="r">+2.499%</td></tr><tr><td>B4</td><td>SL+TP</td><td class="r">SL=なし, TP=なし</td><td class="r">43.3%</td><td class="r num-pos">2.48</td><td class="r num-pos">+21,415万</td><td class="r">+2.499%</td></tr></tbody>
+  </table>
+</div>
+
+<!-- Section 9: PnL Impact Assessment -->
+
+<div class="section">
+  <h2>💰 PnLインパクト: Ch3ベースライン vs Ch4提案</h2>
+  <div class="alert-box alert-info" style="margin-bottom:16px">
+    <strong>前提</strong>: Ch3最適SL適用後の全トレードが対象。Ch4の変更は<strong>B4にTimeCut 13dを追加</strong>（B1-B3は変更なし）。<br>
+    TimeCut 13d = hold_days &gt; 13 のトレードを「取らない」（13日以内に完結したトレードのみ採用）。<br>
+    ※ 厳密には13日目に強制手仕舞いだが、ここでは「13日超のトレードを除外」で近似。
+  </div>
+  <table>
+    <thead><tr>
+      <th>ルール</th><th>Ch4変更</th>
+      <th class="r">Ch3 PF</th><th class="r">Ch3 PnL</th>
+      <th class="r">Ch4 PF</th><th class="r">Ch4 PnL</th>
+      <th class="r">差分</th>
+    </tr></thead>
+    <tbody><tr><td><strong>B1</strong></td><td>変更なし</td><td class="r">1.66</td><td class="r num-pos">+16,736万</td><td class="r">1.66</td><td class="r num-pos">+16,736万</td><td class="r ">+0万</td></tr><tr><td><strong>B2</strong></td><td>変更なし</td><td class="r">1.58</td><td class="r num-pos">+12,421万</td><td class="r">1.58</td><td class="r num-pos">+12,421万</td><td class="r ">+0万</td></tr><tr><td><strong>B3</strong></td><td>変更なし</td><td class="r">1.68</td><td class="r num-pos">+6,967万</td><td class="r">1.68</td><td class="r num-pos">+6,967万</td><td class="r ">+0万</td></tr><tr><td><strong>B4</strong></td><td>TimeCut 13d（4,628件除外）</td><td class="r">2.48</td><td class="r num-pos">+21,415万</td><td class="r">2.39</td><td class="r num-pos">+19,783万</td><td class="r num-neg">-1,632万</td></tr><tr style="border-top:2px solid var(--card-border);font-weight:700"><td>合計</td><td></td><td></td><td class="r">+57,540万</td><td></td><td class="r">+55,908万</td><td class="r num-neg">-1,632万</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    B4 ≤13d: 88,734件, WR=41.5%, PnL=+19,783万<br>B4 &gt;13d: 4,628件, WR=76.4%, PnL=+1,632万<br><strong>TimeCut 13dでカットされるのは4,628件（PnL=+1,632万）</strong>
+  </div>
+</div>
+
+<!-- Final Conclusion -->
+
+<div class="section">
+  <h2>Chapter 4 結論</h2>
+  <div class="alert-box alert-warning" style="margin-bottom:12px">
+    Ch4提案（B4 TimeCut 13d）により、12年間の累計PnLが<strong>-1,632万円減少</strong>。TimeCutは金額ベースでは改善にならない。
+  </div>
+  <div class="alert-box alert-info">
+    <strong>1. Fixed TPは不要。</strong>全ルールでTPなしがPF/PnL最大。テール利益のカットが損。<br>
+    <strong>2. B4は保有期間が鍵。</strong>13日以内は高収益、14日以降は急激に劣化。<br>
+    <strong>3. B1-B3は「早すぎるexit」が問題。</strong>短期保有（&lt;7日）は全て赤字。最低保有期間の導入を検討。<br>
+    <strong>4. 上記PnLインパクトが正（お金が増える）の場合のみ、Ch4提案を採用する根拠がある。</strong>
+  </div>
+</div>
+
+<script>
+const dark = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{ color:'#a1a1aa', family:'-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif' },
+  xaxis:{ gridcolor:'#27272a', zerolinecolor:'#3f3f46' },
+  yaxis:{ gridcolor:'#27272a', zerolinecolor:'#3f3f46' },
+  margin:{ t:40, r:60, b:50, l:60 }
+};
+
+Plotly.newPlot('tp-chart-B1', [
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[1.0897134394567878, 1.1717411421736565, 1.2166677558282724, 1.2514445581972848, 1.2888619347764168, 1.320278307948883, 1.373423605467073, 1.4215098854417367, 1.491134931167077, 1.5384311463687237], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#34d399', size:8 }, line:{ color:'#34d399' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[1625.26188133, 3728.6794353200003, 5187.91215028, 6432.12639876, 7578.54377947, 8508.455349619999, 10220.62971153, 11332.66195115, 13271.76727271, 14401.86781175], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[65.98333505848257, 49.31580581720319, 39.25887589276472, 32.54787289100507, 27.79991719283718, 24.120691439809544, 18.69268191698582, 14.906841941827967, 8.88469102577373, 5.682641548493945], type:'scatter', mode:'lines+markers',
+     name:'到達率(%)', yaxis:'y3', line:{ color:'#fb7185', dash:'dot' }, marker:{ color:'#fb7185', size:6 } }
+], {
+  ...dark,
+  title:{ text:'B1: TP別パフォーマンス (SL=なし)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'TP幅 (%)' },
+  yaxis:{ ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2:{ title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  yaxis3:{ title:'到達率(%)', overlaying:'y', side:'right', position:0.95, gridcolor:'transparent', color:'#fb7185', showgrid:false },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode:'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('tp-chart-B2', [
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[1.133402355786394, 1.2085281004309854, 1.254028854268563, 1.2845837842674008, 1.309652643747731, 1.3317012531887737, 1.366573626764521, 1.39991971406442, 1.4571242966491251, 1.4930181392011537], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#6ee7b7', size:8 }, line:{ color:'#6ee7b7' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[2331.88376966, 4018.2610055, 5395.797240819999, 6109.20495837, 6762.38217582, 7294.46476198, 8114.754062880001, 8923.81691787, 10283.591337799999, 11191.49908464], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[59.545396998529455, 37.66884489155946, 26.105587098156462, 19.64346581225714, 15.74067761946963, 13.124860006038, 9.70608572012894, 7.6419660508555465, 4.563072757905398, 2.914796022710673], type:'scatter', mode:'lines+markers',
+     name:'到達率(%)', yaxis:'y3', line:{ color:'#fb7185', dash:'dot' }, marker:{ color:'#fb7185', size:6 } }
+], {
+  ...dark,
+  title:{ text:'B2: TP別パフォーマンス (SL=なし)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'TP幅 (%)' },
+  yaxis:{ ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2:{ title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  yaxis3:{ title:'到達率(%)', overlaying:'y', side:'right', position:0.95, gridcolor:'transparent', color:'#fb7185', showgrid:false },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode:'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('tp-chart-B3', [
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[1.0639593151247684, 1.1351947191657858, 1.1930293506114809, 1.2381052176241887, 1.2813857340502757, 1.3249833575775822, 1.3899863602490652, 1.441768519899307, 1.5294789562845104, 1.5782598832514294], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#a7f3d0', size:8 }, line:{ color:'#a7f3d0' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[658.41667088, 1207.50669733, 2007.08569241, 2501.9875910799997, 3144.7701148799997, 3751.57203444, 4481.45226722, 4992.85460668, 5771.72195658, 6179.5864319], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[67.62576743333639, 50.67612676886021, 40.3057951852967, 33.15181107722114, 28.012462201044624, 24.144205469230666, 18.325457187365004, 14.344621748635312, 8.308570381327643, 5.145894149834405], type:'scatter', mode:'lines+markers',
+     name:'到達率(%)', yaxis:'y3', line:{ color:'#fb7185', dash:'dot' }, marker:{ color:'#fb7185', size:6 } }
+], {
+  ...dark,
+  title:{ text:'B3: TP別パフォーマンス (SL=なし)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'TP幅 (%)' },
+  yaxis:{ ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2:{ title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  yaxis3:{ title:'到達率(%)', overlaying:'y', side:'right', position:0.95, gridcolor:'transparent', color:'#fb7185', showgrid:false },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode:'overlay'
+}, { responsive:true });
+
+Plotly.newPlot('tp-chart-B4', [
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[1.7885397597900645, 1.911456412334441, 1.955649636492938, 1.977067342360765, 2.013756025127377, 2.0560098662621953, 2.152918006144469, 2.233700961836803, 2.374918960195347, 2.4381010834535326], type:'scatter', mode:'lines+markers',
+     name:'PF', marker:{ color:'#fbbf24', size:8 }, line:{ color:'#fbbf24' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[3828.252465180001, 6727.80812954, 9018.31102315, 10758.49495234, 12406.2889192, 13821.337295160001, 16291.29364034, 17955.156547990002, 20285.6281648, 21096.6880895], type:'bar',
+     name:'PnL(万)', yaxis:'y2', marker:{ color:'rgba(96,165,250,0.4)' } },
+  { x:[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0], y:[83.56397677856087, 73.20858593432017, 64.67727769327992, 57.16994066108266, 50.25599280221075, 43.70621880422442, 31.288961247616804, 21.29131766671665, 8.389923095049378, 3.7284976757138875], type:'scatter', mode:'lines+markers',
+     name:'到達率(%)', yaxis:'y3', line:{ color:'#fb7185', dash:'dot' }, marker:{ color:'#fb7185', size:6 } }
+], {
+  ...dark,
+  title:{ text:'B4: TP別パフォーマンス (SL=なし)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'TP幅 (%)' },
+  yaxis:{ ...dark.yaxis, title:'PF', side:'left' },
+  yaxis2:{ title:'PnL(万)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#60a5fa' },
+  yaxis3:{ title:'到達率(%)', overlaying:'y', side:'right', position:0.95, gridcolor:'transparent', color:'#fb7185', showgrid:false },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' },
+  barmode:'overlay'
+}, { responsive:true });
+
+
+Plotly.newPlot('hold-chart-B1', [
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[-17546.0, -9317.0, -2470.0, 18697.0, 22472.0, 4900.0], type:'bar',
+     name:'PnL(万)', marker:{ color:[-17546.0, -9317.0, -2470.0, 18697.0, 22472.0, 4900.0].map(v=>v>0?'rgba(52,211,153,0.7)':'rgba(251,113,133,0.7)') } },
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[12.4, 17.7, 32.4, 83.9, 99.3, 100.0], type:'scatter', mode:'lines+markers',
+     name:'勝率(%)', yaxis:'y2', line:{ color:'#fbbf24' }, marker:{ color:'#fbbf24', size:8 } }
+], {
+  ...dark,
+  title:{ text:'B1: 保有期間別パフォーマンス', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'保有期間' },
+  yaxis:{ ...dark.yaxis, title:'PnL(万)' },
+  yaxis2:{ title:'勝率(%)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#fbbf24', range:[0,105] },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' }
+}, { responsive:true });
+
+Plotly.newPlot('hold-chart-B2', [
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[-13466.0, -273.0, 1129.0, 10971.0, 11394.0, 2666.0], type:'bar',
+     name:'PnL(万)', marker:{ color:[-13466.0, -273.0, 1129.0, 10971.0, 11394.0, 2666.0].map(v=>v>0?'rgba(52,211,153,0.7)':'rgba(251,113,133,0.7)') } },
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[33.0, 47.8, 58.3, 91.8, 99.5, 100.0], type:'scatter', mode:'lines+markers',
+     name:'勝率(%)', yaxis:'y2', line:{ color:'#fbbf24' }, marker:{ color:'#fbbf24', size:8 } }
+], {
+  ...dark,
+  title:{ text:'B2: 保有期間別パフォーマンス', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'保有期間' },
+  yaxis:{ ...dark.yaxis, title:'PnL(万)' },
+  yaxis2:{ title:'勝率(%)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#fbbf24', range:[0,105] },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' }
+}, { responsive:true });
+
+Plotly.newPlot('hold-chart-B3', [
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[-6209.0, -4816.0, -1458.0, 7358.0, 9926.0, 2165.0], type:'bar',
+     name:'PnL(万)', marker:{ color:[-6209.0, -4816.0, -1458.0, 7358.0, 9926.0, 2165.0].map(v=>v>0?'rgba(52,211,153,0.7)':'rgba(251,113,133,0.7)') } },
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d", "60d+"], y:[9.3, 13.4, 30.1, 81.5, 99.0, 100.0], type:'scatter', mode:'lines+markers',
+     name:'勝率(%)', yaxis:'y2', line:{ color:'#fbbf24' }, marker:{ color:'#fbbf24', size:8 } }
+], {
+  ...dark,
+  title:{ text:'B3: 保有期間別パフォーマンス', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'保有期間' },
+  yaxis:{ ...dark.yaxis, title:'PnL(万)' },
+  yaxis2:{ title:'勝率(%)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#fbbf24', range:[0,105] },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' }
+}, { responsive:true });
+
+Plotly.newPlot('hold-chart-B4', [
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d"], y:[-6509.0, 10922.0, 15370.0, 1613.0, 18.0], type:'bar',
+     name:'PnL(万)', marker:{ color:[-6509.0, 10922.0, 15370.0, 1613.0, 18.0].map(v=>v>0?'rgba(52,211,153,0.7)':'rgba(251,113,133,0.7)') } },
+  { x:["1-2d", "3-6d", "7-13d", "14-29d", "30-59d"], y:[9.5, 47.9, 72.4, 76.3, 81.5], type:'scatter', mode:'lines+markers',
+     name:'勝率(%)', yaxis:'y2', line:{ color:'#fbbf24' }, marker:{ color:'#fbbf24', size:8 } }
+], {
+  ...dark,
+  title:{ text:'B4: 保有期間別パフォーマンス', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'保有期間' },
+  yaxis:{ ...dark.yaxis, title:'PnL(万)' },
+  yaxis2:{ title:'勝率(%)', overlaying:'y', side:'right', gridcolor:'transparent', color:'#fbbf24', range:[0,105] },
+  legend:{ x:0.02, y:0.95, bgcolor:'rgba(0,0,0,0)' }
+}, { responsive:true });
+
+
+Plotly.newPlot('mfeday-chart-B1', [
+  { x:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], y:[77066, 33349, 15664, 9583, 6977, 5250, 4279, 3945, 3284, 2872, 2722, 2360, 2123, 1912, 1897, 1641, 1506, 1348, 1310, 1215, 1157, 972, 864, 818, 724, 687, 650, 621, 551, 510, 450], type:'bar',
+     marker:{ color:'#34d399' } }
+], {
+  ...dark,
+  title:{ text:'B1: MFEピーク日分布 (0-30d)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'MFEピーク日 (entry_dateからの日数)', dtick:5 },
+  yaxis:{ ...dark.yaxis, title:'件数' },
+  bargap:0.1
+}, { responsive:true });
+
+Plotly.newPlot('mfeday-chart-B2', [
+  { x:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], y:[98437, 63700, 11305, 5702, 3592, 2585, 2041, 1643, 1447, 1259, 1150, 1037, 959, 858, 760, 721, 686, 607, 560, 510, 477, 462, 351, 328, 353, 292, 301, 310, 266, 225, 220], type:'bar',
+     marker:{ color:'#6ee7b7' } }
+], {
+  ...dark,
+  title:{ text:'B2: MFEピーク日分布 (0-30d)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'MFEピーク日 (entry_dateからの日数)', dtick:5 },
+  yaxis:{ ...dark.yaxis, title:'件数' },
+  bargap:0.1
+}, { responsive:true });
+
+Plotly.newPlot('mfeday-chart-B3', [
+  { x:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], y:[25447, 11438, 6431, 4424, 3353, 2752, 2241, 1916, 1674, 1610, 1314, 1123, 1125, 977, 873, 795, 756, 693, 623, 547, 514, 454, 423, 380, 357, 321, 291, 294, 234, 226, 202], type:'bar',
+     marker:{ color:'#a7f3d0' } }
+], {
+  ...dark,
+  title:{ text:'B3: MFEピーク日分布 (0-30d)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'MFEピーク日 (entry_dateからの日数)', dtick:5 },
+  yaxis:{ ...dark.yaxis, title:'件数' },
+  bargap:0.1
+}, { responsive:true });
+
+Plotly.newPlot('mfeday-chart-B4', [
+  { x:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], y:[31248, 14809, 10937, 8837, 6736, 5732, 4557, 3485, 2628, 1715, 1154, 773, 359, 201, 87, 48, 24, 13, 8, 6, 1, 2, 1, 1], type:'bar',
+     marker:{ color:'#fbbf24' } }
+], {
+  ...dark,
+  title:{ text:'B4: MFEピーク日分布 (0-30d)', font:{ size:13, color:'#fafafa' } },
+  xaxis:{ ...dark.xaxis, title:'MFEピーク日 (entry_dateからの日数)', dtick:5 },
+  yaxis:{ ...dark.yaxis, title:'件数' },
+  bargap:0.1
+}, { responsive:true });
+
+</script>
+
+<footer>Generated by 1,660銘柄版 | all_long_topix_with_mae_mfe.parquet | SL=全ルールなし</footer>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 7: ユニバース拡大 — TOPIX 1,660銘柄 データ品質レポート</title>
+<style>
+  :root {
+    --bg: #09090b; --card: #18181b; --card-border: #27272a;
+    --text: #fafafa; --text-muted: #a1a1aa;
+    --emerald: #34d399; --rose: #fb7185; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif; line-height:1.6; padding:24px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin-bottom:8px; }
+  .subtitle { color:var(--text-muted); font-size:0.875rem; margin-bottom:32px; }
+  .section { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section h2 { font-size:1.1rem; margin-bottom:16px; }
+  .section h3 { font-size:0.95rem; color:var(--text-muted); margin:16px 0 8px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin:12px 0; }
+  th { text-align:left; padding:8px 12px; background:rgba(255,255,255,0.03); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+  th.r { text-align:right; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .num-pos { color:var(--emerald); font-weight:600; }
+  .num-neg { color:var(--rose); font-weight:600; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:768px) { .grid-4,.grid-3,.grid-2 { grid-template-columns:1fr; } }
+  .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
+  .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
+  .stat-card .value { font-size:1.5rem; font-weight:700; }
+  .stat-card .sub { color:var(--text-muted); font-size:0.75rem; margin-top:2px; }
+  .alert-box { border-radius:8px; padding:16px; margin:16px 0; font-size:0.875rem; line-height:1.7; }
+  .alert-danger { background:rgba(251,113,133,0.1); border:1px solid rgba(251,113,133,0.3); color:var(--rose); }
+  .alert-warning { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+  .alert-info { background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3); color:var(--blue); }
+  .alert-success { background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:var(--emerald); }
+  .sev-1 { color: var(--rose); font-weight: 700; }
+  .sev-2 { color: var(--amber); font-weight: 700; }
+  .sev-3 { color: var(--blue); }
+  .sev-4 { color: var(--emerald); }
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+</style>
+</head>
+<body>
+
+<h1>Chapter 7: ユニバース拡大 — TOPIX 1,660銘柄 データ品質レポート</h1>
+<div class="subtitle">Generated: 2026-03-08 14:05:21</div>
+
+<div class="section">
+  <h2>サマリー</h2>
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="label">価格データ（前）</div>
+      <div class="value">8,825,176</div>
+      <div class="sub">1658 tickers</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">価格データ（後）</div>
+      <div class="value">8,616,706</div>
+      <div class="sub">-208,470 (2.36%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">トレード（前）</div>
+      <div class="value">640,181</div>
+      <div class="sub">1657 tickers</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">トレード（後）</div>
+      <div class="value">568,402</div>
+      <div class="sub">-71,779 (11.21%)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>データソース</h2>
+  <div class="alert-box alert-info">
+    <strong>yfinance</strong>: TOPIX構成5セグメント（Core30, Large70, Mid400, Small1, Small2）の日足OHLCV。<br>
+    配当+株式分割を遡及調整済み。期間: 1999〜2026。<br>
+    <strong>品質担保</strong>: 130銘柄はJQuantsとリターンベースでクロスバリデーション済み。<br>
+    残り1,531銘柄は構造的品質チェック（Volume=0, NaN, 異常リターン, 日付ギャップ）で検証。
+  </div>
+</div>
+
+<div class="section">
+  <h2>セグメント別データ概要</h2>
+  <table>
+    <thead><tr><th>セグメント</th><th class="r">銘柄数</th><th class="r">レコード数</th><th class="r">Volume=0</th></tr></thead>
+    <tbody><tr><td>core30</td><td class="r">31</td><td class="r">184,654</td><td class="r">3,631</td></tr><tr><td>large70</td><td class="r">69</td><td class="r">420,755</td><td class="r">8,018</td></tr><tr><td>mid400</td><td class="r">396</td><td class="r">2,252,587</td><td class="r">42,972</td></tr><tr><td>small1</td><td class="r">493</td><td class="r">2,666,826</td><td class="r">61,160</td></tr><tr><td>small2</td><td class="r">669</td><td class="r">3,300,354</td><td class="r">89,089</td></tr></tbody>
+  </table>
+</div>
+
+
+<div class="section">
+  <h2>JQuants クロスバリデーション（130銘柄）</h2>
+  <div class="alert-box alert-info">
+    TOPIX 1,661銘柄のうち130銘柄はJQuants日足データと重複。
+    01_fetch_jquants_prices.pyと同手法（日次リターンベース）でクロスバリデーション。
+  </div>
+  <table>
+    <thead><tr><th>Level</th><th>定義</th><th class="r">件数</th></tr></thead>
+    <tbody>
+      <tr><td class="sev-1">1</td><td>リターン差 ≥ 1%（配当落ち日/分割日）</td><td class="r">1,871</td></tr>
+      <tr><td class="sev-2">2</td><td>片方のデータソースに欠損</td><td class="r">4,041</td></tr>
+      <tr><td class="sev-3">3</td><td>リターン差 0.1〜1%</td><td class="r">3,307</td></tr>
+      <tr><td class="sev-4">4</td><td>リターン差 0.01〜0.1%（丸め誤差）</td><td class="r">661</td></tr>
+    </tbody>
+  </table>
+  <div class="alert-box alert-success">
+    クリーンレコード率（差異 &lt; 0.01%）: <strong>98.1%</strong>（308,164 / 314,003）
+  </div>
+  <h3>銘柄別リターン差異統計（≥1%件数の多い順、上位20）</h3>
+  <table>
+    <thead><tr><th>銘柄</th><th class="r">日数</th><th class="r">平均|差異|</th><th class="r">最大|差異|</th><th class="r">≥1%件数</th></tr></thead>
+    <tbody><tr><td>7186.T</td><td class="r">2,420</td><td class="r">0.0245%</td><td class="r num-neg">6.88%</td><td class="r num-neg">26</td></tr><tr><td>9432.T</td><td class="r">2,438</td><td class="r">0.0759%</td><td class="r num-neg">93.28%</td><td class="r num-neg">26</td></tr><tr><td>8015.T</td><td class="r">2,438</td><td class="r">0.0462%</td><td class="r num-neg">65.68%</td><td class="r num-neg">25</td></tr><tr><td>8309.T</td><td class="r">2,438</td><td class="r">0.3964%</td><td class="r num-neg">859.77%</td><td class="r num-neg">25</td></tr><tr><td>8725.T</td><td class="r">2,438</td><td class="r">0.0512%</td><td class="r num-neg">67.03%</td><td class="r num-neg">24</td></tr><tr><td>3407.T</td><td class="r">2,438</td><td class="r">0.0187%</td><td class="r num-neg">3.68%</td><td class="r num-neg">24</td></tr><tr><td>1928.T</td><td class="r">2,438</td><td class="r">0.0202%</td><td class="r num-neg">2.40%</td><td class="r num-neg">24</td></tr><tr><td>8316.T</td><td class="r">2,438</td><td class="r">0.0506%</td><td class="r num-neg">66.34%</td><td class="r num-neg">24</td></tr><tr><td>8630.T</td><td class="r">2,438</td><td class="r">0.0471%</td><td class="r num-neg">66.48%</td><td class="r num-neg">24</td></tr><tr><td>8766.T</td><td class="r">2,438</td><td class="r">0.0505%</td><td class="r num-neg">69.72%</td><td class="r num-neg">24</td></tr><tr><td>8001.T</td><td class="r">2,438</td><td class="r">0.0528%</td><td class="r num-neg">84.27%</td><td class="r num-neg">23</td></tr><tr><td>8031.T</td><td class="r">2,438</td><td class="r">0.0401%</td><td class="r num-neg">48.78%</td><td class="r num-neg">23</td></tr><tr><td>1969.T</td><td class="r">2,438</td><td class="r">0.0405%</td><td class="r num-neg">49.41%</td><td class="r num-neg">23</td></tr><tr><td>1925.T</td><td class="r">2,438</td><td class="r">0.0180%</td><td class="r num-neg">3.85%</td><td class="r num-neg">22</td></tr><tr><td>8060.T</td><td class="r">2,438</td><td class="r">0.0187%</td><td class="r num-neg">4.26%</td><td class="r num-neg">22</td></tr><tr><td>5108.T</td><td class="r">2,438</td><td class="r">0.0394%</td><td class="r num-neg">50.96%</td><td class="r num-neg">22</td></tr><tr><td>5020.T</td><td class="r">2,438</td><td class="r">0.0211%</td><td class="r num-neg">3.00%</td><td class="r num-neg">22</td></tr><tr><td>8411.T</td><td class="r">2,438</td><td class="r">0.3791%</td><td class="r num-neg">871.65%</td><td class="r num-neg">22</td></tr><tr><td>8591.T</td><td class="r">2,438</td><td class="r">0.0220%</td><td class="r num-neg">4.97%</td><td class="r num-neg">22</td></tr><tr><td>7203.T</td><td class="r">2,438</td><td class="r">0.0518%</td><td class="r num-neg">81.01%</td><td class="r num-neg">22</td></tr></tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>構造的品質チェック（全1,661銘柄）</h2>
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">Volume=0</div>
+      <div class="value">204,870</div>
+      <div class="sub">1568 tickers</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">NaN / Inf</div>
+      <div class="value">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">負の価格</div>
+      <div class="value">5,133</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">異常リターン (>±50%)</div>
+      <div class="value">228</div>
+      <div class="sub">87 tickers</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">大きな日付ギャップ (>30日)</div>
+      <div class="value">1</div>
+      <div class="sub">tickers</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">データ不足 (&lt;500行)</div>
+      <div class="value">17</div>
+      <div class="sub">tickers</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="section">
+  <h2>異常日次リターン サンプル（上位10件）</h2>
+  <table>
+    <thead><tr><th>日付</th><th>銘柄</th><th class="r">日次リターン</th><th class="r">前日Close</th><th class="r">当日Close</th></tr></thead>
+    <tbody><tr><td>2012-09-19</td><td>9201.T</td><td class="r num-pos">+191400.0%</td><td class="r">0.7</td><td class="r">1399.1</td></tr><tr><td>2004-04-05</td><td>4776.T</td><td class="r num-pos">+109423.8%</td><td class="r">0.1</td><td class="r">126.7</td></tr><tr><td>2004-04-05</td><td>4765.T</td><td class="r num-pos">+107914.2%</td><td class="r">0.1</td><td class="r">80.6</td></tr><tr><td>2002-08-05</td><td>5857.T</td><td class="r num-pos">+96299.5%</td><td class="r">0.6</td><td class="r">596.4</td></tr><tr><td>2004-04-05</td><td>8892.T</td><td class="r num-pos">+94900.0%</td><td class="r">0.7</td><td class="r">664.9</td></tr><tr><td>2006-07-03</td><td>2489.T</td><td class="r num-pos">+56942.2%</td><td class="r">2.0</td><td class="r">1138.8</td></tr><tr><td>2006-06-23</td><td>2489.T</td><td class="r num-pos">+51001.3%</td><td class="r">1.6</td><td class="r">815.4</td></tr><tr><td>2006-07-28</td><td>2489.T</td><td class="r num-pos">+50614.3%</td><td class="r">1.5</td><td class="r">748.6</td></tr><tr><td>2006-07-19</td><td>2489.T</td><td class="r num-pos">+48184.3%</td><td class="r">1.4</td><td class="r">692.4</td></tr><tr><td>2006-09-19</td><td>2121.T</td><td class="r num-pos">+45092.3%</td><td class="r">4.0</td><td class="r">1787.5</td></tr></tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    ±50%超のリターンは株式分割/併合/上場廃止/yfinance調整エラーの可能性。
+    バックテスト結果への影響は限定的（SLで制御されるため）。
+  </div>
+</div>
+
+
+
+<div class="section">
+  <h2>最大日付ギャップ（上位10銘柄）</h2>
+  <table>
+    <thead><tr><th>銘柄</th><th class="r">最大ギャップ</th></tr></thead>
+    <tbody><tr><td>8370.T</td><td class="r">40日</td></tr></tbody>
+  </table>
+</div>
+
+
+<div class="section">
+  <h2>データ期間統計</h2>
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="label">最小行数</div>
+      <div class="value">52</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">中央値行数</div>
+      <div class="value">6,271</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">最大行数</div>
+      <div class="value">6,706</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>クリーニングルール — 価格データ</h2>
+  <table>
+    <thead><tr><th>Rule</th><th>重要度</th><th>説明</th><th class="r">除外行数</th></tr></thead>
+    <tbody><tr><td>P1</td><td class="sev-1">致命的</td><td>8766.T 2005-09-29以前（yfinance分割調整破損）</td><td class="r">1,497</td></tr><tr><td>P2</td><td class="sev-2">中程度</td><td>Volume=0 行（祝日ダミー / OHLC信頼不可）</td><td class="r">204,776</td></tr><tr><td>P3</td><td class="sev-1">致命的</td><td>NaN/Inf 価格データ</td><td class="r">0</td></tr><tr><td>P4</td><td class="sev-1">致命的</td><td>負の価格データ</td><td class="r">2,197</td></tr></tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>クリーニングルール — トレードデータ</h2>
+  <table>
+    <thead><tr><th>Rule</th><th>重要度</th><th>説明</th><th class="r">除外件数</th></tr></thead>
+    <tbody><tr><td>T1</td><td class="sev-1">致命的</td><td>8766.T 2005-09-29以前のトレード</td><td class="r">27</td></tr><tr><td>T2</td><td class="sev-2">中程度</td><td>Volume=0 日にエントリーしたトレード</td><td class="r">11,029</td></tr><tr><td>T3</td><td class="sev-3">軽微</td><td>hold_days=0（データ終端アーティファクト）</td><td class="r">60,665</td></tr><tr><td>T4</td><td class="sev-1">致命的</td><td>entry_price < 1.0（残存破損データ）</td><td class="r">58</td></tr></tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>結論</h2>
+  <div class="alert-box alert-success">
+    <strong>TOPIX 1,661銘柄のyfinanceデータは分析に使用可能</strong>。<br><br>
+    ・130銘柄JQuantsクロスバリデーション: クリーン率 98.1%（差異は配当落ち日に集中、バックテストに重大な影響なし）<br>
+    ・構造チェック: Volume=0除去、NaN/Inf/負価格除去で対応済み<br>
+    ・既存168銘柄と同じクリーニングルール（02_clean_data.py）を適用<br><br>
+    出力: <code>prices_cleaned_topix.parquet</code>（8,616,706 rows / 1658 tickers）,
+    <code>trades_cleaned_topix.parquet</code>（568,402 LONG trades / 1657 tickers）
+  </div>
+</div>
+
+<footer>Generated by 13_expand_universe.py | strategy_verification/chapters/07_universe_expansion</footer>
+</body>
+</html>

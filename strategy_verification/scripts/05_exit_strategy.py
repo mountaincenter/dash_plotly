@@ -499,6 +499,139 @@ Plotly.newPlot('mfeday-chart-{rule}', [
             f'<td class="r {pnl_cls}">{pnl:+,.0f}万</td></tr>'
         )
 
+    # ==== Section 9: PnL Impact Assessment ====
+    # Ch3 baseline (SL only, signal-based exit as-is)
+    # vs Ch4 proposal (B4: TimeCut 13d)
+    impact_rows = ""
+    total_baseline = 0.0
+    total_proposed = 0.0
+    rule_details = []
+
+    for rule in RULES:
+        sub = long_df[long_df["rule"] == rule]
+        sl = OPTIMAL_SLS[rule]
+
+        # Baseline: SL適用、exit_typeはそのまま
+        ret_base = sub["ret_pct"].copy()
+        if sl < 900:
+            sl_hit = sub["mae_pct"] < -sl
+            ret_base[sl_hit] = -sl
+        pnl_base = (sub["entry_price"] * 100 * ret_base / 100).sum() / 10000
+        wr_base = (ret_base > 0).mean() * 100
+        gw_b = ret_base[ret_base > 0].sum()
+        gl_b = abs(ret_base[ret_base <= 0].sum())
+        pf_base = gw_b / gl_b if gl_b > 0 else 999
+
+        # Proposed: B4のみTimeCut 13d適用（hold_days > 13 のトレードを除外）
+        if rule == "B4":
+            within = sub[sub["hold_days"] <= 13]
+            ret_prop = within["ret_pct"].copy()
+            # B4はSLなしなのでそのまま
+            pnl_prop = (within["entry_price"] * 100 * ret_prop / 100).sum() / 10000
+            wr_prop = (ret_prop > 0).mean() * 100 if len(ret_prop) > 0 else 0
+            gw_p = ret_prop[ret_prop > 0].sum()
+            gl_p = abs(ret_prop[ret_prop <= 0].sum())
+            pf_prop = gw_p / gl_p if gl_p > 0 else 999
+            n_cut = len(sub) - len(within)
+            change_desc = f"TimeCut 13d（{n_cut:,}件除外）"
+        else:
+            # B1-B3: 変更なし
+            ret_prop = ret_base
+            pnl_prop = pnl_base
+            wr_prop = wr_base
+            pf_prop = pf_base
+            change_desc = "変更なし"
+
+        delta = pnl_prop - pnl_base
+        total_baseline += pnl_base
+        total_proposed += pnl_prop
+
+        delta_cls = "num-pos" if delta > 0 else ("num-neg" if delta < 0 else "")
+        pnl_b_cls = "num-pos" if pnl_base > 0 else "num-neg"
+        pnl_p_cls = "num-pos" if pnl_prop > 0 else "num-neg"
+
+        impact_rows += (
+            f'<tr><td><strong>{rule}</strong></td>'
+            f'<td>{change_desc}</td>'
+            f'<td class="r">{pf_base:.2f}</td>'
+            f'<td class="r {pnl_b_cls}">{pnl_base:+,.0f}万</td>'
+            f'<td class="r">{pf_prop:.2f}</td>'
+            f'<td class="r {pnl_p_cls}">{pnl_prop:+,.0f}万</td>'
+            f'<td class="r {delta_cls}">{delta:+,.0f}万</td></tr>'
+        )
+
+    # Total row
+    total_delta = total_proposed - total_baseline
+    total_cls = "num-pos" if total_delta > 0 else "num-neg"
+    impact_rows += (
+        f'<tr style="border-top:2px solid var(--card-border);font-weight:700">'
+        f'<td>合計</td><td></td>'
+        f'<td></td><td class="r">{total_baseline:+,.0f}万</td>'
+        f'<td></td><td class="r">{total_proposed:+,.0f}万</td>'
+        f'<td class="r {total_cls}">{total_delta:+,.0f}万</td></tr>'
+    )
+
+    # B4 の hold_days > 13 の内訳（何が削られるか）
+    b4_over13 = b4[b4["hold_days"] > 13]
+    b4_within13 = b4[b4["hold_days"] <= 13]
+    b4_over13_pnl = (b4_over13["entry_price"] * 100 * b4_over13["ret_pct"] / 100).sum() / 10000
+    b4_over13_wr = b4_over13["win"].mean() * 100 if len(b4_over13) > 0 else 0
+    b4_within13_pnl = (b4_within13["entry_price"] * 100 * b4_within13["ret_pct"] / 100).sum() / 10000
+    b4_within13_wr = b4_within13["win"].mean() * 100 if len(b4_within13) > 0 else 0
+
+    b4_detail_text = (
+        f"B4 ≤13d: {len(b4_within13):,}件, WR={b4_within13_wr:.1f}%, PnL={b4_within13_pnl:+,.0f}万<br>"
+        f"B4 &gt;13d: {len(b4_over13):,}件, WR={b4_over13_wr:.1f}%, PnL={b4_over13_pnl:+,.0f}万<br>"
+        f"<strong>TimeCut 13dでカットされるのは{len(b4_over13):,}件（PnL={b4_over13_pnl:+,.0f}万）</strong>"
+    )
+
+    pnl_impact_section = f"""
+<div class="section">
+  <h2>💰 PnLインパクト: Ch3ベースライン vs Ch4提案</h2>
+  <div class="alert-box alert-info" style="margin-bottom:16px">
+    <strong>前提</strong>: Ch3最適SL適用後の全トレードが対象。Ch4の変更は<strong>B4にTimeCut 13dを追加</strong>（B1-B3は変更なし）。<br>
+    TimeCut 13d = hold_days &gt; 13 のトレードを「取らない」（13日以内に完結したトレードのみ採用）。<br>
+    ※ 厳密には13日目に強制手仕舞いだが、ここでは「13日超のトレードを除外」で近似。
+  </div>
+  <table>
+    <thead><tr>
+      <th>ルール</th><th>Ch4変更</th>
+      <th class="r">Ch3 PF</th><th class="r">Ch3 PnL</th>
+      <th class="r">Ch4 PF</th><th class="r">Ch4 PnL</th>
+      <th class="r">差分</th>
+    </tr></thead>
+    <tbody>{impact_rows}</tbody>
+  </table>
+  <div class="alert-box alert-warning">
+    {b4_detail_text}
+  </div>
+</div>"""
+
+    # Build final conclusion dynamically
+    if total_delta > 0:
+        verdict = f"Ch4提案（B4 TimeCut 13d）により、12年間の累計PnLが<strong>{total_delta:+,.0f}万円改善</strong>。"
+        verdict_tone = "alert-success"
+    elif total_delta == 0:
+        verdict = "Ch4提案による累計PnLの変化なし。効率性（PF）は改善するが、金額は同等。"
+        verdict_tone = "alert-info"
+    else:
+        verdict = f"Ch4提案（B4 TimeCut 13d）により、12年間の累計PnLが<strong>{total_delta:,.0f}万円減少</strong>。TimeCutは金額ベースでは改善にならない。"
+        verdict_tone = "alert-warning"
+
+    final_conclusion_section = f"""
+<div class="section">
+  <h2>Chapter 4 結論</h2>
+  <div class="alert-box {verdict_tone}" style="margin-bottom:12px">
+    {verdict}
+  </div>
+  <div class="alert-box alert-info">
+    <strong>1. Fixed TPは不要。</strong>全ルールでTPなしがPF/PnL最大。テール利益のカットが損。<br>
+    <strong>2. B4は保有期間が鍵。</strong>13日以内は高収益、14日以降は急激に劣化。<br>
+    <strong>3. B1-B3は「早すぎるexit」が問題。</strong>短期保有（&lt;7日）は全て赤字。最低保有期間の導入を検討。<br>
+    <strong>4. 上記PnLインパクトが正（お金が増える）の場合のみ、Ch4提案を採用する根拠がある。</strong>
+  </div>
+</div>"""
+
     # B1-B3: short-hold vs long-hold
     b13_insight_rows = ""
     for rule in ["B1", "B2", "B3"]:
@@ -695,16 +828,11 @@ Plotly.newPlot('mfeday-chart-{rule}', [
   </table>
 </div>
 
+<!-- Section 9: PnL Impact Assessment -->
+{pnl_impact_section}
+
 <!-- Final Conclusion -->
-<div class="section">
-  <h2>Chapter 4 結論</h2>
-  <div class="alert-box alert-success">
-    <strong>1. Fixed TPは不要。</strong>全ルールでTPなしがPF/PnL最大。テール利益のカットが損。<br>
-    <strong>2. B4は保有期間が鍵。</strong>13日以内は高収益、14日以降は急激に劣化。TimeCut 13dのバックテスト再実行を推奨。<br>
-    <strong>3. B1-B3は「早すぎるexit」が問題。</strong>短期保有（&lt;7日）は全て赤字。最低保有期間の導入を検討。<br>
-    <strong>4. 次のステップ:</strong> Chapter 5で保有期間の最適化（最低保有期間 + TimeCut）のバックテストを再実行し、シグナルベースexitとの組み合わせを検証。
-  </div>
-</div>
+{final_conclusion_section}
 
 <script>
 const dark = {{

@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 2: ユニバース戦略決定</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131a;
+    --card-border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.15);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.15);
+    --gold: #f59e0b;
+    --gold-dim: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+  }
+
+  /* Slide container */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .slide-number {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .slide h1 {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+  .slide h2 {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .slide .subtitle {
+    font-size: 20px;
+    color: var(--muted);
+    margin-bottom: 48px;
+    max-width: 700px;
+  }
+
+  /* Hero slide */
+  .hero { text-align: center; align-items: center; }
+  .hero h1 { font-size: 64px; }
+  .hero .subtitle { max-width: 800px; text-align: center; }
+
+  /* Verdict badge */
+  .verdict {
+    display: inline-block;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 8px 4px;
+  }
+  .verdict.green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .verdict.red   { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+  .verdict.gold  { background: var(--gold-dim);  color: var(--gold);  border: 1px solid rgba(245,158,11,0.3); }
+  .verdict.blue  { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(59,130,246,0.3); }
+
+  /* Metric cards */
+  .metrics { display: flex; gap: 24px; flex-wrap: wrap; margin: 32px 0; }
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    flex: 1;
+    min-width: 200px;
+  }
+  .metric-card .label {
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .metric-card .value {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .metric-card .detail {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .metric-card.highlight {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--accent-glow);
+  }
+
+  /* Comparison bars */
+  .bar-group { margin: 24px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+  }
+  .bar-label {
+    width: 160px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: right;
+    padding-right: 16px;
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: 36px;
+    background: #1a1a25;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: width 0.6s ease;
+    min-width: fit-content;
+  }
+  .bar-value {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Narrative text */
+  .narrative {
+    font-size: 18px;
+    color: var(--text);
+    max-width: 800px;
+    margin: 20px 0;
+    line-height: 1.8;
+  }
+  .narrative strong { color: #fff; }
+  .narrative .highlight-text {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Evidence block */
+  .evidence {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 20px 0;
+    max-width: 900px;
+  }
+  .evidence .title {
+    font-size: 14px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Grid comparison */
+  .grid-compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 24px 0;
+  }
+  .grid-item {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .grid-item.winner {
+    border-color: var(--green);
+    box-shadow: 0 0 20px rgba(34,197,94,0.1);
+  }
+  .grid-item.loser {
+    border-color: var(--red);
+    opacity: 0.6;
+  }
+  .grid-item .name {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .grid-item .stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #1e1e2e;
+    font-size: 14px;
+  }
+  .grid-item .stat:last-child { border: none; }
+  .grid-item .stat .k { color: var(--muted); }
+  .grid-item .stat .v { font-weight: 600; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* Matrix table */
+  .matrix {
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 15px;
+  }
+  .matrix th, .matrix td {
+    padding: 14px 20px;
+    text-align: center;
+  }
+  .matrix th {
+    background: #1a1a25;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .matrix td {
+    border-bottom: 1px solid var(--card-border);
+  }
+  .matrix tr:hover td {
+    background: rgba(99,102,241,0.05);
+  }
+  .matrix .star {
+    background: var(--green-dim);
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .matrix .good {
+    color: var(--green);
+    font-weight: 600;
+  }
+  .matrix .ok {
+    color: var(--gold);
+  }
+  .matrix .weak {
+    color: var(--muted);
+  }
+
+  /* Arrow indicator */
+  .arrow-right {
+    display: inline-block;
+    margin: 0 8px;
+    color: var(--accent);
+  }
+
+  /* Conclusion card */
+  .conclusion-card {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(34,197,94,0.08));
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 20px;
+    padding: 40px;
+    margin: 32px 0;
+    max-width: 900px;
+  }
+  .conclusion-card h3 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  .param-list {
+    list-style: none;
+    margin: 16px 0;
+  }
+  .param-list li {
+    display: flex;
+    align-items: baseline;
+    padding: 8px 0;
+    font-size: 17px;
+  }
+  .param-list .key {
+    color: var(--muted);
+    width: 180px;
+    flex-shrink: 0;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .param-list .val {
+    font-weight: 600;
+    font-size: 18px;
+  }
+
+  /* Footnote */
+  .footnote {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  /* Progress dots */
+  .progress {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 100;
+  }
+  .progress .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--card-border);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .progress .dot:hover,
+  .progress .dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* Waterfall chart */
+  .waterfall {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 200px;
+    margin: 24px 0;
+    padding-bottom: 30px;
+    position: relative;
+  }
+  .waterfall .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    position: relative;
+  }
+  .waterfall .bar-col .rect {
+    width: 80%;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.5s ease;
+  }
+  .waterfall .bar-col .col-label {
+    position: absolute;
+    bottom: -24px;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .waterfall .bar-col .col-value {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin: 24px 0;
+  }
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+    .slide { padding: 40px 24px; }
+    .slide h1 { font-size: 36px; }
+    .hero h1 { font-size: 42px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation dots -->
+<nav class="progress" id="nav">
+  <div class="dot" onclick="goto(0)" title="結論"></div>
+  <div class="dot" onclick="goto(1)" title="Step 1 結論"></div>
+  <div class="dot" onclick="goto(2)" title="SL戦略"></div>
+  <div class="dot" onclick="goto(3)" title="ユニバース"></div>
+  <div class="dot" onclick="goto(4)" title="株価帯"></div>
+  <div class="dot" onclick="goto(5)" title="シグナル×レジーム"></div>
+  <div class="dot" onclick="goto(6)" title="推奨戦略"></div>
+  <div class="dot" onclick="goto(7)" title="Next Steps"></div>
+</nav>
+
+<!-- ========== SLIDE 0: 結論から ========== -->
+<section class="slide hero" id="s0">
+  <span class="slide-number">Step 2 / Conclusion First</span>
+  <h1>取るべき戦略</h1>
+  <p class="subtitle">12年・6万件の検証から導かれた、有限資金で実行可能なグランビルLONG戦略</p>
+
+  <div style="margin: 32px 0;">
+    <span class="verdict green">LONG 特化</span>
+    <span class="verdict gold">Core30 + 政策銘柄</span>
+    <span class="verdict blue">株価 &lt; ¥20,000</span>
+    <span class="verdict green">SL -3%</span>
+  </div>
+
+  <div class="metrics" style="max-width:900px;">
+    <div class="metric-card highlight">
+      <div class="label">Profit Factor</div>
+      <div class="value" style="color:var(--green);">1.44</div>
+      <div class="detail">全銘柄(1.40)より高い</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">1トレード平均損益</div>
+      <div class="value" style="color:var(--green);">+¥1,039</div>
+      <div class="detail">100株あたり</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">対象トレード数</div>
+      <div class="value">33,698</div>
+      <div class="detail">12年間 × 83銘柄</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">理論PnL合計</div>
+      <div class="value" style="color:var(--green);">+3,501万</div>
+      <div class="detail">無限資金前提の上限</div>
+    </div>
+  </div>
+
+  <p class="narrative" style="text-align:center;">
+    以下、この結論に至った根拠を<strong>7枚のスライド</strong>で示す。<br>
+    各スライドは独立した検証結果であり、どこからでも遡って再検証できる。
+  </p>
+</section>
+
+<!-- ========== SLIDE 1: Step 1 結論 ========== -->
+<section class="slide" id="s1">
+  <span class="slide-number">01 / Step 1 結論</span>
+  <h2>SHORT は全滅。LONG に全振りする。</h2>
+  <p class="subtitle">8法則すべて検証した結果、SHORTにエッジはない</p>
+
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--green); margin-bottom:16px;">LONG（B1-B4）</h3>
+      <div class="bar-group">
+        <div class="bar-row">
+          <span class="bar-label">B4 乖離反発</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:82.5%; background:linear-gradient(90deg, var(--green), #16a34a);">
+              PF 1.65
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">B3 SMA支持</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:72.5%; background:linear-gradient(90deg, var(--green), #16a34a);">
+              PF 1.45
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">B1 ゴールデンクロス</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:66%; background:linear-gradient(90deg, var(--green), #16a34a);">
+              PF 1.32
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">B2 押し目買い</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:63%; background:linear-gradient(90deg, var(--green), #16a34a);">
+              PF 1.26
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="narrative"><strong>4シグナル全てPF > 1.0</strong>。特にB4(乖離反発)は圧倒的。</p>
+    </div>
+
+    <div>
+      <h3 style="color:var(--red); margin-bottom:16px;">SHORT（S1-S4）</h3>
+      <div class="bar-group">
+        <div class="bar-row">
+          <span class="bar-label">S4 乖離反落</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:57.5%; background:linear-gradient(90deg, var(--muted), #666);">
+              PF 1.15
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">S1 デッドクロス</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:46%; background:linear-gradient(90deg, var(--red), #dc2626);">
+              PF 0.92
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">S3 SMA抵抗</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:42%; background:linear-gradient(90deg, var(--red), #dc2626);">
+              PF 0.84
+            </div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">S2 戻り売り</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:39%; background:linear-gradient(90deg, var(--red), #dc2626);">
+              PF 0.78
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="narrative">S4だけPF > 1.0だが<strong>エッジとは呼べない水準</strong>。<br>S1-S3は損する。</p>
+    </div>
+  </div>
+
+  <div class="evidence">
+    <div class="title">根拠データ</div>
+    <p style="font-size:14px; color:var(--muted);">
+      SL-3%, 全143銘柄, 株価制限なし, SMA20, 全期間(12年)<br>
+      LONG: 60,351トレード / SHORT: 57,213トレード<br>
+      ソース: <code>step1/trades_sl3.parquet</code>
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 2: SL戦略 ========== -->
+<section class="slide" id="s2">
+  <span class="slide-number">02 / Stop Loss</span>
+  <h2>SL-3% がリスク管理の最適解</h2>
+  <p class="subtitle">SLなしのPFが高く見えるのはB4の幻想。SL-3%が実運用に最も適する。</p>
+
+  <div class="grid-compare">
+    <div class="grid-item">
+      <div class="name">SL なし</div>
+      <div class="stat"><span class="k">LONG合計 PF</span><span class="v">1.54</span></div>
+      <div class="stat"><span class="k">平均損益</span><span class="v pos">+¥1,758</span></div>
+      <div class="stat"><span class="k">B4 PF</span><span class="v" style="color:var(--gold);">2.27</span></div>
+      <div class="stat"><span class="k">B4 勝率</span><span class="v">70.7%</span></div>
+      <div class="stat"><span class="k">問題</span><span class="v neg">下落時の損失が青天井</span></div>
+    </div>
+
+    <div class="grid-item winner">
+      <div class="name" style="color:var(--green);">SL -3% <span style="font-size:12px; background:var(--green-dim); padding:3px 8px; border-radius:4px; margin-left:8px;">推奨</span></div>
+      <div class="stat"><span class="k">LONG合計 PF</span><span class="v">1.40</span></div>
+      <div class="stat"><span class="k">平均損益</span><span class="v pos">+¥1,193</span></div>
+      <div class="stat"><span class="k">B4 PF</span><span class="v">1.65</span></div>
+      <div class="stat"><span class="k">B4 勝率</span><span class="v">34.1%</span></div>
+      <div class="stat"><span class="k">SL発動率</span><span class="v">32.0%</span></div>
+    </div>
+
+    <div class="grid-item">
+      <div class="name">SL -5%</div>
+      <div class="stat"><span class="k">LONG合計 PF</span><span class="v">1.36</span></div>
+      <div class="stat"><span class="k">平均損益</span><span class="v pos">+¥1,283</span></div>
+      <div class="stat"><span class="k">B4 PF</span><span class="v">1.55</span></div>
+      <div class="stat"><span class="k">B4 勝率</span><span class="v">46.7%</span></div>
+      <div class="stat"><span class="k">SL発動率</span><span class="v">15.8%</span></div>
+    </div>
+  </div>
+
+  <div class="evidence">
+    <div class="title">なぜSLなしのPFが高く見えるか</div>
+    <p class="narrative" style="margin:0; max-width:100%; font-size:15px;">
+      B4(乖離反発)はSLなしだとPF 2.27・勝率70.7%に見える。しかしこれは
+      「いつかSMAに戻る」前提で保有し続けるため。戻らなかった場合の損失は<strong>-30%以上</strong>に膨らむ。<br>
+      SL-3%を入れると勝率は34.1%に下がるが、<strong>1トレードの最大損失が制御</strong>される。<br>
+      PFが1.65→1.40に下がるのは「保険料」であり、実運用では必須。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 3: ユニバース ========== -->
+<section class="slide" id="s3">
+  <span class="slide-number">03 / Universe</span>
+  <h2>ユニバースを絞っても<br>エッジは消えない</h2>
+  <p class="subtitle">むしろ絞った方がPFが上がる。ノイズの少ない銘柄群ほど効率が良い。</p>
+
+  <div class="bar-group" style="max-width:800px;">
+    <div class="bar-row">
+      <span class="bar-label" style="width:200px;">Core30+政策銘柄<br><span style="font-size:11px;color:var(--muted);">83銘柄</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:96%; background:linear-gradient(90deg, var(--accent), #818cf8);">
+          <span style="color:#fff; font-weight:700;">PF 1.44</span>
+        </div>
+        <span class="bar-value">+5,387万</span>
+      </div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:200px;">政策銘柄<br><span style="font-size:11px;color:var(--muted);">72銘柄</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:96%; background:linear-gradient(90deg, var(--accent), #818cf8);">
+          <span style="color:#fff;">PF 1.44</span>
+        </div>
+        <span class="bar-value">+4,232万</span>
+      </div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:200px;">Core30<br><span style="font-size:11px;color:var(--muted);">31銘柄</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:94%; background:linear-gradient(90deg, #4b5563, #6b7280);">
+          <span style="color:#fff;">PF 1.41</span>
+        </div>
+        <span class="bar-value">+2,779万</span>
+      </div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:200px;">全銘柄<br><span style="font-size:11px;color:var(--muted);">143銘柄</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:93%; background:linear-gradient(90deg, #4b5563, #6b7280);">
+          <span style="color:#fff;">PF 1.40</span>
+        </div>
+        <span class="bar-value">+7,199万</span>
+      </div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:200px;">TOPIX100<br><span style="font-size:11px;color:var(--muted);">100銘柄</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:91%; background:linear-gradient(90deg, #4b5563, #6b7280);">
+          <span style="color:#fff;">PF 1.37</span>
+        </div>
+        <span class="bar-value">+5,906万</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="evidence">
+      <div class="title">発見: PFが上がる理由</div>
+      <p style="font-size:15px; color:var(--text);">
+        全銘柄143のうち、TOPIX Mid400やSmallには流動性が低く<strong>シグナルの精度が落ちる銘柄</strong>が含まれる。<br><br>
+        Core30+政策銘柄(83)は流動性が高く、かつ政策テーマ(防衛・半導体・経済安保)の追い風がある銘柄群。
+        <strong>ノイズを減らしてPFが上昇</strong>するのは合理的。
+      </p>
+    </div>
+    <div class="evidence">
+      <div class="title">PnL合計の解釈</div>
+      <p style="font-size:15px; color:var(--text);">
+        全銘柄: +7,199万、Core30+政策: +5,387万。<br>
+        差の1,812万は<strong>無限資金前提でしか取れない利益</strong>。<br><br>
+        有限資金ではどうせ全シグナルに入れない。<br>
+        PFが高いユニバースに絞り、<strong>質の高いトレードだけ拾う方が合理的</strong>。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 4: 株価帯 ========== -->
+<section class="slide" id="s4">
+  <span class="slide-number">04 / Price Range</span>
+  <h2>株価帯で PF は変わらない。<br>変わるのは「1トレードの金額」だけ。</h2>
+  <p class="subtitle">PFが同じなら、資金効率で選ぶ。¥20,000未満が現実的な上限。</p>
+
+  <table class="matrix" style="max-width:800px;">
+    <tr>
+      <th>株価帯</th>
+      <th>トレード数</th>
+      <th>勝率</th>
+      <th>PF</th>
+      <th>平均損益</th>
+      <th>PnL合計</th>
+      <th>中央値株価</th>
+    </tr>
+    <tr>
+      <td>&lt; ¥5,000</td>
+      <td>56,835</td>
+      <td>35.3%</td>
+      <td class="good">1.39</td>
+      <td class="pos">+¥599</td>
+      <td class="pos">+3,403万</td>
+      <td>¥845</td>
+    </tr>
+    <tr>
+      <td>&lt; ¥10,000</td>
+      <td>58,585</td>
+      <td>35.3%</td>
+      <td class="good">1.40</td>
+      <td class="pos">+¥722</td>
+      <td class="pos">+4,231万</td>
+      <td>¥882</td>
+    </tr>
+    <tr style="background:var(--green-dim);">
+      <td><strong>&lt; ¥20,000</strong></td>
+      <td>59,502</td>
+      <td>35.3%</td>
+      <td class="good"><strong>1.40</strong></td>
+      <td class="pos"><strong>+¥890</strong></td>
+      <td class="pos"><strong>+5,293万</strong></td>
+      <td>¥902</td>
+    </tr>
+    <tr>
+      <td>制限なし</td>
+      <td>60,351</td>
+      <td>35.3%</td>
+      <td class="good">1.40</td>
+      <td class="pos">+¥1,193</td>
+      <td class="pos">+7,199万</td>
+      <td>¥922</td>
+    </tr>
+  </table>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="evidence">
+      <div class="title">PF 1.39 → 1.40 → 1.40 → 1.40</div>
+      <p style="font-size:15px;">
+        ほぼ<strong>横ばい</strong>。グランビル法則のエッジは株価水準に依存しない。
+        高い株を除外してもPFは下がらない。
+      </p>
+    </div>
+    <div class="evidence">
+      <div class="title">¥20,000未満を選ぶ理由</div>
+      <p style="font-size:15px;">
+        100株 × ¥20,000 = <strong>最大200万円/ポジション</strong>。<br>
+        信用証拠金30%で<strong>60万円</strong>。<br>
+        ¥20,000超はファストリ(¥5万)やディスコ(¥4万)級。<br>
+        1銘柄に400-500万拘束されると資金回転が止まる。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 5: シグナル × レジーム ========== -->
+<section class="slide" id="s5">
+  <span class="slide-number">05 / Signal &times; Regime</span>
+  <h2>レジームで戦い方を変える</h2>
+  <p class="subtitle">上昇相場と下落相場で機能するシグナルは異なる。使い分けが必要。</p>
+
+  <p class="narrative">
+    以下は<strong>Core30+政策銘柄, &lt;¥20,000, SL-3%</strong>での結果。
+  </p>
+
+  <table class="matrix" style="max-width:900px;">
+    <tr>
+      <th>シグナル</th>
+      <th>レジーム</th>
+      <th>トレード数</th>
+      <th>勝率</th>
+      <th>PF</th>
+      <th>平均損益</th>
+      <th>PnL合計</th>
+    </tr>
+    <tr>
+      <td rowspan="2" style="font-weight:700;font-size:18px;">B4<br><span style="font-size:12px;color:var(--muted);">乖離反発</span></td>
+      <td class="star">Downtrend</td>
+      <td class="star">5,928</td>
+      <td class="star">33.6%</td>
+      <td class="star" style="font-size:20px;color:var(--green);">1.67</td>
+      <td class="star"><span class="pos">+¥1,687</span></td>
+      <td class="star"><span class="pos">+1,000万</span></td>
+    </tr>
+    <tr>
+      <td>Uptrend</td>
+      <td>1,066</td>
+      <td>33.4%</td>
+      <td class="ok">1.49</td>
+      <td class="pos">+¥1,101</td>
+      <td class="pos">+117万</td>
+    </tr>
+    <tr>
+      <td rowspan="2" style="font-weight:700;font-size:18px;">B1<br><span style="font-size:12px;color:var(--muted);">ゴールデンクロス</span></td>
+      <td style="background:var(--blue-dim); border-radius:4px;">Uptrend</td>
+      <td style="background:var(--blue-dim);">6,802</td>
+      <td style="background:var(--blue-dim);">30.7%</td>
+      <td style="background:var(--blue-dim); font-size:18px; color:var(--blue); font-weight:700;">1.49</td>
+      <td style="background:var(--blue-dim);"><span class="pos">+¥1,254</span></td>
+      <td style="background:var(--blue-dim);"><span class="pos">+853万</span></td>
+    </tr>
+    <tr>
+      <td>Downtrend</td>
+      <td>4,100</td>
+      <td>30.5%</td>
+      <td class="weak">1.19</td>
+      <td class="pos">+¥631</td>
+      <td class="pos">+259万</td>
+    </tr>
+    <tr>
+      <td rowspan="2" style="font-weight:700;font-size:18px;">B3<br><span style="font-size:12px;color:var(--muted);">SMA支持</span></td>
+      <td style="background:var(--blue-dim); border-radius:4px;">Uptrend</td>
+      <td style="background:var(--blue-dim);">3,001</td>
+      <td style="background:var(--blue-dim);">32.6%</td>
+      <td style="background:var(--blue-dim); font-size:18px; color:var(--blue); font-weight:700;">1.49</td>
+      <td style="background:var(--blue-dim);"><span class="pos">+¥753</span></td>
+      <td style="background:var(--blue-dim);"><span class="pos">+226万</span></td>
+    </tr>
+    <tr>
+      <td>Downtrend</td>
+      <td>1,107</td>
+      <td>32.5%</td>
+      <td class="ok">1.30</td>
+      <td class="pos">+¥1,326</td>
+      <td class="pos">+147万</td>
+    </tr>
+    <tr>
+      <td rowspan="2" style="font-weight:700;font-size:18px;">B2<br><span style="font-size:12px;color:var(--muted);">押し目買い</span></td>
+      <td>Uptrend</td>
+      <td>6,007</td>
+      <td>39.6%</td>
+      <td class="ok">1.49</td>
+      <td class="pos">+¥1,018</td>
+      <td class="pos">+611万</td>
+    </tr>
+    <tr>
+      <td>Downtrend</td>
+      <td>5,687</td>
+      <td>40.1%</td>
+      <td class="weak">1.12</td>
+      <td class="pos">+¥505</td>
+      <td class="pos">+287万</td>
+    </tr>
+  </table>
+
+  <div class="two-col" style="max-width:900px; margin-top:32px;">
+    <div style="background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); border-radius:16px; padding:28px;">
+      <h3 style="color:var(--green); margin-bottom:12px;">Downtrend の武器</h3>
+      <p style="font-size:28px; font-weight:700; margin-bottom:8px;">B4: PF 1.67</p>
+      <p style="font-size:15px; color:var(--text);">
+        下落相場で「売られすぎ(乖離-8%超)からの反発」を拾う。<br>
+        5,928トレードと<strong>十分なサンプルサイズ</strong>。<br>
+        平均+¥1,687/トレード。
+      </p>
+    </div>
+    <div style="background:var(--blue-dim); border:1px solid rgba(59,130,246,0.3); border-radius:16px; padding:28px;">
+      <h3 style="color:var(--blue); margin-bottom:12px;">Uptrend の武器</h3>
+      <p style="font-size:28px; font-weight:700; margin-bottom:8px;">B1 + B3: PF 1.49</p>
+      <p style="font-size:15px; color:var(--text);">
+        上昇相場で「GC突破」と「SMAタッチ反発」の2本柱。<br>
+        B1: 6,802件、B3: 3,001件で<strong>合計9,803件</strong>。<br>
+        B2はPF 1.49だがDowntrendで1.12に崩れるため要注意。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 6: 推奨戦略 ========== -->
+<section class="slide" id="s6">
+  <span class="slide-number">06 / Strategy</span>
+  <h2>推奨戦略の全体像</h2>
+  <p class="subtitle">Step 1-2 の検証から導出された、実行可能な戦略パラメータ</p>
+
+  <div class="conclusion-card">
+    <h3>確定パラメータ</h3>
+    <ul class="param-list">
+      <li><span class="key">方向</span><span class="val" style="color:var(--green);">LONG のみ</span></li>
+      <li><span class="key">ユニバース</span><span class="val">Core30 + 政策銘柄（83銘柄）</span></li>
+      <li><span class="key">株価上限</span><span class="val">¥20,000 未満</span></li>
+      <li><span class="key">ストップロス</span><span class="val">-3%（IFD逆指値）</span></li>
+      <li><span class="key">エントリー</span><span class="val">シグナル翌営業日 寄付(Open)</span></li>
+      <li><span class="key">イグジット</span><span class="val">Exit条件翌営業日 寄付(Open)</span></li>
+    </ul>
+  </div>
+
+  <div class="conclusion-card" style="border-color:rgba(245,158,11,0.3); background:linear-gradient(135deg, rgba(245,158,11,0.05), rgba(99,102,241,0.05));">
+    <h3>レジーム別運用ルール</h3>
+    <table class="matrix" style="margin:16px 0; width:100%;">
+      <tr>
+        <th>レジーム判定</th>
+        <th>使用シグナル</th>
+        <th>PF</th>
+        <th>根拠</th>
+      </tr>
+      <tr>
+        <td style="text-align:left;">
+          <span style="color:var(--blue); font-weight:600;">Uptrend</span><br>
+          <span style="font-size:12px; color:var(--muted);">N225 &gt; SMA20</span>
+        </td>
+        <td style="font-weight:700;">B1 + B3</td>
+        <td style="color:var(--blue); font-weight:700;">1.49</td>
+        <td style="text-align:left; font-size:13px; color:var(--muted);">
+          GC突破 + SMAタッチ反発。上昇トレンドの順張り。
+        </td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">
+          <span style="color:var(--green); font-weight:600;">Downtrend</span><br>
+          <span style="font-size:12px; color:var(--muted);">N225 &lt; SMA20</span>
+        </td>
+        <td style="font-weight:700;">B4</td>
+        <td style="color:var(--green); font-weight:700;">1.67</td>
+        <td style="text-align:left; font-size:13px; color:var(--muted);">
+          乖離-8%超からの反発。下落時の逆張り。
+        </td>
+      </tr>
+    </table>
+
+    <div style="margin-top:16px; padding:12px; background:rgba(0,0,0,0.2); border-radius:8px; font-size:14px; color:var(--muted);">
+      <strong style="color:var(--gold);">B2（押し目買い）の扱い:</strong>
+      Uptrend PF 1.49だが Downtrend 1.12。レジーム判定が遅れると損失を生む。
+      Step 2.5（Exit戦略）の結果で最終判断。現時点では保留。
+    </div>
+  </div>
+
+  <div class="evidence" style="max-width:900px;">
+    <div class="title">なぜ Core30+政策銘柄 なのか（意思決定の根拠）</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:12px;">
+      <div style="padding:12px; background:rgba(0,0,0,0.2); border-radius:8px;">
+        <p style="font-size:12px; color:var(--muted);">PF（効率）</p>
+        <p style="font-size:24px; font-weight:700;">1.44</p>
+        <p style="font-size:12px; color:var(--green);">全銘柄(1.40)より+0.04</p>
+      </div>
+      <div style="padding:12px; background:rgba(0,0,0,0.2); border-radius:8px;">
+        <p style="font-size:12px; color:var(--muted);">銘柄数（資金拘束）</p>
+        <p style="font-size:24px; font-weight:700;">83</p>
+        <p style="font-size:12px; color:var(--green);">全銘柄(143)の58%に圧縮</p>
+      </div>
+      <div style="padding:12px; background:rgba(0,0,0,0.2); border-radius:8px;">
+        <p style="font-size:12px; color:var(--muted);">理論PnL維持率</p>
+        <p style="font-size:24px; font-weight:700;">75%</p>
+        <p style="font-size:12px; color:var(--muted);">3,501万 / 5,293万（&lt;2万）</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 7: Next Steps ========== -->
+<section class="slide" id="s7">
+  <span class="slide-number">07 / Next Steps</span>
+  <h2>Step 2.5 → Step 3 へ</h2>
+  <p class="subtitle">残る未検証変数と、運用開始までのフロー</p>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="conclusion-card" style="margin:0;">
+      <h3 style="color:var(--gold);">Step 2.5: Exit 戦略</h3>
+      <ul class="param-list">
+        <li><span class="key">検証対象</span><span class="val">シグナルExit vs 固定日数Exit</span></li>
+        <li><span class="key">固定日数候補</span><span class="val">7日 / 14日 / 21日</span></li>
+        <li><span class="key">MAX_HOLD</span><span class="val">60日の妥当性検証</span></li>
+        <li><span class="key">目的</span><span class="val">保有日数の制御 → 資金回転率向上</span></li>
+      </ul>
+      <p style="font-size:14px; color:var(--muted); margin-top:12px;">
+        現時点のExit: 「Close &lt; SMA で翌日Open決済」。<br>
+        固定日数Exitの方が資金拘束を予測可能にできる可能性。
+      </p>
+    </div>
+
+    <div class="conclusion-card" style="margin:0; border-color:rgba(59,130,246,0.3); background:linear-gradient(135deg, rgba(59,130,246,0.05), rgba(34,197,94,0.05));">
+      <h3 style="color:var(--blue);">Step 3: 資金制約シミュレーション</h3>
+      <ul class="param-list">
+        <li><span class="key">入力</span><span class="val">信用余力（変数）</span></li>
+        <li><span class="key">検証内容</span><span class="val">同時保有数・優先順位ロジック</span></li>
+        <li><span class="key">出力</span><span class="val">実行可能なトレード計画</span></li>
+        <li><span class="key">目標</span><span class="val">2026/03/03(火) 寄付から運用開始</span></li>
+      </ul>
+      <p style="font-size:14px; color:var(--muted); margin-top:12px;">
+        Step 2.5 の保有日数が確定すれば、<br>
+        同時保有数の上限と必要証拠金が計算できる。
+      </p>
+    </div>
+  </div>
+
+  <div class="evidence" style="max-width:900px; margin-top:32px;">
+    <div class="title">Step 2 で確定したこと</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; font-size:15px;">
+      <div><span style="color:var(--green);">&#10003;</span> SHORT は不採用（Step 1）</div>
+      <div><span style="color:var(--green);">&#10003;</span> SL-3% が最適（Step 1）</div>
+      <div><span style="color:var(--green);">&#10003;</span> ユニバース: Core30+政策銘柄</div>
+      <div><span style="color:var(--green);">&#10003;</span> 株価帯: &lt;¥20,000</div>
+      <div><span style="color:var(--green);">&#10003;</span> B4 Downtrend が最強シグナル</div>
+      <div><span style="color:var(--green);">&#10003;</span> B1+B3 Uptrend が第2軸</div>
+      <div><span style="color:var(--gold);">&#9679;</span> B2 の採否 → Step 2.5 で判断</div>
+      <div><span style="color:var(--gold);">&#9679;</span> Exit方法・保有日数 → Step 2.5</div>
+      <div><span style="color:var(--blue);">&#9675;</span> 同時保有制限 → Step 3</div>
+      <div><span style="color:var(--blue);">&#9675;</span> ポジションサイズ → Step 3</div>
+    </div>
+  </div>
+
+  <div class="footnote" style="max-width:900px;">
+    データソース: step1/trades_sl3.parquet (60,351 LONG), step2/universe_summary.parquet (780 rows)<br>
+    検証期間: 2014-03 ~ 2026-02 (12年) / SMA20 / 全期間分析<br>
+    生成: 2026-03-02 / Step 2 ユニバース制限
+  </div>
+</section>
+
+<script>
+// Navigation dots
+const slides = document.querySelectorAll('.slide');
+const dots = document.querySelectorAll('.dot');
+
+function goto(i) {
+  slides[i].scrollIntoView({ behavior: 'smooth' });
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const idx = Array.from(slides).indexOf(e.target);
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    }
+  });
+}, { threshold: 0.5 });
+
+slides.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

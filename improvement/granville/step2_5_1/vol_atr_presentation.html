@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 2.5.1: ATR・出来高フィルター検証</title>
+<style>
+  :root {
+    --bg:#0a0a0f; --card:#13131a; --border:#1e1e2e; --text:#e0e0e8; --muted:#8888a0;
+    --accent:#6366f1; --green:#22c55e; --green-dim:rgba(34,197,94,0.15);
+    --red:#ef4444; --red-dim:rgba(239,68,68,0.15); --gold:#f59e0b; --gold-dim:rgba(245,158,11,0.12);
+    --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.12); --cyan:#06b6d4;
+    --purple:#a855f7; --purple-dim:rgba(168,85,247,0.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;}
+  .slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 80px;border-bottom:1px solid var(--border);position:relative;}
+  .slide-number{position:absolute;top:30px;right:40px;font-size:13px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .slide h1{font-size:48px;font-weight:700;margin-bottom:16px;letter-spacing:-1px;}
+  .slide h2{font-size:32px;font-weight:600;margin-bottom:12px;}
+  .hero{text-align:center;align-items:center;}
+  .hero h1{font-size:52px;}
+  .subtitle{font-size:20px;color:var(--muted);margin-bottom:40px;max-width:800px;}
+  .verdict{display:inline-block;padding:10px 28px;border-radius:8px;font-size:17px;font-weight:600;margin:6px 4px;}
+  .verdict.green{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.3);}
+  .verdict.red{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+  .verdict.gold{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(245,158,11,0.3);}
+  .verdict.blue{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(59,130,246,0.3);}
+  .verdict.purple{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(168,85,247,0.3);}
+  .metrics{display:flex;gap:20px;flex-wrap:wrap;margin:28px 0;}
+  .mc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 28px;flex:1;min-width:180px;}
+  .mc .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+  .mc .value{font-size:36px;font-weight:700;letter-spacing:-1px;}
+  .mc .detail{font-size:13px;color:var(--muted);margin-top:4px;}
+  .mc.hl{border-color:var(--green);box-shadow:0 0 25px rgba(34,197,94,0.1);}
+  .narrative{font-size:17px;max-width:850px;margin:16px 0;line-height:1.8;}
+  .narrative strong{color:#fff;}
+  .evidence{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:16px 0;}
+  .evidence .title{font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:20px 0;}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:20px 0;}
+  .insight{background:linear-gradient(135deg,rgba(99,102,241,0.06),rgba(6,182,212,0.06));border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:20px 24px;margin:16px 0;max-width:900px;}
+  .insight h4{color:var(--accent);font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+  .pos{color:var(--green);}
+  .neg{color:var(--red);}
+  .conclusion-card{background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,197,94,0.08));border:1px solid rgba(99,102,241,0.3);border-radius:20px;padding:36px;margin:24px 0;max-width:900px;}
+  .footnote{font-size:12px;color:var(--muted);margin-top:20px;padding-top:12px;border-top:1px solid var(--border);}
+  .progress{position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:100;}
+  .progress .dot{width:10px;height:10px;border-radius:50%;background:var(--border);cursor:pointer;transition:all 0.3s;}
+  .progress .dot:hover,.progress .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+
+  /* Chart bars */
+  .chart{margin:20px 0;max-width:860px;}
+  .chart-title{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+  .crow{display:flex;align-items:center;margin:4px 0;height:34px;}
+  .crow .cl{width:140px;font-size:13px;color:var(--muted);text-align:right;padding-right:12px;flex-shrink:0;}
+  .crow .ct{flex:1;height:100%;background:#151520;border-radius:4px;position:relative;overflow:hidden;}
+  .crow .cf{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:13px;font-weight:600;color:#fff;transition:width 0.5s ease;}
+  .crow .cv{width:90px;font-size:12px;padding-left:8px;color:var(--muted);flex-shrink:0;}
+  .crow.active .ct{box-shadow:0 0 12px rgba(34,197,94,0.2);}
+
+  /* Train/Test matrix */
+  .tt-matrix{border-collapse:collapse;font-size:14px;margin:16px 0;}
+  .tt-matrix th,.tt-matrix td{padding:10px 16px;text-align:center;}
+  .tt-matrix th{background:#151520;color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;}
+  .tt-matrix td{border-bottom:1px solid #1a1a25;}
+  .tt-matrix .train{color:var(--gold);}
+  .tt-matrix .test{color:var(--cyan);}
+  .tt-matrix .pass{background:var(--green-dim);color:var(--green);font-weight:700;}
+  .tt-matrix .fail{background:var(--red-dim);color:var(--red);}
+  .tt-matrix .cond{background:var(--gold-dim);color:var(--gold);}
+
+  /* Dual bar (train vs test) */
+  .dual-bar{margin:20px 0;max-width:860px;}
+  .db-row{display:flex;align-items:center;margin:6px 0;}
+  .db-label{width:140px;font-size:13px;color:var(--muted);text-align:right;padding-right:12px;flex-shrink:0;}
+  .db-bars{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .db-bar{height:16px;border-radius:3px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:#fff;}
+  .db-bar.train{background:linear-gradient(90deg,rgba(245,158,11,0.6),rgba(245,158,11,0.3));}
+  .db-bar.test{background:linear-gradient(90deg,rgba(6,182,212,0.6),rgba(6,182,212,0.3));}
+  .db-legend{display:flex;gap:20px;margin-bottom:8px;font-size:12px;}
+  .db-legend span{display:flex;align-items:center;gap:6px;}
+  .db-legend .swatch{width:12px;height:12px;border-radius:2px;}
+
+  /* Stacking effect */
+  .stack-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;}
+  .stack-card .lbl{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .stack-card .pf-big{font-size:28px;font-weight:700;}
+  .stack-card .note{font-size:12px;color:var(--muted);margin-top:4px;}
+  .stack-card.best{border-color:var(--green);box-shadow:0 0 20px rgba(34,197,94,0.1);}
+
+  @media(max-width:900px){.two-col,.three-col{grid-template-columns:1fr;}.slide{padding:40px 24px;}.slide h1{font-size:36px;}}
+</style>
+</head>
+<body>
+
+<nav class="progress" id="nav">
+  <div class="dot" onclick="goto(0)" title="結論"></div>
+  <div class="dot" onclick="goto(1)" title="仮説"></div>
+  <div class="dot" onclick="goto(2)" title="B4 ATR+Vol"></div>
+  <div class="dot" onclick="goto(3)" title="B1/B3 ATR"></div>
+  <div class="dot" onclick="goto(4)" title="出来高OOS"></div>
+  <div class="dot" onclick="goto(5)" title="OOS総括"></div>
+  <div class="dot" onclick="goto(6)" title="最終判定"></div>
+</nav>
+
+<!-- ========== SLIDE 0: 結論 ========== -->
+<section class="slide hero" id="s0">
+  <span class="slide-number">Step 2.5.1 / ATR + Volume</span>
+  <h1>ATR% + 出来高で<br>PF 2倍〜6倍</h1>
+  <p class="subtitle">ATR%は全シグナルでOOS通過。出来高はB4でのみOOS通過し、ATRと相乗効果を発揮する。</p>
+
+  <div style="margin:24px 0;">
+    <span class="verdict green">B4: ATR% &ge; 8.0 + Vol &ge; 1.2 → PF 6.10</span>
+    <span class="verdict blue">B1: ATR% &le; 1.5 → PF 2.01</span>
+    <span class="verdict gold">B3: ATR% &le; 1.5 → PF 2.23</span>
+  </div>
+
+  <div class="metrics" style="max-width:1000px;">
+    <div class="mc hl">
+      <div class="label">B4 ATR+Vol</div>
+      <div class="value pos">6.10</div>
+      <div class="detail">Test PF: 3.6倍改善 (base 1.70)</div>
+    </div>
+    <div class="mc" style="border-color:var(--blue);">
+      <div class="label">B1 ATR</div>
+      <div class="value" style="color:var(--blue);">2.01</div>
+      <div class="detail">ATR のみ (出来高は効果なし)</div>
+    </div>
+    <div class="mc" style="border-color:var(--gold);">
+      <div class="label">B3 ATR</div>
+      <div class="value" style="color:var(--gold);">2.23</div>
+      <div class="detail">ATR のみ (出来高は単独通過のみ)</div>
+    </div>
+    <div class="mc">
+      <div class="label">追加変数</div>
+      <div class="value" style="font-size:24px;">ATR% + Vol</div>
+      <div class="detail">B4: 2変数 / B1,B3: 1変数</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 1: 仮説と検証設計 ========== -->
+<section class="slide" id="s1">
+  <span class="slide-number">01 / Hypothesis</span>
+  <h2>仮説: ボラティリティ × 出来高で<br>シグナルの質を分離する</h2>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="evidence">
+      <div class="title">B4（逆張り）の仮説</div>
+      <p style="font-size:15px;">
+        乖離-8%超からの反発を狙うシグナル。<br><br>
+        <strong>高ATR = 大きく動いている銘柄</strong><br>
+        → 急落がパニック売りなら、反発も大きい<br>
+        → ATRが低い-8%乖離はジリ下げで反発力が弱い<br><br>
+        <strong>高出来高 = 参加者が多い急落</strong><br>
+        → パニック売りは出来高を伴う<br>
+        → 閑散下落は構造的で反発しない<br><br>
+        <strong style="color:var(--green);">予測: 高ATR + 高Vol → PF改善</strong>
+      </p>
+    </div>
+    <div class="evidence">
+      <div class="title">B1/B3（順張り）の仮説</div>
+      <p style="font-size:15px;">
+        SMA上抜け・SMAタッチ反発のトレンドフォロー。<br><br>
+        <strong>低ATR = 安定した値動き</strong><br>
+        → 静かにSMAを上抜けるGCは「ダマシ」が少ない<br>
+        → ボラが高い時のGCは乱高下中のノイズ<br><br>
+        出来高は順張りでは方向が不定<br>
+        （静かな地合いでの安定上昇が良い場合も）<br><br>
+        <strong style="color:var(--blue);">予測: 低ATR → PF改善</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="insight">
+    <h4>検証設計（過学習を防ぐ）</h4>
+    <p style="font-size:15px;">
+      <strong>Train期間</strong>: 2014-03 ~ 2019-12（6年）→ 最適閾値を発見<br>
+      <strong>Test期間</strong>: 2020-01 ~ 2026-02（6年）→ 同じ閾値で再現するか検証<br><br>
+      Testで再現 = <strong>構造的なエッジ</strong>（採用）<br>
+      Testで消滅 = <strong>過学習</strong>（不採用）<br>
+      1変数ずつ追加し、差分を確認。複合効果も検証。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 2: B4 ATR + Vol ========== -->
+<section class="slide" id="s2">
+  <span class="slide-number">02 / B4 × ATR + Vol</span>
+  <h2>B4: ATR と出来高が相乗する</h2>
+  <p class="subtitle">独立した2変数が同じ構造（パニック売りの分離）を別角度から捉えている。</p>
+
+  <div class="two-col" style="max-width:960px;">
+    <div>
+      <div class="chart-title">B4 Downtrend — ATR%閾値 vs PF（全期間）</div>
+      <div class="chart">
+        <div class="crow"><div class="cl">制限なし</div><div class="ct"><div class="cf" style="width:34%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.70</div></div><div class="cv">N=9,353</div></div>
+        <div class="crow"><div class="cl">ATR &ge; 3.0</div><div class="ct"><div class="cf" style="width:35.2%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.76</div></div><div class="cv">N=8,479</div></div>
+        <div class="crow"><div class="cl">ATR &ge; 5.0</div><div class="ct"><div class="cf" style="width:47%;background:linear-gradient(90deg,#3d8b4f,#22c55e);">2.35</div></div><div class="cv">N=3,857</div></div>
+        <div class="crow active"><div class="cl" style="color:var(--green);font-weight:700;">ATR &ge; 8.0</div><div class="ct"><div class="cf" style="width:69.6%;background:linear-gradient(90deg,#22c55e,#16a34a);">3.48</div></div><div class="cv" style="color:var(--green);">N=787</div></div>
+      </div>
+      <div class="chart-title" style="margin-top:20px;">B4 Downtrend — Vol比閾値 vs PF（全期間）</div>
+      <div class="chart">
+        <div class="crow"><div class="cl">制限なし</div><div class="ct"><div class="cf" style="width:34%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.70</div></div><div class="cv">N=9,353</div></div>
+        <div class="crow"><div class="cl">Vol &ge; 1.0</div><div class="ct"><div class="cf" style="width:36.6%;background:linear-gradient(90deg,#4b7553,#6b9280);">1.83</div></div><div class="cv">N=5,253</div></div>
+        <div class="crow"><div class="cl">Vol &ge; 1.2</div><div class="ct"><div class="cf" style="width:38.1%;background:linear-gradient(90deg,#4b7553,#6b9280);">1.90</div></div><div class="cv">N=3,505</div></div>
+        <div class="crow"><div class="cl" style="color:var(--cyan);">Vol &ge; 1.5</div><div class="ct"><div class="cf" style="width:41.7%;background:linear-gradient(90deg,#06b6d4,#0891b2);">2.09</div></div><div class="cv" style="color:var(--cyan);">N=1,762</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="chart-title">ATR + Vol 複合効果 — Train vs Test</div>
+      <div class="db-legend">
+        <span><div class="swatch" style="background:rgba(245,158,11,0.6);"></div>Train</span>
+        <span><div class="swatch" style="background:rgba(6,182,212,0.6);"></div>Test</span>
+      </div>
+      <div class="dual-bar">
+        <div class="db-row"><div class="db-label">制限なし</div><div class="db-bars"><div class="db-bar train" style="width:24.1%;">1.51</div><div class="db-bar test" style="width:41.1%;">2.57</div></div></div>
+        <div class="db-row"><div class="db-label">ATR &ge; 5</div><div class="db-bars"><div class="db-bar train" style="width:31.7%;">1.99</div><div class="db-bar test" style="width:58.1%;">3.64</div></div></div>
+        <div class="db-row"><div class="db-label">Vol &ge; 1.2</div><div class="db-bars"><div class="db-bar train" style="width:26.2%;">1.64</div><div class="db-bar test" style="width:45.9%;">2.87</div></div></div>
+        <div class="db-row"><div class="db-label" style="color:var(--cyan);">ATR&ge;5 + Vol&ge;1.2</div><div class="db-bars"><div class="db-bar train" style="width:38.1%;">2.39</div><div class="db-bar test" style="width:77.3%;">4.84</div></div></div>
+        <div class="db-row"><div class="db-label" style="color:var(--green);font-weight:700;">ATR&ge;8 + Vol&ge;1.2</div><div class="db-bars"><div class="db-bar train" style="width:57.8%;">3.62</div><div class="db-bar test" style="width:97.4%;">6.10</div></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;">
+        <div class="stack-card best">
+          <div class="lbl">ATR&ge;8 + Vol&ge;1.2</div>
+          <div class="pf-big pos">Test PF 6.10</div>
+          <div class="note">N=117 (十分なサンプル)</div>
+        </div>
+        <div class="stack-card" style="border-color:var(--cyan);">
+          <div class="lbl">ATR&ge;5 + Vol&ge;1.2</div>
+          <div class="pf-big" style="color:var(--cyan);">Test PF 4.84</div>
+          <div class="note">N=506 (大サンプル)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight" style="max-width:960px;">
+    <h4>なぜ相乗するか</h4>
+    <p style="font-size:15px;">
+      <strong>ATR%</strong>は「銘柄の通常ボラティリティが高い」ことを捉える（価格ベース）。<br>
+      <strong>出来高比</strong>は「その日に参加者が増えている」ことを捉える（取引量ベース）。<br>
+      高ATR + 高出来高 = <strong>高ボラ銘柄に参加者が殺到</strong> → パニック売りの典型パターン。<br>
+      2変数は異なる情報源なので、組み合わせて精度が上がる。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 3: B1/B3 ATR ========== -->
+<section class="slide" id="s3">
+  <span class="slide-number">03 / B1&middot;B3 × ATR</span>
+  <h2>B1/B3: ATR%を下げるほど PF が改善</h2>
+  <p class="subtitle">B4と真逆。順張りは「静かな相場」でこそ機能する。</p>
+
+  <div class="two-col" style="max-width:900px;">
+    <div>
+      <div class="chart-title">B1 Uptrend — ATR%閾値 vs PF（全期間）</div>
+      <div class="chart">
+        <div class="crow active"><div class="cl" style="color:var(--blue);font-weight:700;">ATR &le; 1.5</div><div class="ct"><div class="cf" style="width:100%;background:linear-gradient(90deg,#3b82f6,#2563eb);">2.01</div></div><div class="cv" style="color:var(--blue);">N=1,258</div></div>
+        <div class="crow"><div class="cl">ATR &le; 2.0</div><div class="ct"><div class="cf" style="width:81%;background:linear-gradient(90deg,#3b82f6,#6b92c0);">1.63</div></div><div class="cv">N=4,032</div></div>
+        <div class="crow"><div class="cl">ATR &le; 2.5</div><div class="ct"><div class="cf" style="width:75.6%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.52</div></div><div class="cv">N=7,159</div></div>
+        <div class="crow"><div class="cl">ATR &le; 3.0</div><div class="ct"><div class="cf" style="width:71.1%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.43</div></div><div class="cv">N=9,449</div></div>
+        <div class="crow"><div class="cl">制限なし</div><div class="ct"><div class="cf" style="width:70.6%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.42</div></div><div class="cv">N=12,410</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="chart-title">B3 Uptrend — ATR%閾値 vs PF（全期間）</div>
+      <div class="chart">
+        <div class="crow active"><div class="cl" style="color:var(--gold);font-weight:700;">ATR &le; 1.5</div><div class="ct"><div class="cf" style="width:100%;background:linear-gradient(90deg,var(--gold),#d97706);">2.23</div></div><div class="cv" style="color:var(--gold);">N=1,606</div></div>
+        <div class="crow"><div class="cl">ATR &le; 2.0</div><div class="ct"><div class="cf" style="width:79.8%;background:linear-gradient(90deg,var(--gold),#b08040);">1.78</div></div><div class="cv">N=3,609</div></div>
+        <div class="crow"><div class="cl">ATR &le; 2.5</div><div class="ct"><div class="cf" style="width:74.9%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.67</div></div><div class="cv">N=4,890</div></div>
+        <div class="crow"><div class="cl">ATR &le; 3.0</div><div class="ct"><div class="cf" style="width:69.5%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.55</div></div><div class="cv">N=5,526</div></div>
+        <div class="crow"><div class="cl">制限なし</div><div class="ct"><div class="cf" style="width:67.3%;background:linear-gradient(90deg,#4b5563,#6b7280);">1.50</div></div><div class="cv">N=6,020</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="insight" style="margin:0;">
+      <h4>B1/B3: 出来高は不採用</h4>
+      <p style="font-size:15px;">
+        <strong>B1 高出来高</strong>: Train PF改善 → Test PF悪化（方向不一致）<br>
+        <strong>B1 低出来高</strong>: Train PF悪化 → Test PF改善（方向が逆転）<br><br>
+        <strong>B3 高出来高</strong>: 単独ではOOS通過（Vol&ge;1.0: Train 1.76→Test 1.98）。<br>
+        しかしATR&le;1.5 と組み合わせると N が減りすぎて効果消滅。<br>
+        ATR単体で PF 2.0+が出ているので、出来高追加は不要。
+      </p>
+    </div>
+    <div class="insight" style="margin:0;">
+      <h4>なぜ低ATRが良いのか</h4>
+      <p style="font-size:15px;">
+        B1(GC突破)もB3(SMAタッチ反発)も<strong>トレンドの継続</strong>に賭ける。<br>
+        ATRが高い = 方向感がない乱高下。<br>
+        SMAを上抜けてもすぐ下抜ける「ダマシ」が頻発。<br><br>
+        ATR% &le; 1.5 の銘柄は日次変動が終値の1.5%以内。<br>
+        穏やかに上昇する銘柄のGCが「本物」になりやすい。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 4: 出来高 OOS 詳細 ========== -->
+<section class="slide" id="s4">
+  <span class="slide-number">04 / Volume OOS</span>
+  <h2>出来高: B4だけOOS通過</h2>
+  <p class="subtitle">B4の高出来高は構造的。B1は方向不一致、B3は単独通過だが複合効果なし。</p>
+
+  <div style="max-width:920px;">
+    <table class="tt-matrix" style="width:100%;">
+      <tr>
+        <th>シグナル</th>
+        <th>フィルター</th>
+        <th style="color:var(--gold);">Train PF</th>
+        <th>Train N</th>
+        <th style="color:var(--cyan);">Test PF</th>
+        <th>Test N</th>
+        <th>判定</th>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B4 Down</td>
+        <td>ベースライン</td>
+        <td class="train">1.508</td><td>7,413</td>
+        <td class="test">2.570</td><td>1,940</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B4 Down</td>
+        <td style="font-weight:600;">Vol &ge; 1.2</td>
+        <td class="train">1.640</td><td>2,655</td>
+        <td class="test" style="font-weight:700;">2.873</td><td>850</td>
+        <td class="pass">OOS通過</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B4 Down</td>
+        <td>Vol &ge; 1.5</td>
+        <td class="train">1.686</td><td>1,358</td>
+        <td class="test" style="font-weight:700;">3.775</td><td>404</td>
+        <td class="pass">OOS通過</td>
+      </tr>
+      <tr style="height:8px;"><td colspan="7" style="border:none;"></td></tr>
+      <tr>
+        <td style="text-align:left;">B1 Up</td>
+        <td>ベースライン</td>
+        <td class="train">1.377</td><td>8,930</td>
+        <td class="test">1.531</td><td>3,480</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B1 Up</td>
+        <td>Vol &ge; 1.2</td>
+        <td class="train">1.628</td><td>2,750</td>
+        <td class="test">1.435</td><td>910</td>
+        <td class="fail">Train↑ Test↓</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B1 Up</td>
+        <td>Vol &le; 1.0</td>
+        <td class="train">1.265</td><td>4,729</td>
+        <td class="test">1.634</td><td>1,893</td>
+        <td class="fail">Train↓ Test↑</td>
+      </tr>
+      <tr style="height:8px;"><td colspan="7" style="border:none;"></td></tr>
+      <tr>
+        <td style="text-align:left;">B3 Up</td>
+        <td>ベースライン</td>
+        <td class="train">1.364</td><td>4,185</td>
+        <td class="test">1.797</td><td>1,835</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B3 Up</td>
+        <td>Vol &ge; 1.0</td>
+        <td class="train">1.759</td><td>996</td>
+        <td class="test">1.979</td><td>335</td>
+        <td class="cond">単独通過</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;">B3 Up</td>
+        <td>ATR&le;1.5 + Vol&ge;1.0</td>
+        <td class="train">2.857</td><td>356</td>
+        <td class="test">2.051</td><td style="color:var(--red);">83</td>
+        <td class="fail">N不足で不安定</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;margin-top:16px;">
+    <div class="insight" style="margin:0;">
+      <h4>B4 出来高が通過する理由</h4>
+      <p style="font-size:15px;">
+        <strong>パニック売り = 出来高急増</strong>は時代を超えた市場構造。<br>
+        2015年のチャイナショックも2020年のコロナ暴落も<br>
+        同じパターン: 出来高急増 → パニック → 反発。<br><br>
+        出来高の「絶対水準」は変わるが、<br>
+        <strong>20日平均比 1.2倍超</strong>という「相対的な急増」は安定。
+      </p>
+    </div>
+    <div class="insight" style="margin:0;">
+      <h4>B1/B3 で出来高が効かない理由</h4>
+      <p style="font-size:15px;">
+        順張りシグナルの質は<strong>ボラティリティ</strong>で決まる。<br>
+        「静かに上昇する」銘柄の出来高は大も小もある。<br><br>
+        B3で出来高単独通過（Vol&ge;1.0: Test PF 1.98）だが、<br>
+        ATR&le;1.5 と組み合わせるとN=83に激減し効果が不安定に。<br>
+        <strong>ATR単体で十分なPF</strong>（2.23）が出ているため追加不要。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 5: OOS総括 ========== -->
+<section class="slide" id="s5">
+  <span class="slide-number">05 / OOS Summary</span>
+  <h2>Train → Test: 全採用フィルターが再現</h2>
+  <p class="subtitle">ATR%は3シグナル全通過。出来高はB4で通過し、ATRとの相乗も再現。</p>
+
+  <div style="max-width:940px;">
+    <table class="tt-matrix" style="width:100%;">
+      <tr>
+        <th></th>
+        <th colspan="2" style="color:var(--gold);">Train (2014-2019)</th>
+        <th colspan="2" style="color:var(--cyan);">Test (2020-2026)</th>
+        <th>再現率</th>
+      </tr>
+      <tr>
+        <th style="text-align:left;">フィルター構成</th>
+        <th>PF</th><th>N</th>
+        <th>PF</th><th>N</th>
+        <th></th>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B4 Down + ATR &ge; 8.0</td>
+        <td class="train" style="font-size:18px;">3.14</td><td>524</td>
+        <td class="pass" style="font-size:18px;">4.31</td><td>263</td>
+        <td class="pass">137%</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B4 Down + Vol &ge; 1.2</td>
+        <td class="train" style="font-size:18px;">1.64</td><td>2,655</td>
+        <td class="pass" style="font-size:18px;">2.87</td><td>850</td>
+        <td class="pass">175%</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;color:var(--green);">B4 Down + ATR&ge;8 + Vol&ge;1.2</td>
+        <td class="train" style="font-size:18px;">3.62</td><td>216</td>
+        <td class="pass" style="font-size:18px;font-weight:700;">6.10</td><td>117</td>
+        <td class="pass">168%</td>
+      </tr>
+      <tr style="height:8px;"><td colspan="6" style="border:none;"></td></tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B1 Up + ATR &le; 1.5</td>
+        <td class="train" style="font-size:18px;">2.01</td><td>968</td>
+        <td class="pass" style="font-size:18px;">2.00</td><td>290</td>
+        <td class="pass">100%</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B3 Up + ATR &le; 1.5</td>
+        <td class="train" style="font-size:18px;">2.04</td><td>1,240</td>
+        <td class="pass" style="font-size:18px;">2.89</td><td>366</td>
+        <td class="pass">142%</td>
+      </tr>
+    </table>
+
+    <div class="three-col" style="margin-top:24px;">
+      <div style="background:var(--green-dim);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:13px;color:var(--muted);">B4 Down (ATR+Vol)</div>
+        <div style="font-size:14px;color:var(--green);margin:4px 0;">Train → Test</div>
+        <div style="font-size:32px;font-weight:700;color:var(--green);">3.62 → 6.10</div>
+        <div style="font-size:13px;color:var(--green);">Test で 68% 改善</div>
+      </div>
+      <div style="background:var(--blue-dim);border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:13px;color:var(--muted);">B1 Up (ATR)</div>
+        <div style="font-size:14px;color:var(--blue);margin:4px 0;">Train → Test</div>
+        <div style="font-size:32px;font-weight:700;color:var(--blue);">2.01 → 2.00</div>
+        <div style="font-size:13px;color:var(--blue);">完全一致</div>
+      </div>
+      <div style="background:var(--gold-dim);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:13px;color:var(--muted);">B3 Up (ATR)</div>
+        <div style="font-size:14px;color:var(--gold);margin:4px 0;">Train → Test</div>
+        <div style="font-size:32px;font-weight:700;color:var(--gold);">2.04 → 2.89</div>
+        <div style="font-size:13px;color:var(--gold);">Test で 42% 改善</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 6: 最終判定 ========== -->
+<section class="slide" id="s6">
+  <span class="slide-number">06 / Decision</span>
+  <h2>最終判定: ATR + 出来高(B4のみ) 採用</h2>
+  <p class="subtitle">OOS検証を通過したフィルターのみ採用。Tier 分けで資金量に応じた柔軟運用。</p>
+
+  <div class="conclusion-card">
+    <h3>確定パラメータ（Step 2.5.1）</h3>
+    <table class="tt-matrix" style="width:100%;margin:16px 0;">
+      <tr><th style="text-align:left;">シグナル</th><th>ATR フィルター</th><th>出来高フィルター</th><th>PF (全期間)</th><th>残存率</th></tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B4 Downtrend</td>
+        <td style="color:var(--green);font-weight:700;">ATR(14)% &ge; 8.0</td>
+        <td style="color:var(--green);font-weight:700;">Vol比 &ge; 1.2</td>
+        <td style="font-size:20px;color:var(--green);font-weight:700;">6.10</td>
+        <td style="font-size:13px;color:var(--muted);">9,353→333件 (3.6%)</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B1 Uptrend</td>
+        <td style="color:var(--blue);font-weight:700;">ATR(14)% &le; 1.5</td>
+        <td style="color:var(--muted);">-</td>
+        <td style="font-size:20px;color:var(--blue);font-weight:700;">2.01</td>
+        <td style="font-size:13px;color:var(--muted);">12,410→1,258件 (10.1%)</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600;">B3 Uptrend</td>
+        <td style="color:var(--gold);font-weight:700;">ATR(14)% &le; 1.5</td>
+        <td style="color:var(--muted);">-</td>
+        <td style="font-size:20px;color:var(--gold);font-weight:700;">2.23</td>
+        <td style="font-size:13px;color:var(--muted);">6,020→1,606件 (26.7%)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="insight" style="margin:0;">
+      <h4>Tier 運用</h4>
+      <p style="font-size:15px;">
+        <strong>Tier 1</strong>（フィルターあり）:<br>
+        B4: ATR%&ge;8 + Vol&ge;1.2 → PF 6.1<br>
+        B1: ATR%&le;1.5 → PF 2.0<br>
+        B3: ATR%&le;1.5 → PF 2.2<br>
+        → <strong>優先的にエントリー</strong><br><br>
+        <strong>Tier 2</strong>（フィルターなし）:<br>
+        B4: PF 1.70 / B1: PF 1.42 / B3: PF 1.50<br>
+        → 資金に余裕がある時のみ
+      </p>
+    </div>
+    <div class="evidence" style="margin:0;">
+      <div class="title">不採用フィルター</div>
+      <p style="font-size:15px;">
+        <strong style="color:var(--red);">RSI</strong>: 価格由来 → グランビルと情報重複<br>
+        <strong style="color:var(--red);">MACD</strong>: 価格由来 → 同上<br>
+        <strong style="color:var(--red);">B1出来高</strong>: Train/Test で方向が不一致<br>
+        <strong style="color:var(--red);">B3出来高</strong>: 単独OOS通過だがATR上乗せ効果なし<br><br>
+        <span style="color:var(--muted);font-size:13px;">
+          原則: 1変数ずつ追加。再現しないものは採用しない。<br>
+          閾値を増やすと過学習リスクが増える。最小変数で最大エッジ。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <div class="footnote" style="max-width:900px;">
+    データ: step1/trades_sl3.parquet &times; prices_max_1d.parquet / ATR(14), Vol 20日平均比<br>
+    Train: 2014-03 ~ 2019-12 / Test: 2020-01 ~ 2026-02 / SL-3% / SMA20<br>
+    生成: 2026-03-02 / Step 2.5.1 ATR&middot;出来高フィルター検証
+  </div>
+</section>
+
+<script>
+const slides=document.querySelectorAll('.slide'),dots=document.querySelectorAll('.dot');
+function goto(i){slides[i].scrollIntoView({behavior:'smooth'});}
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=Array.from(slides).indexOf(e.target);dots.forEach((d,j)=>d.classList.toggle('active',j===i));}});},{threshold:0.5});
+slides.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

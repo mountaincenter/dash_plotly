@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Grade × 曜日 クロス集計</title>
+<style>
+  body { background: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, monospace; margin: 20px; }
+  h1 { font-size: 18px; color: #94a3b8; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 24px; font-size: 13px; }
+  th { background: #1e293b; color: #94a3b8; padding: 6px 10px; text-align: right; border-bottom: 2px solid #334155; font-weight: 600; }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { padding: 5px 10px; text-align: right; border-bottom: 1px solid #1e293b; }
+  td:first-child { text-align: left; font-weight: 600; }
+  td:nth-child(2) { text-align: center; }
+  tr.subtotal { background: #1e293b; font-weight: 700; }
+  tr.subtotal td { border-top: 2px solid #334155; }
+  .section-header { background: #0f172a; }
+  .section-header td { padding-top: 14px; font-size: 15px; color: #38bdf8; border-bottom: 2px solid #334155; font-weight: 700; }
+  .pos { color: #34d399; }
+  .neg { color: #f87171; }
+  .best { background: #1a2e1a; }
+  .best-long { background: #1a1a2e; }
+  .wr-high { color: #34d399; font-weight: 700; }
+  .wr-low { color: #f87171; }
+  .legend { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+  .legend span { display: inline-block; margin-right: 16px; }
+  .chip { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+  .chip-short { background: #7f1d1d; color: #fca5a5; }
+  .chip-long { background: #1e3a5f; color: #93c5fd; }
+  .chip-skip { background: #374151; color: #9ca3af; }
+</style>
+</head>
+<body>
+<h1>ML 4-Class Grade × 曜日 クロス集計</h1>
+<div class="sub">Walk-Forward CV Out-of-Sample | 2025-11 ~ 2026-02 | 910件</div>
+<div class="legend">
+  <span>緑背景 = SHORT有効(WR≥55% & PnL正)</span>
+  <span>青背景 = LONG有効(WR≥55% & PnL正)</span>
+  <span>勝率55%未満 or PnL負 = 無色</span>
+</div>
+
+<table>
+<thead>
+<tr>
+  <th>Grade</th><th>曜日</th><th>件数</th>
+  <th>SHORT勝率</th><th>SHORT PnL</th><th>SHORT平均</th>
+  <th>LONG勝率</th><th>LONG PnL</th><th>LONG平均</th>
+  <th>判定</th>
+</tr>
+</thead>
+<tbody>
+<tr class="section-header"><td colspan="10">G1</td></tr>
+<tr class="best">
+  <td></td><td>月</td><td>30</td>
+  <td class="wr-high">57%</td>
+  <td class="pos">+66,800</td>
+  <td class="pos">+2,227</td>
+  <td class="wr-low">43%</td>
+  <td class="neg">-66,800</td>
+  <td class="neg">-2,227</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>火</td><td>65</td>
+  <td class="wr-high">78%</td>
+  <td class="pos">+258,600</td>
+  <td class="pos">+3,978</td>
+  <td class="wr-low">22%</td>
+  <td class="neg">-258,600</td>
+  <td class="neg">-3,978</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>水</td><td>41</td>
+  <td class="wr-high">71%</td>
+  <td class="pos">+84,500</td>
+  <td class="pos">+2,061</td>
+  <td class="wr-low">29%</td>
+  <td class="neg">-84,500</td>
+  <td class="neg">-2,061</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>木</td><td>61</td>
+  <td class="wr-high">66%</td>
+  <td class="pos">+168,400</td>
+  <td class="pos">+2,761</td>
+  <td class="wr-low">34%</td>
+  <td class="neg">-168,400</td>
+  <td class="neg">-2,761</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>金</td><td>51</td>
+  <td class="wr-high">73%</td>
+  <td class="pos">+161,100</td>
+  <td class="pos">+3,159</td>
+  <td class="wr-low">27%</td>
+  <td class="neg">-161,100</td>
+  <td class="neg">-3,159</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>248</td>
+  <td class="wr-high">70%</td>
+  <td class="pos">+739,400</td>
+  <td class="pos">+2,981</td>
+  <td class="wr-low">30%</td>
+  <td class="neg">-739,400</td>
+  <td class="neg">-2,981</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="section-header"><td colspan="10">G2</td></tr>
+<tr class="best">
+  <td></td><td>月</td><td>33</td>
+  <td class="wr-high">73%</td>
+  <td class="pos">+177,200</td>
+  <td class="pos">+5,370</td>
+  <td class="wr-low">27%</td>
+  <td class="neg">-177,200</td>
+  <td class="neg">-5,370</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>火</td><td>44</td>
+  <td class="wr-high">64%</td>
+  <td class="pos">+32,900</td>
+  <td class="pos">+748</td>
+  <td class="wr-low">36%</td>
+  <td class="neg">-32,900</td>
+  <td class="neg">-748</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr>
+  <td></td><td>水</td><td>42</td>
+  <td class="">55%</td>
+  <td class="neg">-70,300</td>
+  <td class="neg">-1,674</td>
+  <td class="">45%</td>
+  <td class="pos">+70,300</td>
+  <td class="pos">+1,674</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>木</td><td>62</td>
+  <td class="wr-high">55%</td>
+  <td class="pos">+206,900</td>
+  <td class="pos">+3,337</td>
+  <td class="wr-low">45%</td>
+  <td class="neg">-206,900</td>
+  <td class="neg">-3,337</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>金</td><td>40</td>
+  <td class="wr-high">60%</td>
+  <td class="pos">+120,100</td>
+  <td class="pos">+3,002</td>
+  <td class="wr-low">40%</td>
+  <td class="neg">-120,100</td>
+  <td class="neg">-3,002</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>221</td>
+  <td class="wr-high">60%</td>
+  <td class="pos">+466,800</td>
+  <td class="pos">+2,112</td>
+  <td class="wr-low">40%</td>
+  <td class="neg">-466,800</td>
+  <td class="neg">-2,112</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="section-header"><td colspan="10">G3</td></tr>
+<tr class="best-long">
+  <td></td><td>月</td><td>28</td>
+  <td class="wr-low">43%</td>
+  <td class="neg">-185,750</td>
+  <td class="neg">-6,634</td>
+  <td class="wr-high">57%</td>
+  <td class="pos">+185,750</td>
+  <td class="pos">+6,634</td>
+  <td><span class="chip chip-long">LONG</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>火</td><td>50</td>
+  <td class="wr-high">58%</td>
+  <td class="pos">+45,950</td>
+  <td class="pos">+919</td>
+  <td class="wr-low">42%</td>
+  <td class="neg">-45,950</td>
+  <td class="neg">-919</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr>
+  <td></td><td>水</td><td>46</td>
+  <td class="">48%</td>
+  <td class="neg">-59,100</td>
+  <td class="neg">-1,285</td>
+  <td class="">52%</td>
+  <td class="pos">+59,100</td>
+  <td class="pos">+1,285</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>木</td><td>45</td>
+  <td class="wr-high">64%</td>
+  <td class="pos">+19,700</td>
+  <td class="pos">+438</td>
+  <td class="wr-low">36%</td>
+  <td class="neg">-19,700</td>
+  <td class="neg">-438</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>金</td><td>46</td>
+  <td class="wr-high">57%</td>
+  <td class="pos">+40,250</td>
+  <td class="pos">+875</td>
+  <td class="wr-low">43%</td>
+  <td class="neg">-40,250</td>
+  <td class="neg">-875</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>215</td>
+  <td class="">55%</td>
+  <td class="neg">-138,950</td>
+  <td class="neg">-646</td>
+  <td class="">45%</td>
+  <td class="pos">+138,950</td>
+  <td class="pos">+646</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="section-header"><td colspan="10">G4</td></tr>
+<tr class="best">
+  <td></td><td>月</td><td>28</td>
+  <td class="wr-high">71%</td>
+  <td class="pos">+141,800</td>
+  <td class="pos">+5,064</td>
+  <td class="wr-low">29%</td>
+  <td class="neg">-141,800</td>
+  <td class="neg">-5,064</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr>
+  <td></td><td>火</td><td>48</td>
+  <td class="">52%</td>
+  <td class="neg">-46,500</td>
+  <td class="neg">-969</td>
+  <td class="">48%</td>
+  <td class="pos">+46,500</td>
+  <td class="pos">+969</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr>
+  <td></td><td>水</td><td>56</td>
+  <td class="">50%</td>
+  <td class="neg">-78,500</td>
+  <td class="neg">-1,402</td>
+  <td class="">50%</td>
+  <td class="pos">+78,500</td>
+  <td class="pos">+1,402</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="best-long">
+  <td></td><td>木</td><td>42</td>
+  <td class="wr-low">33%</td>
+  <td class="neg">-97,000</td>
+  <td class="neg">-2,310</td>
+  <td class="wr-high">67%</td>
+  <td class="pos">+97,000</td>
+  <td class="pos">+2,310</td>
+  <td><span class="chip chip-long">LONG</span></td>
+</tr>
+<tr>
+  <td></td><td>金</td><td>52</td>
+  <td class="wr-high">56%</td>
+  <td class="neg">-450</td>
+  <td class="neg">-9</td>
+  <td class="wr-low">44%</td>
+  <td class="pos">+450</td>
+  <td class="pos">+9</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>226</td>
+  <td class="">51%</td>
+  <td class="neg">-80,650</td>
+  <td class="neg">-357</td>
+  <td class="">49%</td>
+  <td class="pos">+80,650</td>
+  <td class="pos">+357</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="section-header"><td colspan="10">G1+G2</td></tr>
+<tr class="best">
+  <td></td><td>月</td><td>63</td>
+  <td class="wr-high">65%</td>
+  <td class="pos">+244,000</td>
+  <td class="pos">+3,873</td>
+  <td class="wr-low">35%</td>
+  <td class="neg">-244,000</td>
+  <td class="neg">-3,873</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>火</td><td>109</td>
+  <td class="wr-high">72%</td>
+  <td class="pos">+291,500</td>
+  <td class="pos">+2,674</td>
+  <td class="wr-low">28%</td>
+  <td class="neg">-291,500</td>
+  <td class="neg">-2,674</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>水</td><td>83</td>
+  <td class="wr-high">63%</td>
+  <td class="pos">+14,200</td>
+  <td class="pos">+171</td>
+  <td class="wr-low">37%</td>
+  <td class="neg">-14,200</td>
+  <td class="neg">-171</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>木</td><td>123</td>
+  <td class="wr-high">60%</td>
+  <td class="pos">+375,300</td>
+  <td class="pos">+3,051</td>
+  <td class="wr-low">40%</td>
+  <td class="neg">-375,300</td>
+  <td class="neg">-3,051</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>金</td><td>91</td>
+  <td class="wr-high">67%</td>
+  <td class="pos">+281,200</td>
+  <td class="pos">+3,090</td>
+  <td class="wr-low">33%</td>
+  <td class="neg">-281,200</td>
+  <td class="neg">-3,090</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>469</td>
+  <td class="wr-high">65%</td>
+  <td class="pos">+1,206,200</td>
+  <td class="pos">+2,572</td>
+  <td class="wr-low">35%</td>
+  <td class="neg">-1,206,200</td>
+  <td class="neg">-2,572</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="section-header"><td colspan="10">全体</td></tr>
+<tr class="best">
+  <td></td><td>月</td><td>119</td>
+  <td class="wr-high">61%</td>
+  <td class="pos">+200,050</td>
+  <td class="pos">+1,681</td>
+  <td class="wr-low">39%</td>
+  <td class="neg">-200,050</td>
+  <td class="neg">-1,681</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>火</td><td>207</td>
+  <td class="wr-high">64%</td>
+  <td class="pos">+290,950</td>
+  <td class="pos">+1,406</td>
+  <td class="wr-low">36%</td>
+  <td class="neg">-290,950</td>
+  <td class="neg">-1,406</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr>
+  <td></td><td>水</td><td>185</td>
+  <td class="wr-high">55%</td>
+  <td class="neg">-123,400</td>
+  <td class="neg">-667</td>
+  <td class="wr-low">45%</td>
+  <td class="pos">+123,400</td>
+  <td class="pos">+667</td>
+  <td><span class="chip chip-skip">SKIP</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>木</td><td>210</td>
+  <td class="wr-high">56%</td>
+  <td class="pos">+298,000</td>
+  <td class="pos">+1,419</td>
+  <td class="wr-low">44%</td>
+  <td class="neg">-298,000</td>
+  <td class="neg">-1,419</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="best">
+  <td></td><td>金</td><td>189</td>
+  <td class="wr-high">61%</td>
+  <td class="pos">+321,000</td>
+  <td class="pos">+1,698</td>
+  <td class="wr-low">39%</td>
+  <td class="neg">-321,000</td>
+  <td class="neg">-1,698</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+<tr class="subtotal">
+  <td></td><td>合計</td><td>910</td>
+  <td class="wr-high">59%</td>
+  <td class="pos">+986,600</td>
+  <td class="pos">+1,084</td>
+  <td class="wr-low">41%</td>
+  <td class="neg">-986,600</td>
+  <td class="neg">-1,084</td>
+  <td><span class="chip chip-short">SHORT</span></td>
+</tr>
+</tbody></table>
+</body></html>

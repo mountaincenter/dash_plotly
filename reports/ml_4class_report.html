@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML 28特徴量 4クラスGrade モデル評価レポート</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; padding: 24px; }
+.container { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+.subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+.card { background: #1a1d27; border-radius: 10px; padding: 20px; border: 1px solid #2a2d37; }
+.card-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.card-value { font-size: 28px; font-weight: 700; color: #fff; }
+.card-value.green { color: #10b981; }
+.card-value.blue { color: #3b82f6; }
+.card-sub { font-size: 12px; color: #666; margin-top: 4px; }
+.section { margin-bottom: 32px; }
+.section-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #2a2d37; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #1a1d27; color: #999; font-weight: 600; text-align: left; padding: 10px 14px; border-bottom: 2px solid #2a2d37; }
+td { padding: 10px 14px; border-bottom: 1px solid #1e2130; }
+tr:hover { background: #1a1d27; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.center { text-align: center; }
+.pos { color: #10b981; }
+.neg { color: #ef4444; }
+.g1 { color: #10b981; font-weight: 700; }
+.g2 { color: #14b8a6; font-weight: 600; }
+.g3 { color: #f59e0b; }
+.g4 { color: #ef4444; }
+.highlight-row { background: #10b98110 !important; }
+.summary-row { background: #1a1d27; font-weight: 700; }
+.bar-container { width: 100%; height: 8px; background: #2a2d37; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.strategy-box { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.strategy-short { background: #10b98120; color: #10b981; border: 1px solid #10b98140; }
+.strategy-disc { background: #f59e0b20; color: #f59e0b; border: 1px solid #f59e0b40; }
+.strategy-skip { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+.legend { display: flex; gap: 16px; margin-bottom: 16px; }
+.footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #2a2d37; color: #555; font-size: 11px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>ML 28特徴量 4クラスGrade モデル評価レポート</h1>
+<p class="subtitle">Walk-Forward CV | 2025-11-25 ~ 2026-02-27 | 947サンプル | ショート戦略視点</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-label">AUC</div>
+    <div class="card-value blue">0.6150</div>
+    <div class="card-sub">28特徴量 / 4クラス</div>
+  </div>
+  <div class="card">
+    <div class="card-label">G1+G2 SHORT勝率</div>
+    <div class="card-value green">67.1%</div>
+    <div class="card-sub">474件 / 947件中</div>
+  </div>
+  <div class="card">
+    <div class="card-label">G1+G2 SHORT損益</div>
+    <div class="card-value green">¥1,094,550</div>
+    <div class="card-sub">平均 ¥2,309/件</div>
+  </div>
+  <div class="card">
+    <div class="card-label">全体SHORT損益</div>
+    <div class="card-value green">¥1,088,000</div>
+    <div class="card-sub">ロング勝率 40.9%（ショート有利）</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Grade別パフォーマンス</div>
+  <div class="legend">
+    <span class="strategy-box strategy-short">G1+G2 = 機械的SHORT</span>
+    <span class="strategy-box strategy-disc">G3 = 裁量判断</span>
+    <span class="strategy-box strategy-skip">G4 = SKIP</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Grade</th>
+        <th>戦略</th>
+        <th class="center">prob_up 範囲</th>
+        <th class="num">件数</th>
+        <th class="num">SHORT勝率</th>
+        <th class="num">SHORT合計損益</th>
+        <th class="num">SHORT平均損益</th>
+        <th style="width:120px">勝率バー</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-row">
+        <td class="g1">G1</td>
+        <td><span class="strategy-box strategy-short">SHORT</span></td>
+        <td class="center">0.025 ~ 0.218</td>
+        <td class="num">237</td>
+        <td class="num g1">73.4%</td>
+        <td class="num pos">¥791,700</td>
+        <td class="num pos">¥3,341</td>
+        <td><div class="bar-container"><div class="bar-fill" style="width:73.4%;background:#10b981"></div></div></td>
+      </tr>
+      <tr class="highlight-row">
+        <td class="g2">G2</td>
+        <td><span class="strategy-box strategy-short">SHORT</span></td>
+        <td class="center">0.219 ~ 0.391</td>
+        <td class="num">237</td>
+        <td class="num g2">60.8%</td>
+        <td class="num pos">¥302,850</td>
+        <td class="num pos">¥1,278</td>
+        <td><div class="bar-container"><div class="bar-fill" style="width:60.8%;background:#14b8a6"></div></div></td>
+      </tr>
+      <tr>
+        <td class="g3">G3</td>
+        <td><span class="strategy-box strategy-disc">裁量</span></td>
+        <td class="center">0.391 ~ 0.600</td>
+        <td class="num">236</td>
+        <td class="num g3">53.4%</td>
+        <td class="num pos">¥226,700</td>
+        <td class="num pos">¥961</td>
+        <td><div class="bar-container"><div class="bar-fill" style="width:53.4%;background:#f59e0b"></div></div></td>
+      </tr>
+      <tr>
+        <td class="g4">G4</td>
+        <td><span class="strategy-box strategy-skip">SKIP</span></td>
+        <td class="center">0.600 ~ 0.932</td>
+        <td class="num">237</td>
+        <td class="num g4">48.9%</td>
+        <td class="num neg">¥-233,250</td>
+        <td class="num neg">¥-984</td>
+        <td><div class="bar-container"><div class="bar-fill" style="width:48.9%;background:#ef4444"></div></div></td>
+      </tr>
+      <tr class="summary-row">
+        <td colspan="2" style="color:#10b981">G1+G2 合計</td>
+        <td class="center">0.025 ~ 0.391</td>
+        <td class="num">474</td>
+        <td class="num" style="color:#10b981">67.1%</td>
+        <td class="num pos" style="font-size:15px">¥1,094,550</td>
+        <td class="num pos">¥2,309</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">月別パフォーマンス</div>
+  <table>
+    <thead>
+      <tr>
+        <th>月</th>
+        <th class="num">総件数</th>
+        <th class="num">G1+G2件数</th>
+        <th class="num">G1+G2勝率</th>
+        <th class="num">G1+G2損益</th>
+        <th class="num">G3損益</th>
+        <th class="num">G4損益</th>
+        <th class="num">全体損益</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>2025-11</td>
+        <td class="num">31</td>
+        <td class="num">12</td>
+        <td class="num">75.0%</td>
+        <td class="num neg">¥-5,300</td>
+        <td class="num neg">¥-3,200</td>
+        <td class="num neg">¥-23,600</td>
+        <td class="num neg">¥-32,100</td>
+      </tr>
+      <tr>
+        <td>2025-12</td>
+        <td class="num">309</td>
+        <td class="num">191</td>
+        <td class="num pos">71.2%</td>
+        <td class="num pos">¥417,450</td>
+        <td class="num neg">¥-44,950</td>
+        <td class="num pos">¥52,950</td>
+        <td class="num pos">¥425,450</td>
+      </tr>
+      <tr>
+        <td>2026-01</td>
+        <td class="num">339</td>
+        <td class="num">129</td>
+        <td class="num pos">72.1%</td>
+        <td class="num pos">¥568,900</td>
+        <td class="num pos">¥168,550</td>
+        <td class="num neg">¥-156,450</td>
+        <td class="num pos">¥581,000</td>
+      </tr>
+      <tr>
+        <td>2026-02</td>
+        <td class="num">268</td>
+        <td class="num">142</td>
+        <td class="num">56.3%</td>
+        <td class="num pos">¥113,500</td>
+        <td class="num pos">¥106,300</td>
+        <td class="num neg">¥-106,150</td>
+        <td class="num pos">¥113,650</td>
+      </tr>
+      <tr class="summary-row">
+        <td>合計</td>
+        <td class="num">947</td>
+        <td class="num">474</td>
+        <td class="num" style="color:#10b981">67.1%</td>
+        <td class="num pos" style="font-size:14px">¥1,094,550</td>
+        <td class="num pos">¥226,700</td>
+        <td class="num neg">¥-233,250</td>
+        <td class="num pos" style="font-size:14px">¥1,088,000</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="two-col">
+  <div class="section">
+    <div class="section-title">特徴量重要度 Top 28</div>
+    <table>
+      <thead>
+        <tr><th>#</th><th>特徴量</th><th class="num">重要度</th><th class="num">構成比</th><th style="width:80px">バー</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>rsi9</td><td class="num">178</td><td class="num">5.9%</td><td><div class="bar-container"><div class="bar-fill" style="width:100%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>2</td><td>volatility_5d</td><td class="num">168</td><td class="num">5.6%</td><td><div class="bar-container"><div class="bar-fill" style="width:94%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>3</td><td>volume_ratio_5d</td><td class="num">150</td><td class="num">5.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:84%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>4</td><td>ma5_deviation</td><td class="num">141</td><td class="num">4.7%</td><td><div class="bar-container"><div class="bar-fill" style="width:79%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>5</td><td>vol_ratio</td><td class="num">137</td><td class="num">4.6%</td><td><div class="bar-container"><div class="bar-fill" style="width:77%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>6</td><td style="color:#f59e0b">prev_close_position ★</td><td class="num">135</td><td class="num">4.5%</td><td><div class="bar-container"><div class="bar-fill" style="width:76%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>7</td><td>market_cap</td><td class="num">132</td><td class="num">4.4%</td><td><div class="bar-container"><div class="bar-fill" style="width:74%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>8</td><td style="color:#f59e0b">vol_trend ★</td><td class="num">127</td><td class="num">4.2%</td><td><div class="bar-container"><div class="bar-fill" style="width:71%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>9</td><td>nikkei_change_pct</td><td class="num">126</td><td class="num">4.2%</td><td><div class="bar-container"><div class="bar-fill" style="width:71%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>10</td><td style="color:#f59e0b">bb_pctb ★</td><td class="num">120</td><td class="num">4.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:67%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>11</td><td>buy_price</td><td class="num">115</td><td class="num">3.8%</td><td><div class="bar-container"><div class="bar-fill" style="width:65%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>12</td><td style="color:#f59e0b">gap_ratio ★</td><td class="num">114</td><td class="num">3.8%</td><td><div class="bar-container"><div class="bar-fill" style="width:64%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>13</td><td>price_range_5d</td><td class="num">111</td><td class="num">3.7%</td><td><div class="bar-container"><div class="bar-fill" style="width:62%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>14</td><td>atr14_pct</td><td class="num">110</td><td class="num">3.7%</td><td><div class="bar-container"><div class="bar-fill" style="width:62%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>15</td><td>selection_score</td><td class="num">109</td><td class="num">3.6%</td><td><div class="bar-container"><div class="bar-fill" style="width:61%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>16</td><td>prev_day_return</td><td class="num">107</td><td class="num">3.6%</td><td><div class="bar-container"><div class="bar-fill" style="width:60%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>17</td><td>nikkei_ret_5d</td><td class="num">93</td><td class="num">3.1%</td><td><div class="bar-container"><div class="bar-fill" style="width:52%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>18</td><td>ma25_deviation</td><td class="num">91</td><td class="num">3.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:51%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>19</td><td style="color:#f59e0b">macd_hist ★</td><td class="num">91</td><td class="num">3.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:51%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>20</td><td>nikkei_vol_5d</td><td class="num">89</td><td class="num">3.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:50%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>21</td><td>futures_change_pct</td><td class="num">84</td><td class="num">2.8%</td><td><div class="bar-container"><div class="bar-fill" style="width:47%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>22</td><td style="color:#f59e0b">prev_candle ★</td><td class="num">81</td><td class="num">2.7%</td><td><div class="bar-container"><div class="bar-fill" style="width:46%;background:#f59e0b"></div></div></td></tr>
+        <tr><td>23</td><td>usdjpy_vol_5d</td><td class="num">75</td><td class="num">2.5%</td><td><div class="bar-container"><div class="bar-fill" style="width:42%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>24</td><td>futures_ret_5d</td><td class="num">74</td><td class="num">2.5%</td><td><div class="bar-container"><div class="bar-fill" style="width:42%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>25</td><td>grok_rank</td><td class="num">72</td><td class="num">2.4%</td><td><div class="bar-container"><div class="bar-fill" style="width:40%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>26</td><td>usdjpy_ret_5d</td><td class="num">61</td><td class="num">2.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:34%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>27</td><td>topix_vol_5d</td><td class="num">60</td><td class="num">2.0%</td><td><div class="bar-container"><div class="bar-fill" style="width:34%;background:#3b82f6"></div></div></td></tr>
+        <tr><td>28</td><td>topix_ret_5d</td><td class="num">49</td><td class="num">1.6%</td><td><div class="bar-container"><div class="bar-fill" style="width:28%;background:#3b82f6"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Grade境界値</div>
+    <table>
+      <thead><tr><th>Grade</th><th>prob_up 閾値</th><th>戦略</th></tr></thead>
+      <tbody>
+        <tr><td class="g1">G1</td><td>≤ 0.2180</td><td><span class="strategy-box strategy-short">機械的SHORT</span></td></tr>
+        <tr><td class="g2">G2</td><td>≤ 0.3909</td><td><span class="strategy-box strategy-short">機械的SHORT</span></td></tr>
+        <tr><td class="g3">G3</td><td>≤ 0.5998</td><td><span class="strategy-box strategy-disc">裁量判断</span></td></tr>
+        <tr><td class="g4">G4</td><td>≤ 1.0000</td><td><span class="strategy-box strategy-skip">SKIP</span></td></tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:32px">
+      <div class="section-title">モデル概要</div>
+      <table>
+        <tbody>
+          <tr><td style="color:#888">アルゴリズム</td><td>LightGBM (binary)</td></tr>
+          <tr><td style="color:#888">特徴量数</td><td>28</td></tr>
+          <tr><td style="color:#888">新規追加特徴量</td><td>prev_close_position, gap_ratio, prev_candle, macd_hist, bb_pctb, vol_trend</td></tr>
+          <tr><td style="color:#888">削除した特徴量</td><td>weekday, shortable, day_trade, volatility_10d/20d, return_5d/10d, *_ma5_dev(3), futures_vol_5d</td></tr>
+          <tr><td style="color:#888">CV方式</td><td>Walk-Forward (週単位, 4週訓練)</td></tr>
+          <tr><td style="color:#888">学習データ</td><td>1,113件 (2025-10-29 ~ 2026-02-27)</td></tr>
+          <tr><td style="color:#888">評価データ</td><td>947件 (2025-11-25 ~ 2026-02-27)</td></tr>
+          <tr><td style="color:#888">張り付き除外</td><td>31件</td></tr>
+          <tr><td style="color:#888">ロング勝率（全体）</td><td>40.9%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:32px">
+      <div class="section-title">戦略運用ルール</div>
+      <table>
+        <tbody>
+          <tr><td class="g1" style="width:60px">G1</td><td>prob_up ≤ 0.218: <strong>機械的SHORT</strong>。最も下落確率が高い。勝率73.4%。</td></tr>
+          <tr><td class="g2">G2</td><td>prob_up ≤ 0.391: <strong>機械的SHORT</strong>。勝率60.8%、G1ほどではないが利益見込み。</td></tr>
+          <tr><td class="g3">G3</td><td>prob_up ≤ 0.600: <strong>裁量判断</strong>。勝率53.4%、エッジは小さい。他の情報と組み合わせて判断。</td></tr>
+          <tr><td class="g4">G4</td><td>prob_up > 0.600: <strong>SKIP</strong>。ショートすると損失。勝率48.9%、損益マイナス。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  生成日時: 2026-02-28 | ★ = 今回新規追加した特徴量 (6個) | Walk-Forward CV, LightGBM binary classifier
+</div>
+
+</div>
+</body>
+</html>

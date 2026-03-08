@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>グランビル4法則 × レジーム × SMA期間（直近2年）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e0e0e0; font-family: 'SF Mono', 'Consolas', monospace; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 16px; color: #ccc; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  th { background: #16161e; color: #888; font-size: 11px; font-weight: 600; padding: 8px 10px; text-align: right; border-bottom: 2px solid #333; }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { padding: 7px 10px; font-size: 13px; text-align: right; border-bottom: 1px solid #1a1a24; }
+  td:first-child { text-align: left; color: #ccc; font-weight: 600; }
+  td:nth-child(2) { text-align: left; }
+  tr:hover { background: #1a1a2e; }
+
+  .up { color: #50fa7b; }
+  .dn { color: #ff5555; }
+  .regime-up { background: #0d1f0d; }
+  .regime-dn { background: #1f0d0d; }
+
+  .pf-danger { color: #ff5555; font-weight: bold; }
+  .pf-weak { color: #f1fa8c; }
+  .pf-ok { color: #8be9fd; }
+  .pf-good { color: #50fa7b; }
+  .pf-great { color: #00ff88; font-weight: bold; }
+
+  .pnl-neg { color: #ff5555; }
+  .pnl-pos { color: #50fa7b; }
+  .pnl-big { color: #00ff88; font-weight: bold; }
+
+  .heatmap-section { margin-bottom: 28px; }
+  .heatmap-title { font-size: 14px; color: #bd93f9; margin-bottom: 8px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: #111118; border-radius: 8px; padding: 16px; border: 1px solid #222; }
+  .card-title { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+  .card-value { font-size: 24px; font-weight: bold; }
+  .card-sub { font-size: 12px; color: #666; margin-top: 4px; }
+
+  .conclusion { background: #111118; border: 1px solid #bd93f9; border-radius: 8px; padding: 20px; margin-top: 24px; }
+  .conclusion h3 { color: #bd93f9; margin-bottom: 12px; font-size: 15px; }
+  .conclusion table { width: auto; }
+  .conclusion td, .conclusion th { padding: 6px 14px; font-size: 13px; }
+
+  .legend { display: flex; gap: 20px; font-size: 11px; color: #888; margin-bottom: 16px; flex-wrap: wrap; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
+
+  .highlight { background: #1a2f1a !important; border-left: 3px solid #50fa7b; }
+  .best-badge { display: inline-block; background: #50fa7b; color: #000; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
+  .shift-up { color: #50fa7b; font-size: 11px; }
+  .shift-dn { color: #ff5555; font-size: 11px; }
+  .note { background: #111118; border: 1px solid #444; border-radius: 6px; padding: 14px; font-size: 12px; color: #aaa; line-height: 1.7; margin-top: 12px; }
+  .note strong { color: #e0e0e0; }
+</style>
+</head>
+<body>
+
+<h1>グランビル4法則 × レジーム × SMA期間</h1>
+<p class="subtitle">直近2年（2024-03 〜 2026-02）vs 全期間（1999-2026）比較 ― SLなし理論値</p>
+
+<div class="section">
+  <div class="section-title">B1(Uptrend) + B4(Downtrend) コンボ ― SMA期間別比較</div>
+  <p style="font-size:12px; color:#888; margin-bottom:12px;">全期間ベストはSMA20だが、直近2年ではSMA75が最強。市場構造の変化を反映。</p>
+  <table>
+    <thead>
+      <tr>
+        <th>SMA</th>
+        <th style="text-align:center" colspan="3">全期間 (1999-2026)</th>
+        <th style="text-align:center" colspan="3">直近2年 (2024-03~)</th>
+        <th>変化</th>
+      </tr>
+      <tr>
+        <th></th>
+        <th>件数</th><th>PF</th><th>PnL(万)</th>
+        <th>件数</th><th>PF</th><th>PnL(万)</th>
+        <th>PF差</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SMA5</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>2,205</td>
+        <td class="pf-ok">1.30</td>
+        <td class="pnl-pos">+367</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>SMA10</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>1,749</td>
+        <td class="pf-good">1.83</td>
+        <td class="pnl-pos">+982</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>SMA20</td>
+        <td>10,768</td>
+        <td class="pf-good">1.92</td>
+        <td class="pnl-big">+7,150</td>
+        <td>1,855</td>
+        <td class="pf-great">3.88</td>
+        <td class="pnl-big">+3,439</td>
+        <td class="shift-up">+1.96</td>
+      </tr>
+      <tr>
+        <td>SMA50</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>2,306</td>
+        <td class="pf-great">4.18</td>
+        <td class="pnl-big">+5,687</td>
+        <td>—</td>
+      </tr>
+      <tr class="highlight">
+        <td>SMA75 <span class="best-badge">BEST</span></td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>2,411</td>
+        <td class="pf-great">4.47</td>
+        <td class="pnl-big">+6,717</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>SMA200</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>2,055</td>
+        <td class="pf-great">3.60</td>
+        <td class="pnl-big">+6,090</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>全期間の全SMAデータ</strong>は前回HTMLに掲載済み。ここでは直近2年を中心に表示。<br>
+    全期間SMA20: PF 1.92 → 直近2年SMA20: PF 3.88（倍増）。直近はグランビルが効きやすい環境。
+  </div>
+</div>
+
+<!-- ===== SMA別フルグリッド ===== -->
+
+<div class="section">
+  <div class="section-title">SMA期間別 × 法則 × レジーム 全48セル（直近2年）</div>
+  <div class="legend">
+    <span>PF色: <span style="color:#ff5555">■</span> &lt;1.0 <span style="color:#f1fa8c">■</span> 1.0-1.3 <span style="color:#8be9fd">■</span> 1.3-1.5 <span style="color:#50fa7b">■</span> 1.5-2.0 <span style="color:#00ff88">■</span> &gt;2.0</span>
+    <span>背景: <span style="background:#0d1f0d;padding:2px 6px;border-radius:2px;">Uptrend</span> <span style="background:#1f0d0d;padding:2px 6px;border-radius:2px;">Downtrend</span></span>
+  </div>
+
+  <!-- SMA 5 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 5</div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up"><td>B1</td><td class="up">Uptrend</td><td>2,170</td><td>39.8%</td><td class="pf-weak">1.23</td><td class="pnl-pos">+315</td><td>4.5d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>1,151</td><td>39.7%</td><td class="pf-danger">1.09</td><td class="pnl-neg">-120</td><td>4.2d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>949</td><td>44.4%</td><td class="pf-good">1.51</td><td class="pnl-pos">+295</td><td>4.0d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>1,001</td><td>44.2%</td><td class="pf-ok">1.40</td><td class="pnl-neg">-57</td><td>4.1d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>2,810</td><td>41.7%</td><td class="pf-weak">1.14</td><td class="pnl-pos">+107</td><td>4.1d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>1,139</td><td>38.6%</td><td class="pf-danger">1.03</td><td class="pnl-neg">-80</td><td>3.9d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>7</td><td>71.4%</td><td class="pf-ok">1.36</td><td class="pnl-pos">+12</td><td>4.1d</td></tr>
+        <tr class="regime-dn"><td>B4</td><td class="dn">Downtrend</td><td>35</td><td>85.7%</td><td class="pf-great">6.31</td><td class="pnl-pos">+52</td><td>2.9d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">SMA5は短すぎてシグナル精度が低い。B4はサンプル極少。</p>
+  </div>
+
+  <!-- SMA 10 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 10</div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up"><td>B1</td><td class="up">Uptrend</td><td>1,519</td><td>36.7%</td><td class="pf-weak">1.26</td><td class="pnl-pos">+233</td><td>6.3d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>890</td><td>41.8%</td><td class="pf-good">1.69</td><td class="pnl-pos">+146</td><td>6.7d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>1,136</td><td>40.8%</td><td class="pf-weak">1.21</td><td class="pnl-neg">-277</td><td>4.0d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>1,061</td><td>50.7%</td><td class="pf-good">1.92</td><td class="pnl-pos">+298</td><td>5.0d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>1,372</td><td>34.3%</td><td class="pf-danger">0.93</td><td class="pnl-neg">-418</td><td>5.6d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>574</td><td>42.3%</td><td class="pf-good">1.66</td><td class="pnl-pos">+40</td><td>6.5d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>65</td><td>58.5%</td><td class="pf-weak">1.30</td><td class="pnl-pos">+85</td><td>7.1d</td></tr>
+        <tr class="regime-dn"><td>B4</td><td class="dn">Downtrend</td><td>230</td><td>89.1%</td><td class="pf-great">9.28</td><td class="pnl-big">+749</td><td>5.5d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">SMA10 B4 Downtrend: PF 9.28は驚異的だが保有5.5日と短い。</p>
+  </div>
+
+  <!-- SMA 20 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 20 <span style="color:#888;font-size:11px;">（全期間ベスト）</span></div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up highlight"><td>B1</td><td class="up">Uptrend</td><td>1,129</td><td>34.5%</td><td class="pf-good">1.85</td><td class="pnl-big">+911</td><td>9.2d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>607</td><td>37.9%</td><td class="pf-weak">1.19</td><td class="pnl-pos">+54</td><td>9.1d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>1,098</td><td>44.1%</td><td class="pf-good">1.57</td><td class="pnl-pos">+455</td><td>4.9d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>869</td><td>46.1%</td><td class="pf-weak">1.25</td><td class="pnl-pos">+315</td><td>5.1d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>596</td><td>34.1%</td><td class="pf-good">1.73</td><td class="pnl-pos">+254</td><td>10.1d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>261</td><td>37.2%</td><td class="pf-good">1.79</td><td class="pnl-pos">+127</td><td>11.0d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>215</td><td>63.7%</td><td class="pf-good">1.82</td><td class="pnl-pos">+109</td><td>13.1d</td></tr>
+        <tr class="regime-dn highlight"><td>B4</td><td class="dn">Downtrend</td><td>726</td><td>88.2%</td><td class="pf-great">10.29</td><td class="pnl-big">+2,527</td><td>9.7d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">B1Up(PF1.85)+B4Dn(PF10.29)=コンボPF3.88。全期間(1.92)から大幅向上。</p>
+  </div>
+
+  <!-- SMA 50 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 50</div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up"><td>B1</td><td class="up">Uptrend</td><td>828</td><td>31.9%</td><td class="pf-good">1.70</td><td class="pnl-big">+916</td><td>13.4d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>414</td><td>34.5%</td><td class="pf-weak">1.15</td><td class="pnl-pos">+39</td><td>15.0d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>1,285</td><td>44.7%</td><td class="pf-good">1.59</td><td class="pnl-pos">+51</td><td>5.6d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>714</td><td>50.1%</td><td class="pf-weak">1.23</td><td class="pnl-pos">+215</td><td>6.3d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>206</td><td>36.9%</td><td class="pf-great">2.73</td><td class="pnl-pos">+228</td><td>16.0d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>70</td><td>32.9%</td><td class="pf-danger">0.95</td><td class="pnl-neg">-33</td><td>17.0d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>844</td><td>66.2%</td><td class="pf-good">1.65</td><td class="pnl-big">+1,331</td><td>26.4d</td></tr>
+        <tr class="regime-dn"><td>B4</td><td class="dn">Downtrend</td><td>1,478</td><td>81.3%</td><td class="pf-great">6.14</td><td class="pnl-big">+4,771</td><td>23.4d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">B4がUp/Dn両方で機能。ただし保有23-26日と長い。</p>
+  </div>
+
+  <!-- SMA 75 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 75 <span class="best-badge">直近2年BEST</span></div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up highlight"><td>B1</td><td class="up">Uptrend</td><td>689</td><td>32.9%</td><td class="pf-great">2.14</td><td class="pnl-big">+944</td><td>14.7d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>337</td><td>36.2%</td><td class="pf-good">1.71</td><td class="pnl-pos">+90</td><td>16.4d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>1,271</td><td>46.9%</td><td class="pf-good">1.88</td><td class="pnl-big">+897</td><td>5.1d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>607</td><td>47.0%</td><td class="pf-weak">1.08</td><td class="pnl-pos">+118</td><td>6.2d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>101</td><td>32.7%</td><td class="pf-good">1.72</td><td class="pnl-neg">-5</td><td>15.8d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>32</td><td>18.8%</td><td class="pf-danger">0.15</td><td class="pnl-neg">-70</td><td>12.4d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>1,357</td><td>67.7%</td><td class="pf-good">1.79</td><td class="pnl-big">+1,212</td><td>32.3d</td></tr>
+        <tr class="regime-dn highlight"><td>B4</td><td class="dn">Downtrend</td><td>1,722</td><td>84.6%</td><td class="pf-great">5.47</td><td class="pnl-big">+5,774</td><td>30.3d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">B1Up PF2.14 + B4Dn PF5.47 = コンボPF4.47。だが保有30日は資金拘束の懸念。</p>
+  </div>
+
+  <!-- SMA 200 -->
+  <div class="heatmap-section">
+    <div class="heatmap-title">SMA 200</div>
+    <table>
+      <thead><tr><th>Signal</th><th>Regime</th><th>Trades</th><th>WinRate</th><th>PF</th><th>PnL(万)</th><th>Avg Hold</th></tr></thead>
+      <tbody>
+        <tr class="regime-up"><td>B1</td><td class="up">Uptrend</td><td>429</td><td>27.0%</td><td class="pf-ok">1.35</td><td class="pnl-neg">-146</td><td>13.3d</td></tr>
+        <tr class="regime-dn"><td>B1</td><td class="dn">Downtrend</td><td>205</td><td>51.7%</td><td class="pf-great">4.80</td><td class="pnl-pos">+483</td><td>28.1d</td></tr>
+        <tr class="regime-up"><td>B2</td><td class="up">Uptrend</td><td>1,130</td><td>39.8%</td><td class="pf-danger">0.95</td><td class="pnl-neg">-291</td><td>4.7d</td></tr>
+        <tr class="regime-dn"><td>B2</td><td class="dn">Downtrend</td><td>464</td><td>55.2%</td><td class="pf-great">3.39</td><td class="pnl-pos">+455</td><td>8.8d</td></tr>
+        <tr class="regime-up"><td>B3</td><td class="up">Uptrend</td><td>29</td><td>27.6%</td><td class="pf-weak">1.17</td><td class="pnl-neg">-6</td><td>18.1d</td></tr>
+        <tr class="regime-dn"><td>B3</td><td class="dn">Downtrend</td><td>5</td><td>20.0%</td><td class="pf-danger">0.09</td><td class="pnl-neg">-4</td><td>9.2d</td></tr>
+        <tr class="regime-up"><td>B4</td><td class="up">Uptrend</td><td>2,779</td><td>57.9%</td><td class="pf-ok">1.44</td><td class="pnl-neg">-226</td><td>44.0d</td></tr>
+        <tr class="regime-dn"><td>B4</td><td class="dn">Downtrend</td><td>1,626</td><td>71.8%</td><td class="pf-great">4.19</td><td class="pnl-big">+6,236</td><td>46.7d</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#666;">SMA200: B1Uptrendが赤字。B4Dn PF4.19だが保有47日。SMA200ではレジーム判定が逆転（Dn側で全法則が強い）。</p>
+  </div>
+</div>
+
+<!-- ===== 構造分析 ===== -->
+<div class="section">
+  <div class="section-title">構造分析：全期間 vs 直近2年</div>
+
+  <div class="conclusion">
+    <h3>直近2年で変わったこと</h3>
+    <table>
+      <thead><tr><th>項目</th><th>全期間 (SMA20)</th><th>直近2年 (SMA20)</th><th>直近2年 (SMA75)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>B1 Uptrend PF</td>
+          <td>1.46</td>
+          <td class="pf-good">1.85</td>
+          <td class="pf-great">2.14</td>
+        </tr>
+        <tr>
+          <td>B4 Downtrend PF</td>
+          <td>2.57</td>
+          <td class="pf-great">10.29</td>
+          <td class="pf-great">5.47</td>
+        </tr>
+        <tr>
+          <td>コンボ PF</td>
+          <td>1.92</td>
+          <td class="pf-great">3.88</td>
+          <td class="pf-great">4.47</td>
+        </tr>
+        <tr>
+          <td>コンボ PnL(万)</td>
+          <td class="pnl-big">+7,150</td>
+          <td class="pnl-big">+3,439</td>
+          <td class="pnl-big">+6,717</td>
+        </tr>
+        <tr>
+          <td>コンボ件数</td>
+          <td>10,768</td>
+          <td>1,855</td>
+          <td>2,411</td>
+        </tr>
+        <tr>
+          <td>B4Dn 平均保有</td>
+          <td>—</td>
+          <td>9.7d</td>
+          <td style="color:#f1fa8c;">30.3d ⚠</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="conclusion" style="margin-top:16px;">
+    <h3>重要な観察</h3>
+    <div style="font-size:13px; line-height:1.8;">
+      <p>1. <strong>全SMAでグランビルが全期間より強く効いている</strong>（PF全面向上）</p>
+      <p>2. <strong>SMA期間が長いほど PnL が大きいが、保有日数も比例して増加</strong></p>
+      <p style="padding-left:20px;">SMA20: B4Dn保有9.7d → SMA75: 30.3d → SMA200: 46.7d</p>
+      <p>3. <strong>SMA200はレジーム判定が逆転</strong>: Uptrend側で全法則が弱い。N225がSMA200以上=全銘柄が十分上がった後なので天井掴みになる</p>
+      <p>4. <strong>SMA20 vs SMA75 のトレードオフ</strong>:</p>
+      <p style="padding-left:20px;">SMA20: PF3.88, PnL+3,439万, 保有短い(9.7d), <span class="up">資金効率◎</span></p>
+      <p style="padding-left:20px;">SMA75: PF4.47, PnL+6,717万, 保有長い(30.3d), <span style="color:#f1fa8c;">資金拘束△</span></p>
+      <p>5. <strong>B2(押し目買い)</strong>: SMA20/SMA75両方でUptrend時にPF1.5以上。B1の補完として有望</p>
+    </div>
+  </div>
+
+  <div class="conclusion" style="margin-top:16px; border-color:#ff5555;">
+    <h3 style="color:#ff5555;">未検証事項（この数値は上限値）</h3>
+    <div style="font-size:13px; line-height:1.8; color:#aaa;">
+      <p>1. <strong>SL -3% 付き再検証</strong>: 現在はSLなし理論値。SL追加でPF/PnL低下は確実</p>
+      <p>2. <strong>資金制約シミュレーション</strong>: ¥500万信用枠で同時保有上限 → PnL縮小</p>
+      <p>3. <strong>同一銘柄重複制限</strong>: B4 Downtrendは暴落時に大量シグナル → 同銘柄重複多い</p>
+      <p>4. <strong>SMA20とSMA75のレジーム判定を混合</strong>: シグナルSMA20 + レジーム判定SMA75、等</p>
+      <p>5. <strong>CI先行指数フィルター</strong>: 追加で改善するか劣化するか</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

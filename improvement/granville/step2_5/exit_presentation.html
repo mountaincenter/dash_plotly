@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 2.5: Exit戦略の決定</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131a;
+    --card-border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.15);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.15);
+    --gold: #f59e0b;
+    --gold-dim: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.12);
+    --cyan: #06b6d4;
+    --cyan-dim: rgba(6,182,212,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.6; }
+  .slide { min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:60px 80px; border-bottom:1px solid var(--card-border); position:relative; }
+  .slide-number { position:absolute; top:30px; right:40px; font-size:13px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+  .slide h1 { font-size:48px; font-weight:700; margin-bottom:16px; letter-spacing:-1px; }
+  .slide h2 { font-size:32px; font-weight:600; margin-bottom:12px; }
+  .hero { text-align:center; align-items:center; }
+  .hero h1 { font-size:56px; }
+  .subtitle { font-size:20px; color:var(--muted); margin-bottom:40px; max-width:800px; }
+  .verdict { display:inline-block; padding:10px 28px; border-radius:8px; font-size:17px; font-weight:600; margin:6px 4px; }
+  .verdict.green { background:var(--green-dim); color:var(--green); border:1px solid rgba(34,197,94,0.3); }
+  .verdict.gold { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(245,158,11,0.3); }
+  .verdict.blue { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(59,130,246,0.3); }
+  .verdict.red { background:var(--red-dim); color:var(--red); border:1px solid rgba(239,68,68,0.3); }
+  .metrics { display:flex; gap:20px; flex-wrap:wrap; margin:28px 0; }
+  .metric-card { background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:24px 28px; flex:1; min-width:180px; }
+  .metric-card .label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; }
+  .metric-card .value { font-size:36px; font-weight:700; letter-spacing:-1px; }
+  .metric-card .detail { font-size:13px; color:var(--muted); margin-top:4px; }
+  .metric-card.hl { border-color:var(--accent); box-shadow:0 0 25px rgba(99,102,241,0.12); }
+  .narrative { font-size:17px; max-width:850px; margin:16px 0; line-height:1.8; }
+  .narrative strong { color:#fff; }
+  .evidence { background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:24px 28px; margin:16px 0; }
+  .evidence .title { font-size:13px; color:var(--accent); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin:20px 0; }
+
+  /* PF comparison chart */
+  .pf-chart { margin:20px 0; max-width:900px; }
+  .pf-row { display:flex; align-items:center; margin:6px 0; }
+  .pf-label { width:90px; font-size:13px; color:var(--muted); text-align:right; padding-right:12px; flex-shrink:0; }
+  .pf-bar-track { flex:1; height:32px; background:#1a1a25; border-radius:4px; position:relative; }
+  .pf-bar { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:10px; font-size:13px; font-weight:600; color:#fff; }
+  .pf-extra { width:120px; font-size:13px; padding-left:12px; flex-shrink:0; }
+
+  /* Signal card */
+  .signal-card { background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:28px; margin:12px 0; }
+  .signal-card.star { border-color:var(--green); box-shadow:0 0 20px rgba(34,197,94,0.08); }
+  .signal-card .sig-name { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .signal-card .sig-desc { font-size:13px; color:var(--muted); margin-bottom:16px; }
+
+  /* Mini table */
+  .mini-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .mini-table th { text-align:left; color:var(--muted); font-weight:500; padding:6px 10px; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--card-border); }
+  .mini-table td { padding:8px 10px; border-bottom:1px solid #1a1a25; }
+  .mini-table tr.best td { background:var(--green-dim); font-weight:600; }
+  .mini-table tr.sig td { background:rgba(99,102,241,0.06); }
+  .pos { color:var(--green); }
+  .neg { color:var(--red); }
+
+  .insight-box { background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(6,182,212,0.06)); border:1px solid rgba(99,102,241,0.2); border-radius:12px; padding:20px 24px; margin:16px 0; max-width:900px; }
+  .insight-box h4 { color:var(--accent); font-size:14px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+
+  .conclusion-card { background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(34,197,94,0.08)); border:1px solid rgba(99,102,241,0.3); border-radius:20px; padding:36px; margin:24px 0; max-width:900px; }
+  .conclusion-card h3 { font-size:22px; margin-bottom:16px; }
+  .param-list { list-style:none; margin:12px 0; }
+  .param-list li { display:flex; align-items:baseline; padding:6px 0; font-size:16px; }
+  .param-list .key { color:var(--muted); width:160px; flex-shrink:0; font-size:13px; text-transform:uppercase; letter-spacing:1px; }
+  .param-list .val { font-weight:600; }
+
+  .footnote { font-size:12px; color:var(--muted); margin-top:20px; padding-top:12px; border-top:1px solid var(--card-border); }
+  .progress { position:fixed; right:24px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:12px; z-index:100; }
+  .progress .dot { width:10px; height:10px; border-radius:50%; background:var(--card-border); cursor:pointer; transition:all 0.3s; }
+  .progress .dot:hover, .progress .dot.active { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  @media (max-width:900px) { .two-col{grid-template-columns:1fr;} .slide{padding:40px 24px;} .slide h1{font-size:36px;} }
+</style>
+</head>
+<body>
+
+<nav class="progress" id="nav">
+  <div class="dot" onclick="goto(0)" title="結論"></div>
+  <div class="dot" onclick="goto(1)" title="構造理解"></div>
+  <div class="dot" onclick="goto(2)" title="B4"></div>
+  <div class="dot" onclick="goto(3)" title="B1"></div>
+  <div class="dot" onclick="goto(4)" title="B3・B2"></div>
+  <div class="dot" onclick="goto(5)" title="直近検証"></div>
+  <div class="dot" onclick="goto(6)" title="最終戦略"></div>
+</nav>
+
+<!-- ========== SLIDE 0: 結論 ========== -->
+<section class="slide hero" id="s0">
+  <span class="slide-number">Step 2.5 / Exit Strategy</span>
+  <h1>シグナルごとに<br>最適Exitは異なる</h1>
+  <p class="subtitle">「何日で切るか」に唯一の正解はない。シグナルの性質が決める。</p>
+
+  <div style="margin:24px 0;">
+    <span class="verdict green">B4 → 7日引け（PF 1.61）</span>
+    <span class="verdict blue">B1 → 14日引け（PF 1.37）</span>
+    <span class="verdict gold">B3 → 14日引け（PF 1.35）</span>
+  </div>
+
+  <div class="metrics" style="max-width:900px;">
+    <div class="metric-card hl">
+      <div class="label">B4 Downtrend 7日</div>
+      <div class="value" style="color:var(--green);">1.61</div>
+      <div class="detail">シグナルExit(1.70)の95%を維持</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">B1 Uptrend 14日</div>
+      <div class="value" style="color:var(--blue);">1.37</div>
+      <div class="detail">7日(1.27)から大幅改善</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">全戦略 加重平均</div>
+      <div class="value">PF 1.44</div>
+      <div class="detail">保有 6.3日（資金回転◎）</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 1: 構造理解 ========== -->
+<section class="slide" id="s1">
+  <span class="slide-number">01 / Structure</span>
+  <h2>なぜシグナルごとに最適日数が違うか</h2>
+  <p class="subtitle">B4は即効型、B1/B3はじわじわ型。利益の出方が根本的に異なる。</p>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="evidence">
+      <div class="title">B4（乖離反発）の性質</div>
+      <p class="narrative" style="font-size:15px; margin:0;">
+        <strong>-8%超の乖離</strong>から反発する逆張り。<br>
+        反発は<strong>数日で起きる</strong>（平均4.0日保有）。<br>
+        長く持つと平均回帰が完了してダラダラする。<br><br>
+        SL率: <strong>65.2%</strong>（3回中2回は-3%で切られる）<br>
+        → 勝ち3割だが、勝つ時に大きく取る構造。<br>
+        → <strong>短く切って回転</strong>させるのが正解。
+      </p>
+    </div>
+    <div class="evidence">
+      <div class="title">B1（ゴールデンクロス）の性質</div>
+      <p class="narrative" style="font-size:15px; margin:0;">
+        SMAを上抜けた<strong>トレンド初動</strong>を捉える順張り。<br>
+        トレンドが続く限り<strong>利益が伸びる</strong>（平均8.5日保有）。<br><br>
+        SL率: <strong>28.4%</strong>（ダマシは3割以下）<br>
+        → 勝率は低いが、勝ち幅が大きい構造。<br>
+        → <strong>ある程度待つ</strong>方がPFが上がる。
+      </p>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <h4>構造的な違い</h4>
+    <p style="font-size:15px;">
+      B4 = <strong>「スナップバック」</strong>型。ゴムが伸びきって戻る。戻ったら終わり → 短期Exit向き<br>
+      B1/B3 = <strong>「モメンタム」</strong>型。上昇トレンドに乗る。続く限り乗る → 長めExit向き<br>
+      B2 = 両方の性質を持つ。レジームで特性が変わる。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 2: B4 ========== -->
+<section class="slide" id="s2">
+  <span class="slide-number">02 / B4 乖離反発</span>
+  <h2>B4: 7日Exitが最適解</h2>
+  <p class="subtitle">短く切っても PF は落ちない。むしろ資金効率が上がる。</p>
+
+  <div class="signal-card star">
+    <div class="sig-name">B4 Downtrend <span style="font-size:14px; color:var(--green); margin-left:8px;">主力シグナル</span></div>
+    <div class="sig-desc">乖離 -8%超 + 陽線 → 翌日Open買い / N225 &lt; SMA20</div>
+    <table class="mini-table">
+      <tr><th>Exit</th><th>PF</th><th>平均損益</th><th>PnL合計</th><th>平均保有</th><th></th></tr>
+      <tr class="sig"><td>シグナルExit</td><td><strong>1.70</strong></td><td class="pos">+¥1,990</td><td class="pos">+1,861万</td><td>4.0日</td><td style="color:var(--muted);font-size:12px;">基準</td></tr>
+      <tr><td>3日引け</td><td>1.64</td><td class="pos">+¥1,055</td><td class="pos">+987万</td><td>2.0日</td><td></td></tr>
+      <tr><td>5日引け</td><td>1.62</td><td class="pos">+¥1,477</td><td class="pos">+1,381万</td><td>2.9日</td><td></td></tr>
+      <tr class="best"><td>7日引け</td><td style="color:var(--green);font-size:18px;">1.61</td><td class="pos">+¥1,804</td><td class="pos">+1,688万</td><td>3.7日</td><td style="color:var(--green);">推奨</td></tr>
+      <tr><td>10日引け</td><td>1.53</td><td class="pos">+¥1,708</td><td class="pos">+1,598万</td><td>4.8日</td><td style="color:var(--muted);font-size:11px;">PF低下</td></tr>
+      <tr><td>14日引け</td><td>1.53</td><td class="pos">+¥1,846</td><td class="pos">+1,727万</td><td>6.1日</td><td></td></tr>
+    </table>
+  </div>
+
+  <div class="insight-box">
+    <h4>なぜ7日が最適か</h4>
+    <p style="font-size:15px;">
+      <strong>PF: 3日(1.64) → 5日(1.62) → 7日(1.61) → 10日(1.53)</strong><br>
+      7日まではPFがほぼ横ばい。10日で急落。<br>
+      つまり「7日で反発が完了する」ケースが多い。それ以上持つと<strong>戻りの戻り</strong>で削られる。<br><br>
+      PnL合計: 7日(+1,688万) はシグナルExit(+1,861万)の<strong>91%を回収</strong>。<br>
+      保有日数: 4.0日 → 3.7日。ほぼ同じ回転速度。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 3: B1 ========== -->
+<section class="slide" id="s3">
+  <span class="slide-number">03 / B1 ゴールデンクロス</span>
+  <h2>B1: 保有を伸ばすほど PF が上がる</h2>
+  <p class="subtitle">トレンドフォローの宿命。短く切ると利益を逃す。</p>
+
+  <div class="signal-card" style="border-color:var(--blue);">
+    <div class="sig-name">B1 Uptrend <span style="font-size:14px; color:var(--blue); margin-left:8px;">第2軸</span></div>
+    <div class="sig-desc">前日Close &lt; SMA, 当日Close &gt; SMA, SMA上昇 → 翌日Open買い / N225 &gt; SMA20</div>
+    <table class="mini-table">
+      <tr><th>Exit</th><th>PF</th><th>平均損益</th><th>PnL合計</th><th>平均保有</th><th></th></tr>
+      <tr class="sig"><td>シグナルExit</td><td><strong>1.42</strong></td><td class="pos">+¥1,298</td><td class="pos">+1,611万</td><td>8.5日</td><td style="color:var(--muted);font-size:12px;">基準</td></tr>
+      <tr><td>7日引け</td><td>1.27</td><td class="pos">+¥883</td><td class="pos">+1,095万</td><td>5.0日</td><td style="color:var(--muted);font-size:11px;">PF不足</td></tr>
+      <tr><td>10日引け</td><td>1.33</td><td class="pos">+¥1,181</td><td class="pos">+1,465万</td><td>6.5日</td><td></td></tr>
+      <tr class="best"><td>14日引け</td><td style="color:var(--blue);font-size:18px;">1.37</td><td class="pos">+¥1,494</td><td class="pos">+1,854万</td><td>8.2日</td><td style="color:var(--blue);">推奨</td></tr>
+      <tr><td>21日引け</td><td>1.44</td><td class="pos">+¥1,832</td><td class="pos">+2,274万</td><td>10.8日</td><td style="color:var(--muted);font-size:11px;">資金拘束大</td></tr>
+      <tr><td>30日引け</td><td>1.52</td><td class="pos">+¥2,312</td><td class="pos">+2,869万</td><td>13.7日</td><td></td></tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="insight-box" style="margin:0;">
+      <h4>14日を選ぶ理由</h4>
+      <p style="font-size:15px;">
+        21日以上にするとPFは更に上がるが、<strong>保有10日超で資金拘束が重い</strong>。<br>
+        14日はPF 1.37で「投資効率 vs 資金回転」のバランス点。<br>
+        PnL: シグナルExitの<strong>115%</strong>を超える（+1,854万 vs +1,611万）。
+      </p>
+    </div>
+    <div class="evidence" style="margin:0;">
+      <div class="title">B1 Downtrend は使うか？</div>
+      <p style="font-size:15px;">
+        全体PF 1.16 → 7日で1.18、14日で1.19。<br>
+        <strong>エッジが薄い</strong>。Downtrend時のB1は見送りが合理的。<br>
+        Step 2で確認済み：B1はUptrend専用。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 4: B3・B2 ========== -->
+<section class="slide" id="s4">
+  <span class="slide-number">04 / B3 &amp; B2</span>
+  <h2>B3: B1と同じ構造。B2は要注意。</h2>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="signal-card" style="border-color:var(--gold);">
+      <div class="sig-name">B3 Uptrend</div>
+      <div class="sig-desc">SMA支持 + 乖離縮小 + 陽線</div>
+      <table class="mini-table">
+        <tr><th>Exit</th><th>PF</th><th>AvgPnL</th><th>Hold</th></tr>
+        <tr class="sig"><td>Signal</td><td>1.50</td><td class="pos">+¥1,400</td><td>10.3日</td></tr>
+        <tr><td>7日</td><td>1.27</td><td class="pos">+¥509</td><td>5.4日</td></tr>
+        <tr><td>10日</td><td>1.33</td><td class="pos">+¥814</td><td>7.1日</td></tr>
+        <tr class="best"><td>14日</td><td style="color:var(--gold);">1.37</td><td class="pos">+¥1,270</td><td>9.1日</td></tr>
+        <tr><td>21日</td><td>1.40</td><td class="pos">+¥1,495</td><td>12.2日</td></tr>
+      </table>
+      <p style="font-size:13px; color:var(--muted); margin-top:12px;">
+        B1と同じ「モメンタム型」。14日Exitが同様に最適。<br>
+        N=6,020（B1の半分）だがPFは同等。
+      </p>
+    </div>
+
+    <div class="signal-card" style="border-color:var(--muted); opacity:0.85;">
+      <div class="sig-name">B2（押し目買い）</div>
+      <div class="sig-desc">SMA上昇 + 乖離-5~0% + 陽線</div>
+      <table class="mini-table">
+        <tr><th></th><th>Uptrend</th><th>Downtrend</th></tr>
+        <tr><td>Signal PF</td><td class="pos">1.41</td><td>1.12</td></tr>
+        <tr><td>7日 PF</td><td class="pos">1.27</td><td>1.19</td></tr>
+        <tr><td>14日 PF</td><td class="pos">1.38</td><td>1.19</td></tr>
+        <tr><td>N</td><td>10,952</td><td>10,482</td></tr>
+      </table>
+      <p style="font-size:13px; margin-top:12px;">
+        <strong style="color:var(--gold);">判定：</strong>
+        Uptrend PF 1.38は使える水準。<br>
+        ただしDowntrendで<strong>PF 1.12-1.19</strong>と弱い。<br>
+        <strong>レジーム判定の遅延リスク</strong>がある。<br><br>
+        → B1/B3のUptrendと重複するシグナルも多い。<br>
+        → <strong>採用するが優先度は低い</strong>。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SLIDE 5: 直近期間 ========== -->
+<section class="slide" id="s5">
+  <span class="slide-number">05 / Recent Period</span>
+  <h2>直近3年で構造は変化したか？</h2>
+  <p class="subtitle">2023-03 ~ 2026-02。この期間で運用した場合のパフォーマンス。</p>
+
+  <div class="signal-card star" style="max-width:900px;">
+    <div class="sig-name">直近3年：B4 Downtrend</div>
+    <table class="mini-table">
+      <tr><th>Exit</th><th>PF</th><th>平均損益</th><th>N</th><th></th></tr>
+      <tr class="sig"><td>シグナルExit</td><td style="color:var(--green);font-size:18px;"><strong>4.61</strong></td><td class="pos">+¥14,011</td><td>833</td><td>全期間1.70の<strong>2.7倍</strong></td></tr>
+      <tr><td>5日引け</td><td style="color:var(--green);">4.15</td><td class="pos">+¥10,235</td><td>833</td><td></td></tr>
+      <tr class="best"><td>7日引け</td><td style="color:var(--green);font-size:16px;">4.41</td><td class="pos">+¥12,506</td><td>833</td><td style="color:var(--green);">推奨</td></tr>
+      <tr><td>14日引け</td><td style="color:var(--green);">4.55</td><td class="pos">+¥14,200</td><td>833</td><td></td></tr>
+    </table>
+  </div>
+
+  <div class="two-col" style="max-width:900px;">
+    <div class="signal-card" style="border-color:var(--blue);">
+      <div class="sig-name">直近3年：B1 Uptrend</div>
+      <table class="mini-table">
+        <tr><th>Exit</th><th>PF</th><th>AvgPnL</th><th>N</th></tr>
+        <tr class="sig"><td>Signal</td><td>1.80</td><td class="pos">+¥6,378</td><td>1,760</td></tr>
+        <tr><td>7日</td><td>1.47</td><td class="pos">+¥3,512</td><td>1,760</td></tr>
+        <tr class="best"><td>14日</td><td style="color:var(--blue);">1.59</td><td class="pos">+¥5,100</td><td>1,760</td></tr>
+      </table>
+    </div>
+    <div class="signal-card" style="border-color:var(--gold);">
+      <div class="sig-name">直近3年：B3 Uptrend</div>
+      <table class="mini-table">
+        <tr><th>Exit</th><th>PF</th><th>AvgPnL</th><th>N</th></tr>
+        <tr class="sig"><td>Signal</td><td>2.36</td><td class="pos">+¥6,013</td><td>1,033</td></tr>
+        <tr><td>7日</td><td>1.41</td><td class="pos">+¥2,100</td><td>1,033</td></tr>
+        <tr class="best"><td>14日</td><td style="color:var(--gold);">1.65</td><td class="pos">+¥4,500</td><td>1,033</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="insight-box" style="max-width:900px;">
+    <h4>直近3年の重要発見</h4>
+    <p style="font-size:15px;">
+      <strong>全シグナルで PF が全期間より大幅に改善</strong>している。<br>
+      特にB4 Downtrend: 全期間1.70 → 直近3年<strong>4.61</strong>。<br><br>
+      原因推定：2023-2025年は<strong>急落→急反発</strong>のパターンが頻発（コロナ後の金利変動、半導体サイクル等）。<br>
+      グランビル法則の「乖離反発」がハマる相場環境だった。<br><br>
+      <strong style="color:var(--gold);">注意：</strong>この超過リターンが今後も続く保証はない。全期間のPFで保守的に計画すべき。
+    </p>
+  </div>
+</section>
+
+<!-- ========== SLIDE 6: 最終戦略 ========== -->
+<section class="slide" id="s6">
+  <span class="slide-number">06 / Final Strategy</span>
+  <h2>確定した戦略パラメータ</h2>
+  <p class="subtitle">Step 1 → 2 → 2.5 の検証で全変数が確定。</p>
+
+  <div class="conclusion-card">
+    <h3>運用戦略（確定）</h3>
+    <table class="mini-table" style="max-width:800px;">
+      <tr><th>パラメータ</th><th>値</th><th>根拠</th></tr>
+      <tr><td>方向</td><td><strong>LONG のみ</strong></td><td>SHORT全滅（Step 1）</td></tr>
+      <tr><td>ユニバース</td><td><strong>全143銘柄</strong></td><td>PF変わらず（Step 2）。制限はStep 3</td></tr>
+      <tr><td>株価制限</td><td><strong>なし</strong></td><td>PF変わらず（Step 2）。資金で自動決定</td></tr>
+      <tr><td>SL</td><td><strong>-3% IFD逆指値</strong></td><td>リスク管理の最適解（Step 1）</td></tr>
+      <tr><td>レジーム</td><td><strong>N225 vs SMA20</strong></td><td>全シグナルでレジーム効果あり（Step 1）</td></tr>
+    </table>
+  </div>
+
+  <div class="conclusion-card" style="border-color:rgba(34,197,94,0.3); background:linear-gradient(135deg, rgba(34,197,94,0.06), rgba(59,130,246,0.06));">
+    <h3>シグナル別 Exit ルール</h3>
+    <table class="mini-table" style="max-width:800px;">
+      <tr><th>シグナル</th><th>レジーム</th><th>Exit</th><th>PF(全期間)</th><th>PF(直近3年)</th><th>平均保有</th></tr>
+      <tr style="background:var(--green-dim);">
+        <td><strong>B4</strong></td>
+        <td>Downtrend</td>
+        <td><strong>7日引け</strong></td>
+        <td style="color:var(--green);font-weight:700;">1.61</td>
+        <td style="color:var(--green);">4.41</td>
+        <td>3.7日</td>
+      </tr>
+      <tr style="background:var(--blue-dim);">
+        <td><strong>B1</strong></td>
+        <td>Uptrend</td>
+        <td><strong>14日引け</strong></td>
+        <td style="color:var(--blue);font-weight:700;">1.37</td>
+        <td style="color:var(--blue);">1.59</td>
+        <td>8.2日</td>
+      </tr>
+      <tr style="background:var(--gold-dim);">
+        <td><strong>B3</strong></td>
+        <td>Uptrend</td>
+        <td><strong>14日引け</strong></td>
+        <td style="color:var(--gold);font-weight:700;">1.37</td>
+        <td style="color:var(--gold);">1.65</td>
+        <td>9.1日</td>
+      </tr>
+      <tr>
+        <td>B2</td>
+        <td>Uptrend</td>
+        <td>14日引け</td>
+        <td>1.38</td>
+        <td>1.59</td>
+        <td>8.4日</td>
+      </tr>
+    </table>
+
+    <p style="font-size:14px; color:var(--muted); margin-top:16px;">
+      MAX_HOLD は不要。固定日数Exitが MAX_HOLD の役割を兼ねる。<br>
+      B4: 7日、B1/B2/B3: 14日で全トレードの保有期間が確定する。
+    </p>
+  </div>
+
+  <div class="insight-box" style="max-width:900px;">
+    <h4>Step 3 に渡すもの</h4>
+    <p style="font-size:15px;">
+      <strong>入力</strong>: 信用余力（変数）<br>
+      <strong>計算</strong>: 各日のシグナル数 × 必要証拠金 → 同時保有の上限<br>
+      <strong>判断</strong>: シグナルが余力を超えた場合の優先順位（B4 > B1 > B3 > B2）<br>
+      <strong>保有日数が確定した</strong>ので、最大拘束期間が読める（B4: 7日、B1/B3: 14日）。
+    </p>
+  </div>
+
+  <div class="footnote" style="max-width:900px;">
+    データソース: step1/trades_sl3.parquet (60,351 LONG, 全143銘柄), prices_max_1d.parquet<br>
+    全期間: 2014-03 ~ 2026-02 (12年) / 直近3年: 2023-03 ~ 2026-02 / SMA20 / SL-3%<br>
+    固定日数Exit: 引け(Close)決済。SL-3%はExit日数に関わらず常時有効。<br>
+    生成: 2026-03-02 / Step 2.5 Exit戦略
+  </div>
+</section>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const dots = document.querySelectorAll('.dot');
+function goto(i) { slides[i].scrollIntoView({behavior:'smooth'}); }
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const idx = Array.from(slides).indexOf(e.target);
+      dots.forEach((d,i) => d.classList.toggle('active', i===idx));
+    }
+  });
+}, {threshold:0.5});
+slides.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
