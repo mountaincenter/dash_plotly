@@ -63,3 +63,67 @@ output "s3_bucket_arn" {
   description = "S3 bucket ARN for stock API data"
   value       = aws_s3_bucket.stock_api_data.arn
 }
+
+# ==========================================
+# Staging S3 Bucket
+# ==========================================
+
+resource "aws_s3_bucket" "stock_api_data_staging" {
+  bucket = "stock-api-data-staging"
+
+  tags = {
+    Name        = "stock-api-data-staging"
+    Environment = "staging"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "stock_api_data_staging" {
+  bucket = aws_s3_bucket.stock_api_data_staging.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "stock_api_data_staging" {
+  bucket = aws_s3_bucket.stock_api_data_staging.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "stock_api_data_staging" {
+  bucket = aws_s3_bucket.stock_api_data_staging.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "stock_api_data_staging" {
+  bucket = aws_s3_bucket.stock_api_data_staging.id
+
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 14
+    }
+  }
+}
+
+output "s3_bucket_staging_name" {
+  description = "S3 bucket name for staging"
+  value       = aws_s3_bucket.stock_api_data_staging.bucket
+}
+
+output "s3_bucket_staging_arn" {
+  description = "S3 bucket ARN for staging"
+  value       = aws_s3_bucket.stock_api_data_staging.arn
+}

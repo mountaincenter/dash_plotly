@@ -1,10 +1,9 @@
 # server/routers/dev_granville.py
 """
-グランビルIFDロング戦略 API
-/api/dev/granville/* - シグナル・バックテスト・ステータス
+グランビル戦略 API（B1-B4, TOPIX 1,660銘柄）
+/api/dev/granville/* - 推奨銘柄・シグナル・ポジション・ステータス・統計
 """
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
@@ -20,66 +19,67 @@ from common_cfg.paths import PARQUET_DIR
 
 router = APIRouter()
 
-SIGNALS_FILE = PARQUET_DIR / "granville_ifd_signals.parquet"
-ARCHIVE_FILE = PARQUET_DIR / "backtest" / "granville_ifd_archive.parquet"
-OPTIM_FILE = PARQUET_DIR / "backtest" / "granville_ifd_optimization.parquet"
-INDEX_FILE = PARQUET_DIR / "index_prices_max_1d.parquet"
-MACRO_DIR = ROOT / "improvement" / "data" / "macro"
+GRANVILLE_DIR = PARQUET_DIR / "granville"
+CSV_DIR = ROOT / "data" / "csv"
 
 # S3設定
-S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
-S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
+S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
+S3_PREFIX = os.getenv("PARQUET_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 # キャッシュ
-_signals_cache: Optional[pd.DataFrame] = None
-_archive_cache: Optional[pd.DataFrame] = None
-_cache_ts: Optional[datetime] = None
-CACHE_TTL = 60
+_cache: dict[str, tuple[datetime, object]] = {}
+CACHE_TTL = 120
 
 
-def _is_fresh() -> bool:
-    return _cache_ts is not None and (datetime.now() - _cache_ts).total_seconds() < CACHE_TTL
+def _cached(key: str) -> Optional[object]:
+    if key in _cache:
+        ts, data = _cache[key]
+        if (datetime.now() - ts).total_seconds() < CACHE_TTL:
+            return data
+    return None
 
 
-def _load_parquet(local: Path, s3_key: str) -> pd.DataFrame:
-    """ローカル優先 → S3フォールバック"""
-    if local.exists():
-        return pd.read_parquet(local)
-    try:
-        s3_url = f"s3://{S3_BUCKET}/{S3_PREFIX}{s3_key}"
-        return pd.read_parquet(s3_url, storage_options={"client_kwargs": {"region_name": AWS_REGION}})
-    except Exception:
+def _set_cache(key: str, data: object) -> None:
+    _cache[key] = (datetime.now(), data)
+
+
+def _latest_file(prefix: str) -> Optional[Path]:
+    """granvilleディレクトリから最新の日付ファイルを取得"""
+    files = sorted(GRANVILLE_DIR.glob(f"{prefix}_*.parquet"))
+    return files[-1] if files else None
+
+
+def _load_latest(prefix: str) -> pd.DataFrame:
+    """最新ファイルを読み込み（キャッシュ付き）"""
+    cached = _cached(prefix)
+    if cached is not None:
+        return cached
+
+    path = _latest_file(prefix)
+    if path is None:
+        # S3フォールバック
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            resp = s3.list_objects_v2(
+                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}granville/{prefix}_",
+            )
+            if "Contents" in resp:
+                keys = sorted([o["Key"] for o in resp["Contents"]])
+                if keys:
+                    local = GRANVILLE_DIR / Path(keys[-1]).name
+                    GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
+                    s3.download_file(S3_BUCKET, keys[-1], str(local))
+                    path = local
+        except Exception:
+            pass
+
+    if path is None:
         return pd.DataFrame()
 
-
-def load_signals() -> pd.DataFrame:
-    global _signals_cache, _cache_ts
-    if _signals_cache is not None and _is_fresh():
-        return _signals_cache
-    df = _load_parquet(SIGNALS_FILE, "granville_ifd_signals.parquet")
-    if not df.empty and "signal_date" in df.columns:
-        df["signal_date"] = pd.to_datetime(df["signal_date"])
-    _signals_cache = df
-    _cache_ts = datetime.now()
-    return df
-
-
-def load_archive() -> pd.DataFrame:
-    global _archive_cache, _cache_ts
-    if _archive_cache is not None and _is_fresh():
-        return _archive_cache
-    df = _load_parquet(ARCHIVE_FILE, "backtest/granville_ifd_archive.parquet")
-    if not df.empty:
-        for col in ["signal_date", "entry_date", "exit_date"]:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col])
-        if "ret_pct" in df.columns:
-            df["ret_pct"] = pd.to_numeric(df["ret_pct"], errors="coerce")
-        if "pnl_yen" in df.columns:
-            df["pnl_yen"] = pd.to_numeric(df["pnl_yen"], errors="coerce").fillna(0).astype(int)
-    _archive_cache = df
-    _cache_ts = datetime.now()
+    df = pd.read_parquet(path)
+    _set_cache(prefix, df)
     return df
 
 
@@ -97,244 +97,89 @@ def _safe_float(v, decimals: int = 1) -> float:
         return 0.0
 
 
-@router.get("/api/dev/granville/signals")
-async def get_signals():
-    """今日のシグナル（翌日エントリー候補）"""
-    df = load_signals()
+# ==========================================
+# エンドポイント
+# ==========================================
+
+@router.get("/api/dev/granville/recommendations")
+async def get_recommendations():
+    """当日推奨銘柄（B4>B1>B3>B2、ml_score付き、証拠金済み）"""
+    df = _load_latest("recommendations")
     if df.empty:
-        return {"signals": [], "count": 0, "signal_date": None}
+        return {"recommendations": [], "count": 0, "date": None}
 
-    latest_date = df["signal_date"].max()
-    rows = df[df["signal_date"] == latest_date]
+    date_str = None
+    if "signal_date" in df.columns:
+        date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
 
-    signals = []
-    for _, r in rows.iterrows():
-        sig_type = r.get("signal_type", "")
-        tier = r.get("tier", "")
-        # TP+10% / A: SMA20回帰利確→翌日寄付 / B: デッドクロス→翌日寄付
-        exit_rule = "SL-3% / 7日引け" if sig_type == "B4" else (
-            "SL-3% / SMA20回帰 / DC撤退" if sig_type in ("A", "A+B") else "SL-3% / DC撤退"
-        )
-        signals.append({
+    recs = []
+    for _, r in df.iterrows():
+        rec = {
             "ticker": r.get("ticker", ""),
             "stock_name": r.get("stock_name", ""),
             "sector": r.get("sector", ""),
-            "signal_type": sig_type,
-            "tier": tier,
-            "close": _safe_float(r.get("close", 0), 1),
+            "rule": r.get("rule", ""),
+            "close": _safe_float(r.get("close", 0)),
+            "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
             "sma20": _safe_float(r.get("sma20", 0), 2),
             "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
-            "sma20_slope": _safe_float(r.get("sma20_slope", 0), 2),
-            "sl_price": _safe_float(r.get("sl_price", 0), 1),
-            "exit_rule": exit_rule,
-        })
+            "margin": _safe_int(r.get("margin", 0)),
+            "concentration_pct": _safe_float(r.get("concentration_pct", 0)),
+            "max_hold": _safe_int(r.get("max_hold", 0)),
+        }
+        if "ml_score" in r:
+            rec["ml_score"] = _safe_float(r.get("ml_score", 0), 3)
+        recs.append(rec)
+
+    total_margin = sum(r["margin"] for r in recs)
+
+    return {
+        "recommendations": recs,
+        "count": len(recs),
+        "total_margin": total_margin,
+        "date": date_str,
+    }
+
+
+@router.get("/api/dev/granville/signals")
+async def get_signals():
+    """当日全シグナル（フィルター前）"""
+    df = _load_latest("signals")
+    if df.empty:
+        return {"signals": [], "count": 0, "signal_date": None}
+
+    date_str = None
+    if "signal_date" in df.columns:
+        date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    signals = []
+    for _, r in df.iterrows():
+        sig = {
+            "ticker": r.get("ticker", ""),
+            "stock_name": r.get("stock_name", ""),
+            "sector": r.get("sector", ""),
+            "rule": r.get("rule", ""),
+            "close": _safe_float(r.get("close", 0)),
+            "sma20": _safe_float(r.get("sma20", 0), 2),
+            "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
+            "sma20_slope": _safe_float(r.get("sma20_slope", 0), 4),
+            "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
+        }
+        if "ml_score" in r:
+            sig["ml_score"] = _safe_float(r.get("ml_score", 0), 3)
+        signals.append(sig)
 
     return {
         "signals": signals,
         "count": len(signals),
-        "signal_date": latest_date.strftime("%Y-%m-%d"),
+        "signal_date": date_str,
     }
-
-
-@router.get("/api/dev/granville/summary")
-async def get_summary():
-    """バックテスト全体統計 + 月別"""
-    df = load_archive()
-    if df.empty:
-        return {"overall": {}, "monthly": [], "count": 0}
-
-    # 全体統計
-    n = len(df)
-    wins = df["ret_pct"] > 0
-    losses = df["ret_pct"] <= 0
-    w_pnl = df.loc[wins, "pnl_yen"].sum()
-    l_pnl = abs(df.loc[losses, "pnl_yen"].sum())
-    pf = round(w_pnl / l_pnl, 2) if l_pnl > 0 else 999
-    sl_count = (df["exit_type"] == "SL").sum() if "exit_type" in df.columns else 0
-
-    overall = {
-        "count": n,
-        "total_pnl": _safe_int(df["pnl_yen"].sum()),
-        "win_rate": _safe_float(wins.mean() * 100),
-        "pf": pf,
-        "avg_ret": _safe_float(df["ret_pct"].mean(), 3),
-        "sl_count": _safe_int(sl_count),
-        "sl_rate": _safe_float(sl_count / n * 100) if n > 0 else 0,
-    }
-
-    # 月別統計
-    df["month"] = df["entry_date"].dt.strftime("%Y-%m")
-    monthly = []
-    for month, mdf in df.groupby("month"):
-        m_n = len(mdf)
-        m_wins = mdf["ret_pct"] > 0
-        m_losses = mdf["ret_pct"] <= 0
-        m_w = mdf.loc[m_wins, "pnl_yen"].sum()
-        m_l = abs(mdf.loc[m_losses, "pnl_yen"].sum())
-        m_pf = round(m_w / m_l, 2) if m_l > 0 else 999
-        m_sl = (mdf["exit_type"] == "SL").sum() if "exit_type" in mdf.columns else 0
-        m_uptrend = mdf["market_uptrend"].mean() * 100 if "market_uptrend" in mdf.columns else 0
-
-        monthly.append({
-            "month": month,
-            "count": m_n,
-            "pnl": _safe_int(mdf["pnl_yen"].sum()),
-            "win_rate": _safe_float(m_wins.mean() * 100),
-            "pf": m_pf,
-            "sl_count": _safe_int(m_sl),
-            "uptrend_pct": _safe_float(m_uptrend),
-        })
-
-    monthly.sort(key=lambda x: x["month"], reverse=True)
-
-    return {
-        "overall": overall,
-        "monthly": monthly,
-        "count": n,
-    }
-
-
-@router.get("/api/dev/granville/trades")
-async def get_trades(view: str = "daily"):
-    """トレード詳細 (daily / monthly / by-stock)"""
-    df = load_archive()
-    if df.empty:
-        return {"view": view, "results": []}
-
-    if view == "monthly":
-        group_col = df["exit_date"].dt.strftime("%Y-%m")
-    elif view == "weekly":
-        group_col = df["exit_date"].dt.strftime("%Y/W%W")
-    elif view == "by-stock":
-        group_col = df["ticker"]
-    else:
-        group_col = df["exit_date"].dt.strftime("%Y-%m-%d")
-
-    results = []
-    for key, gdf in df.groupby(group_col):
-        trades = []
-        for _, r in gdf.iterrows():
-            trades.append({
-                "signal_date": r["signal_date"].strftime("%Y-%m-%d") if pd.notna(r.get("signal_date")) else "",
-                "entry_date": r["entry_date"].strftime("%Y-%m-%d") if pd.notna(r.get("entry_date")) else "",
-                "exit_date": r["exit_date"].strftime("%Y-%m-%d") if pd.notna(r.get("exit_date")) else "",
-                "ticker": r.get("ticker", ""),
-                "stock_name": r.get("stock_name", ""),
-                "sector": r.get("sector", ""),
-                "signal_type": r.get("signal_type", ""),
-                "entry_price": _safe_float(r.get("entry_price", 0)),
-                "exit_price": _safe_float(r.get("exit_price", 0)),
-                "ret_pct": _safe_float(r.get("ret_pct", 0), 3),
-                "pnl_yen": _safe_int(r.get("pnl_yen", 0)),
-                "exit_type": r.get("exit_type", ""),
-            })
-
-        trades.sort(key=lambda x: x["entry_date"], reverse=True)
-
-        g_pnl = gdf["pnl_yen"].sum()
-        g_wins = (gdf["ret_pct"] > 0).sum()
-
-        if view == "by-stock":
-            label = f"{key} {gdf.iloc[0].get('stock_name', '')}"
-        else:
-            label = str(key)
-
-        results.append({
-            "key": label,
-            "count": len(gdf),
-            "pnl": _safe_int(g_pnl),
-            "win_count": _safe_int(g_wins),
-            "trades": trades,
-        })
-
-    results.sort(key=lambda x: x["key"], reverse=True)
-
-    return {"view": view, "results": results}
-
-
-@router.get("/api/dev/granville/status")
-async def get_status():
-    """現在のフィルター状態（uptrend/CI/N225 vs SMA20）"""
-    result = {
-        "market_uptrend": None,
-        "ci_expand": None,
-        "nk225_close": None,
-        "nk225_sma20": None,
-        "nk225_diff_pct": None,
-        "ci_latest": None,
-        "ci_chg3m": None,
-        "as_of": None,
-    }
-
-    # N225
-    try:
-        idx = _load_parquet(INDEX_FILE, "index_prices_max_1d.parquet")
-        if not idx.empty:
-            nk = idx[idx["ticker"] == "^N225"][["date", "Close"]].copy()
-            nk["date"] = pd.to_datetime(nk["date"])
-            nk = nk.sort_values("date")
-            nk = nk.dropna(subset=["Close"])
-            nk["sma20"] = nk["Close"].rolling(20).mean()
-            latest = nk.dropna(subset=["sma20"]).iloc[-1]
-            result["nk225_close"] = _safe_float(latest["Close"], 2)
-            result["nk225_sma20"] = _safe_float(latest["sma20"], 2)
-            result["market_uptrend"] = bool(latest["Close"] > latest["sma20"])
-            result["nk225_diff_pct"] = _safe_float(
-                (latest["Close"] - latest["sma20"]) / latest["sma20"] * 100, 2
-            )
-            result["as_of"] = latest["date"].strftime("%Y-%m-%d")
-    except Exception:
-        pass
-
-    # CI（ローカル優先 → S3フォールバック）
-    try:
-        ci_path = MACRO_DIR / "estat_ci_index.parquet"
-        ci = _load_parquet(ci_path, "macro/estat_ci_index.parquet")
-        ci = ci[["date", "leading"]].sort_values("date")
-        ci["chg3m"] = ci["leading"].diff(3)
-        latest_ci = ci.dropna(subset=["chg3m"]).iloc[-1]
-        result["ci_latest"] = _safe_float(latest_ci["leading"], 1)
-        result["ci_chg3m"] = _safe_float(latest_ci["chg3m"], 2)
-        result["ci_expand"] = bool(latest_ci["chg3m"] > 0)
-    except Exception:
-        pass
-
-    return result
-
-
-COMPARISON_FILE = PARQUET_DIR / "backtest" / "granville_ifd_comparison.parquet"
-
-
-@router.get("/api/dev/granville/comparison")
-async def get_comparison():
-    """3戦略の比較統計（前処理済みparquetを読むだけ）"""
-    df = _load_parquet(COMPARISON_FILE, "backtest/granville_ifd_comparison.parquet")
-    if df.empty:
-        return {"strategies": {}}
-
-    result = {}
-    for period, gdf in df.groupby("period"):
-        result[period] = []
-        for _, r in gdf.iterrows():
-            result[period].append({
-                "label": r["label"],
-                "count": int(r["count"]),
-                "pnl": int(r["pnl"]),
-                "pf": float(r["pf"]),
-                "win_rate": float(r["win_rate"]),
-                "avg_hold": float(r["avg_hold"]),
-            })
-
-    return {"strategies": result}
-
-
-POSITIONS_FILE = PARQUET_DIR / "granville_ifd_positions.parquet"
 
 
 @router.get("/api/dev/granville/positions")
 async def get_positions():
-    """理論上の保有ポジション + 本日イグジットシグナル（前処理済みparquet）"""
-    df = _load_parquet(POSITIONS_FILE, "granville_ifd_positions.parquet")
+    """保有ポジション + Exit候補"""
+    df = _load_latest("positions")
     if df.empty:
         return {"positions": [], "exits": [], "as_of": None}
 
@@ -345,32 +190,145 @@ async def get_positions():
     positions = []
     exits = []
     for _, r in df.iterrows():
-        if r["status"] == "open":
-            positions.append({
-                "ticker": r["ticker"],
-                "stock_name": r.get("stock_name", ""),
-                "signal_type": r.get("signal_type", ""),
-                "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d"),
-                "entry_price": _safe_float(r["entry_price"], 1),
-                "current_price": _safe_float(r["current_price"], 1),
-                "unrealized_pct": _safe_float(r["pct"], 2),
-                "unrealized_yen": _safe_int(r["pnl"]),
-                "sl_price": _safe_float(r["sl_price"], 1),
-                "trail_sl": _safe_float(r.get("trail_sl", r["sl_price"]), 1),
-                "hold_days": _safe_int(r["hold_days"]),
-                "exit_type": r.get("exit_type", ""),
-            })
-        elif r["status"] == "exit":
-            exits.append({
-                "ticker": r["ticker"],
-                "stock_name": r.get("stock_name", ""),
-                "signal_type": r.get("signal_type", ""),
-                "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d"),
-                "entry_price": _safe_float(r["entry_price"], 1),
-                "current_price": _safe_float(r["current_price"], 1),
-                "ret_pct": _safe_float(r["pct"], 2),
-                "pnl_yen": _safe_int(r["pnl"]),
-                "exit_type": r.get("exit_type", ""),
-            })
+        entry = {
+            "ticker": r.get("ticker", ""),
+            "rule": r.get("rule", ""),
+            "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d") if "entry_date" in r else "",
+            "entry_price": _safe_float(r.get("entry_price", 0)),
+            "current_price": _safe_float(r.get("current_price", 0)),
+            "unrealized_pct": _safe_float(r.get("pct", 0), 2),
+            "unrealized_yen": _safe_int(r.get("pnl", 0)),
+            "hold_days": _safe_int(r.get("hold_days", 0)),
+            "max_hold": _safe_int(r.get("max_hold", 0)),
+            "remaining_days": max(0, _safe_int(r.get("max_hold", 0)) - _safe_int(r.get("hold_days", 0))),
+            "exit_type": r.get("exit_type", ""),
+        }
+        if r.get("status") == "exit":
+            exits.append(entry)
+        else:
+            positions.append(entry)
 
     return {"positions": positions, "exits": exits, "as_of": as_of}
+
+
+@router.get("/api/dev/granville/status")
+async def get_status():
+    """証拠金残、ポジション数、シグナル数"""
+    # 証拠金
+    available_margin = 3_000_000
+    credit_csv = CSV_DIR / "credit_capacity.csv"
+    if credit_csv.exists():
+        try:
+            cc = pd.read_csv(credit_csv)
+            if not cc.empty:
+                available_margin = float(cc.iloc[-1]["available_margin"])
+        except Exception:
+            pass
+
+    # シグナル数
+    signals_df = _load_latest("signals")
+    signal_count = len(signals_df)
+    signal_date = None
+    if not signals_df.empty and "signal_date" in signals_df.columns:
+        signal_date = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    # ポジション数
+    pos_df = _load_latest("positions")
+    open_count = 0
+    exit_count = 0
+    if not pos_df.empty and "status" in pos_df.columns:
+        open_count = int((pos_df["status"] == "open").sum())
+        exit_count = int((pos_df["status"] == "exit").sum())
+
+    # 推奨数
+    rec_df = _load_latest("recommendations")
+    rec_count = len(rec_df)
+    total_margin_used = 0
+    if not rec_df.empty and "margin" in rec_df.columns:
+        total_margin_used = int(rec_df["margin"].sum())
+
+    # ルール別内訳
+    rule_breakdown = {}
+    for rule in ["B4", "B1", "B3", "B2"]:
+        if not signals_df.empty and "rule" in signals_df.columns:
+            rule_breakdown[rule] = int((signals_df["rule"] == rule).sum())
+        else:
+            rule_breakdown[rule] = 0
+
+    return {
+        "available_margin": int(available_margin),
+        "total_margin_used": total_margin_used,
+        "signal_count": signal_count,
+        "signal_date": signal_date,
+        "open_positions": open_count,
+        "exit_candidates": exit_count,
+        "recommendation_count": rec_count,
+        "rule_breakdown": rule_breakdown,
+    }
+
+
+@router.get("/api/dev/granville/stats")
+async def get_stats():
+    """ルール別勝率、月別PnL（バックテストアーカイブから）"""
+    # 旧アーカイブがあればそこから統計を取得
+    archive_path = PARQUET_DIR / "backtest" / "granville_ifd_archive.parquet"
+    if not archive_path.exists():
+        # S3フォールバック
+        try:
+            s3_key = f"{S3_PREFIX}backtest/granville_ifd_archive.parquet"
+            import boto3
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            archive_path.parent.mkdir(parents=True, exist_ok=True)
+            s3.download_file(S3_BUCKET, s3_key, str(archive_path))
+        except Exception:
+            return {"by_rule": {}, "monthly": [], "total_trades": 0}
+
+    if not archive_path.exists():
+        return {"by_rule": {}, "monthly": [], "total_trades": 0}
+
+    df = pd.read_parquet(archive_path)
+    if df.empty:
+        return {"by_rule": {}, "monthly": [], "total_trades": 0}
+
+    for col in ["entry_date", "exit_date"]:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col])
+    if "ret_pct" in df.columns:
+        df["ret_pct"] = pd.to_numeric(df["ret_pct"], errors="coerce")
+    if "pnl_yen" in df.columns:
+        df["pnl_yen"] = pd.to_numeric(df["pnl_yen"], errors="coerce").fillna(0).astype(int)
+
+    # ルール別統計
+    by_rule = {}
+    rule_col = "signal_type" if "signal_type" in df.columns else "rule"
+    if rule_col in df.columns:
+        for rule, gdf in df.groupby(rule_col):
+            n = len(gdf)
+            wins = (gdf["ret_pct"] > 0).sum()
+            by_rule[str(rule)] = {
+                "count": n,
+                "win_rate": _safe_float(wins / n * 100 if n > 0 else 0),
+                "total_pnl": _safe_int(gdf["pnl_yen"].sum()),
+                "avg_pnl": _safe_int(gdf["pnl_yen"].mean()),
+            }
+
+    # 月別統計
+    monthly = []
+    if "entry_date" in df.columns:
+        df["month"] = df["entry_date"].dt.strftime("%Y-%m")
+        for month, mdf in df.groupby("month"):
+            n = len(mdf)
+            wins = (mdf["ret_pct"] > 0).sum()
+            monthly.append({
+                "month": month,
+                "count": n,
+                "pnl": _safe_int(mdf["pnl_yen"].sum()),
+                "win_rate": _safe_float(wins / n * 100 if n > 0 else 0),
+            })
+        monthly.sort(key=lambda x: x["month"], reverse=True)
+
+    return {
+        "by_rule": by_rule,
+        "monthly": monthly[:24],  # 直近2年分
+        "total_trades": len(df),
+    }

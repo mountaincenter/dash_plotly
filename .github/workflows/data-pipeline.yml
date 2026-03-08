@@ -688,58 +688,85 @@ jobs:
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
           fi
 
-      - name: Generate Granville IFD signals
+      # === Granville新体系（B1-B4, TOPIX 1,660銘柄） ===
+
+      - name: Update TOPIX 1,660 prices
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        env:
-          ESTAT_API_KEY: ${{ secrets.ESTAT_API_KEY }}
         run: |
           echo "============================================================"
-          echo "Generating Granville IFD signals (16:45 only)"
+          echo "Updating TOPIX 1,660 prices (16:45 only)"
           echo "============================================================"
 
-          # S3から既存シグナルをダウンロード（蓄積用）
-          SIGNALS_FILE="data/parquet/granville_ifd_signals.parquet"
-          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" > /dev/null 2>&1; then
-            echo "📥 Downloading existing signals from S3..."
+          # S3から既存データをダウンロード
+          PRICES_FILE="data/parquet/granville/prices_topix.parquet"
+          mkdir -p data/parquet/granville
+          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" > /dev/null 2>&1; then
+            echo "📥 Downloading existing prices from S3..."
             aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" \
-              "$SIGNALS_FILE" --only-show-errors
-            EXISTING_COUNT=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('$SIGNALS_FILE')))")
-            echo "✅ Downloaded existing signals: $EXISTING_COUNT rows"
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" \
+              "$PRICES_FILE" --only-show-errors
+            EXISTING_COUNT=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('$PRICES_FILE')))")
+            echo "✅ Downloaded existing prices: $EXISTING_COUNT rows"
           fi
+
+          python3 scripts/pipeline/update_granville_topix_prices.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ TOPIX price update completed"
+          else
+            echo "⚠️ TOPIX price update failed (non-critical)"
+          fi
+
+      - name: Generate Granville signals (B1-B4)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "============================================================"
+          echo "Generating Granville B1-B4 signals (16:45 only)"
+          echo "============================================================"
 
           python3 scripts/pipeline/generate_granville_signals.py
 
           if [ $? -eq 0 ]; then
             echo "✅ Granville signal generation completed"
-            # S3にアップロード
-            aws s3 cp "$SIGNALS_FILE" \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville_ifd_signals.parquet" \
-              --only-show-errors
-            echo "✅ Uploaded granville_ifd_signals.parquet to S3"
           else
             echo "⚠️ Granville signal generation failed (non-critical)"
           fi
 
-      - name: Backtest Granville IFD archive
+      - name: Predict Granville ML scores
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
           echo "============================================================"
-          echo "Backtesting Granville IFD archive (16:45 only)"
+          echo "Predicting ML scores (16:45 only)"
           echo "============================================================"
 
-          python3 scripts/pipeline/backtest_granville_ifd.py
+          python3 scripts/pipeline/predict_granville_ml.py
 
           if [ $? -eq 0 ]; then
-            echo "✅ Granville backtest completed"
+            echo "✅ ML prediction completed"
           else
-            echo "⚠️ Granville backtest failed (non-critical)"
+            echo "⚠️ ML prediction failed (non-critical, rule-based fallback)"
           fi
 
-      - name: Format Granville Slack notification
+      - name: Generate Granville recommendations
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          python3 scripts/format_granville_slack.py || true
+          echo "============================================================"
+          echo "Generating Granville recommendations (16:45 only)"
+          echo "============================================================"
+
+          python3 scripts/pipeline/generate_granville_recommendation.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Granville recommendations generated"
+            # S3にGranvilleディレクトリ全体をアップロード
+            aws s3 sync data/parquet/granville/ \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/" \
+              --exclude "prices_topix.parquet" \
+              --only-show-errors
+            echo "✅ Uploaded granville data to S3"
+          else
+            echo "⚠️ Granville recommendations failed (non-critical)"
+          fi
 
       - name: Generate market anomaly data (Friday only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
