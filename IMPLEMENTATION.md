@@ -82,9 +82,55 @@ _LIMIT_TABLE = [
 
 ---
 
-## 3. 実装対象
+## 3. TOPIX 1,660銘柄 データ取得・更新フロー
 
-### 3a. パイプライン統合（23:00 / 16:45）
+### 3a. 初期データ構築（検証時に実施済み）
+
+```
+meta_jquants.parquet (3,769銘柄)
+  ↓ classify_segment() でTOPIX 5セグメントに分類
+  ↓
+improvement/granville/prices/fetch_all_prices.py
+  ↓ yfinance batch download (50銘柄ずつ)
+  ↓
+improvement/granville/prices/
+  ├── core30.parquet     (31銘柄)
+  ├── large70.parquet    (69銘柄)
+  ├── mid400.parquet     (396銘柄)
+  ├── small1.parquet     (494銘柄)
+  └── small2.parquet     (671銘柄)
+  ↓
+strategy_verification/scripts/13_expand_universe.py
+  ↓ クリーニング (Volume=0除外, NaN除外, 異常リターン検出, JQuants突合検証)
+  ↓
+strategy_verification/data/processed/prices_cleaned_topix_v3.parquet
+  (1,658 tickers, 1999-05-06 ~ 2026-03-06)
+```
+
+### 3b. 日次更新の課題（要実装）
+
+現行パイプラインは `data/parquet/prices_max_1d.parquet` (168銘柄) のみ更新。
+TOPIX 1,660銘柄は検証用に手動で取得しただけで、日次更新の仕組みがない。
+
+**実装が必要:**
+1. **TOPIX価格の日次差分更新スクリプト** — 毎日の終値を追記
+   - 元データ: `improvement/granville/prices/*.parquet` (yfinance)
+   - または `prices_cleaned_topix_v3.parquet` に直接追記
+   - yfinance の `period="5d"` で直近分を取得し既存データにappend
+2. **クリーニング適用** — 13_expand_universe.py と同じルール
+3. **パイプライン統合** — `data-pipeline.yml` の16:45ジョブに追加
+
+**方針案:**
+```python
+# scripts/pipeline/update_topix_prices.py (新規)
+# 1. prices_cleaned_topix_v3.parquet の最終日付を取得
+# 2. yfinance で最終日〜当日を1,660銘柄分取得
+# 3. クリーニング適用
+# 4. 既存parquetに追記
+# 5. S3にアップロード
+```
+
+### 3c. パイプライン統合（23:00 / 16:45）
 
 現行パイプライン `.github/workflows/data-pipeline.yml` に統合する。
 mainの既存パイプラインを壊さないこと。
@@ -92,7 +138,8 @@ mainの既存パイプラインを壊さないこと。
 **日次フロー:**
 ```
 16:45 (data-pipeline)
-  → 株価更新（既存）
+  → 株価更新 168銘柄（既存）
+  → TOPIX 1,660銘柄 価格更新（新規 ★）
   → Granvilleシグナル生成（新規）
   → ML予測スコア付与（新規）
 
@@ -102,11 +149,13 @@ mainの既存パイプラインを壊さないこと。
 ```
 
 **新規スクリプト（案）:**
+- `scripts/pipeline/update_topix_prices.py` — TOPIX 1,660銘柄の日次差分更新
 - `scripts/pipeline/generate_granville_signals.py` — シグナル生成
 - `scripts/pipeline/predict_granville_ml.py` — ML予測
 - `scripts/pipeline/generate_granville_recommendation.py` — 推奨銘柄リスト
 
 **出力:**
+- `data/parquet/granville/prices_topix.parquet` — TOPIX日足（日次更新）
 - `data/parquet/granville/signals_YYYY-MM-DD.parquet`
 - `data/parquet/granville/recommendations_YYYY-MM-DD.parquet`
 - S3: `s3://stock-api-data/parquet/granville/`
