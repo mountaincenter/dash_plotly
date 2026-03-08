@@ -43,6 +43,7 @@ app.add_middleware(
         "https://stock-frontend-sigma.vercel.app",
         "https://ymnk.jp",
         "https://www.ymnk.jp",
+        "https://staging.ymnk.jp",
     ],
     allow_origin_regex=r"^https://([a-z0-9-]+\.)?vercel\.app$",
     allow_credentials=False,
