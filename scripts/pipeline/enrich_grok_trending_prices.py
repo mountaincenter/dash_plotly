@@ -283,7 +283,42 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
     print(f"       futures_change_pct: {extreme_info['futures_change_pct']}")
     print(f"       is_extreme_market: {extreme_info['is_extreme_market']}")
 
+    # SHORT推奨フラグ: G1 × ATR>=6%
+    if "grade" in df.columns and "atr14_pct" in df.columns:
+        df["short_recommended"] = (
+            (df["grade"] == "G1") &
+            (df["atr14_pct"].fillna(0) >= 6.0)
+        )
+        n_rec = df["short_recommended"].sum()
+        print(f"       short_recommended: {n_rec}/{len(df)}")
+    else:
+        df["short_recommended"] = False
+
+    # reason カテゴリ自動分類
+    if "reason" in df.columns:
+        df["reason_category"] = df["reason"].fillna("").apply(_classify_reason)
+        cats = df["reason_category"].value_counts().to_dict()
+        print(f"       reason_category: {cats}")
+
     return df
+
+
+def _classify_reason(reason: str) -> str:
+    """reason テキストから材料タイプを判定"""
+    r = reason.lower()
+    has_s_high = any(k in r for k in ["ストップ高", "s高"])
+    has_ir = any(k in r for k in ["決算", "増益", "減益", "業績", "上方修正", "下方修正", "適時開示", "ir"])
+    has_momentum = any(k in r for k in ["値上がり率", "急騰", "急伸", "連続", "継続"])
+
+    if has_s_high and has_ir:
+        return "S高+決算IR"
+    if has_momentum:
+        return "急騰/連続上昇"
+    if has_s_high:
+        return "S高"
+    if has_ir:
+        return "決算IR"
+    return "その他"
 
 
 def save_grok_trending(df: pd.DataFrame) -> None:

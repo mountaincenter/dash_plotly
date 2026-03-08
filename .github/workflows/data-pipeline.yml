@@ -512,6 +512,10 @@ jobs:
             echo "⚠️ Backtest failed (non-critical)"
           fi
 
+          # d1-d5保持リターンをアーカイブに追記
+          echo "Updating archive with d1-d5 holding returns..."
+          python scripts/pipeline/update_archive_holding_returns.py
+
           echo "============================================================"
 
       - name: Extract data statistics

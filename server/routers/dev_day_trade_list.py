@@ -677,6 +677,8 @@ async def get_day_trade_list():
             "margin_buy_balance": margin_buy_balance,
             "appearance_count": appearance_counts.get(ticker, 0),
             "max_cost_100": int(max_cost_100) if max_cost_100 is not None else None,
+            "short_recommended": bool(row.get("short_recommended")) if pd.notna(row.get("short_recommended")) else False,
+            "reason_category": row.get("reason_category") if pd.notna(row.get("reason_category")) else None,
         })
 
     # ソート: 制度 → いちにち → NG → grok_rank
