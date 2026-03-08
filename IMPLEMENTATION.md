@@ -5,20 +5,23 @@
 本ドキュメントはstagingブランチでの実装に必要な全情報を記載する。
 分析・検証はmainブランチで完了済み（commit 3b5f494）。
 
+全パラメータはセッション履歴 `c61d485c` `1945253e` で検証・合意済み。
+
 ---
 
 ## 1. 確定パラメータ
 
 ### エントリー
 
-| 項目 | 値 |
-|------|-----|
-| 方向 | LONG のみ（ショートはGrok推奨で別管理） |
-| シグナル | グランビル B1, B2, B3, B4 |
-| 優先順位 | B4 > B1 > B3 > B2 |
-| ML優先順位 | 同一ルール内はML予測スコア順（LightGBM walk-forward） |
-| ユニバース | TOPIX 1,660銘柄 |
-| エントリー | シグナル翌営業日の寄付(Open) |
+| 項目 | 値 | 根拠 |
+|------|-----|------|
+| 方向 | LONG のみ | ショートは全レジームで機能しない（検証済み） |
+| シグナル | グランビル B1, B2, B3, B4 | |
+| ルール間優先順位 | B4 > B1 > B3 > B2 | B4のcap_effが唯一正（+71.5） |
+| 同一ルール内ソート | **RSI lowest（RSI14が低い順）** | ML不使用。RSI lowがcap_effと最強の負相関(-0.365) |
+| ユニバース | TOPIX 1,660銘柄 | |
+| エントリー | シグナル翌営業日の寄付(Open) | |
+| SHORT | Grok推奨で別管理 | Granvilleとは別系統 |
 
 ### グランビル法則 定義（LONG）
 
@@ -37,14 +40,33 @@
 | ストップロス | なし |
 | MAX_HOLD（ルール別） | B1=7日, B2=30日, B3=5日, B4=13日 |
 
+MAX_HOLDはルール別にポートフォリオシミュレーションで最適化した結果:
+- B1=7日: 60日比で+817万改善(+96%)。即乗り即降り
+- B3=5日: 60日比で+215万改善(+38%)。超短期
+- B4=13日: 60日比で微改善。乖離反発→短期回収
+- B2=30日: 60日とほぼ同等。押し目→じっくり型
+
 ### 資金管理
 
-| 項目 | 値 |
-|------|-----|
-| 集中制限 | 15%（1銘柄の証拠金が現在資金の15%を超えない） |
-| 証拠金計算 | upper_limit(entry_price) × 100株 |
-| 証拠金率 | 30%（楽天証券 制度信用） |
-| 手数料 | 0円（楽天証券 ゼロコース） |
+| 項目 | 値 | 根拠 |
+|------|-----|------|
+| 集中制限 | **15%**（1銘柄の証拠金が現在資金の15%を超えない） | 5-20%は大差なし、制限なし(100%)が最悪。15%がPnL最良 |
+| 株価上限フィルター | **なし** | 固定値フィルターはパフォーマンス悪化する。エッジは株価に依存しない(PF=1.546-1.549で同一)。集中制限15%が動的フィルターとして機能する |
+| 証拠金計算 | upper_limit(entry_price) × 100株 | |
+| 証拠金率 | 30%（楽天証券 制度信用） | |
+| 手数料 | 0円（楽天証券 ゼロコース） | |
+| Max positions | **未確定** | 検証では10/15/16/20をテスト。資金制約が実質的な上限 |
+
+### ML（機械学習）について
+
+**実装では使わない。** 検証はしたが、RSI lowestが実用上十分。
+MLは運用の限界が来たら導入する（ユーザー合意済み）。
+
+検証結果の参考値:
+- ML cap_eff: +13.52（最良）
+- RSI lowest: +7.42
+- ただし累積PnL: RSI +730万 > ML +587万
+- 複雑さに見合う効果がない
 
 ### 証拠金テーブル（upper_limit）
 
@@ -59,6 +81,22 @@ _LIMIT_TABLE = [
 ]
 ```
 
+集中制限15%の具体例（資金465万の場合）:
+- max_margin = 465万 × 15% = 69.75万
+- 15,000円株: margin = 180万 → **スキップ**（15%超）
+- 5,000円株: margin = 57万 → **エントリー可**（15%以内）
+
+### シグナル量の設計思想
+
+1日のシグナル数は平均約95件、多い日は数百件になる。これは仕様通り。
+大量シグナルを以下で自動選別する設計:
+1. ルール優先順位（B4 > B1 > B3 > B2）
+2. 同一ルール内RSI lowest
+3. 集中制限15%（高額銘柄を動的に除外）
+4. 資金制約（余力がなくなれば自動停止）
+
+**シグナル側にフィルターを追加してはいけない。機会損失になる。**
+
 ---
 
 ## 2. 検証根拠（主要データ）
@@ -67,18 +105,22 @@ _LIMIT_TABLE = [
 - 市場5日変化率 < -5%: WR=48.0%, avgPnL=+4,425（全環境中最高）
 - VIX 25-30: WR=46.7%, avgPnL=+3,169（全VIXレンジ中最高）
 - 5日以上連続下落: avgPnL=+2,159, avgRet=+3.48%
+- B4は暴落時こそ最も機能する
 
-### MAX_HOLD ルール別最適化（資金制約下ポートフォリオシミュレーション）
+### 株価フィルター検証結果
+- エッジは株価に依存しない（PF=1.546-1.549で全価格帯同一）
+- 固定値フィルター(15,000円)はPnL+1,482万
+- 制限なし: PnL+50,866万（ただし集中リスクあり）
+- **集中制限15%: PnL+54,021万（最良）**
+- 固定値より集中制限が理論的に正しく、パフォーマンスも上
+
+### MAX_HOLD ルール別最適化
 | ルール | 最適MAX_HOLD | 累計PnL | vs 60日比 |
 |--------|-------------|---------|-----------|
 | B4 | 13日 | +2,903万 | +17万改善 |
 | B1 | 7日 | +1,669万 | +817万改善(+96%) |
 | B3 | 5日 | +781万 | +215万改善(+38%) |
 | B2 | 30日 | +2,084万 | ほぼ同等 |
-
-### ML優先順位
-- Walk-forward検証（3年学習→1年テスト）でルール優先・RSI順を上回る
-- 特徴量: sma20_dist, sma50_dist, atr14_pct, rsi14, vol20, ret5d, vol_ratio, entry_price + rule/regime dummy
 
 ---
 
@@ -141,18 +183,16 @@ mainの既存パイプラインを壊さないこと。
   → 株価更新 168銘柄（既存）
   → TOPIX 1,660銘柄 価格更新（新規 ★）
   → Granvilleシグナル生成（新規）
-  → ML予測スコア付与（新規）
 
 23:00 (data-pipeline)
   → Grok選定（既存）
   → Granville + Grok統合レコメンド生成（新規）
 ```
 
-**新規スクリプト（案）:**
+**新規スクリプト:**
 - `scripts/pipeline/update_topix_prices.py` — TOPIX 1,660銘柄の日次差分更新
 - `scripts/pipeline/generate_granville_signals.py` — シグナル生成
-- `scripts/pipeline/predict_granville_ml.py` — ML予測
-- `scripts/pipeline/generate_granville_recommendation.py` — 推奨銘柄リスト
+- `scripts/pipeline/generate_granville_recommendation.py` — 推奨銘柄リスト（優先順位+資金制約で選別）
 
 **出力:**
 - `data/parquet/granville/prices_topix.parquet` — TOPIX日足（日次更新）
@@ -160,12 +200,12 @@ mainの既存パイプラインを壊さないこと。
 - `data/parquet/granville/recommendations_YYYY-MM-DD.parquet`
 - S3: `s3://stock-api-data/parquet/granville/`
 
-### 3b. フロントエンド
+### 3d. フロントエンド
 
 `stock-frontend` の staging ブランチに実装。
 Granville推奨銘柄の表示ページ。
 
-### 3c. サーバーAPI
+### 3e. サーバーAPI
 
 `server/` にGranville推奨銘柄のエンドポイント追加。
 
@@ -177,13 +217,8 @@ Granville推奨銘柄の表示ページ。
 |--------|------|------|
 | TOPIX株価 | `strategy_verification/data/processed/prices_cleaned_topix_v3.parquet` | シグナル生成元 |
 | TOPIX銘柄リスト | `data/parquet/meta_jquants.parquet` | ticker→銘柄名変換 |
-| MLモデル | 学習時に生成（walk-forward） | 優先順位スコア |
 | 信用余力 | `data/csv/credit_capacity.csv`（手動更新 or API） | 資金制約 |
 | 保有銘柄 | `data/csv/hold_stocks.csv`（手動更新 or API） | 重複排除 |
-
-### 価格データ取得
-TOPIX 1,660銘柄のデータは `prices_cleaned_topix_v3.parquet` に格納。
-日次更新は J-Quants API 経由。更新スクリプトは既存パイプラインに依存。
 
 ---
 
@@ -193,8 +228,8 @@ TOPIX 1,660銘柄のデータは `prices_cleaned_topix_v3.parquet` に格納。
 
 | ファイル | 内容 |
 |----------|------|
-| `strategy_verification/scripts/16_entry_priority_analysis_topix.py` | 特徴量計算、証拠金計算、cap_eff分析 |
-| `strategy_verification/scripts/17_entry_priority_ml_topix.py` | LightGBM walk-forward ML予測 |
+| `strategy_verification/scripts/16_entry_priority_analysis_topix.py` | 特徴量計算、証拠金計算、cap_eff分析、RSI相関分析 |
+| `strategy_verification/scripts/17_entry_priority_ml_topix.py` | ML検証（結論: 不使用。参考用） |
 | `strategy_verification/scripts/18_portfolio_simulation_topix.py` | ポートフォリオシミュレーション |
 | `improvement/granville/SPEC.md` | 元の検証仕様書 |
 | `improvement/backtest_granville_8rules.py` | グランビルシグナル生成ロジック |
@@ -204,14 +239,28 @@ TOPIX 1,660銘柄のデータは `prices_cleaned_topix_v3.parquet` に格納。
 ## 6. 運用イメージ
 
 ### 毎日の流れ
-1. 16:45: 株価更新 → シグナル生成 → ML予測
+1. 16:45: 株価更新 → シグナル生成
 2. 23:00: Grok SHORT推奨取得 → 統合レコメンド
 3. 翌朝: フロントエンドで確認 → 寄付で発注
 
+### シグナル選別フロー（generate_granville_recommendation.py）
+```
+全シグナル（1日平均~95件）
+  ↓ B4 > B1 > B3 > B2 でソート
+  ↓ 同一ルール内はRSI14昇順
+  ↓ 既存保有銘柄を除外
+  ↓ 上から順に:
+     - 証拠金 > 現在資金の15% → スキップ（集中制限）
+     - 証拠金 > 残余力 → スキップ（資金不足）
+     - それ以外 → エントリー
+  ↓
+推奨リスト（資金制約で自然に5-15件程度に収束）
+```
+
 ### ポジション管理
-- LONG: Granvilleシグナル（B4>B1>B3>B2）
+- LONG: Granvilleシグナル（B4>B1>B3>B2、RSI lowest）
 - SHORT: Grok推奨
-- Exit: 日次で20日高値チェック + MAX_HOLDチェック
+- Exit: 日次で20日高値チェック + ルール別MAX_HOLDチェック
 - 既存ポジションとの重複排除
 
 ---
@@ -229,8 +278,21 @@ staging       ← Granville実装（このブランチ）
 
 ---
 
+## 8. 禁止事項（検証で否定されたもの）
+
+| やってはいけないこと | 理由 |
+|---------------------|------|
+| ML予測スコアでソート | 複雑さに見合う効果なし。RSI lowestで十分 |
+| 固定値の株価上限フィルター | パフォーマンス悪化する。エッジは株価非依存 |
+| シグナルへのフィルター追加 | 機会損失。資金制約が自然なフィルター |
+| ショート（Granville S1-S4） | 全レジームで機能しない |
+| MAX_HOLD=60（全ルール統一） | ルール別最適化で大幅改善（B1: +96%） |
+
+---
+
 ## 変更履歴
 
 | 日付 | 内容 |
 |------|------|
 | 2026-03-08 | 検証完了、実装仕様書作成 |
+| 2026-03-09 | **全面書き直し**: ML不使用、RSI lowest、固定値フィルター禁止、集中制限15%の設計思想、シグナル選別フロー、禁止事項を正確に反映 |
