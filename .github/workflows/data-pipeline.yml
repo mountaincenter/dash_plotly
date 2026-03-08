@@ -732,21 +732,6 @@ jobs:
             echo "⚠️ Granville signal generation failed (non-critical)"
           fi
 
-      - name: Predict Granville ML scores
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "============================================================"
-          echo "Predicting ML scores (16:45 only)"
-          echo "============================================================"
-
-          python3 scripts/pipeline/predict_granville_ml.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ ML prediction completed"
-          else
-            echo "⚠️ ML prediction failed (non-critical, rule-based fallback)"
-          fi
-
       - name: Generate Granville recommendations
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |

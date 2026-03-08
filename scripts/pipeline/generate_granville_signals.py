@@ -58,14 +58,13 @@ def load_prices() -> pd.DataFrame:
     # テクニカル指標
     g = ps.groupby("ticker")
     ps["sma20"] = g["Close"].transform(lambda x: x.rolling(20, min_periods=20).mean())
-    ps["sma50"] = g["Close"].transform(lambda x: x.rolling(50, min_periods=50).mean())
     ps["sma20_slope"] = g["sma20"].transform(lambda x: x.diff(3))
     ps["prev_close"] = g["Close"].shift(1)
     ps["prev_sma20"] = g["sma20"].shift(1)
     ps["dev_from_sma20"] = (ps["Close"] - ps["sma20"]) / ps["sma20"] * 100
     ps["prev_dev"] = g["dev_from_sma20"].shift(1)
 
-    # RSI 14
+    # RSI 14（同一ルール内ソートに使用）
     delta = g["Close"].diff()
     gain = delta.clip(lower=0)
     loss = (-delta).clip(lower=0)
@@ -73,20 +72,6 @@ def load_prices() -> pd.DataFrame:
     avg_loss = loss.groupby(ps["ticker"]).transform(lambda x: x.rolling(14, min_periods=14).mean())
     rs = avg_gain / avg_loss.replace(0, np.nan)
     ps["rsi14"] = 100 - (100 / (1 + rs))
-
-    # ATR 14
-    ps["tr"] = np.maximum(
-        ps["High"] - ps["Low"],
-        np.maximum(abs(ps["High"] - ps["prev_close"]), abs(ps["Low"] - ps["prev_close"])),
-    )
-    ps["atr14"] = g["tr"].transform(lambda x: x.rolling(14, min_periods=14).mean())
-
-    # Volatility, ret5d, vol_ratio
-    ps["daily_ret"] = g["Close"].pct_change()
-    ps["vol20"] = g["daily_ret"].transform(lambda x: x.rolling(20, min_periods=20).std())
-    ps["ret5d"] = g["Close"].pct_change(5)
-    ps["vol_avg20"] = g["Volume"].transform(lambda x: x.rolling(20, min_periods=20).mean())
-    ps["vol_ratio"] = ps["Volume"] / ps["vol_avg20"].replace(0, np.nan)
 
     # 派生フラグ
     ps["sma20_up"] = ps["sma20_slope"] > 0
@@ -179,15 +164,6 @@ def generate_signals() -> pd.DataFrame:
         signals["stock_name"] = ""
         signals["sectors"] = ""
 
-    # ML特徴量を計算
-    signals["sma20_dist"] = signals["dev_from_sma20"]
-    signals["sma50_dist"] = np.where(
-        signals["sma50"].notna(),
-        (signals["Close"] - signals["sma50"]) / signals["sma50"] * 100,
-        np.nan,
-    )
-    signals["atr14_pct"] = signals["atr14"] / signals["Close"] * 100
-
     # 出力スキーマ
     out = pd.DataFrame({
         "signal_date": signals["date"],
@@ -201,19 +177,12 @@ def generate_signals() -> pd.DataFrame:
         "dev_from_sma20": signals["dev_from_sma20"].round(3),
         "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"].round(1),
-        # ML特徴量
-        "sma20_dist": signals["sma20_dist"].round(3),
-        "sma50_dist": signals["sma50_dist"].round(3),
-        "atr14_pct": signals["atr14_pct"].round(3),
         "rsi14": signals["rsi14"].round(2),
-        "vol20": signals["vol20"].round(5),
-        "ret5d": signals["ret5d"].round(4),
-        "vol_ratio": signals["vol_ratio"].round(3),
     })
 
-    # ルール優先順位でソート
+    # ルール優先順位 → 同一ルール内RSI14昇順（lowest first）
     out["_priority"] = out["rule"].map(RULE_PRIORITY)
-    out = out.sort_values(["_priority", "dev_from_sma20"]).drop(columns=["_priority"]).reset_index(drop=True)
+    out = out.sort_values(["_priority", "rsi14"], ascending=[True, True]).drop(columns=["_priority"]).reset_index(drop=True)
 
     return out
 
@@ -363,8 +332,7 @@ def main() -> int:
         out = pd.DataFrame(columns=[
             "signal_date", "ticker", "stock_name", "sector", "rule",
             "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
-            "entry_price_est",
-            "sma20_dist", "sma50_dist", "atr14_pct", "rsi14", "vol20", "ret5d", "vol_ratio",
+            "entry_price_est", "rsi14",
         ])
     out.to_parquet(signal_path, index=False)
     print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")

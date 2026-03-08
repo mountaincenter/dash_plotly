@@ -103,7 +103,7 @@ def _safe_float(v, decimals: int = 1) -> float:
 
 @router.get("/api/dev/granville/recommendations")
 async def get_recommendations():
-    """当日推奨銘柄（B4>B1>B3>B2、ml_score付き、証拠金済み）"""
+    """当日推奨銘柄（B4>B1>B3>B2、RSI14 lowest、証拠金済み）"""
     df = _load_latest("recommendations")
     if df.empty:
         return {"recommendations": [], "count": 0, "date": None}
@@ -126,9 +126,8 @@ async def get_recommendations():
             "margin": _safe_int(r.get("margin", 0)),
             "concentration_pct": _safe_float(r.get("concentration_pct", 0)),
             "max_hold": _safe_int(r.get("max_hold", 0)),
+            "rsi14": _safe_float(r.get("rsi14", 0), 2),
         }
-        if "ml_score" in r:
-            rec["ml_score"] = _safe_float(r.get("ml_score", 0), 3)
         recs.append(rec)
 
     total_margin = sum(r["margin"] for r in recs)
@@ -164,9 +163,8 @@ async def get_signals():
             "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
             "sma20_slope": _safe_float(r.get("sma20_slope", 0), 4),
             "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
+            "rsi14": _safe_float(r.get("rsi14", 0), 2),
         }
-        if "ml_score" in r:
-            sig["ml_score"] = _safe_float(r.get("ml_score", 0), 3)
         signals.append(sig)
 
     return {

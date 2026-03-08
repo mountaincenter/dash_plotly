@@ -3,8 +3,8 @@
 generate_granville_recommendation.py
 Granville推奨銘柄リスト生成
 
-1. 当日シグナル（ml_score付き）を読み込み
-2. B4 > B1 > B3 > B2 優先順位、同一ルール内はml_score降順
+1. 当日シグナル（RSI14付き）を読み込み
+2. B4 > B1 > B3 > B2 優先順位、同一ルール内はRSI14昇順（lowest first）
 3. 証拠金計算: upper_limit(entry_price) × 100株
 4. 集中制限15%チェック
 5. 既存ポジション重複排除
@@ -123,11 +123,10 @@ def main() -> int:
     signals["margin"] = signals["entry_price_est"].apply(required_margin)
     signals["concentration_pct"] = signals["margin"] / available * 100
 
-    # ソート: ルール優先→ml_score降順
+    # ソート: ルール優先→RSI14昇順（lowest first）
     signals["_priority"] = signals["rule"].map(RULE_PRIORITY)
-    has_ml = "ml_score" in signals.columns
-    if has_ml:
-        signals = signals.sort_values(["_priority", "ml_score"], ascending=[True, False])
+    if "rsi14" in signals.columns:
+        signals = signals.sort_values(["_priority", "rsi14"], ascending=[True, True])
     else:
         signals = signals.sort_values(["_priority", "dev_from_sma20"])
 
@@ -161,9 +160,8 @@ def main() -> int:
             "margin": int(margin),
             "concentration_pct": round(margin / available * 100, 1),
             "max_hold": MAX_HOLD[row["rule"]],
+            "rsi14": round(float(row.get("rsi14", 0)), 2),
         }
-        if has_ml:
-            rec["ml_score"] = round(float(row["ml_score"]), 3)
         recommended.append(rec)
 
     result = pd.DataFrame(recommended)
@@ -187,9 +185,9 @@ def main() -> int:
 
     print(f"\nTop recommendations:")
     for _, row in result.head(10).iterrows():
-        ml = f" ml={row['ml_score']:.2f}" if "ml_score" in row else ""
+        rsi = f" RSI={row['rsi14']:.1f}" if "rsi14" in row else ""
         print(f"  [{row['rule']}] {row['ticker']} {row['stock_name']} "
-              f"¥{row['entry_price_est']:,.0f} margin=¥{row['margin']:,.0f}{ml}")
+              f"¥{row['entry_price_est']:,.0f} margin=¥{row['margin']:,.0f}{rsi}")
 
     # S3アップロード
     try:
