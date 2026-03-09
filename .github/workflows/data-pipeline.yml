@@ -689,33 +689,7 @@ jobs:
           fi
 
       # === Granville新体系（B1-B4, TOPIX 1,660銘柄） ===
-
-      - name: Update TOPIX 1,660 prices
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "============================================================"
-          echo "Updating TOPIX 1,660 prices (16:45 only)"
-          echo "============================================================"
-
-          # S3から既存データをダウンロード
-          PRICES_FILE="data/parquet/granville/prices_topix.parquet"
-          mkdir -p data/parquet/granville
-          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" > /dev/null 2>&1; then
-            echo "📥 Downloading existing prices from S3..."
-            aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" \
-              "$PRICES_FILE" --only-show-errors
-            EXISTING_COUNT=$(python3 -c "import pandas as pd; print(len(pd.read_parquet('$PRICES_FILE')))")
-            echo "✅ Downloaded existing prices: $EXISTING_COUNT rows"
-          fi
-
-          python3 scripts/pipeline/update_granville_topix_prices.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ TOPIX price update completed"
-          else
-            echo "⚠️ TOPIX price update failed (non-critical)"
-          fi
+      # 価格データはall_stocks.parquet経由でfetch_prices.pyが一括取得済み
 
       - name: Generate Granville signals (B1-B4)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'

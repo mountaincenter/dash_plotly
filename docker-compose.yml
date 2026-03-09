@@ -10,16 +10,16 @@ x-app-base: &app_base
     # 必要な場合のみコメントを外す（AWS 認証をホストから使う）
     # - ~/.aws:/root/.aws:ro
   environment:
-    # 開発時は 8000 固定。App Runner ではサービス側が PORT を注入する想定。
-    - PORT=8000
+    # staging は 8001。App Runner ではサービス側が PORT を注入する想定。
+    - PORT=${PORT:-8001}
 
 services:
   web:
     <<: *app_base
-    container_name: fastapi_dev
+    container_name: fastapi_staging
     env_file:
       - .env.dev
     ports:
-      - "8000:8000"
+      - "${PORT:-8001}:${PORT:-8001}"
     command: >
       sh -c "uvicorn server.main:app --host 0.0.0.0 --port $${PORT}"

@@ -39,7 +39,7 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
-PRICES_PATH = GRANVILLE_DIR / "prices_topix.parquet"
+PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 
@@ -305,7 +305,7 @@ def main() -> int:
 
     if not PRICES_PATH.exists():
         print(f"[ERROR] Price data not found: {PRICES_PATH}")
-        print("  Run update_granville_topix_prices.py first")
+        print("  Run fetch_prices.py first")
         return 1
 
     GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
