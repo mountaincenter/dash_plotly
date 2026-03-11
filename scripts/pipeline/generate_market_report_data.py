@@ -207,9 +207,8 @@ def build_market_summary(date: str) -> dict[str, Any]:
                 pct = ((close - prev) / prev * 100) if prev else None
                 result[key] = {"close": _f(close), "prev_close": _f(prev), "change_pct": _f(pct)}
 
-    # USDJPY (ticker: JPY=X)
-    if curr is not None:
-        result["usdjpy"] = _build_ohlc_entry(curr, "JPY=X", date, include_hl=True)
+    # USDJPY — yfinance直接取得（parquetは16:45時点でNaNになるため）
+    result["usdjpy"] = _yfinance_latest("JPY=X", date)
 
     # Nikkei VI (no ticker column)
     if vi is not None:
@@ -347,17 +346,8 @@ def build_rates(date: str) -> dict[str, Any]:
     """金利・為替公定レート"""
     result: dict[str, Any] = {}
 
-    # US10Y (^TNX in index_prices)
-    idx = _read_parquet("index_prices_max_1d.parquet")
-    if idx is not None:
-        tnx = _row_for(idx, "^TNX", date)
-        if tnx is not None:
-            close_col = "Close" if "Close" in tnx.index else "close"
-            result["us10y"] = {"close": _f(float(tnx[close_col]))}
-        else:
-            result["us10y"] = {"error": "no_data"}
-    else:
-        result["us10y"] = {"error": "data_missing"}
+    # US10Y — yfinance直接取得（parquetは16:45時点でNaNになるため）
+    result["us10y"] = _yfinance_latest("^TNX", date)
 
     # JGB10Y (MOF jgbcm.csv)
     result["jgb10y"] = _fetch_mof_jgb10y()
