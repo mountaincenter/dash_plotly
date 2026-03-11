@@ -409,43 +409,31 @@ def _fetch_mof_jgb10y() -> dict[str, Any]:
 
 
 def _fetch_boj_fm01() -> dict[str, Any]:
-    """日本銀行 FM01（無担保コールO/N金利）"""
+    """日本銀行 FM01（無担保コールO/N金利）— BOJ時系列統計API"""
     try:
-        # 当日 → 前日のページを試行
-        url = None
-        resp = None
-        for page in ["of_jj.htm", "of_jj1.htm", "of_jj2.htm"]:
-            candidate = f"https://www3.boj.or.jp/market/jp/stat/{page}"
-            try:
-                r = requests.get(candidate, timeout=15)
-                if r.status_code == 200:
-                    url = candidate
-                    resp = r
-                    break
-            except Exception:
-                continue
-        if resp is None:
-            return {"error": "fetch_failed", "detail": "BOJ FM01 page not found"}
-        content = resp.content.decode("shift_jis", errors="replace")
-        # HTML テーブルからパース
-        tables = pd.read_html(io.StringIO(content))
-        if not tables:
-            return {"error": "no_table"}
-        # 最初のテーブルを取得
-        df = tables[0]
-        # 無担保コールO/N の行を探す
-        for _, row in df.iterrows():
-            row_str = " ".join(str(v) for v in row.values)
-            if "無担保" in row_str and ("オーバーナイト" in row_str or "O/N" in row_str.upper()):
-                # 数値カラムを探す
-                for v in row.values:
-                    try:
-                        val = float(v)
-                        if 0 <= val <= 5:  # 金利の妥当な範囲
-                            return {"rate": _f(val), "source": "boj_fm01"}
-                    except (ValueError, TypeError):
-                        continue
-        return {"error": "parse_failed"}
+        from datetime import datetime
+        now = datetime.now()
+        ym = now.strftime("%Y%m")
+        url = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
+        resp = requests.get(url, params={
+            "format": "json", "lang": "jp", "db": "fm01",
+            "code": "STRDCLUCON", "startDate": ym, "endDate": ym,
+        }, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        rs = data.get("RESULTSET", [])
+        if not rs:
+            return {"error": "no_resultset"}
+        vals = rs[0].get("VALUES", {})
+        dates = vals.get("SURVEY_DATES", [])
+        values = vals.get("VALUES", [])
+        # 末尾から非null値を探す
+        for i in range(len(values) - 1, -1, -1):
+            if values[i] is not None:
+                d = str(dates[i])
+                date_str = f"{d[:4]}/{d[4:6]}/{d[6:]}"
+                return {"rate": _f(values[i]), "date": date_str, "source": "boj_api_fm01"}
+        return {"error": "no_data", "detail": "all values null"}
     except Exception as e:
         return {"error": "fetch_failed", "detail": str(e)}
 
@@ -619,20 +607,23 @@ def build_grok(date: str) -> dict[str, Any] | None:
 
 
 def build_anomaly(date: str) -> dict[str, Any] | None:
-    """カレンダーアノマリー"""
+    """カレンダーアノマリー — 翌営業日のアノマリーを返す（大引け後に読むため）"""
     ma = _read_parquet("market_anomaly.parquet")
     if ma is None:
         return None
 
     td = pd.Timestamp(date)
-    weekday_idx = td.weekday()  # 0=月, 4=金
+    # 翌営業日を算出（土日スキップ）
+    next_bd = td + pd.offsets.BDay(1)
+    weekday_idx = next_bd.weekday()  # 0=月, 4=金
     weekday_name = WEEKDAY_JP.get(weekday_idx, str(weekday_idx))
-    week_of_year = td.isocalendar()[1]
-    month = td.month
+    week_of_year = next_bd.isocalendar()[1]
+    month = next_bd.month
 
-    # N225_dow テーブルから該当曜日を取得
+    # N225_dow テーブルから翌営業日の曜日を取得
     dow = ma[ma["table_name"] == "N225_dow"]
     result: dict[str, Any] = {
+        "target_date": next_bd.strftime("%Y-%m-%d"),
         "weekday": weekday_name,
         "week_of_year": week_of_year,
         "month": month,
