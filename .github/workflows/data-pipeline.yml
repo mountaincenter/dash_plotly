@@ -1076,6 +1076,12 @@ jobs:
 
           if [ $? -eq 0 ]; then
             echo "✅ Market report data generated"
+            # S3にアップロード
+            REPORT_JSON=$(ls -t data/parquet/market_summary/structured/report_data_*.json 2>/dev/null | head -1)
+            if [ -n "$REPORT_JSON" ]; then
+              aws s3 cp "$REPORT_JSON" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}market_summary/structured/$(basename $REPORT_JSON)" --only-show-errors
+              echo "  📤 Uploaded $(basename $REPORT_JSON) to S3"
+            fi
           else
             echo "⚠️ Market report data generation failed (non-critical)"
           fi
