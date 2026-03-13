@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
 generate_granville_recommendation.py
-Granville推奨銘柄リスト生成
+Granville推奨銘柄リスト生成（IMPLEMENTATION.md §5, §7, §8 準拠）
 
-1. 当日シグナル（RSI14付き）を読み込み
-2. B4 > B1 > B3 > B2 優先順位、同一ルール内はRSI14昇順（lowest first）
-3. 証拠金計算: upper_limit(entry_price) × 100株
-4. 集中制限15%チェック
-5. 既存ポジション重複排除
-6. 出力: recommendations_YYYY-MM-DD.parquet
+1. 当日シグナルを読み込み
+2. B4 > B1 > B3 > B2 優先順位
+3. 同一ルール内: バックテスト統計ベースのスコア降順
+4. 既存保有銘柄を除外
+5. 証拠金計算: upper_limit(prev_close) × 100株
+6. 15%証拠金上限（株価フィルター）: 証拠金 > 資金の15% → スキップ
+7. 残余力不足 → スキップ
+8. 出力: recommendations_YYYY-MM-DD.parquet
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,14 +33,18 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
+PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 CSV_DIR = ROOT / "data" / "csv"
 CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 HOLD_CSV = CSV_DIR / "hold_stocks.csv"
 
-CONCENTRATION_LIMIT = 0.15  # 1銘柄あたり最大15%
-MAX_HOLD = {"B1": 7, "B2": 30, "B3": 5, "B4": 13}
+MARGIN_LIMIT_PCT = 0.15  # §7: 証拠金上限15%（株価フィルター）
+CAPITAL_THRESHOLD = 30_000_000
+MAX_HOLD_LOW = 10
+MAX_HOLD_HIGH = 60
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
 
+# §7: 証拠金テーブル
 _LIMIT_TABLE = [
     (100, 30), (200, 50), (500, 80), (700, 100),
     (1000, 150), (1500, 300), (2000, 400), (3000, 500),
@@ -48,6 +55,133 @@ _LIMIT_TABLE = [
 ]
 
 
+# バックテスト2Y (63,727trades) クロス分析に基づくスコアリング
+# B4最強条件: 乖離深(-15%超) × ATR高(>6%) × RSI30-40 × ret5d<-10% → WR93%/+7%
+# B4最弱条件: 乖離浅(-10~-8%) × ATR低(<4%) → WR79%/+0.9%
+# B1: ATR高いとリターン増(+4.58%)だが勝率低下(75%)。乖離>3%&ATR>5%でavg+3.8%
+_SECTOR_BONUS = {
+    "銀行業": 10, "証券・商品先物取引業": 8, "証券･商品先物取引業": 8,
+    "不動産業": 5, "卸売業": 5, "電気機器": 5,
+    "その他金融業": 5, "化学": 4, "輸送用機器": 4,
+    "非鉄金属": 4, "鉄鋼": 4, "金属製品": 4, "機械": 4,
+    "小売業": -5, "陸運業": -3, "食料品": -3,
+}
+
+
+def compute_rank_score(row: pd.Series, rule: str) -> float:
+    """バックテスト統計ベースのランクスコア（0-100）"""
+    score = 50.0
+
+    dev = abs(float(row.get("dev_from_sma20", 0)))
+    atr_pct = float(row.get("atr10_pct", 3.0))
+    vol_ratio = float(row.get("vol_ratio", 1.0))
+    rsi14 = float(row.get("rsi14", 50.0))
+    ret5d = float(row.get("ret5d", 0.0))
+    sector = str(row.get("sector", ""))
+    price = float(row.get("close", 1000))
+
+    if rule == "B4":
+        # 乖離深度 (WR: <-15%=90%, -15~-12%=90%, -12~-10%=87%, -10~-8%=87%)
+        if dev >= 20:
+            score += 25
+        elif dev >= 15:
+            score += 20
+        elif dev >= 12:
+            score += 15
+        elif dev >= 10:
+            score += 10
+        # ATR% — 最重要因子 (WR: >7%=94.2%, 5-7%=89.6%, 4-5%=84.4%, <3%=80.9%)
+        if atr_pct >= 7:
+            score += 20
+        elif atr_pct >= 5:
+            score += 12
+        elif atr_pct >= 4:
+            score += 5
+        elif atr_pct < 3:
+            score -= 10
+        # RSI14 (30-40がスイートスポット: WR91.4%/+4.32%)
+        if 30 <= rsi14 < 40:
+            score += 8
+        elif rsi14 < 30:
+            score += 3  # 売られすぎだが30-40より劣る
+        elif rsi14 >= 50:
+            score -= 5
+        # ret5d — 直近の下落モメンタム (<-10%: WR91.3%/+5.54%)
+        if ret5d < -10:
+            score += 10
+        elif ret5d < -5:
+            score += 5
+        elif ret5d > 0:
+            score -= 3
+
+    elif rule == "B1":
+        # B1: ATRがリターンに直結 (>7%: avg+4.58%, <2%: avg+0.85%)
+        # ただし勝率はATR低い方が高い (ATR<2%: 84%, >7%: 75%)
+        # → リスク調整後はATR4-5%がベスト (WR81.4%/+2.06%)
+        if atr_pct >= 5:
+            score += 15  # ハイリスク・ハイリターン
+        elif atr_pct >= 4:
+            score += 10  # ベストバランス
+        elif atr_pct >= 3:
+            score += 5
+        elif atr_pct < 2:
+            score -= 3
+        # 乖離>3%&ATR>5%の組み合わせ (avg+3.8%)
+        if dev > 3 and atr_pct >= 5:
+            score += 8
+        # RSI: 30-40帯が若干良い (WR82.1%)、>70はリスク
+        if 30 <= rsi14 < 40:
+            score += 5
+        elif rsi14 >= 70:
+            score -= 8
+
+    else:
+        # B2/B3: 差が小さい。ATR中心
+        if atr_pct >= 5:
+            score += 10
+        elif atr_pct >= 3:
+            score += 5
+        elif atr_pct < 2:
+            score -= 5
+
+    # 出来高比率 (B4: 1.5-2x=WR91.3%, <0.5x=WR82.7%)
+    if 1.0 <= vol_ratio <= 2.0:
+        score += 8
+    elif 0.5 <= vol_ratio < 1.0:
+        score += 3
+    elif vol_ratio > 3.0:
+        score -= 3
+    elif vol_ratio < 0.5:
+        score -= 5
+
+    # セクター (B4: 銀行WR98.4%, 小売WR80.5%)
+    score += _SECTOR_BONUS.get(sector, 0)
+
+    # 株価帯 (B4: <2K安定 WR89%, >5K低下 WR83%)
+    if price <= 2000:
+        score += 3
+    elif price >= 5000:
+        score -= 3
+
+    return round(max(0, min(100, score)), 1)
+
+
+# バックテスト2Y実績: (rule, score_band) → avg return %
+_EXPECTED_RETURN = {
+    ("B4", "green"): 4.88, ("B4", "yellow"): 2.05, ("B4", "gray"): 1.19,
+    ("B1", "green"): 3.90, ("B1", "yellow"): 1.29, ("B1", "gray"): 0.90,
+    ("B3", "green"): 1.06, ("B3", "yellow"): 1.06, ("B3", "gray"): 0.78,
+    ("B2", "green"): 1.48, ("B2", "yellow"): 1.48, ("B2", "gray"): 0.97,
+}
+
+
+def compute_expected_profit(rule: str, rank_score: float, entry_price: float) -> int:
+    """100株あたりの期待利益額（円）"""
+    band = "green" if rank_score >= 80 else "yellow" if rank_score >= 60 else "gray"
+    avg_ret = _EXPECTED_RETURN.get((rule, band), 1.0)
+    return int(entry_price * avg_ret / 100 * 100)
+
+
 def _upper_limit(price: float) -> float:
     for threshold, limit in _LIMIT_TABLE:
         if price < threshold:
@@ -55,23 +189,26 @@ def _upper_limit(price: float) -> float:
     return price + 150000
 
 
-def required_margin(entry_price: float) -> float:
-    return _upper_limit(entry_price) * 100
+def _required_margin(prev_close: float) -> float:
+    """§7: upper_limit(prev_close) × 100株"""
+    return _upper_limit(prev_close) * 100
+
+
+def _get_max_hold(capital: float) -> int:
+    return MAX_HOLD_HIGH if capital >= CAPITAL_THRESHOLD else MAX_HOLD_LOW
 
 
 def load_available_margin() -> float:
-    """利用可能証拠金を読み込み"""
     if not CREDIT_CSV.exists():
-        print(f"  [WARN] {CREDIT_CSV} not found, using default 3,000,000")
-        return 3_000_000
+        print(f"  [WARN] {CREDIT_CSV} not found, using default 4,650,000")
+        return 4_650_000
     df = pd.read_csv(CREDIT_CSV)
     if df.empty:
-        return 3_000_000
+        return 4_650_000
     return float(df.iloc[-1]["available_margin"])
 
 
 def load_hold_stocks() -> set[str]:
-    """保有銘柄のtickerセットを返す"""
     if not HOLD_CSV.exists():
         return set()
     df = pd.read_csv(HOLD_CSV)
@@ -82,11 +219,10 @@ def load_hold_stocks() -> set[str]:
 
 def main() -> int:
     print("=" * 60)
-    print("Generate Granville Recommendations")
+    print("Generate Granville Recommendations (IMPLEMENTATION.md §5,§7,§8)")
     print(f"  {datetime.now().isoformat()}")
     print("=" * 60)
 
-    # 最新シグナルファイルを特定
     signal_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
     if not signal_files:
         print("[ERROR] No signal files found")
@@ -102,13 +238,14 @@ def main() -> int:
 
     date_str = signal_path.stem.replace("signals_", "")
 
-    # 証拠金と保有銘柄
     available = load_available_margin()
     hold_tickers = load_hold_stocks()
+    max_hold = _get_max_hold(available)
     print(f"  Available margin: ¥{available:,.0f}")
+    print(f"  MAX_HOLD: {max_hold} days")
     print(f"  Existing positions: {len(hold_tickers)}")
 
-    # 保有銘柄除外
+    # §8: 既存保有銘柄を除外
     before = len(signals)
     signals = signals[~signals["ticker"].isin(hold_tickers)].copy()
     if before > len(signals):
@@ -118,31 +255,84 @@ def main() -> int:
         print("[INFO] No new recommendations (all held)")
         return 0
 
-    # 証拠金計算
-    print("\n[2/3] Computing margins...")
-    signals["margin"] = signals["entry_price_est"].apply(required_margin)
-    signals["concentration_pct"] = signals["margin"] / available * 100
+    # 特徴量計算（スコアリング用）
+    print("\n[2/5] Computing features for scoring...")
+    ps = pd.read_parquet(PRICES_PATH)
+    ps["date"] = pd.to_datetime(ps["date"])
+    sig_date = pd.to_datetime(signals["signal_date"].iloc[0])
+    # 直近60日分あれば十分
+    ps = ps[ps["date"] >= sig_date - pd.Timedelta(days=90)].copy()
+    ps = ps.sort_values(["ticker", "date"]).reset_index(drop=True)
 
-    # ソート: ルール優先→RSI14昇順（lowest first）
+    g = ps.groupby("ticker")
+    ps["vol20"] = g["Volume"].transform(lambda x: x.rolling(20, min_periods=20).mean())
+    ps["vol_ratio"] = ps["Volume"] / ps["vol20"]
+    ps["prev_close_tr"] = g["Close"].shift(1)
+    ps["tr"] = np.maximum(
+        ps["High"] - ps["Low"],
+        np.maximum(abs(ps["High"] - ps["prev_close_tr"]), abs(ps["Low"] - ps["prev_close_tr"])),
+    )
+    ps["atr10"] = g["tr"].transform(lambda x: x.rolling(10, min_periods=10).mean())
+    ps["atr10_pct"] = ps["atr10"] / ps["Close"] * 100
+
+    # RSI14
+    avg_gain = g["Close"].transform(
+        lambda x: x.diff().where(x.diff() > 0, 0).rolling(14, min_periods=14).mean(),
+    )
+    avg_loss = g["Close"].transform(
+        lambda x: (-x.diff()).where(x.diff() < 0, 0).rolling(14, min_periods=14).mean(),
+    )
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    ps["rsi14"] = 100 - 100 / (1 + rs)
+
+    # ret5d
+    ps["ret5d"] = g["Close"].transform(lambda x: x.pct_change(5) * 100)
+
+    # シグナル日の特徴量をマージ
+    latest = ps[ps["date"] == sig_date][["ticker", "vol_ratio", "atr10_pct", "rsi14", "ret5d"]].copy()
+    signals = signals.merge(latest, on="ticker", how="left")
+    signals["vol_ratio"] = signals["vol_ratio"].fillna(1.0)
+    signals["atr10_pct"] = signals["atr10_pct"].fillna(3.0)
+    signals["rsi14"] = signals["rsi14"].fillna(50.0)
+    signals["ret5d"] = signals["ret5d"].fillna(0.0)
+
+    # スコア計算
+    print("\n[3/5] Scoring...")
+    signals["rank_score"] = signals.apply(
+        lambda r: compute_rank_score(r, r["rule"]), axis=1,
+    )
+    # 期待利益額（100株あたり）
+    signals["expected_profit"] = signals.apply(
+        lambda r: compute_expected_profit(r["rule"], r["rank_score"], float(r["close"])),
+        axis=1,
+    )
+
+    # ルール優先 → 同一ルール内はスコア降順
     signals["_priority"] = signals["rule"].map(RULE_PRIORITY)
-    if "rsi14" in signals.columns:
-        signals = signals.sort_values(["_priority", "rsi14"], ascending=[True, True])
-    else:
-        signals = signals.sort_values(["_priority", "dev_from_sma20"])
+    signals = signals.sort_values(["_priority", "rank_score"], ascending=[True, False])
 
-    # 資金制約フィルタリング
-    print("\n[3/3] Applying constraints...")
+    # §7: 証拠金計算（prev_closeベース）
+    print("\n[4/5] Computing margins (prev_close based)...")
+    if "prev_close" in signals.columns:
+        signals["margin"] = signals["prev_close"].apply(_required_margin)
+    else:
+        # prev_closeが無い場合はentry_price_estで代替
+        print("  [WARN] prev_close not in signals, using entry_price_est")
+        signals["margin"] = signals["entry_price_est"].apply(_required_margin)
+
+    # §8: 資金制約フィルタリング
+    print("\n[5/5] Applying constraints...")
     recommended: list[dict] = []
     remaining = available
 
     for _, row in signals.iterrows():
         margin = float(row["margin"])
 
-        # 集中制限チェック
-        if margin / available > CONCENTRATION_LIMIT:
+        # §7: 証拠金上限15%チェック（株価フィルター）
+        if margin > available * MARGIN_LIMIT_PCT:
             continue
 
-        # 残余証拠金チェック
+        # 残余力不足
         if margin > remaining:
             continue
 
@@ -153,14 +343,20 @@ def main() -> int:
             "stock_name": row.get("stock_name", ""),
             "sector": row.get("sector", ""),
             "rule": row["rule"],
+            "rank_score": float(row.get("rank_score", 50)),
             "close": float(row["close"]),
             "entry_price_est": float(row["entry_price_est"]),
+            "prev_close": float(row.get("prev_close", row["entry_price_est"])),
             "sma20": float(row["sma20"]),
             "dev_from_sma20": float(row["dev_from_sma20"]),
+            "atr10_pct": round(float(row.get("atr10_pct", 0)), 2),
+            "vol_ratio": round(float(row.get("vol_ratio", 0)), 2),
+            "rsi14": round(float(row.get("rsi14", 0)), 1),
+            "ret5d": round(float(row.get("ret5d", 0)), 2),
+            "expected_profit": int(row.get("expected_profit", 0)),
             "margin": int(margin),
-            "concentration_pct": round(margin / available * 100, 1),
-            "max_hold": MAX_HOLD[row["rule"]],
-            "rsi14": round(float(row.get("rsi14", 0)), 2),
+            "margin_pct": round(margin / available * 100, 1),
+            "max_hold": max_hold,
         }
         recommended.append(rec)
 
@@ -169,7 +365,6 @@ def main() -> int:
         print("[INFO] No recommendations (all filtered by constraints)")
         return 0
 
-    # 保存
     rec_path = GRANVILLE_DIR / f"recommendations_{date_str}.parquet"
     result.to_parquet(rec_path, index=False)
     print(f"\n[OK] {len(result)} recommendations → {rec_path.name}")
@@ -183,11 +378,12 @@ def main() -> int:
         if not rdf.empty:
             print(f"  {rule}: {len(rdf)} stocks, margin ¥{rdf['margin'].sum():,.0f}")
 
-    print(f"\nTop recommendations:")
-    for _, row in result.head(10).iterrows():
-        rsi = f" RSI={row['rsi14']:.1f}" if "rsi14" in row else ""
+    print(f"\nRecommendations:")
+    for _, row in result.iterrows():
         print(f"  [{row['rule']}] {row['ticker']} {row['stock_name']} "
-              f"¥{row['entry_price_est']:,.0f} margin=¥{row['margin']:,.0f}{rsi}")
+              f"Score={row['rank_score']:.0f} 期待¥{row['expected_profit']:,} "
+              f"¥{row['entry_price_est']:,.0f} ATR={row['atr10_pct']:.1f}% "
+              f"margin=¥{row['margin']:,.0f}")
 
     # S3アップロード
     try:

@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """
 generate_granville_signals.py
-グランビル B1-B4 シグナル生成（TOPIX 1,660銘柄）
+グランビル B1-B4 シグナル生成（TOPIX 約1,660銘柄）
 
-新体系:
-  B1: 前日Close < SMA20, 当日Close > SMA20, SMA20上昇
-  B2: SMA20上昇, 乖離 [-5, 0), Close < SMA20, 陽線
-  B3: SMA20上昇, Close > SMA20, 乖離 [0, 3], 乖離縮小, 陽線
-  B4: 乖離 < -8%, 陽線
+IMPLEMENTATION.md §3-§5 準拠:
+  B1: prev_below AND above AND sma_up
+  B2: sma_up AND dev ∈ [-5%, 0%] AND up_day AND below
+  B3: sma_up AND above AND dev ∈ [0%, +3%] AND (prev_dev > dev) AND up_day
+  B4: (dev < -8%) AND up_day
 
-出口:
-  20日高値: High >= rolling(20).max()
-  MAX_HOLD: B1=7日, B2=30日, B3=5日, B4=13日
+  up_day = Close > prev_close（前日比陽線。Close > Open ではない）
+  優先順位: B4 > B1 > B3 > B2
+  同一ルール内: 到着順（RSI sortは有害、禁止）
+
+Exit（§6）:
+  20日高値: High[t] >= max(High[t-19:t+1])
+  MAX_HOLD: 資金 < 3,000万 → 10日統一 / ≥ 3,000万 → 60日統一
   SLなし
 
 出力:
   data/parquet/granville/signals_YYYY-MM-DD.parquet
-  (S3: s3://<bucket>/parquet/granville/)
+  data/parquet/granville/positions_YYYY-MM-DD.parquet
 """
 from __future__ import annotations
 
@@ -42,20 +46,40 @@ GRANVILLE_DIR = PARQUET_DIR / "granville"
 PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
+CSV_DIR = ROOT / "data" / "csv"
+CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 
-MAX_HOLD = {"B1": 7, "B2": 30, "B3": 5, "B4": 13}
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
+CAPITAL_THRESHOLD = 30_000_000  # §6: 段階切替閾値
+MAX_HOLD_LOW = 10   # 資金 < 3,000万: 全ルール10日
+MAX_HOLD_HIGH = 60  # 資金 >= 3,000万: 全ルール60日
+
+
+def _get_max_hold(capital: float) -> int:
+    """§6: 資金額に応じたMAX_HOLD"""
+    return MAX_HOLD_HIGH if capital >= CAPITAL_THRESHOLD else MAX_HOLD_LOW
+
+
+def _load_capital() -> float:
+    """信用余力を読み込み"""
+    if CREDIT_CSV.exists():
+        try:
+            cc = pd.read_csv(CREDIT_CSV)
+            if not cc.empty:
+                return float(cc.iloc[-1]["available_margin"])
+        except Exception:
+            pass
+    return 4_650_000  # §7: デフォルト465万
 
 
 def load_prices() -> pd.DataFrame:
-    """TOPIX価格データを読み込み、テクニカル指標を計算"""
+    """TOPIX価格データを読み込み、テクニカル指標を計算（§3準拠）"""
     print("[1/4] Loading prices...")
     ps = pd.read_parquet(PRICES_PATH)
     ps["date"] = pd.to_datetime(ps["date"])
     ps = ps.sort_values(["ticker", "date"]).reset_index(drop=True)
     print(f"  {len(ps):,} rows, {ps['ticker'].nunique()} tickers")
 
-    # テクニカル指標
     g = ps.groupby("ticker")
     ps["sma20"] = g["Close"].transform(lambda x: x.rolling(20, min_periods=20).mean())
     ps["sma20_slope"] = g["sma20"].transform(lambda x: x.diff(3))
@@ -64,16 +88,15 @@ def load_prices() -> pd.DataFrame:
     ps["dev_from_sma20"] = (ps["Close"] - ps["sma20"]) / ps["sma20"] * 100
     ps["prev_dev"] = g["dev_from_sma20"].shift(1)
 
-    # RSI 14（同一ルール内ソートに使用）
-    delta = g["Close"].diff()
-    gain = delta.clip(lower=0)
-    loss = (-delta).clip(lower=0)
-    avg_gain = gain.groupby(ps["ticker"]).transform(lambda x: x.rolling(14, min_periods=14).mean())
-    avg_loss = loss.groupby(ps["ticker"]).transform(lambda x: x.rolling(14, min_periods=14).mean())
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    ps["rsi14"] = 100 - (100 / (1 + rs))
+    # ATR(10): ポジション管理用
+    ps["prev_close_tr"] = g["Close"].shift(1)
+    ps["tr"] = np.maximum(
+        ps["High"] - ps["Low"],
+        np.maximum(abs(ps["High"] - ps["prev_close_tr"]), abs(ps["Low"] - ps["prev_close_tr"]))
+    )
+    ps["atr10"] = g["tr"].transform(lambda x: x.rolling(10, min_periods=10).mean())
 
-    # 派生フラグ
+    # §3: up_day = Close > prev_close（前日比陽線）
     ps["sma20_up"] = ps["sma20_slope"] > 0
     ps["above"] = ps["Close"] > ps["sma20"]
     ps["below"] = ps["Close"] < ps["sma20"]
@@ -81,48 +104,48 @@ def load_prices() -> pd.DataFrame:
     ps["up_day"] = ps["Close"] > ps["prev_close"]
 
     ps = ps.dropna(subset=["sma20"])
-
     return ps
 
 
 def load_meta() -> pd.DataFrame:
-    """銘柄メタデータ読み込み"""
     if META_PATH.exists():
         m = pd.read_parquet(META_PATH)
     elif META_FALLBACK.exists():
         m = pd.read_parquet(META_FALLBACK)
     else:
         return pd.DataFrame(columns=["ticker", "stock_name", "sectors"])
-
     if "sectors" in m.columns:
         m["sectors"] = m["sectors"].str.replace("･", "・", regex=False)
     return m
 
 
 def detect_signals(df: pd.DataFrame) -> pd.DataFrame:
-    """B1-B4 シグナルを検出"""
+    """§4: B1-B4 シグナル検出"""
     df = df.copy()
     dev = df["dev_from_sma20"]
     sma_up = df["sma20_up"]
 
-    # B1: ゴールデンクロス
     df["B1"] = df["prev_below"] & df["above"] & sma_up
-
-    # B2: 押し目買い
     df["B2"] = sma_up & dev.between(-5, 0) & df["up_day"] & df["below"]
-
-    # B3: SMA支持
     df["B3"] = sma_up & df["above"] & dev.between(0, 3) & (df["prev_dev"] > dev) & df["up_day"]
-
-    # B4: 売られすぎ反発
     df["B4"] = (dev < -8) & df["up_day"]
 
     return df
 
 
-def generate_signals() -> pd.DataFrame:
+def assign_rule(row: pd.Series) -> str:
+    """§5: B4 > B1 > B3 > B2"""
+    if row["B4"]:
+        return "B4"
+    if row["B1"]:
+        return "B1"
+    if row["B3"]:
+        return "B3"
+    return "B2"
+
+
+def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
     """最新日のシグナルを生成"""
-    ps = load_prices()
     ps = detect_signals(ps)
     meta = load_meta()
 
@@ -131,8 +154,7 @@ def generate_signals() -> pd.DataFrame:
 
     latest = ps[ps["date"] == latest_date].copy()
 
-    rules = ["B1", "B2", "B3", "B4"]
-    for r in rules:
+    for r in ["B1", "B2", "B3", "B4"]:
         print(f"  {r}: {latest[r].sum()} signals")
 
     sig_mask = latest["B1"] | latest["B2"] | latest["B3"] | latest["B4"]
@@ -142,19 +164,8 @@ def generate_signals() -> pd.DataFrame:
     if signals.empty:
         return pd.DataFrame()
 
-    # ルール割り当て（優先順位: B4 > B1 > B3 > B2）
-    def assign_rule(row: pd.Series) -> str:
-        if row["B4"]:
-            return "B4"
-        if row["B1"]:
-            return "B1"
-        if row["B3"]:
-            return "B3"
-        return "B2"
-
     signals["rule"] = signals.apply(assign_rule, axis=1)
 
-    # メタ結合
     if not meta.empty:
         signals = signals.merge(
             meta[["ticker", "stock_name", "sectors"]].drop_duplicates(subset="ticker"),
@@ -164,7 +175,6 @@ def generate_signals() -> pd.DataFrame:
         signals["stock_name"] = ""
         signals["sectors"] = ""
 
-    # 出力スキーマ
     out = pd.DataFrame({
         "signal_date": signals["date"],
         "ticker": signals["ticker"],
@@ -177,23 +187,25 @@ def generate_signals() -> pd.DataFrame:
         "dev_from_sma20": signals["dev_from_sma20"].round(3),
         "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"].round(1),
-        "rsi14": signals["rsi14"].round(2),
+        "prev_close": signals["prev_close"].round(1),
     })
 
-    # ルール優先順位 → 同一ルール内RSI14昇順（lowest first）
+    # §5: ルール優先のみ。同一ルール内は到着順（ソートなし）
     out["_priority"] = out["rule"].map(RULE_PRIORITY)
-    out = out.sort_values(["_priority", "rsi14"], ascending=[True, True]).drop(columns=["_priority"]).reset_index(drop=True)
+    out = out.sort_values("_priority", ascending=True).drop(columns=["_priority"]).reset_index(drop=True)
 
     return out
 
 
 def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFrame:
-    """過去シグナルから保有ポジション + Exit候補を計算"""
+    """§6: 過去シグナルから保有ポジション + Exit候補を計算"""
     print("\n[3/4] Generating positions...")
 
-    # 過去60日のシグナルを検出
-    max_lookback = max(MAX_HOLD.values())
-    cutoff = latest_date - pd.Timedelta(days=max_lookback * 2)
+    capital = _load_capital()
+    max_hold = _get_max_hold(capital)
+    print(f"  Capital: ¥{capital:,.0f} → MAX_HOLD: {max_hold} days")
+
+    cutoff = latest_date - pd.Timedelta(days=max_hold * 2)
     recent = ps[ps["date"] >= cutoff].copy()
     recent = detect_signals(recent)
 
@@ -204,26 +216,27 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
         print("  No recent signals")
         return pd.DataFrame()
 
-    def assign_rule(row: pd.Series) -> str:
-        if row["B4"]:
-            return "B4"
-        if row["B1"]:
-            return "B1"
-        if row["B3"]:
-            return "B3"
-        return "B2"
-
     sigs["rule"] = sigs.apply(assign_rule, axis=1)
+
+    # メタデータ結合（stock_name）
+    meta = load_meta()
+    if not meta.empty:
+        sigs = sigs.merge(
+            meta[["ticker", "stock_name"]].drop_duplicates(subset="ticker"),
+            on="ticker", how="left",
+        )
+        sigs["stock_name"] = sigs["stock_name"].fillna("")
+    else:
+        sigs["stock_name"] = ""
 
     rows: list[dict] = []
     for _, sig in sigs.iterrows():
-        rule = sig["rule"]
-        max_hold = MAX_HOLD[rule]
         tk = ps[(ps["ticker"] == sig["ticker"]) & (ps["date"] > sig["date"])].sort_values("date")
 
         if tk.empty:
             continue
 
+        # §5: エントリーはシグナル翌営業日の寄付(Open)
         ep = float(tk.iloc[0]["Open"])
         if pd.isna(ep) or ep <= 0:
             continue
@@ -231,60 +244,65 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
 
         exited = False
         exit_type = ""
+        exit_price = 0.0
 
         for i in range(min(len(tk), max_hold)):
             row = tk.iloc[i]
 
-            # 20日高値Exit
+            # §6: 20日高値Exit — High[t] >= max(High[t-19:t+1])
             if i > 0:
-                past_highs = tk.iloc[max(0, i - 19):i]["High"]
-                if float(row["High"]) >= float(past_highs.max()):
+                start_idx = max(0, i - 19)
+                window_highs = tk.iloc[start_idx:i + 1]["High"]
+                high_20d = float(window_highs.max())
+                if float(row["High"]) >= high_20d:
+                    exit_price = high_20d
                     if row["date"] == latest_date:
                         exit_type = "20d_high"
                     exited = True
                     break
 
-            # MAX_HOLD
+            # §6: MAX_HOLD到達 → 当日終値にて強制決済
             if i >= max_hold - 1:
+                exit_price = float(row["Close"])
                 if row["date"] == latest_date:
                     exit_type = "max_hold"
                 exited = True
                 break
 
-        cur = tk.iloc[min(len(tk) - 1, max_hold - 1)]
+        cur_idx = min(len(tk) - 1, max_hold - 1)
+        cur = tk.iloc[cur_idx]
         cp = float(cur["Close"])
         hold_days = min(len(tk), max_hold)
 
+        # 20日高値: エントリー以降の直近20日間のHigh最大値
+        h20_start = max(0, cur_idx - 19)
+        high_20d = round(float(tk.iloc[h20_start:cur_idx + 1]["High"].max()), 1)
+
+        # ATR(10): 直近の平均true range
+        atr10 = 0.0
+        if "atr10" in cur.index and not pd.isna(cur.get("atr10")):
+            atr10 = round(float(cur["atr10"]), 1)
+
+        base = {
+            "ticker": sig["ticker"],
+            "stock_name": sig.get("stock_name", ""),
+            "rule": sig["rule"],
+            "entry_date": e_date,
+            "entry_price": round(ep, 1),
+            "current_price": round(cp, 1),
+            "high_20d": high_20d,
+            "atr10": atr10,
+            "pct": round((cp / ep - 1) * 100, 2),
+            "pnl": int((cp - ep) * 100),
+            "hold_days": hold_days,
+            "max_hold": max_hold,
+            "as_of": latest_date,
+        }
+
         if not exited:
-            rows.append({
-                "status": "open",
-                "ticker": sig["ticker"],
-                "rule": rule,
-                "entry_date": e_date,
-                "entry_price": round(ep, 1),
-                "current_price": round(cp, 1),
-                "pct": round((cp / ep - 1) * 100, 2),
-                "pnl": int((cp - ep) * 100),
-                "hold_days": hold_days,
-                "max_hold": max_hold,
-                "exit_type": "",
-                "as_of": latest_date,
-            })
+            rows.append({**base, "status": "open", "exit_type": ""})
         elif exit_type:
-            rows.append({
-                "status": "exit",
-                "ticker": sig["ticker"],
-                "rule": rule,
-                "entry_date": e_date,
-                "entry_price": round(ep, 1),
-                "current_price": round(cp, 1),
-                "pct": round((cp / ep - 1) * 100, 2),
-                "pnl": int((cp - ep) * 100),
-                "hold_days": hold_days,
-                "max_hold": max_hold,
-                "exit_type": exit_type,
-                "as_of": latest_date,
-            })
+            rows.append({**base, "status": "exit", "exit_type": exit_type})
 
     result = pd.DataFrame(rows)
     if not result.empty:
@@ -299,7 +317,7 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
 
 def main() -> int:
     print("=" * 60)
-    print("Generate Granville Signals (B1-B4, TOPIX 1,660)")
+    print("Generate Granville Signals (IMPLEMENTATION.md §3-§6)")
     print(f"  {datetime.now().isoformat()}")
     print("=" * 60)
 
@@ -310,8 +328,8 @@ def main() -> int:
 
     GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
 
-    # シグナル生成
-    out = generate_signals()
+    ps = load_prices()
+    out = generate_signals(ps)
 
     if out.empty:
         print("\n[INFO] No signals today")
@@ -321,9 +339,6 @@ def main() -> int:
             print(f"    [{row['rule']}] {row['ticker']} {row['stock_name']} "
                   f"¥{row['close']:,.0f} ({row['dev_from_sma20']:+.1f}%)")
 
-    # 日付別ファイル保存
-    ps = load_prices()
-    ps = detect_signals(ps)
     latest_date = ps["date"].max()
     date_str = latest_date.strftime("%Y-%m-%d")
 
@@ -332,12 +347,13 @@ def main() -> int:
         out = pd.DataFrame(columns=[
             "signal_date", "ticker", "stock_name", "sector", "rule",
             "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
-            "entry_price_est", "rsi14",
+            "entry_price_est", "prev_close",
         ])
     out.to_parquet(signal_path, index=False)
     print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")
 
     # ポジション計算
+    ps = detect_signals(ps)
     positions = generate_positions(ps, latest_date)
     if not positions.empty:
         pos_path = GRANVILLE_DIR / f"positions_{date_str}.parquet"
