@@ -183,70 +183,172 @@ async def get_signals():
 
 @router.get("/api/dev/granville/positions")
 async def get_positions():
-    """保有ポジション + Exit候補"""
-    df = _load_latest("positions")
-    if df.empty:
-        return {"positions": [], "exits": [], "as_of": None}
-
-    as_of = None
-    if "as_of" in df.columns:
-        as_of = pd.to_datetime(df["as_of"].iloc[0]).strftime("%Y-%m-%d")
-
-    # stock_nameがなければメタから補完
-    if "stock_name" not in df.columns:
-        for p in [META_PATH, META_FALLBACK]:
-            if p.exists():
-                meta = pd.read_parquet(p, columns=["ticker", "stock_name"])
-                name_map = dict(zip(meta["ticker"], meta["stock_name"]))
-                df["stock_name"] = df["ticker"].map(name_map).fillna("")
-                break
-        else:
-            df["stock_name"] = ""
-
+    """保有ポジション（MarketSpeed実データ）+ Exit候補（シグナル算出）"""
+    # 実保有ポジション（hold_stocks.parquet）
+    hold_df = _load_hold_stocks()
     positions = []
+    as_of = None
+
+    if not hold_df.empty:
+        if "as_of" in hold_df.columns:
+            as_of = str(hold_df["as_of"].iloc[0])[:10]
+        for _, r in hold_df.iterrows():
+            cost = _safe_float(r.get("cost_total", 0))
+            mv = _safe_float(r.get("market_value", 0))
+            qty = _safe_int(r.get("quantity", 100))
+            entry_price = round(cost / qty) if qty > 0 else 0
+            current_price = _safe_float(r.get("current_price", 0))
+            pnl = _safe_float(r.get("unrealized_pnl", 0))
+            pct = _safe_float(r.get("unrealized_pct", 0), 2)
+            direction = str(r.get("direction", ""))
+
+            positions.append({
+                "ticker": str(r.get("ticker", "")),
+                "stock_name": str(r.get("stock_name", "")),
+                "rule": "",
+                "direction": direction,
+                "margin_type": str(r.get("margin_type", "")),
+                "deadline": str(r.get("deadline", "")),
+                "entry_date": "",
+                "entry_price": entry_price,
+                "current_price": current_price,
+                "quantity": qty,
+                "cost_total": _safe_int(cost),
+                "market_value": _safe_int(mv),
+                "high_20d": 0,
+                "atr10": 0,
+                "gap_to_high": 0,
+                "unrealized_pct": pct,
+                "unrealized_yen": _safe_int(pnl),
+                "hold_days": 0,
+                "max_hold": 0,
+                "remaining_days": 0,
+                "exit_type": "",
+            })
+
+    # Exit候補（シグナル算出ポジション）
     exits = []
-    for _, r in df.iterrows():
-        cp = _safe_float(r.get("current_price", 0))
-        high_20d = _safe_float(r.get("high_20d", 0))
-        atr10 = _safe_float(r.get("atr10", 0))
-        entry = {
-            "ticker": r.get("ticker", ""),
-            "stock_name": r.get("stock_name", ""),
-            "rule": r.get("rule", ""),
-            "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d") if "entry_date" in r else "",
-            "entry_price": _safe_float(r.get("entry_price", 0)),
-            "current_price": cp,
-            "high_20d": high_20d,
-            "atr10": atr10,
-            "gap_to_high": _safe_int(round(high_20d - cp)) if high_20d > 0 else 0,
-            "unrealized_pct": _safe_float(r.get("pct", 0), 2),
-            "unrealized_yen": _safe_int(r.get("pnl", 0)),
-            "hold_days": _safe_int(r.get("hold_days", 0)),
-            "max_hold": _safe_int(r.get("max_hold", 0)),
-            "remaining_days": max(0, _safe_int(r.get("max_hold", 0)) - _safe_int(r.get("hold_days", 0))),
-            "exit_type": r.get("exit_type", ""),
-        }
-        if r.get("status") == "exit":
-            exits.append(entry)
-        else:
-            positions.append(entry)
+    calc_df = _load_latest("positions")
+    if not calc_df.empty and "status" in calc_df.columns:
+        exit_df = calc_df[calc_df["status"] == "exit"]
+        if "stock_name" not in exit_df.columns:
+            for p in [META_PATH, META_FALLBACK]:
+                if p.exists():
+                    meta = pd.read_parquet(p, columns=["ticker", "stock_name"])
+                    name_map = dict(zip(meta["ticker"], meta["stock_name"]))
+                    exit_df = exit_df.copy()
+                    exit_df["stock_name"] = exit_df["ticker"].map(name_map).fillna("")
+                    break
+            else:
+                exit_df = exit_df.copy()
+                exit_df["stock_name"] = ""
+        for _, r in exit_df.iterrows():
+            cp = _safe_float(r.get("current_price", 0))
+            high_20d = _safe_float(r.get("high_20d", 0))
+            exits.append({
+                "ticker": r.get("ticker", ""),
+                "stock_name": r.get("stock_name", ""),
+                "rule": r.get("rule", ""),
+                "direction": "",
+                "margin_type": "",
+                "deadline": "",
+                "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d") if "entry_date" in r else "",
+                "entry_price": _safe_float(r.get("entry_price", 0)),
+                "current_price": cp,
+                "quantity": 100,
+                "cost_total": 0,
+                "market_value": 0,
+                "high_20d": high_20d,
+                "atr10": _safe_float(r.get("atr10", 0)),
+                "gap_to_high": _safe_int(round(high_20d - cp)) if high_20d > 0 else 0,
+                "unrealized_pct": _safe_float(r.get("pct", 0), 2),
+                "unrealized_yen": _safe_int(r.get("pnl", 0)),
+                "hold_days": _safe_int(r.get("hold_days", 0)),
+                "max_hold": _safe_int(r.get("max_hold", 0)),
+                "remaining_days": max(0, _safe_int(r.get("max_hold", 0)) - _safe_int(r.get("hold_days", 0))),
+                "exit_type": r.get("exit_type", ""),
+            })
 
     return {"positions": positions, "exits": exits, "as_of": as_of}
 
 
-@router.get("/api/dev/granville/status")
-async def get_status():
-    """証拠金残、ポジション数、シグナル数"""
-    # §7: デフォルト465万
-    available_margin = 4_650_000
-    credit_csv = CSV_DIR / "credit_capacity.csv"
-    if credit_csv.exists():
+def _load_credit_status() -> dict:
+    """現金保証金と信用余力を取得（credit_status.parquet → CSV フォールバック）"""
+    cash_margin = 0
+    # credit_status.parquet（generate_stock_results_html.py が生成）
+    cs_path = PARQUET_DIR / "credit_status.parquet"
+    if cs_path.exists():
         try:
-            cc = pd.read_csv(credit_csv)
-            if not cc.empty:
-                available_margin = float(cc.iloc[-1]["available_margin"])
+            cs = pd.read_parquet(cs_path)
+            row = cs[cs["asset"].str.contains("信用", na=False)]
+            if not row.empty:
+                cash_margin = int(row["value"].iloc[0])
         except Exception:
             pass
+
+    # フォールバック: CSV
+    if cash_margin == 0:
+        credit_csv = CSV_DIR / "credit_capacity.csv"
+        if credit_csv.exists():
+            try:
+                cc = pd.read_csv(credit_csv)
+                if "available_margin" in cc.columns and not cc.empty:
+                    cash_margin = int(float(cc.iloc[-1]["available_margin"]))
+                elif not cc.empty:
+                    # MarketSpeed形式: 現金保証金(信用) の行
+                    for _, r in cc.iterrows():
+                        if "信用" in str(r.iloc[0]):
+                            cash_margin = int(float(str(r.iloc[1]).replace(",", "")))
+                            break
+            except Exception:
+                pass
+
+    if cash_margin == 0:
+        cash_margin = 4_650_000  # デフォルト
+
+    # 信用余力 = 現金保証金 / 委託保証金率(30%) - 既存ポジション評価額
+    position_value = 0
+    hs_path = PARQUET_DIR / "hold_stocks.parquet"
+    if hs_path.exists():
+        try:
+            hs = pd.read_parquet(hs_path)
+            if "market_value" in hs.columns:
+                position_value = int(hs["market_value"].abs().sum())
+        except Exception:
+            pass
+
+    credit_capacity = int(cash_margin / 0.3) - position_value
+
+    return {
+        "cash_margin": cash_margin,
+        "credit_capacity": max(0, credit_capacity),
+        "position_value": position_value,
+    }
+
+
+def _load_hold_stocks() -> pd.DataFrame:
+    """hold_stocks.parquet から実保有ポジションを取得"""
+    hs_path = PARQUET_DIR / "hold_stocks.parquet"
+    if hs_path.exists():
+        try:
+            return pd.read_parquet(hs_path)
+        except Exception:
+            pass
+    # S3フォールバック
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        local = PARQUET_DIR / "hold_stocks.parquet"
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/hold_stocks.parquet", str(local))
+        return pd.read_parquet(local)
+    except Exception:
+        return pd.DataFrame()
+
+
+@router.get("/api/dev/granville/status")
+async def get_status():
+    """現金保証金・信用余力・ポジション数・シグナル数"""
+    credit = _load_credit_status()
 
     # シグナル数
     signals_df = _load_latest("signals")
@@ -255,12 +357,14 @@ async def get_status():
     if not signals_df.empty and "signal_date" in signals_df.columns:
         signal_date = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
 
-    # ポジション数
+    # 実保有ポジション数
+    hold_df = _load_hold_stocks()
+    hold_count = len(hold_df)
+
+    # 算出ポジション（Exit候補用）
     pos_df = _load_latest("positions")
-    open_count = 0
     exit_count = 0
     if not pos_df.empty and "status" in pos_df.columns:
-        open_count = int((pos_df["status"] == "open").sum())
         exit_count = int((pos_df["status"] == "exit").sum())
 
     # 推奨数
@@ -279,11 +383,13 @@ async def get_status():
             rule_breakdown[rule] = 0
 
     return {
-        "available_margin": int(available_margin),
+        "cash_margin": credit["cash_margin"],
+        "credit_capacity": credit["credit_capacity"],
+        "position_value": credit["position_value"],
         "total_margin_used": total_margin_used,
         "signal_count": signal_count,
         "signal_date": signal_date,
-        "open_positions": open_count,
+        "open_positions": hold_count,
         "exit_candidates": exit_count,
         "recommendation_count": rec_count,
         "rule_breakdown": rule_breakdown,
