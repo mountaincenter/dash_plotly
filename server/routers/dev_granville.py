@@ -26,7 +26,8 @@ CSV_DIR = ROOT / "data" / "csv"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
-S3_PREFIX = os.getenv("PARQUET_PREFIX", "parquet/")
+_S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
+S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
 # キャッシュ
@@ -65,7 +66,7 @@ def _load_latest(prefix: str) -> pd.DataFrame:
             import boto3
             s3 = boto3.client("s3", region_name=AWS_REGION)
             resp = s3.list_objects_v2(
-                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}granville/{prefix}_",
+                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/granville/{prefix}_",
             )
             if "Contents" in resp:
                 keys = sorted([o["Key"] for o in resp["Contents"]])
@@ -298,7 +299,7 @@ async def get_stats():
         try:
             import boto3
             s3 = boto3.client("s3", region_name=AWS_REGION)
-            s3_key = f"{S3_PREFIX}backtest/granville_b1b4_archive.parquet"
+            s3_key = f"{S3_PREFIX}/backtest/granville_b1b4_archive.parquet"
             archive_path.parent.mkdir(parents=True, exist_ok=True)
             s3.download_file(S3_BUCKET, s3_key, str(archive_path))
         except Exception:
