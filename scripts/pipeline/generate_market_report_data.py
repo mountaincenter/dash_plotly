@@ -460,6 +460,20 @@ def _fetch_boj_fm08() -> dict[str, Any]:
         return {"error": "fetch_failed", "detail": str(e)}
 
 
+def _short_category(row: pd.Series | dict) -> str:
+    """空売り区分を判定: 制度/いちにち/いちにち残0/NG"""
+    shortable = bool(row.get("shortable", False) or row.get("is_shortable", False))
+    if shortable:
+        return "制度"
+    day_trade = row.get("day_trade", False)
+    if day_trade:
+        dt_shares = row.get("day_trade_available_shares", 0)
+        if pd.isna(dt_shares):
+            dt_shares = 0
+        return "いちにち" if float(dt_shares) > 0 else "いちにち残0"
+    return "NG"
+
+
 def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]:
     """archive データから grok セクションを構築（grade カラムがない場合あり）"""
     details = []
@@ -473,7 +487,7 @@ def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]
             "grade": row.get("grade", ""),
             "buy_price": _f(row.get("buy_price")),
             "shortable": bool(row.get("shortable", False)),
-            "margin_code_name": row.get("margin_code_name", ""),
+            "short_category": _short_category(row),
             "p2_long": p2_long,
             "short_result": _f(short_result),
             "short_result_label": label,
@@ -487,8 +501,8 @@ def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]
 
     g1g2 = [d for d in details if d["grade"] in ("G1", "G2")]
     g1g2_short_total = sum(d["short_result"] or 0 for d in g1g2)
-    g1g2_shortable = [d for d in g1g2 if d["shortable"]]
-    g1g2_shortable_total = sum(d["short_result"] or 0 for d in g1g2_shortable)
+    g1g2_tradeable = [d for d in g1g2 if d.get("short_category") in ("制度", "いちにち")]
+    g1g2_tradeable_total = sum(d["short_result"] or 0 for d in g1g2_tradeable)
 
     return {
         "selection_date": date,
@@ -497,7 +511,7 @@ def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]
         "details": details,
         "summary": {
             "g1g2_short_total": _f(g1g2_short_total),
-            "g1g2_shortable_total": _f(g1g2_shortable_total),
+            "g1g2_tradeable_total": _f(g1g2_tradeable_total),
             "g1g2_count": len(g1g2),
             "g1g2_win": sum(1 for d in g1g2 if d["short_result_label"] == "WIN"),
             "g1g2_lose": sum(1 for d in g1g2 if d["short_result_label"] == "LOSE"),
@@ -565,7 +579,7 @@ def build_grok(date: str) -> dict[str, Any] | None:
             "grade": row.get("grade", ""),
             "buy_price": _f(row.get("Close", row.get("close"))),
             "shortable": bool(row.get("shortable", False)),
-            "margin_code_name": row.get("margin_code_name", ""),
+            "short_category": _short_category(row),
             "p2_long": _f(p2_long),
             "short_result": _f(short_result),
             "short_result_label": label,
@@ -574,8 +588,8 @@ def build_grok(date: str) -> dict[str, Any] | None:
     # G1+G2 サマリー
     g1g2 = [d for d in details if d["grade"] in ("G1", "G2")]
     g1g2_short_total = sum(d["short_result"] or 0 for d in g1g2)
-    g1g2_shortable = [d for d in g1g2 if d["shortable"]]
-    g1g2_shortable_total = sum(d["short_result"] or 0 for d in g1g2_shortable)
+    g1g2_tradeable = [d for d in g1g2 if d["short_category"] in ("制度", "いちにち")]
+    g1g2_tradeable_total = sum(d["short_result"] or 0 for d in g1g2_tradeable)
     g1g2_win = sum(1 for d in g1g2 if d["short_result_label"] == "WIN")
     g1g2_lose = sum(1 for d in g1g2 if d["short_result_label"] == "LOSE")
     g1g2_draw = sum(1 for d in g1g2 if d["short_result_label"] == "DRAW")
@@ -587,7 +601,7 @@ def build_grok(date: str) -> dict[str, Any] | None:
         "details": details,
         "summary": {
             "g1g2_short_total": _f(g1g2_short_total),
-            "g1g2_shortable_total": _f(g1g2_shortable_total),
+            "g1g2_tradeable_total": _f(g1g2_tradeable_total),
             "g1g2_count": len(g1g2),
             "g1g2_win": g1g2_win,
             "g1g2_lose": g1g2_lose,

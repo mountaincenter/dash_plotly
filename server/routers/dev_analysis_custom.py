@@ -382,6 +382,7 @@ async def get_custom_summary(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
+    grades: str = "",
 ):
     """
     カスタム分析サマリーAPI
@@ -391,6 +392,7 @@ async def get_custom_summary(
     - price_min: 価格下限 (デフォルト: 0)
     - price_max: 価格上限 (デフォルト: 999999)
     - price_step: 細分化ステップ (0=細分化なし、デフォルト価格帯を使用)
+    - grades: カンマ区切りのGradeフィルター (例: "G1,G2")
 
     Returns:
     - timeSegments11: 11時間区分定義
@@ -400,6 +402,9 @@ async def get_custom_summary(
     - overall: 全体統計
     - weekdays: 曜日別データ
     """
+    # Gradeフィルター解析
+    grade_filter = [g.strip() for g in grades.split(",") if g.strip()] if grades else []
+
     # 価格帯生成
     # 刻みは明示的な価格範囲指定時のみ有効（全範囲では無視）
     # データ最大は約20,000円なので、20,000円以下の範囲で刻みを適用
@@ -420,6 +425,10 @@ async def get_custom_summary(
             price_ranges = [pr for pr in price_ranges if pr["max"] > price_min and pr["min"] < price_max]
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
+
+    # Gradeフィルター（ml_gradeカラムがある場合のみ）
+    if grade_filter and "ml_grade" in df_raw.columns:
+        df_raw = df_raw[df_raw["ml_grade"].isin(grade_filter)].copy()
 
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:
@@ -470,6 +479,10 @@ async def get_custom_summary(
     # 価格帯ラベルリスト
     price_range_labels = [pr["label"] for pr in price_ranges]
 
+    # Grade情報
+    has_grades = "ml_grade" in df.columns if len(df) > 0 else False
+    available_grades = sorted(df["ml_grade"].dropna().unique().tolist()) if has_grades else []
+
     return JSONResponse(content={
         "generatedAt": datetime.now().isoformat(),
         "timeSegments11": TIME_SEGMENTS_11,
@@ -484,6 +497,11 @@ async def get_custom_summary(
             "priceMin": price_min,
             "priceMax": price_max,
             "priceStep": price_step,
+            "grades": grade_filter,
+        },
+        "gradeInfo": {
+            "available": has_grades,
+            "grades": available_grades,
         },
     })
 
@@ -565,6 +583,7 @@ async def get_custom_details(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
+    grades: str = "",
 ):
     """
     カスタム分析詳細API（11seg対応）
@@ -578,6 +597,9 @@ async def get_custom_details(
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定")
+
+    # Gradeフィルター解析
+    grade_filter = [g.strip() for g in grades.split(",") if g.strip()] if grades else []
 
     # 価格帯生成
     use_step = price_step > 0 and (price_min > 0 or price_max <= 20000)
@@ -595,6 +617,10 @@ async def get_custom_details(
             price_ranges = [pr for pr in price_ranges if pr["max"] > price_min and pr["min"] < price_max]
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
+
+    # Gradeフィルター
+    if grade_filter and "ml_grade" in df_raw.columns:
+        df_raw = df_raw[df_raw["ml_grade"].isin(grade_filter)].copy()
 
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:

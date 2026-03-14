@@ -894,6 +894,13 @@ jobs:
             --only-show-errors
           echo "  ✅ wfcv_predictions.parquet"
 
+          # archive（ml_gradeカラム追加済み）を再アップロード
+          aws s3 cp \
+            data/parquet/backtest/grok_trending_archive.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
+            --only-show-errors
+          echo "  ✅ grok_trending_archive.parquet (with ml_grade)"
+
           echo ""
           echo "============================================================"
           echo "✅ ML Model Retraining completed!"

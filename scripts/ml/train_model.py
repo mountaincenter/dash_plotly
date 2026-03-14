@@ -347,6 +347,61 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
     print(f"✓ Meta saved: {meta_path}")
 
 
+def update_archive_with_grade():
+    """archiveにml_gradeカラムを追加（既存カラムは変更しない）"""
+    archive_path = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
+    wfcv_path = MODEL_DIR / "wfcv_predictions.parquet"
+
+    if not archive_path.exists() or not wfcv_path.exists():
+        print("[WARN] archive or wfcv not found, skipping grade update")
+        return
+
+    arc = pd.read_parquet(archive_path)
+    wfcv = pd.read_parquet(wfcv_path)
+
+    original_cols = list(arc.columns)
+    original_len = len(arc)
+
+    # 型統一
+    arc["backtest_date"] = pd.to_datetime(arc["backtest_date"])
+    wfcv["backtest_date"] = pd.to_datetime(wfcv["backtest_date"])
+
+    # 既存ml_gradeがあれば削除（再計算のため）
+    if "ml_grade" in arc.columns:
+        arc = arc.drop(columns=["ml_grade"])
+
+    # wfcvの重複を除去（同一日・同一銘柄で複数予測がある場合、最後を採用）
+    wfcv_dedup = wfcv[["backtest_date", "ticker", "ml_grade"]].drop_duplicates(
+        subset=["backtest_date", "ticker"], keep="last"
+    )
+
+    # left joinでml_gradeのみ追加
+    merged = arc.merge(
+        wfcv_dedup,
+        on=["backtest_date", "ticker"],
+        how="left",
+    )
+
+    # 行数が変わっていないことを検証
+    if len(merged) != original_len:
+        print(f"[ERROR] Row count changed: {original_len} -> {len(merged)}. Aborting.")
+        return
+
+    # 既存カラムが全て残っていることを検証
+    for col in original_cols:
+        if col == "ml_grade":
+            continue
+        if col not in merged.columns:
+            print(f"[ERROR] Column '{col}' lost after merge. Aborting.")
+            return
+
+    matched = merged["ml_grade"].notna().sum()
+    print(f"\n[INFO] Archive ml_grade update: {matched}/{original_len} rows matched")
+
+    merged.to_parquet(archive_path, index=False)
+    print(f"✓ Archive updated with ml_grade: {archive_path}")
+
+
 def main():
     """メイン処理"""
     print("=" * 60)
@@ -367,6 +422,9 @@ def main():
 
     # モデル保存
     save_model(best_model, feature_names, metrics)
+
+    # archiveにml_gradeカラムを追加
+    update_archive_with_grade()
 
     print("\n" + "=" * 60)
     print("Training completed!")
