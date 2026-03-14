@@ -1,0 +1,12 @@
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+
+# Backup files
+*.backup
+
+# Lambda zip
+lambda_function.zip
