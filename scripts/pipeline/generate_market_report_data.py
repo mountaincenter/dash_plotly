@@ -227,6 +227,47 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
         return {"error": str(e)}
 
 
+def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
+    """日経電子版から騰落銘柄数・売買代金を取得"""
+    try:
+        from bs4 import BeautifulSoup
+        url = "https://www.nikkei.com/markets/kabu/japanidx/"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None
+        soup = BeautifulSoup(resp.text, "html.parser")
+        text = soup.get_text()
+
+        result: dict[str, Any] = {}
+
+        # 値上がり銘柄数
+        import re
+        up_match = re.search(r'値上がり銘柄数\s*(\d[,\d]*)', text)
+        down_match = re.search(r'値下がり銘柄数\s*(\d[,\d]*)', text)
+        unchanged_match = re.search(r'変わらず銘柄数\s*(\d[,\d]*)', text)
+
+        if up_match:
+            result["advancing"] = int(up_match.group(1).replace(',', ''))
+        if down_match:
+            result["declining"] = int(down_match.group(1).replace(',', ''))
+        if unchanged_match:
+            result["unchanged"] = int(unchanged_match.group(1).replace(',', ''))
+
+        # 売買代金（百万円）
+        vol_match = re.search(r'売買代金[^\d]*(\d[,\d]*)百万円', text)
+        if vol_match:
+            result["trading_value_million"] = int(vol_match.group(1).replace(',', ''))
+
+        if result:
+            result["source"] = "nikkei_japanidx"
+            return result
+        return None
+    except Exception as e:
+        print(f"  [WARN] market breadth fetch failed: {e}")
+        return None
+
+
 # ---------------------------------------------------------------------------
 # セクション builders
 # ---------------------------------------------------------------------------
@@ -263,6 +304,11 @@ def build_market_summary(date: str) -> dict[str, Any]:
         vi_copy = vi.copy()
         vi_copy["ticker"] = "VI"
         result["vi"] = _build_ohlc_entry(vi_copy, "VI", date, include_hl=True)
+
+    # 騰落銘柄数・売買代金（日経電子版）
+    breadth = _fetch_market_breadth(date)
+    if breadth:
+        result["market_breadth"] = breadth
 
     return result
 
@@ -721,7 +767,10 @@ def main(target_date: str | None = None) -> int:
     result["grok"] = _safe(lambda: build_grok(date), "grok")
     result["calendar_anomaly"] = _safe(lambda: build_anomaly(date), "calendar_anomaly")
     # 外部CSV取得失敗分を web_search_required に追加
-    web_search = ["騰落銘柄数", "売買代金"]
+    web_search: list[str] = []
+    ms = result.get("market_summary") or {}
+    if not isinstance(ms.get("market_breadth"), dict):
+        web_search.extend(["騰落銘柄数", "売買代金"])
     rates = result.get("rates") or {}
     if isinstance(rates.get("overnight_call"), dict) and "error" in rates["overnight_call"]:
         web_search.append("無担保コールO/N金利")
