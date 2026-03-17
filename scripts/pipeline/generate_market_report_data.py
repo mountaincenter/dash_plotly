@@ -105,11 +105,12 @@ def _detect_target_date() -> str:
 
 
 def _prev_close_for(df: pd.DataFrame, ticker: str, target_date: str) -> float | None:
-    """指定 ticker の前営業日終値を取得"""
+    """指定 ticker の前営業日終値を取得（NaN行は除外）"""
     close_col = "Close" if "Close" in df.columns else "close"
     sub = df[df["ticker"] == ticker].copy() if "ticker" in df.columns else df.copy()
     sub["date"] = pd.to_datetime(sub["date"])
     sub = sub.sort_values("date")
+    sub = sub.dropna(subset=[close_col])
     td = pd.Timestamp(target_date)
     prev = sub[sub["date"] < td]
     if prev.empty:
@@ -118,21 +119,29 @@ def _prev_close_for(df: pd.DataFrame, ticker: str, target_date: str) -> float | 
 
 
 def _row_for(df: pd.DataFrame, ticker: str, target_date: str) -> pd.Series | None:
-    """指定 ticker・日付の行を取得"""
+    """指定 ticker・日付の行を取得（NaN行は除外）"""
     close_col = "Close" if "Close" in df.columns else "close"
     sub = df[df["ticker"] == ticker].copy() if "ticker" in df.columns else df.copy()
     sub["date"] = pd.to_datetime(sub["date"]).dt.strftime("%Y-%m-%d")
     row = sub[sub["date"] == target_date]
     if row.empty:
         return None
-    return row.iloc[0]
+    r = row.iloc[0]
+    # Close が NaN なら無効行
+    if pd.isna(r[close_col]):
+        return None
+    return r
 
 
 def _build_ohlc_entry(df: pd.DataFrame, ticker: str, target_date: str,
                        include_hl: bool = False) -> dict[str, Any]:
-    """OHLC + 前日比のエントリを構築"""
+    """OHLC + 前日比のエントリを構築。parquetになければyfinanceフォールバック"""
     row = _row_for(df, ticker, target_date)
     if row is None:
+        # parquetにデータがない → yfinanceで取得
+        yf_result = _yfinance_ohlc(ticker, target_date, include_hl)
+        if yf_result:
+            return yf_result
         return {"error": "no_data"}
     close_col = "Close" if "Close" in row.index else "close"
     high_col = "High" if "High" in row.index else "high"
@@ -149,6 +158,45 @@ def _build_ohlc_entry(df: pd.DataFrame, ticker: str, target_date: str,
         result["high"] = _f(float(row[high_col])) if high_col in row.index else None
         result["low"] = _f(float(row[low_col])) if low_col in row.index else None
     return result
+
+
+def _yfinance_ohlc(ticker: str, target_date: str, include_hl: bool = False) -> dict[str, Any] | None:
+    """yfinanceからOHLC+前日比を取得（_build_ohlc_entryのフォールバック）"""
+    try:
+        import yfinance as yf
+        end = pd.Timestamp(target_date) + pd.Timedelta(days=3)
+        start = pd.Timestamp(target_date) - pd.Timedelta(days=7)
+        data = yf.download(ticker, start=start.strftime("%Y-%m-%d"),
+                           end=end.strftime("%Y-%m-%d"), progress=False)
+        if data.empty:
+            return None
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+        data = data.sort_index()
+        td = pd.Timestamp(target_date)
+        target_rows = data[data.index == td]
+        if target_rows.empty:
+            # 対象日以前の最新行を使用
+            target_rows = data[data.index <= td].tail(1)
+        if target_rows.empty:
+            return None
+        current = target_rows.iloc[0]
+        close = float(current["Close"])
+        if pd.isna(close):
+            return None
+        # 前日終値
+        prev_rows = data[data.index < td].dropna(subset=["Close"])
+        prev_close = float(prev_rows.iloc[-1]["Close"]) if len(prev_rows) >= 1 else None
+        change = close - prev_close if prev_close else None
+        change_pct = (change / prev_close * 100) if prev_close else None
+        result: dict[str, Any] = {"close": _f(close), "prev_close": _f(prev_close),
+                                   "change": _f(change), "change_pct": _f(change_pct)}
+        if include_hl:
+            result["high"] = _f(float(current["High"])) if not pd.isna(current.get("High")) else None
+            result["low"] = _f(float(current["Low"])) if not pd.isna(current.get("Low")) else None
+        return result
+    except Exception:
+        return None
 
 
 def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
