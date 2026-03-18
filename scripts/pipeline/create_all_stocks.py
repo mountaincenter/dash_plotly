@@ -452,36 +452,14 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
             granville_recs = gr_tickers[cols].copy()
             print(f"  [INFO] Granville recommendations: {len(granville_recs)} stocks from {rec_files[-1].name}")
 
-    # staging: static銘柄(meta_clean)は除外、grok + granville推奨のみ
-    # production統合時はmeta_cleanを戻す
+    # all_stocks = grok既存 + granville推奨のみ
     all_stocks = pd.concat([grok_trending, granville_recs], ignore_index=True)
-    # 重複除去（grokとgranvilleの重複）
     all_stocks = all_stocks.drop_duplicates(subset=["ticker"], keep="first")
-    existing_tickers = set(all_stocks["ticker"])
-    print(f"  [INFO] Staging mode: static銘柄除外, Grok({len(grok_trending)}) + Granville({len(granville_recs)}) = {len(all_stocks)}")
-
-    # TOPIX 1,660銘柄を追加（重複除外）
-    topix = load_topix_stocks()
-    if not topix.empty:
-        topix_new = topix[~topix["ticker"].isin(existing_tickers)].copy()
-        # 既存銘柄にTOPIXカテゴリを追加
-        topix_overlap = set(topix["ticker"]) & existing_tickers
-        if topix_overlap:
-            import numpy as np
-            for ticker in topix_overlap:
-                idx = all_stocks[all_stocks["ticker"] == ticker].index
-                if len(idx) > 0:
-                    cats = list(all_stocks.at[idx[0], "categories"])
-                    if "TOPIX" not in cats:
-                        all_stocks.at[idx[0], "categories"] = np.array(cats + ["TOPIX"])
-            print(f"  [INFO] {len(topix_overlap)} existing stocks tagged as TOPIX")
-        all_stocks = pd.concat([all_stocks, topix_new], ignore_index=True)
-        print(f"  [INFO] Added {len(topix_new)} new TOPIX stocks")
 
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, TOPIX new: {len(topix_new) if not topix.empty else 0})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)})")
     return all_stocks
 
 
