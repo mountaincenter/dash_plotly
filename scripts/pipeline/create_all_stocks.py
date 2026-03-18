@@ -418,9 +418,47 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
     meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
 
-    # マージ（TOPIX以外）
-    all_stocks = pd.concat([meta_clean, scalping_entry, scalping_active, grok_trending], ignore_index=True)
+    # Granville推奨銘柄を読み込み
+    granville_recs = pd.DataFrame()
+    granville_dir = PARQUET_DIR / "granville"
+    rec_files = sorted(granville_dir.glob("recommendations_*.parquet")) if granville_dir.exists() else []
+    if rec_files:
+        latest_rec = pd.read_parquet(rec_files[-1])
+        if not latest_rec.empty and "ticker" in latest_rec.columns:
+            # 18カラム構造に変換
+            import numpy as np
+            gr_tickers = latest_rec[["ticker"]].drop_duplicates().copy()
+            # meta_jquantsから銘柄情報を補完
+            if META_JQUANTS_PATH.exists():
+                mjq = pd.read_parquet(META_JQUANTS_PATH)
+                gr_tickers = gr_tickers.merge(
+                    mjq[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]],
+                    on="ticker", how="left",
+                )
+            for col in ["stock_name", "market", "sectors", "series", "topixnewindexseries"]:
+                if col not in gr_tickers.columns:
+                    gr_tickers[col] = ""
+            gr_tickers["code"] = gr_tickers["ticker"].str.replace(".T", "", regex=False)
+            gr_tickers["categories"] = gr_tickers.apply(lambda x: np.array(["GRANVILLE"]), axis=1)
+            gr_tickers["tags"] = gr_tickers.apply(lambda x: np.array([]), axis=1)
+            for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
+                gr_tickers[col] = None
+            cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
+                    "topixnewindexseries", "categories", "tags", "date", "Close",
+                    "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
+            for c in cols:
+                if c not in gr_tickers.columns:
+                    gr_tickers[c] = None
+            granville_recs = gr_tickers[cols].copy()
+            print(f"  [INFO] Granville recommendations: {len(granville_recs)} stocks from {rec_files[-1].name}")
+
+    # staging: static銘柄(meta_clean)は除外、grok + granville推奨のみ
+    # production統合時はmeta_cleanを戻す
+    all_stocks = pd.concat([grok_trending, granville_recs], ignore_index=True)
+    # 重複除去（grokとgranvilleの重複）
+    all_stocks = all_stocks.drop_duplicates(subset=["ticker"], keep="first")
     existing_tickers = set(all_stocks["ticker"])
+    print(f"  [INFO] Staging mode: static銘柄除外, Grok({len(grok_trending)}) + Granville({len(granville_recs)}) = {len(all_stocks)}")
 
     # TOPIX 1,660銘柄を追加（重複除外）
     topix = load_topix_stocks()
@@ -443,7 +481,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Meta: {len(meta_clean)}, Entry: {len(scalping_entry)}, Active: {len(scalping_active)}, Grok: {len(grok_trending)}, TOPIX new: {len(topix_new) if not topix.empty else 0})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, TOPIX new: {len(topix_new) if not topix.empty else 0})")
     return all_stocks
 
 
