@@ -518,11 +518,14 @@ def calculate_selection_score(item: dict[str, Any]) -> float:
         float: 選定スコア (0-200点)
     """
     # sentiment_score があれば使用、なければ0.5をデフォルト
-    sentiment_score = item.get("sentiment_score", 0.5)
+    try:
+        sentiment_score = float(item.get("sentiment_score", 0.5))
+    except (TypeError, ValueError):
+        sentiment_score = 0.5
     score = sentiment_score * 100  # ベーススコア (0-100)
 
     # policy_link があれば加点
-    policy_link = item.get("policy_link", "Low")
+    policy_link = str(item.get("policy_link", "Low"))
     policy_bonus = {"High": 30, "Med": 20, "Low": 10}
     score += policy_bonus.get(policy_link, 10)
 
@@ -556,7 +559,10 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         stock_name_val = item.get("stock_name", item.get("company_name", ""))
         reason = item.get("reason", "")
         categories_val = item.get("categories", item.get("category", ""))
-        sentiment_score = item.get("sentiment_score", 0.5)
+        try:
+            sentiment_score = float(item.get("sentiment_score", 0.5))
+        except (TypeError, ValueError):
+            sentiment_score = 0.5
         policy_link = item.get("policy_link", "Low")
         has_mention = item.get("has_mention", False)
         mentioned_by = item.get("mentioned_by", "")
