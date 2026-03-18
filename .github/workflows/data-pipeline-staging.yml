@@ -144,13 +144,6 @@ jobs:
           python scripts/pipeline/generate_granville_signals.py
         timeout-minutes: 30
 
-      - name: "[Review] Generate stock results"
-        if: steps.exec_mode.outputs.phase == 'review'
-        run: |
-          echo "📊 Generating stock results (hold_stocks, orders, credit_status)..."
-          python scripts/generate_stock_results_html.py
-        timeout-minutes: 5
-
       - name: "[Review] Upload review results to S3"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -161,10 +154,8 @@ jobs:
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
 
-          # stock results
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet stock_results.parquet stock_results_summary.parquet manifest.json; do
-            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
-          done
+          # manifest
+          [ -f "data/parquet/manifest.json" ] && aws s3 cp "data/parquet/manifest.json" "s3://$S3_BUCKET/${S3_PREFIX}manifest.json" --only-show-errors
 
           echo "✅ Review results uploaded"
 
