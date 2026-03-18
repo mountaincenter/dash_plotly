@@ -39,10 +39,8 @@ CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 HOLD_CSV = CSV_DIR / "hold_stocks.csv"
 
 MARGIN_LIMIT_PCT = 0.15  # §7: 証拠金上限15%（株価フィルター）
-CAPITAL_THRESHOLD = 30_000_000
-MAX_HOLD_LOW = 10
-MAX_HOLD_HIGH = 60
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
+RULE_MAX_HOLD = {"B4": 19, "B1": 13, "B3": 14, "B2": 15}
 
 # §7: 証拠金テーブル
 _LIMIT_TABLE = [
@@ -194,8 +192,8 @@ def _required_margin(prev_close: float) -> float:
     return _upper_limit(prev_close) * 100
 
 
-def _get_max_hold(capital: float) -> int:
-    return MAX_HOLD_HIGH if capital >= CAPITAL_THRESHOLD else MAX_HOLD_LOW
+def _get_max_hold(rule: str) -> int:
+    return RULE_MAX_HOLD.get(rule, 15)
 
 
 def load_available_margin() -> float:
@@ -205,7 +203,11 @@ def load_available_margin() -> float:
     df = pd.read_csv(CREDIT_CSV)
     if df.empty:
         return 4_650_000
-    return float(df.iloc[-1]["available_margin"])
+    if "available_margin" in df.columns:
+        return float(df.iloc[-1]["available_margin"])
+    # credit_capacity.csv が楽天証券フォーマットの場合はデフォルト値を使用
+    print(f"  [WARN] 'available_margin' column not found, using default 4,650,000")
+    return 4_650_000
 
 
 def load_hold_stocks() -> set[str]:
@@ -214,7 +216,12 @@ def load_hold_stocks() -> set[str]:
     df = pd.read_csv(HOLD_CSV)
     if df.empty:
         return set()
-    return set(df["ticker"].tolist())
+    # 楽天証券CSVフォーマット対応: "コード" カラム → ticker形式に変換
+    if "ticker" in df.columns:
+        return set(df["ticker"].tolist())
+    if "コード" in df.columns:
+        return {f"{str(c).strip()}.T" for c in df["コード"]}
+    return set()
 
 
 def main() -> int:
@@ -240,9 +247,8 @@ def main() -> int:
 
     available = load_available_margin()
     hold_tickers = load_hold_stocks()
-    max_hold = _get_max_hold(available)
     print(f"  Available margin: ¥{available:,.0f}")
-    print(f"  MAX_HOLD: {max_hold} days")
+    print(f"  MAX_HOLD: {RULE_MAX_HOLD}")
     print(f"  Existing positions: {len(hold_tickers)}")
 
     # §8: 既存保有銘柄を除外
@@ -356,7 +362,7 @@ def main() -> int:
             "expected_profit": int(row.get("expected_profit", 0)),
             "margin": int(margin),
             "margin_pct": round(margin / available * 100, 1),
-            "max_hold": max_hold,
+            "max_hold": _get_max_hold(row["rule"]),
         }
         recommended.append(rec)
 

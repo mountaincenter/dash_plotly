@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>data/parquet Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-card: #111820;
+    --border: #1e2a3a;
+    --text: #c5cdd8;
+    --text-dim: #5a6a7e;
+    --text-bright: #e8edf3;
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --amber: #f59e0b;
+    --red: #f87171;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--cyan);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+  .subtitle { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 1.5rem; }
+
+  /* Summary bar */
+  .summary {
+    display: flex; gap: 1.5rem; flex-wrap: wrap;
+    margin-bottom: 2rem; padding: 1rem;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;
+  }
+  .summary .count { font-size: 1.2rem; font-weight: 600; }
+  .summary .label { color: var(--text-dim); font-size: 0.65rem; }
+  .s-keep .count { color: var(--green); }
+  .s-remove .count { color: var(--red); }
+  .s-hold .count { color: var(--amber); }
+  .s-uncheck .count { color: var(--text-dim); }
+
+  /* Category */
+  .category {
+    margin-bottom: 2rem;
+  }
+  .cat-header {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.6rem;
+  }
+
+  /* Row */
+  .row {
+    display: grid;
+    grid-template-columns: 100px 1fr 80px 120px 1fr;
+    grid-template-rows: auto auto;
+    gap: 0.4rem 0.6rem;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid rgba(30,42,58,0.5);
+    font-size: 0.75rem;
+    transition: background 0.15s;
+  }
+  .row:hover { background: rgba(255,255,255,0.02); }
+  .row.decided-keep { border-left: 3px solid var(--green); }
+  .row.decided-remove { border-left: 3px solid var(--red); opacity: 0.6; }
+  .row.decided-hold { border-left: 3px solid var(--amber); }
+
+  .memo-area {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+  .memo-area textarea {
+    width: 100%;
+    min-height: 28px;
+    max-height: 120px;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .memo-area textarea::placeholder { color: var(--text-dim); opacity: 0.5; }
+  .memo-area textarea:focus { border-color: var(--cyan); }
+
+  /* Checkbox styled as radio group */
+  .decision {
+    display: flex; gap: 4px; align-items: center;
+  }
+  .decision input { display: none; }
+  .decision label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .decision label:hover { border-color: var(--text); }
+  .decision input[value="keep"]:checked + label { background: rgba(52,211,153,0.2); color: var(--green); border-color: var(--green); }
+  .decision input[value="remove"]:checked + label { background: rgba(248,113,113,0.2); color: var(--red); border-color: var(--red); }
+  .decision input[value="hold"]:checked + label { background: rgba(245,158,11,0.2); color: var(--amber); border-color: var(--amber); }
+
+  .fname {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-bright);
+  }
+  .fsize {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    text-align: right;
+  }
+  .used-by {
+    font-size: 0.68rem;
+    color: var(--purple);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .note {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  /* Actions */
+  .actions {
+    margin-top: 2rem;
+    display: flex; gap: 1rem;
+  }
+  .btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .btn-export { border-color: var(--green); color: var(--green); }
+
+  #export-output {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    white-space: pre-wrap;
+    display: none;
+    color: var(--text);
+  }
+
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    .row { grid-template-columns: 100px 1fr 70px; font-size: 0.7rem; }
+    .used-by, .note { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>DATA/PARQUET INVENTORY</h1>
+<p class="subtitle">granville-v2 統合に向けた data/parquet ファイル棚卸し — 存続/廃止/保留を判定</p>
+
+<div class="summary">
+  <div class="s-keep"><div class="count" id="cnt-keep">0</div><div class="label">存続</div></div>
+  <div class="s-remove"><div class="count" id="cnt-remove">0</div><div class="label">廃止</div></div>
+  <div class="s-hold"><div class="count" id="cnt-hold">0</div><div class="label">保留</div></div>
+  <div class="s-uncheck"><div class="count" id="cnt-uncheck">0</div><div class="label">未チェック</div></div>
+</div>
+
+<div id="inventory"></div>
+
+<div class="actions">
+  <button class="btn" onclick="selectAll('keep')">全て存続</button>
+  <button class="btn" onclick="selectAll('remove')">全て廃止</button>
+  <button class="btn" onclick="selectAll('')">リセット</button>
+  <button class="btn btn-export" onclick="exportResult()">結果を出力</button>
+</div>
+<pre id="export-output"></pre>
+
+<script>
+const FILES = [
+  // === 銘柄マスタ ===
+  { cat: "銘柄マスタ", file: "all_stocks.parquet", size: "19KB", usedBy: "utils, fetch_prices", note: "static+grok統合。granville推奨を追加予定" },
+  { cat: "銘柄マスタ", file: "meta.parquet", size: "11KB", usedBy: "utils (fallback)", note: "旧形式。all_stocksのフォールバック" },
+  { cat: "銘柄マスタ", file: "meta_jquants.parquet", size: "113KB", usedBy: "granville_signals", note: "TOPIX銘柄リスト。granville必須" },
+  { cat: "銘柄マスタ", file: "margin_code_master.parquet", size: "113KB", usedBy: "不明", note: "信用区分マスタ" },
+
+  // === 個別銘柄 株価 (all_stocks対象, 6種類) ===
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_5d_1m.parquet", size: "2.5MB", usedBy: "フロント(チャート)", note: "all_stocks 168銘柄×5日1分足" },
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_60d_15m.parquet", size: "2.6MB", usedBy: "フロント(チャート)", note: "all_stocks 168銘柄×60日15分足" },
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_60d_5m.parquet", size: "6.4MB", usedBy: "フロント(チャート), intraday", note: "all_stocks 168銘柄×60日5分足" },
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_730d_1h.parquet", size: "9.4MB", usedBy: "フロント(チャート)", note: "all_stocks 168銘柄×730日1時間足" },
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_max_1d.parquet", size: "31.9MB", usedBy: "utils, granville, v3, intraday", note: "all_stocks 168銘柄×全日足。中核ファイル" },
+  { cat: "個別銘柄 株価 (6種類)", file: "prices_max_1mo.parquet", size: "2.0MB", usedBy: "フロント(チャート)", note: "all_stocks 168銘柄×月足" },
+  { cat: "個別銘柄 株価 (6種類)", file: "tech_snapshot_1d.parquet", size: "34KB", usedBy: "utils", note: "テクニカル指標スナップショット" },
+
+  // === Grok 専用 ===
+  { cat: "Grok 専用", file: "grok_trending.parquet", size: "40KB", usedBy: "day_trade_list, scalping, create_all_stocks", note: "当日のGrok選定銘柄" },
+  { cat: "Grok 専用", file: "grok_prices_max_1d.parquet", size: "95MB", usedBy: "day_trade_list", note: "Grok全アーカイブ銘柄の日足。prices_max_1dと重複あり" },
+  { cat: "Grok 専用", file: "grok_day_trade_list.parquet", size: "24KB", usedBy: "day_trade_list", note: "デイトレードリスト" },
+  { cat: "Grok 専用", file: "grok_top_stocks.parquet", size: "6KB", usedBy: "daily_report", note: "save_grok_backtest_metaが生成。レポートTop5表示用" },
+  { cat: "Grok 専用", file: "grok_backtest_meta.parquet", size: "2KB", usedBy: "daily_report, pipeline", note: "★重要★ save_grok_backtest_metaが生成。勝率・リターン統計。grok_top_stocksとセット" },
+
+  // === Granville (旧IFD) ===
+  { cat: "Granville (旧IFD)", file: "granville_ifd_positions.parquet", size: "8KB", usedBy: "不明", note: "旧IFD戦略ポジション。v2で置換予定" },
+  { cat: "Granville (旧IFD)", file: "granville_ifd_signals.parquet", size: "11KB", usedBy: "不明", note: "旧IFD戦略シグナル。v2で置換予定" },
+
+  // === 指数・先物・為替 ===
+  { cat: "指数 株価", file: "index_prices_60d_15m.parquet", size: "479KB", usedBy: "不明", note: "日経225等 15分足" },
+  { cat: "指数 株価", file: "index_prices_60d_5m.parquet", size: "1.2MB", usedBy: "intraday", note: "日経225等 5分足" },
+  { cat: "指数 株価", file: "index_prices_730d_1h.parquet", size: "1.7MB", usedBy: "不明", note: "日経225等 1時間足" },
+  { cat: "指数 株価", file: "index_prices_max_1d.parquet", size: "2.9MB", usedBy: "day_trade_list, intraday", note: "日経225等 日足" },
+  { cat: "指数 株価", file: "index_prices_max_1mo.parquet", size: "142KB", usedBy: "不明", note: "日経225等 月足" },
+  { cat: "指数 株価", file: "topix_prices_max_1d.parquet", size: "155KB", usedBy: "不明", note: "TOPIX日足（pipeline生成）" },
+
+  { cat: "先物 株価", file: "futures_prices_60d_15m.parquet", size: "387KB", usedBy: "不明", note: "日経先物 15分足" },
+  { cat: "先物 株価", file: "futures_prices_60d_5m.parquet", size: "896KB", usedBy: "不明", note: "日経先物 5分足" },
+  { cat: "先物 株価", file: "futures_prices_730d_1h.parquet", size: "1.2MB", usedBy: "不明", note: "日経先物 1時間足" },
+  { cat: "先物 株価", file: "futures_prices_max_1d.parquet", size: "766KB", usedBy: "day_trade_list", note: "日経先物 日足" },
+  { cat: "先物 株価", file: "futures_prices_max_1mo.parquet", size: "43KB", usedBy: "不明", note: "日経先物 月足" },
+
+  { cat: "為替 株価", file: "currency_prices_730d_1h.parquet", size: "901KB", usedBy: "不明", note: "USD/JPY 1時間足" },
+  { cat: "為替 株価", file: "currency_prices_max_1d.parquet", size: "420KB", usedBy: "day_trade_list", note: "USD/JPY 日足" },
+  { cat: "為替 株価", file: "currency_prices_max_1mo.parquet", size: "26KB", usedBy: "不明", note: "USD/JPY 月足" },
+
+  // === セクター・業種 ===
+  { cat: "セクター・業種", file: "sectors_prices_max_1d.parquet", size: "2.1MB", usedBy: "不明", note: "業種別日足" },
+  { cat: "セクター・業種", file: "series_prices_max_1d.parquet", size: "817KB", usedBy: "不明", note: "シリーズ別日足" },
+
+  // === 財務・決算 ===
+  { cat: "財務・決算", file: "financials.parquet", size: "21KB", usedBy: "fins", note: "財務サマリー" },
+  { cat: "財務・決算", file: "announcements.parquet", size: "6KB", usedBy: "fins", note: "決算発表日程" },
+
+  // === 取引結果 ===
+  { cat: "取引結果", file: "stock_results.parquet", size: "24KB", usedBy: "dev_stock_results", note: "取引結果データ" },
+  { cat: "取引結果", file: "stock_results_summary.parquet", size: "2KB", usedBy: "dev_stock_results", note: "取引サマリー" },
+
+  // === イントラデイ ===
+  { cat: "イントラデイ", file: "intraday_analysis.parquet", size: "314KB", usedBy: "dev_intraday", note: "事前計算済み日中分析" },
+  { cat: "イントラデイ", file: "intraday_averages.parquet", size: "126KB", usedBy: "dev_intraday", note: "日中平均データ" },
+
+  // === マーケット ===
+  { cat: "マーケット", file: "market_anomaly.parquet", size: "110KB", usedBy: "不明", note: "市場アノマリーデータ" },
+  { cat: "マーケット", file: "nikkei_vi_max_1d.parquet", size: "11KB", usedBy: "不明", note: "日経VI日足" },
+  { cat: "マーケット", file: "manifest.json", size: "12KB", usedBy: "utils", note: "ファイル管理マニフェスト" },
+
+  // === ディレクトリ ===
+  { cat: "ディレクトリ", file: "backtest/grok_trending_archive.parquet", size: "蓄積", usedBy: "day_trade_list, analysis_custom, v3, backtest", note: "Grok全履歴。上書き厳禁" },
+  { cat: "ディレクトリ", file: "backtest/grok_analysis_merged.parquet", size: "421KB", usedBy: "不明", note: "Grok分析統合v1" },
+  { cat: "ディレクトリ", file: "backtest/grok_analysis_merged_v2_1.parquet", size: "500KB", usedBy: "不明", note: "Grok分析統合v2.1" },
+  { cat: "ディレクトリ", file: "backtest/granville_ifd_archive.parquet", size: "474KB", usedBy: "不明", note: "旧Granville IFDアーカイブ。v2で置換?" },
+  { cat: "ディレクトリ", file: "backtest/granville_ifd_comparison.parquet", size: "5KB", usedBy: "不明", note: "旧Granville比較データ" },
+  { cat: "ディレクトリ", file: "backtest/grok_trending_YYYYMMDD.parquet", size: "各35KB", usedBy: "pipeline(日次バックアップ)", note: "約90ファイル。日次スナップショット" },
+  { cat: "ディレクトリ", file: "backtest/trading_recommendation.json", size: "小", usedBy: "不明", note: "推奨JSON" },
+  { cat: "ディレクトリ", file: "backtest/analysis/deep_analysis_*.json", size: "各小", usedBy: "不明", note: "3ファイル。深層分析JSON" },
+
+  { cat: "ディレクトリ", file: "market_summary/structured/*.json", size: "各小", usedBy: "レポート生成", note: "日別市場サマリーJSON" },
+  { cat: "ディレクトリ", file: "market_summary/raw/", size: "-", usedBy: "不明", note: "生データ" },
+
+  { cat: "ディレクトリ", file: "ml/grok_lgbm_model.pkl", size: "346KB", usedBy: "ML予測", note: "LightGBMモデル" },
+  { cat: "ディレクトリ", file: "ml/grok_lgbm_meta.json", size: "2KB", usedBy: "ML予測", note: "モデルメタ" },
+  { cat: "ディレクトリ", file: "ml/archive_with_features.parquet", size: "688KB", usedBy: "ML予測", note: "特徴量付きアーカイブ" },
+  { cat: "ディレクトリ", file: "ml/wfcv_predictions.parquet", size: "19KB", usedBy: "ML予測", note: "Walk-forward CV予測" },
+
+  { cat: "ディレクトリ", file: "macro/estat_ci_index.parquet", size: "小", usedBy: "不明", note: "景気動向指数" },
+];
+
+const container = document.getElementById('inventory');
+let currentCat = '';
+
+FILES.forEach((f, i) => {
+  if (f.cat !== currentCat) {
+    currentCat = f.cat;
+    const h = document.createElement('div');
+    h.className = 'cat-header';
+    h.textContent = currentCat;
+    container.appendChild(h);
+  }
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.id = `row-${i}`;
+  row.innerHTML = `
+    <div class="decision">
+      <input type="radio" name="d${i}" id="k${i}" value="keep" onchange="update(${i},'keep')"><label for="k${i}">存続</label>
+      <input type="radio" name="d${i}" id="r${i}" value="remove" onchange="update(${i},'remove')"><label for="r${i}">廃止</label>
+      <input type="radio" name="d${i}" id="h${i}" value="hold" onchange="update(${i},'hold')"><label for="h${i}">保留</label>
+    </div>
+    <div class="fname">${f.file}</div>
+    <div class="fsize">${f.size}</div>
+    <div class="used-by">${f.usedBy}</div>
+    <div class="note">${f.note}</div>
+    <div class="memo-area"><textarea id="memo${i}" placeholder="備考..." oninput="saveMemo(${i})"></textarea></div>
+  `;
+  container.appendChild(row);
+});
+
+const decisions = new Array(FILES.length).fill('');
+
+function update(i, val) {
+  decisions[i] = val;
+  const row = document.getElementById(`row-${i}`);
+  row.className = 'row' + (val ? ` decided-${val}` : '');
+  updateCounts();
+  save();
+}
+
+function updateCounts() {
+  const k = decisions.filter(d => d === 'keep').length;
+  const r = decisions.filter(d => d === 'remove').length;
+  const h = decisions.filter(d => d === 'hold').length;
+  const u = decisions.filter(d => d === '').length;
+  document.getElementById('cnt-keep').textContent = k;
+  document.getElementById('cnt-remove').textContent = r;
+  document.getElementById('cnt-hold').textContent = h;
+  document.getElementById('cnt-uncheck').textContent = u;
+}
+
+function selectAll(val) {
+  FILES.forEach((_, i) => {
+    decisions[i] = val;
+    const row = document.getElementById(`row-${i}`);
+    row.className = 'row' + (val ? ` decided-${val}` : '');
+    if (val) {
+      document.getElementById(val === 'keep' ? `k${i}` : val === 'remove' ? `r${i}` : `h${i}`).checked = true;
+    } else {
+      [`k${i}`,`r${i}`,`h${i}`].forEach(id => document.getElementById(id).checked = false);
+    }
+  });
+  updateCounts();
+  save();
+}
+
+function exportResult() {
+  const out = document.getElementById('export-output');
+  let text = '# data/parquet 棚卸し結果\n\n';
+
+  ['keep','remove','hold',''].forEach(status => {
+    const label = {keep:'## 存続', remove:'## 廃止', hold:'## 保留', '':'## 未チェック'}[status];
+    const items = FILES.map((f, i) => ({...f, idx: i})).filter(f => decisions[f.idx] === status);
+    if (items.length === 0) return;
+    text += `${label} (${items.length})\n`;
+    items.forEach(f => {
+      const memo = memos[f.idx] ? ` [備考: ${memos[f.idx].replace(/\n/g, ' / ')}]` : '';
+      text += `- ${f.file} — ${f.note}${memo}\n`;
+    });
+    text += '\n';
+  });
+
+  out.textContent = text;
+  out.style.display = 'block';
+}
+
+const memos = new Array(FILES.length).fill('');
+
+function saveMemo(i) {
+  memos[i] = document.getElementById(`memo${i}`).value;
+  try { localStorage.setItem('parquet_inventory_memos', JSON.stringify(memos)); } catch(e) {}
+}
+
+function save() {
+  try { localStorage.setItem('parquet_inventory', JSON.stringify(decisions)); } catch(e) {}
+}
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('parquet_inventory'));
+    if (saved && saved.length === FILES.length) {
+      saved.forEach((val, i) => {
+        if (val) {
+          decisions[i] = val;
+          document.getElementById(val === 'keep' ? `k${i}` : val === 'remove' ? `r${i}` : `h${i}`).checked = true;
+          document.getElementById(`row-${i}`).className = `row decided-${val}`;
+        }
+      });
+    }
+  } catch(e) {}
+  try {
+    const savedMemos = JSON.parse(localStorage.getItem('parquet_inventory_memos'));
+    if (savedMemos && savedMemos.length === FILES.length) {
+      savedMemos.forEach((val, i) => {
+        if (val) {
+          memos[i] = val;
+          document.getElementById(`memo${i}`).value = val;
+        }
+      });
+    }
+  } catch(e) {}
+  updateCounts();
+}
+
+load();
+</script>
+
+</body>
+</html>

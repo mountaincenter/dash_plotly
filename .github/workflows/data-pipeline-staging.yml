@@ -1,0 +1,259 @@
+name: Data Pipeline (Staging - Granville v2)
+
+on:
+  schedule:
+    # staging: production(16:45/23:00)と被らない時間帯
+    - cron: "0 9 * * *"   # UTC 09:00 = JST 18:00 - 振り返り（日足更新 + シグナル生成）
+    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 - 明日の準備（推奨生成 + 価格取得 + デプロイ）
+  workflow_dispatch:
+    inputs:
+      skip_trading_day_check:
+        description: "営業日チェックをスキップ（強制実行）"
+        type: boolean
+        default: false
+      mode:
+        description: "実行モード"
+        type: choice
+        options:
+          - auto
+          - review_only
+          - prepare_only
+        default: auto
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      S3_BUCKET: stock-api-data-staging
+      S3_PREFIX: parquet/
+      APP_RUNNER_ARN: arn:aws:apprunner:ap-northeast-1:980921748690:service/stock-api-staging/38f82d7440364aa2a8dcefacbd906d55
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup J-Quants authentication
+        run: |
+          cat > .env.jquants <<EOF
+          JQUANTS_API_KEY=${{ secrets.JQUANTS_API_KEY }}
+          EOF
+          echo "✅ J-Quants configured"
+
+      # ===== 実行モード判定 =====
+      - name: Determine execution mode
+        id: exec_mode
+        run: |
+          CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
+          echo "Current hour (JST): $CURRENT_HOUR"
+
+          MODE="${{ github.event.inputs.mode || 'auto' }}"
+
+          if [ "$MODE" = "review_only" ]; then
+            echo "phase=review" >> $GITHUB_OUTPUT
+            echo "📊 FORCED: Review only (18:00相当)"
+          elif [ "$MODE" = "prepare_only" ]; then
+            echo "phase=prepare" >> $GITHUB_OUTPUT
+            echo "📋 FORCED: Prepare only (22:00相当)"
+          elif [ "$CURRENT_HOUR" = "18" ]; then
+            echo "phase=review" >> $GITHUB_OUTPUT
+            echo "📊 18:00 JST - Review mode"
+          elif [ "$CURRENT_HOUR" = "22" ]; then
+            echo "phase=prepare" >> $GITHUB_OUTPUT
+            echo "📋 22:00 JST - Prepare mode"
+          else
+            echo "phase=review" >> $GITHUB_OUTPUT
+            echo "⚠️ Unknown hour ($CURRENT_HOUR), defaulting to review"
+          fi
+
+      # ===== 営業日チェック =====
+      - name: Check trading day (18:00 review)
+        id: check_trading
+        if: steps.exec_mode.outputs.phase == 'review' && github.event.inputs.skip_trading_day_check != 'true'
+        run: |
+          python scripts/check_trading_day.py
+        continue-on-error: true
+
+      - name: Check next trading day (22:00 prepare)
+        id: check_next_trading
+        if: steps.exec_mode.outputs.phase == 'prepare' && github.event.inputs.skip_trading_day_check != 'true'
+        run: |
+          python scripts/check_next_day_trading.py
+        continue-on-error: true
+
+      - name: Skip if not trading day
+        if: |
+          (steps.exec_mode.outputs.phase == 'review' && steps.check_trading.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true') ||
+          (steps.exec_mode.outputs.phase == 'prepare' && steps.check_next_trading.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true')
+        run: |
+          echo "❌ Not a trading day. Skipping pipeline."
+          exit 0
+
+      # ===== S3からデータダウンロード =====
+      - name: Download data from S3
+        run: |
+          echo "📥 Downloading data from S3..."
+          mkdir -p data/parquet/granville data/parquet/backtest data/csv
+
+          # 既存parquetファイル
+          aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
+            --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
+
+          # CSVファイル（hold_stocks, credit_capacity等）
+          for f in hold_stocks.csv credit_capacity.csv stock_results.csv nikkeivi.csv; do
+            aws s3 cp "s3://$S3_BUCKET/csv/$f" "data/csv/$f" --only-show-errors 2>/dev/null || true
+          done
+
+          echo "✅ Data downloaded"
+
+      # ===== 18:00 振り返りフェーズ =====
+      - name: "[Review] Update TOPIX daily prices"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "📈 Updating TOPIX 1,660 stocks daily prices..."
+          python scripts/pipeline/update_granville_prices.py
+        timeout-minutes: 15
+
+      - name: "[Review] Generate Granville signals"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "🔍 Generating Granville B1-B4 signals..."
+          python scripts/pipeline/generate_granville_signals.py
+        timeout-minutes: 30
+
+      - name: "[Review] Generate stock results"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "📊 Generating stock results (hold_stocks, orders, credit_status)..."
+          python scripts/generate_stock_results_html.py
+        timeout-minutes: 5
+
+      - name: "[Review] Upload review results to S3"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "☁️ Uploading review results..."
+
+          # granville signals & positions
+          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
+          done
+
+          # stock results
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet stock_results.parquet stock_results_summary.parquet manifest.json; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
+          echo "✅ Review results uploaded"
+
+      # ===== 22:00 準備フェーズ =====
+      - name: "[Prepare] Generate Granville recommendations"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📋 Generating recommendations for tomorrow..."
+          python scripts/pipeline/generate_granville_recommendation.py
+        timeout-minutes: 10
+
+      - name: "[Prepare] Update all_stocks (grok + granville)"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🔄 Updating all_stocks.parquet..."
+          python scripts/pipeline/create_all_stocks.py
+        timeout-minutes: 5
+
+      - name: "[Prepare] Fetch prices for all_stocks (6 types)"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📈 Fetching 6 price types for all_stocks..."
+          python scripts/pipeline/fetch_prices.py
+        timeout-minutes: 20
+
+      - name: "[Prepare] Upload prepare results to S3"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "☁️ Uploading prepare results..."
+
+          # recommendations
+          for f in data/parquet/granville/recommendations_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
+          done
+
+          # all_stocks & prices
+          for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json \
+                   prices_max_1d.parquet prices_max_1mo.parquet prices_5d_1m.parquet \
+                   prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
+          echo "✅ Prepare results uploaded"
+
+      # ===== App Runner デプロイ（22:00のみ） =====
+      - name: "[Prepare] Resume App Runner if paused"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
+          echo "App Runner status: $STATUS"
+
+          if [ "$STATUS" = "PAUSED" ]; then
+            echo "▶️ Resuming App Runner..."
+            aws apprunner resume-service --service-arn "$APP_RUNNER_ARN"
+            echo "⏳ Waiting for service to be RUNNING..."
+            # poll until running (max 5 min)
+            for i in $(seq 1 30); do
+              sleep 10
+              STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
+              echo "  Status: $STATUS"
+              if [ "$STATUS" = "RUNNING" ]; then
+                echo "✅ App Runner is RUNNING"
+                break
+              fi
+            done
+          fi
+
+      - name: "[Prepare] Deploy App Runner"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🚀 Starting App Runner deployment..."
+          aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN"
+          echo "✅ Deployment started"
+
+      # ===== サマリー =====
+      - name: Pipeline summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Pipeline Summary"
+          echo "=========================================="
+          echo "Phase: ${{ steps.exec_mode.outputs.phase }}"
+          echo "Time: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')"
+
+          if [ -f "data/parquet/granville/signals_*.parquet" ] 2>/dev/null; then
+            echo "Signals: $(ls data/parquet/granville/signals_*.parquet 2>/dev/null | tail -1)"
+          fi
+          if [ -f "data/parquet/granville/recommendations_*.parquet" ] 2>/dev/null; then
+            echo "Recommendations: $(ls data/parquet/granville/recommendations_*.parquet 2>/dev/null | tail -1)"
+          fi
+
+          echo "=========================================="

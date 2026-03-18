@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-06T21:19:16.121227",
+  "generated_at": "2026-03-17T22:32:13.293533",
   "update_flag": "2026-03-06",
   "grok_update_flag": false,
   "grok_last_update_date": null,
@@ -520,8 +520,8 @@
     },
     "stock_results.parquet": {
       "exists": true,
-      "size_bytes": 22466,
-      "row_count": 456,
+      "size_bytes": 23837,
+      "row_count": 495,
       "columns": [
         "約定日",
         "コード",
@@ -533,22 +533,22 @@
         "数量",
         "戦略"
       ],
-      "updated_at": "2026-03-06T21:19:16.121227"
+      "updated_at": "2026-03-17T22:32:13.293533"
     },
     "stock_results_summary.parquet": {
       "exists": true,
-      "size_bytes": 2114,
+      "size_bytes": 2111,
       "row_count": 27,
       "columns": [
         "metric",
         "value"
       ],
-      "updated_at": "2026-03-06T21:19:16.121227"
+      "updated_at": "2026-03-17T22:32:13.293533"
     },
     "nikkei_vi_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 62182,
-      "row_count": 2443,
+      "size_bytes": 10812,
+      "row_count": 245,
       "columns": [
         "date",
         "open",
@@ -556,7 +556,7 @@
         "low",
         "close"
       ],
-      "updated_at": "2026-03-06T21:19:16.121227"
+      "updated_at": "2026-03-17T22:32:13.293533"
     },
     "granville_ifd_signals.parquet": {
       "exists": true,
@@ -586,6 +586,59 @@
       "row_count": 0,
       "columns": [],
       "updated_at": null
+    },
+    "orders.parquet": {
+      "exists": true,
+      "size_bytes": 8134,
+      "row_count": 10,
+      "columns": [
+        "order_no",
+        "status",
+        "ticker",
+        "stock_name",
+        "trade_type",
+        "direction",
+        "exec_condition",
+        "order_qty",
+        "filled_qty",
+        "order_price",
+        "margin_type",
+        "order_datetime",
+        "is_filled"
+      ],
+      "updated_at": "2026-03-17T22:32:13.293533"
+    },
+    "credit_status.parquet": {
+      "exists": true,
+      "size_bytes": 2382,
+      "row_count": 10,
+      "columns": [
+        "asset",
+        "value",
+        "as_of"
+      ],
+      "updated_at": "2026-03-17T22:32:13.293533"
+    },
+    "hold_stocks.parquet": {
+      "exists": true,
+      "size_bytes": 8180,
+      "row_count": 5,
+      "columns": [
+        "ticker",
+        "stock_name",
+        "direction",
+        "margin_type",
+        "deadline",
+        "quantity",
+        "cost_total",
+        "current_price",
+        "market_value",
+        "unrealized_pnl",
+        "unrealized_pct",
+        "expiry_date",
+        "as_of"
+      ],
+      "updated_at": "2026-03-17T22:32:13.293533"
     }
   }
 }

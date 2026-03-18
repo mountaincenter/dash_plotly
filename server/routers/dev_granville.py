@@ -192,6 +192,19 @@ async def get_positions():
     if not hold_df.empty:
         if "as_of" in hold_df.columns:
             as_of = str(hold_df["as_of"].iloc[0])[:10]
+
+        # 20日高値計算用に株価データを読み込み
+        prices_path = PARQUET_DIR / "prices_max_1d.parquet"
+        prices_df = None
+        if prices_path.exists():
+            try:
+                prices_df = pd.read_parquet(prices_path)
+                prices_df["date"] = pd.to_datetime(prices_df["date"])
+            except Exception:
+                pass
+
+        today = pd.Timestamp.now().normalize()
+
         for _, r in hold_df.iterrows():
             cost = _safe_float(r.get("cost_total", 0))
             mv = _safe_float(r.get("market_value", 0))
@@ -201,26 +214,64 @@ async def get_positions():
             pnl = _safe_float(r.get("unrealized_pnl", 0))
             pct = _safe_float(r.get("unrealized_pct", 0), 2)
             direction = str(r.get("direction", ""))
+            ticker = str(r.get("ticker", ""))
+
+            # 建日: 弁済期限(expiry_date)から6ヶ月逆算
+            entry_date = ""
+            hold_days = 0
+            expiry = r.get("expiry_date", r.get("deadline", ""))
+            if expiry and str(expiry) not in ("", "nan", "NaT"):
+                try:
+                    exp_dt = pd.to_datetime(str(expiry))
+                    entry_dt = exp_dt - pd.DateOffset(months=6)
+                    entry_date = entry_dt.strftime("%Y-%m-%d")
+                    # 営業日ベースの保有日数
+                    bdays = pd.bdate_range(entry_dt, today)
+                    hold_days = max(0, len(bdays) - 1)
+                except Exception:
+                    pass
+
+            # 20日高値
+            high_20d = 0.0
+            # ticker形式の正規化: "4151" → "4151.T"
+            price_ticker = ticker if ".T" in ticker else f"{ticker}.T"
+            if prices_df is not None and price_ticker:
+                tk_df = prices_df[prices_df["ticker"] == price_ticker].sort_values("date")
+                if not tk_df.empty:
+                    high_20d = float(tk_df["High"].tail(20).max())
+
+            # 買建: exit指値=20日高値, 売建: exit指値=20日安値
+            if direction == "売建" and prices_df is not None and price_ticker:
+                tk_df = prices_df[prices_df["ticker"] == price_ticker].sort_values("date")
+                if not tk_df.empty:
+                    low_20d = float(tk_df["Low"].tail(20).min())
+                    gap = _safe_int(round(current_price - low_20d)) if low_20d > 0 else 0
+                    high_20d = low_20d  # 売建はexit基準を安値にする
+                    gap_to_high = -gap
+                else:
+                    gap_to_high = 0
+            else:
+                gap_to_high = _safe_int(round(high_20d - current_price)) if high_20d > 0 else 0
 
             positions.append({
-                "ticker": str(r.get("ticker", "")),
+                "ticker": ticker,
                 "stock_name": str(r.get("stock_name", "")),
                 "rule": "",
                 "direction": direction,
                 "margin_type": str(r.get("margin_type", "")),
                 "deadline": str(r.get("deadline", "")),
-                "entry_date": "",
+                "entry_date": entry_date,
                 "entry_price": entry_price,
                 "current_price": current_price,
                 "quantity": qty,
                 "cost_total": _safe_int(cost),
                 "market_value": _safe_int(mv),
-                "high_20d": 0,
+                "high_20d": high_20d,
                 "atr10": 0,
-                "gap_to_high": 0,
+                "gap_to_high": gap_to_high,
                 "unrealized_pct": pct,
                 "unrealized_yen": _safe_int(pnl),
-                "hold_days": 0,
+                "hold_days": hold_days,
                 "max_hold": 0,
                 "remaining_days": 0,
                 "exit_type": "",

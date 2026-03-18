@@ -15,7 +15,7 @@ IMPLEMENTATION.md §3-§5 準拠:
 
 Exit（§6）:
   20日高値: High[t] >= max(High[t-19:t+1])
-  MAX_HOLD: 資金 < 3,000万 → 10日統一 / ≥ 3,000万 → 60日統一
+  MAX_HOLD: ルール別（B4=19, B1=13, B3=14, B2=15）ポートフォリオ最適化結果
   SLなし
 
 出力:
@@ -50,14 +50,13 @@ CSV_DIR = ROOT / "data" / "csv"
 CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
-CAPITAL_THRESHOLD = 30_000_000  # §6: 段階切替閾値
-MAX_HOLD_LOW = 10   # 資金 < 3,000万: 全ルール10日
-MAX_HOLD_HIGH = 60  # 資金 >= 3,000万: 全ルール60日
+# ポートフォリオシミュレーション最適化結果（資金¥4,650,000, 集中制限15%, 2年検証）
+RULE_MAX_HOLD = {"B4": 19, "B1": 13, "B3": 14, "B2": 15}
 
 
-def _get_max_hold(capital: float) -> int:
-    """§6: 資金額に応じたMAX_HOLD"""
-    return MAX_HOLD_HIGH if capital >= CAPITAL_THRESHOLD else MAX_HOLD_LOW
+def _get_max_hold(rule: str) -> int:
+    """ルール別MAX_HOLD"""
+    return RULE_MAX_HOLD.get(rule, 15)
 
 
 def _load_capital() -> float:
@@ -202,10 +201,10 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
     print("\n[3/4] Generating positions...")
 
     capital = _load_capital()
-    max_hold = _get_max_hold(capital)
-    print(f"  Capital: ¥{capital:,.0f} → MAX_HOLD: {max_hold} days")
+    max_max_hold = max(RULE_MAX_HOLD.values())
+    print(f"  Capital: ¥{capital:,.0f} → MAX_HOLD: {RULE_MAX_HOLD}")
 
-    cutoff = latest_date - pd.Timedelta(days=max_hold * 2)
+    cutoff = latest_date - pd.Timedelta(days=max_max_hold * 2)
     recent = ps[ps["date"] >= cutoff].copy()
     recent = detect_signals(recent)
 
@@ -231,28 +230,35 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
 
     rows: list[dict] = []
     for _, sig in sigs.iterrows():
-        tk = ps[(ps["ticker"] == sig["ticker"]) & (ps["date"] > sig["date"])].sort_values("date")
-
-        if tk.empty:
+        # 全価格系列から銘柄データを取得（20日高値計算にエントリー前データが必要）
+        tk_all = ps[ps["ticker"] == sig["ticker"]].sort_values("date").reset_index(drop=True)
+        # エントリー日（シグナル翌営業日）のインデックスを特定
+        entry_mask = tk_all["date"] > sig["date"]
+        if not entry_mask.any():
             continue
+        entry_iloc = entry_mask.idxmax()  # 最初のTrueのインデックス
 
         # §5: エントリーはシグナル翌営業日の寄付(Open)
-        ep = float(tk.iloc[0]["Open"])
+        ep = float(tk_all.iloc[entry_iloc]["Open"])
         if pd.isna(ep) or ep <= 0:
             continue
-        e_date = tk.iloc[0]["date"]
+        e_date = tk_all.iloc[entry_iloc]["date"]
 
+        max_hold = _get_max_hold(sig["rule"])
         exited = False
         exit_type = ""
         exit_price = 0.0
+        hold_end = min(entry_iloc + max_hold, len(tk_all))
 
-        for i in range(min(len(tk), max_hold)):
-            row = tk.iloc[i]
+        for day in range(entry_iloc, hold_end):
+            row = tk_all.iloc[day]
+            hold_day = day - entry_iloc
 
             # §6: 20日高値Exit — High[t] >= max(High[t-19:t+1])
-            if i > 0:
-                start_idx = max(0, i - 19)
-                window_highs = tk.iloc[start_idx:i + 1]["High"]
+            # 全価格系列のrolling 20日window（エントリー前を含む）
+            if hold_day > 0:
+                w_start = max(0, day - 19)
+                window_highs = tk_all.iloc[w_start:day + 1]["High"]
                 high_20d = float(window_highs.max())
                 if float(row["High"]) >= high_20d:
                     exit_price = high_20d
@@ -262,21 +268,21 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
                     break
 
             # §6: MAX_HOLD到達 → 当日終値にて強制決済
-            if i >= max_hold - 1:
+            if hold_day >= max_hold - 1:
                 exit_price = float(row["Close"])
                 if row["date"] == latest_date:
                     exit_type = "max_hold"
                 exited = True
                 break
 
-        cur_idx = min(len(tk) - 1, max_hold - 1)
-        cur = tk.iloc[cur_idx]
+        cur_day = min(entry_iloc + min(hold_end - entry_iloc, max_hold) - 1, len(tk_all) - 1)
+        cur = tk_all.iloc[cur_day]
         cp = float(cur["Close"])
-        hold_days = min(len(tk), max_hold)
+        hold_days = cur_day - entry_iloc + 1
 
-        # 20日高値: エントリー以降の直近20日間のHigh最大値
-        h20_start = max(0, cur_idx - 19)
-        high_20d = round(float(tk.iloc[h20_start:cur_idx + 1]["High"].max()), 1)
+        # 20日高値: 全価格系列のrolling 20日window
+        h20_start = max(0, cur_day - 19)
+        high_20d = round(float(tk_all.iloc[h20_start:cur_day + 1]["High"].max()), 1)
 
         # ATR(10): 直近の平均true range
         atr10 = 0.0
