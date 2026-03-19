@@ -34,9 +34,6 @@ load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
 PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
-CSV_DIR = ROOT / "data" / "csv"
-CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
-HOLD_CSV = CSV_DIR / "hold_stocks.csv"
 
 MARGIN_LIMIT_PCT = 0.15  # §7: 証拠金上限15%（株価フィルター）
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
@@ -197,30 +194,57 @@ def _get_max_hold(rule: str) -> int:
 
 
 def load_available_margin() -> float:
-    if not CREDIT_CSV.exists():
-        print(f"  [WARN] {CREDIT_CSV} not found, using default 4,650,000")
-        return 4_650_000
-    df = pd.read_csv(CREDIT_CSV)
-    if df.empty:
-        return 4_650_000
-    if "available_margin" in df.columns:
-        return float(df.iloc[-1]["available_margin"])
-    # credit_capacity.csv が楽天証券フォーマットの場合はデフォルト値を使用
-    print(f"  [WARN] 'available_margin' column not found, using default 4,650,000")
+    """credit_status.parquetから現金保証金(信用)を取得"""
+    cs_path = PARQUET_DIR / "credit_status.parquet"
+    if cs_path.exists():
+        try:
+            cs = pd.read_parquet(cs_path)
+            row = cs[cs["asset"].str.contains("信用", na=False)]
+            if not row.empty:
+                val = float(row["value"].iloc[0])
+                if val > 0:
+                    return val
+        except Exception:
+            pass
+    # S3フォールバック
+    try:
+        from common_cfg.s3io import download_file
+        from common_cfg.s3cfg import load_s3_config
+        cfg = load_s3_config()
+        if cfg and cfg.bucket:
+            download_file(cfg, "credit_status.parquet", cs_path)
+            cs = pd.read_parquet(cs_path)
+            row = cs[cs["asset"].str.contains("信用", na=False)]
+            if not row.empty:
+                return float(row["value"].iloc[0])
+    except Exception:
+        pass
+    print(f"  [WARN] credit_status.parquet not found, using default 4,650,000")
     return 4_650_000
 
 
 def load_hold_stocks() -> set[str]:
-    if not HOLD_CSV.exists():
-        return set()
-    df = pd.read_csv(HOLD_CSV)
-    if df.empty:
-        return set()
-    # 楽天証券CSVフォーマット対応: "コード" カラム → ticker形式に変換
-    if "ticker" in df.columns:
-        return set(df["ticker"].tolist())
-    if "コード" in df.columns:
-        return {f"{str(c).strip()}.T" for c in df["コード"]}
+    """hold_stocks.parquetから保有銘柄ticker一覧を取得"""
+    hs_path = PARQUET_DIR / "hold_stocks.parquet"
+    if hs_path.exists():
+        try:
+            df = pd.read_parquet(hs_path)
+            if not df.empty and "ticker" in df.columns:
+                return {t if ".T" in str(t) else f"{t}.T" for t in df["ticker"]}
+        except Exception:
+            pass
+    # S3フォールバック
+    try:
+        from common_cfg.s3io import download_file
+        from common_cfg.s3cfg import load_s3_config
+        cfg = load_s3_config()
+        if cfg and cfg.bucket:
+            download_file(cfg, "hold_stocks.parquet", hs_path)
+            df = pd.read_parquet(hs_path)
+            if not df.empty and "ticker" in df.columns:
+                return {t if ".T" in str(t) else f"{t}.T" for t in df["ticker"]}
+    except Exception:
+        pass
     return set()
 
 
