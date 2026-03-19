@@ -546,6 +546,7 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
                 "prevClose": int(row["prev_close"]) if pd.notna(row.get("prev_close")) else None,
                 "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
                 "shares": int(shares) if pd.notna(shares) else None,
+                "mlGrade": row["ml_grade"] if "ml_grade" in row.index and pd.notna(row.get("ml_grade")) else None,
                 "segments": {},
             }
             # 11seg値を追加
