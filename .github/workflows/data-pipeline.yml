@@ -741,19 +741,17 @@ jobs:
         run: |
           python3 scripts/format_granville_slack.py || true
 
-      - name: Generate market anomaly data (Friday only)
+      - name: Generate market anomaly data (last trading day of week)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          # 金曜日かどうかを判定（JST基準）
-          DAY_OF_WEEK=$(TZ=Asia/Tokyo date +%u)  # 1=月曜, 5=金曜
-
-          if [ "$DAY_OF_WEEK" != "5" ]; then
-            echo "ℹ️  Today is not Friday (day=$DAY_OF_WEEK). Skipping market anomaly generation."
+          # 週の最終営業日かどうかを判定（J-Quantsカレンダー基準）
+          if ! python3 scripts/check_last_trading_day_of_week.py; then
+            echo "ℹ️  Not the last trading day of the week. Skipping market anomaly generation."
             exit 0
           fi
 
           echo "============================================================"
-          echo "📊 Generating market anomaly data (Friday 16:45)"
+          echo "📊 Generating market anomaly data (last trading day 16:45)"
           echo "============================================================"
 
           python3 scripts/pipeline/generate_market_anomaly.py
@@ -764,19 +762,17 @@ jobs:
             echo "⚠️ Market anomaly generation failed (non-critical)"
           fi
 
-      - name: ML Model Retraining (Friday only)
+      - name: ML Model Retraining (last trading day of week)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          # 金曜日かどうかを判定（JST基準）
-          DAY_OF_WEEK=$(TZ=Asia/Tokyo date +%u)  # 1=月曜, 5=金曜
-
-          if [ "$DAY_OF_WEEK" != "5" ]; then
-            echo "ℹ️  Today is not Friday (day=$DAY_OF_WEEK). Skipping ML retraining."
+          # 週の最終営業日かどうかを判定（J-Quantsカレンダー基準）
+          if ! python3 scripts/check_last_trading_day_of_week.py; then
+            echo "ℹ️  Not the last trading day of the week. Skipping ML retraining."
             exit 0
           fi
 
           echo "============================================================"
-          echo "🤖 ML Model Retraining (Friday 16:45)"
+          echo "🤖 ML Model Retraining (last trading day 16:45)"
           echo "============================================================"
 
           # === Step 1: 必要なデータをS3からダウンロード ===
