@@ -36,8 +36,10 @@ jobs:
       APP_RUNNER_ARN: arn:aws:apprunner:ap-northeast-1:980921748690:service/stock-api-staging/38f82d7440364aa2a8dcefacbd906d55
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (staging branch)
         uses: actions/checkout@v4
+        with:
+          ref: staging
 
       - name: Setup Python
         uses: actions/setup-python@v5
