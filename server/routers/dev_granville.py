@@ -203,6 +203,43 @@ async def get_positions():
             except Exception:
                 pass
 
+        # prices_max_1d.parquetにない保有銘柄をyfinanceで補完
+        hold_tickers = [str(r.get("ticker", "")) for _, r in hold_df.iterrows()]
+        hold_tickers_t = [t if ".T" in t else f"{t}.T" for t in hold_tickers]
+        missing = [t for t in hold_tickers_t if prices_df is None or prices_df[prices_df["ticker"] == t].empty]
+        if missing:
+            try:
+                import yfinance as yf
+                yf_tickers = [t.replace("_", ".") for t in missing]
+                df_yf = yf.download(yf_tickers, period="30d", interval="1d", progress=False, threads=True)
+                if not df_yf.empty:
+                    rows_yf = []
+                    if isinstance(df_yf.columns, pd.MultiIndex):
+                        for i, t_yf in enumerate(yf_tickers):
+                            try:
+                                sub = df_yf.xs(t_yf, level=1, axis=1).dropna(subset=["Close"]).copy()
+                                sub["ticker"] = missing[i]
+                                sub["date"] = sub.index
+                                sub = sub.reset_index(drop=True)
+                                rows_yf.append(sub[["date", "Open", "High", "Low", "Close", "Volume", "ticker"]])
+                            except Exception:
+                                pass
+                    else:
+                        df_yf = df_yf.dropna(subset=["Close"])
+                        df_yf["ticker"] = missing[0]
+                        df_yf["date"] = df_yf.index
+                        df_yf = df_yf.reset_index(drop=True)
+                        rows_yf.append(df_yf[["date", "Open", "High", "Low", "Close", "Volume", "ticker"]])
+                    if rows_yf:
+                        extra = pd.concat(rows_yf, ignore_index=True)
+                        extra["date"] = pd.to_datetime(extra["date"]).dt.tz_localize(None)
+                        if prices_df is not None:
+                            prices_df = pd.concat([prices_df, extra], ignore_index=True)
+                        else:
+                            prices_df = extra
+            except Exception:
+                pass
+
         today = pd.Timestamp.now().normalize()
 
         for _, r in hold_df.iterrows():
@@ -277,48 +314,88 @@ async def get_positions():
                 "exit_type": "",
             })
 
-    # Exit候補（シグナル算出ポジション）
+    # Exit候補（hold_stocksの実際の建日に紐づくもののみ）
     exits = []
     calc_df = _load_latest("positions")
-    if not calc_df.empty and "status" in calc_df.columns:
-        exit_df = calc_df[calc_df["status"] == "exit"]
-        if "stock_name" not in exit_df.columns:
-            for p in [META_PATH, META_FALLBACK]:
-                if p.exists():
-                    meta = pd.read_parquet(p, columns=["ticker", "stock_name"])
-                    name_map = dict(zip(meta["ticker"], meta["stock_name"]))
-                    exit_df = exit_df.copy()
-                    exit_df["stock_name"] = exit_df["ticker"].map(name_map).fillna("")
-                    break
+
+    # hold_stocksのticker→建日マップ（弁済期限から6ヶ月逆算）
+    hold_entry_map = {}  # {ticker_t: entry_date}
+    if not hold_df.empty and "ticker" in hold_df.columns:
+        for _, hr in hold_df.iterrows():
+            tk = str(hr.get("ticker", ""))
+            tk_t = tk if ".T" in tk else f"{tk}.T"
+            expiry = hr.get("expiry_date", hr.get("deadline", ""))
+            if expiry and str(expiry) not in ("", "nan", "NaT"):
+                try:
+                    entry_dt = pd.to_datetime(str(expiry)) - pd.DateOffset(months=6)
+                    hold_entry_map[tk_t] = entry_dt.normalize()
+                except Exception:
+                    hold_entry_map[tk_t] = None
             else:
-                exit_df = exit_df.copy()
-                exit_df["stock_name"] = ""
-        for _, r in exit_df.iterrows():
-            cp = _safe_float(r.get("current_price", 0))
-            high_20d = _safe_float(r.get("high_20d", 0))
-            exits.append({
-                "ticker": r.get("ticker", ""),
-                "stock_name": r.get("stock_name", ""),
-                "rule": r.get("rule", ""),
-                "direction": "",
-                "margin_type": "",
-                "deadline": "",
-                "entry_date": pd.to_datetime(r["entry_date"]).strftime("%Y-%m-%d") if "entry_date" in r else "",
-                "entry_price": _safe_float(r.get("entry_price", 0)),
-                "current_price": cp,
-                "quantity": 100,
-                "cost_total": 0,
-                "market_value": 0,
-                "high_20d": high_20d,
-                "atr10": _safe_float(r.get("atr10", 0)),
-                "gap_to_high": _safe_int(round(high_20d - cp)) if high_20d > 0 else 0,
-                "unrealized_pct": _safe_float(r.get("pct", 0), 2),
-                "unrealized_yen": _safe_int(r.get("pnl", 0)),
-                "hold_days": _safe_int(r.get("hold_days", 0)),
-                "max_hold": _safe_int(r.get("max_hold", 0)),
-                "remaining_days": max(0, _safe_int(r.get("max_hold", 0)) - _safe_int(r.get("hold_days", 0))),
-                "exit_type": r.get("exit_type", ""),
-            })
+                hold_entry_map[tk_t] = None
+
+    if not calc_df.empty and "status" in calc_df.columns and hold_entry_map:
+        # hold_stocksにある銘柄のpositionsを取得（exit/open問わず）
+        hold_tickers_t = set(hold_entry_map.keys())
+        held_pos = calc_df[calc_df["ticker"].isin(hold_tickers_t)].copy()
+
+        if not held_pos.empty:
+            # 各hold銘柄について、実際の建日に最も近いpositionを選択
+            if "stock_name" not in held_pos.columns:
+                for p_path in [META_PATH, META_FALLBACK]:
+                    if p_path.exists():
+                        meta = pd.read_parquet(p_path, columns=["ticker", "stock_name"])
+                        name_map = dict(zip(meta["ticker"], meta["stock_name"]))
+                        held_pos["stock_name"] = held_pos["ticker"].map(name_map).fillna("")
+                        break
+                else:
+                    held_pos["stock_name"] = ""
+
+            for tk_t, hold_entry_dt in hold_entry_map.items():
+                tk_pos = held_pos[held_pos["ticker"] == tk_t]
+                if tk_pos.empty:
+                    continue
+
+                # 建日と一致するentry_dateのpositionのみ（granvilleエントリーのみ）
+                if hold_entry_dt is not None and "entry_date" in tk_pos.columns:
+                    tk_pos = tk_pos.copy()
+                    tk_pos["_entry_dt"] = pd.to_datetime(tk_pos["entry_date"]).dt.normalize()
+                    matched = tk_pos[tk_pos["_entry_dt"] == hold_entry_dt]
+                    if matched.empty:
+                        continue  # granvilleシグナルと建日が一致しない → 非granvilleポジション
+                    best = matched.iloc[-1]
+                    # exit条件に達したもののみ表示
+                    if best.get("status") != "exit":
+                        continue
+                else:
+                    continue
+
+                cp = _safe_float(best.get("current_price", 0))
+                high_20d = _safe_float(best.get("high_20d", 0))
+                exits.append({
+                    "ticker": best.get("ticker", ""),
+                    "stock_name": best.get("stock_name", ""),
+                    "rule": best.get("rule", ""),
+                    "direction": "",
+                    "margin_type": "",
+                    "deadline": "",
+                    "entry_date": pd.to_datetime(best["entry_date"]).strftime("%Y-%m-%d") if "entry_date" in best else "",
+                    "entry_price": _safe_float(best.get("entry_price", 0)),
+                    "current_price": cp,
+                    "quantity": 100,
+                    "cost_total": 0,
+                    "market_value": 0,
+                    "high_20d": high_20d,
+                    "atr10": _safe_float(best.get("atr10", 0)),
+                    "gap_to_high": _safe_int(round(high_20d - cp)) if high_20d > 0 else 0,
+                    "unrealized_pct": _safe_float(best.get("pct", 0), 2),
+                    "unrealized_yen": _safe_int(best.get("pnl", 0)),
+                    "hold_days": _safe_int(best.get("hold_days", 0)),
+                    "max_hold": _safe_int(best.get("max_hold", 0)),
+                    "remaining_days": max(0, _safe_int(best.get("max_hold", 0)) - _safe_int(best.get("hold_days", 0))),
+                    "exit_type": best.get("exit_type", "") if best.get("status") == "exit" else "",
+                    "status": best.get("status", ""),
+                })
 
     return {"positions": positions, "exits": exits, "as_of": as_of}
 
