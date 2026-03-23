@@ -156,8 +156,8 @@ jobs:
         run: |
           echo "☁️ Uploading review results..."
 
-          # granville signals & positions
-          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet; do
+          # granville signals, positions, prices_topix
+          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/prices_topix.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
 
