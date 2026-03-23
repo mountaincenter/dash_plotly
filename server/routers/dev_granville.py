@@ -401,10 +401,18 @@ async def get_positions():
 
 
 def _load_credit_status() -> dict:
-    """現金保証金と信用余力を取得（credit_status.parquet → CSV フォールバック）"""
+    """現金保証金と信用余力を取得（S3優先）"""
     cash_margin = 0
-    # credit_status.parquet（generate_stock_results_html.py が生成）
+
+    # S3からcredit_status.parquetを取得
     cs_path = PARQUET_DIR / "credit_status.parquet"
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}credit_status.parquet", str(cs_path))
+    except Exception:
+        pass
+
     if cs_path.exists():
         try:
             cs = pd.read_parquet(cs_path)
@@ -414,38 +422,21 @@ def _load_credit_status() -> dict:
         except Exception:
             pass
 
-    # フォールバック: CSV
-    if cash_margin == 0:
-        credit_csv = CSV_DIR / "credit_capacity.csv"
-        if credit_csv.exists():
-            try:
-                cc = pd.read_csv(credit_csv)
-                if "available_margin" in cc.columns and not cc.empty:
-                    cash_margin = int(float(cc.iloc[-1]["available_margin"]))
-                elif not cc.empty:
-                    # MarketSpeed形式: 現金保証金(信用) の行
-                    for _, r in cc.iterrows():
-                        if "信用" in str(r.iloc[0]):
-                            cash_margin = int(float(str(r.iloc[1]).replace(",", "")))
-                            break
-            except Exception:
-                pass
-
     if cash_margin == 0:
         cash_margin = 4_650_000  # デフォルト
 
-    # 信用余力 = 現金保証金 / 委託保証金率(30%) - 既存ポジション評価額
+    # 信用余力 = (現金保証金 - 必要保証金) / 委託保証金率(30%)
     position_value = 0
-    hs_path = PARQUET_DIR / "hold_stocks.parquet"
-    if hs_path.exists():
-        try:
-            hs = pd.read_parquet(hs_path)
-            if "market_value" in hs.columns:
-                position_value = int(hs["market_value"].abs().sum())
-        except Exception:
-            pass
+    hold_df = _load_hold_stocks()
+    if not hold_df.empty and "market_value" in hold_df.columns:
+        position_value = int(hold_df["market_value"].abs().sum())
 
-    credit_capacity = int(cash_margin / 0.3) - position_value
+    # 必要保証金 = 建玉金額合計 * 30%
+    required_margin = 0
+    if not hold_df.empty and "cost_total" in hold_df.columns:
+        required_margin = int(hold_df["cost_total"].abs().sum() * 0.3)
+
+    credit_capacity = int((cash_margin - required_margin) / 0.3)
 
     return {
         "cash_margin": cash_margin,
@@ -455,22 +446,23 @@ def _load_credit_status() -> dict:
 
 
 def _load_hold_stocks() -> pd.DataFrame:
-    """hold_stocks.parquet から実保有ポジションを取得"""
+    """hold_stocks.parquet をS3から取得"""
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        local = PARQUET_DIR / "hold_stocks.parquet"
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}hold_stocks.parquet", str(local))
+        return pd.read_parquet(local)
+    except Exception:
+        pass
+    # ローカルフォールバック
     hs_path = PARQUET_DIR / "hold_stocks.parquet"
     if hs_path.exists():
         try:
             return pd.read_parquet(hs_path)
         except Exception:
             pass
-    # S3フォールバック
-    try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        local = PARQUET_DIR / "hold_stocks.parquet"
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/hold_stocks.parquet", str(local))
-        return pd.read_parquet(local)
-    except Exception:
-        return pd.DataFrame()
+    return pd.DataFrame()
 
 
 @router.get("/api/dev/granville/status")
