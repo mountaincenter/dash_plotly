@@ -328,3 +328,171 @@ if s3_cfg.bucket:
             print(f"[OK] キャッシュリフレッシュ完了: {result}")
     except (urllib.error.URLError, Exception) as e:
         print(f"[WARNING] キャッシュリフレッシュ失敗: {e}")
+
+# =============================================================================
+# MarketSpeed CSV → Parquet 変換（hold_stocks / orders / credit_status）
+# =============================================================================
+
+CSV_DIR = BASE_DIR / "data" / "csv"
+
+
+def convert_hold_stocks() -> pd.DataFrame | None:
+    """hold_stocks.csv → hold_stocks.parquet（実保有ポジション）"""
+    path = CSV_DIR / "hold_stocks.csv"
+    if not path.exists():
+        print("[SKIP] hold_stocks.csv not found")
+        return None
+
+    df = pd.read_csv(path, encoding="utf-8")
+    if df.empty:
+        print("[SKIP] hold_stocks.csv is empty")
+        return None
+
+    num_cols = {
+        "建玉数量合計(株/口)": "quantity",
+        "建玉金額合計(円)": "cost_total",
+        "時価(円)": "current_price",
+        "時価評価額(円)": "market_value",
+        "評価損益額合計(円)": "unrealized_pnl",
+        "評価損益率(%)": "unrealized_pct",
+    }
+    out = pd.DataFrame()
+    out["ticker"] = df["コード"].astype(str)
+    out["stock_name"] = df["銘柄名"]
+    out["direction"] = df["売買"]
+    out["margin_type"] = df["信用区分"]
+    out["deadline"] = df["弁済期限"]
+
+    for src, dst in num_cols.items():
+        if src in df.columns:
+            out[dst] = df[src].astype(str).str.replace(",", "").astype(float)
+
+    if "直近期日" in df.columns:
+        out["expiry_date"] = df["直近期日"]
+
+    out["as_of"] = datetime.now().strftime("%Y-%m-%d")
+
+    out_path = PARQUET_DIR / "hold_stocks.parquet"
+    out.to_parquet(out_path, index=False)
+    print(f"[OK] hold_stocks.parquet: {len(out)}件")
+    return out
+
+
+def convert_orders() -> pd.DataFrame | None:
+    """order.csv → orders.parquet（注文履歴）"""
+    path = CSV_DIR / "order.csv"
+    if not path.exists():
+        print("[SKIP] order.csv not found")
+        return None
+
+    df = pd.read_csv(path, encoding="utf-8")
+    if df.empty:
+        print("[SKIP] order.csv is empty")
+        return None
+
+    out = pd.DataFrame()
+    out["order_no"] = df["受付No"].astype(str)
+    out["status"] = df["通常注文状況"]
+    out["ticker"] = df["コード"].astype(str)
+    out["stock_name"] = df["銘柄名"]
+    out["trade_type"] = df["取引"]
+    out["direction"] = df["売買"]
+    out["exec_condition"] = df["執行条件"]
+    out["order_qty"] = df["注文数量(株/口)"].astype(str).str.replace(",", "").astype(int)
+    out["filled_qty"] = df["約定数量(株/口)"].astype(str).str.replace(",", "").astype(int)
+    out["order_price"] = df["注文単価(円)"]
+    out["margin_type"] = df["信用区分"]
+    out["order_datetime"] = df["発注/受注日時"]
+    out["is_filled"] = out["status"] == "約定"
+
+    out_path = PARQUET_DIR / "orders.parquet"
+    out.to_parquet(out_path, index=False)
+    print(f"[OK] orders.parquet: {len(out)}件 (約定: {out['is_filled'].sum()}件)")
+    return out
+
+
+def convert_credit_capacity() -> dict | None:
+    """credit_capacity.csv → credit_status.parquet（資産状況）"""
+    path = CSV_DIR / "credit_capacity.csv"
+    if not path.exists():
+        print("[SKIP] credit_capacity.csv not found")
+        return None
+
+    df = pd.read_csv(path, encoding="utf-8")
+    if df.empty:
+        print("[SKIP] credit_capacity.csv is empty")
+        return None
+
+    # date,available_margin 形式
+    if "available_margin" in df.columns:
+        margin = float(df.iloc[-1]["available_margin"])
+        out = pd.DataFrame([{
+            "asset": "available_margin",
+            "value": margin,
+            "as_of": str(df.iloc[-1].get("date", datetime.now().strftime("%Y-%m-%d"))),
+        }])
+        out_path = PARQUET_DIR / "credit_status.parquet"
+        out.to_parquet(out_path, index=False)
+        print(f"[OK] credit_status.parquet: 余力 ¥{margin:,.0f}")
+        return {"available_margin": margin, "source": "simple_csv"}
+
+    # MarketSpeed資産内訳形式
+    out_rows = []
+    for _, row in df.iterrows():
+        name = str(row.iloc[0])
+        val_str = str(row.iloc[1]).replace(",", "")
+        try:
+            val = float(val_str)
+        except ValueError:
+            val = 0.0
+        out_rows.append({"asset": name, "value": val})
+
+    out = pd.DataFrame(out_rows)
+    out["as_of"] = datetime.now().strftime("%Y-%m-%d")
+
+    credit_row = out[out["asset"].str.contains("信用", na=False)]
+    margin = float(credit_row["value"].iloc[0]) if not credit_row.empty else 0.0
+
+    out_path = PARQUET_DIR / "credit_status.parquet"
+    out.to_parquet(out_path, index=False)
+    print(f"[OK] credit_status.parquet: {len(out)}行, 信用保証金 ¥{margin:,.0f}")
+    return {"available_margin": margin, "source": "marketspeed"}
+
+
+print("\n" + "=" * 60)
+print("MarketSpeed CSV → Parquet 変換")
+print("=" * 60)
+hold = convert_hold_stocks()
+orders = convert_orders()
+credit = convert_credit_capacity()
+
+# S3アップロード（MarketSpeed parquets）
+if s3_cfg.bucket:
+    for fname in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet"]:
+        fpath = PARQUET_DIR / fname
+        if fpath.exists():
+            upload_file(s3_cfg, fpath, fname)
+
+    # manifest 更新
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for fname, label in [
+        ("hold_stocks.parquet", "実保有ポジション"),
+        ("orders.parquet", "注文履歴"),
+        ("credit_status.parquet", "資産状況"),
+    ]:
+        fpath = PARQUET_DIR / fname
+        if fpath.exists():
+            fdf = pd.read_parquet(fpath)
+            manifest["files"][fname] = {
+                "exists": True,
+                "size_bytes": fpath.stat().st_size,
+                "row_count": len(fdf),
+                "columns": list(fdf.columns),
+                "updated_at": now,
+            }
+
+    manifest["generated_at"] = now
+    with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
+    upload_file(s3_cfg, MANIFEST_PATH, "manifest.json")
+    print("[OK] S3 manifest updated")
