@@ -126,12 +126,16 @@ jobs:
 
           # production S3からhold_stocks/credit_status/orders
           for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
-            aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
+            echo "  Fetching $f from production S3..."
+            aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
 
           # production S3からマスタデータ（staging S3にない場合のみ）
           for f in meta_jquants.parquet meta.parquet grok_trending.parquet; do
-            [ ! -f "data/parquet/$f" ] && aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
+            if [ ! -f "data/parquet/$f" ]; then
+              echo "  Fetching $f from production S3..."
+              aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
+            fi
           done
 
           echo "✅ Data downloaded"
