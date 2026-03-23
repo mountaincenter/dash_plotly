@@ -118,15 +118,20 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest data/csv
+          mkdir -p data/parquet/granville data/parquet/backtest
 
-          # 既存parquetファイル
+          # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
-          # CSVファイル（hold_stocks, credit_capacity等）
-          for f in hold_stocks.csv credit_capacity.csv stock_results.csv nikkeivi.csv; do
-            aws s3 cp "s3://$S3_BUCKET/csv/$f" "data/csv/$f" --only-show-errors 2>/dev/null || true
+          # production S3からhold_stocks/credit_status/orders
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+            aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
+          done
+
+          # production S3からマスタデータ（staging S3にない場合のみ）
+          for f in meta_jquants.parquet meta.parquet grok_trending.parquet; do
+            [ ! -f "data/parquet/$f" ] && aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
           done
 
           echo "✅ Data downloaded"
