@@ -409,7 +409,7 @@ def _load_credit_status() -> dict:
     try:
         import boto3
         s3 = boto3.client("s3", region_name=AWS_REGION)
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}credit_status.parquet", str(cs_path))
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/credit_status.parquet", str(cs_path))
     except Exception:
         pass
 
@@ -451,7 +451,7 @@ def _load_hold_stocks() -> pd.DataFrame:
         import boto3
         s3 = boto3.client("s3", region_name=AWS_REGION)
         local = PARQUET_DIR / "hold_stocks.parquet"
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}hold_stocks.parquet", str(local))
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/hold_stocks.parquet", str(local))
         return pd.read_parquet(local)
     except Exception:
         pass
