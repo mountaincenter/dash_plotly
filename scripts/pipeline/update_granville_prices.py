@@ -27,13 +27,24 @@ from common_cfg.s3io import upload_file
 
 load_dotenv_cascade()
 
-PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+GRANVILLE_DIR = PARQUET_DIR / "granville"
+PRICES_PATH = GRANVILLE_DIR / "prices_topix.parquet"
 BATCH_SIZE = 50
 SLEEP_BETWEEN = 2
 
 
 def load_existing() -> pd.DataFrame:
-    """既存の prices_max_1d.parquet を読み込み"""
+    """既存の prices_topix.parquet を読み込み"""
+    GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
+    if not PRICES_PATH.exists():
+        # S3フォールバック
+        try:
+            cfg = load_s3_config()
+            if cfg and cfg.bucket:
+                from common_cfg.s3io import download_file
+                download_file(cfg, "granville/prices_topix.parquet", PRICES_PATH)
+        except Exception:
+            pass
     if not PRICES_PATH.exists():
         print(f"[ERROR] {PRICES_PATH} not found")
         sys.exit(1)
@@ -145,7 +156,7 @@ def main() -> int:
     try:
         cfg = load_s3_config()
         if cfg and cfg.bucket:
-            upload_file(cfg, PRICES_PATH, "prices_max_1d.parquet")
+            upload_file(cfg, PRICES_PATH, "granville/prices_topix.parquet")
     except Exception as e:
         print(f"  [WARN] S3 upload failed: {e}")
 

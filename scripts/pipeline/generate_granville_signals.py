@@ -43,7 +43,7 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
-PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+PRICES_PATH = GRANVILLE_DIR / "prices_topix.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 CSV_DIR = ROOT / "data" / "csv"

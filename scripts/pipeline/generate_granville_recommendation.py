@@ -33,7 +33,7 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
-PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+PRICES_PATH = GRANVILLE_DIR / "prices_topix.parquet"
 
 MARGIN_LIMIT_PCT = 0.15  # §7: 証拠金上限15%（株価フィルター）
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
