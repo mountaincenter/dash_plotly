@@ -409,9 +409,12 @@ def _load_credit_status() -> dict:
     try:
         import boto3
         s3 = boto3.client("s3", region_name=AWS_REGION)
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/credit_status.parquet", str(cs_path))
-    except Exception:
-        pass
+        s3_key = f"{S3_PREFIX}/credit_status.parquet"
+        print(f"[credit_status] Downloading s3://{S3_BUCKET}/{s3_key}")
+        s3.download_file(S3_BUCKET, s3_key, str(cs_path))
+        print(f"[credit_status] Downloaded OK")
+    except Exception as e:
+        print(f"[credit_status] S3 download failed: {e}")
 
     if cs_path.exists():
         try:
