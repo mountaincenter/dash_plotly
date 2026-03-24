@@ -53,6 +53,22 @@ jobs:
 
           echo "✅ Pushed image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "✅ Pushed image: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          echo ""
-          echo "📌 Staging: auto_deploy=false. Manual deployment required."
-          echo "   aws apprunner start-deployment --service-arn <staging-service-arn>"
+
+      - name: Deploy to App Runner
+        env:
+          APP_RUNNER_ARN: arn:aws:apprunner:ap-northeast-1:980921748690:service/stock-api-staging/38f82d7440364aa2a8dcefacbd906d55
+        run: |
+          STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
+          echo "App Runner status: $STATUS"
+          if [ "$STATUS" = "PAUSED" ]; then
+            echo "▶️ Resuming App Runner..."
+            aws apprunner resume-service --service-arn "$APP_RUNNER_ARN"
+            for i in $(seq 1 30); do
+              sleep 10
+              STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
+              if [ "$STATUS" = "RUNNING" ]; then break; fi
+            done
+          fi
+          echo "🚀 Starting deployment..."
+          aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN"
+          echo "✅ Deployment started"
