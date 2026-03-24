@@ -165,6 +165,11 @@ jobs:
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
 
+          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
           # manifest
           [ -f "data/parquet/manifest.json" ] && aws s3 cp "data/parquet/manifest.json" "s3://$S3_BUCKET/${S3_PREFIX}manifest.json" --only-show-errors
 
@@ -206,6 +211,11 @@ jobs:
           for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json \
                    prices_max_1d.parquet prices_max_1mo.parquet prices_5d_1m.parquet \
                    prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
+          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
