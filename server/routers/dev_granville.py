@@ -35,6 +35,19 @@ _cache: dict[str, tuple[datetime, object]] = {}
 CACHE_TTL = 120
 
 
+def _s3_download(s3_key: str, local_path: Path) -> bool:
+    """S3からファイルをダウンロード。ディレクトリ作成含む。"""
+    try:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/{s3_key}", str(local_path))
+        return True
+    except Exception as e:
+        print(f"[S3] download failed: {S3_BUCKET}/{S3_PREFIX}/{s3_key} → {e}")
+        return False
+
+
 def _cached(key: str) -> Optional[object]:
     if key in _cache:
         ts, data = _cache[key]
@@ -406,15 +419,7 @@ def _load_credit_status() -> dict:
 
     # S3からcredit_status.parquetを取得
     cs_path = PARQUET_DIR / "credit_status.parquet"
-    try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        s3_key = f"{S3_PREFIX}/credit_status.parquet"
-        print(f"[credit_status] Downloading s3://{S3_BUCKET}/{s3_key}")
-        s3.download_file(S3_BUCKET, s3_key, str(cs_path))
-        print(f"[credit_status] Downloaded OK")
-    except Exception as e:
-        print(f"[credit_status] S3 download failed: {e}")
+    _s3_download("credit_status.parquet", cs_path)
 
     if cs_path.exists():
         try:
@@ -450,19 +455,11 @@ def _load_credit_status() -> dict:
 
 def _load_hold_stocks() -> pd.DataFrame:
     """hold_stocks.parquet をS3から取得"""
-    try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        local = PARQUET_DIR / "hold_stocks.parquet"
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/hold_stocks.parquet", str(local))
-        return pd.read_parquet(local)
-    except Exception:
-        pass
-    # ローカルフォールバック
-    hs_path = PARQUET_DIR / "hold_stocks.parquet"
-    if hs_path.exists():
+    local = PARQUET_DIR / "hold_stocks.parquet"
+    _s3_download("hold_stocks.parquet", local)
+    if local.exists():
         try:
-            return pd.read_parquet(hs_path)
+            return pd.read_parquet(local)
         except Exception:
             pass
     return pd.DataFrame()
