@@ -152,13 +152,7 @@ def compute_rank_score(row: pd.Series, rule: str) -> float:
     # セクター (B4: 銀行WR98.4%, 小売WR80.5%)
     score += _SECTOR_BONUS.get(sector, 0)
 
-    # 株価帯 (B4: <2K安定 WR89%, >5K低下 WR83%)
-    if price <= 2000:
-        score += 3
-    elif price >= 5000:
-        score -= 3
-
-    return round(max(0, min(100, score)), 1)
+    return round(max(0, score), 1)
 
 
 # バックテスト2Y実績: (rule, score_band) → avg return %
