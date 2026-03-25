@@ -465,6 +465,98 @@ def _load_hold_stocks() -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _compute_triggers() -> dict:
+    """戦略トリガー: CMEギャップ、SMA乖離、VIX"""
+    import numpy as np
+    result = {
+        "cme_gap": None, "cme_signal": "unknown", "cme_close": None,
+        "nk_close": None, "sma20_60_gap": None, "sma_signal": "unknown",
+        "vix": None, "vix_signal": "unknown",
+        "strategy": "待機",
+    }
+
+    try:
+        import yfinance as yf
+
+        # N225 SMA
+        nk = yf.download("^N225", period="6mo", interval="1d", progress=False)
+        if isinstance(nk.columns, pd.MultiIndex):
+            nk.columns = [c[0] for c in nk.columns]
+        if not nk.empty:
+            nk["sma20"] = nk["Close"].rolling(20).mean()
+            nk["sma60"] = nk["Close"].rolling(60).mean()
+            latest_nk = nk.iloc[-1]
+            result["nk_close"] = round(float(latest_nk["Close"]), 0)
+            if not np.isnan(latest_nk["sma20"]) and not np.isnan(latest_nk["sma60"]):
+                gap = (latest_nk["sma20"] / latest_nk["sma60"] - 1) * 100
+                result["sma20_60_gap"] = round(gap, 2)
+                if gap <= -3:
+                    result["sma_signal"] = "green"  # B4最強帯
+                elif gap <= 0:
+                    result["sma_signal"] = "yellow"  # DC済み
+                elif gap <= 3:
+                    result["sma_signal"] = "red"  # 現在帯、期待値マイナス
+                else:
+                    result["sma_signal"] = "red"
+
+        # CME 22時ギャップ
+        cme = yf.download("NKD=F", period="5d", interval="1h", progress=False)
+        if isinstance(cme.columns, pd.MultiIndex):
+            cme.columns = [c[0] for c in cme.columns]
+        if not cme.empty:
+            cme = cme.reset_index()
+            cme["jst"] = pd.to_datetime(cme["Datetime"]).dt.tz_convert("Asia/Tokyo")
+            cme_22 = cme[cme["jst"].dt.hour == 22]
+            if not cme_22.empty and result["nk_close"]:
+                latest_cme = cme_22.iloc[-1]
+                cme_close = float(latest_cme["Close"])
+                gap = (cme_close / result["nk_close"] - 1) * 100
+                result["cme_close"] = round(cme_close, 0)
+                result["cme_gap"] = round(gap, 2)
+                if gap <= -2:
+                    result["cme_signal"] = "green"  # エントリー推奨
+                elif gap <= -0.5:
+                    result["cme_signal"] = "yellow"  # 検討
+                elif gap >= 1:
+                    result["cme_signal"] = "green"  # GU+1%超もエントリー
+                elif abs(gap) < 0.5:
+                    result["cme_signal"] = "red"  # 膠着、見送り
+                else:
+                    result["cme_signal"] = "yellow"
+
+        # VIX
+        vix = yf.download("^VIX", period="5d", interval="1d", progress=False)
+        if isinstance(vix.columns, pd.MultiIndex):
+            vix.columns = [c[0] for c in vix.columns]
+        if not vix.empty:
+            v = float(vix["Close"].iloc[-1])
+            result["vix"] = round(v, 2)
+            if v <= 20:
+                result["vix_signal"] = "green"
+            elif v <= 30:
+                result["vix_signal"] = "yellow"
+            else:
+                result["vix_signal"] = "red"
+
+        # 総合判定
+        signals = [result["cme_signal"], result["sma_signal"], result["vix_signal"]]
+        greens = signals.count("green")
+        reds = signals.count("red")
+        if greens >= 2:
+            result["strategy"] = "積極"
+        elif reds >= 2:
+            result["strategy"] = "消極"
+        elif result["cme_signal"] == "green":
+            result["strategy"] = "限定エントリー"
+        else:
+            result["strategy"] = "待機"
+
+    except Exception as e:
+        print(f"[triggers] Error: {e}")
+
+    return result
+
+
 @router.get("/api/dev/granville/status")
 async def get_status():
     """現金保証金・信用余力・ポジション数・シグナル数"""
@@ -502,7 +594,11 @@ async def get_status():
         else:
             rule_breakdown[rule] = 0
 
+    # トリガー情報（CMEギャップ、SMA、VIX）
+    triggers = _compute_triggers()
+
     return {
+        "triggers": triggers,
         "cash_margin": credit["cash_margin"],
         "credit_capacity": credit["credit_capacity"],
         "position_value": credit["position_value"],
