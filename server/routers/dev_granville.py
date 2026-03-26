@@ -646,48 +646,6 @@ async def get_b4_entry():
             except Exception:
                 pass
 
-    # 株価からATR, ret5d計算
-    prices_path = GRANVILLE_DIR / "prices_topix.parquet"
-    features = {}
-    if prices_path.exists():
-        try:
-            prices = pd.read_parquet(prices_path)
-            prices["date"] = pd.to_datetime(prices["date"])
-            prices = prices[prices["Volume"] > 0].sort_values(["ticker", "date"])
-
-            # B4銘柄のみ計算
-            b4_tickers = set(b4["ticker"].unique())
-            prices_sub = prices[prices["ticker"].isin(b4_tickers)].copy()
-
-            g = prices_sub.groupby("ticker")
-            prev_close = g["Close"].shift(1)
-            tr = pd.concat([
-                prices_sub["High"] - prices_sub["Low"],
-                (prices_sub["High"] - prev_close).abs(),
-                (prices_sub["Low"] - prev_close).abs(),
-            ], axis=1).max(axis=1)
-            prices_sub["atr14"] = g["Close"].transform(lambda x: x * 0)  # placeholder
-            # 簡易ATR: 直近14日のTR平均
-            for tk in b4_tickers:
-                mask = prices_sub["ticker"] == tk
-                prices_sub.loc[mask, "atr14"] = tr[mask].rolling(14, min_periods=14).mean()
-
-            prices_sub["atr_pct"] = prices_sub["atr14"] / prices_sub["Close"] * 100
-            prices_sub["ret5d"] = g["Close"].pct_change(5) * 100
-
-            # 各銘柄の最新値を取得
-            for tk in b4_tickers:
-                tk_df = prices_sub[prices_sub["ticker"] == tk]
-                if tk_df.empty:
-                    continue
-                last = tk_df.iloc[-1]
-                features[tk] = {
-                    "atr_pct": float(last["atr_pct"]) if pd.notna(last["atr_pct"]) else 0,
-                    "ret5d": float(last["ret5d"]) if pd.notna(last["ret5d"]) else 0,
-                }
-        except Exception:
-            pass
-
     # good_count計算（中央値は全B4の過去分析から固定）
     # script 26の結果: dev_med=-10.6, atr_med=4.7, ret5d_med=-6.8
     DEV_MED = -10.6
@@ -700,9 +658,8 @@ async def get_b4_entry():
     for _, r in b4.iterrows():
         tk = r.get("ticker", "")
         dev = float(r.get("dev_from_sma20", 0))
-        feat = features.get(tk, {})
-        atr = feat.get("atr_pct", 0)
-        ret5d = feat.get("ret5d", 0)
+        atr = float(r.get("atr10_pct", 0))
+        ret5d = float(r.get("ret5d", 0))
 
         good_count = int(dev < DEV_MED) + int(atr > ATR_MED) + int(ret5d < RET5D_MED)
         close_price = float(r.get("close", r.get("entry_price_est", 0)))

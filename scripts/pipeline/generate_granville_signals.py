@@ -94,6 +94,8 @@ def load_prices() -> pd.DataFrame:
         np.maximum(abs(ps["High"] - ps["prev_close_tr"]), abs(ps["Low"] - ps["prev_close_tr"]))
     )
     ps["atr10"] = g["tr"].transform(lambda x: x.rolling(10, min_periods=10).mean())
+    ps["atr10_pct"] = ps["atr10"] / ps["Close"] * 100
+    ps["ret5d"] = g["Close"].pct_change(5) * 100
 
     # §3: up_day = Close > prev_close（前日比陽線）
     ps["sma20_up"] = ps["sma20_slope"] > 0
@@ -187,6 +189,8 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"].round(1),
         "prev_close": signals["prev_close"].round(1),
+        "atr10_pct": signals["atr10_pct"].round(2),
+        "ret5d": signals["ret5d"].round(2),
     })
 
     # §5: ルール優先のみ。同一ルール内は到着順（ソートなし）
