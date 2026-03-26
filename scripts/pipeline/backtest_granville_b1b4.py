@@ -28,7 +28,7 @@ META_FALLBACK = PARQUET_DIR / "meta.parquet"
 OUT_PATH = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
 
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
-MAX_HOLD = 10  # 資金 < 3,000万: 全ルール10日
+MAX_HOLD = 15  # 資本効率最大（全期間検証: SMA20回帰MH15 ¥331/日）
 
 
 def load_prices(lookback_years: int = 2) -> pd.DataFrame:
