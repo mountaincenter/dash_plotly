@@ -146,7 +146,7 @@ jobs:
         run: |
           echo "📈 Updating TOPIX 1,660 stocks daily prices..."
           python scripts/pipeline/update_granville_prices.py
-        timeout-minutes: 15
+        timeout-minutes: 45
 
       - name: "[Review] Generate Granville signals"
         if: steps.exec_mode.outputs.phase == 'review'

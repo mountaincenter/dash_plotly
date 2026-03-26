@@ -228,10 +228,15 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
     else:
         sigs["stock_name"] = ""
 
+    # ticker別に事前グループ化（高速化）
+    ticker_groups = {tk: gdf.sort_values("date").reset_index(drop=True)
+                     for tk, gdf in ps.groupby("ticker")}
+
     rows: list[dict] = []
     for _, sig in sigs.iterrows():
-        # 全価格系列から銘柄データを取得（20日高値計算にエントリー前データが必要）
-        tk_all = ps[ps["ticker"] == sig["ticker"]].sort_values("date").reset_index(drop=True)
+        tk_all = ticker_groups.get(sig["ticker"])
+        if tk_all is None:
+            continue
         # エントリー日（シグナル翌営業日）のインデックスを特定
         entry_mask = tk_all["date"] > sig["date"]
         if not entry_mask.any():
@@ -254,22 +259,22 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
             row = tk_all.iloc[day]
             hold_day = day - entry_iloc
 
-            # §6: 20日高値Exit — High[t] >= max(High[t-19:t+1])
-            # 全価格系列のrolling 20日window（エントリー前を含む）
+            # §6: 直近高値更新Exit — High[t] >= エントリー後rolling高値
+            # 発火したら翌営業日寄付で決済（ユーザーが執行）
             if hold_day > 0:
                 w_start = max(0, day - 19)
                 window_highs = tk_all.iloc[w_start:day + 1]["High"]
                 high_20d = float(window_highs.max())
                 if float(row["High"]) >= high_20d:
-                    exit_price = high_20d
+                    exit_price = float(row["Close"])  # 参考値（実約定は翌寄付）
                     if row["date"] == latest_date:
-                        exit_type = "20d_high"
+                        exit_type = "high_update"
                     exited = True
                     break
 
-            # §6: MAX_HOLD到達 → 当日終値にて強制決済
+            # §6: MAX_HOLD到達 → 翌営業日寄付で決済
             if hold_day >= max_hold - 1:
-                exit_price = float(row["Close"])
+                exit_price = float(row["Close"])  # 参考値（実約定は翌寄付）
                 if row["date"] == latest_date:
                     exit_type = "max_hold"
                 exited = True

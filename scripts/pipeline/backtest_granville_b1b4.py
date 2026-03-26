@@ -22,7 +22,7 @@ if str(ROOT) not in sys.path:
 
 from common_cfg.paths import PARQUET_DIR
 
-PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+PRICES_PATH = PARQUET_DIR / "granville" / "prices_topix.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 OUT_PATH = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
@@ -58,6 +58,19 @@ def load_prices(lookback_years: int = 2) -> pd.DataFrame:
     ps["below"] = ps["Close"] < ps["sma20"]
     ps["prev_below"] = ps["prev_close"] < ps["prev_sma20"]
     ps["up_day"] = ps["Close"] > ps["prev_close"]
+
+    # スコアリング用特徴量
+    prev_close = g["Close"].shift(1)
+    tr = pd.concat([
+        ps["High"] - ps["Low"],
+        (ps["High"] - prev_close).abs(),
+        (ps["Low"] - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    ps["atr14"] = tr.groupby(ps["ticker"]).transform(
+        lambda x: x.rolling(14, min_periods=14).mean()
+    )
+    ps["atr_pct"] = ps["atr14"] / ps["Close"] * 100
+    ps["ret5d"] = g["Close"].pct_change(5) * 100
 
     ps = ps.dropna(subset=["sma20"])
     # バックテスト対象期間のみ
@@ -158,7 +171,9 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
         mae_pct = 0.0  # 最大逆行
         mfe_pct = 0.0  # 最大順行
 
-        for i in range(min(len(future), MAX_HOLD)):
+        # Exit判定: 条件発火→翌営業日寄付で決済（再現可能）
+        hold_limit = min(len(future) - 1, MAX_HOLD)  # 翌日寄付用に-1
+        for i in range(hold_limit):
             row = future.iloc[i]
             cur_close = float(row["Close"])
             cur_high = float(row["High"])
@@ -170,33 +185,36 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
             mae_pct = min(mae_pct, day_low_pct)
             mfe_pct = max(mfe_pct, day_high_pct)
 
-            # 20日高値Exit
+            # 直近高値更新Exit: 発火→翌営業日寄付で決済
             if i > 0:
                 start_idx = max(0, i - 19)
                 window_highs = future.iloc[start_idx:i + 1]["High"]
                 high_20d = float(window_highs.max())
                 if cur_high >= high_20d:
-                    exit_price = high_20d
-                    exit_date = row["date"]
-                    exit_type = "20d_high"
-                    exit_day = i + 1
+                    next_row = future.iloc[i + 1]
+                    exit_price = float(next_row["Open"])
+                    exit_date = next_row["date"]
+                    exit_type = "high_update"
+                    exit_day = i + 2  # エントリーからの日数
                     break
 
-            # MAX_HOLD
-            if i >= MAX_HOLD - 1:
-                exit_price = cur_close
-                exit_date = row["date"]
+            # MAX_HOLD: 到達→翌営業日寄付で決済
+            if i >= hold_limit - 1:
+                next_row = future.iloc[i + 1]
+                exit_price = float(next_row["Open"])
+                exit_date = next_row["date"]
                 exit_type = "max_hold"
-                exit_day = MAX_HOLD
+                exit_day = i + 2
                 break
 
         if exit_date is None:
-            # 期間末: 最終日の終値で決済
-            last = future.iloc[min(len(future) - 1, MAX_HOLD - 1)]
+            # 期間末: 最終日の翌営業日寄付が取れない場合は終値
+            last_idx = min(len(future) - 1, MAX_HOLD)
+            last = future.iloc[last_idx]
             exit_price = float(last["Close"])
             exit_date = last["date"]
             exit_type = "end_of_data"
-            exit_day = min(len(future), MAX_HOLD)
+            exit_day = last_idx + 1
 
         ret_pct = round((exit_price / ep - 1) * 100, 3)
         pnl_yen = int((exit_price - ep) * 100)
@@ -217,6 +235,9 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
             "exit_day": exit_day,
             "mae_pct": round(mae_pct, 2),
             "mfe_pct": round(mfe_pct, 2),
+            "dev_from_sma20": round(float(sig.get("dev_from_sma20", 0)), 2),
+            "atr_pct": round(float(sig.get("atr_pct", 0)), 2),
+            "ret5d": round(float(sig.get("ret5d", 0)), 2),
         })
 
     print(f"  {len(trades):,} completed trades")

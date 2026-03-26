@@ -612,6 +612,151 @@ async def get_status():
     }
 
 
+@router.get("/api/dev/granville/b4_entry")
+async def get_b4_entry():
+    """B4エントリー判定: VI + good_count(乖離+ATR+ret5d)で上位3件"""
+    import numpy as np
+
+    # 今日のシグナル（B4のみ）
+    signals_df = _load_latest("signals")
+    if signals_df.empty:
+        return {"decision": "no_signal", "vi": None, "candidates": [], "date": None}
+
+    b4 = signals_df[signals_df["rule"] == "B4"].copy() if "rule" in signals_df.columns else pd.DataFrame()
+    if b4.empty:
+        date_str = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in signals_df.columns else None
+        return {"decision": "no_b4", "vi": None, "candidates": [], "date": date_str}
+
+    date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
+
+    # 日経VI取得
+    vi_val = None
+    vi_csv = ROOT / "data" / "csv" / "nikkeivi.csv"
+    # production側も確認
+    vi_csv_prod = ROOT.parent / "dash_plotly" / "data" / "csv" / "nikkeivi.csv"
+    for vp in [vi_csv_prod, vi_csv]:
+        if vp.exists():
+            try:
+                vi_df = pd.read_csv(vp, encoding="utf-8")
+                vi_df.columns = [c.strip().strip('"') for c in vi_df.columns]
+                close_col = [c for c in vi_df.columns if "終値" in c]
+                if close_col:
+                    vi_val = float(str(vi_df[close_col[0]].iloc[0]).strip('"'))
+                    break
+            except Exception:
+                pass
+
+    # 株価からATR, ret5d計算
+    prices_path = GRANVILLE_DIR / "prices_topix.parquet"
+    features = {}
+    if prices_path.exists():
+        try:
+            prices = pd.read_parquet(prices_path)
+            prices["date"] = pd.to_datetime(prices["date"])
+            prices = prices[prices["Volume"] > 0].sort_values(["ticker", "date"])
+
+            # B4銘柄のみ計算
+            b4_tickers = set(b4["ticker"].unique())
+            prices_sub = prices[prices["ticker"].isin(b4_tickers)].copy()
+
+            g = prices_sub.groupby("ticker")
+            prev_close = g["Close"].shift(1)
+            tr = pd.concat([
+                prices_sub["High"] - prices_sub["Low"],
+                (prices_sub["High"] - prev_close).abs(),
+                (prices_sub["Low"] - prev_close).abs(),
+            ], axis=1).max(axis=1)
+            prices_sub["atr14"] = g["Close"].transform(lambda x: x * 0)  # placeholder
+            # 簡易ATR: 直近14日のTR平均
+            for tk in b4_tickers:
+                mask = prices_sub["ticker"] == tk
+                prices_sub.loc[mask, "atr14"] = tr[mask].rolling(14, min_periods=14).mean()
+
+            prices_sub["atr_pct"] = prices_sub["atr14"] / prices_sub["Close"] * 100
+            prices_sub["ret5d"] = g["Close"].pct_change(5) * 100
+
+            # 各銘柄の最新値を取得
+            for tk in b4_tickers:
+                tk_df = prices_sub[prices_sub["ticker"] == tk]
+                if tk_df.empty:
+                    continue
+                last = tk_df.iloc[-1]
+                features[tk] = {
+                    "atr_pct": float(last["atr_pct"]) if pd.notna(last["atr_pct"]) else 0,
+                    "ret5d": float(last["ret5d"]) if pd.notna(last["ret5d"]) else 0,
+                }
+        except Exception:
+            pass
+
+    # good_count計算（中央値は全B4の過去分析から固定）
+    # script 26の結果: dev_med=-10.6, atr_med=4.7, ret5d_med=-6.8
+    DEV_MED = -10.6
+    ATR_MED = 4.7
+    RET5D_MED = -6.8
+
+    from scripts.lib.price_limit import calc_max_cost_100
+
+    candidates = []
+    for _, r in b4.iterrows():
+        tk = r.get("ticker", "")
+        dev = float(r.get("dev_from_sma20", 0))
+        feat = features.get(tk, {})
+        atr = feat.get("atr_pct", 0)
+        ret5d = feat.get("ret5d", 0)
+
+        good_count = int(dev < DEV_MED) + int(atr > ATR_MED) + int(ret5d < RET5D_MED)
+        close_price = float(r.get("close", r.get("entry_price_est", 0)))
+        cost = calc_max_cost_100(close_price)
+
+        candidates.append({
+            "ticker": tk,
+            "stock_name": r.get("stock_name", ""),
+            "sector": r.get("sector", ""),
+            "close": _safe_float(r.get("close", 0)),
+            "entry_price_est": _safe_float(r.get("entry_price_est", r.get("close", 0))),
+            "dev_from_sma20": _safe_float(dev, 2),
+            "atr_pct": _safe_float(atr, 2),
+            "ret5d": _safe_float(ret5d, 2),
+            "good_count": good_count,
+            "max_cost": cost,
+        })
+
+    # good_count降順→乖離深い順でソート
+    candidates.sort(key=lambda x: (-x["good_count"], x["dev_from_sma20"]))
+
+    # 取引上限100万以内で上位3件
+    budget = 1_000_000
+    selected = []
+    for c in candidates:
+        if len(selected) >= 3:
+            break
+        if budget >= c["max_cost"]:
+            budget -= c["max_cost"]
+            selected.append(c)
+
+    # 判定
+    if vi_val and vi_val >= 30:
+        decision = "entry"
+    elif vi_val and vi_val >= 25:
+        decision = "consider"
+    else:
+        decision = "wait"
+
+    if not selected:
+        decision = "no_candidate"
+
+    return {
+        "decision": decision,
+        "vi": _safe_float(vi_val, 2) if vi_val else None,
+        "total_b4_signals": len(b4),
+        "candidates": candidates[:10],
+        "selected": selected,
+        "selected_cost": sum(s["max_cost"] for s in selected),
+        "budget_remaining": budget,
+        "date": date_str,
+    }
+
+
 @router.get("/api/dev/granville/stats")
 async def get_stats():
     """ルール別勝率、月別PnL（B1-B4バックテストアーカイブから）"""
@@ -652,10 +797,10 @@ async def get_stats():
         gdf = df[df["rule"] == rule]
         n = len(gdf)
         if n == 0:
-            by_rule[rule] = {"count": 0, "win_rate": 0.0, "total_pnl": 0, "avg_pnl": 0, "avg_pct": 0.0, "exit_20d_high": 0, "exit_max_hold": 0}
+            by_rule[rule] = {"count": 0, "win_rate": 0.0, "total_pnl": 0, "avg_pnl": 0, "avg_pct": 0.0, "exit_high_update": 0, "exit_max_hold": 0}
             continue
         wins = int((gdf["ret_pct"] > 0).sum())
-        h20 = int((gdf["exit_type"] == "20d_high").sum()) if "exit_type" in gdf.columns else 0
+        h20 = int((gdf["exit_type"].isin(["20d_high", "high_update"])).sum()) if "exit_type" in gdf.columns else 0
         mh = int((gdf["exit_type"] == "max_hold").sum()) if "exit_type" in gdf.columns else 0
         by_rule[rule] = {
             "count": n,
@@ -663,7 +808,7 @@ async def get_stats():
             "total_pnl": _safe_int(gdf["pnl_yen"].sum()),
             "avg_pnl": _safe_int(gdf["pnl_yen"].mean()),
             "avg_pct": _safe_float(gdf["ret_pct"].mean(), 2),
-            "exit_20d_high": h20,
+            "exit_high_update": h20,
             "exit_max_hold": mh,
         }
 
@@ -680,7 +825,7 @@ async def get_stats():
                 "pnl": _safe_int(mdf["pnl_yen"].sum()),
                 "win_rate": _safe_float(wins / n * 100),
             })
-        monthly.sort(key=lambda x: x["month"], reverse=True)
+        monthly.sort(key=lambda x: x["month"])
 
     return {
         "by_rule": by_rule,
