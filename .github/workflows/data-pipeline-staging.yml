@@ -118,15 +118,24 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest data/csv
+          mkdir -p data/parquet/granville data/parquet/backtest
 
-          # 既存parquetファイル
+          # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
-          # CSVファイル（hold_stocks, credit_capacity等）
-          for f in hold_stocks.csv credit_capacity.csv stock_results.csv nikkeivi.csv; do
-            aws s3 cp "s3://$S3_BUCKET/csv/$f" "data/csv/$f" --only-show-errors 2>/dev/null || true
+          # production S3からhold_stocks/credit_status/orders
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+            echo "  Fetching $f from production S3..."
+            aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
+          done
+
+          # production S3からマスタデータ（staging S3にない場合のみ）
+          for f in meta_jquants.parquet meta.parquet grok_trending.parquet; do
+            if [ ! -f "data/parquet/$f" ]; then
+              echo "  Fetching $f from production S3..."
+              aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
+            fi
           done
 
           echo "✅ Data downloaded"
@@ -151,9 +160,14 @@ jobs:
         run: |
           echo "☁️ Uploading review results..."
 
-          # granville signals & positions
-          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet; do
+          # granville signals, positions, prices_topix
+          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/prices_topix.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
+          done
+
+          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
           # manifest
@@ -197,6 +211,11 @@ jobs:
           for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json \
                    prices_max_1d.parquet prices_max_1mo.parquet prices_5d_1m.parquet \
                    prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
+          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
