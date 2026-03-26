@@ -50,8 +50,8 @@ CSV_DIR = ROOT / "data" / "csv"
 CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
-# ポートフォリオシミュレーション最適化結果（資金¥4,650,000, 集中制限15%, 2年検証）
-RULE_MAX_HOLD = {"B4": 19, "B1": 13, "B3": 14, "B2": 15}
+# 全ルールMH15（資本効率最大: 全期間+直近2年検証で確定）
+RULE_MAX_HOLD = {"B4": 15, "B1": 15, "B3": 15, "B2": 15}
 
 
 def _get_max_hold(rule: str) -> int:
