@@ -228,9 +228,10 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
 
 
 def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
-    """日経電子版から騰落銘柄数・売買代金を取得"""
+    """日経電子版から騰落銘柄数・売買代金を取得（日付検証付き）"""
     try:
         from bs4 import BeautifulSoup
+        import re
         url = "https://www.nikkei.com/markets/kabu/japanidx/"
         headers = {"User-Agent": "Mozilla/5.0"}
         resp = requests.get(url, headers=headers, timeout=10)
@@ -239,10 +240,21 @@ def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
         soup = BeautifulSoup(resp.text, "html.parser")
         text = soup.get_text()
 
+        # 日付検証: ページの日付が対象日と一致するか確認
+        # 日経電子版は「3月26日」等の表記でデータ日付を示す
+        target = pd.Timestamp(date)
+        target_patterns = [
+            f"{target.month}月{target.day}日",
+            f"{target.month}/{target.day}",
+            target.strftime("%Y/%m/%d"),
+        ]
+        page_is_current = any(p in text for p in target_patterns)
+        if not page_is_current:
+            print(f"  [WARN] market breadth: page date does not match {date} (18:00更新前の可能性)")
+            return None
+
         result: dict[str, Any] = {}
 
-        # 値上がり銘柄数
-        import re
         up_match = re.search(r'値上がり銘柄数\s*(\d[,\d]*)', text)
         down_match = re.search(r'値下がり銘柄数\s*(\d[,\d]*)', text)
         unchanged_match = re.search(r'変わらず銘柄数\s*(\d[,\d]*)', text)

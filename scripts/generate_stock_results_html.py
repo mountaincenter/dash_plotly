@@ -65,7 +65,7 @@ daily_stock = df_filtered.groupby(["約定日", "コード", "銘柄名", "posit
     "取得価額_num": "mean",
     "単価_num": "mean",
     "実現損益_num": "sum",
-    "数量(株/口)": lambda x: x.str.replace(",", "").astype(int).sum()
+    "数量(株/口)": lambda x: pd.to_numeric(x.astype(str).str.replace(",", ""), errors="coerce").fillna(0).astype(int).sum()
 }).reset_index()
 
 daily_stock.columns = ["約定日", "コード", "銘柄名", "売買", "平均取得価額", "平均単価", "実現損益", "数量"]
@@ -75,7 +75,7 @@ weekly_stock = df_filtered.groupby(["週", "コード", "銘柄名", "position_t
     "取得価額_num": "mean",
     "単価_num": "mean",
     "実現損益_num": "sum",
-    "数量(株/口)": lambda x: x.str.replace(",", "").astype(int).sum()
+    "数量(株/口)": lambda x: pd.to_numeric(x.astype(str).str.replace(",", ""), errors="coerce").fillna(0).astype(int).sum()
 }).reset_index()
 weekly_stock.columns = ["週", "コード", "銘柄名", "売買", "平均取得価額", "平均単価", "実現損益", "数量"]
 
@@ -84,7 +84,7 @@ monthly_stock = df_filtered.groupby(["月", "コード", "銘柄名", "position_
     "取得価額_num": "mean",
     "単価_num": "mean",
     "実現損益_num": "sum",
-    "数量(株/口)": lambda x: x.str.replace(",", "").astype(int).sum()
+    "数量(株/口)": lambda x: pd.to_numeric(x.astype(str).str.replace(",", ""), errors="coerce").fillna(0).astype(int).sum()
 }).reset_index()
 monthly_stock.columns = ["月", "コード", "銘柄名", "売買", "平均取得価額", "平均単価", "実現損益", "数量"]
 
