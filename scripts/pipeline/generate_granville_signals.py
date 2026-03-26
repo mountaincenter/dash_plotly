@@ -289,9 +289,9 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
         cp = float(cur["Close"])
         hold_days = cur_day - entry_iloc + 1
 
-        # 20日高値: 全価格系列のrolling 20日window
-        h20_start = max(0, cur_day - 19)
-        high_20d = round(float(tk_all.iloc[h20_start:cur_day + 1]["High"].max()), 1)
+        # エントリー後rolling高値（これを超えたら翌朝売り）
+        entry_high = float(tk_all.iloc[entry_iloc:cur_day + 1]["High"].max())
+        trigger_price = round(entry_high, 1)
 
         # ATR(10): 直近の平均true range
         atr10 = 0.0
@@ -305,7 +305,7 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
             "entry_date": e_date,
             "entry_price": round(ep, 1),
             "current_price": round(cp, 1),
-            "high_20d": high_20d,
+            "trigger_price": trigger_price,
             "atr10": atr10,
             "pct": round((cp / ep - 1) * 100, 2),
             "pnl": int((cp - ep) * 100),

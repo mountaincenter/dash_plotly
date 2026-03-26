@@ -281,27 +281,30 @@ async def get_positions():
                 except Exception:
                     pass
 
-            # 20日高値
-            high_20d = 0.0
-            # ticker形式の正規化: "4151" → "4151.T"
+            # エントリー後rolling高値（trigger_price: これを超えたら翌朝売り）
+            trigger_price = 0.0
             price_ticker = ticker if ".T" in ticker else f"{ticker}.T"
-            if prices_df is not None and price_ticker:
+            if prices_df is not None and price_ticker and entry_date:
                 tk_df = prices_df[prices_df["ticker"] == price_ticker].sort_values("date")
                 if not tk_df.empty:
-                    high_20d = float(tk_df["High"].tail(20).max())
+                    entry_dt = pd.to_datetime(entry_date)
+                    # エントリー日以降のHigh
+                    after_entry = tk_df[tk_df["date"] >= entry_dt]
+                    if not after_entry.empty:
+                        trigger_price = float(after_entry["High"].max())
 
-            # 買建: exit指値=20日高値, 売建: exit指値=20日安値
+            # 買建: trigger_price超えで翌朝売り
+            # 売建: 20日安値割れで翌朝買い戻し
             if direction == "売建" and prices_df is not None and price_ticker:
                 tk_df = prices_df[prices_df["ticker"] == price_ticker].sort_values("date")
                 if not tk_df.empty:
                     low_20d = float(tk_df["Low"].tail(20).min())
-                    gap = _safe_int(round(current_price - low_20d)) if low_20d > 0 else 0
-                    high_20d = low_20d  # 売建はexit基準を安値にする
-                    gap_to_high = -gap
+                    trigger_price = low_20d
+                    gap_to_high = _safe_int(round(current_price - low_20d)) if low_20d > 0 else 0
                 else:
                     gap_to_high = 0
             else:
-                gap_to_high = _safe_int(round(high_20d - current_price)) if high_20d > 0 else 0
+                gap_to_high = _safe_int(round(trigger_price - current_price)) if trigger_price > 0 else 0
 
             positions.append({
                 "ticker": ticker,
@@ -316,7 +319,7 @@ async def get_positions():
                 "quantity": qty,
                 "cost_total": _safe_int(cost),
                 "market_value": _safe_int(mv),
-                "high_20d": high_20d,
+                "high_20d": trigger_price,
                 "atr10": 0,
                 "gap_to_high": gap_to_high,
                 "unrealized_pct": pct,
@@ -384,7 +387,7 @@ async def get_positions():
                     continue
 
                 cp = _safe_float(best.get("current_price", 0))
-                high_20d = _safe_float(best.get("high_20d", 0))
+                trigger = _safe_float(best.get("trigger_price", best.get("high_20d", 0)))
                 exits.append({
                     "ticker": best.get("ticker", ""),
                     "stock_name": best.get("stock_name", ""),
@@ -398,9 +401,9 @@ async def get_positions():
                     "quantity": 100,
                     "cost_total": 0,
                     "market_value": 0,
-                    "high_20d": high_20d,
+                    "high_20d": trigger,
                     "atr10": _safe_float(best.get("atr10", 0)),
-                    "gap_to_high": _safe_int(round(high_20d - cp)) if high_20d > 0 else 0,
+                    "gap_to_high": _safe_int(round(trigger - cp)) if trigger > 0 else 0,
                     "unrealized_pct": _safe_float(best.get("pct", 0), 2),
                     "unrealized_yen": _safe_int(best.get("pnl", 0)),
                     "hold_days": _safe_int(best.get("hold_days", 0)),
