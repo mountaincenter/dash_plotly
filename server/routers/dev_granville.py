@@ -632,22 +632,27 @@ async def get_b4_entry():
 
     date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
 
-    # 日経VI取得
+    # 日経VI取得（S3 → ローカル）
     vi_val = None
-    vi_csv = ROOT / "data" / "csv" / "nikkeivi.csv"
-    # production側も確認
-    vi_csv_prod = ROOT.parent / "dash_plotly" / "data" / "csv" / "nikkeivi.csv"
-    for vp in [vi_csv_prod, vi_csv]:
-        if vp.exists():
-            try:
-                vi_df = pd.read_csv(vp, encoding="utf-8")
-                vi_df.columns = [c.strip().strip('"') for c in vi_df.columns]
-                close_col = [c for c in vi_df.columns if "終値" in c]
-                if close_col:
-                    vi_val = float(str(vi_df[close_col[0]].iloc[0]).strip('"'))
-                    break
-            except Exception:
-                pass
+    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+    # staging S3から取得、なければproduction S3
+    if not vi_path.exists():
+        _s3_download("nikkei_vi_max_1d.parquet", vi_path)
+    if not vi_path.exists():
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            s3.download_file("stock-api-data", "parquet/nikkei_vi_max_1d.parquet", str(vi_path))
+        except Exception:
+            pass
+    if vi_path.exists():
+        try:
+            vi_df = pd.read_parquet(vi_path)
+            vi_df["date"] = pd.to_datetime(vi_df["date"])
+            vi_df = vi_df.sort_values("date")
+            vi_val = float(vi_df["close"].iloc[-1])
+        except Exception:
+            pass
 
     # good_count計算（中央値は全B4の過去分析から固定）
     # script 26の結果: dev_med=-10.6, atr_med=4.7, ret5d_med=-6.8
