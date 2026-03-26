@@ -902,6 +902,9 @@ jobs:
           echo "✅ ML Model Retraining completed!"
           echo "============================================================"
 
+          # ML再学習結果のSlack通知セクション生成
+          python3 scripts/format_ml_slack.py || true
+
       - name: Generate Grok Analysis Data
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -1212,6 +1215,12 @@ jobs:
             GRANVILLE_SECTION=$(cat /tmp/granville_section.txt)
           fi
 
+          # ML Retraining (last trading day of week)
+          ML_SECTION=""
+          if [ -f "/tmp/ml_section.txt" ] && [ -s "/tmp/ml_section.txt" ]; then
+            ML_SECTION=$(cat /tmp/ml_section.txt)
+          fi
+
           # 23:00 または force_grok=true → GROK銘柄を表示
           if [ "${{ github.event.schedule }}" = "0 14 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
@@ -1270,7 +1279,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$BILLING_SECTION$GROK_SECTION$GRANVILLE_SECTION"'
+              }'"$BILLING_SECTION$GROK_SECTION$GRANVILLE_SECTION$ML_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
