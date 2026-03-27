@@ -632,19 +632,17 @@ async def get_b4_entry():
 
     date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
 
-    # 日経VI取得（S3 → ローカル）
+    # 日経VI取得（production S3が最新）
     vi_val = None
     vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    # staging S3から取得、なければproduction S3
-    if not vi_path.exists():
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        vi_path.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file("stock-api-data", "parquet/nikkei_vi_max_1d.parquet", str(vi_path))
+    except Exception:
+        # production取得失敗ならstaging S3にフォールバック
         _s3_download("nikkei_vi_max_1d.parquet", vi_path)
-    if not vi_path.exists():
-        try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            s3.download_file("stock-api-data", "parquet/nikkei_vi_max_1d.parquet", str(vi_path))
-        except Exception:
-            pass
     if vi_path.exists():
         try:
             vi_df = pd.read_parquet(vi_path)
