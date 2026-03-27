@@ -124,8 +124,8 @@ jobs:
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
-          # production S3からhold_stocks/credit_status/orders
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+          # production S3からhold_stocks/credit_status/orders/nikkei_vi
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
