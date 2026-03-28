@@ -72,6 +72,15 @@ def load_prices(lookback_years: int = 2) -> pd.DataFrame:
     ps["atr_pct"] = ps["atr14"] / ps["Close"] * 100
     ps["ret5d"] = g["Close"].pct_change(5) * 100
 
+    # 急騰フィルター用
+    ps["sma60"] = g["Close"].transform(lambda x: x.rolling(60, min_periods=60).mean())
+    ps["sma100"] = g["Close"].transform(lambda x: x.rolling(100, min_periods=100).mean())
+    ps["dev60"] = (ps["Close"] - ps["sma60"]) / ps["sma60"] * 100
+    ps["dev100"] = (ps["Close"] - ps["sma100"]) / ps["sma100"] * 100
+    ps["max_up20"] = g["dev_from_sma20"].transform(lambda x: x.rolling(60, min_periods=1).max())
+    ps["max_up60"] = g["dev60"].transform(lambda x: x.rolling(60, min_periods=1).max())
+    ps["max_up100"] = g["dev100"].transform(lambda x: x.rolling(60, min_periods=1).max())
+
     ps = ps.dropna(subset=["sma20"])
     # バックテスト対象期間のみ
     ps = ps[ps["date"] >= cutoff].copy()
@@ -87,7 +96,7 @@ def detect_signals(df: pd.DataFrame) -> pd.DataFrame:
     df["B1"] = df["prev_below"] & df["above"] & sma_up
     df["B2"] = sma_up & dev.between(-5, 0) & df["up_day"] & df["below"]
     df["B3"] = sma_up & df["above"] & dev.between(0, 3) & (df["prev_dev"] > dev) & df["up_day"]
-    df["B4"] = (dev < -8) & df["up_day"]
+    df["B4"] = (dev < -15) & df["up_day"]
 
     return df
 
@@ -106,6 +115,14 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
     """全期間バックテスト実行"""
     print("\n[2/4] Detecting signals...")
     ps = detect_signals(ps)
+
+    # B4急騰フィルター
+    b4_mask = ps["B4"].copy()
+    if b4_mask.any():
+        surge = (ps["max_up20"] >= 15) | (ps["max_up60"] >= 20) | (ps["max_up100"] >= 30)
+        filtered_count = (b4_mask & surge).sum()
+        ps["B4"] = b4_mask & ~surge
+        print(f"  B4 surge filter: {filtered_count:,} excluded")
 
     sig_mask = ps["B1"] | ps["B2"] | ps["B3"] | ps["B4"]
     signals = ps[sig_mask].copy()

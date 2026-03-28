@@ -645,22 +645,51 @@ async def get_b4_entry():
         except Exception:
             pass
 
-    # good_count計算（中央値は全B4の過去分析から固定）
-    # script 26の結果: dev_med=-10.6, atr_med=4.7, ret5d_med=-6.8
-    DEV_MED = -10.6
-    ATR_MED = 4.7
-    RET5D_MED = -6.8
+    # CMEギャップ取得
+    cme_gap = None
+    try:
+        import yfinance as yf
+        nkd = yf.download("NKD=F", period="5d", interval="1d", progress=False)
+        n225_yf = yf.download("^N225", period="5d", interval="1d", progress=False)
+        if isinstance(nkd.columns, pd.MultiIndex):
+            nkd.columns = [c[0] for c in nkd.columns]
+        if isinstance(n225_yf.columns, pd.MultiIndex):
+            n225_yf.columns = [c[0] for c in n225_yf.columns]
+        if not nkd.empty and not n225_yf.empty:
+            nkd_close = float(nkd["Close"].iloc[-1])
+            n225_close = float(n225_yf["Close"].iloc[-1])
+            if n225_close > 0:
+                cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
+    except Exception:
+        pass
+
+    # N225当日変化率
+    n225_chg = None
+    try:
+        if not n225_yf.empty and len(n225_yf) >= 2:
+            n225_chg = round((float(n225_yf["Close"].iloc[-1]) / float(n225_yf["Close"].iloc[-2]) - 1) * 100, 2)
+    except Exception:
+        pass
+
+    # 除外ルール判定（3ルール）
+    excluded_rules = []
+    if vi_val and cme_gap is not None:
+        if (vi_val >= 30) and (vi_val < 40) and (cme_gap >= -1) and (cme_gap < 1):
+            excluded_rules.append("VI30-40×膠着")
+        if (vi_val >= 30) and (vi_val < 40) and (cme_gap >= 1):
+            excluded_rules.append("VI30-40×GU")
+    if n225_chg is not None and n225_chg < -3:
+        excluded_rules.append("N225<-3%")
 
     from scripts.lib.price_limit import calc_max_cost_100
 
+    # 候補生成（乖離深い順）
     candidates = []
     for _, r in b4.iterrows():
         tk = r.get("ticker", "")
         dev = float(r.get("dev_from_sma20", 0))
         atr = float(r.get("atr10_pct", 0))
         ret5d = float(r.get("ret5d", 0))
-
-        good_count = int(dev < DEV_MED) + int(atr > ATR_MED) + int(ret5d < RET5D_MED)
         close_price = float(r.get("close", r.get("entry_price_est", 0)))
         cost = calc_max_cost_100(close_price)
 
@@ -673,37 +702,50 @@ async def get_b4_entry():
             "dev_from_sma20": _safe_float(dev, 2),
             "atr_pct": _safe_float(atr, 2),
             "ret5d": _safe_float(ret5d, 2),
-            "good_count": good_count,
             "max_cost": cost,
         })
 
-    # good_count降順→乖離深い順でソート
-    candidates.sort(key=lambda x: (-x["good_count"], x["dev_from_sma20"]))
+    # 乖離深い順（検証済み）
+    candidates.sort(key=lambda x: x["dev_from_sma20"])
 
-    # 取引上限100万以内で上位3件
-    budget = 1_000_000
+    # 余力の許す限り選定（件数無制限）
+    budget = 3_000_000  # デフォルト余力
     selected = []
     for c in candidates:
-        if len(selected) >= 3:
-            break
         if budget >= c["max_cost"]:
             budget -= c["max_cost"]
             selected.append(c)
 
     # 判定
-    if vi_val and vi_val >= 30:
+    if excluded_rules:
+        decision = "excluded"
+    elif not selected:
+        decision = "no_candidate"
+    elif vi_val and vi_val >= 40:
+        decision = "strong_entry"
+    elif vi_val and vi_val >= 30:
         decision = "entry"
     elif vi_val and vi_val >= 25:
         decision = "consider"
     else:
         decision = "wait"
 
-    if not selected:
-        decision = "no_candidate"
+    # シグナル日の曜日（金曜はPF1.89で有意に弱い）
+    weekday = None
+    weekday_warning = False
+    if date_str:
+        wd = pd.to_datetime(date_str).weekday()
+        weekday = ["月","火","水","木","金"][wd]
+        weekday_warning = wd == 4  # 金曜
 
     return {
         "decision": decision,
         "vi": _safe_float(vi_val, 2) if vi_val else None,
+        "cme_gap": cme_gap,
+        "n225_chg": n225_chg,
+        "excluded_rules": excluded_rules,
+        "weekday": weekday,
+        "weekday_warning": weekday_warning,
         "total_b4_signals": len(b4),
         "candidates": candidates[:10],
         "selected": selected,

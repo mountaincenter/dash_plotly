@@ -97,6 +97,15 @@ def load_prices() -> pd.DataFrame:
     ps["atr10_pct"] = ps["atr10"] / ps["Close"] * 100
     ps["ret5d"] = g["Close"].pct_change(5) * 100
 
+    # 急騰フィルター用: SMA60/100の上方乖離（直近60日max）
+    ps["sma60"] = g["Close"].transform(lambda x: x.rolling(60, min_periods=60).mean())
+    ps["sma100"] = g["Close"].transform(lambda x: x.rolling(100, min_periods=100).mean())
+    ps["dev60"] = (ps["Close"] - ps["sma60"]) / ps["sma60"] * 100
+    ps["dev100"] = (ps["Close"] - ps["sma100"]) / ps["sma100"] * 100
+    ps["max_up20"] = g["dev_from_sma20"].transform(lambda x: x.rolling(60, min_periods=1).max())
+    ps["max_up60"] = g["dev60"].transform(lambda x: x.rolling(60, min_periods=1).max())
+    ps["max_up100"] = g["dev100"].transform(lambda x: x.rolling(60, min_periods=1).max())
+
     # §3: up_day = Close > prev_close（前日比陽線）
     ps["sma20_up"] = ps["sma20_slope"] > 0
     ps["above"] = ps["Close"] > ps["sma20"]
@@ -129,7 +138,7 @@ def detect_signals(df: pd.DataFrame) -> pd.DataFrame:
     df["B1"] = df["prev_below"] & df["above"] & sma_up
     df["B2"] = sma_up & dev.between(-5, 0) & df["up_day"] & df["below"]
     df["B3"] = sma_up & df["above"] & dev.between(0, 3) & (df["prev_dev"] > dev) & df["up_day"]
-    df["B4"] = (dev < -8) & df["up_day"]
+    df["B4"] = (dev < -15) & df["up_day"]
 
     return df
 
@@ -158,9 +167,22 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
     for r in ["B1", "B2", "B3", "B4"]:
         print(f"  {r}: {latest[r].sum()} signals")
 
+    # B4急騰フィルター: 直近60日でSMA20+15%超 or SMA60+20%超 or SMA100+30%超を除外
+    b4_mask = latest["B4"].copy()
+    if b4_mask.any():
+        surge_filter = (
+            (latest["max_up20"] >= 15) |
+            (latest["max_up60"] >= 20) |
+            (latest["max_up100"] >= 30)
+        )
+        b4_filtered = b4_mask & ~surge_filter
+        filtered_count = b4_mask.sum() - b4_filtered.sum()
+        latest["B4"] = b4_filtered
+        print(f"  B4 surge filter: {filtered_count} excluded")
+
     sig_mask = latest["B1"] | latest["B2"] | latest["B3"] | latest["B4"]
     signals = latest[sig_mask].copy()
-    print(f"  Total raw: {len(signals)}")
+    print(f"  Total after filter: {len(signals)}")
 
     if signals.empty:
         return pd.DataFrame()
@@ -193,9 +215,9 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         "ret5d": signals["ret5d"].round(2),
     })
 
-    # §5: ルール優先のみ。同一ルール内は到着順（ソートなし）
+    # §5: ルール優先 → B4は乖離深い順（検証済み: Spearman r=-0.064, p<0.001）
     out["_priority"] = out["rule"].map(RULE_PRIORITY)
-    out = out.sort_values("_priority", ascending=True).drop(columns=["_priority"]).reset_index(drop=True)
+    out = out.sort_values(["_priority", "dev_from_sma20"], ascending=[True, True]).drop(columns=["_priority"]).reset_index(drop=True)
 
     return out
 
