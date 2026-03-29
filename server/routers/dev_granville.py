@@ -763,7 +763,7 @@ async def get_b4_entry():
 
 
 @router.get("/api/dev/granville/stats")
-async def get_stats():
+async def get_stats(rule: Optional[str] = None):
     """ルール別勝率、月別PnL（B1-B4バックテストアーカイブから）"""
     archive_path = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
     if not archive_path.exists():
@@ -797,17 +797,18 @@ async def get_stats():
             df[col] = pd.to_datetime(df[col])
 
     # B1-B4 ルール別統計
+    rule_filter = rule  # パラメータを退避
     by_rule = {}
-    for rule in ["B4", "B1", "B3", "B2"]:
-        gdf = df[df["rule"] == rule]
+    for r in ["B4", "B1", "B3", "B2"]:
+        gdf = df[df["rule"] == r]
         n = len(gdf)
         if n == 0:
-            by_rule[rule] = {"count": 0, "win_rate": 0.0, "total_pnl": 0, "avg_pnl": 0, "avg_pct": 0.0, "exit_high_update": 0, "exit_max_hold": 0}
+            by_rule[r] = {"count": 0, "win_rate": 0.0, "total_pnl": 0, "avg_pnl": 0, "avg_pct": 0.0, "exit_high_update": 0, "exit_max_hold": 0}
             continue
         wins = int((gdf["ret_pct"] > 0).sum())
         h20 = int((gdf["exit_type"].isin(["20d_high", "high_update"])).sum()) if "exit_type" in gdf.columns else 0
         mh = int((gdf["exit_type"] == "max_hold").sum()) if "exit_type" in gdf.columns else 0
-        by_rule[rule] = {
+        by_rule[r] = {
             "count": n,
             "win_rate": _safe_float(wins / n * 100),
             "total_pnl": _safe_int(gdf["pnl_yen"].sum()),
@@ -817,11 +818,16 @@ async def get_stats():
             "exit_max_hold": mh,
         }
 
+    # ルールフィルター
+    monthly_df = df.copy()
+    if rule_filter and "rule" in monthly_df.columns:
+        monthly_df = monthly_df[monthly_df["rule"] == rule_filter]
+
     # 月別統計
     monthly = []
-    if "entry_date" in df.columns:
-        df["month"] = df["entry_date"].dt.strftime("%Y-%m")
-        for month, mdf in df.groupby("month"):
+    if "entry_date" in monthly_df.columns and not monthly_df.empty:
+        monthly_df["month"] = monthly_df["entry_date"].dt.strftime("%Y-%m")
+        for month, mdf in monthly_df.groupby("month"):
             n = len(mdf)
             wins = int((mdf["ret_pct"] > 0).sum())
             monthly.append({
@@ -832,8 +838,20 @@ async def get_stats():
             })
         monthly.sort(key=lambda x: x["month"])
 
+    # フィルター後の全体統計
+    filtered_total = len(monthly_df)
+    filtered_pnl = _safe_int(monthly_df["pnl_yen"].sum()) if not monthly_df.empty else 0
+    filtered_wr = _safe_float((monthly_df["ret_pct"] > 0).sum() / filtered_total * 100) if filtered_total > 0 else 0
+    gp = monthly_df[monthly_df["pnl_yen"] > 0]["pnl_yen"].sum() if not monthly_df.empty else 0
+    gl = abs(monthly_df[monthly_df["pnl_yen"] < 0]["pnl_yen"].sum()) if not monthly_df.empty else 0
+    filtered_pf = _safe_float(gp / gl, 2) if gl > 0 else 0
+
     return {
         "by_rule": by_rule,
-        "monthly": monthly[:24],
-        "total_trades": len(df),
+        "monthly": monthly,
+        "total_trades": filtered_total,
+        "total_pnl": filtered_pnl,
+        "win_rate": filtered_wr,
+        "pf": filtered_pf,
+        "rule_filter": rule_filter,
     }
