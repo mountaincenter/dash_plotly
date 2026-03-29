@@ -300,12 +300,24 @@ jobs:
           PHASE="${{ steps.exec_mode.outputs.phase }}"
           TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
-            MESSAGE="{\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE) $TIME\"}"
+            TEXT="✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME"
             if [ -f /tmp/granville_b4_section.txt ]; then
-              B4=$(cat /tmp/granville_b4_section.txt)
-              MESSAGE="{\"text\":\"✅ Staging ($PHASE) $TIME\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME\"}},$B4]}"
+              B4_TEXT=$(python3 -c "
+          import json
+          with open('/tmp/granville_b4_section.txt') as f:
+              blocks = json.load(f)
+          parts = []
+          for b in blocks:
+              t = b.get('text', {}).get('text', '')
+              if t: parts.append(t)
+          print('\n'.join(parts))
+          " 2>/dev/null || echo "")
+              if [ -n "$B4_TEXT" ]; then
+                TEXT="$TEXT\n\n$B4_TEXT"
+              fi
             fi
-            curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$TEXT\"}" "$SLACK_WEBHOOK_URL" || true
           fi
 
       - name: Slack notification (failure)
