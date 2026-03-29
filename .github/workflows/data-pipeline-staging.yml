@@ -299,32 +299,11 @@ jobs:
         run: |
           PHASE="${{ steps.exec_mode.outputs.phase }}"
           TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
-
-          # B4セクション読み込み
-          B4_SECTION=""
-          if [ -f /tmp/granville_b4_section.txt ]; then
-            B4_SECTION=$(cat /tmp/granville_b4_section.txt)
-          fi
-
-          # Slack送信
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
-            MESSAGE=$(cat <<EOFMSG
-          {
-            "text": "✅ Staging Pipeline ($PHASE) $TIME",
-            "blocks": [
-              {"type": "section", "text": {"type": "mrkdwn", "text": "✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME"}}
-              ${B4_SECTION:+,$B4_SECTION}
-            ]
-          }
-EOFMSG
-          )
-            # B4_SECTIONがJSON配列なので展開
-            if [ -n "$B4_SECTION" ]; then
-              # blocksにB4セクションを結合
-              BLOCKS="[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME\"}},$B4_SECTION]"
-              MESSAGE="{\"text\":\"✅ Staging Pipeline ($PHASE) $TIME\",\"blocks\":$BLOCKS}"
-            else
-              MESSAGE="{\"text\":\"✅ Staging Pipeline ($PHASE) $TIME\"}"
+            MESSAGE="{\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE) $TIME\"}"
+            if [ -f /tmp/granville_b4_section.txt ]; then
+              B4=$(cat /tmp/granville_b4_section.txt)
+              MESSAGE="{\"text\":\"✅ Staging ($PHASE) $TIME\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME\"}},$B4]}"
             fi
             curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
           fi
@@ -336,9 +315,10 @@ EOFMSG
         run: |
           PHASE="${{ steps.exec_mode.outputs.phase }}"
           TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
             curl -X POST -H 'Content-type: application/json' \
-              --data "{\"text\":\"❌ *Staging Pipeline Failed* ($PHASE) $TIME\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>\"}" \
+              --data "{\"text\":\"❌ *Staging Pipeline Failed* ($PHASE) $TIME\n<$RUN_URL|View Run>\"}" \
               "$SLACK_WEBHOOK_URL" || true
           fi
 
