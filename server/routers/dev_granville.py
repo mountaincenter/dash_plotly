@@ -35,6 +35,13 @@ _cache: dict[str, tuple[datetime, object]] = {}
 CACHE_TTL = 120
 
 
+@router.post("/api/dev/granville/refresh")
+async def refresh_cache():
+    """キャッシュクリア。S3データの即時反映用。"""
+    _cache.clear()
+    return {"status": "success", "message": "Granville cache refreshed"}
+
+
 def _s3_download(s3_key: str, local_path: Path) -> bool:
     """S3からファイルをダウンロード。ディレクトリ作成含む。"""
     try:
