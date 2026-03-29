@@ -5,6 +5,7 @@ on:
     # staging: production(16:45/23:00)と被らない時間帯
     - cron: "0 9 * * *"   # UTC 09:00 = JST 18:00 - 振り返り（日足更新 + シグナル生成）
     - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 - 明日の準備（推奨生成 + 価格取得 + デプロイ）
+    - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 - CME終値確定 + 判定更新
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
@@ -18,6 +19,7 @@ on:
           - auto
           - review_only
           - prepare_only
+          - cme_update_only
         default: auto
 
 permissions:
@@ -80,12 +82,18 @@ jobs:
           elif [ "$MODE" = "prepare_only" ]; then
             echo "phase=prepare" >> $GITHUB_OUTPUT
             echo "📋 FORCED: Prepare only (22:00相当)"
+          elif [ "$MODE" = "cme_update_only" ]; then
+            echo "phase=cme_update" >> $GITHUB_OUTPUT
+            echo "🌅 FORCED: CME update only (07:00相当)"
           elif [ "$CURRENT_HOUR" = "18" ]; then
             echo "phase=review" >> $GITHUB_OUTPUT
             echo "📊 18:00 JST - Review mode"
           elif [ "$CURRENT_HOUR" = "22" ]; then
             echo "phase=prepare" >> $GITHUB_OUTPUT
             echo "📋 22:00 JST - Prepare mode"
+          elif [ "$CURRENT_HOUR" = "07" ]; then
+            echo "phase=cme_update" >> $GITHUB_OUTPUT
+            echo "🌅 07:00 JST - CME update mode"
           else
             echo "phase=review" >> $GITHUB_OUTPUT
             echo "⚠️ Unknown hour ($CURRENT_HOUR), defaulting to review"
@@ -106,10 +114,18 @@ jobs:
           python scripts/check_next_day_trading.py
         continue-on-error: true
 
+      - name: Check trading day (07:00 CME update)
+        id: check_trading_cme
+        if: steps.exec_mode.outputs.phase == 'cme_update' && github.event.inputs.skip_trading_day_check != 'true'
+        run: |
+          python scripts/check_trading_day.py
+        continue-on-error: true
+
       - name: Skip if not trading day
         if: |
           (steps.exec_mode.outputs.phase == 'review' && steps.check_trading.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true') ||
-          (steps.exec_mode.outputs.phase == 'prepare' && steps.check_next_trading.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true')
+          (steps.exec_mode.outputs.phase == 'prepare' && steps.check_next_trading.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true') ||
+          (steps.exec_mode.outputs.phase == 'cme_update' && steps.check_trading_cme.outcome == 'failure' && github.event.inputs.skip_trading_day_check != 'true')
         run: |
           echo "❌ Not a trading day. Skipping pipeline."
           exit 0
@@ -124,8 +140,8 @@ jobs:
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
-          # production S3からhold_stocks/credit_status/orders
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+          # production S3からhold_stocks/credit_status/orders/nikkei_vi
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
@@ -146,7 +162,7 @@ jobs:
         run: |
           echo "📈 Updating TOPIX 1,660 stocks daily prices..."
           python scripts/pipeline/update_granville_prices.py
-        timeout-minutes: 15
+        timeout-minutes: 45
 
       - name: "[Review] Generate Granville signals"
         if: steps.exec_mode.outputs.phase == 'review'
@@ -250,6 +266,81 @@ jobs:
           echo "🚀 Starting App Runner deployment..."
           aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN"
           echo "✅ Deployment started"
+
+      # ===== 07:00 CME更新フェーズ =====
+      - name: "[CME] Update CME close"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "🌅 Updating CME close..."
+          # production S3からVI同期
+          aws s3 cp "s3://stock-api-data/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          python scripts/pipeline/update_cme_close.py
+        timeout-minutes: 5
+
+      - name: "[CME] Generate B4 Slack section"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          python scripts/format_granville_b4_slack.py
+        timeout-minutes: 5
+
+      # ===== Slack通知（全フェーズ共通） =====
+      - name: Generate B4 Slack section
+        if: steps.exec_mode.outputs.phase == 'review' || steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          # production S3からVI同期（Slack通知用）
+          aws s3 cp "s3://stock-api-data/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          python scripts/format_granville_b4_slack.py || true
+        timeout-minutes: 5
+
+      - name: Slack notification (success)
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          PHASE="${{ steps.exec_mode.outputs.phase }}"
+          TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
+
+          # B4セクション読み込み
+          B4_SECTION=""
+          if [ -f /tmp/granville_b4_section.txt ]; then
+            B4_SECTION=$(cat /tmp/granville_b4_section.txt)
+          fi
+
+          # Slack送信
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            MESSAGE=$(cat <<EOFMSG
+          {
+            "text": "✅ Staging Pipeline ($PHASE) $TIME",
+            "blocks": [
+              {"type": "section", "text": {"type": "mrkdwn", "text": "✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME"}}
+              ${B4_SECTION:+,$B4_SECTION}
+            ]
+          }
+EOFMSG
+          )
+            # B4_SECTIONがJSON配列なので展開
+            if [ -n "$B4_SECTION" ]; then
+              # blocksにB4セクションを結合
+              BLOCKS="[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME\"}},$B4_SECTION]"
+              MESSAGE="{\"text\":\"✅ Staging Pipeline ($PHASE) $TIME\",\"blocks\":$BLOCKS}"
+            else
+              MESSAGE="{\"text\":\"✅ Staging Pipeline ($PHASE) $TIME\"}"
+            fi
+            curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
+          fi
+
+      - name: Slack notification (failure)
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          PHASE="${{ steps.exec_mode.outputs.phase }}"
+          TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"❌ *Staging Pipeline Failed* ($PHASE) $TIME\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>\"}" \
+              "$SLACK_WEBHOOK_URL" || true
+          fi
 
       # ===== サマリー =====
       - name: Pipeline summary
