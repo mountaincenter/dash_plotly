@@ -312,13 +312,22 @@ def main() -> int:
     # ret5d
     ps["ret5d"] = g["Close"].transform(lambda x: x.pct_change(5) * 100)
 
-    # シグナル日の特徴量をマージ
-    latest = ps[ps["date"] == sig_date][["ticker", "vol_ratio", "atr10_pct", "rsi14", "ret5d"]].copy()
-    signals = signals.merge(latest, on="ticker", how="left")
-    signals["vol_ratio"] = signals["vol_ratio"].fillna(1.0)
-    signals["atr10_pct"] = signals["atr10_pct"].fillna(3.0)
-    signals["rsi14"] = signals["rsi14"].fillna(50.0)
-    signals["ret5d"] = signals["ret5d"].fillna(0.0)
+    # シグナル日の特徴量をマージ（signalsに既にある場合は上書きしない）
+    merge_cols = ["vol_ratio", "rsi14"]
+    # atr10_pct, ret5d はsignals生成時に含まれている場合がある
+    if "atr10_pct" not in signals.columns:
+        merge_cols.append("atr10_pct")
+    if "ret5d" not in signals.columns:
+        merge_cols.append("ret5d")
+    latest = ps[ps["date"] == sig_date][["ticker"] + [c for c in merge_cols if c in ps.columns]].copy()
+    if not latest.empty:
+        signals = signals.merge(latest, on="ticker", how="left", suffixes=("", "_prices"))
+        # _prices suffixが付いたカラムは捨てる
+        signals = signals[[c for c in signals.columns if not c.endswith("_prices")]]
+    signals["vol_ratio"] = signals.get("vol_ratio", pd.Series(1.0, index=signals.index)).fillna(1.0)
+    signals["atr10_pct"] = signals.get("atr10_pct", pd.Series(3.0, index=signals.index)).fillna(3.0)
+    signals["rsi14"] = signals.get("rsi14", pd.Series(50.0, index=signals.index)).fillna(50.0)
+    signals["ret5d"] = signals.get("ret5d", pd.Series(0.0, index=signals.index)).fillna(0.0)
 
     # スコア計算
     print("\n[3/5] Scoring...")
