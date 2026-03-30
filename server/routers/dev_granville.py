@@ -37,9 +37,46 @@ CACHE_TTL = 120
 
 @router.post("/api/dev/granville/refresh")
 async def refresh_cache():
-    """キャッシュクリア。S3データの即時反映用。"""
+    """キャッシュクリア+S3から再ダウンロード+即時反映。"""
+    from datetime import datetime
     _cache.clear()
-    return {"status": "success", "message": "Granville cache refreshed"}
+
+    # S3から最新データを強制ダウンロード
+    refreshed = []
+    for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
+              "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
+              "futures_prices_max_1d.parquet"]:
+        local = PARQUET_DIR / f
+        # production S3から取得
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            s3.download_file("stock-api-data", f"parquet/{f}", str(local))
+            refreshed.append(f)
+        except Exception:
+            # staging S3フォールバック
+            try:
+                s3.download_file(S3_BUCKET, f"parquet/{f}", str(local))
+                refreshed.append(f)
+            except Exception:
+                pass
+
+    # hold_stocks件数
+    hold_count = 0
+    hold_path = PARQUET_DIR / "hold_stocks.parquet"
+    if hold_path.exists():
+        try:
+            hold_count = len(pd.read_parquet(hold_path))
+        except Exception:
+            pass
+
+    return {
+        "status": "success",
+        "message": "Cache refreshed",
+        "hold_stocks": hold_count,
+        "refreshed_files": refreshed,
+        "updated_at": datetime.now().isoformat(),
+    }
 
 
 def _s3_download(s3_key: str, local_path: Path) -> bool:
