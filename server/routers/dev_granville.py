@@ -41,25 +41,14 @@ async def refresh_cache():
     from datetime import datetime
     _cache.clear()
 
-    # S3から最新データを強制ダウンロード
+    # staging S3から最新データを強制ダウンロード
     refreshed = []
     for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
               "futures_prices_max_1d.parquet"]:
         local = PARQUET_DIR / f
-        # production S3から取得
-        try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            s3.download_file("stock-api-data", f"parquet/{f}", str(local))
+        if _s3_download(f, local):
             refreshed.append(f)
-        except Exception:
-            # staging S3フォールバック
-            try:
-                s3.download_file(S3_BUCKET, f"parquet/{f}", str(local))
-                refreshed.append(f)
-            except Exception:
-                pass
 
     # hold_stocks件数
     hold_count = 0
