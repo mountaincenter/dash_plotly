@@ -40,27 +40,38 @@ def _load_vi() -> float | None:
 
 
 def _load_cme_gap() -> tuple[float | None, float | None]:
-    """CMEギャップとN225変化率"""
+    """CMEギャップとN225変化率（パイプラインparquetから取得）"""
     try:
-        import yfinance as yf
-        nkd = yf.download("NKD=F", period="5d", interval="1d", progress=False)
-        n225 = yf.download("^N225", period="5d", interval="1d", progress=False)
-        if isinstance(nkd.columns, pd.MultiIndex):
-            nkd.columns = [c[0] for c in nkd.columns]
-        if isinstance(n225.columns, pd.MultiIndex):
-            n225.columns = [c[0] for c in n225.columns]
-        if nkd.empty or n225.empty:
+        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
+        if not n225_path.exists():
             return None, None
 
-        nkd_close = float(nkd["Close"].iloc[-1])
-        n225_close = float(n225["Close"].iloc[-1])
-        gap = round((nkd_close - n225_close) / n225_close * 100, 2)
+        idx_df = pd.read_parquet(n225_path)
+        n225_df = idx_df[idx_df["ticker"] == "^N225"].copy()
+        if n225_df.empty:
+            return None, None
+
+        n225_df["date"] = pd.to_datetime(n225_df["date"])
+        n225_df = n225_df.sort_values("date").tail(5)
 
         n225_chg = None
-        if len(n225) >= 2:
-            n225_chg = round((float(n225["Close"].iloc[-1]) / float(n225["Close"].iloc[-2]) - 1) * 100, 2)
+        if len(n225_df) >= 2:
+            n225_chg = round((float(n225_df["Close"].iloc[-1]) / float(n225_df["Close"].iloc[-2]) - 1) * 100, 2)
 
-        return gap, n225_chg
+        cme_gap = None
+        if nkd_path.exists():
+            fut_df = pd.read_parquet(nkd_path)
+            nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
+            if not nkd_df.empty:
+                nkd_df["date"] = pd.to_datetime(nkd_df["date"])
+                nkd_df = nkd_df.sort_values("date").tail(5)
+                nkd_close = float(nkd_df["Close"].iloc[-1])
+                n225_close = float(n225_df["Close"].iloc[-1])
+                if n225_close > 0:
+                    cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
+
+        return cme_gap, n225_chg
     except Exception:
         return None, None
 

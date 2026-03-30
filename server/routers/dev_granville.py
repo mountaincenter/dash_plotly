@@ -626,25 +626,7 @@ async def get_b4_entry():
     """B4エントリー判定: VI + good_count(乖離+ATR+ret5d)で上位3件"""
     import numpy as np
 
-    # 今日のシグナル（B4のみ）
-    signals_df = _load_latest("signals")
-    _empty_response = {
-        "decision": "", "vi": None, "cme_gap": None, "n225_chg": None,
-        "excluded_rules": [], "weekday": None,
-        "total_b4_signals": 0, "candidates": [], "selected": [],
-        "selected_cost": 0, "budget_remaining": 0, "date": None,
-    }
-    if signals_df.empty:
-        return {**_empty_response, "decision": "no_signal"}
-
-    b4 = signals_df[signals_df["rule"] == "B4"].copy() if "rule" in signals_df.columns else pd.DataFrame()
-    if b4.empty:
-        date_str = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in signals_df.columns else None
-        return {**_empty_response, "decision": "no_b4", "date": date_str}
-
-    date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
-
-    # 日経VI取得（パイプラインでproduction S3→staging S3に同期済み）
+    # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
     vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
     _s3_download("nikkei_vi_max_1d.parquet", vi_path)
@@ -657,7 +639,6 @@ async def get_b4_entry():
         except Exception:
             pass
 
-    # CMEギャップ・N225変化率（パイプラインのparquetから取得）
     cme_gap = None
     n225_chg = None
     try:
@@ -681,6 +662,25 @@ async def get_b4_entry():
                             cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
     except Exception:
         pass
+
+    _base_env = {
+        "vi": vi_val, "cme_gap": cme_gap, "n225_chg": n225_chg,
+        "excluded_rules": [], "weekday": None,
+        "total_b4_signals": 0, "candidates": [], "selected": [],
+        "selected_cost": 0, "budget_remaining": 0, "date": None,
+    }
+
+    # 今日のシグナル（B4のみ）
+    signals_df = _load_latest("signals")
+    if signals_df.empty:
+        return {**_base_env, "decision": "no_signal"}
+
+    b4 = signals_df[signals_df["rule"] == "B4"].copy() if "rule" in signals_df.columns else pd.DataFrame()
+    if b4.empty:
+        date_str = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in signals_df.columns else None
+        return {**_base_env, "decision": "no_b4", "date": date_str}
+
+    date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
 
     # 除外ルール判定（3ルール）
     excluded_rules = []
