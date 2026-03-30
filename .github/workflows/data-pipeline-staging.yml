@@ -238,31 +238,21 @@ jobs:
           echo "✅ Prepare results uploaded"
 
       # ===== App Runner デプロイ（22:00のみ） =====
-      - name: "[Prepare] Resume App Runner if paused"
+      - name: "[Prepare] Wait for App Runner RUNNING + Deploy"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
-          echo "App Runner status: $STATUS"
-
-          if [ "$STATUS" = "PAUSED" ]; then
-            echo "▶️ Resuming App Runner..."
-            aws apprunner resume-service --service-arn "$APP_RUNNER_ARN"
-            echo "⏳ Waiting for service to be RUNNING..."
-            # poll until running (max 5 min)
-            for i in $(seq 1 30); do
-              sleep 10
-              STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
-              echo "  Status: $STATUS"
-              if [ "$STATUS" = "RUNNING" ]; then
-                echo "✅ App Runner is RUNNING"
-                break
-              fi
-            done
-          fi
-
-      - name: "[Prepare] Deploy App Runner"
-        if: steps.exec_mode.outputs.phase == 'prepare'
-        run: |
+          for i in $(seq 1 60); do
+            STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
+            echo "App Runner status: $STATUS"
+            if [ "$STATUS" = "RUNNING" ]; then
+              break
+            elif [ "$STATUS" = "PAUSED" ]; then
+              echo "▶️ Resuming App Runner..."
+              aws apprunner resume-service --service-arn "$APP_RUNNER_ARN"
+            fi
+            echo "⏳ Waiting... ($i/60)"
+            sleep 10
+          done
           echo "🚀 Starting App Runner deployment..."
           aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN"
           echo "✅ Deployment started"
