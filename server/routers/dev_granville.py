@@ -486,67 +486,66 @@ def _compute_triggers() -> dict:
     }
 
     try:
-        import yfinance as yf
+        # N225 SMA（パイプラインのparquetから）
+        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+        if n225_path.exists():
+            idx_df = pd.read_parquet(n225_path)
+            nk = idx_df[idx_df["ticker"] == "^N225"].copy()
+            if not nk.empty:
+                nk = nk.sort_values("date")
+                nk["sma20"] = nk["Close"].rolling(20).mean()
+                nk["sma60"] = nk["Close"].rolling(60).mean()
+                latest_nk = nk.iloc[-1]
+                result["nk_close"] = round(float(latest_nk["Close"]), 0)
+                if not np.isnan(latest_nk["sma20"]) and not np.isnan(latest_nk["sma60"]):
+                    gap = (latest_nk["sma20"] / latest_nk["sma60"] - 1) * 100
+                    result["sma20_60_gap"] = round(gap, 2)
+                    if gap <= -3:
+                        result["sma_signal"] = "green"  # B4最強帯
+                    elif gap <= 0:
+                        result["sma_signal"] = "yellow"  # DC済み
+                    elif gap <= 3:
+                        result["sma_signal"] = "red"  # 現在帯、期待値マイナス
+                    else:
+                        result["sma_signal"] = "red"
 
-        # N225 SMA
-        nk = yf.download("^N225", period="6mo", interval="1d", progress=False)
-        if isinstance(nk.columns, pd.MultiIndex):
-            nk.columns = [c[0] for c in nk.columns]
-        if not nk.empty:
-            nk["sma20"] = nk["Close"].rolling(20).mean()
-            nk["sma60"] = nk["Close"].rolling(60).mean()
-            latest_nk = nk.iloc[-1]
-            result["nk_close"] = round(float(latest_nk["Close"]), 0)
-            if not np.isnan(latest_nk["sma20"]) and not np.isnan(latest_nk["sma60"]):
-                gap = (latest_nk["sma20"] / latest_nk["sma60"] - 1) * 100
-                result["sma20_60_gap"] = round(gap, 2)
-                if gap <= -3:
-                    result["sma_signal"] = "green"  # B4最強帯
-                elif gap <= 0:
-                    result["sma_signal"] = "yellow"  # DC済み
-                elif gap <= 3:
-                    result["sma_signal"] = "red"  # 現在帯、期待値マイナス
-                else:
-                    result["sma_signal"] = "red"
-
-        # CME 22時ギャップ
-        cme = yf.download("NKD=F", period="5d", interval="1h", progress=False)
-        if isinstance(cme.columns, pd.MultiIndex):
-            cme.columns = [c[0] for c in cme.columns]
-        if not cme.empty:
-            cme = cme.reset_index()
-            cme["jst"] = pd.to_datetime(cme["Datetime"]).dt.tz_convert("Asia/Tokyo")
-            cme_22 = cme[cme["jst"].dt.hour == 22]
-            if not cme_22.empty and result["nk_close"]:
-                latest_cme = cme_22.iloc[-1]
-                cme_close = float(latest_cme["Close"])
+        # CME 22時ギャップ（パイプラインのparquetから）
+        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
+        if nkd_path.exists() and result["nk_close"]:
+            fut_df = pd.read_parquet(nkd_path)
+            nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
+            if not nkd_df.empty:
+                nkd_df = nkd_df.sort_values("date")
+                cme_close = float(nkd_df["Close"].iloc[-1])
                 gap = (cme_close / result["nk_close"] - 1) * 100
                 result["cme_close"] = round(cme_close, 0)
                 result["cme_gap"] = round(gap, 2)
                 if gap <= -2:
-                    result["cme_signal"] = "green"  # エントリー推奨
+                    result["cme_signal"] = "green"
                 elif gap <= -0.5:
-                    result["cme_signal"] = "yellow"  # 検討
+                    result["cme_signal"] = "yellow"
                 elif gap >= 1:
-                    result["cme_signal"] = "green"  # GU+1%超もエントリー
+                    result["cme_signal"] = "green"
                 elif abs(gap) < 0.5:
-                    result["cme_signal"] = "red"  # 膠着、見送り
+                    result["cme_signal"] = "red"
                 else:
                     result["cme_signal"] = "yellow"
 
-        # VIX
-        vix = yf.download("^VIX", period="5d", interval="1d", progress=False)
-        if isinstance(vix.columns, pd.MultiIndex):
-            vix.columns = [c[0] for c in vix.columns]
-        if not vix.empty:
-            v = float(vix["Close"].iloc[-1])
-            result["vix"] = round(v, 2)
-            if v <= 20:
-                result["vix_signal"] = "green"
-            elif v <= 30:
-                result["vix_signal"] = "yellow"
-            else:
-                result["vix_signal"] = "red"
+        # VIX（パイプラインのparquetから）
+        # production pipelineがindex_prices_max_1dに^VIXを含む
+        if n225_path.exists():
+            idx_df = pd.read_parquet(n225_path) if "idx_df" not in dir() else idx_df
+            vix_df = idx_df[idx_df["ticker"] == "^VIX"].copy()
+            if not vix_df.empty:
+                vix_df = vix_df.sort_values("date")
+                v = float(vix_df["Close"].iloc[-1])
+                result["vix"] = round(v, 2)
+                if v <= 20:
+                    result["vix_signal"] = "green"
+                elif v <= 30:
+                    result["vix_signal"] = "yellow"
+                else:
+                    result["vix_signal"] = "red"
 
         # 総合判定
         signals = [result["cme_signal"], result["sma_signal"], result["vix_signal"]]
@@ -629,13 +628,19 @@ async def get_b4_entry():
 
     # 今日のシグナル（B4のみ）
     signals_df = _load_latest("signals")
+    _empty_response = {
+        "decision": "", "vi": None, "cme_gap": None, "n225_chg": None,
+        "excluded_rules": [], "weekday": None,
+        "total_b4_signals": 0, "candidates": [], "selected": [],
+        "selected_cost": 0, "budget_remaining": 0, "date": None,
+    }
     if signals_df.empty:
-        return {"decision": "no_signal", "vi": None, "candidates": [], "date": None}
+        return {**_empty_response, "decision": "no_signal"}
 
     b4 = signals_df[signals_df["rule"] == "B4"].copy() if "rule" in signals_df.columns else pd.DataFrame()
     if b4.empty:
         date_str = pd.to_datetime(signals_df["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in signals_df.columns else None
-        return {"decision": "no_b4", "vi": None, "candidates": [], "date": date_str}
+        return {**_empty_response, "decision": "no_b4", "date": date_str}
 
     date_str = pd.to_datetime(b4["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in b4.columns else None
 
@@ -652,29 +657,28 @@ async def get_b4_entry():
         except Exception:
             pass
 
-    # CMEギャップ取得
+    # CMEギャップ・N225変化率（パイプラインのparquetから取得）
     cme_gap = None
-    try:
-        import yfinance as yf
-        nkd = yf.download("NKD=F", period="5d", interval="1d", progress=False)
-        n225_yf = yf.download("^N225", period="5d", interval="1d", progress=False)
-        if isinstance(nkd.columns, pd.MultiIndex):
-            nkd.columns = [c[0] for c in nkd.columns]
-        if isinstance(n225_yf.columns, pd.MultiIndex):
-            n225_yf.columns = [c[0] for c in n225_yf.columns]
-        if not nkd.empty and not n225_yf.empty:
-            nkd_close = float(nkd["Close"].iloc[-1])
-            n225_close = float(n225_yf["Close"].iloc[-1])
-            if n225_close > 0:
-                cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
-    except Exception:
-        pass
-
-    # N225当日変化率
     n225_chg = None
     try:
-        if not n225_yf.empty and len(n225_yf) >= 2:
-            n225_chg = round((float(n225_yf["Close"].iloc[-1]) / float(n225_yf["Close"].iloc[-2]) - 1) * 100, 2)
+        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
+        if n225_path.exists():
+            idx_df = pd.read_parquet(n225_path)
+            n225_df = idx_df[idx_df["ticker"] == "^N225"].copy()
+            if not n225_df.empty:
+                n225_df = n225_df.sort_values("date").tail(5)
+                if len(n225_df) >= 2:
+                    n225_chg = round((float(n225_df["Close"].iloc[-1]) / float(n225_df["Close"].iloc[-2]) - 1) * 100, 2)
+                if nkd_path.exists():
+                    fut_df = pd.read_parquet(nkd_path)
+                    nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
+                    if not nkd_df.empty:
+                        nkd_df = nkd_df.sort_values("date").tail(5)
+                        nkd_close = float(nkd_df["Close"].iloc[-1])
+                        n225_close = float(n225_df["Close"].iloc[-1])
+                        if n225_close > 0:
+                            cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
     except Exception:
         pass
 
@@ -739,11 +743,11 @@ async def get_b4_entry():
 
     # シグナル日の曜日（金曜はPF1.89で有意に弱い）
     weekday = None
-    weekday_warning = False
+    weekday_warning = False  # 曜日エッジなし（日単位検定で全曜日ns）
     if date_str:
         wd = pd.to_datetime(date_str).weekday()
         weekday = ["月","火","水","木","金"][wd]
-        weekday_warning = wd == 4  # 金曜
+        # weekday_warning廃止: 曜日エッジなし
 
     return {
         "decision": decision,
