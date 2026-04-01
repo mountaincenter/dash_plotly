@@ -337,10 +337,8 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
-        keep_keys.add(prefix + "backtest/granville_ifd_archive.parquet")  # グランビルIFDアーカイブも保持
-        keep_keys.add(prefix + "backtest/granville_ifd_comparison.parquet")  # グランビルIFD戦略比較も保持
-        keep_keys.add(prefix + "granville_ifd_positions.parquet")  # グランビルIFDポジションも保持
-        keep_keys.add(prefix + "macro/estat_ci_index.parquet")  # CI先行指数（グランビルIFDで使用）
+        keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB1-B4バックテストアーカイブ
+        keep_keys.add(prefix + "macro/estat_ci_index.parquet")  # CI先行指数
         keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データ（v2.0.3）も保持
         keep_keys.add(prefix + "backtest/grok_analysis_merged_v2_1.parquet")  # バックテスト統合データ（v2.1）も保持
         keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
@@ -373,6 +371,9 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
                 keep_keys.add(key)
             # market_summary/structured/ 配下の全JSONを保持
             if re.match(rf"{prefix}market_summary/structured/.*\.json$", key):
+                keep_keys.add(key)
+            # granville/ 配下の全parquetを保持（signals, positions, recommendations, prices_topix）
+            if key.startswith(f"{prefix}granville/"):
                 keep_keys.add(key)
 
         # 削除対象のファイルを抽出
