@@ -496,3 +496,13 @@ if s3_cfg.bucket:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
     upload_file(s3_cfg, MANIFEST_PATH, "manifest.json")
     print("[OK] S3 manifest updated")
+
+    # Granville APIのキャッシュもリフレッシュ（hold_stocks即時反映）
+    GRANVILLE_REFRESH_URL = "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"
+    try:
+        req = urllib.request.Request(GRANVILLE_REFRESH_URL, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as response:
+            result = response.read().decode("utf-8")
+            print(f"[OK] Granvilleキャッシュリフレッシュ完了: {result}")
+    except (urllib.error.URLError, Exception) as e:
+        print(f"[WARNING] Granvilleキャッシュリフレッシュ失敗: {e}")
