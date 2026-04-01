@@ -24,7 +24,10 @@ META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 CSV_DIR = ROOT / "data" / "csv"
 
-# S3設定
+# 環境判定: ローカルにディレクトリがあれば開発、なければ本番（S3）
+_IS_LOCAL = PARQUET_DIR.exists()
+
+# S3設定（本番用）
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
 S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
@@ -35,27 +38,31 @@ _cache: dict[str, tuple[datetime, object]] = {}
 CACHE_TTL = 120
 
 
+def _s3_client():
+    import boto3
+    return boto3.client("s3", region_name=AWS_REGION)
+
+
 @router.post("/api/dev/granville/refresh")
 async def refresh_cache():
-    """キャッシュクリア+S3から再ダウンロード+即時反映。"""
+    """キャッシュクリア+即時反映。本番=S3キャッシュクリア、開発=ローカルキャッシュクリア。"""
     from datetime import datetime
     _cache.clear()
 
-    # staging S3から最新データを強制ダウンロード
-    refreshed = []
-    for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
-              "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
-              "futures_prices_max_1d.parquet"]:
-        local = PARQUET_DIR / f
-        if _s3_download(f, local):
-            refreshed.append(f)
-
-    # hold_stocks件数
     hold_count = 0
-    hold_path = PARQUET_DIR / "hold_stocks.parquet"
-    if hold_path.exists():
+    if _IS_LOCAL:
+        hold_path = PARQUET_DIR / "hold_stocks.parquet"
+        if hold_path.exists():
+            try:
+                hold_count = len(pd.read_parquet(hold_path))
+            except Exception:
+                pass
+    else:
         try:
-            hold_count = len(pd.read_parquet(hold_path))
+            s3 = _s3_client()
+            import io
+            obj = s3.get_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/hold_stocks.parquet")
+            hold_count = len(pd.read_parquet(io.BytesIO(obj["Body"].read())))
         except Exception:
             pass
 
@@ -63,22 +70,8 @@ async def refresh_cache():
         "status": "success",
         "message": "Cache refreshed",
         "hold_stocks": hold_count,
-        "refreshed_files": refreshed,
         "updated_at": datetime.now().isoformat(),
     }
-
-
-def _s3_download(s3_key: str, local_path: Path) -> bool:
-    """S3からファイルをダウンロード。ディレクトリ作成含む。"""
-    try:
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/{s3_key}", str(local_path))
-        return True
-    except Exception as e:
-        print(f"[S3] download failed: {S3_BUCKET}/{S3_PREFIX}/{s3_key} → {e}")
-        return False
 
 
 def _cached(key: str) -> Optional[object]:
@@ -93,42 +86,81 @@ def _set_cache(key: str, data: object) -> None:
     _cache[key] = (datetime.now(), data)
 
 
+def _read_parquet_s3(s3_key: str) -> pd.DataFrame:
+    """S3からparquetを直接読み込み（ローカルに書かない）"""
+    import io
+    s3 = _s3_client()
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/{s3_key}")
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+
+
+def _load_parquet(name: str) -> pd.DataFrame:
+    """parquet読み込み。開発=ローカル、本番=S3。完全分離。"""
+    cached = _cached(name)
+    if cached is not None:
+        return cached
+
+    df = pd.DataFrame()
+    if _IS_LOCAL:
+        path = PARQUET_DIR / name
+        if path.exists():
+            df = pd.read_parquet(path)
+    else:
+        try:
+            df = _read_parquet_s3(name)
+        except Exception as e:
+            print(f"[S3] read failed: {name} → {e}")
+
+    if not df.empty:
+        _set_cache(name, df)
+    return df
+
+
 def _latest_file(prefix: str) -> Optional[Path]:
-    """granvilleディレクトリから最新の日付ファイルを取得"""
+    """granvilleディレクトリから最新の日付ファイルを取得（開発用）"""
     files = sorted(GRANVILLE_DIR.glob(f"{prefix}_*.parquet"))
     return files[-1] if files else None
 
 
+def _latest_s3_key(prefix: str) -> Optional[str]:
+    """S3のgranvilleディレクトリから最新の日付ファイルキーを取得（本番用）"""
+    try:
+        s3 = _s3_client()
+        resp = s3.list_objects_v2(
+            Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/granville/{prefix}_",
+        )
+        if "Contents" in resp:
+            keys = sorted([o["Key"] for o in resp["Contents"]])
+            return keys[-1] if keys else None
+    except Exception:
+        pass
+    return None
+
+
 def _load_latest(prefix: str) -> pd.DataFrame:
-    """最新ファイルを読み込み（キャッシュ付き）"""
+    """granville日付別ファイルの最新を読み込み。開発=ローカル、本番=S3。完全分離。"""
     cached = _cached(prefix)
     if cached is not None:
         return cached
 
-    path = _latest_file(prefix)
-    if path is None:
-        # S3フォールバック
-        try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            resp = s3.list_objects_v2(
-                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/granville/{prefix}_",
-            )
-            if "Contents" in resp:
-                keys = sorted([o["Key"] for o in resp["Contents"]])
-                if keys:
-                    local = GRANVILLE_DIR / Path(keys[-1]).name
-                    GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
-                    s3.download_file(S3_BUCKET, keys[-1], str(local))
-                    path = local
-        except Exception:
-            pass
+    df = pd.DataFrame()
+    if _IS_LOCAL:
+        path = _latest_file(prefix)
+        if path:
+            df = pd.read_parquet(path)
+    else:
+        key = _latest_s3_key(prefix)
+        if key:
+            try:
+                import io
+                s3 = _s3_client()
+                obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
+                df = pd.read_parquet(io.BytesIO(obj["Body"].read()))
+            except Exception as e:
+                print(f"[S3] read failed: {key} → {e}")
 
-    if path is None:
-        return pd.DataFrame()
-
-    df = pd.read_parquet(path)
-    _set_cache(prefix, df)
+    if not df.empty:
+        _set_cache(prefix, df)
     return df
 
 
@@ -240,14 +272,14 @@ async def get_positions():
             as_of = str(hold_df["as_of"].iloc[0])[:10]
 
         # 20日高値計算用に株価データを読み込み
-        prices_path = PARQUET_DIR / "prices_max_1d.parquet"
         prices_df = None
-        if prices_path.exists():
-            try:
-                prices_df = pd.read_parquet(prices_path)
-                prices_df["date"] = pd.to_datetime(prices_df["date"])
-            except Exception:
-                pass
+        try:
+            _pdf = _load_parquet("prices_max_1d.parquet")
+            if not _pdf.empty:
+                _pdf["date"] = pd.to_datetime(_pdf["date"])
+                prices_df = _pdf
+        except Exception:
+            pass
 
         # prices_max_1d.parquetにない保有銘柄をyfinanceで補完
         hold_tickers = [str(r.get("ticker", "")) for _, r in hold_df.iterrows()]
@@ -391,12 +423,12 @@ async def get_positions():
         if not held_pos.empty:
             # 各hold銘柄について、実際の建日に最も近いpositionを選択
             if "stock_name" not in held_pos.columns:
-                for p_path in [META_PATH, META_FALLBACK]:
-                    if p_path.exists():
-                        meta = pd.read_parquet(p_path, columns=["ticker", "stock_name"])
-                        name_map = dict(zip(meta["ticker"], meta["stock_name"]))
-                        held_pos["stock_name"] = held_pos["ticker"].map(name_map).fillna("")
-                        break
+                meta = _load_parquet("meta_jquants.parquet")
+                if meta.empty:
+                    meta = _load_parquet("meta.parquet")
+                if not meta.empty and "ticker" in meta.columns and "stock_name" in meta.columns:
+                    name_map = dict(zip(meta["ticker"], meta["stock_name"]))
+                    held_pos["stock_name"] = held_pos["ticker"].map(name_map).fillna("")
                 else:
                     held_pos["stock_name"] = ""
 
@@ -450,21 +482,17 @@ async def get_positions():
 
 
 def _load_credit_status() -> dict:
-    """現金保証金と信用余力を取得（S3優先）"""
+    """現金保証金と信用余力を取得。開発=ローカル、本番=S3。"""
     cash_margin = 0
 
-    # S3からcredit_status.parquetを取得
-    cs_path = PARQUET_DIR / "credit_status.parquet"
-    _s3_download("credit_status.parquet", cs_path)
-
-    if cs_path.exists():
-        try:
-            cs = pd.read_parquet(cs_path)
+    try:
+        cs = _load_parquet("credit_status.parquet")
+        if not cs.empty:
             row = cs[cs["asset"].str.contains("信用", na=False)]
             if not row.empty:
                 cash_margin = int(row["value"].iloc[0])
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     if cash_margin == 0:
         cash_margin = 4_650_000  # デフォルト
@@ -490,15 +518,8 @@ def _load_credit_status() -> dict:
 
 
 def _load_hold_stocks() -> pd.DataFrame:
-    """hold_stocks.parquet をS3から取得"""
-    local = PARQUET_DIR / "hold_stocks.parquet"
-    _s3_download("hold_stocks.parquet", local)
-    if local.exists():
-        try:
-            return pd.read_parquet(local)
-        except Exception:
-            pass
-    return pd.DataFrame()
+    """hold_stocks.parquet 読み込み。開発=ローカル、本番=S3。"""
+    return _load_parquet("hold_stocks.parquet")
 
 
 def _compute_triggers() -> dict:
@@ -512,10 +533,9 @@ def _compute_triggers() -> dict:
     }
 
     try:
-        # N225 SMA（パイプラインのparquetから）
-        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
-        if n225_path.exists():
-            idx_df = pd.read_parquet(n225_path)
+        # N225 SMA
+        idx_df = _load_parquet("index_prices_max_1d.parquet")
+        if not idx_df.empty:
             nk = idx_df[idx_df["ticker"] == "^N225"].copy()
             if not nk.empty:
                 nk = nk.sort_values("date")
@@ -527,18 +547,17 @@ def _compute_triggers() -> dict:
                     gap = (latest_nk["sma20"] / latest_nk["sma60"] - 1) * 100
                     result["sma20_60_gap"] = round(gap, 2)
                     if gap <= -3:
-                        result["sma_signal"] = "green"  # B4最強帯
+                        result["sma_signal"] = "green"
                     elif gap <= 0:
-                        result["sma_signal"] = "yellow"  # DC済み
+                        result["sma_signal"] = "yellow"
                     elif gap <= 3:
-                        result["sma_signal"] = "red"  # 現在帯、期待値マイナス
+                        result["sma_signal"] = "red"
                     else:
                         result["sma_signal"] = "red"
 
-        # CME 22時ギャップ（パイプラインのparquetから）
-        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
-        if nkd_path.exists() and result["nk_close"]:
-            fut_df = pd.read_parquet(nkd_path)
+        # CME 22時ギャップ
+        fut_df = _load_parquet("futures_prices_max_1d.parquet")
+        if not fut_df.empty and result["nk_close"]:
             nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
             if not nkd_df.empty:
                 nkd_df = nkd_df.sort_values("date")
@@ -557,10 +576,8 @@ def _compute_triggers() -> dict:
                 else:
                     result["cme_signal"] = "yellow"
 
-        # VIX（パイプラインのparquetから）
-        # production pipelineがindex_prices_max_1dに^VIXを含む
-        if n225_path.exists():
-            idx_df = pd.read_parquet(n225_path) if "idx_df" not in dir() else idx_df
+        # VIX
+        if not idx_df.empty:
             vix_df = idx_df[idx_df["ticker"] == "^VIX"].copy()
             if not vix_df.empty:
                 vix_df = vix_df.sort_values("date")
@@ -654,31 +671,27 @@ async def get_b4_entry():
 
     # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
-    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    _s3_download("nikkei_vi_max_1d.parquet", vi_path)
-    if vi_path.exists():
-        try:
-            vi_df = pd.read_parquet(vi_path)
+    try:
+        vi_df = _load_parquet("nikkei_vi_max_1d.parquet")
+        if not vi_df.empty:
             vi_df["date"] = pd.to_datetime(vi_df["date"])
             vi_df = vi_df.sort_values("date")
             vi_val = float(vi_df["close"].iloc[-1])
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     cme_gap = None
     n225_chg = None
     try:
-        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
-        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
-        if n225_path.exists():
-            idx_df = pd.read_parquet(n225_path)
+        idx_df = _load_parquet("index_prices_max_1d.parquet")
+        if not idx_df.empty:
             n225_df = idx_df[idx_df["ticker"] == "^N225"].copy()
             if not n225_df.empty:
                 n225_df = n225_df.sort_values("date").tail(5)
                 if len(n225_df) >= 2:
                     n225_chg = round((float(n225_df["Close"].iloc[-1]) / float(n225_df["Close"].iloc[-2]) - 1) * 100, 2)
-                if nkd_path.exists():
-                    fut_df = pd.read_parquet(nkd_path)
+                fut_df = _load_parquet("futures_prices_max_1d.parquet")
+                if not fut_df.empty:
                     nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
                     if not nkd_df.empty:
                         nkd_df = nkd_df.sort_values("date").tail(5)
@@ -795,26 +808,20 @@ async def get_b4_entry():
 @router.get("/api/dev/granville/stats")
 async def get_stats(rule: Optional[str] = None):
     """ルール別勝率、月別PnL（B1-B4バックテストアーカイブから）"""
-    archive_path = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
-    if not archive_path.exists():
-        # S3フォールバック
-        try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            s3_key = f"{S3_PREFIX}/backtest/granville_b1b4_archive.parquet"
-            archive_path.parent.mkdir(parents=True, exist_ok=True)
-            s3.download_file(S3_BUCKET, s3_key, str(archive_path))
-        except Exception:
-            return {"by_rule": {}, "monthly": [], "total_trades": 0}
-
-    if not archive_path.exists():
-        return {"by_rule": {}, "monthly": [], "total_trades": 0}
-
     cached = _cached("stats_archive")
     if cached is not None:
         df = cached
     else:
-        df = pd.read_parquet(archive_path)
+        if _IS_LOCAL:
+            archive_path = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
+            if not archive_path.exists():
+                return {"by_rule": {}, "monthly": [], "total_trades": 0}
+            df = pd.read_parquet(archive_path)
+        else:
+            try:
+                df = _read_parquet_s3("backtest/granville_b1b4_archive.parquet")
+            except Exception:
+                return {"by_rule": {}, "monthly": [], "total_trades": 0}
         _set_cache("stats_archive", df)
 
     if df.empty:
