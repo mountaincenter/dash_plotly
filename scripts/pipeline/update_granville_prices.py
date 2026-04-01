@@ -123,7 +123,9 @@ def main() -> int:
     new_df = pd.concat(all_new, ignore_index=True)
     new_df["date"] = pd.to_datetime(new_df["date"]).dt.tz_localize(None)
 
-    new_df = new_df[new_df["date"] > last_date]
+    # per-tickerの最終日以降のみ追加（J-Quants置換で銘柄ごとに最終日が異なる場合に対応）
+    ticker_last = existing.groupby("ticker")["date"].max()
+    new_df = new_df[new_df.apply(lambda r: r["date"] > ticker_last.get(r["ticker"], last_date), axis=1)]
     new_dates = sorted(new_df["date"].unique())
     print(f"  New rows: {len(new_df)}")
     print(f"  New dates: {[d.strftime('%Y-%m-%d') for d in pd.to_datetime(new_dates)]}")

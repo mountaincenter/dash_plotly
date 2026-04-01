@@ -52,6 +52,7 @@ CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
 # 全ルールMH15（資本効率最大: 全期間+直近2年検証で確定）
 RULE_MAX_HOLD = {"B4": 15, "B1": 15, "B3": 15, "B2": 15}
+HIGH20D_PRE_ENTRY = 4  # 20日高値判定にエントリー前4日を含める（k=4最適、Codex検証済み）
 
 
 def _get_max_hold(rule: str) -> int:
@@ -180,6 +181,28 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         latest["B4"] = b4_filtered
         print(f"  B4 surge filter: {filtered_count} excluded")
 
+    # VI30-40GU除外: VI 30-40帯 AND 前日比上昇 → B4除外（Codex検証済み、PF+8%）
+    b4_mask2 = latest["B4"].copy()
+    if b4_mask2.any():
+        try:
+            vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+            if vi_path.exists():
+                vi_df = pd.read_parquet(vi_path)
+                vi_df["date"] = pd.to_datetime(vi_df["date"])
+                vi_latest = vi_df[vi_df["date"] == latest_date]
+                if not vi_latest.empty:
+                    vi_close = float(vi_latest.iloc[0]["close"])
+                    vi_prev = vi_df[vi_df["date"] < latest_date].sort_values("date").iloc[-1]["close"] if len(vi_df[vi_df["date"] < latest_date]) > 0 else vi_close
+                    vi_chg = (vi_close - vi_prev) / vi_prev * 100
+                    if 30 <= vi_close <= 40 and vi_chg > 0:
+                        gu_count = b4_mask2.sum()
+                        latest["B4"] = False
+                        print(f"  B4 VI30-40GU filter: {gu_count} excluded (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
+                    else:
+                        print(f"  B4 VI30-40GU filter: not triggered (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
+        except Exception as e:
+            print(f"  [WARN] VI filter skipped: {e}")
+
     sig_mask = latest["B1"] | latest["B2"] | latest["B3"] | latest["B4"]
     signals = latest[sig_mask].copy()
     print(f"  Total after filter: {len(signals)}")
@@ -285,10 +308,11 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
             row = tk_all.iloc[day]
             hold_day = day - entry_iloc
 
-            # §6: 直近高値更新Exit — High[t] >= エントリー後rolling高値
+            # §6: 直近高値更新Exit — エントリー前k日を含む窓で判定
             # 発火したら翌営業日寄付で決済（ユーザーが執行）
             if hold_day > 0:
-                w_start = max(0, day - 19)
+                w_start = max(entry_iloc - HIGH20D_PRE_ENTRY, day - 19)
+                w_start = max(0, w_start)
                 window_highs = tk_all.iloc[w_start:day + 1]["High"]
                 high_20d = float(window_highs.max())
                 if float(row["High"]) >= high_20d:
@@ -311,9 +335,11 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
         cp = float(cur["Close"])
         hold_days = cur_day - entry_iloc + 1
 
-        # エントリー後rolling高値（これを超えたら翌朝売り）
-        entry_high = float(tk_all.iloc[entry_iloc:cur_day + 1]["High"].max())
-        trigger_price = round(entry_high, 1)
+        # エントリー前k日を含むrolling高値（Exit判定と同じ窓定義）
+        h_start = max(entry_iloc - HIGH20D_PRE_ENTRY, cur_day - 19)
+        h_start = max(0, h_start)
+        entry_high = float(tk_all.iloc[h_start:cur_day + 1]["High"].max())
+        trigger_price = round(entry_high, 1) if not pd.isna(entry_high) else 0.0
 
         # ATR(10): 直近の平均true range
         atr10 = 0.0

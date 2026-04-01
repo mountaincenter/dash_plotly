@@ -29,6 +29,7 @@ OUT_PATH = PARQUET_DIR / "backtest" / "granville_b1b4_archive.parquet"
 
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
 MAX_HOLD = 15  # 資本効率最大（全期間検証: SMA20回帰MH15 ¥331/日）
+HIGH20D_PRE_ENTRY = 4  # 20日高値判定にエントリー前4日を含める（k=4最適、Codex検証済み）
 
 
 def load_prices(lookback_years: int = 2) -> pd.DataFrame:
@@ -180,6 +181,12 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
             continue
         e_date = future.iloc[0]["date"]
 
+        # エントリー日のtk_df上のiloc（k=4の高値窓で使用）
+        entry_mask = tk_df["date"] == e_date
+        if not entry_mask.any():
+            continue
+        entry_iloc = tk_df.index.get_loc(entry_mask.idxmax())
+
         # Exit判定
         exit_price = 0.0
         exit_date = None
@@ -202,10 +209,12 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
             mae_pct = min(mae_pct, day_low_pct)
             mfe_pct = max(mfe_pct, day_high_pct)
 
-            # 直近高値更新Exit: 発火→翌営業日寄付で決済
+            # 直近高値更新Exit: エントリー前k日を含む窓で判定
             if i > 0:
-                start_idx = max(0, i - 19)
-                window_highs = future.iloc[start_idx:i + 1]["High"]
+                cur_iloc = entry_iloc + i
+                start_iloc = max(entry_iloc - HIGH20D_PRE_ENTRY, cur_iloc - 19)
+                start_iloc = max(0, start_iloc)
+                window_highs = tk_df.iloc[start_iloc:cur_iloc + 1]["High"]
                 high_20d = float(window_highs.max())
                 if cur_high >= high_20d:
                     next_row = future.iloc[i + 1]
