@@ -468,16 +468,14 @@ jobs:
           # granvilleデータをS3からダウンロード（16:45で生成済み）
           aws s3 sync "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/" "data/parquet/granville/" --only-show-errors || true
 
-          python3 scripts/pipeline/generate_granville_recommendation.py
-
-          if [ $? -eq 0 ]; then
+          if python3 scripts/pipeline/generate_granville_recommendation.py; then
             echo "✅ Granville recommendations generated"
             for f in data/parquet/granville/recommendations_*.parquet; do
               [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
             done
             echo "✅ Uploaded granville recommendations to S3"
           else
-            echo "⚠️ Granville recommendations failed (non-critical)"
+            echo "⚠️ Granville recommendations failed (non-critical, signals may not exist yet)"
           fi
         timeout-minutes: 10
 
