@@ -465,9 +465,8 @@ jobs:
             aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
           done
 
-          # signals + positions を S3からダウンロード（16:45で生成済み）
-          aws s3 sync "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/" "data/parquet/granville/" --only-show-errors \
-            --exclude "prices_topix.parquet" || true
+          # granvilleデータをS3からダウンロード（16:45で生成済み）
+          aws s3 sync "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/" "data/parquet/granville/" --only-show-errors || true
 
           python3 scripts/pipeline/generate_granville_recommendation.py
 
