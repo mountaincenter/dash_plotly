@@ -21,9 +21,15 @@ from common_cfg.s3io import download_file
 from common_cfg.s3cfg import load_s3_config
 
 META_PATH = PARQUET_DIR / "meta.parquet"
+META_JQUANTS_PATH = PARQUET_DIR / "meta_jquants.parquet"
 SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
 SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
 ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
+
+TOPIX_SEGMENTS = [
+    "TOPIX Core30", "TOPIX Large70", "TOPIX Mid400",
+    "TOPIX Small 1", "TOPIX Small 2",
+]
 
 
 def download_from_s3_if_exists(filename: str, local_path: Path) -> bool:
@@ -319,6 +325,42 @@ def process_grok_trending(df: pd.DataFrame, client: JQuantsClient) -> pd.DataFra
     return df[cols].copy()
 
 
+def load_topix_stocks() -> pd.DataFrame:
+    """meta_jquants.parquetからTOPIX 1,660銘柄を18カラム構造で返す"""
+    if not META_JQUANTS_PATH.exists():
+        print("  [WARN] meta_jquants.parquet not found, skipping TOPIX")
+        return pd.DataFrame()
+
+    meta_jq = pd.read_parquet(META_JQUANTS_PATH)
+    topix = meta_jq[meta_jq["topixnewindexseries"].isin(TOPIX_SEGMENTS)].copy()
+    print(f"  ✓ TOPIX stocks from meta_jquants: {len(topix)}")
+
+    import numpy as np
+    topix["categories"] = topix.apply(lambda x: np.array(["TOPIX"]), axis=1)
+    topix["tags"] = topix.apply(lambda x: np.array([]), axis=1)
+    topix["date"] = None
+    topix["Close"] = None
+    topix["price_diff"] = None
+    topix["Volume"] = None
+    topix["vol_ratio"] = None
+    topix["atr14_pct"] = None
+    topix["rsi14"] = None
+    topix["score"] = None
+    topix["key_signal"] = None
+
+    cols = [
+        "ticker", "code", "stock_name", "market", "sectors", "series",
+        "topixnewindexseries", "categories", "tags",
+        "date", "Close", "price_diff", "Volume", "vol_ratio",
+        "atr14_pct", "rsi14", "score", "key_signal",
+    ]
+    for col in cols:
+        if col not in topix.columns:
+            topix[col] = None
+
+    return topix[cols].copy()
+
+
 def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_active: pd.DataFrame, grok_trending: pd.DataFrame) -> pd.DataFrame:
     """
     meta + scalping_entry + scalping_active + grok_trending をマージ
@@ -376,13 +418,93 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
     meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
 
-    # マージ
-    all_stocks = pd.concat([meta_clean, scalping_entry, scalping_active, grok_trending], ignore_index=True)
+    # Granville推奨銘柄を読み込み
+    granville_recs = pd.DataFrame()
+    granville_dir = PARQUET_DIR / "granville"
+    rec_files = sorted(granville_dir.glob("recommendations_*.parquet")) if granville_dir.exists() else []
+    if rec_files:
+        latest_rec = pd.read_parquet(rec_files[-1])
+        if not latest_rec.empty and "ticker" in latest_rec.columns:
+            # 18カラム構造に変換
+            import numpy as np
+            gr_tickers = latest_rec[["ticker"]].drop_duplicates().copy()
+            # meta_jquantsから銘柄情報を補完
+            if META_JQUANTS_PATH.exists():
+                mjq = pd.read_parquet(META_JQUANTS_PATH)
+                gr_tickers = gr_tickers.merge(
+                    mjq[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]],
+                    on="ticker", how="left",
+                )
+            for col in ["stock_name", "market", "sectors", "series", "topixnewindexseries"]:
+                if col not in gr_tickers.columns:
+                    gr_tickers[col] = ""
+            gr_tickers["code"] = gr_tickers["ticker"].str.replace(".T", "", regex=False)
+            gr_tickers["categories"] = gr_tickers.apply(lambda x: np.array(["GRANVILLE"]), axis=1)
+            gr_tickers["tags"] = gr_tickers.apply(lambda x: np.array([]), axis=1)
+            for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
+                gr_tickers[col] = None
+            cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
+                    "topixnewindexseries", "categories", "tags", "date", "Close",
+                    "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
+            for c in cols:
+                if c not in gr_tickers.columns:
+                    gr_tickers[c] = None
+            granville_recs = gr_tickers[cols].copy()
+            print(f"  [INFO] Granville recommendations: {len(granville_recs)} stocks from {rec_files[-1].name}")
+
+    # hold_stocks.parquetから保有銘柄を読み込み
+    import numpy as np
+    hold_stocks_df = pd.DataFrame()
+    hs_path = PARQUET_DIR / "hold_stocks.parquet"
+    if not hs_path.exists():
+        try:
+            from common_cfg.s3io import download_file
+            from common_cfg.s3cfg import load_s3_config
+            cfg = load_s3_config()
+            if cfg and cfg.bucket:
+                download_file(cfg, "hold_stocks.parquet", hs_path)
+        except Exception:
+            pass
+    if hs_path.exists():
+        try:
+            hs = pd.read_parquet(hs_path)
+            if not hs.empty and "ticker" in hs.columns:
+                hs_tickers = hs[["ticker"]].drop_duplicates().copy()
+                # ticker形式の正規化
+                hs_tickers["ticker"] = hs_tickers["ticker"].apply(lambda t: t if ".T" in str(t) else f"{t}.T")
+                if META_JQUANTS_PATH.exists():
+                    mjq = pd.read_parquet(META_JQUANTS_PATH)
+                    hs_tickers = hs_tickers.merge(
+                        mjq[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]],
+                        on="ticker", how="left",
+                    )
+                for col in ["stock_name", "market", "sectors", "series", "topixnewindexseries"]:
+                    if col not in hs_tickers.columns:
+                        hs_tickers[col] = ""
+                hs_tickers["code"] = hs_tickers["ticker"].str.replace(".T", "", regex=False)
+                hs_tickers["categories"] = hs_tickers.apply(lambda x: np.array(["HOLD"]), axis=1)
+                hs_tickers["tags"] = hs_tickers.apply(lambda x: np.array([]), axis=1)
+                for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
+                    hs_tickers[col] = None
+                cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
+                        "topixnewindexseries", "categories", "tags", "date", "Close",
+                        "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
+                for c in cols:
+                    if c not in hs_tickers.columns:
+                        hs_tickers[c] = None
+                hold_stocks_df = hs_tickers[cols].copy()
+                print(f"  [INFO] Hold stocks: {len(hold_stocks_df)} stocks")
+        except Exception as e:
+            print(f"  [WARN] hold_stocks.parquet read failed: {e}")
+
+    # all_stocks = grok + granville推奨 + 保有銘柄
+    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df], ignore_index=True)
+    all_stocks = all_stocks.drop_duplicates(subset=["ticker"], keep="first")
 
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Meta: {len(meta_clean)}, Entry: {len(scalping_entry)}, Active: {len(scalping_active)}, Grok: {len(grok_trending)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)})")
     return all_stocks
 
 
@@ -431,6 +553,22 @@ def main() -> int:
 
     # [STEP 8] 保存
     print("\n[STEP 8] Saving all_stocks.parquet...")
+    import numpy as np
+
+    def _to_str_list(x):
+        """categories/tags を文字列リストに統一"""
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return []
+        if isinstance(x, np.ndarray):
+            return [str(v) for v in x if v is not None and not (isinstance(v, float) and pd.isna(v))]
+        if isinstance(x, list):
+            return [str(v) for v in x if v is not None and not (isinstance(v, float) and pd.isna(v))]
+        if isinstance(x, str):
+            return [x]
+        return []
+
+    for col in ["categories", "tags"]:
+        all_stocks[col] = all_stocks[col].apply(_to_str_list)
     PARQUET_DIR.mkdir(parents=True, exist_ok=True)
     all_stocks.to_parquet(ALL_STOCKS_PATH, engine="pyarrow", index=False)
     print(f"  ✓ Saved: {ALL_STOCKS_PATH}")
