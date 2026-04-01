@@ -482,9 +482,19 @@ async def get_positions():
 
 
 def _load_credit_status() -> dict:
-    """現金保証金と信用余力を取得。開発=ローカル、本番=S3。"""
-    cash_margin = 0
+    """現金保証金と信用新規建余力を算出。開発=ローカル、本番=S3。
 
+    楽天証券の計算式:
+      受入保証金 = 現金保証金(信用) + 評価損(合算マイナスのみ)
+      必要保証金 = 建代金合計 × 30%
+      信用保証金余裕額 = 受入保証金 - 必要保証金
+      信用新規建余力 = 信用保証金余裕額 / 30%
+
+    評価損: 全建玉の評価損益合算がマイナスの場合のみ控除。プラスなら0。
+    """
+    MARGIN_RATE = 0.30
+
+    cash_margin = 0
     try:
         cs = _load_parquet("credit_status.parquet")
         if not cs.empty:
@@ -497,23 +507,40 @@ def _load_credit_status() -> dict:
     if cash_margin == 0:
         cash_margin = 4_650_000  # デフォルト
 
-    # 信用余力 = (現金保証金 - 必要保証金) / 委託保証金率(30%)
-    position_value = 0
     hold_df = _load_hold_stocks()
-    if not hold_df.empty and "market_value" in hold_df.columns:
-        position_value = int(hold_df["market_value"].abs().sum())
+    position_value = 0
+    cost_total = 0
+    eval_total = 0
 
-    # 必要保証金 = 建玉金額合計 * 30%
-    required_margin = 0
-    if not hold_df.empty and "cost_total" in hold_df.columns:
-        required_margin = int(hold_df["cost_total"].abs().sum() * 0.3)
+    if not hold_df.empty:
+        if "market_value" in hold_df.columns:
+            position_value = int(hold_df["market_value"].abs().sum())
+        if "cost_total" in hold_df.columns:
+            cost_total = int(hold_df["cost_total"].abs().sum())
+        # 評価損益: 買建=時価-建代金、売建=建代金-時価
+        if "cost_total" in hold_df.columns and "market_value" in hold_df.columns and "direction" in hold_df.columns:
+            pnl_list = []
+            for _, r in hold_df.iterrows():
+                if r["direction"] == "売建":
+                    pnl_list.append(r["cost_total"] - r["market_value"])
+                else:
+                    pnl_list.append(r["market_value"] - r["cost_total"])
+            eval_total = int(sum(pnl_list))
 
-    credit_capacity = int((cash_margin - required_margin) / 0.3)
+    # 楽天ルール: 評価損益合算がマイナスの場合のみ控除
+    eval_for_margin = min(eval_total, 0)
+    received_margin = cash_margin + eval_for_margin
+    required_margin = int(cost_total * MARGIN_RATE)
+    surplus = received_margin - required_margin
+    credit_capacity = int(surplus / MARGIN_RATE)
 
     return {
         "cash_margin": cash_margin,
         "credit_capacity": max(0, credit_capacity),
         "position_value": position_value,
+        "received_margin": received_margin,
+        "required_margin": required_margin,
+        "eval_total": eval_total,
     }
 
 
@@ -653,6 +680,9 @@ async def get_status():
         "triggers": triggers,
         "cash_margin": credit["cash_margin"],
         "credit_capacity": credit["credit_capacity"],
+        "received_margin": credit["received_margin"],
+        "required_margin": credit["required_margin"],
+        "eval_total": credit["eval_total"],
         "position_value": credit["position_value"],
         "total_margin_used": total_margin_used,
         "signal_count": signal_count,
