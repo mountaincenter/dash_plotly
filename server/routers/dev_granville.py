@@ -639,8 +639,6 @@ def _compute_triggers() -> dict:
 @router.get("/api/dev/granville/status")
 async def get_status():
     """現金保証金・信用余力・ポジション数・シグナル数"""
-    credit = _load_credit_status()
-
     # シグナル数
     signals_df = _load_latest("signals")
     signal_count = len(signals_df)
@@ -678,12 +676,6 @@ async def get_status():
 
     return {
         "triggers": triggers,
-        "cash_margin": credit["cash_margin"],
-        "credit_capacity": credit["credit_capacity"],
-        "received_margin": credit["received_margin"],
-        "required_margin": credit["required_margin"],
-        "eval_total": credit["eval_total"],
-        "position_value": credit["position_value"],
         "total_margin_used": total_margin_used,
         "signal_count": signal_count,
         "signal_date": signal_date,
