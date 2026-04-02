@@ -6,8 +6,9 @@ on:
     # Grok選定は材料の鮮度が重要なため、毎日実行
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
-    - cron: "45 7 * * *" # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "0 14 * * *" # UTC 14:00 = JST 23:00 (当日) - Grok選定 + 株価データ更新
+    - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
+    - cron: "0 14 * * *"  # UTC 14:00 = JST 23:00 (当日) - Grok選定 + 株価データ更新
+    - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
@@ -24,6 +25,10 @@ on:
         default: false
       force_1645_mode:
         description: "16:45モードを強制（Grok選定スキップ、バックテスト実行）"
+        type: boolean
+        default: false
+      force_cme_mode:
+        description: "CME更新モードを強制（07:00相当）"
         type: boolean
         default: false
 
@@ -84,8 +89,14 @@ jobs:
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
           echo "Current hour (JST): $CURRENT_HOUR"
 
+          # force_cme_mode が true の場合、CME更新モード
+          if [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
+            echo "mode=cme_update" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=cme" >> $GITHUB_OUTPUT
+            echo "🌅 FORCED CME Update Mode (07:00相当)"
           # force_1645_mode が true の場合、強制的に16:45モード（Grok選定スキップ）
-          if [ "${{ github.event.inputs.force_1645_mode }}" = "true" ]; then
+          elif [ "${{ github.event.inputs.force_1645_mode }}" = "true" ]; then
             echo "mode=stock_data_forced" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=true" >> $GITHUB_OUTPUT
@@ -102,6 +113,12 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "📊 GROK Daily Mode (23:00 JST) - Grok selection enabled"
+          # 07時（22:00 UTC）はCME更新モード
+          elif [ "$CURRENT_HOUR" = "07" ]; then
+            echo "mode=cme_update" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=cme" >> $GITHUB_OUTPUT
+            echo "🌅 CME Update Mode (07:00 JST) - CME close + B4 judgment"
           else
             echo "mode=stock_data" >> $GITHUB_OUTPUT
             echo "skip_trading_check=false" >> $GITHUB_OUTPUT
@@ -790,6 +807,30 @@ jobs:
         run: |
           python3 scripts/format_granville_b4_slack.py || true
 
+      # ===== 07:00 CME更新フェーズ =====
+      - name: "[CME] Check trading day"
+        id: check_trading_cme
+        if: steps.exec_mode.outputs.mode == 'cme_update' && github.event.inputs.skip_trading_day_check != 'true'
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: |
+          python scripts/check_trading_day.py
+        continue-on-error: true
+
+      - name: "[CME] Update CME close"
+        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        run: |
+          echo "🌅 Updating CME close..."
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          python scripts/pipeline/update_cme_close.py
+        timeout-minutes: 5
+
+      - name: "[CME] Generate B4 Slack section"
+        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        run: |
+          python scripts/format_granville_b4_slack.py || true
+        timeout-minutes: 5
+
       - name: Generate market anomaly data (last trading day of week)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -1232,6 +1273,8 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
               TRIGGER_TIME="23:00 JST"
+            elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
+              TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
               TRIGGER_TIME="02:00 JST"
             else
@@ -1258,7 +1301,7 @@ jobs:
             BILLING_SECTION=",$(cat /tmp/billing_section.txt)"
           fi
 
-          # Granville B4 (16:45 only)
+          # Granville B4 (16:45 + 07:00 CME)
           GRANVILLE_SECTION=""
           if [ -f "/tmp/granville_b4_section.txt" ] && [ -s "/tmp/granville_b4_section.txt" ]; then
             GRANVILLE_SECTION=$(cat /tmp/granville_b4_section.txt)
@@ -1342,6 +1385,8 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
               TRIGGER_TIME="23:00 JST"
+            elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
+              TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
               TRIGGER_TIME="02:00 JST"
             else
