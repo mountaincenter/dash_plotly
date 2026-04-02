@@ -381,7 +381,15 @@ def build_sectors(date: str) -> dict[str, Any]:
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
     today = df[df["date"] == date].copy()
     if today.empty:
-        return {"error": "no_data_for_date", "date": date}
+        # 指定日付のデータがない場合、直近の最新日付にフォールバック
+        available_dates = sorted(df["date"].unique())
+        prev_dates = [d for d in available_dates if d <= date]
+        if not prev_dates:
+            return {"error": "no_data_for_date", "date": date}
+        fallback_date = prev_dates[-1]
+        print(f"  [INFO] sectors: {date} not found, falling back to {fallback_date}")
+        today = df[df["date"] == fallback_date].copy()
+        date = fallback_date
 
     sectors = []
     for _, row in today.iterrows():
@@ -509,11 +517,15 @@ def _fetch_boj_fm01() -> dict[str, Any]:
     try:
         from datetime import datetime
         now = datetime.now()
-        ym = now.strftime("%Y%m")
+        end_ym = now.strftime("%Y%m")
+        # 月初はBOJデータが未反映のため、前月を含めて取得
+        first_of_month = now.replace(day=1)
+        prev_month = (first_of_month - timedelta(days=1)).replace(day=1)
+        start_ym = prev_month.strftime("%Y%m")
         url = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
         resp = requests.get(url, params={
             "format": "json", "lang": "jp", "db": "fm01",
-            "code": "STRDCLUCON", "startDate": ym, "endDate": ym,
+            "code": "STRDCLUCON", "startDate": start_ym, "endDate": end_ym,
         }, timeout=15)
         resp.raise_for_status()
         data = resp.json()
