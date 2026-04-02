@@ -79,11 +79,12 @@ class PipelineRunner:
                 ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
             )
 
-        # グランビルIFDシグナル生成 + バックテスト（16:00 JST実行時のみ）
+        # グランビル価格更新 + シグナル生成 + バックテスト（16:45 JST実行時のみ）
         if skip_grok:
             self.steps.extend([
-                ("pipeline.generate_granville_signals", "グランビルIFDシグナル生成"),
-                ("pipeline.backtest_granville_ifd", "グランビルIFDバックテストアーカイブ"),
+                ("pipeline.update_granville_prices", "グランビルTOPIX価格更新"),
+                ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
+                ("pipeline.backtest_granville_b1b4", "グランビルB1-B4バックテストアーカイブ"),
             ])
 
         # バックテストメタ情報生成（常に実行）
