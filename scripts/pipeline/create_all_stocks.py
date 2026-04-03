@@ -497,14 +497,35 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
         except Exception as e:
             print(f"  [WARN] hold_stocks.parquet read failed: {e}")
 
-    # all_stocks = grok + granville推奨 + 保有銘柄
-    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df], ignore_index=True)
+    # Core30+Large70銘柄（大陰線逆張り戦略用、meta_jquantsから取得）
+    core_large_df = pd.DataFrame()
+    if META_JQUANTS_PATH.exists():
+        mjq = pd.read_parquet(META_JQUANTS_PATH)
+        cl = mjq[mjq["topixnewindexseries"].isin(["TOPIX Core30", "TOPIX Large70"])].copy()
+        if not cl.empty:
+            cl_tickers = cl[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]].drop_duplicates(subset="ticker").copy()
+            cl_tickers["code"] = cl_tickers["ticker"].str.replace(".T", "", regex=False)
+            cl_tickers["categories"] = cl_tickers.apply(lambda x: np.array(["CORE_LARGE"]), axis=1)
+            cl_tickers["tags"] = cl_tickers.apply(lambda x: np.array([]), axis=1)
+            for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
+                cl_tickers[col] = None
+            cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
+                    "topixnewindexseries", "categories", "tags", "date", "Close",
+                    "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
+            for c in cols:
+                if c not in cl_tickers.columns:
+                    cl_tickers[c] = None
+            core_large_df = cl_tickers[cols].copy()
+            print(f"  [INFO] Core+Large: {len(core_large_df)} stocks (from meta_jquants)")
+
+    # all_stocks = grok + granville推奨 + 保有銘柄 + Core+Large
+    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, core_large_df], ignore_index=True)
     all_stocks = all_stocks.drop_duplicates(subset=["ticker"], keep="first")
 
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Core+Large: {len(core_large_df)})")
     return all_stocks
 
 

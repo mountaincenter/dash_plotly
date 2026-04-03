@@ -39,8 +39,7 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 REVERSAL_DIR = PARQUET_DIR / "reversal"
-PRICES_PATH = PARQUET_DIR / "granville" / "prices_topix.parquet"
-UNIVERSE_PATH = PARQUET_DIR / "universe.parquet"
+PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"  # all_stocks経由でfetch_prices.pyが取得
 VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
@@ -56,18 +55,20 @@ STOP_LOSS_PCT = -3.0          # -3%以下で損切り
 SURGE_SMA20 = 15.0
 SURGE_SMA60 = 20.0
 SURGE_SMA100 = 30.0
-# 対象区分
-TARGET_TIERS = {"Core30", "Large70"}
+# 対象区分（meta_jquantsのtopixnewindexseriesカラム）
+TARGET_TIERS = {"TOPIX Core30", "TOPIX Large70"}
 
 
-def load_universe() -> set[str]:
-    """Core30+Large70の銘柄セットを返す"""
-    if UNIVERSE_PATH.exists():
-        u = pd.read_parquet(UNIVERSE_PATH)
-        if "topix_tier" in u.columns:
-            return set(u[u["topix_tier"].isin(TARGET_TIERS)]["ticker"].astype(str))
-    # フォールバック: 全銘柄（フィルタなし）
-    print("  [WARN] universe.parquet not found, using all tickers")
+def load_core_large_tickers() -> set[str]:
+    """meta_jquants.parquetからCore30+Large70の銘柄セットを返す"""
+    for p in [META_PATH, META_FALLBACK]:
+        if p.exists():
+            m = pd.read_parquet(p)
+            if "topixnewindexseries" in m.columns:
+                tickers = set(m[m["topixnewindexseries"].isin(TARGET_TIERS)]["ticker"].astype(str))
+                print(f"  Core+Large: {len(tickers)} tickers (from {p.name})")
+                return tickers
+    print("  [WARN] meta not found, no ticker filter applied")
     return set()
 
 
@@ -91,15 +92,15 @@ def load_meta() -> pd.DataFrame:
     return pd.DataFrame(columns=["ticker", "stock_name", "sectors"])
 
 
-def load_prices(universe: set[str]) -> pd.DataFrame:
+def load_prices(core_large: set[str]) -> pd.DataFrame:
     """価格データ読み込み+テクニカル指標計算"""
     print("[1/4] Loading prices...")
     ps = pd.read_parquet(PRICES_PATH)
     ps["date"] = pd.to_datetime(ps["date"])
 
-    # Core+Largeフィルタ
-    if universe:
-        ps = ps[ps["ticker"].isin(universe)].copy()
+    # Core+Largeのみ抽出
+    if core_large:
+        ps = ps[ps["ticker"].isin(core_large)].copy()
     print(f"  {len(ps):,} rows, {ps['ticker'].nunique()} tickers")
 
     ps = ps.sort_values(["ticker", "date"]).reset_index(drop=True)
@@ -346,10 +347,9 @@ def main() -> int:
 
     REVERSAL_DIR.mkdir(parents=True, exist_ok=True)
 
-    universe = load_universe()
-    print(f"  Universe: {len(universe)} tickers (Core30+Large70)")
+    core_large = load_core_large_tickers()
 
-    ps = load_prices(universe)
+    ps = load_prices(core_large)
     vi_df = load_vi()
     out = detect_bearish_signals(ps, vi_df)
 
