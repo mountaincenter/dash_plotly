@@ -134,7 +134,7 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest
+          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal
 
           # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
@@ -213,6 +213,13 @@ jobs:
           python scripts/pipeline/fetch_prices.py
         timeout-minutes: 20
 
+      - name: "[Prepare] Generate bearish reversal signals"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🔻 Generating bearish reversal signals (Core+Large)..."
+          python scripts/pipeline/generate_bearish_signals.py
+        timeout-minutes: 10
+
       - name: "[Prepare] Upload prepare results to S3"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -221,6 +228,11 @@ jobs:
           # recommendations
           for f in data/parquet/granville/recommendations_*.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
+          done
+
+          # bearish reversal signals
+          for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}reversal/$(basename $f)" --only-show-errors
           done
 
           # all_stocks & prices
