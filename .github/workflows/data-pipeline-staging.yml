@@ -181,8 +181,9 @@ jobs:
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
 
-          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+          # production S3から取得済みファイル → staging S3に同期
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet \
+                   nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
@@ -242,8 +243,9 @@ jobs:
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
-          # hold_stocks/credit_status/orders（production S3から取得済み → staging S3に同期）
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet; do
+          # production S3から取得済みファイル → staging S3に同期
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet \
+                   nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
