@@ -732,9 +732,23 @@ async def get_day_trade_list():
         "total_required_funds": total_required_funds,
     }
 
+    # 先物変化率・N225変化率（全銘柄共通、grok_trendingから取得）
+    futures_change_pct = None
+    nikkei_change_pct = None
+    if len(grok_df) > 0:
+        first_row = grok_df.iloc[0]
+        if pd.notna(first_row.get("futures_change_pct")):
+            futures_change_pct = round(float(first_row["futures_change_pct"]), 3)
+        if pd.notna(first_row.get("nikkei_change_pct")):
+            nikkei_change_pct = round(float(first_row["nikkei_change_pct"]), 3)
+
     return JSONResponse(content={
         "total": len(stocks),
         "summary": summary,
+        "market": {
+            "futures_change_pct": futures_change_pct,
+            "nikkei_change_pct": nikkei_change_pct,
+        },
         "stocks": stocks
     })
 

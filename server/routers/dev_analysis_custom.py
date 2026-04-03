@@ -577,32 +577,73 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
     return result
 
 
-@router.get("/dev/analysis-custom/lending-ratio-pf")
-async def get_lending_ratio_pf(exclude_extreme: bool = False):
-    """
-    貸借倍率(買残/売残)×Grade別PFテーブル
-
-    Returns:
-    - rows: 倍率帯ごとの行（各gradeのPF/n）
-    - dataRange: データ期間
-    - totalWithBalance: 売買残データ有効件数
-    """
-    import numpy as np
-
+def _load_analysis_base(exclude_extreme: bool = False) -> pd.DataFrame:
+    """分析用の共通データ前処理（11/4以降、学習期間除外、信用区分フィルター）"""
     df = load_archive(exclude_extreme=exclude_extreme)
-
-    # 2025-11-04以降、学習期間除外
     if "backtest_date" in df.columns:
         df["date"] = pd.to_datetime(df["backtest_date"])
     elif "selection_date" in df.columns:
         df["date"] = pd.to_datetime(df["selection_date"])
     df = df[df["date"] >= "2025-11-04"]
     df = df[~((df["date"] >= "2025-10-29") & (df["date"] <= "2025-11-21"))]
-
-    # 制度信用 or いちにち信用
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
+    return df
 
-    # 貸借倍率算出
+
+def _calc_grade_pf(sub: pd.DataFrame, grade: str, seg_col: str = "seg_1530") -> dict:
+    """Grade別PF計算。G1/G2はショート反転"""
+    s = sub.copy()
+    if grade in ("G1", "G2"):
+        s[seg_col] = -s[seg_col]
+    wins = s[s[seg_col] > 0][seg_col].sum()
+    losses = abs(s[s[seg_col] <= 0][seg_col].sum())
+    pf = round(wins / losses, 2) if losses > 0 else None
+    n = len(s)
+    avg = round(s[seg_col].mean()) if n > 0 else 0
+    wr = round((s[seg_col] > 0).mean() * 100, 1) if n > 0 else 0
+    return {"pf": pf, "n": n, "avg": avg, "winRate": wr}
+
+
+def _build_grade_row(bin_data: pd.DataFrame, label: str, seg_col: str = "seg_1530") -> dict:
+    """1ビン分のGrade別行データを構築"""
+    row = {"label": label}
+    for grade in ["G1", "G2", "G3", "G4"]:
+        g_sub = bin_data[bin_data["ml_grade"] == grade] if "ml_grade" in bin_data.columns else pd.DataFrame()
+        if len(g_sub) > 0:
+            row[grade] = _calc_grade_pf(g_sub, grade, seg_col)
+            if grade == "G3":
+                # G3 SHORT版
+                g3s = g_sub.copy()
+                g3s[seg_col] = -g3s[seg_col]
+                wins = g3s[g3s[seg_col] > 0][seg_col].sum()
+                losses = abs(g3s[g3s[seg_col] <= 0][seg_col].sum())
+                pf = round(wins / losses, 2) if losses > 0 else None
+                row["G3_SHORT"] = {
+                    "pf": pf, "n": len(g3s),
+                    "avg": round(g3s[seg_col].mean()),
+                    "winRate": round((g3s[seg_col] > 0).mean() * 100, 1),
+                }
+        else:
+            row[grade] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
+            if grade == "G3":
+                row["G3_SHORT"] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
+    return row
+
+
+def _make_date_range(df: pd.DataFrame) -> dict:
+    return {
+        "start": str(df["date"].min().date()) if len(df) > 0 else None,
+        "end": str(df["date"].max().date()) if len(df) > 0 else None,
+        "tradingDays": int(df["date"].dt.date.nunique()) if len(df) > 0 else 0,
+    }
+
+
+@router.get("/dev/analysis-custom/lending-ratio-pf")
+async def get_lending_ratio_pf(exclude_extreme: bool = False):
+    """貸借倍率(買残/売残)×Grade別PFテーブル"""
+    import numpy as np
+
+    df = _load_analysis_base(exclude_extreme)
     df["lending_ratio"] = np.where(
         df["margin_sell_balance"].notna() & (df["margin_sell_balance"] > 0),
         df["margin_buy_balance"] / df["margin_sell_balance"],
@@ -610,24 +651,8 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False):
     )
     valid = df.dropna(subset=["lending_ratio"])
 
-    # seg_1530をショート基準に変換（G1/G2のみ反転）
-    seg_col = "seg_1530"
-    if seg_col not in valid.columns:
+    if "seg_1530" not in valid.columns:
         raise HTTPException(status_code=500, detail="seg_1530カラムがありません")
-
-    # grade別に符号を決める関数
-    def calc_pf(sub, grade):
-        s = sub.copy()
-        if grade in ("G1", "G2"):
-            s[seg_col] = -s[seg_col]
-        # G3はSHORT/LONG両方返すので呼び出し側で処理
-        wins = s[s[seg_col] > 0][seg_col].sum()
-        losses = abs(s[s[seg_col] <= 0][seg_col].sum())
-        pf = round(wins / losses, 2) if losses > 0 else None
-        n = len(s)
-        avg = round(s[seg_col].mean()) if n > 0 else 0
-        wr = round((s[seg_col] > 0).mean() * 100, 1) if n > 0 else 0
-        return {"pf": pf, "n": n, "avg": avg, "winRate": wr}
 
     ratio_bins = [
         {"label": "<2x", "min": 0, "max": 2},
@@ -639,42 +664,42 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False):
     rows = []
     for rb in ratio_bins:
         bin_data = valid[(valid["lending_ratio"] >= rb["min"]) & (valid["lending_ratio"] < rb["max"])]
-        row = {"label": rb["label"]}
-        for grade in ["G1", "G2", "G3", "G4"]:
-            g_sub = bin_data[bin_data["ml_grade"] == grade] if "ml_grade" in bin_data.columns else pd.DataFrame()
-            if len(g_sub) > 0:
-                row[grade] = calc_pf(g_sub, grade)
-                # G3はSHORT版も追加
-                if grade == "G3":
-                    g3_short = g_sub.copy()
-                    g3_short[seg_col] = -g3_short[seg_col]
-                    wins = g3_short[g3_short[seg_col] > 0][seg_col].sum()
-                    losses = abs(g3_short[g3_short[seg_col] <= 0][seg_col].sum())
-                    pf = round(wins / losses, 2) if losses > 0 else None
-                    row["G3_SHORT"] = {
-                        "pf": pf,
-                        "n": len(g3_short),
-                        "avg": round(g3_short[seg_col].mean()),
-                        "winRate": round((g3_short[seg_col] > 0).mean() * 100, 1),
-                    }
-            else:
-                row[grade] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
-                if grade == "G3":
-                    row["G3_SHORT"] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
-        rows.append(row)
-
-    # データ期間
-    date_range = {
-        "start": str(valid["date"].min().date()) if len(valid) > 0 else None,
-        "end": str(valid["date"].max().date()) if len(valid) > 0 else None,
-        "tradingDays": int(valid["date"].dt.date.nunique()) if len(valid) > 0 else 0,
-    }
+        rows.append(_build_grade_row(bin_data, rb["label"]))
 
     return JSONResponse(content={
         "rows": rows,
-        "dataRange": date_range,
+        "dataRange": _make_date_range(valid),
         "totalWithBalance": len(valid),
         "totalAll": len(df),
+    })
+
+
+@router.get("/dev/analysis-custom/futures-gap-pf")
+async def get_futures_gap_pf(exclude_extreme: bool = False):
+    """先物gap帯×Grade別PFテーブル"""
+    df = _load_analysis_base(exclude_extreme)
+
+    if "futures_change_pct" not in df.columns or "seg_1530" not in df.columns:
+        raise HTTPException(status_code=500, detail="必要カラムがありません")
+
+    valid = df.dropna(subset=["futures_change_pct"])
+
+    gap_bins = [
+        {"label": "<-0.5%", "min": -999, "max": -0.5},
+        {"label": "-0.5~0%", "min": -0.5, "max": 0},
+        {"label": "0~0.5%", "min": 0, "max": 0.5},
+        {"label": ">0.5%", "min": 0.5, "max": 999},
+    ]
+
+    rows = []
+    for gb in gap_bins:
+        bin_data = valid[(valid["futures_change_pct"] > gb["min"]) & (valid["futures_change_pct"] <= gb["max"])]
+        rows.append(_build_grade_row(bin_data, gb["label"]))
+
+    return JSONResponse(content={
+        "rows": rows,
+        "dataRange": _make_date_range(valid),
+        "total": len(valid),
     })
 
 
