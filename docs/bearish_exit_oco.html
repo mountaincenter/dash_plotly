@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大陰線 Exit OCO比較</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f23; color: #e2e8f0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+.header { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 24px 32px; border-bottom: 2px solid #4338ca; }
+.header h1 { font-size: 20px; }
+.header p { color: #a5b4fc; font-size: 13px; margin-top: 4px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+h2 { color: #a5b4fc; font-size: 16px; margin: 28px 0 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+th { padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 12px; font-weight: 600;
+     border-bottom: 2px solid #4338ca; white-space: nowrap; background: #1a1a2e; }
+td { padding: 9px 12px; border-bottom: 1px solid #1e1e3a; white-space: nowrap; }
+tr:hover { background: #1e1b4b33; }
+.win { color: #4ade80; } .lose { color: #f87171; }
+.best-row { background: #14532d33; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.pf { font-weight: bold; font-size: 16px; }
+.section { background: #1a1a2e; border: 1px solid #2d2d44; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.gd-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+.gd-card { background: #1e1b4b; border: 1px solid #4338ca; border-radius: 8px; padding: 12px; text-align: center; }
+.gd-label { color: #a5b4fc; font-size: 12px; }
+.gd-value { font-size: 22px; font-weight: bold; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>大陰線(-5%) Exit改善: SMA20指値OCO vs 現行</h1>
+  <p>②株価≤15,000 | Core+Large | 10年 | MAX_HOLD 30日</p>
+</div>
+<div class="container">
+
+<h2>Exit方式 比較</h2>
+<div class="section">
+<table>
+<thead><tr>
+  <th>パターン</th><th>n</th><th>WR</th><th>avg</th><th>med</th>
+  <th>PF</th><th>hold</th><th>eff(%/d)</th><th>PnL</th>
+</tr></thead>
+<tbody id="compare-body"></tbody>
+</table>
+</div>
+
+<h2>GD影響分析（SMA20 exitトレードのみ: 指値 vs 翌Open）</h2>
+<div class="section">
+  <div class="gd-summary">
+    <div class="gd-card"><div class="gd-label">対象トレード</div><div class="gd-value" id="gd-n">-</div></div>
+    <div class="gd-card"><div class="gd-label">平均影響</div><div class="gd-value" id="gd-avg">-</div></div>
+    <div class="gd-card"><div class="gd-label">指値有利</div><div class="gd-value win" id="gd-pos">-</div></div>
+    <div class="gd-card"><div class="gd-label">翌Open有利</div><div class="gd-value lose" id="gd-neg">-</div></div>
+  </div>
+  <table>
+  <thead><tr>
+    <th>銘柄</th><th>シグナル日</th><th>翌Open ret</th><th>指値 ret</th><th>影響</th><th>保有日数</th>
+  </tr></thead>
+  <tbody id="gd-body"></tbody>
+  </table>
+</div>
+
+</div>
+<script>
+const STATS = [{"n": 785, "wins": 567, "wr": 72.2, "avg": 3.861, "med": 4.028, "pf": 3.77, "hold": 8.3, "eff": 0.4652, "pnl": 6776417, "label": "現行: SMA20翌Open + Day3SL"}, {"n": 785, "wins": 611, "wr": 77.8, "avg": 3.802, "med": 3.347, "pf": 5.08, "hold": 8.0, "eff": 0.4752, "pnl": 6420903, "label": "A: SMA20指値 / SLなし"}, {"n": 785, "wins": 410, "wr": 52.2, "avg": 1.582, "med": 0.646, "pf": 1.91, "hold": 4.0, "eff": 0.3955, "pnl": 3350309, "label": "B-3: SMA20指値 / -3%逆指値"}, {"n": 785, "wins": 489, "wr": 62.3, "avg": 2.026, "med": 1.883, "pf": 2.08, "hold": 4.9, "eff": 0.4135, "pnl": 4193815, "label": "B-5: SMA20指値 / -5%逆指値"}, {"n": 785, "wins": 537, "wr": 68.4, "avg": 2.418, "med": 2.647, "pf": 2.34, "hold": 5.8, "eff": 0.4169, "pnl": 4331083, "label": "B-7: SMA20指値 / -7%逆指値"}, {"n": 785, "wins": 580, "wr": 73.9, "avg": 2.907, "med": 3.039, "pf": 2.82, "hold": 6.8, "eff": 0.4275, "pnl": 4782470, "label": "B-10: SMA20指値 / -10%逆指値"}, {"n": 785, "wins": 572, "wr": 72.9, "avg": 3.258, "med": 2.984, "pf": 3.61, "hold": 6.7, "eff": 0.4863, "pnl": 5950526, "label": "C: SMA20指値 / Day3SL"}];
+const GD_RECORDS = [{"ticker": "7832.T", "signal": "2020-02-07", "ret_bl": -15.01, "ret_oco": -3.56, "impact": 11.44, "hold_bl": 31, "hold_oco": 18}, {"ticker": "9202.T", "signal": "2020-04-02", "ret_bl": 5.58, "ret_oco": 16.94, "impact": 11.36, "hold_bl": 24, "hold_oco": 5}, {"ticker": "7269.T", "signal": "2021-04-06", "ret_bl": -10.39, "ret_oco": 0.31, "impact": 10.7, "hold_bl": 27, "hold_oco": 2}, {"ticker": "9984.T", "signal": "2025-12-08", "ret_bl": -6.65, "ret_oco": 1.22, "impact": 7.87, "hold_bl": 3, "hold_oco": 2}, {"ticker": "5803.T", "signal": "2025-11-18", "ret_bl": 4.02, "ret_oco": 11.46, "impact": 7.44, "hold_bl": 14, "hold_oco": 2}, {"ticker": "5802.T", "signal": "2026-03-03", "ret_bl": -0.63, "ret_oco": 6.08, "impact": 6.71, "hold_bl": 3, "hold_oco": 2}, {"ticker": "6902.T", "signal": "2020-03-16", "ret_bl": 12.19, "ret_oco": 18.45, "impact": 6.27, "hold_bl": 9, "hold_oco": 6}, {"ticker": "7832.T", "signal": "2024-02-15", "ret_bl": 7.57, "ret_oco": 13.39, "impact": 5.81, "hold_bl": 25, "hold_oco": 5}, {"ticker": "9984.T", "signal": "2020-07-31", "ret_bl": -1.04, "ret_oco": 4.77, "impact": 5.81, "hold_bl": 3, "hold_oco": 2}, {"ticker": "9983.T", "signal": "2020-03-18", "ret_bl": 15.24, "ret_oco": 20.98, "impact": 5.73, "hold_bl": 5, "hold_oco": 4}, {"ticker": "6501.T", "signal": "2020-03-18", "ret_bl": 13.1, "ret_oco": 18.77, "impact": 5.67, "hold_bl": 7, "hold_oco": 6}, {"ticker": "6098.T", "signal": "2024-11-13", "ret_bl": -5.16, "ret_oco": 0.39, "impact": 5.55, "hold_bl": 3, "hold_oco": 2}, {"ticker": "7270.T", "signal": "2024-08-05", "ret_bl": 12.3, "ret_oco": 17.83, "impact": 5.53, "hold_bl": 11, "hold_oco": 8}, {"ticker": "8035.T", "signal": "2020-03-19", "ret_bl": 25.36, "ret_oco": 30.74, "impact": 5.38, "hold_bl": 4, "hold_oco": 3}, {"ticker": "9984.T", "signal": "2026-02-13", "ret_bl": 1.38, "ret_oco": 6.6, "impact": 5.22, "hold_bl": 3, "hold_oco": 2}, {"ticker": "9104.T", "signal": "2020-03-12", "ret_bl": 19.36, "ret_oco": 24.44, "impact": 5.07, "hold_bl": 9, "hold_oco": 8}, {"ticker": "9104.T", "signal": "2020-03-19", "ret_bl": 18.01, "ret_oco": 23.03, "impact": 5.02, "hold_bl": 4, "hold_oco": 3}, {"ticker": "6857.T", "signal": "2023-05-19", "ret_bl": -1.72, "ret_oco": 3.29, "impact": 5.0, "hold_bl": 3, "hold_oco": 2}, {"ticker": "6920.T", "signal": "2020-06-30", "ret_bl": -2.15, "ret_oco": 2.74, "impact": 4.89, "hold_bl": 3, "hold_oco": 2}, {"ticker": "4901.T", "signal": "2018-01-31", "ret_bl": -4.34, "ret_oco": 0.39, "impact": 4.72, "hold_bl": 20, "hold_oco": 2}, {"ticker": "7309.T", "signal": "2020-03-24", "ret_bl": 8.71, "ret_oco": 1.5, "impact": -7.22, "hold_bl": 3, "hold_oco": 2}, {"ticker": "6146.T", "signal": "2016-06-24", "ret_bl": 7.97, "ret_oco": 0.75, "impact": -7.22, "hold_bl": 13, "hold_oco": 12}, {"ticker": "6920.T", "signal": "2016-06-24", "ret_bl": 14.87, "ret_oco": 7.4, "impact": -7.47, "hold_bl": 8, "hold_oco": 6}, {"ticker": "6326.T", "signal": "2016-06-24", "ret_bl": 7.9, "ret_oco": 0.38, "impact": -7.52, "hold_bl": 13, "hold_oco": 12}, {"ticker": "8591.T", "signal": "2016-06-24", "ret_bl": 11.15, "ret_oco": 3.55, "impact": -7.6, "hold_bl": 13, "hold_oco": 12}, {"ticker": "6920.T", "signal": "2020-03-09", "ret_bl": 16.39, "ret_oco": 7.79, "impact": -8.6, "hold_bl": 11, "hold_oco": 10}, {"ticker": "8015.T", "signal": "2016-06-24", "ret_bl": 12.41, "ret_oco": 3.75, "impact": -8.66, "hold_bl": 13, "hold_oco": 10}, {"ticker": "6981.T", "signal": "2016-06-24", "ret_bl": 11.57, "ret_oco": 2.72, "impact": -8.84, "hold_bl": 13, "hold_oco": 12}, {"ticker": "6920.T", "signal": "2020-03-19", "ret_bl": 20.64, "ret_oco": 11.73, "impact": -8.91, "hold_bl": 3, "hold_oco": 2}, {"ticker": "6857.T", "signal": "2020-04-01", "ret_bl": 15.74, "ret_oco": 6.8, "impact": -8.94, "hold_bl": 5, "hold_oco": 2}, {"ticker": "7269.T", "signal": "2016-06-24", "ret_bl": 11.1, "ret_oco": 2.05, "impact": -9.05, "hold_bl": 13, "hold_oco": 4}, {"ticker": "5803.T", "signal": "2026-03-17", "ret_bl": 10.66, "ret_oco": 1.5, "impact": -9.16, "hold_bl": 6, "hold_oco": 2}, {"ticker": "5802.T", "signal": "2016-04-28", "ret_bl": 13.23, "ret_oco": 3.98, "impact": -9.25, "hold_bl": 9, "hold_oco": 5}, {"ticker": "9104.T", "signal": "2021-10-04", "ret_bl": 9.31, "ret_oco": -0.11, "impact": -9.42, "hold_bl": 20, "hold_oco": 19}, {"ticker": "8766.T", "signal": "2016-06-24", "ret_bl": 15.78, "ret_oco": 6.23, "impact": -9.55, "hold_bl": 13, "hold_oco": 7}, {"ticker": "6723.T", "signal": "2022-01-25", "ret_bl": 15.42, "ret_oco": 5.84, "impact": -9.58, "hold_bl": 12, "hold_oco": 11}, {"ticker": "8309.T", "signal": "2016-04-28", "ret_bl": 14.03, "ret_oco": 4.25, "impact": -9.79, "hold_bl": 11, "hold_oco": 5}, {"ticker": "7974.T", "signal": "2016-06-24", "ret_bl": 17.39, "ret_oco": 5.74, "impact": -11.65, "hold_bl": 10, "hold_oco": 9}, {"ticker": "4901.T", "signal": "2020-03-19", "ret_bl": 16.7, "ret_oco": 3.49, "impact": -13.22, "hold_bl": 6, "hold_oco": 5}, {"ticker": "5802.T", "signal": "2026-02-26", "ret_bl": 17.1, "ret_oco": 2.39, "impact": -14.71, "hold_bl": 3, "hold_oco": 2}];
+const GD_SUMMARY = {"n": 665, "avg_impact": -0.854, "med_impact": -0.661, "positive": 242, "negative": 404, "max_gain": 11.44, "max_loss": -14.71};
+
+// --- 比較テーブル ---
+const tbody = document.getElementById("compare-body");
+let bestPf = 0, bestIdx = -1;
+STATS.forEach((s, i) => { if (s.pf > bestPf) { bestPf = s.pf; bestIdx = i; } });
+
+STATS.forEach((s, i) => {
+  const tr = document.createElement("tr");
+  if (i === bestIdx) tr.className = "best-row";
+  const pfClass = s.pf >= 5 ? "win" : s.pf >= 3 ? "" : "lose";
+  const wrClass = s.wr >= 70 ? "win" : s.wr >= 50 ? "" : "lose";
+  tr.innerHTML =
+    "<td><b>" + s.label + "</b></td>" +
+    '<td class="num">' + s.n + "</td>" +
+    '<td class="num ' + wrClass + '">' + s.wr + "%</td>" +
+    '<td class="num">' + (s.avg > 0 ? "+" : "") + s.avg.toFixed(3) + "%</td>" +
+    '<td class="num">' + (s.med > 0 ? "+" : "") + s.med.toFixed(3) + "%</td>" +
+    '<td class="num pf ' + pfClass + '">' + s.pf + "</td>" +
+    '<td class="num">' + s.hold + "d</td>" +
+    '<td class="num">' + (s.eff > 0 ? "+" : "") + s.eff.toFixed(4) + "</td>" +
+    '<td class="num">&yen;' + s.pnl.toLocaleString() + "</td>";
+  tbody.appendChild(tr);
+});
+
+// --- GDサマリー ---
+if (GD_SUMMARY.n) {
+  const impClass = GD_SUMMARY.avg_impact > 0 ? "win" : "lose";
+  document.getElementById("gd-n").textContent = GD_SUMMARY.n;
+  const el = document.getElementById("gd-avg");
+  el.textContent = (GD_SUMMARY.avg_impact > 0 ? "+" : "") + GD_SUMMARY.avg_impact.toFixed(3) + "%";
+  el.className = "gd-value " + impClass;
+  document.getElementById("gd-pos").textContent = GD_SUMMARY.positive + " (" + (GD_SUMMARY.positive/GD_SUMMARY.n*100).toFixed(0) + "%)";
+  document.getElementById("gd-neg").textContent = GD_SUMMARY.negative + " (" + (GD_SUMMARY.negative/GD_SUMMARY.n*100).toFixed(0) + "%)";
+}
+
+// --- GD個別テーブル ---
+const gdBody = document.getElementById("gd-body");
+GD_RECORDS.forEach(r => {
+  const tr = document.createElement("tr");
+  const impClass = r.impact > 0 ? "win" : "lose";
+  tr.innerHTML =
+    "<td>" + r.ticker + "</td>" +
+    "<td>" + r.signal + "</td>" +
+    '<td class="num">' + (r.ret_bl > 0 ? "+" : "") + r.ret_bl.toFixed(2) + "%</td>" +
+    '<td class="num">' + (r.ret_oco > 0 ? "+" : "") + r.ret_oco.toFixed(2) + "%</td>" +
+    '<td class="num ' + impClass + '"><b>' + (r.impact > 0 ? "+" : "") + r.impact.toFixed(2) + "%</b></td>" +
+    '<td class="num">' + r.hold_bl + "d → " + r.hold_oco + "d</td>";
+  gdBody.appendChild(tr);
+});
+</script>
+</body>
+</html>
