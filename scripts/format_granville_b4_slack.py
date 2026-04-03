@@ -174,9 +174,9 @@ def main():
             "text": {"type": "mrkdwn", "text": "📋 *候補（乖離深い順）*\n" + "\n".join(lines)}
         })
 
-    # 出力
-    section_text = json.dumps(blocks, ensure_ascii=False)
-    OUTPUT_PATH.write_text(section_text, encoding="utf-8")
+    # 出力（先頭カンマ付き = 既存blocksに連結可能）
+    blocks_json = ",".join(json.dumps(b, ensure_ascii=False) for b in blocks)
+    OUTPUT_PATH.write_text("," + blocks_json, encoding="utf-8")
     print(f"[OK] B4 Slack section: {OUTPUT_PATH} ({len(blocks)} blocks)")
     print(f"  Decision: {decision}")
     print(f"  B4 signals: {len(b4)}")
