@@ -211,7 +211,8 @@ jobs:
       - name: Run Data Pipeline
         id: pipeline
         if: |
-          success() && (
+          success() &&
+          steps.exec_mode.outputs.mode != 'cme_update' && (
             steps.exec_mode.outputs.mode == 'stock_data' ||
             steps.exec_mode.outputs.mode == 'stock_data_forced' ||
             steps.check_next_trading.conclusion == 'success' ||
