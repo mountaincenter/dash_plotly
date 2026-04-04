@@ -32,7 +32,9 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 PAIRS_DIR = PARQUET_DIR / "pairs"
-# 価格ソース（screening優先、なければprices_max_1d）
+# 価格ソース: prices_topix（review phaseで毎日更新、TOPIX全1660銘柄）
+PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
+# フォールバック: screening → prices_max_1d
 PRICES_1D_CL = PARQUET_DIR / "screening" / "prices_max_1d_core_large.parquet"
 PRICES_1D_MID = PARQUET_DIR / "screening" / "prices_max_1d_mid400.parquet"
 PRICES_FALLBACK = PARQUET_DIR / "prices_max_1d.parquet"
@@ -85,15 +87,26 @@ def load_names() -> dict[str, str]:
 
 
 def load_prices(days: int = 60) -> pd.DataFrame:
-    """価格データ読み込み（screening優先、なければprices_max_1d）"""
+    """価格データ読み込み（prices_topix優先、なければscreening→prices_max_1d）"""
     frames = []
-    if PRICES_1D_CL.exists():
-        frames.append(pd.read_parquet(PRICES_1D_CL))
-    if PRICES_1D_MID.exists():
-        frames.append(pd.read_parquet(PRICES_1D_MID))
+
+    # 優先: prices_topix（review phaseで毎日更新、TOPIX全1660銘柄）
+    if PRICES_TOPIX.exists():
+        frames.append(pd.read_parquet(PRICES_TOPIX))
+        print(f"  [prices] Using prices_topix ({PRICES_TOPIX.name})")
+
+    # フォールバック: screening → prices_max_1d
+    if not frames:
+        if PRICES_1D_CL.exists():
+            frames.append(pd.read_parquet(PRICES_1D_CL))
+        if PRICES_1D_MID.exists():
+            frames.append(pd.read_parquet(PRICES_1D_MID))
+        if frames:
+            print("  [prices] Fallback: screening parquets")
 
     if not frames and PRICES_FALLBACK.exists():
         frames.append(pd.read_parquet(PRICES_FALLBACK))
+        print("  [prices] Fallback: prices_max_1d")
 
     if not frames:
         return pd.DataFrame()
