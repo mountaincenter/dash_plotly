@@ -134,11 +134,21 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal
+          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal data/parquet/pairs data/parquet/screening
 
           # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
+
+          # screening prices（ペアトレード用、staging S3になければproductionから）
+          for f in prices_max_1d_core_large.parquet prices_max_1d_mid400.parquet; do
+            if [ ! -f "data/parquet/screening/$f" ]; then
+              echo "  Fetching screening/$f..."
+              aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}screening/$f" "data/parquet/screening/$f" --only-show-errors || \
+              aws s3 cp "s3://stock-api-data/${S3_PREFIX}screening/$f" "data/parquet/screening/$f" --only-show-errors || \
+              echo "  ✗ screening/$f not found"
+            fi
+          done
 
           # production S3からhold_stocks/credit_status/orders/nikkei_vi/index/futures
           for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
@@ -221,6 +231,13 @@ jobs:
           python scripts/pipeline/generate_bearish_signals.py
         timeout-minutes: 10
 
+      - name: "[Prepare] Generate pairs trading signals"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🔄 Generating pairs trading signals (30 pairs)..."
+          python scripts/pipeline/generate_pairs_signals.py
+        timeout-minutes: 10
+
       - name: "[Prepare] Upload prepare results to S3"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -234,6 +251,11 @@ jobs:
           # bearish reversal signals
           for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}reversal/$(basename $f)" --only-show-errors
+          done
+
+          # pairs trading signals
+          for f in data/parquet/pairs/pairs_signals_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}pairs/$(basename $f)" --only-show-errors
           done
 
           # all_stocks & prices
