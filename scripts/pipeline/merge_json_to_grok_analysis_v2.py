@@ -65,40 +65,41 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         # v2: /fins/summary から発行済株式数を取得（v1は/fins/statements）
         statements_response = client.request('/fins/summary', params={'code': code})
 
-        if 'data' not in statements_response or not statements_response['data']:
-            return None
-
-        # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
-        statements = sorted(
-            statements_response['data'],
-            key=lambda x: x.get('DiscDate', ''),
-            reverse=True
-        )
-
         issued_shares = None
-        for statement in statements:
-            # v2: ShOutFY = 発行済株式数（期末）
-            issued_shares = statement.get('ShOutFY')
-            if issued_shares:
-                issued_shares = float(issued_shares)
-                break
+        if 'data' in statements_response and statements_response['data']:
+            # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
+            statements = sorted(
+                statements_response['data'],
+                key=lambda x: x.get('DiscDate', ''),
+                reverse=True
+            )
 
-        if not issued_shares:
-            return None
+            for statement in statements:
+                # v2: ShOutFY = 発行済株式数（期末）
+                issued_shares = statement.get('ShOutFY')
+                if issued_shares:
+                    issued_shares = float(issued_shares)
+                    break
 
-        # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
-        date_str = date.strftime('%Y-%m-%d')
-        quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
+        if issued_shares:
+            # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
+            date_str = date.strftime('%Y-%m-%d')
+            quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
 
-        if 'data' not in quotes_response or not quotes_response['data']:
-            return None
+            if 'data' in quotes_response and quotes_response['data']:
+                adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
+                market_cap = close_price * (issued_shares / adjustment_factor)
+                return market_cap
 
-        adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
+        # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization（百万円）
+        info_response = client.request('/listed/info', params={'code': code})
+        if 'info' in info_response and info_response['info']:
+            mc_million = info_response['info'][0].get('MarketCapitalization')
+            if mc_million is not None:
+                logger.info(f"{ticker}: market_cap from /listed/info fallback: {float(mc_million)/100:.0f}億円")
+                return float(mc_million) * 1_000_000
 
-        # 3. 時価総額を計算
-        market_cap = close_price * (issued_shares / adjustment_factor)
-
-        return market_cap
+        return None
 
     except Exception as e:
         logger.warning(f"Failed to fetch market cap for {ticker}: {e}")

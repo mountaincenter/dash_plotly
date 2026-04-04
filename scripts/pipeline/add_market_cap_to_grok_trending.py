@@ -155,6 +155,31 @@ def calculate_market_cap(close_price: float, issued_shares: float, adjustment_fa
     return close_price * (issued_shares / adjustment_factor)
 
 
+def _fetch_market_cap_from_listed_info(ticker: str) -> Optional[float]:
+    """/listed/info の MarketCapitalization（百万円）から時価総額（円）を取得"""
+    try:
+        code = ticker.replace('.T', '').ljust(5, '0')
+        headers = get_headers()
+        res = requests.get(
+            f"{JQUANTS_BASE_URL}/listed/info",
+            headers=headers,
+            params={"code": code},
+            timeout=15
+        )
+        res.raise_for_status()
+        data = res.json()
+        info_list = data.get("info", [])
+        if not info_list:
+            return None
+        mc_million = info_list[0].get("MarketCapitalization")
+        if mc_million is not None:
+            return float(mc_million) * 1_000_000
+        return None
+    except Exception as e:
+        print(f"[WARN] listed/info fallback failed for {ticker}: {e}")
+        return None
+
+
 def get_close_from_prices(ticker: str, prices_df: pd.DataFrame) -> Optional[float]:
     """prices_max_1d.parquetから最新終値を取得"""
     try:
@@ -217,6 +242,13 @@ def main():
         # 発行済株式数を取得
         issued_shares = fetch_issued_shares(ticker)
         if issued_shares is None or issued_shares <= 0:
+            # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization
+            market_cap = _fetch_market_cap_from_listed_info(ticker)
+            if market_cap is not None:
+                market_caps.append(market_cap)
+                success_count += 1
+                print(f"   {ticker}: {market_cap/1e8:.0f}億円 (listed/info fallback)")
+                continue
             market_caps.append(None)
             print(f"   {ticker}: 発行済株式数取得失敗")
             continue

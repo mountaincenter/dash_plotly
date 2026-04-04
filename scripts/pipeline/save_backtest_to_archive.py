@@ -269,41 +269,41 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         # v2: /fins/summary から発行済株式数を取得（v1は/fins/statements）
         statements_response = client.request('/fins/summary', params={'code': code})
 
-        if 'data' not in statements_response or not statements_response['data']:
-            return None
-
-        # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
-        statements = sorted(
-            statements_response['data'],
-            key=lambda x: x.get('DiscDate', ''),
-            reverse=True
-        )
-
         issued_shares = None
-        for statement in statements:
-            # v2: ShOutFY = 発行済株式数（期末）
-            issued_shares = statement.get('ShOutFY')
-            if issued_shares:
-                issued_shares = float(issued_shares)  # 文字列からfloatに変換
-                break
+        if 'data' in statements_response and statements_response['data']:
+            # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
+            statements = sorted(
+                statements_response['data'],
+                key=lambda x: x.get('DiscDate', ''),
+                reverse=True
+            )
 
-        if not issued_shares:
-            return None
+            for statement in statements:
+                # v2: ShOutFY = 発行済株式数（期末）
+                issued_shares = statement.get('ShOutFY')
+                if issued_shares:
+                    issued_shares = float(issued_shares)
+                    break
 
-        # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
-        date_str = date.strftime('%Y-%m-%d')
-        quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
+        if issued_shares:
+            # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
+            date_str = date.strftime('%Y-%m-%d')
+            quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
 
-        if 'data' not in quotes_response or not quotes_response['data']:
-            return None
+            if 'data' in quotes_response and quotes_response['data']:
+                adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
+                market_cap = close_price * (issued_shares / adjustment_factor)
+                return market_cap
 
-        adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
+        # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization（百万円）
+        info_response = client.request('/listed/info', params={'code': code})
+        if 'info' in info_response and info_response['info']:
+            mc_million = info_response['info'][0].get('MarketCapitalization')
+            if mc_million is not None:
+                print(f"[INFO] {ticker}: market_cap from /listed/info fallback: {float(mc_million)/100:.0f}億円")
+                return float(mc_million) * 1_000_000
 
-        # 3. 時価総額を計算
-        # 時価総額 = 終値 × (発行済株式数 / 調整係数)
-        market_cap = close_price * (issued_shares / adjustment_factor)
-
-        return market_cap
+        return None
 
     except Exception as e:
         print(f"[WARN] Failed to fetch market cap for {ticker}: {e}")
@@ -397,6 +397,9 @@ def calculate_morning_metrics(
         morning_high = morning_data['High'].max()
         morning_low = morning_data['Low'].min()
 
+        if pd.isna(morning_high) or pd.isna(morning_low):
+            return None, None, None, None
+
         morning_max_gain_pct = ((morning_high - open_price) / open_price * 100)
         morning_max_drawdown_pct = ((morning_low - open_price) / open_price * 100)
 
@@ -427,6 +430,9 @@ def calculate_daily_metrics(
     try:
         high = df['High'].max()
         low = df['Low'].min()
+
+        if pd.isna(high) or pd.isna(low):
+            return None, None, None, None
 
         daily_max_gain_pct = ((high - open_price) / open_price * 100)
         daily_max_drawdown_pct = ((low - open_price) / open_price * 100)
@@ -463,13 +469,13 @@ def get_price_at_time(
         # 指定時間帯のデータを取得
         slot_data = df_5min.between_time(start_time, end_time)
 
-        if not slot_data.empty:
+        if not slot_data.empty and pd.notna(slot_data.iloc[-1]['Close']):
             return float(slot_data.iloc[-1]['Close'])
 
         # フォールバック: 次時間帯の最早Open
         if fallback_start_time:
             next_data = df_5min.between_time(fallback_start_time, "15:30")
-            if not next_data.empty:
+            if not next_data.empty and pd.notna(next_data.iloc[0]['Open']):
                 return float(next_data.iloc[0]['Open'])
 
         return None
@@ -535,7 +541,7 @@ def calculate_segment_prices(
             # 指定時刻付近のデータを取得
             slot_data = df_5min.between_time(start_time, end_time)
 
-            if not slot_data.empty:
+            if not slot_data.empty and pd.notna(slot_data.iloc[-1]['Close']):
                 price = float(slot_data.iloc[-1]['Close'])
                 # 100株あたりの利益（円）
                 segments[seg_name] = (price - buy_price) * 100
@@ -592,6 +598,8 @@ def calculate_phase3_return(
 
         # 閾値に到達せず大引けまで保持
         close_price = df_sorted.iloc[-1]['Close']
+        if pd.isna(close_price):
+            return None, None, None
         phase_return = (close_price - open_price) / open_price
         win = phase_return > 0
         exit_reason = "hold_until_close"
@@ -684,12 +692,17 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             if prev_date_obj in hist_daily.index:
                 prev_close = float(hist_daily.loc[prev_date_obj]['Close'])
 
+        # 日足の必須フィールドがNaNなら当該銘柄をスキップ
+        if pd.isna(daily_row['Open']) or pd.isna(daily_row['Close']):
+            print(f"[WARN] {ticker}: daily Open/Close is NaN, skipping")
+            return None
+
         buy_price = float(daily_row['Open'])
         sell_price = float(daily_row['Close'])  # Phase1用（前場引け値として近似）
         daily_close = float(daily_row['Close'])
-        high = float(daily_row['High'])
-        low = float(daily_row['Low'])
-        volume = int(daily_row['Volume'])
+        high = float(daily_row['High']) if pd.notna(daily_row['High']) else daily_close
+        low = float(daily_row['Low']) if pd.notna(daily_row['Low']) else daily_close
+        volume = int(daily_row['Volume']) if pd.notna(daily_row['Volume']) else 0
 
         # 5分足データを取得
         df_5min = fetch_intraday_data(ticker, backtest_date)
@@ -710,7 +723,7 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
         # Phase1: 前場引け売り（11:30売却）
         if df_5min is not None:
             morning_data = df_5min.between_time("09:00", "11:30")
-            if not morning_data.empty:
+            if not morning_data.empty and pd.notna(morning_data.iloc[-1]['Close']):
                 sell_price = float(morning_data.iloc[-1]['Close'])  # 11:30の終値
         phase1_return = (sell_price - buy_price) / buy_price
         phase1_win = phase1_return > 0
@@ -878,6 +891,9 @@ def fetch_extreme_market_info(backtest_date: datetime) -> dict:
             return result
 
         morning_price = df_morning.iloc[0]["Open"]
+        if pd.isna(morning_price):
+            print(f"[WARN] Morning futures Open is NaN for {backtest_date.date()}")
+            return result
         prev_price = prices[prev_date_obj]
 
         # 変動率を計算
