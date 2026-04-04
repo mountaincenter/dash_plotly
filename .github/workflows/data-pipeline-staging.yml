@@ -134,14 +134,14 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest
+          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal data/parquet/pairs data/parquet/screening
 
           # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
-          # production S3からhold_stocks/credit_status/orders/nikkei_vi
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet; do
+          # production S3からhold_stocks/credit_status/orders/nikkei_vi/index/futures
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
@@ -213,6 +213,21 @@ jobs:
           python scripts/pipeline/fetch_prices.py
         timeout-minutes: 20
 
+      - name: "[Prepare] Generate bearish reversal signals"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🔻 Generating bearish reversal signals (Core+Large)..."
+          python scripts/pipeline/generate_bearish_signals.py
+        timeout-minutes: 10
+
+      - name: "[Prepare] Generate pairs trading signals"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "🔄 Generating pairs trading signals (30 pairs)..."
+          python scripts/pipeline/generate_pairs_signals.py
+        timeout-minutes: 10
+
+
       - name: "[Prepare] Upload prepare results to S3"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -222,6 +237,17 @@ jobs:
           for f in data/parquet/granville/recommendations_*.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
+
+          # bearish reversal signals
+          for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}reversal/$(basename $f)" --only-show-errors
+          done
+
+          # pairs trading signals
+          for f in data/parquet/pairs/pairs_signals_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}pairs/$(basename $f)" --only-show-errors
+          done
+
 
           # all_stocks & prices
           for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json \
