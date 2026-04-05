@@ -348,7 +348,7 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
 
 
 def update_archive_with_grade():
-    """archiveにml_gradeカラムを追加（既存カラムは変更しない）"""
+    """archiveにml_prob・ml_gradeカラムを追加（既存カラムは変更しない）"""
     archive_path = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
     wfcv_path = MODEL_DIR / "wfcv_predictions.parquet"
 
@@ -366,16 +366,17 @@ def update_archive_with_grade():
     arc["backtest_date"] = pd.to_datetime(arc["backtest_date"])
     wfcv["backtest_date"] = pd.to_datetime(wfcv["backtest_date"])
 
-    # 既存ml_gradeがあれば削除（再計算のため）
-    if "ml_grade" in arc.columns:
-        arc = arc.drop(columns=["ml_grade"])
+    # 既存ml_grade/ml_probがあれば削除（再計算のため）
+    for col in ["ml_grade", "ml_prob"]:
+        if col in arc.columns:
+            arc = arc.drop(columns=[col])
 
     # wfcvの重複を除去（同一日・同一銘柄で複数予測がある場合、最後を採用）
-    wfcv_dedup = wfcv[["backtest_date", "ticker", "ml_grade"]].drop_duplicates(
+    wfcv_dedup = wfcv[["backtest_date", "ticker", "ml_prob", "ml_grade"]].drop_duplicates(
         subset=["backtest_date", "ticker"], keep="last"
     )
 
-    # left joinでml_gradeのみ追加
+    # left joinでml_prob+ml_gradeを追加
     merged = arc.merge(
         wfcv_dedup,
         on=["backtest_date", "ticker"],
@@ -389,17 +390,19 @@ def update_archive_with_grade():
 
     # 既存カラムが全て残っていることを検証
     for col in original_cols:
-        if col == "ml_grade":
+        if col in ("ml_grade", "ml_prob"):
             continue
         if col not in merged.columns:
             print(f"[ERROR] Column '{col}' lost after merge. Aborting.")
             return
 
     matched = merged["ml_grade"].notna().sum()
+    prob_matched = merged["ml_prob"].notna().sum()
     print(f"\n[INFO] Archive ml_grade update: {matched}/{original_len} rows matched")
+    print(f"[INFO] Archive ml_prob update: {prob_matched}/{original_len} rows matched")
 
     merged.to_parquet(archive_path, index=False)
-    print(f"✓ Archive updated with ml_grade: {archive_path}")
+    print(f"✓ Archive updated with ml_prob+ml_grade: {archive_path}")
 
 
 def main():

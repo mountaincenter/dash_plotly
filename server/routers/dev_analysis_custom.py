@@ -2,8 +2,11 @@
 開発用: カスタム分析API
 
 grok_trending_archive.parquetを使用
-4seg/11seg切替、価格帯の動的細分化、実額/比率切替を可能にする分析API
+方向別(SHORT/LONG)プール分離、閾値3区分(SHORT/DISC/LONG)、4seg/11seg切替
 - GET /dev/analysis-custom/summary: カスタム分析サマリー
+- GET /dev/analysis-custom/details: 詳細データ
+- GET /dev/analysis-custom/lending-ratio-pf: 貸借倍率×bucket別PF
+- GET /dev/analysis-custom/futures-gap-pf: 先物gap帯×bucket別PF
 """
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -26,6 +29,10 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 # 曜日名
 WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
 
+# 閾値定義
+PROB_SHORT_THRESHOLD = 0.45
+PROB_LONG_THRESHOLD = 0.70
+
 # 11時間区分定義
 TIME_SEGMENTS_11 = [
     {"key": "seg_0930", "label": "-9:30", "time": "9:30"},
@@ -41,12 +48,12 @@ TIME_SEGMENTS_11 = [
     {"key": "seg_1530", "label": "15:00-15:30", "time": "15:30"},
 ]
 
-# 4時間区分定義
+# 4時間区分定義（11segベース: 前場前半~10:30, 前場引け11:00, 後場前半~14:00, 大引け15:30）
 TIME_SEGMENTS_4 = [
-    {"key": "seg_me", "label": "前場前半", "time": "10:00"},
-    {"key": "seg_p1", "label": "前場引け", "time": "11:30"},
-    {"key": "seg_ae", "label": "後場前半", "time": "14:00"},
-    {"key": "seg_p2", "label": "大引け", "time": "15:30"},
+    {"key": "seg_1030", "label": "前場前半", "time": "10:30"},
+    {"key": "seg_1100", "label": "前場引け", "time": "11:00"},
+    {"key": "seg_1400", "label": "後場前半", "time": "14:00"},
+    {"key": "seg_1530", "label": "大引け", "time": "15:30"},
 ]
 
 # 手動除外日リスト
@@ -55,6 +62,9 @@ MANUAL_EXCLUDE_DATES = [
     "2026-01-14",  # 日経+3.1%の大幅上昇日（先物基準では検出されず）
     "2026-01-15",  # 前日1/14の影響で異常日
 ]
+
+# 最小件数閾値: これ未満のセルは統計値をnull
+MIN_N_THRESHOLD = 10
 
 
 def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
@@ -108,8 +118,13 @@ def generate_price_ranges(price_min: int, price_max: int, price_step: int) -> li
     return ranges
 
 
-def prepare_data(df: pd.DataFrame, price_ranges: list) -> pd.DataFrame:
-    """データ前処理"""
+def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short") -> pd.DataFrame:
+    """データ前処理
+
+    direction: "short" or "long"
+    - short: 制度+いちにち残あり、符号反転
+    - long: 制度+いちにち全部、符号そのまま
+    """
     # フィルタ: buy_priceがあるもののみ
     df = df[df["buy_price"].notna()].copy()
 
@@ -122,7 +137,7 @@ def prepare_data(df: pd.DataFrame, price_ranges: list) -> pd.DataFrame:
     # 2025-11-04以降のみ
     df = df[df["date"] >= "2025-11-04"]
 
-    # 制度信用 or いちにち信用のみ
+    # 信用区分フィルター（全方向共通: 制度 or いちにち）
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
 
     # 曜日
@@ -135,10 +150,26 @@ def prepare_data(df: pd.DataFrame, price_ranges: list) -> pd.DataFrame:
     # 除0株フラグ
     df["is_ex0"] = df.apply(
         lambda r: True if r["shortable"] else (
-            pd.isna(r.get("day_trade_available_shares")) or r.get("day_trade_available_shares", 0) > 0
+            pd.notna(r.get("day_trade_available_shares")) and r.get("day_trade_available_shares", 0) > 0
         ),
         axis=1
     )
+
+    # 方向別プールフィルター
+    if direction == "short":
+        # SHORT: 制度+いちにち残あり のみ
+        df = df[(df["margin_type"] == "制度信用") | ((df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True))].copy()
+    # long: 全部通す
+
+    # 閾値3区分(ml_probがある行のみ)
+    if "ml_prob" in df.columns:
+        df["bucket"] = pd.cut(
+            df["ml_prob"],
+            bins=[-0.01, PROB_SHORT_THRESHOLD, PROB_LONG_THRESHOLD, 1.01],
+            labels=["SHORT", "DISC", "LONG"]
+        )
+    else:
+        df["bucket"] = None
 
     # 価格帯
     def get_price_range(price):
@@ -149,143 +180,67 @@ def prepare_data(df: pd.DataFrame, price_ranges: list) -> pd.DataFrame:
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
-    # 4seg用データ（profit_per_100_shares_*をセグメント形式に変換）
-    # ショート基準: 符号反転
-    if "profit_per_100_shares_morning_early" in df.columns:
-        df["seg_me"] = -df["profit_per_100_shares_morning_early"].fillna(0)
-    else:
-        df["seg_me"] = 0
-
-    if "profit_per_100_shares_phase1" in df.columns:
-        df["seg_p1"] = -df["profit_per_100_shares_phase1"].fillna(0)
-    else:
-        df["seg_p1"] = 0
-
-    if "profit_per_100_shares_afternoon_early" in df.columns:
-        df["seg_ae"] = -df["profit_per_100_shares_afternoon_early"].fillna(0)
-    else:
-        df["seg_ae"] = 0
-
-    if "profit_per_100_shares_phase2" in df.columns:
-        df["seg_p2"] = -df["profit_per_100_shares_phase2"].fillna(0)
-    else:
-        df["seg_p2"] = 0
-
-    # 11seg: ショート基準に符号反転
+    # 11seg: 方向に応じた符号処理
+    sign = -1 if direction == "short" else 1
     for seg in TIME_SEGMENTS_11:
         key = seg["key"]
         if key in df.columns:
-            df[key] = -df[key]
-            df[f"{key}_win"] = df[key] > 0
+            df[key] = sign * df[key]
 
     return df
 
 
-def calc_segment_stats_11(df: pd.DataFrame) -> dict:
-    """11時間区分の統計計算（実額）"""
-    if len(df) == 0:
-        return {seg["key"]: {"profit": 0, "winRate": 0, "count": 0, "mean": 0} for seg in TIME_SEGMENTS_11}
-
-    result = {}
-    for seg in TIME_SEGMENTS_11:
-        key = seg["key"]
-        if key not in df.columns:
-            result[key] = {"profit": 0, "winRate": 0, "count": 0, "mean": 0}
-            continue
-        valid = df[key].dropna()
-        if len(valid) > 0:
-            result[key] = {
-                "profit": int(valid.sum()),
-                "winRate": round((valid > 0).mean() * 100, 1),
-                "count": len(valid),
-                "mean": int(valid.mean()),
-            }
-        else:
-            result[key] = {"profit": 0, "winRate": 0, "count": 0, "mean": 0}
-
-    return result
+def _calc_seg_stats(series: pd.Series) -> dict:
+    """1つのseg列の統計計算（実額）。n < MIN_N_THRESHOLD ならnull"""
+    valid = series.dropna()
+    n = len(valid)
+    if n == 0:
+        return {"profit": 0, "winRate": 0, "count": 0, "mean": 0, "pf": None}
+    if n < MIN_N_THRESHOLD:
+        return {"profit": int(valid.sum()), "winRate": None, "count": n, "mean": None, "pf": None}
+    wins = valid[valid > 0].sum()
+    losses = abs(valid[valid <= 0].sum())
+    pf = round(float(wins / losses), 2) if losses > 0 else None
+    return {
+        "profit": int(valid.sum()),
+        "winRate": round(float((valid > 0).mean() * 100), 1),
+        "count": n,
+        "mean": int(valid.mean()),
+        "pf": pf,
+    }
 
 
-def calc_segment_stats_4(df: pd.DataFrame) -> dict:
-    """4時間区分の統計計算（実額）"""
-    if len(df) == 0:
-        return {seg["key"]: {"profit": 0, "winRate": 0, "count": 0, "mean": 0} for seg in TIME_SEGMENTS_4}
-
-    result = {}
-    for seg in TIME_SEGMENTS_4:
-        key = seg["key"]
-        if key not in df.columns:
-            result[key] = {"profit": 0, "winRate": 0, "count": 0, "mean": 0}
-            continue
-        valid = df[key].dropna()
-        if len(valid) > 0:
-            result[key] = {
-                "profit": int(valid.sum()),
-                "winRate": round((valid > 0).mean() * 100, 1),
-                "count": len(valid),
-                "mean": int(valid.mean()),
-            }
-        else:
-            result[key] = {"profit": 0, "winRate": 0, "count": 0, "mean": 0}
-
-    return result
+def _calc_seg_stats_pct(seg_series: pd.Series, buy_price_series: pd.Series) -> dict:
+    """1つのseg列の%リターン統計。buy_price * 100 で統一"""
+    mask = seg_series.notna() & (buy_price_series > 0)
+    seg_valid = seg_series[mask]
+    bp_valid = buy_price_series[mask]
+    n = len(seg_valid)
+    if n == 0:
+        return {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0, "pf": None}
+    pct_returns = seg_valid / (bp_valid * 100) * 100
+    if n < MIN_N_THRESHOLD:
+        return {"pctReturn": round(float(pct_returns.sum()), 2), "winRate": None, "count": n, "meanPct": None, "pf": None}
+    wins = pct_returns[pct_returns > 0].sum()
+    losses = abs(pct_returns[pct_returns <= 0].sum())
+    pf = round(float(wins / losses), 2) if losses > 0 else None
+    return {
+        "pctReturn": round(float(pct_returns.sum()), 2),
+        "winRate": round(float((seg_valid > 0).mean() * 100), 1),
+        "count": n,
+        "meanPct": round(float(pct_returns.mean()), 3),
+        "pf": pf,
+    }
 
 
-def calc_segment_stats_pct_11(df: pd.DataFrame) -> dict:
-    """11時間区分の統計計算（比率: %リターン）"""
-    if len(df) == 0:
-        return {seg["key"]: {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0} for seg in TIME_SEGMENTS_11}
-
-    result = {}
-    for seg in TIME_SEGMENTS_11:
-        key = seg["key"]
-        if key not in df.columns:
-            result[key] = {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0}
-            continue
-
-        # buy_priceが0の場合は除外
-        valid_df = df[(df[key].notna()) & (df["buy_price"] > 0)].copy()
-        if len(valid_df) > 0:
-            # 比率計算: seg_value / buy_price * 100 (%)
-            # 注: 実額は100株単位なので、100株の価格で割る
-            pct_returns = valid_df[key] / (valid_df["buy_price"] * 100) * 100
-            result[key] = {
-                "pctReturn": round(pct_returns.sum(), 2),
-                "winRate": round((valid_df[key] > 0).mean() * 100, 1),
-                "count": len(valid_df),
-                "meanPct": round(pct_returns.mean(), 3),
-            }
-        else:
-            result[key] = {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0}
-
-    return result
+def calc_segment_stats(df: pd.DataFrame, segments: list) -> dict:
+    """指定セグメント定義で統計計算（実額）"""
+    return {seg["key"]: _calc_seg_stats(df[seg["key"]]) if seg["key"] in df.columns else {"profit": 0, "winRate": 0, "count": 0, "mean": 0, "pf": None} for seg in segments}
 
 
-def calc_segment_stats_pct_4(df: pd.DataFrame) -> dict:
-    """4時間区分の統計計算（比率: %リターン）"""
-    if len(df) == 0:
-        return {seg["key"]: {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0} for seg in TIME_SEGMENTS_4}
-
-    result = {}
-    for seg in TIME_SEGMENTS_4:
-        key = seg["key"]
-        if key not in df.columns:
-            result[key] = {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0}
-            continue
-
-        valid_df = df[(df[key].notna()) & (df["buy_price"] > 0)].copy()
-        if len(valid_df) > 0:
-            pct_returns = valid_df[key] / (valid_df["buy_price"] * 100) * 100
-            result[key] = {
-                "pctReturn": round(pct_returns.sum(), 2),
-                "winRate": round((valid_df[key] > 0).mean() * 100, 1),
-                "count": len(valid_df),
-                "meanPct": round(pct_returns.mean(), 3),
-            }
-        else:
-            result[key] = {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0}
-
-    return result
+def calc_segment_stats_pct(df: pd.DataFrame, segments: list) -> dict:
+    """指定セグメント定義で統計計算（%リターン）"""
+    return {seg["key"]: _calc_seg_stats_pct(df[seg["key"]], df["buy_price"]) if seg["key"] in df.columns else {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0, "pf": None} for seg in segments}
 
 
 def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
@@ -301,70 +256,45 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
         seido_data = {
             "type": "制度信用",
             "count": len(seido_df),
-            "segments11": calc_segment_stats_11(seido_df),
-            "segments4": calc_segment_stats_4(seido_df),
-            "pctSegments11": calc_segment_stats_pct_11(seido_df),
-            "pctSegments4": calc_segment_stats_pct_4(seido_df),
+            "segments11": calc_segment_stats(seido_df, TIME_SEGMENTS_11),
+            "segments4": calc_segment_stats(seido_df, TIME_SEGMENTS_4),
+            "pctSegments11": calc_segment_stats_pct(seido_df, TIME_SEGMENTS_11),
+            "pctSegments4": calc_segment_stats_pct(seido_df, TIME_SEGMENTS_4),
             "priceRanges": [],
         }
 
         for pr in price_ranges:
             pr_df = seido_df[seido_df["price_range"] == pr["label"]]
-            pr_data = {
+            seido_data["priceRanges"].append({
                 "label": pr["label"],
                 "count": len(pr_df),
-                "segments11": calc_segment_stats_11(pr_df),
-                "segments4": calc_segment_stats_4(pr_df),
-                "pctSegments11": calc_segment_stats_pct_11(pr_df),
-                "pctSegments4": calc_segment_stats_pct_4(pr_df),
-            }
-            seido_data["priceRanges"].append(pr_data)
+                "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
+                "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
+                "pctSegments11": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_11),
+                "pctSegments4": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_4),
+            })
 
         # いちにち信用
         ichinichi_df = wd_df[wd_df["margin_type"] == "いちにち信用"]
-        ichinichi_ex0_df = ichinichi_df[ichinichi_df["is_ex0"]]
-
         ichinichi_data = {
             "type": "いちにち信用",
-            "count": {"all": len(ichinichi_df), "ex0": len(ichinichi_ex0_df)},
-            "segments11": {
-                "all": calc_segment_stats_11(ichinichi_df),
-                "ex0": calc_segment_stats_11(ichinichi_ex0_df),
-            },
-            "segments4": {
-                "all": calc_segment_stats_4(ichinichi_df),
-                "ex0": calc_segment_stats_4(ichinichi_ex0_df),
-            },
-            "pctSegments11": {
-                "all": calc_segment_stats_pct_11(ichinichi_df),
-                "ex0": calc_segment_stats_pct_11(ichinichi_ex0_df),
-            },
-            "pctSegments4": {
-                "all": calc_segment_stats_pct_4(ichinichi_df),
-                "ex0": calc_segment_stats_pct_4(ichinichi_ex0_df),
-            },
-            "priceRanges": {"all": [], "ex0": []},
+            "count": len(ichinichi_df),
+            "segments11": calc_segment_stats(ichinichi_df, TIME_SEGMENTS_11),
+            "segments4": calc_segment_stats(ichinichi_df, TIME_SEGMENTS_4),
+            "pctSegments11": calc_segment_stats_pct(ichinichi_df, TIME_SEGMENTS_11),
+            "pctSegments4": calc_segment_stats_pct(ichinichi_df, TIME_SEGMENTS_4),
+            "priceRanges": [],
         }
 
         for pr in price_ranges:
             pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
-            pr_ex0_df = pr_df[pr_df["is_ex0"]]
-
-            ichinichi_data["priceRanges"]["all"].append({
+            ichinichi_data["priceRanges"].append({
                 "label": pr["label"],
                 "count": len(pr_df),
-                "segments11": calc_segment_stats_11(pr_df),
-                "segments4": calc_segment_stats_4(pr_df),
-                "pctSegments11": calc_segment_stats_pct_11(pr_df),
-                "pctSegments4": calc_segment_stats_pct_4(pr_df),
-            })
-            ichinichi_data["priceRanges"]["ex0"].append({
-                "label": pr["label"],
-                "count": len(pr_ex0_df),
-                "segments11": calc_segment_stats_11(pr_ex0_df),
-                "segments4": calc_segment_stats_4(pr_ex0_df),
-                "pctSegments11": calc_segment_stats_pct_11(pr_ex0_df),
-                "pctSegments4": calc_segment_stats_pct_4(pr_ex0_df),
+                "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
+                "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
+                "pctSegments11": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_11),
+                "pctSegments4": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_4),
             })
 
         result.append({
@@ -382,37 +312,28 @@ async def get_custom_summary(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
-    grades: str = "",
+    direction: str = "short",
+    buckets: str = "",
 ):
     """
     カスタム分析サマリーAPI
 
     Query params:
-    - exclude_extreme: True の場合、異常日を除外
-    - price_min: 価格下限 (デフォルト: 0)
-    - price_max: 価格上限 (デフォルト: 999999)
-    - price_step: 細分化ステップ (0=細分化なし、デフォルト価格帯を使用)
-    - grades: カンマ区切りのGradeフィルター (例: "G1,G2")
-
-    Returns:
-    - timeSegments11: 11時間区分定義
-    - timeSegments4: 4時間区分定義
-    - priceRanges: 価格帯リスト
-    - dateRange: データ期間
-    - overall: 全体統計
-    - weekdays: 曜日別データ
+    - exclude_extreme: 異常日除外
+    - price_min/price_max/price_step: 価格帯
+    - direction: "short" or "long" (プール＋符号切替)
+    - buckets: カンマ区切りの閾値区分フィルター (例: "SHORT", "SHORT,DISC")
     """
-    # Gradeフィルター解析
-    grade_filter = [g.strip() for g in grades.split(",") if g.strip()] if grades else []
+    if direction not in ("short", "long"):
+        raise HTTPException(status_code=400, detail="directionはshort/longのいずれかを指定")
+
+    bucket_filter = [b.strip() for b in buckets.split(",") if b.strip()] if buckets else []
 
     # 価格帯生成
-    # 刻みは明示的な価格範囲指定時のみ有効（全範囲では無視）
-    # データ最大は約20,000円なので、20,000円以下の範囲で刻みを適用
     use_step = price_step > 0 and (price_min > 0 or price_max <= 20000)
     if use_step:
         price_ranges = generate_price_ranges(price_min, price_max, price_step)
     else:
-        # デフォルト価格帯（JSONシリアライズのためinfは999999999に置き換え）
         price_ranges = [
             {"label": "~1,000円", "min": 0, "max": 1000},
             {"label": "1,000~3,000円", "min": 1000, "max": 3000},
@@ -420,50 +341,33 @@ async def get_custom_summary(
             {"label": "5,000~10,000円", "min": 5000, "max": 10000},
             {"label": "10,000円~", "min": 10000, "max": 999999999},
         ]
-        # price_min/price_maxでフィルタ
         if price_min > 0 or price_max < 999999:
             price_ranges = [pr for pr in price_ranges if pr["max"] > price_min and pr["min"] < price_max]
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
 
-    # Gradeフィルター（ml_gradeカラムがある場合のみ）
-    if grade_filter and "ml_grade" in df_raw.columns:
-        df_raw = df_raw[df_raw["ml_grade"].isin(grade_filter)].copy()
-
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:
         df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges)
+    df = prepare_data(df_raw.copy(), price_ranges, direction=direction)
+
+    # 閾値区分フィルター
+    if bucket_filter and "bucket" in df.columns:
+        df = df[df["bucket"].isin(bucket_filter)].copy()
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
 
-    # 全体統計（all / ex0）
-    df_ex0 = df[df["is_ex0"]]
+    # 全体統計
     overall = {
-        "count": {"all": len(df), "ex0": len(df_ex0)},
+        "count": len(df),
         "seidoCount": int((df["margin_type"] == "制度信用").sum()),
-        "ichinichiCount": {
-            "all": int((df["margin_type"] == "いちにち信用").sum()),
-            "ex0": int((df_ex0["margin_type"] == "いちにち信用").sum())
-        },
-        "segments11": {
-            "all": calc_segment_stats_11(df),
-            "ex0": calc_segment_stats_11(df_ex0),
-        },
-        "segments4": {
-            "all": calc_segment_stats_4(df),
-            "ex0": calc_segment_stats_4(df_ex0),
-        },
-        "pctSegments11": {
-            "all": calc_segment_stats_pct_11(df),
-            "ex0": calc_segment_stats_pct_11(df_ex0),
-        },
-        "pctSegments4": {
-            "all": calc_segment_stats_pct_4(df),
-            "ex0": calc_segment_stats_pct_4(df_ex0),
-        },
+        "ichinichiCount": int((df["margin_type"] == "いちにち信用").sum()),
+        "segments11": calc_segment_stats(df, TIME_SEGMENTS_11),
+        "segments4": calc_segment_stats(df, TIME_SEGMENTS_4),
+        "pctSegments11": calc_segment_stats_pct(df, TIME_SEGMENTS_11),
+        "pctSegments4": calc_segment_stats_pct(df, TIME_SEGMENTS_4),
     }
 
     # 曜日別
@@ -479,9 +383,8 @@ async def get_custom_summary(
     # 価格帯ラベルリスト
     price_range_labels = [pr["label"] for pr in price_ranges]
 
-    # Grade情報
-    has_grades = "ml_grade" in df.columns if len(df) > 0 else False
-    available_grades = sorted(df["ml_grade"].dropna().unique().tolist()) if has_grades else []
+    # bucket情報
+    available_buckets = sorted(df["bucket"].dropna().unique().tolist()) if "bucket" in df.columns else []
 
     return JSONResponse(content={
         "generatedAt": datetime.now().isoformat(),
@@ -493,24 +396,26 @@ async def get_custom_summary(
         "overall": overall,
         "weekdays": weekdays,
         "excludeExtreme": exclude_extreme,
+        "direction": direction,
         "filters": {
             "priceMin": price_min,
             "priceMax": price_max,
             "priceStep": price_step,
-            "grades": grade_filter,
+            "buckets": bucket_filter,
         },
-        "gradeInfo": {
-            "available": has_grades,
-            "grades": available_grades,
+        "bucketInfo": {
+            "available": len(available_buckets) > 0,
+            "buckets": available_buckets,
+            "thresholds": {
+                "short": PROB_SHORT_THRESHOLD,
+                "long": PROB_LONG_THRESHOLD,
+            },
         },
     })
 
 
 def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
-    """
-    日別/週別/月別/曜日別でグルーピングした詳細データ（11seg対応）
-    """
-    # グルーピングキーを追加
+    """日別/週別/月別/曜日別でグルーピングした詳細データ"""
     if view == "weekly":
         df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
     elif view == "monthly":
@@ -524,18 +429,19 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
     if view == "weekday":
         group_keys = WEEKDAY_NAMES
     else:
-        group_keys = sorted(df["group_key"].unique(), reverse=True)[:30]
+        group_keys = sorted(df["group_key"].unique(), reverse=True)
 
     seg_keys = [seg["key"] for seg in TIME_SEGMENTS_11]
 
     for key in group_keys:
         group_df = df[df["group_key"] == key]
-        group_ex0_df = group_df[group_df["is_ex0"]]
 
         # 銘柄リスト
         stocks = []
         for _, row in group_df.iterrows():
             shares = row.get("day_trade_available_shares")
+            ml_prob = row.get("ml_prob")
+            bucket = row.get("bucket")
 
             stock_data = {
                 "date": row["date"].strftime("%Y-%m-%d"),
@@ -546,10 +452,10 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
                 "prevClose": int(row["prev_close"]) if pd.notna(row.get("prev_close")) else None,
                 "buyPrice": int(row["buy_price"]) if pd.notna(row["buy_price"]) else None,
                 "shares": int(shares) if pd.notna(shares) else None,
-                "mlGrade": row["ml_grade"] if "ml_grade" in row.index and pd.notna(row.get("ml_grade")) else None,
+                "mlProb": round(float(ml_prob), 3) if pd.notna(ml_prob) else None,
+                "bucket": str(bucket) if pd.notna(bucket) else None,
                 "segments": {},
             }
-            # 11seg値を追加
             for seg_key in seg_keys:
                 if seg_key in row and pd.notna(row[seg_key]):
                     stock_data["segments"][seg_key] = int(row[seg_key])
@@ -560,25 +466,23 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
         # グループ集計
         group_data = {
             "key": key,
-            "count": {"all": len(group_df), "ex0": len(group_ex0_df)},
-            "segments": {"all": {}, "ex0": {}},
+            "count": len(group_df),
+            "segments": {},
             "stocks": stocks,
         }
         for seg_key in seg_keys:
             if seg_key in group_df.columns:
-                group_data["segments"]["all"][seg_key] = int(group_df[seg_key].sum())
-                group_data["segments"]["ex0"][seg_key] = int(group_ex0_df[seg_key].sum())
+                group_data["segments"][seg_key] = int(group_df[seg_key].sum())
             else:
-                group_data["segments"]["all"][seg_key] = 0
-                group_data["segments"]["ex0"][seg_key] = 0
+                group_data["segments"][seg_key] = 0
 
         result.append(group_data)
 
     return result
 
 
-def _load_analysis_base(exclude_extreme: bool = False) -> pd.DataFrame:
-    """分析用の共通データ前処理（11/4以降、学習期間除外、信用区分フィルター）"""
+def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short") -> pd.DataFrame:
+    """分析用の共通データ前処理"""
     df = load_archive(exclude_extreme=exclude_extreme)
     if "backtest_date" in df.columns:
         df["date"] = pd.to_datetime(df["backtest_date"])
@@ -587,46 +491,60 @@ def _load_analysis_base(exclude_extreme: bool = False) -> pd.DataFrame:
     df = df[df["date"] >= "2025-11-04"]
     df = df[~((df["date"] >= "2025-10-29") & (df["date"] <= "2025-11-21"))]
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
+
+    # 信用区分
+    df["margin_type"] = df.apply(lambda r: "制度信用" if r["shortable"] else "いちにち信用", axis=1)
+    df["is_ex0"] = df.apply(
+        lambda r: True if r["shortable"] else (
+            pd.notna(r.get("day_trade_available_shares")) and r.get("day_trade_available_shares", 0) > 0
+        ),
+        axis=1
+    )
+
+    # 方向別プールフィルター
+    if direction == "short":
+        df = df[(df["margin_type"] == "制度信用") | ((df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True))].copy()
+
+    # 閾値3区分
+    if "ml_prob" in df.columns:
+        df["bucket"] = pd.cut(
+            df["ml_prob"],
+            bins=[-0.01, PROB_SHORT_THRESHOLD, PROB_LONG_THRESHOLD, 1.01],
+            labels=["SHORT", "DISC", "LONG"]
+        )
+
     return df
 
 
-def _calc_grade_pf(sub: pd.DataFrame, grade: str, seg_col: str = "seg_1530") -> dict:
-    """Grade別PF計算。G1/G2はショート反転"""
+def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
+    """bucket別PF計算"""
     s = sub.copy()
-    if grade in ("G1", "G2"):
-        s[seg_col] = -s[seg_col]
-    wins = s[s[seg_col] > 0][seg_col].sum()
-    losses = abs(s[s[seg_col] <= 0][seg_col].sum())
-    pf = round(wins / losses, 2) if losses > 0 else None
-    n = len(s)
-    avg = round(s[seg_col].mean()) if n > 0 else 0
-    wr = round((s[seg_col] > 0).mean() * 100, 1) if n > 0 else 0
+    # 符号はprepare_dataで方向処理済みなので、ここでは元のseg値を使う
+    # _load_analysis_baseでは符号未処理なので、ここで処理
+    sign = -1 if direction == "short" else 1
+    vals = s[seg_col] * sign
+    n = len(vals)
+    if n == 0:
+        return {"pf": None, "n": 0, "avg": 0, "winRate": 0}
+    if n < MIN_N_THRESHOLD:
+        return {"pf": None, "n": n, "avg": None, "winRate": None}
+    wins = vals[vals > 0].sum()
+    losses = abs(vals[vals <= 0].sum())
+    pf = round(float(wins / losses), 2) if losses > 0 else None
+    avg = round(float(vals.mean()))
+    wr = round(float((vals > 0).mean() * 100), 1)
     return {"pf": pf, "n": n, "avg": avg, "winRate": wr}
 
 
-def _build_grade_row(bin_data: pd.DataFrame, label: str, seg_col: str = "seg_1530") -> dict:
-    """1ビン分のGrade別行データを構築"""
+def _build_bucket_row(bin_data: pd.DataFrame, label: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
+    """1ビン分のbucket別行データを構築"""
     row = {"label": label}
-    for grade in ["G1", "G2", "G3", "G4"]:
-        g_sub = bin_data[bin_data["ml_grade"] == grade] if "ml_grade" in bin_data.columns else pd.DataFrame()
-        if len(g_sub) > 0:
-            row[grade] = _calc_grade_pf(g_sub, grade, seg_col)
-            if grade == "G3":
-                # G3 SHORT版
-                g3s = g_sub.copy()
-                g3s[seg_col] = -g3s[seg_col]
-                wins = g3s[g3s[seg_col] > 0][seg_col].sum()
-                losses = abs(g3s[g3s[seg_col] <= 0][seg_col].sum())
-                pf = round(wins / losses, 2) if losses > 0 else None
-                row["G3_SHORT"] = {
-                    "pf": pf, "n": len(g3s),
-                    "avg": round(g3s[seg_col].mean()),
-                    "winRate": round((g3s[seg_col] > 0).mean() * 100, 1),
-                }
+    for bucket in ["SHORT", "DISC", "LONG"]:
+        b_sub = bin_data[bin_data["bucket"] == bucket] if "bucket" in bin_data.columns else pd.DataFrame()
+        if len(b_sub) > 0:
+            row[bucket] = _calc_bucket_pf(b_sub, bucket, seg_col, direction)
         else:
-            row[grade] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
-            if grade == "G3":
-                row["G3_SHORT"] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
+            row[bucket] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
     return row
 
 
@@ -639,11 +557,9 @@ def _make_date_range(df: pd.DataFrame) -> dict:
 
 
 @router.get("/dev/analysis-custom/lending-ratio-pf")
-async def get_lending_ratio_pf(exclude_extreme: bool = False):
-    """貸借倍率(買残/売残)×Grade別PFテーブル"""
-    import numpy as np
-
-    df = _load_analysis_base(exclude_extreme)
+async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "short"):
+    """貸借倍率(買残/売残)×bucket別PFテーブル"""
+    df = _load_analysis_base(exclude_extreme, direction=direction)
     df["lending_ratio"] = np.where(
         df["margin_sell_balance"].notna() & (df["margin_sell_balance"] > 0),
         df["margin_buy_balance"] / df["margin_sell_balance"],
@@ -664,20 +580,21 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False):
     rows = []
     for rb in ratio_bins:
         bin_data = valid[(valid["lending_ratio"] >= rb["min"]) & (valid["lending_ratio"] < rb["max"])]
-        rows.append(_build_grade_row(bin_data, rb["label"]))
+        rows.append(_build_bucket_row(bin_data, rb["label"], direction=direction))
 
     return JSONResponse(content={
         "rows": rows,
         "dataRange": _make_date_range(valid),
         "totalWithBalance": len(valid),
         "totalAll": len(df),
+        "direction": direction,
     })
 
 
 @router.get("/dev/analysis-custom/futures-gap-pf")
-async def get_futures_gap_pf(exclude_extreme: bool = False):
-    """先物gap帯×Grade別PFテーブル"""
-    df = _load_analysis_base(exclude_extreme)
+async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "short"):
+    """先物gap帯×bucket別PFテーブル"""
+    df = _load_analysis_base(exclude_extreme, direction=direction)
 
     if "futures_change_pct" not in df.columns or "seg_1530" not in df.columns:
         raise HTTPException(status_code=500, detail="必要カラムがありません")
@@ -694,12 +611,13 @@ async def get_futures_gap_pf(exclude_extreme: bool = False):
     rows = []
     for gb in gap_bins:
         bin_data = valid[(valid["futures_change_pct"] > gb["min"]) & (valid["futures_change_pct"] <= gb["max"])]
-        rows.append(_build_grade_row(bin_data, gb["label"]))
+        rows.append(_build_bucket_row(bin_data, gb["label"], direction=direction))
 
     return JSONResponse(content={
         "rows": rows,
         "dataRange": _make_date_range(valid),
         "total": len(valid),
+        "direction": direction,
     })
 
 
@@ -710,25 +628,24 @@ async def get_custom_details(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
-    grades: str = "",
+    direction: str = "short",
+    buckets: str = "",
 ):
     """
-    カスタム分析詳細API（11seg対応）
+    カスタム分析詳細API
 
     Query params:
     - view: "daily" | "weekly" | "monthly" | "weekday"
-    - exclude_extreme: True の場合、異常日を除外
-    - price_min: 価格下限
-    - price_max: 価格上限
-    - price_step: 細分化ステップ
+    - direction: "short" | "long"
+    - buckets: カンマ区切りの閾値区分フィルター
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定")
+    if direction not in ("short", "long"):
+        raise HTTPException(status_code=400, detail="directionはshort/longのいずれかを指定")
 
-    # Gradeフィルター解析
-    grade_filter = [g.strip() for g in grades.split(",") if g.strip()] if grades else []
+    bucket_filter = [b.strip() for b in buckets.split(",") if b.strip()] if buckets else []
 
-    # 価格帯生成
     use_step = price_step > 0 and (price_min > 0 or price_max <= 20000)
     if use_step:
         price_ranges = generate_price_ranges(price_min, price_max, price_step)
@@ -745,15 +662,15 @@ async def get_custom_details(
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
 
-    # Gradeフィルター
-    if grade_filter and "ml_grade" in df_raw.columns:
-        df_raw = df_raw[df_raw["ml_grade"].isin(grade_filter)].copy()
-
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:
         df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges)
+    df = prepare_data(df_raw.copy(), price_ranges, direction=direction)
+
+    # 閾値区分フィルター
+    if bucket_filter and "bucket" in df.columns:
+        df = df[df["bucket"].isin(bucket_filter)].copy()
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -763,6 +680,7 @@ async def get_custom_details(
     return JSONResponse(content={
         "view": view,
         "excludeExtreme": exclude_extreme,
+        "direction": direction,
         "timeSegments": TIME_SEGMENTS_11,
         "results": details,
     })
