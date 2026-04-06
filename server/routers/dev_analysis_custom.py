@@ -119,35 +119,21 @@ def generate_price_ranges(price_min: int, price_max: int, price_step: int) -> li
 
 
 def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short") -> pd.DataFrame:
-    """データ前処理
-
-    direction: "short" or "long"
-    - short: 制度+いちにち残あり、符号反転
-    - long: 制度+いちにち全部、符号そのまま
-    """
-    # フィルタ: buy_priceがあるもののみ
+    """データ前処理（SHORT戦略固定。directionはdetails後方互換のため残存するが無視）"""
     df = df[df["buy_price"].notna()].copy()
 
-    # 日付カラム正規化
     if "backtest_date" in df.columns:
         df["date"] = pd.to_datetime(df["backtest_date"])
     else:
         raise HTTPException(status_code=500, detail="日付カラムが見つかりません")
 
-    # 2025-11-04以降のみ
     df = df[df["date"] >= "2025-11-04"]
-
-    # 信用区分フィルター（全方向共通: 制度 or いちにち）
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
 
-    # 曜日
     df["weekday"] = df["date"].dt.weekday
     df["weekday_name"] = df["weekday"].map(lambda x: WEEKDAY_NAMES[x] if x < 5 else "")
-
-    # 信用区分
     df["margin_type"] = df.apply(lambda r: "制度信用" if r["shortable"] else "いちにち信用", axis=1)
 
-    # 除0株フラグ
     df["is_ex0"] = df.apply(
         lambda r: True if r["shortable"] else (
             pd.notna(r.get("day_trade_available_shares")) and r.get("day_trade_available_shares", 0) > 0
@@ -155,13 +141,6 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
         axis=1
     )
 
-    # 方向別プールフィルター
-    if direction == "short":
-        # SHORT: 制度+いちにち残あり のみ
-        df = df[(df["margin_type"] == "制度信用") | ((df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True))].copy()
-    # long: 全部通す
-
-    # 閾値3区分(ml_probがある行のみ)
     if "ml_prob" in df.columns:
         df["bucket"] = pd.cut(
             df["ml_prob"],
@@ -171,7 +150,6 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
     else:
         df["bucket"] = None
 
-    # 価格帯
     def get_price_range(price):
         for pr in price_ranges:
             if pr["min"] <= price < pr["max"]:
@@ -180,14 +158,36 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
-    # 11seg: 方向に応じた符号処理
-    sign = -1 if direction == "short" else 1
+    # 常にSHORT符号反転
     for seg in TIME_SEGMENTS_11:
         key = seg["key"]
         if key in df.columns:
-            df[key] = sign * df[key]
+            df[key] = -1 * df[key]
 
     return df
+
+
+def calc_margin_block(df: pd.DataFrame) -> dict:
+    """seido / ichinichi / ichinichi_ex0 の3ブロック統計を返す"""
+    seido_df = df[df["margin_type"] == "制度信用"]
+    ichi_df = df[df["margin_type"] == "いちにち信用"]
+    ichi_ex0_df = ichi_df[ichi_df["is_ex0"] == True]
+
+    def block(sub_df):
+        return {
+            "count": len(sub_df),
+            "segments4": calc_segment_stats(sub_df, TIME_SEGMENTS_4),
+            "segments11": calc_segment_stats(sub_df, TIME_SEGMENTS_11),
+            "pctSegments4": calc_segment_stats_pct(sub_df, TIME_SEGMENTS_4),
+            "pctSegments11": calc_segment_stats_pct(sub_df, TIME_SEGMENTS_11),
+        }
+
+    return {
+        "count": len(df),
+        "seido": block(seido_df),
+        "ichinichi": block(ichi_df),
+        "ichinichi_ex0": block(ichi_ex0_df),
+    }
 
 
 def _calc_seg_stats(series: pd.Series) -> dict:
@@ -243,66 +243,13 @@ def calc_segment_stats_pct(df: pd.DataFrame, segments: list) -> dict:
     return {seg["key"]: _calc_seg_stats_pct(df[seg["key"]], df["buy_price"]) if seg["key"] in df.columns else {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0, "pf": None} for seg in segments}
 
 
-def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
-    """曜日別データ"""
+def calc_weekday_data(df: pd.DataFrame) -> list:
+    """曜日別データ（seido/ichinichi/ichinichi_ex0）"""
     result = []
-
     for wd in range(5):
         wd_df = df[df["weekday"] == wd]
-        wd_name = WEEKDAY_NAMES[wd]
-
-        # 制度信用
-        seido_df = wd_df[wd_df["margin_type"] == "制度信用"]
-        seido_data = {
-            "type": "制度信用",
-            "count": len(seido_df),
-            "segments11": calc_segment_stats(seido_df, TIME_SEGMENTS_11),
-            "segments4": calc_segment_stats(seido_df, TIME_SEGMENTS_4),
-            "pctSegments11": calc_segment_stats_pct(seido_df, TIME_SEGMENTS_11),
-            "pctSegments4": calc_segment_stats_pct(seido_df, TIME_SEGMENTS_4),
-            "priceRanges": [],
-        }
-
-        for pr in price_ranges:
-            pr_df = seido_df[seido_df["price_range"] == pr["label"]]
-            seido_data["priceRanges"].append({
-                "label": pr["label"],
-                "count": len(pr_df),
-                "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
-                "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
-                "pctSegments11": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_11),
-                "pctSegments4": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_4),
-            })
-
-        # いちにち信用
-        ichinichi_df = wd_df[wd_df["margin_type"] == "いちにち信用"]
-        ichinichi_data = {
-            "type": "いちにち信用",
-            "count": len(ichinichi_df),
-            "segments11": calc_segment_stats(ichinichi_df, TIME_SEGMENTS_11),
-            "segments4": calc_segment_stats(ichinichi_df, TIME_SEGMENTS_4),
-            "pctSegments11": calc_segment_stats_pct(ichinichi_df, TIME_SEGMENTS_11),
-            "pctSegments4": calc_segment_stats_pct(ichinichi_df, TIME_SEGMENTS_4),
-            "priceRanges": [],
-        }
-
-        for pr in price_ranges:
-            pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
-            ichinichi_data["priceRanges"].append({
-                "label": pr["label"],
-                "count": len(pr_df),
-                "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
-                "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
-                "pctSegments11": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_11),
-                "pctSegments4": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_4),
-            })
-
-        result.append({
-            "weekday": wd_name,
-            "seido": seido_data,
-            "ichinichi": ichinichi_data,
-        })
-
+        blocks = calc_margin_block(wd_df)
+        result.append({"weekday": WEEKDAY_NAMES[wd], **blocks})
     return result
 
 
@@ -312,24 +259,20 @@ async def get_custom_summary(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
-    direction: str = "short",
-    buckets: str = "",
+    direction: str = "short",  # 後方互換のため残存（無視）
+    buckets: str = "",         # 後方互換のため残存（無視）
 ):
     """
-    カスタム分析サマリーAPI
+    カスタム分析サマリーAPI（v2）
 
     Query params:
     - exclude_extreme: 異常日除外
-    - price_min/price_max/price_step: 価格帯
-    - direction: "short" or "long" (プール＋符号切替)
-    - buckets: カンマ区切りの閾値区分フィルター (例: "SHORT", "SHORT,DISC")
+    - price_min/price_max/price_step: 価格帯フィルター
+
+    Returns:
+    - overall: 全体 seido/ichinichi/ichinichi_ex0 + 曜日別
+    - buckets.SHORT/DISC/LONG: bucket別 seido/ichinichi/ichinichi_ex0 + 曜日別
     """
-    if direction not in ("short", "long"):
-        raise HTTPException(status_code=400, detail="directionはshort/longのいずれかを指定")
-
-    bucket_filter = [b.strip() for b in buckets.split(",") if b.strip()] if buckets else []
-
-    # 価格帯生成
     use_step = price_step > 0 and (price_min > 0 or price_max <= 20000)
     if use_step:
         price_ranges = generate_price_ranges(price_min, price_max, price_step)
@@ -346,70 +289,51 @@ async def get_custom_summary(
 
     df_raw = load_archive(exclude_extreme=exclude_extreme)
 
-    # 価格フィルタ
     if price_min > 0 or price_max < 999999:
         df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges, direction=direction)
-
-    # 閾値区分フィルター
-    if bucket_filter and "bucket" in df.columns:
-        df = df[df["bucket"].isin(bucket_filter)].copy()
+    df = prepare_data(df_raw.copy(), price_ranges)
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
 
-    # 全体統計
-    overall = {
-        "count": len(df),
-        "seidoCount": int((df["margin_type"] == "制度信用").sum()),
-        "ichinichiCount": int((df["margin_type"] == "いちにち信用").sum()),
-        "segments11": calc_segment_stats(df, TIME_SEGMENTS_11),
-        "segments4": calc_segment_stats(df, TIME_SEGMENTS_4),
-        "pctSegments11": calc_segment_stats_pct(df, TIME_SEGMENTS_11),
-        "pctSegments4": calc_segment_stats_pct(df, TIME_SEGMENTS_4),
-    }
+    # 全体
+    overall = calc_margin_block(df)
+    overall["weekdays"] = calc_weekday_data(df)
 
-    # 曜日別
-    weekdays = calc_weekday_data(df, price_ranges)
+    # Bucket別
+    buckets_data = {}
+    if "bucket" in df.columns:
+        for bucket_name in ["SHORT", "DISC", "LONG"]:
+            b_df = df[df["bucket"] == bucket_name]
+            if len(b_df) == 0:
+                continue
+            b_block = calc_margin_block(b_df)
+            b_block["weekdays"] = calc_weekday_data(b_df, price_ranges)
+            buckets_data[bucket_name] = b_block
 
-    # 期間
     date_range = {
         "from": df["date"].min().strftime("%Y-%m-%d"),
         "to": df["date"].max().strftime("%Y-%m-%d"),
         "tradingDays": df["date"].nunique(),
     }
 
-    # 価格帯ラベルリスト
-    price_range_labels = [pr["label"] for pr in price_ranges]
-
-    # bucket情報
-    available_buckets = sorted(df["bucket"].dropna().unique().tolist()) if "bucket" in df.columns else []
-
     return JSONResponse(content={
         "generatedAt": datetime.now().isoformat(),
         "timeSegments11": TIME_SEGMENTS_11,
         "timeSegments4": TIME_SEGMENTS_4,
-        "priceRanges": price_range_labels,
-        "priceRangeDetails": price_ranges,
         "dateRange": date_range,
         "overall": overall,
-        "weekdays": weekdays,
+        "buckets": buckets_data,
         "excludeExtreme": exclude_extreme,
-        "direction": direction,
         "filters": {
             "priceMin": price_min,
             "priceMax": price_max,
             "priceStep": price_step,
-            "buckets": bucket_filter,
         },
-        "bucketInfo": {
-            "available": len(available_buckets) > 0,
-            "buckets": available_buckets,
-            "thresholds": {
-                "short": PROB_SHORT_THRESHOLD,
-                "long": PROB_LONG_THRESHOLD,
-            },
+        "thresholds": {
+            "short": PROB_SHORT_THRESHOLD,
+            "long": PROB_LONG_THRESHOLD,
         },
     })
 
@@ -628,7 +552,7 @@ async def get_custom_details(
     price_min: int = 0,
     price_max: int = 999999,
     price_step: int = 0,
-    direction: str = "short",
+    direction: str = "short",  # 後方互換のため残存（無視）
     buckets: str = "",
 ):
     """
@@ -636,13 +560,10 @@ async def get_custom_details(
 
     Query params:
     - view: "daily" | "weekly" | "monthly" | "weekday"
-    - direction: "short" | "long"
     - buckets: カンマ区切りの閾値区分フィルター
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれかを指定")
-    if direction not in ("short", "long"):
-        raise HTTPException(status_code=400, detail="directionはshort/longのいずれかを指定")
 
     bucket_filter = [b.strip() for b in buckets.split(",") if b.strip()] if buckets else []
 
