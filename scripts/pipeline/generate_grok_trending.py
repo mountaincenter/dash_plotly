@@ -327,28 +327,65 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
         "5〜10銘柄では不十分です。"
     ))
 
-    # ストリーミング処理
+    # ストリーミング処理（切断リトライ付き）
+    # xAI chat.stream() が途中で切断されることがある（17文字など極端に短いケース）
+    # 閾値未満なら最大3回リトライする
+    MIN_RESPONSE_CHARS = 500
+    MAX_RETRIES = 3
     full_response = ""
     tool_calls_count = 0
+    response = None
 
-    for response, chunk in chat.stream():
-        # ツール呼び出しをカウント
-        if chunk.tool_calls:
-            tool_calls_count += len(chunk.tool_calls)
+    for attempt in range(1, MAX_RETRIES + 1):
+        full_response = ""
+        attempt_tool_calls = 0
 
-        # レスポンスを蓄積
-        if chunk.content:
-            full_response += chunk.content
+        try:
+            for response, chunk in chat.stream():
+                if chunk.tool_calls:
+                    attempt_tool_calls += len(chunk.tool_calls)
+                if chunk.content:
+                    full_response += chunk.content
+        except Exception as e:
+            print(f"[WARN] Stream error on attempt {attempt}: {e}")
+
+        tool_calls_count += attempt_tool_calls
+        print(f"[INFO] Stream attempt {attempt}: {len(full_response)} chars received")
+
+        if len(full_response) >= MIN_RESPONSE_CHARS:
+            break
+
+        if attempt < MAX_RETRIES:
+            print(f"[WARN] Response too short ({len(full_response)} chars < {MIN_RESPONSE_CHARS}). Retrying...")
+            # 新しいchatセッションを作成して再試行
+            chat = client.chat.create(
+                model="grok-4-1-fast-non-reasoning",
+                tools=[web_search(), x_search()],
+                max_tokens=16000,
+            )
+            chat.append(system(
+                "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
+                "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
+                "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+            ))
+            chat.append(user(
+                prompt
+                + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
+                "5〜10銘柄では不十分です。"
+            ))
+        else:
+            print(f"[ERROR] All {MAX_RETRIES} attempts returned short response. Proceeding with partial data.")
 
     print(f"[OK] Received response from Grok ({len(full_response)} chars)")
 
     # ツール使用統計を取得
+    usage = getattr(response, 'usage', None) if response is not None else None
     tool_stats = {
         "total_tool_calls": tool_calls_count,
         "usage": {
-            "completion_tokens": response.usage.completion_tokens if hasattr(response.usage, 'completion_tokens') else 0,
-            "prompt_tokens": response.usage.prompt_tokens if hasattr(response.usage, 'prompt_tokens') else 0,
-            "total_tokens": response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else 0,
+            "completion_tokens": getattr(usage, 'completion_tokens', 0) if usage else 0,
+            "prompt_tokens": getattr(usage, 'prompt_tokens', 0) if usage else 0,
+            "total_tokens": getattr(usage, 'total_tokens', 0) if usage else 0,
         }
     }
 
