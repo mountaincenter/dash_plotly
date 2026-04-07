@@ -158,11 +158,7 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
 
     df["price_range"] = df["buy_price"].apply(get_price_range)
 
-    # 常にSHORT符号反転
-    for seg in TIME_SEGMENTS_11:
-        key = seg["key"]
-        if key in df.columns:
-            df[key] = -1 * df[key]
+    # archiveが既にショートベースなので符号処理不要
 
     return df
 

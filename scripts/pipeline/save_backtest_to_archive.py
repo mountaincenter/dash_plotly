@@ -533,7 +533,7 @@ def calculate_segment_prices(
             # seg_1530は日足終値を使用（5分足の15:25バーはNaNになることがある）
             if seg_name == "seg_1530":
                 if daily_close is not None and daily_close > 0:
-                    segments[seg_name] = (daily_close - buy_price) * 100
+                    segments[seg_name] = (buy_price - daily_close) * 100
                 else:
                     segments[seg_name] = None
                 continue
@@ -543,8 +543,8 @@ def calculate_segment_prices(
 
             if not slot_data.empty and pd.notna(slot_data.iloc[-1]['Close']):
                 price = float(slot_data.iloc[-1]['Close'])
-                # 100株あたりの利益（円）
-                segments[seg_name] = (price - buy_price) * 100
+                # 100株あたりの利益（円）— ショートベース
+                segments[seg_name] = (buy_price - price) * 100
             else:
                 segments[seg_name] = None
         except Exception:
@@ -582,15 +582,15 @@ def calculate_phase3_return(
             high_price = row['High']
             low_price = row['Low']
 
-            # 利確判定（高値で判定）
-            if (high_price - open_price) / open_price >= profit_threshold:
+            # ショートベース: 株価下落で利確（安値で判定）
+            if (open_price - low_price) / open_price >= profit_threshold:
                 phase_return = profit_threshold
                 win = True
                 exit_reason = f"profit_take_{profit_threshold*100}%"
                 return phase_return, win, exit_reason
 
-            # 損切判定（安値で判定）
-            if (low_price - open_price) / open_price <= loss_threshold:
+            # ショートベース: 株価上昇で損切（高値で判定）
+            if (open_price - high_price) / open_price <= loss_threshold:
                 phase_return = loss_threshold
                 win = False
                 exit_reason = f"stop_loss_{loss_threshold*100}%"
@@ -600,7 +600,7 @@ def calculate_phase3_return(
         close_price = df_sorted.iloc[-1]['Close']
         if pd.isna(close_price):
             return None, None, None
-        phase_return = (close_price - open_price) / open_price
+        phase_return = (open_price - close_price) / open_price
         win = phase_return > 0
         exit_reason = "hold_until_close"
         return phase_return, win, exit_reason
@@ -725,26 +725,27 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             morning_data = df_5min.between_time("09:00", "11:30")
             if not morning_data.empty and pd.notna(morning_data.iloc[-1]['Close']):
                 sell_price = float(morning_data.iloc[-1]['Close'])  # 11:30の終値
-        phase1_return = (sell_price - buy_price) / buy_price
+        # ショートベース: 寄り付きで売建→各時点で買い戻し
+        phase1_return = (buy_price - sell_price) / buy_price
         phase1_win = phase1_return > 0
-        profit_per_100_shares_phase1 = (sell_price - buy_price) * 100
+        profit_per_100_shares_phase1 = (buy_price - sell_price) * 100
 
-        # Phase2: 大引け売り（15:30売却）
-        phase2_return = (daily_close - buy_price) / buy_price
+        # Phase2: 大引け買い戻し（15:30）
+        phase2_return = (buy_price - daily_close) / buy_price
         phase2_win = phase2_return > 0
-        profit_per_100_shares_phase2 = (daily_close - buy_price) * 100
+        profit_per_100_shares_phase2 = (buy_price - daily_close) * 100
 
-        # 前場前半 (me): 10:25売却 (09:00-10:25)
+        # 前場前半 (me): 10:25買い戻し (09:00-10:25) — ショートベース
         me_price = get_price_at_time(df_5min, "09:00", "10:25", "10:30")
         if me_price is not None and buy_price > 0:
-            profit_per_100_shares_morning_early = (me_price - buy_price) * 100
+            profit_per_100_shares_morning_early = (buy_price - me_price) * 100
         else:
             profit_per_100_shares_morning_early = None
 
-        # 後場前半 (ae): 14:45売却 (12:30-14:45)
+        # 後場前半 (ae): 14:45買い戻し (12:30-14:45) — ショートベース
         ae_price = get_price_at_time(df_5min, "12:30", "14:45", "14:50")
         if ae_price is not None and buy_price > 0:
-            profit_per_100_shares_afternoon_early = (ae_price - buy_price) * 100
+            profit_per_100_shares_afternoon_early = (buy_price - ae_price) * 100
         else:
             profit_per_100_shares_afternoon_early = None
 
