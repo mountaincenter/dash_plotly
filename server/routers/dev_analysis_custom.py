@@ -305,7 +305,7 @@ async def get_custom_summary(
             if len(b_df) == 0:
                 continue
             b_block = calc_margin_block(b_df)
-            b_block["weekdays"] = calc_weekday_data(b_df, price_ranges)
+            b_block["weekdays"] = calc_weekday_data(b_df)
             buckets_data[bucket_name] = b_block
 
     date_range = {
