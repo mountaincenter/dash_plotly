@@ -352,10 +352,21 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 
 PROB_SHORT_THRESHOLD = 0.45
 PROB_LONG_THRESHOLD = 0.70
+WED_LONG_THRESHOLD = 0.35
 
 
-def get_bucket(prob: float) -> str:
-    """prob_upから閾値区分 (SHORT/DISC/LONG) を返す"""
+def get_bucket(prob: float, is_wednesday: bool = False) -> str:
+    """prob_upから閾値区分 (SHORT/DISC/LONG) を返す
+
+    水曜日は火曜SHORT→水曜反発の構造的効果により、
+    prob>=0.35の全銘柄をLONGエントリー対象とする。
+    (PF 2.13, permutation p=0.0011, 3-fold CV全期間プラス)
+    prob<0.35は見送り(DISC)。
+    """
+    if is_wednesday:
+        if prob >= WED_LONG_THRESHOLD:
+            return "LONG"
+        return "DISC"
     if prob < PROB_SHORT_THRESHOLD:
         return "SHORT"
     elif prob > PROB_LONG_THRESHOLD:
@@ -580,6 +591,10 @@ async def get_day_trade_list():
     grok_df = load_grok_trending()
     day_trade_df = load_day_trade_list()
 
+    # 水曜日判定（火曜SHORT→水曜反発のロングフィルター用）
+    trade_date = pd.to_datetime(grok_df['date'].iloc[0]) if not grok_df.empty else None
+    is_wednesday = trade_date is not None and trade_date.weekday() == 2
+
     # archiveから登場回数を計算（2025-11-04以降）
     try:
         archive_df = load_grok_archive()
@@ -660,8 +675,8 @@ async def get_day_trade_list():
         if prob_up is None:
             ml_result = ml_predictions.get(ticker, {})
             prob_up = ml_result.get('prob_up')
-        # prob_upから閾値区分を算出（parquetのgradeカラムは使わない）
-        bucket = get_bucket(prob_up) if prob_up is not None else None
+        # prob_upから閾値区分を算出（水曜はロングフィルター適用）
+        bucket = get_bucket(prob_up, is_wednesday=is_wednesday) if prob_up is not None else None
 
         stocks.append({
             "ticker": ticker,
