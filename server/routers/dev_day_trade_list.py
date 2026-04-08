@@ -355,6 +355,53 @@ PROB_LONG_THRESHOLD = 0.70
 WED_LONG_THRESHOLD = 0.35
 
 
+WEEKDAY_RULES = {
+    0: {  # 月曜
+        "weekday": "月",
+        "direction": "short",
+        "rule": "SHORT (prob<0.45)",
+        "pf": 1.59,
+        "note": "通常ルール適用",
+    },
+    1: {  # 火曜
+        "weekday": "火",
+        "direction": "short",
+        "rule": "SHORT (prob<0.45) — 最強日",
+        "pf": 3.38,
+        "note": "火曜SHORTが全戦略の基盤。PF低下時は水曜LONGも要注意",
+    },
+    2: {  # 水曜
+        "weekday": "水",
+        "direction": "long",
+        "rule": "LONG (prob≥0.35→LONG, <0.35→DISC)",
+        "pf": 2.13,
+        "note": "火曜SHORT→水曜反発の構造的効果。SHORTエントリー不可",
+    },
+    3: {  # 木曜
+        "weekday": "木",
+        "direction": "short",
+        "rule": "SHORT (prob<0.45)",
+        "pf": 1.84,
+        "note": "通常ルール適用。Gap-and-Fade傾向あり（寄付後に下落）",
+    },
+    4: {  # 金曜
+        "weekday": "金",
+        "direction": "excluded",
+        "rule": "見送り推奨 (PF 1.09 — コスト負け)",
+        "pf": 1.09,
+        "note": "SHORT PF=1.09でコスト込みマイナス。エントリー非推奨",
+    },
+}
+
+
+def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
+    """取引日の曜日ルールを返す"""
+    if trade_date is None:
+        return None
+    wd = trade_date.weekday()
+    return WEEKDAY_RULES.get(wd)
+
+
 def get_bucket(prob: float, is_wednesday: bool = False) -> str:
     """prob_upから閾値区分 (SHORT/DISC/LONG) を返す
 
@@ -761,6 +808,9 @@ async def get_day_trade_list():
         if pd.notna(first_row.get("nikkei_change_pct")):
             nikkei_change_pct = round(float(first_row["nikkei_change_pct"]), 3)
 
+    # 曜日ルール
+    weekday_rule = get_weekday_rule(trade_date)
+
     return JSONResponse(content={
         "total": len(stocks),
         "summary": summary,
@@ -768,6 +818,7 @@ async def get_day_trade_list():
             "futures_change_pct": futures_change_pct,
             "nikkei_change_pct": nikkei_change_pct,
         },
+        "weekday_rule": weekday_rule,
         "stocks": stocks
     })
 

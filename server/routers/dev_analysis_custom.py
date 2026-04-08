@@ -297,10 +297,15 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
                 "pctSegments4": calc_segment_stats_pct(pr_df, TIME_SEGMENTS_4),
             })
 
+        # 曜日ルール情報
+        from server.routers.dev_day_trade_list import WEEKDAY_RULES
+        wd_rule = WEEKDAY_RULES.get(wd, {})
+
         result.append({
             "weekday": wd_name,
             "seido": seido_data,
             "ichinichi": ichinichi_data,
+            "weekday_rule": wd_rule if wd_rule else None,
         })
 
     return result
