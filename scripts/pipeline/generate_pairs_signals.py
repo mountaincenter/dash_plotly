@@ -45,6 +45,7 @@ META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 Z_ENTRY = 2.0
 CAPITAL = 2_000_000
 MAX_RECOMMEND = 3  # |z|上位の推奨ペア数
+BUFFER_COUNT = 3   # entry次点のバッファペア数（6種類足取得対象）
 
 # Phase 70-71 共和分ベースペア (tk1, tk2, optimal_lookback, 5yr_pf, 5yr_n, half_life)
 V2_PAIRS = [
@@ -366,6 +367,10 @@ def main() -> int:
     if rows:
         df = pd.DataFrame(rows)
         df = df.sort_values("z_abs", ascending=False)
+        # entry次点のバッファ（6種類足取得対象、is_entry=Falseの|z|上位）
+        non_entry = df[~df["is_entry"]].head(BUFFER_COUNT).index
+        df["is_buffer"] = False
+        df.loc[non_entry, "is_buffer"] = True
     else:
         df = pd.DataFrame()
 
@@ -373,8 +378,9 @@ def main() -> int:
     df.to_parquet(signal_path, index=False)
 
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
+    buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
     print(f"\n  Computed: {len(df)}, Skipped: {skip_count}")
-    print(f"  Entry signals (|z|>={Z_ENTRY}): {entry_count}")
+    print(f"  Entry signals (|z|>={Z_ENTRY}): {entry_count}, Buffer: {buffer_count}")
 
     # 推奨ペア表示（|z|上位）
     if not df.empty:
@@ -405,7 +411,7 @@ def main() -> int:
 
     print(f"\n{'=' * 60}")
     print(f"Date: {date_str}")
-    print(f"Pairs: {len(df)}, Entry: {entry_count}")
+    print(f"Pairs: {len(df)}, Entry: {entry_count}, Buffer: {buffer_count}")
     print("=" * 60)
 
     return 0

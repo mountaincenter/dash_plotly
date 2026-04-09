@@ -39,7 +39,7 @@ from common_cfg.s3io import upload_file
 load_dotenv_cascade()
 
 REVERSAL_DIR = PARQUET_DIR / "reversal"
-PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"  # all_stocks経由でfetch_prices.pyが取得
+PRICES_PATH = PARQUET_DIR / "granville" / "prices_topix.parquet"  # 18:00 reviewで当日終値まで更新済み
 VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"

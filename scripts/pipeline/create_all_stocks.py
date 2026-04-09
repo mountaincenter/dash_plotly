@@ -497,35 +497,87 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
         except Exception as e:
             print(f"  [WARN] hold_stocks.parquet read failed: {e}")
 
-    # Core30+Large70銘柄（大陰線逆張り戦略用、meta_jquantsから取得）
-    core_large_df = pd.DataFrame()
-    if META_JQUANTS_PATH.exists():
-        mjq = pd.read_parquet(META_JQUANTS_PATH)
-        cl = mjq[mjq["topixnewindexseries"].isin(["TOPIX Core30", "TOPIX Large70"])].copy()
-        if not cl.empty:
-            cl_tickers = cl[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]].drop_duplicates(subset="ticker").copy()
-            cl_tickers["code"] = cl_tickers["ticker"].str.replace(".T", "", regex=False)
-            cl_tickers["categories"] = cl_tickers.apply(lambda x: np.array(["CORE_LARGE"]), axis=1)
-            cl_tickers["tags"] = cl_tickers.apply(lambda x: np.array([]), axis=1)
+    # 大陰線シグナル銘柄（18:00 reviewで検出済み）
+    bearish_df = pd.DataFrame()
+    reversal_dir = PARQUET_DIR / "reversal"
+    bearish_files = sorted(reversal_dir.glob("bearish_signals_*.parquet")) if reversal_dir.exists() else []
+    if bearish_files:
+        latest_bearish = pd.read_parquet(bearish_files[-1])
+        if not latest_bearish.empty and "ticker" in latest_bearish.columns:
+            b_tickers = latest_bearish[["ticker"]].drop_duplicates().copy()
+            if META_JQUANTS_PATH.exists():
+                mjq = pd.read_parquet(META_JQUANTS_PATH)
+                b_tickers = b_tickers.merge(
+                    mjq[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]],
+                    on="ticker", how="left",
+                )
+            for col in ["stock_name", "market", "sectors", "series", "topixnewindexseries"]:
+                if col not in b_tickers.columns:
+                    b_tickers[col] = ""
+            b_tickers["code"] = b_tickers["ticker"].str.replace(".T", "", regex=False)
+            b_tickers["categories"] = b_tickers.apply(lambda x: np.array(["BEARISH_REVERSAL"]), axis=1)
+            b_tickers["tags"] = b_tickers.apply(lambda x: np.array([]), axis=1)
             for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
-                cl_tickers[col] = None
+                b_tickers[col] = None
             cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
                     "topixnewindexseries", "categories", "tags", "date", "Close",
                     "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
             for c in cols:
-                if c not in cl_tickers.columns:
-                    cl_tickers[c] = None
-            core_large_df = cl_tickers[cols].copy()
-            print(f"  [INFO] Core+Large: {len(core_large_df)} stocks (from meta_jquants)")
+                if c not in b_tickers.columns:
+                    b_tickers[c] = None
+            bearish_df = b_tickers[cols].copy()
+            print(f"  [INFO] Bearish reversal: {len(bearish_df)} stocks from {bearish_files[-1].name}")
 
-    # all_stocks = grok + granville推奨 + 保有銘柄 + Core+Large
-    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, core_large_df], ignore_index=True)
+    # ペアトレードentry+buffer銘柄（18:00 reviewで検出済み）
+    pairs_df = pd.DataFrame()
+    pairs_dir = PARQUET_DIR / "pairs"
+    pairs_files = sorted(pairs_dir.glob("pairs_signals_*.parquet")) if pairs_dir.exists() else []
+    if pairs_files:
+        latest_pairs = pd.read_parquet(pairs_files[-1])
+        if not latest_pairs.empty:
+            # is_entry=True OR is_buffer=True の銘柄のみ
+            mask = latest_pairs.get("is_entry", pd.Series(dtype=bool)).fillna(False)
+            if "is_buffer" in latest_pairs.columns:
+                mask = mask | latest_pairs["is_buffer"].fillna(False)
+            selected = latest_pairs[mask]
+            if not selected.empty:
+                pair_tickers = set()
+                for _, r in selected.iterrows():
+                    pair_tickers.add(r.get("tk1", ""))
+                    pair_tickers.add(r.get("tk2", ""))
+                pair_tickers.discard("")
+                p_tickers = pd.DataFrame({"ticker": list(pair_tickers)})
+                if META_JQUANTS_PATH.exists():
+                    mjq = pd.read_parquet(META_JQUANTS_PATH)
+                    p_tickers = p_tickers.merge(
+                        mjq[["ticker", "stock_name", "market", "sectors", "series", "topixnewindexseries"]],
+                        on="ticker", how="left",
+                    )
+                for col in ["stock_name", "market", "sectors", "series", "topixnewindexseries"]:
+                    if col not in p_tickers.columns:
+                        p_tickers[col] = ""
+                p_tickers["code"] = p_tickers["ticker"].str.replace(".T", "", regex=False)
+                p_tickers["categories"] = p_tickers.apply(lambda x: np.array(["PAIRS"]), axis=1)
+                p_tickers["tags"] = p_tickers.apply(lambda x: np.array([]), axis=1)
+                for col in ["date", "Close", "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]:
+                    p_tickers[col] = None
+                cols = ["ticker", "code", "stock_name", "market", "sectors", "series",
+                        "topixnewindexseries", "categories", "tags", "date", "Close",
+                        "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal"]
+                for c in cols:
+                    if c not in p_tickers.columns:
+                        p_tickers[c] = None
+                pairs_df = p_tickers[cols].copy()
+                print(f"  [INFO] Pairs entry+buffer: {len(pairs_df)} tickers from {pairs_files[-1].name}")
+
+    # all_stocks = grok + granville推奨 + 保有銘柄 + 大陰線ヒット + ペアentry+buffer
+    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, bearish_df, pairs_df], ignore_index=True)
     all_stocks = all_stocks.drop_duplicates(subset=["ticker"], keep="first")
 
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Core+Large: {len(core_large_df)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Bearish: {len(bearish_df)}, Pairs: {len(pairs_df)})")
     return all_stocks
 
 
