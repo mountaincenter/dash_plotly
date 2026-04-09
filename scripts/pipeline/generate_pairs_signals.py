@@ -251,10 +251,14 @@ def load_prices(max_lookback: int) -> pd.DataFrame:
     return ps
 
 
-def calc_shares_equal(c1: float, c2: float, half_capital: float) -> tuple[int, int]:
-    """100株単位の等金額ポジション計算（Phase 73b確認済み）"""
-    s1 = max(1, round(half_capital / (c1 * 100))) * 100
-    s2 = max(1, round(half_capital / (c2 * 100))) * 100
+def calc_shares_min_lot(c1: float, c2: float) -> tuple[int, int]:
+    """最小100株単位ペアサイジング（PF差なし確認済み、不均衡+1.5%程度）"""
+    if c1 <= c2:
+        s1 = max(1, round(c2 / c1)) * 100
+        s2 = 100
+    else:
+        s1 = 100
+        s2 = max(1, round(c1 / c2)) * 100
     return s1, s2
 
 
@@ -293,9 +297,8 @@ def calc_pair_signal(
     tk1_upper = c2_last * ratio_upper
     tk1_lower = c2_last * ratio_lower
 
-    # 100株単位ポジション
-    half = CAPITAL / 2
-    shares1, shares2 = calc_shares_equal(c1_last, c2_last, half)
+    # 最小100株単位ポジション
+    shares1, shares2 = calc_shares_min_lot(c1_last, c2_last)
     notional1 = c1_last * shares1
     notional2 = c2_last * shares2
     imbalance_pct = abs(notional1 - notional2) / max(notional1, notional2) * 100
