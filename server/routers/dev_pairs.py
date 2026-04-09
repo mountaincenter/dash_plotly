@@ -108,7 +108,7 @@ async def get_pairs_signals():
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
     pairs = []
-    hot = []
+    entry = []
     for _, r in df.iterrows():
         pair_date = ""
         if "signal_date" in r.index and pd.notna(r.get("signal_date")):
@@ -121,29 +121,34 @@ async def get_pairs_signals():
             "c1": _safe_float(r.get("c1", 0)),
             "c2": _safe_float(r.get("c2", 0)),
             "z_latest": _safe_float(r.get("z_latest", 0), 3),
+            "z_abs": _safe_float(r.get("z_abs", abs(r.get("z_latest", 0))), 3),
             "tk1_upper": _safe_float(r.get("tk1_upper", 0)),
             "tk1_lower": _safe_float(r.get("tk1_lower", 0)),
             "mu": _safe_float(r.get("mu", 0), 6),
             "sigma": _safe_float(r.get("sigma", 0), 6),
-            "recent_n": _safe_int(r.get("recent_n", 0)),
-            "recent_wr": _safe_float(r.get("recent_wr", 0)),
-            "recent_pf": _safe_float(r.get("recent_pf", 0), 2),
+            "lookback": _safe_int(r.get("lookback", 20)),
+            "shares1": _safe_int(r.get("shares1", 100)),
+            "shares2": _safe_int(r.get("shares2", 100)),
+            "notional1": _safe_int(r.get("notional1", 0)),
+            "notional2": _safe_int(r.get("notional2", 0)),
+            "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
             "full_n": _safe_int(r.get("full_n", 0)),
-            "is_hot": bool(r.get("is_hot", False)),
+            "half_life": _safe_float(r.get("half_life", 0), 1),
+            "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
         }
         pairs.append(item)
-        if item["is_hot"]:
-            hot.append(item)
+        if item["is_entry"]:
+            entry.append(item)
 
     return {
         "pairs": pairs,
-        "hot": hot,
+        "entry": entry,
         "signal_date": signal_date,
         "total": len(pairs),
-        "hot_count": len(hot),
+        "entry_count": len(entry),
     }
 
 
@@ -164,21 +169,24 @@ async def get_pairs_status():
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
-    hot_df = df[df["is_hot"] == True] if "is_hot" in df.columns else pd.DataFrame()
-    hot_pairs = []
-    for _, r in hot_df.iterrows():
-        hot_pairs.append({
+    entry_col = "is_entry" if "is_entry" in df.columns else "is_hot"
+    entry_df = df[df[entry_col] == True] if entry_col in df.columns else pd.DataFrame()
+    entry_pairs = []
+    for _, r in entry_df.iterrows():
+        entry_pairs.append({
             "pair": f"{r.get('name1', r.get('tk1', ''))} / {r.get('name2', r.get('tk2', ''))}",
             "z": _safe_float(r.get("z_latest", 0), 2),
             "direction": r.get("direction", ""),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
+            "shares1": _safe_int(r.get("shares1", 100)),
+            "shares2": _safe_int(r.get("shares2", 100)),
         })
 
     return {
         "signal_date": signal_date,
         "total_pairs": len(df),
-        "hot_count": len(hot_pairs),
-        "hot_pairs": hot_pairs,
+        "entry_count": len(entry_pairs),
+        "entry_pairs": entry_pairs,
     }
 
 
