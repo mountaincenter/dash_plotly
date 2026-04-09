@@ -222,10 +222,9 @@ async def refresh_pairs_cache():
 
 # V2_PAIRS: (tk1, tk2, lookback, pf, n, half_life) — パイプラインと同一定義
 try:
-    from scripts.pipeline.generate_pairs_signals import V2_PAIRS, load_names as _pipeline_load_names
+    from scripts.pipeline.generate_pairs_signals import V2_PAIRS
 except ImportError:
     V2_PAIRS = []
-    _pipeline_load_names = lambda: {}
 
 _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
     (tk1, tk2): (lb, pf, n, hl) for tk1, tk2, lb, pf, n, hl in V2_PAIRS
@@ -285,13 +284,14 @@ async def get_pair_chart(
         tk1, tk2 = tk2, tk1
     lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
 
-    # 銘柄名
-    try:
-        names = _pipeline_load_names()
-    except Exception:
-        names = {}
-    name1 = names.get(tk1, tk1)
-    name2 = names.get(tk2, tk2)
+    # 銘柄名 — signalsパーケットから取得（_load_latestはIS_SERVERでS3/ローカルを自動分岐）
+    name1, name2 = tk1, tk2
+    sig_df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    if not sig_df.empty:
+        match = sig_df[(sig_df["tk1"] == tk1) & (sig_df["tk2"] == tk2)]
+        if not match.empty:
+            name1 = str(match.iloc[0].get("name1", tk1))
+            name2 = str(match.iloc[0].get("name2", tk2))
 
     # 価格データ取得
     df = _load_prices_for_chart(tk1, tk2, days + lookback)
