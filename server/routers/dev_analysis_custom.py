@@ -562,9 +562,11 @@ def _make_date_range(df: pd.DataFrame) -> dict:
 
 
 @router.get("/dev/analysis-custom/lending-ratio-pf")
-async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "short"):
-    """貸借倍率(買残/売残)×bucket別PFテーブル"""
+async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+    """貸借倍率(買残/売残)×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
     df = _load_analysis_base(exclude_extreme, direction=direction)
+    if weekday >= 0:
+        df = df[df["date"].dt.weekday == weekday]
     df["lending_ratio"] = np.where(
         df["margin_sell_balance"].notna() & (df["margin_sell_balance"] > 0),
         df["margin_buy_balance"] / df["margin_sell_balance"],
@@ -597,9 +599,11 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "
 
 
 @router.get("/dev/analysis-custom/futures-gap-pf")
-async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "short"):
-    """先物gap帯×bucket別PFテーブル"""
+async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+    """先物gap帯×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
     df = _load_analysis_base(exclude_extreme, direction=direction)
+    if weekday >= 0:
+        df = df[df["date"].dt.weekday == weekday]
 
     if "futures_change_pct" not in df.columns or "seg_1530" not in df.columns:
         raise HTTPException(status_code=500, detail="必要カラムがありません")
@@ -617,6 +621,39 @@ async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "sh
     for gb in gap_bins:
         bin_data = valid[(valid["futures_change_pct"] > gb["min"]) & (valid["futures_change_pct"] <= gb["max"])]
         rows.append(_build_bucket_row(bin_data, gb["label"], direction=direction))
+
+    return JSONResponse(content={
+        "rows": rows,
+        "dataRange": _make_date_range(valid),
+        "total": len(valid),
+        "direction": direction,
+    })
+
+
+@router.get("/dev/analysis-custom/nikkei-change-pf")
+async def get_nikkei_change_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+    """N225変化率帯×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
+    df = _load_analysis_base(exclude_extreme, direction=direction)
+    if weekday >= 0:
+        df = df[df["date"].dt.weekday == weekday]
+
+    if "nikkei_change_pct" not in df.columns or "seg_1530" not in df.columns:
+        raise HTTPException(status_code=500, detail="必要カラムがありません")
+
+    valid = df.dropna(subset=["nikkei_change_pct"])
+
+    nikkei_bins = [
+        {"label": "<-1%", "min": -999, "max": -1},
+        {"label": "-1~0%", "min": -1, "max": 0},
+        {"label": "0~1%", "min": 0, "max": 1},
+        {"label": "1~2%", "min": 1, "max": 2},
+        {"label": ">2%", "min": 2, "max": 999},
+    ]
+
+    rows = []
+    for nb in nikkei_bins:
+        bin_data = valid[(valid["nikkei_change_pct"] > nb["min"]) & (valid["nikkei_change_pct"] <= nb["max"])]
+        rows.append(_build_bucket_row(bin_data, nb["label"], direction=direction))
 
     return JSONResponse(content={
         "rows": rows,
@@ -689,3 +726,171 @@ async def get_custom_details(
         "timeSegments": TIME_SEGMENTS_11,
         "results": details,
     })
+
+
+@router.get("/dev/analysis-custom/weekday-panels")
+async def get_weekday_panels(
+    weekday: int = 0,
+    direction: str = "short",
+    exclude_extreme: bool = False,
+):
+    """曜日別分析パネル一括API（#2〜#6のデータを1リクエストで返す）
+
+    weekday: 0=月〜4=金
+    """
+    if weekday < 0 or weekday > 4:
+        raise HTTPException(status_code=400, detail="weekdayは0-4")
+    if direction not in ("short", "long"):
+        raise HTTPException(status_code=400, detail="directionはshort/longのいずれか")
+
+    df = _load_analysis_base(exclude_extreme, direction=direction)
+    df = df[df["date"].dt.weekday == weekday]
+    sign = -1 if direction == "short" else 1
+
+    result = {}
+
+    # --- #2 流動性・ポジションサイズ ---
+    liquidity = {}
+    for bucket in ["SHORT", "DISC", "LONG"]:
+        b_df = df[df["bucket"] == bucket] if "bucket" in df.columns else pd.DataFrame()
+        if len(b_df) == 0:
+            liquidity[bucket] = {"n": 0, "volume_median": None, "shares_median": None,
+                                 "sell_balance_median": None, "buy_balance_median": None}
+            continue
+        liquidity[bucket] = {
+            "n": len(b_df),
+            "volume_median": int(b_df["volume"].median()) if "volume" in b_df.columns and b_df["volume"].notna().any() else None,
+            "shares_median": int(b_df["day_trade_available_shares"].median()) if "day_trade_available_shares" in b_df.columns and b_df["day_trade_available_shares"].notna().any() else None,
+            "sell_balance_median": int(b_df["margin_sell_balance"].median()) if "margin_sell_balance" in b_df.columns and b_df["margin_sell_balance"].notna().any() else None,
+            "buy_balance_median": int(b_df["margin_buy_balance"].median()) if "margin_buy_balance" in b_df.columns and b_df["margin_buy_balance"].notna().any() else None,
+        }
+    result["liquidity"] = liquidity
+
+    # --- #3 Phase遷移マトリクス ---
+    phase_matrix = []
+    if "phase1_return" in df.columns and "phase2_return" in df.columns:
+        p1 = df["phase1_return"] * sign
+        p2 = df["phase2_return"] * sign
+        p1_bins = [
+            {"label": "大損(<-2%)", "min": -999, "max": -0.02},
+            {"label": "小損(-2~0%)", "min": -0.02, "max": 0},
+            {"label": "小益(0~+2%)", "min": 0, "max": 0.02},
+            {"label": "大益(>+2%)", "min": 0.02, "max": 999},
+        ]
+        for pb in p1_bins:
+            mask = (p1 > pb["min"]) & (p1 <= pb["max"])
+            sub = df[mask]
+            p2_vals = (sub["phase2_return"] * sign) if len(sub) > 0 else pd.Series(dtype=float)
+            n = len(p2_vals)
+            phase_matrix.append({
+                "phase1_label": pb["label"],
+                "n": n,
+                "phase2_avg_pct": round(float(p2_vals.mean() * 100), 2) if n > 0 else None,
+                "phase2_win_rate": round(float((p2_vals > 0).mean() * 100), 1) if n > 0 else None,
+                "phase2_pf": round(float(p2_vals[p2_vals > 0].sum() / abs(p2_vals[p2_vals <= 0].sum())), 2) if n > 0 and abs(p2_vals[p2_vals <= 0].sum()) > 0 else None,
+            })
+    result["phase_matrix"] = phase_matrix
+
+    # --- #4 エクスカーション ---
+    excursion = {}
+    exc_cols = {
+        "morning_max_gain_pct": "前場最大含み益%",
+        "morning_max_drawdown_pct": "前場最大含み損%",
+        "daily_max_gain_pct": "日中最大含み益%",
+        "daily_max_drawdown_pct": "日中最大含み損%",
+    }
+    for col, label in exc_cols.items():
+        if col not in df.columns:
+            continue
+        vals = df[col].dropna()
+        # ショート方向の場合、gain/drawdownの符号を反転
+        if direction == "short":
+            if "gain" in col:
+                vals = -vals  # ショートでの含み益=株価下落
+            elif "drawdown" in col:
+                vals = -vals  # ショートでの含み損=株価上昇
+        if len(vals) == 0:
+            excursion[col] = {"label": label, "n": 0, "p10": None, "p25": None, "p50": None, "p75": None, "p90": None}
+            continue
+        excursion[col] = {
+            "label": label,
+            "n": len(vals),
+            "p10": round(float(vals.quantile(0.1)), 2),
+            "p25": round(float(vals.quantile(0.25)), 2),
+            "p50": round(float(vals.quantile(0.5)), 2),
+            "p75": round(float(vals.quantile(0.75)), 2),
+            "p90": round(float(vals.quantile(0.9)), 2),
+        }
+    result["excursion"] = excursion
+
+    # --- #5 多段トリガー比較 ---
+    stop_loss = []
+    for pct in ["1pct", "2pct", "3pct"]:
+        ret_col = f"phase3_{pct}_return"
+        reason_col = f"phase3_{pct}_exit_reason"
+        pnl_col = f"profit_per_100_shares_phase3_{pct}"
+        if ret_col not in df.columns:
+            continue
+        vals = df[pnl_col].dropna() * sign if pnl_col in df.columns else df[ret_col].dropna() * sign
+        n = len(vals)
+        wins = vals[vals > 0].sum() if n > 0 else 0
+        losses = abs(vals[vals <= 0].sum()) if n > 0 else 0
+        pf = round(float(wins / losses), 2) if losses > 0 else None
+        # Exit理由の内訳
+        reason_counts = {}
+        if reason_col in df.columns:
+            reason_counts = df[reason_col].dropna().value_counts().to_dict()
+            reason_counts = {k: int(v) for k, v in reason_counts.items()}
+        stop_loss.append({
+            "trigger": pct.replace("pct", "%"),
+            "n": n,
+            "pf": pf,
+            "avg": round(float(vals.mean())) if n > 0 else None,
+            "win_rate": round(float((vals > 0).mean() * 100), 1) if n > 0 else None,
+            "exit_reasons": reason_counts,
+        })
+    result["stop_loss"] = stop_loss
+
+    # --- #6 朝利確 vs 引けホールド ---
+    hold_vs_exit = {}
+    seg_pairs = [
+        ("profit_per_100_shares_morning_early", "前場早期利確"),
+        ("profit_per_100_shares_afternoon_early", "後場早期利確"),
+        ("seg_1530", "引け決済"),
+    ]
+    for col, label in seg_pairs:
+        if col not in df.columns:
+            continue
+        vals = df[col].dropna() * sign
+        n = len(vals)
+        wins = vals[vals > 0].sum() if n > 0 else 0
+        losses = abs(vals[vals <= 0].sum()) if n > 0 else 0
+        hold_vs_exit[col] = {
+            "label": label,
+            "n": n,
+            "total_pnl": round(float(vals.sum())) if n > 0 else None,
+            "avg": round(float(vals.mean())) if n > 0 else None,
+            "pf": round(float(wins / losses), 2) if losses > 0 else None,
+            "win_rate": round(float((vals > 0).mean() * 100), 1) if n > 0 else None,
+        }
+    # 吐き出し率: 引け決済 vs 前場最高値からの差
+    if "daily_max_gain_pct" in df.columns and "seg_1530" in df.columns:
+        valid_exc = df.dropna(subset=["daily_max_gain_pct", "seg_1530"])
+        if len(valid_exc) > 0:
+            max_gain = valid_exc["daily_max_gain_pct"].abs()
+            final_pnl = (valid_exc["seg_1530"] * sign)
+            # 利益のある銘柄のうち、最大含み益から引けまでに何%吐き出したか
+            profitable = valid_exc[final_pnl > 0]
+            if len(profitable) > 0:
+                max_g = profitable["daily_max_gain_pct"].abs()
+                final_r = (profitable["seg_1530"] * sign) / (profitable["buy_price"] * 100) * 100
+                giveback_pct = float(((max_g - final_r.abs()) / max_g).clip(0, 1).mean() * 100)
+                hold_vs_exit["giveback_pct"] = round(giveback_pct, 1)
+    result["hold_vs_exit"] = hold_vs_exit
+
+    result["weekday"] = weekday
+    result["direction"] = direction
+    result["n_total"] = len(df)
+    result["dataRange"] = _make_date_range(df)
+
+    return JSONResponse(content=result)
