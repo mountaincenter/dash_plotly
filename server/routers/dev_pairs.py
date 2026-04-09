@@ -3,8 +3,10 @@
 ペアトレードAPI
 /api/dev/pairs/* — シグナル・ステータス
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 from pathlib import Path
+import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Optional
@@ -214,3 +216,145 @@ async def refresh_pairs_cache():
         "message": "Cache cleared, next request will reload from S3" if IS_SERVER else "Cache cleared",
         "updated_at": datetime.now().isoformat(),
     }
+
+
+# --- ペアチャート用 ---
+
+# V2_PAIRS: (tk1, tk2, lookback, pf, n, half_life) — パイプラインと同一定義
+try:
+    from scripts.pipeline.generate_pairs_signals import V2_PAIRS, load_names as _pipeline_load_names
+except ImportError:
+    V2_PAIRS = []
+    _pipeline_load_names = lambda: {}
+
+_V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
+    (tk1, tk2): (lb, pf, n, hl) for tk1, tk2, lb, pf, n, hl in V2_PAIRS
+}
+
+
+def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
+    """チャート用に2銘柄の日足Closeを取得"""
+    from server.utils import read_prices_df, normalize_prices
+
+    df = read_prices_df("max", "1d")
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    df = normalize_prices(df)
+    # ticker列で2銘柄抽出
+    tk_col = "ticker" if "ticker" in df.columns else "Ticker"
+    df = df[df[tk_col].isin([tk1, tk2])].copy()
+    if df.empty:
+        return df
+
+    date_col = "date" if "date" in df.columns else "Date"
+    close_col = "Close" if "Close" in df.columns else "close"
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df.sort_values([tk_col, date_col])
+
+    # 直近days日に絞る
+    all_dates = sorted(df[date_col].unique())
+    if len(all_dates) > days:
+        cutoff = all_dates[-days]
+        df = df[df[date_col] >= cutoff]
+
+    return df[[tk_col, date_col, close_col]].rename(
+        columns={tk_col: "ticker", date_col: "date", close_col: "Close"}
+    )
+
+
+@router.get("/api/dev/pairs/chart")
+async def get_pair_chart(
+    tk1: str = Query(..., description="銘柄1ティッカー (例: 8801.T)"),
+    tk2: str = Query(..., description="銘柄2ティッカー (例: 8830.T)"),
+    days: int = Query(500, description="取得日数"),
+):
+    """ペアチャート用データ（正規化価格 + ローリングz-score時系列）"""
+    cache_key = f"pair_chart/{tk1}/{tk2}/{days}"
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
+    # ペア情報取得
+    pair_info = _V2_LOOKUP.get((tk1, tk2)) or _V2_LOOKUP.get((tk2, tk1))
+    if pair_info is None:
+        return JSONResponse(status_code=404, content={"detail": f"Pair {tk1}/{tk2} not found in V2_PAIRS"})
+
+    # tk1/tk2の順序をV2_PAIRSに合わせる
+    if (tk1, tk2) not in _V2_LOOKUP:
+        tk1, tk2 = tk2, tk1
+    lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
+
+    # 銘柄名
+    try:
+        names = _pipeline_load_names()
+    except Exception:
+        names = {}
+    name1 = names.get(tk1, tk1)
+    name2 = names.get(tk2, tk2)
+
+    # 価格データ取得
+    df = _load_prices_for_chart(tk1, tk2, days + lookback)
+    if df.empty:
+        return JSONResponse(status_code=404, content={"detail": "Price data not found"})
+
+    d1 = df[df["ticker"] == tk1].set_index("date").sort_index()
+    d2 = df[df["ticker"] == tk2].set_index("date").sort_index()
+    common = d1.index.intersection(d2.index)
+    if len(common) < lookback + 5:
+        return JSONResponse(status_code=404, content={"detail": f"Insufficient data: {len(common)} days (need {lookback + 5})"})
+
+    d1 = d1.loc[common]
+    d2 = d2.loc[common]
+
+    c1 = d1["Close"].values.astype(float)
+    c2 = d2["Close"].values.astype(float)
+    dates = [d.strftime("%Y-%m-%d") for d in common]
+
+    # 正規化価格 (返却範囲の先頭 = 100)
+    # lookback分の余裕を取ったので、返却はlookback以降
+    start_idx = lookback
+    base1 = c1[start_idx]
+    base2 = c2[start_idx]
+    norm1 = (c1[start_idx:] / base1 * 100).round(2).tolist()
+    norm2 = (c2[start_idx:] / base2 * 100).round(2).tolist()
+
+    # ローリングz-score
+    spread = np.log(c1 / c2)
+    z_scores = []
+    for i in range(start_idx, len(spread)):
+        window = spread[i - lookback + 1: i + 1]
+        mu = window.mean()
+        sigma = window.std()
+        if sigma < 1e-8:
+            z_scores.append(0.0)
+        else:
+            z_scores.append(round(float((spread[i] - mu) / sigma), 4))
+
+    out_dates = dates[start_idx:]
+
+    # 最新z-scoreからdirection判定
+    z_latest = z_scores[-1] if z_scores else 0.0
+    direction = "short_tk1" if z_latest > 0 else "long_tk1"
+
+    series = []
+    for i in range(len(out_dates)):
+        series.append({
+            "date": out_dates[i],
+            "norm1": norm1[i],
+            "norm2": norm2[i],
+            "z": z_scores[i],
+        })
+
+    result = {
+        "tk1": tk1, "tk2": tk2,
+        "name1": name1, "name2": name2,
+        "lookback": lookback, "full_pf": full_pf, "full_n": full_n,
+        "half_life": half_life,
+        "z_latest": round(z_latest, 3),
+        "direction": direction,
+        "series": series,
+    }
+
+    _set_cache(cache_key, result)
+    return result
