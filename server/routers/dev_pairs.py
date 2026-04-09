@@ -346,9 +346,22 @@ async def get_pair_chart(
             "z": z_scores[i],
         })
 
+    # 終値・前日比
+    c1_last = round(float(c1[-1]), 1)
+    c2_last = round(float(c2[-1]), 1)
+    c1_prev = round(float(c1[-2]), 1) if len(c1) >= 2 else c1_last
+    c2_prev = round(float(c2[-2]), 1) if len(c2) >= 2 else c2_last
+    chg1 = round(c1_last - c1_prev, 1)
+    chg2 = round(c2_last - c2_prev, 1)
+    chg1_pct = round((c1_last / c1_prev - 1) * 100, 2) if c1_prev else 0.0
+    chg2_pct = round((c2_last / c2_prev - 1) * 100, 2) if c2_prev else 0.0
+
     result = {
         "tk1": tk1, "tk2": tk2,
         "name1": name1, "name2": name2,
+        "c1": c1_last, "c2": c2_last,
+        "chg1": chg1, "chg2": chg2,
+        "chg1_pct": chg1_pct, "chg2_pct": chg2_pct,
         "lookback": lookback, "full_pf": full_pf, "full_n": full_n,
         "half_life": half_life,
         "z_latest": round(z_latest, 3),
