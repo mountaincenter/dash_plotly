@@ -49,35 +49,50 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
+IS_SERVER = os.getenv("ENVIRONMENT") in ("staging", "production")
+
+
+def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
+    """S3から最新parquetを直接読み込み（サーバー用）"""
+    import boto3
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    resp = s3.list_objects_v2(
+        Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
+    )
+    if "Contents" not in resp:
+        return pd.DataFrame()
+    keys = sorted([o["Key"] for o in resp["Contents"]])
+    if not keys:
+        return pd.DataFrame()
+    import io
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+
+
+def _load_from_local(directory: Path, prefix: str) -> pd.DataFrame:
+    """ローカルファイルから読み込み（開発用）"""
+    path = _latest_file(directory, prefix)
+    if path is None:
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     cache_key = f"{s3_prefix}/{prefix}"
     cached = _cached(cache_key)
     if cached is not None:
         return cached
 
-    path = _latest_file(directory, prefix)
-    if path is None:
+    if IS_SERVER:
         try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            resp = s3.list_objects_v2(
-                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
-            )
-            if "Contents" in resp:
-                keys = sorted([o["Key"] for o in resp["Contents"]])
-                if keys:
-                    local = directory / Path(keys[-1]).name
-                    directory.mkdir(parents=True, exist_ok=True)
-                    s3.download_file(S3_BUCKET, keys[-1], str(local))
-                    path = local
+            df = _load_from_s3(prefix, s3_prefix)
         except Exception:
-            pass
+            df = pd.DataFrame()
+    else:
+        df = _load_from_local(directory, prefix)
 
-    if path is None:
-        return pd.DataFrame()
-
-    df = pd.read_parquet(path)
-    _set_cache(cache_key, df)
+    if not df.empty:
+        _set_cache(cache_key, df)
     return df
 
 
@@ -192,29 +207,10 @@ async def get_pairs_status():
 
 @router.post("/api/dev/pairs/refresh")
 async def refresh_pairs_cache():
-    """キャッシュクリア+S3から最新ファイルをダウンロード"""
+    """キャッシュクリア（サーバーは次回リクエストでS3から再読込）"""
     _cache.clear()
-
-    refreshed = []
-    try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        resp = s3.list_objects_v2(
-            Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/pairs/pairs_signals_",
-        )
-        if "Contents" in resp:
-            keys = sorted([o["Key"] for o in resp["Contents"]])
-            if keys:
-                local = PAIRS_DIR / Path(keys[-1]).name
-                PAIRS_DIR.mkdir(parents=True, exist_ok=True)
-                s3.download_file(S3_BUCKET, keys[-1], str(local))
-                refreshed.append(Path(keys[-1]).name)
-    except Exception as e:
-        print(f"[pairs/refresh] S3 download failed: {e}")
-
     return {
         "status": "success",
-        "message": "Pairs cache refreshed",
-        "refreshed_files": refreshed,
+        "message": "Cache cleared, next request will reload from S3" if IS_SERVER else "Cache cleared",
         "updated_at": datetime.now().isoformat(),
     }
