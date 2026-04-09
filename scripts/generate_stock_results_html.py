@@ -497,12 +497,30 @@ if s3_cfg.bucket:
     upload_file(s3_cfg, MANIFEST_PATH, "manifest.json")
     print("[OK] S3 manifest updated")
 
-    # Granville APIのキャッシュもリフレッシュ（hold_stocks即時反映）
-    GRANVILLE_REFRESH_URL = "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"
+    # staging S3にもhold_stocks等をコピー（dashboardで最新を表示するため）
+    STAGING_BUCKET = "stock-api-data-staging"
     try:
-        req = urllib.request.Request(GRANVILLE_REFRESH_URL, method="POST")
-        with urllib.request.urlopen(req, timeout=30) as response:
-            result = response.read().decode("utf-8")
-            print(f"[OK] Granvilleキャッシュリフレッシュ完了: {result}")
-    except (urllib.error.URLError, Exception) as e:
-        print(f"[WARNING] Granvilleキャッシュリフレッシュ失敗: {e}")
+        import boto3
+        s3_client = boto3.client("s3", region_name="ap-northeast-1")
+        for fname in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet"]:
+            fpath = PARQUET_DIR / fname
+            if fpath.exists():
+                staging_key = f"{s3_cfg.prefix}{fname}" if not s3_cfg.prefix.endswith("/") else f"{s3_cfg.prefix}{fname}"
+                s3_client.upload_file(str(fpath), STAGING_BUCKET, staging_key)
+        print(f"[OK] staging S3にもhold_stocks等をコピー完了")
+    except Exception as e:
+        print(f"[WARNING] staging S3コピー失敗: {e}")
+
+    # Granville APIのキャッシュもリフレッシュ（hold_stocks即時反映）
+    REFRESH_URLS = [
+        ("production", "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"),
+        ("staging", "https://5ua83r8kwu.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"),
+    ]
+    for label, url in REFRESH_URLS:
+        try:
+            req = urllib.request.Request(url, method="POST")
+            with urllib.request.urlopen(req, timeout=30) as response:
+                result = response.read().decode("utf-8")
+                print(f"[OK] {label} Granvilleキャッシュリフレッシュ完了: {result}")
+        except (urllib.error.URLError, Exception) as e:
+            print(f"[WARNING] {label} Granvilleキャッシュリフレッシュ失敗: {e}")
