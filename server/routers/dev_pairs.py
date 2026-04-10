@@ -323,9 +323,11 @@ async def get_pair_chart(
     norm1 = (c1[start_idx:] / base1 * 100).round(2).tolist()
     norm2 = (c2[start_idx:] / base2 * 100).round(2).tolist()
 
-    # ローリングz-score
+    # ローリングz-score + ローリング半減期
     spread = np.log(c1 / c2)
     z_scores = []
+    rolling_hl = []
+    hl_window = max(lookback, 60)  # 半減期計算は最低60日のウィンドウ
     for i in range(start_idx, len(spread)):
         window = spread[i - lookback + 1: i + 1]
         mu = window.mean()
@@ -334,6 +336,25 @@ async def get_pair_chart(
             z_scores.append(0.0)
         else:
             z_scores.append(round(float((spread[i] - mu) / sigma), 4))
+
+        # ローリング半減期: AR(1)係数からhalf_life = -log(2)/log(beta)
+        if i >= hl_window:
+            hl_spread = spread[i - hl_window + 1: i + 1]
+            y = hl_spread[1:]
+            x = hl_spread[:-1]
+            x_mean = x.mean()
+            denom = ((x - x_mean) ** 2).sum()
+            if denom > 1e-12:
+                beta = float(((x - x_mean) * (y - y.mean())).sum() / denom)
+                if 0 < beta < 1:
+                    hl_val = round(-np.log(2) / np.log(beta), 1)
+                    rolling_hl.append(min(hl_val, 999.0))  # 上限キャップ
+                else:
+                    rolling_hl.append(None)
+            else:
+                rolling_hl.append(None)
+        else:
+            rolling_hl.append(None)
 
     out_dates = dates[start_idx:]
 
@@ -348,6 +369,7 @@ async def get_pair_chart(
             "norm1": norm1[i],
             "norm2": norm2[i],
             "z": z_scores[i],
+            "hl": rolling_hl[i],
         })
 
     # 終値・前日比
