@@ -284,14 +284,18 @@ async def get_pair_chart(
         tk1, tk2 = tk2, tk1
     lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
 
-    # 銘柄名 — signalsパーケットから取得（_load_latestはIS_SERVERでS3/ローカルを自動分岐）
+    # 銘柄名・閾値 — signalsパーケットから取得（_load_latestはIS_SERVERでS3/ローカルを自動分岐）
     name1, name2 = tk1, tk2
+    tk1_upper, tk1_lower = 0.0, 0.0
     sig_df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
     if not sig_df.empty:
         match = sig_df[(sig_df["tk1"] == tk1) & (sig_df["tk2"] == tk2)]
         if not match.empty:
-            name1 = str(match.iloc[0].get("name1", tk1))
-            name2 = str(match.iloc[0].get("name2", tk2))
+            row = match.iloc[0]
+            name1 = str(row.get("name1", tk1))
+            name2 = str(row.get("name2", tk2))
+            tk1_upper = _safe_float(row.get("tk1_upper", 0))
+            tk1_lower = _safe_float(row.get("tk1_lower", 0))
 
     # 価格データ取得
     df = _load_prices_for_chart(tk1, tk2, days + lookback)
@@ -366,6 +370,8 @@ async def get_pair_chart(
         "half_life": half_life,
         "z_latest": round(z_latest, 3),
         "direction": direction,
+        "tk1_upper": tk1_upper,
+        "tk1_lower": tk1_lower,
         "series": series,
     }
 
