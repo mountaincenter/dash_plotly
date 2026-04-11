@@ -54,10 +54,83 @@ RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
 RULE_MAX_HOLD = {"B4": 15, "B1": 15, "B3": 15, "B2": 15}
 HIGH20D_PRE_ENTRY = 4  # 20日高値判定にエントリー前4日を含める（k=4最適、Codex検証済み）
 
+# B1-B3ロングフィルター定義（IS/OOS 5期間全てPF>1.0で検証済み）
+# H1: VI≥30 + B1 → IS 1.88, OOS 2.37 (hold9d)
+# H2: N225>SMA20 + CME flat(-0.5~0.5%) + B3 → IS 1.57, OOS 3.76 (hold9d)
+# H3: N225 ret20<-5% + B1 → IS 2.32, OOS 2.43 (hold4d)
+INDEX_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+FUTURES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
+VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+
 
 def _get_max_hold(rule: str) -> int:
     """ルール別MAX_HOLD"""
     return RULE_MAX_HOLD.get(rule, 15)
+
+
+def _load_market_regime(latest_date: pd.Timestamp) -> dict:
+    """N225レジーム、CMEギャッ��、VIを取得"""
+    regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None}
+
+    # N225
+    try:
+        idx = pd.read_parquet(INDEX_PATH)
+        idx["date"] = pd.to_datetime(idx["date"])
+        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
+        n225["sma20"] = n225["Close"].rolling(20).mean()
+        n225["ret20"] = n225["Close"].pct_change(20) * 100
+        row = n225[n225["date"] <= latest_date].iloc[-1]
+        regime["n225_above_sma20"] = bool(row["Close"] > row["sma20"])
+        regime["n225_ret20"] = round(float(row["ret20"]), 2) if pd.notna(row["ret20"]) else None
+        n225_prev_close = float(n225[n225["date"] < latest_date].iloc[-1]["Close"]) if len(n225[n225["date"] < latest_date]) > 0 else None
+    except Exception as e:
+        print(f"  [WARN] N225 regime load failed: {e}")
+        n225_prev_close = None
+
+    # CMEギャップ: NKD終値 vs N225前日終値
+    try:
+        fut = pd.read_parquet(FUTURES_PATH)
+        fut["date"] = pd.to_datetime(fut["date"])
+        nkd = fut[fut["ticker"] == "NKD=F"][["date", "Close"]].sort_values("date")
+        nkd_row = nkd[nkd["date"] <= latest_date].iloc[-1]
+        if n225_prev_close and n225_prev_close > 0:
+            regime["cme_gap"] = round((float(nkd_row["Close"]) / n225_prev_close - 1) * 100, 2)
+    except Exception as e:
+        print(f"  [WARN] CME gap load failed: {e}")
+
+    # VI
+    try:
+        if VI_PATH.exists():
+            vi_df = pd.read_parquet(VI_PATH)
+            vi_df["date"] = pd.to_datetime(vi_df["date"])
+            vi_row = vi_df[vi_df["date"] <= latest_date].sort_values("date").iloc[-1]
+            regime["vi"] = round(float(vi_row["close"]), 1)
+    except Exception as e:
+        print(f"  [WARN] VI load failed: {e}")
+
+    return regime
+
+
+def _classify_long_grade(rule: str, regime: dict) -> tuple[str, int] | None:
+    """B1-B3シグナルにロングフィルターを適用。(grade, hold_days)を返す"""
+    vi = regime.get("vi")
+    n225_above = regime.get("n225_above_sma20")
+    n225_ret20 = regime.get("n225_ret20")
+    cme_gap = regime.get("cme_gap")
+
+    # H1: VI≥30 + B1 → hold 9d (IS 1.88, OOS 2.37)
+    if rule == "B1" and vi is not None and vi >= 30:
+        return ("H1", 9)
+
+    # H3: N225 ret20<-5% + B1 → hold 4d (IS 2.32, OOS 2.43)
+    if rule == "B1" and n225_ret20 is not None and n225_ret20 < -5:
+        return ("H3", 4)
+
+    # H2: N225>SMA20 + CME flat + B3 → hold 9d (IS 1.57, OOS 3.76)
+    if rule == "B3" and n225_above and cme_gap is not None and -0.5 <= cme_gap <= 0.5:
+        return ("H2", 9)
+
+    return None
 
 
 def _load_capital() -> float:
@@ -415,6 +488,32 @@ def main() -> int:
     out.to_parquet(signal_path, index=False)
     print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")
 
+    # B1-B3 ロング推奨生成
+    regime = _load_market_regime(latest_date)
+    print(f"\n  Market regime: N225>SMA20={regime['n225_above_sma20']}, "
+          f"ret20={regime['n225_ret20']}, CME gap={regime['cme_gap']}, VI={regime['vi']}")
+
+    long_recs = []
+    if not out.empty:
+        for _, sig in out.iterrows():
+            if sig["rule"] in ("B1", "B2", "B3"):
+                grade = _classify_long_grade(sig["rule"], regime)
+                if grade:
+                    long_recs.append({**sig.to_dict(), "long_grade": grade[0], "hold_days": grade[1]})
+
+    long_df = pd.DataFrame(long_recs)
+    long_path = GRANVILLE_DIR / f"long_recommendations_{date_str}.parquet"
+    if long_df.empty:
+        long_df = pd.DataFrame(columns=[
+            "signal_date", "ticker", "stock_name", "sector", "rule",
+            "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
+            "entry_price_est", "prev_close", "atr10_pct", "ret5d",
+            "long_grade", "hold_days",
+        ])
+    long_df.to_parquet(long_path, index=False)
+    grade_counts = long_df["long_grade"].value_counts().to_dict() if not long_df.empty else {}
+    print(f"[OK] Saved: {long_path.name} ({len(long_df)} recs) {grade_counts}")
+
     # ポジション計算
     ps = detect_signals(ps)
     positions = generate_positions(ps, latest_date)
@@ -429,6 +528,7 @@ def main() -> int:
         cfg = load_s3_config()
         if cfg and cfg.bucket:
             upload_file(cfg, signal_path, f"granville/signals_{date_str}.parquet")
+            upload_file(cfg, long_path, f"granville/long_recommendations_{date_str}.parquet")
             if not positions.empty:
                 upload_file(cfg, pos_path, f"granville/positions_{date_str}.parquet")
         else:
@@ -442,6 +542,7 @@ def main() -> int:
     for rule in ["B4", "B1", "B3", "B2"]:
         n = (out["rule"] == rule).sum() if not out.empty else 0
         print(f"  {rule}: {n}")
+    print(f"Long recommendations: {len(long_df)} {grade_counts}")
     print("=" * 60)
 
     return 0

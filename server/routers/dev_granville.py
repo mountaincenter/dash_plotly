@@ -193,6 +193,91 @@ async def get_recommendations():
     }
 
 
+@router.get("/api/dev/granville/long-recommendations")
+async def get_long_recommendations():
+    """B1-B3ロング推奨（H1/H2/H3フィルター通過分）"""
+    df = _load_latest("long_recommendations")
+    if df.empty:
+        return {"long_recommendations": [], "count": 0, "date": None, "regime": {}}
+
+    date_str = None
+    if "signal_date" in df.columns:
+        date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    recs = []
+    for _, r in df.iterrows():
+        recs.append({
+            "ticker": r.get("ticker", ""),
+            "stock_name": r.get("stock_name", ""),
+            "sector": r.get("sector", ""),
+            "rule": r.get("rule", ""),
+            "long_grade": r.get("long_grade", ""),
+            "hold_days": _safe_int(r.get("hold_days", 0)),
+            "close": _safe_float(r.get("close", 0)),
+            "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
+            "sma20": _safe_float(r.get("sma20", 0), 2),
+            "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
+            "atr10_pct": _safe_float(r.get("atr10_pct", 0), 2),
+        })
+
+    # レジーム情報も返す
+    regime = _get_current_regime()
+
+    return {
+        "long_recommendations": recs,
+        "count": len(recs),
+        "date": date_str,
+        "regime": regime,
+    }
+
+
+def _get_current_regime() -> dict:
+    """現在の市場レジーム情報を取得"""
+    regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None}
+
+    try:
+        idx_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+        if idx_path.exists():
+            idx = pd.read_parquet(idx_path)
+            idx["date"] = pd.to_datetime(idx["date"])
+            n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
+            n225["sma20"] = n225["Close"].rolling(20).mean()
+            n225["ret20"] = n225["Close"].pct_change(20) * 100
+            latest = n225.dropna(subset=["sma20"]).iloc[-1]
+            regime["n225_above_sma20"] = bool(latest["Close"] > latest["sma20"])
+            regime["n225_ret20"] = round(float(latest["ret20"]), 2) if pd.notna(latest["ret20"]) else None
+    except Exception:
+        pass
+
+    try:
+        vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+        if vi_path.exists():
+            vi_df = pd.read_parquet(vi_path)
+            vi_df["date"] = pd.to_datetime(vi_df["date"])
+            regime["vi"] = round(float(vi_df.sort_values("date").iloc[-1]["close"]), 1)
+    except Exception:
+        pass
+
+    try:
+        fut_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
+        idx_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+        if fut_path.exists() and idx_path.exists():
+            fut = pd.read_parquet(fut_path)
+            fut["date"] = pd.to_datetime(fut["date"])
+            nkd = fut[fut["ticker"] == "NKD=F"].sort_values("date")
+            idx = pd.read_parquet(idx_path)
+            idx["date"] = pd.to_datetime(idx["date"])
+            n225 = idx[idx["ticker"] == "^N225"].sort_values("date")
+            if len(nkd) >= 1 and len(n225) >= 2:
+                nkd_close = float(nkd.iloc[-1]["Close"])
+                n225_prev = float(n225.iloc[-2]["Close"])
+                regime["cme_gap"] = round((nkd_close / n225_prev - 1) * 100, 2)
+    except Exception:
+        pass
+
+    return regime
+
+
 @router.get("/api/dev/granville/signals")
 async def get_signals():
     """当日全シグナル（フィルター前）"""
@@ -632,6 +717,15 @@ async def get_status():
     # トリガー情報（CMEギャップ、SMA、VIX）
     triggers = _compute_triggers()
 
+    # ロング推奨
+    long_df = _load_latest("long_recommendations")
+    long_count = len(long_df)
+    long_grades = {}
+    if not long_df.empty and "long_grade" in long_df.columns:
+        long_grades = long_df["long_grade"].value_counts().to_dict()
+
+    regime = _get_current_regime()
+
     return {
         "triggers": triggers,
         "cash_margin": credit["cash_margin"],
@@ -644,6 +738,9 @@ async def get_status():
         "exit_candidates": exit_count,
         "recommendation_count": rec_count,
         "rule_breakdown": rule_breakdown,
+        "long_recommendation_count": long_count,
+        "long_grades": long_grades,
+        "regime": regime,
     }
 
 
