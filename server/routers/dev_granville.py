@@ -29,6 +29,8 @@ S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
 S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+_IS_LOCAL = PARQUET_DIR.exists()
+
 
 # キャッシュ
 _cache: dict[str, tuple[datetime, object]] = {}
@@ -231,47 +233,53 @@ async def get_long_recommendations():
     }
 
 
+def _read_parquet_by_env(filename: str) -> pd.DataFrame:
+    """環境フラグに応じてparquetを完全分離で読み込む（フォールバック禁止）。"""
+    if _IS_LOCAL:
+        return pd.read_parquet(PARQUET_DIR / filename)
+
+    import boto3
+    import io
+
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/{filename}")
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+
+
 def _get_current_regime() -> dict:
     """現在の市場レジーム情報を取得"""
     regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None}
 
     try:
-        idx_path = PARQUET_DIR / "index_prices_max_1d.parquet"
-        if idx_path.exists():
-            idx = pd.read_parquet(idx_path)
-            idx["date"] = pd.to_datetime(idx["date"])
-            n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
-            n225["sma20"] = n225["Close"].rolling(20).mean()
-            n225["ret20"] = n225["Close"].pct_change(20) * 100
-            latest = n225.dropna(subset=["sma20"]).iloc[-1]
-            regime["n225_above_sma20"] = bool(latest["Close"] > latest["sma20"])
-            regime["n225_ret20"] = round(float(latest["ret20"]), 2) if pd.notna(latest["ret20"]) else None
+        idx = _read_parquet_by_env("index_prices_max_1d.parquet")
+        idx["date"] = pd.to_datetime(idx["date"])
+        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
+        n225["sma20"] = n225["Close"].rolling(20).mean()
+        n225["ret20"] = n225["Close"].pct_change(20) * 100
+        latest = n225.dropna(subset=["sma20"]).iloc[-1]
+        regime["n225_above_sma20"] = bool(latest["Close"] > latest["sma20"])
+        regime["n225_ret20"] = round(float(latest["ret20"]), 2) if pd.notna(latest["ret20"]) else None
     except Exception:
         pass
 
     try:
-        vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-        if vi_path.exists():
-            vi_df = pd.read_parquet(vi_path)
-            vi_df["date"] = pd.to_datetime(vi_df["date"])
-            regime["vi"] = round(float(vi_df.sort_values("date").iloc[-1]["close"]), 1)
+        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
+        vi_df["date"] = pd.to_datetime(vi_df["date"])
+        regime["vi"] = round(float(vi_df.sort_values("date").iloc[-1]["close"]), 1)
     except Exception:
         pass
 
     try:
-        fut_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
-        idx_path = PARQUET_DIR / "index_prices_max_1d.parquet"
-        if fut_path.exists() and idx_path.exists():
-            fut = pd.read_parquet(fut_path)
-            fut["date"] = pd.to_datetime(fut["date"])
-            nkd = fut[fut["ticker"] == "NKD=F"].sort_values("date")
-            idx = pd.read_parquet(idx_path)
-            idx["date"] = pd.to_datetime(idx["date"])
-            n225 = idx[idx["ticker"] == "^N225"].sort_values("date")
-            if len(nkd) >= 1 and len(n225) >= 2:
-                nkd_close = float(nkd.iloc[-1]["Close"])
-                n225_prev = float(n225.iloc[-2]["Close"])
-                regime["cme_gap"] = round((nkd_close / n225_prev - 1) * 100, 2)
+        fut = _read_parquet_by_env("futures_prices_max_1d.parquet")
+        fut["date"] = pd.to_datetime(fut["date"])
+        nkd = fut[fut["ticker"] == "NKD=F"].sort_values("date")
+        idx = _read_parquet_by_env("index_prices_max_1d.parquet")
+        idx["date"] = pd.to_datetime(idx["date"])
+        n225 = idx[idx["ticker"] == "^N225"].sort_values("date")
+        if len(nkd) >= 1 and len(n225) >= 2:
+            nkd_close = float(nkd.iloc[-1]["Close"])
+            n225_prev = float(n225.iloc[-2]["Close"])
+            regime["cme_gap"] = round((nkd_close / n225_prev - 1) * 100, 2)
     except Exception:
         pass
 
