@@ -254,7 +254,7 @@ def _get_current_regime() -> dict:
     try:
         idx = _read_parquet_by_env("index_prices_max_1d.parquet")
         idx["date"] = pd.to_datetime(idx["date"])
-        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
+        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date").dropna(subset=["Close"])
         n225["sma20"] = n225["Close"].rolling(20).mean()
         n225["ret20"] = n225["Close"].pct_change(20) * 100
         latest = n225.dropna(subset=["sma20"]).iloc[-1]
