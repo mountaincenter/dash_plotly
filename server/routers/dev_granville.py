@@ -759,38 +759,31 @@ async def get_b4_entry():
 
     # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
-    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    _s3_download("nikkei_vi_max_1d.parquet", vi_path)
-    if vi_path.exists():
-        try:
-            vi_df = pd.read_parquet(vi_path)
-            vi_df["date"] = pd.to_datetime(vi_df["date"])
-            vi_df = vi_df.sort_values("date")
-            vi_val = float(vi_df["close"].iloc[-1])
-        except Exception:
-            pass
+    try:
+        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
+        vi_df["date"] = pd.to_datetime(vi_df["date"])
+        vi_df = vi_df.sort_values("date")
+        vi_val = float(vi_df["close"].iloc[-1])
+    except Exception:
+        pass
 
     cme_gap = None
     n225_chg = None
     try:
-        n225_path = PARQUET_DIR / "index_prices_max_1d.parquet"
-        nkd_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
-        if n225_path.exists():
-            idx_df = pd.read_parquet(n225_path)
-            n225_df = idx_df[idx_df["ticker"] == "^N225"].copy()
-            if not n225_df.empty:
-                n225_df = n225_df.sort_values("date").tail(5)
-                if len(n225_df) >= 2:
-                    n225_chg = round((float(n225_df["Close"].iloc[-1]) / float(n225_df["Close"].iloc[-2]) - 1) * 100, 2)
-                if nkd_path.exists():
-                    fut_df = pd.read_parquet(nkd_path)
-                    nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
-                    if not nkd_df.empty:
-                        nkd_df = nkd_df.sort_values("date").tail(5)
-                        nkd_close = float(nkd_df["Close"].iloc[-1])
-                        n225_close = float(n225_df["Close"].iloc[-1])
-                        if n225_close > 0:
-                            cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
+        idx_df = _read_parquet_by_env("index_prices_max_1d.parquet")
+        n225_df = idx_df[idx_df["ticker"] == "^N225"].copy()
+        if not n225_df.empty:
+            n225_df = n225_df.sort_values("date").tail(5)
+            if len(n225_df) >= 2:
+                n225_chg = round((float(n225_df["Close"].iloc[-1]) / float(n225_df["Close"].iloc[-2]) - 1) * 100, 2)
+            fut_df = _read_parquet_by_env("futures_prices_max_1d.parquet")
+            nkd_df = fut_df[fut_df["ticker"] == "NKD=F"].copy()
+            if not nkd_df.empty:
+                nkd_df = nkd_df.sort_values("date").tail(5)
+                nkd_close = float(nkd_df["Close"].iloc[-1])
+                n225_close = float(n225_df["Close"].iloc[-1])
+                if n225_close > 0:
+                    cme_gap = round((nkd_close - n225_close) / n225_close * 100, 2)
     except Exception:
         pass
 
