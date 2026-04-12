@@ -249,7 +249,8 @@ def _read_parquet_by_env(filename: str) -> pd.DataFrame:
 
 def _get_current_regime() -> dict:
     """現在の市場レジーム情報を取得"""
-    regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None}
+    regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None,
+              "n225_close": None, "n225_sma20": None}
 
     try:
         idx = _read_parquet_by_env("index_prices_max_1d.parquet")
@@ -260,6 +261,8 @@ def _get_current_regime() -> dict:
         latest = n225.dropna(subset=["sma20"]).iloc[-1]
         regime["n225_above_sma20"] = bool(latest["Close"] > latest["sma20"])
         regime["n225_ret20"] = round(float(latest["ret20"]), 2) if pd.notna(latest["ret20"]) else None
+        regime["n225_close"] = round(float(latest["Close"]), 0)
+        regime["n225_sma20"] = round(float(latest["sma20"]), 0)
     except Exception:
         pass
 
