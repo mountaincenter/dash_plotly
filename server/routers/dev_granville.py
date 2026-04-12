@@ -250,7 +250,7 @@ def _read_parquet_by_env(filename: str) -> pd.DataFrame:
 def _get_current_regime() -> dict:
     """現在の市場レジーム情報を取得"""
     regime = {"n225_above_sma20": None, "n225_ret20": None, "cme_gap": None, "vi": None,
-              "n225_close": None, "n225_sma20": None}
+              "n225_close": None, "n225_sma20": None, "cme_close": None}
 
     try:
         idx = _read_parquet_by_env("index_prices_max_1d.parquet")
@@ -284,6 +284,7 @@ def _get_current_regime() -> dict:
             nkd_close = float(nkd.iloc[-1]["Close"])
             n225_prev = float(n225.iloc[-2]["Close"])
             regime["cme_gap"] = round((nkd_close / n225_prev - 1) * 100, 2)
+            regime["cme_close"] = round(nkd_close, 0)
     except Exception:
         pass
 
