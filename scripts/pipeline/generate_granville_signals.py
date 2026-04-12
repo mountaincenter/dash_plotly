@@ -111,8 +111,8 @@ def _load_market_regime(latest_date: pd.Timestamp) -> dict:
     return regime
 
 
-def _classify_long_grade(rule: str, regime: dict) -> tuple[str, int] | None:
-    """B1-B3シグナルにロングフィルターを適用。(grade, hold_days)を返す"""
+def _classify_long_grade(rule: str, regime: dict) -> tuple[str, int, float] | None:
+    """B1-B3シグナルにロングフィルターを適用。(grade, hold_days, expected_pf)を返す"""
     vi = regime.get("vi")
     n225_above = regime.get("n225_above_sma20")
     n225_ret20 = regime.get("n225_ret20")
@@ -120,15 +120,15 @@ def _classify_long_grade(rule: str, regime: dict) -> tuple[str, int] | None:
 
     # H1: VI≥30 + B1 → hold 9d (IS 1.88, OOS 2.37)
     if rule == "B1" and vi is not None and vi >= 30:
-        return ("H1", 9)
+        return ("H1", 9, 2.13)  # IS/OOS平均
 
     # H3: N225 ret20<-5% + B1 → hold 4d (IS 2.32, OOS 2.43)
     if rule == "B1" and n225_ret20 is not None and n225_ret20 < -5:
-        return ("H3", 4)
+        return ("H3", 4, 2.38)  # IS/OOS平均
 
     # H2: N225>SMA20 + CME flat + B3 → hold 9d (IS 1.57, OOS 3.76)
     if rule == "B3" and n225_above and cme_gap is not None and -0.5 <= cme_gap <= 0.5:
-        return ("H2", 9)
+        return ("H2", 9, 2.67)  # IS/OOS平均
 
     return None
 
@@ -499,16 +499,18 @@ def main() -> int:
             if sig["rule"] in ("B1", "B2", "B3"):
                 grade = _classify_long_grade(sig["rule"], regime)
                 if grade:
-                    long_recs.append({**sig.to_dict(), "long_grade": grade[0], "hold_days": grade[1]})
+                    long_recs.append({**sig.to_dict(), "long_grade": grade[0], "hold_days": grade[1], "expected_pf": grade[2]})
 
     long_df = pd.DataFrame(long_recs)
+    if not long_df.empty:
+        long_df = long_df.sort_values("expected_pf", ascending=False).reset_index(drop=True)
     long_path = GRANVILLE_DIR / f"long_recommendations_{date_str}.parquet"
     if long_df.empty:
         long_df = pd.DataFrame(columns=[
             "signal_date", "ticker", "stock_name", "sector", "rule",
             "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
             "entry_price_est", "prev_close", "atr10_pct", "ret5d",
-            "long_grade", "hold_days",
+            "long_grade", "hold_days", "expected_pf",
         ])
     long_df.to_parquet(long_path, index=False)
     grade_counts = long_df["long_grade"].value_counts().to_dict() if not long_df.empty else {}

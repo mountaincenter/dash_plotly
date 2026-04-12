@@ -220,6 +220,7 @@ async def get_long_recommendations():
             "sma20": _safe_float(r.get("sma20", 0), 2),
             "dev_from_sma20": _safe_float(r.get("dev_from_sma20", 0), 3),
             "atr10_pct": _safe_float(r.get("atr10_pct", 0), 2),
+            "expected_pf": _safe_float(r.get("expected_pf", 0), 2),
         })
 
     # レジーム情報も返す
@@ -838,6 +839,7 @@ async def get_b4_entry():
             "atr_pct": _safe_float(atr, 2),
             "ret5d": _safe_float(ret5d, 2),
             "max_cost": cost,
+            "expected_pf": 2.79,  # B4全期間PF（急騰フィルター付き）
         })
 
     # 乖離深い順（検証済み）
