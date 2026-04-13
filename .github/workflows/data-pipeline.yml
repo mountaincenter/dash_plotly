@@ -864,12 +864,55 @@ jobs:
           python scripts/check_trading_day.py
         continue-on-error: true
 
-      - name: "[CME] Update CME close"
+      - name: "[CME] Update CME close and futures prices"
         if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
         run: |
-          echo "🌅 Updating CME close..."
+          echo "🌅 Updating CME close and futures prices..."
+          mkdir -p data/parquet
+
+          # S3から既存データをダウンロード
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors || true
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}index_prices_max_1d.parquet" "data/parquet/index_prices_max_1d.parquet" --only-show-errors || true
+
+          # CME終値確定（/tmp/cme_update.json生成）
           python scripts/pipeline/update_cme_close.py
+
+          # 先物価格を最新に更新してS3にアップロード（APIのregime/triggers用）
+          python3 -c "
+          import yfinance as yf, pandas as pd, sys
+          sys.path.insert(0, '.')
+          from common_cfg.paths import PARQUET_DIR
+
+          fp = PARQUET_DIR / 'futures_prices_max_1d.parquet'
+          if not fp.exists():
+              print('[WARN] futures_prices_max_1d.parquet not found, skipping')
+              exit(0)
+
+          df = pd.read_parquet(fp)
+          # NKD=Fの最新行を更新
+          nkd = yf.download('NKD=F', period='5d', interval='1d', progress=False)
+          if isinstance(nkd.columns, pd.MultiIndex):
+              nkd.columns = [c[0] for c in nkd.columns]
+          if not nkd.empty:
+              nkd['ticker'] = 'NKD=F'
+              nkd = nkd.reset_index().rename(columns={'Date': 'date'})
+              nkd['date'] = pd.to_datetime(nkd['date']).dt.tz_localize(None)
+              df['date'] = pd.to_datetime(df['date'])
+              # 既存のNKD=F行を削除して最新に差し替え
+              df = df[~((df['ticker'] == 'NKD=F') & (df['date'].isin(nkd['date'])))]
+              cols = [c for c in df.columns if c in nkd.columns]
+              df = pd.concat([df, nkd[cols]], ignore_index=True)
+              df.to_parquet(fp, index=False)
+              print(f'[OK] Updated futures_prices_max_1d.parquet with CME latest')
+          "
+
+          # 更新された先物価格をS3にアップロード
+          if [ -f "data/parquet/futures_prices_max_1d.parquet" ]; then
+            aws s3 cp "data/parquet/futures_prices_max_1d.parquet" \
+              "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" --only-show-errors
+            echo "✅ Uploaded updated futures_prices_max_1d.parquet to S3"
+          fi
         timeout-minutes: 5
 
       - name: "[CME] Generate B4 Slack section"
