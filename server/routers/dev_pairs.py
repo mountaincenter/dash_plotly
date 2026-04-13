@@ -103,14 +103,14 @@ async def get_pairs_signals():
     df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
 
     if df.empty:
-        return {"pairs": [], "hot": [], "signal_date": None, "total": 0, "hot_count": 0}
+        return {"pairs": [], "entry": [], "signal_date": None, "total": 0, "entry_count": 0}
 
     signal_date = None
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
     pairs = []
-    hot = []
+    entry = []
     for _, r in df.iterrows():
         pair_date = ""
         if "signal_date" in r.index and pd.notna(r.get("signal_date")):
@@ -140,21 +140,21 @@ async def get_pairs_signals():
             "notional1": _safe_int(r.get("notional1", 0)),
             "notional2": _safe_int(r.get("notional2", 0)),
             "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
-            "is_hot": bool(r.get("is_hot", r.get("is_entry", False))),
+            "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "is_buffer": bool(r.get("is_buffer", False)),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
         }
         pairs.append(item)
-        if item["is_hot"]:
-            hot.append(item)
+        if item["is_entry"]:
+            entry.append(item)
 
     return {
         "pairs": pairs,
-        "hot": hot,
+        "entry": entry,
         "signal_date": signal_date,
         "total": len(pairs),
-        "hot_count": len(hot),
+        "entry_count": len(entry),
     }
 
 
@@ -167,19 +167,19 @@ async def get_pairs_status():
         return {
             "signal_date": None,
             "total_pairs": 0,
-            "hot_count": 0,
-            "hot_pairs": [],
+            "entry_count": 0,
+            "entry_pairs": [],
         }
 
     signal_date = None
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
-    hot_col = "is_hot" if "is_hot" in df.columns else "is_entry" if "is_entry" in df.columns else None
-    hot_df = df[df[hot_col] == True] if hot_col else pd.DataFrame()
-    hot_pairs = []
-    for _, r in hot_df.iterrows():
-        hot_pairs.append({
+    entry_col = "is_entry" if "is_entry" in df.columns else "is_hot" if "is_hot" in df.columns else None
+    entry_df = df[df[entry_col] == True] if entry_col else pd.DataFrame()
+    entry_pairs = []
+    for _, r in entry_df.iterrows():
+        entry_pairs.append({
             "pair": f"{r.get('name1', r.get('tk1', ''))} / {r.get('name2', r.get('tk2', ''))}",
             "z": _safe_float(r.get("z_latest", 0), 2),
             "direction": r.get("direction", ""),
@@ -189,8 +189,8 @@ async def get_pairs_status():
     return {
         "signal_date": signal_date,
         "total_pairs": len(df),
-        "hot_count": len(hot_pairs),
-        "hot_pairs": hot_pairs,
+        "entry_count": len(entry_pairs),
+        "entry_pairs": entry_pairs,
     }
 
 
