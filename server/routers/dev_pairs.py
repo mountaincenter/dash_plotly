@@ -28,6 +28,7 @@ S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
 S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+_IS_LOCAL = PARQUET_DIR.exists()
 
 # キャッシュ
 _cache: dict[str, tuple[datetime, object]] = {}
@@ -51,47 +52,32 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
-IS_SERVER = os.getenv("ENVIRONMENT") in ("staging", "production")
-
-
-def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
-    """S3から最新parquetを直接読み込み（サーバー用）"""
-    import boto3
-    s3 = boto3.client("s3", region_name=AWS_REGION)
-    resp = s3.list_objects_v2(
-        Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
-    )
-    if "Contents" not in resp:
-        return pd.DataFrame()
-    keys = sorted([o["Key"] for o in resp["Contents"]])
-    if not keys:
-        return pd.DataFrame()
-    import io
-    obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
-    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
-
-
-def _load_from_local(directory: Path, prefix: str) -> pd.DataFrame:
-    """ローカルファイルから読み込み（開発用）"""
-    path = _latest_file(directory, prefix)
-    if path is None:
-        return pd.DataFrame()
-    return pd.read_parquet(path)
-
-
 def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     cache_key = f"{s3_prefix}/{prefix}"
     cached = _cached(cache_key)
     if cached is not None:
         return cached
 
-    if IS_SERVER:
-        try:
-            df = _load_from_s3(prefix, s3_prefix)
-        except Exception:
+    if _IS_LOCAL:
+        path = _latest_file(directory, prefix)
+        if path is not None:
+            df = pd.read_parquet(path)
+        else:
             df = pd.DataFrame()
     else:
-        df = _load_from_local(directory, prefix)
+        import boto3
+        import io
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        resp = s3.list_objects_v2(
+            Bucket=S3_BUCKET,
+            Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
+        )
+        keys = sorted([o["Key"] for o in resp.get("Contents", [])])
+        if keys:
+            obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
+            df = pd.read_parquet(io.BytesIO(obj["Body"].read()))
+        else:
+            df = pd.DataFrame()
 
     if not df.empty:
         _set_cache(cache_key, df)
@@ -213,7 +199,7 @@ async def refresh_pairs_cache():
     _cache.clear()
     return {
         "status": "success",
-        "message": "Cache cleared, next request will reload from S3" if IS_SERVER else "Cache cleared",
+        "message": "Cache cleared, next request will reload from S3" if not _IS_LOCAL else "Cache cleared",
         "updated_at": datetime.now().isoformat(),
     }
 
