@@ -51,35 +51,50 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
+IS_SERVER = os.getenv("ENVIRONMENT") in ("staging", "production")
+
+
+def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
+    """S3から最新parquetを直接読み込み（サーバー用）"""
+    import boto3
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    resp = s3.list_objects_v2(
+        Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
+    )
+    if "Contents" not in resp:
+        return pd.DataFrame()
+    keys = sorted([o["Key"] for o in resp["Contents"]])
+    if not keys:
+        return pd.DataFrame()
+    import io
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+
+
+def _load_from_local(directory: Path, prefix: str) -> pd.DataFrame:
+    """ローカルファイルから読み込み（開発用）"""
+    path = _latest_file(directory, prefix)
+    if path is None:
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     cache_key = f"{s3_prefix}/{prefix}"
     cached = _cached(cache_key)
     if cached is not None:
         return cached
 
-    path = _latest_file(directory, prefix)
-    if path is None:
+    if IS_SERVER:
         try:
-            import boto3
-            s3 = boto3.client("s3", region_name=AWS_REGION)
-            resp = s3.list_objects_v2(
-                Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
-            )
-            if "Contents" in resp:
-                keys = sorted([o["Key"] for o in resp["Contents"]])
-                if keys:
-                    local = directory / Path(keys[-1]).name
-                    directory.mkdir(parents=True, exist_ok=True)
-                    s3.download_file(S3_BUCKET, keys[-1], str(local))
-                    path = local
+            df = _load_from_s3(prefix, s3_prefix)
         except Exception:
-            pass
+            df = pd.DataFrame()
+    else:
+        df = _load_from_local(directory, prefix)
 
-    if path is None:
-        return pd.DataFrame()
-
-    df = pd.read_parquet(path)
-    _set_cache(cache_key, df)
+    if not df.empty:
+        _set_cache(cache_key, df)
     return df
 
 
@@ -123,25 +138,21 @@ async def get_pairs_signals():
             "c1": _safe_float(r.get("c1", 0)),
             "c2": _safe_float(r.get("c2", 0)),
             "z_latest": _safe_float(r.get("z_latest", 0), 3),
+            "z_abs": _safe_float(r.get("z_abs", abs(r.get("z_latest", 0))), 3),
             "tk1_upper": _safe_float(r.get("tk1_upper", 0)),
             "tk1_lower": _safe_float(r.get("tk1_lower", 0)),
             "mu": _safe_float(r.get("mu", 0), 6),
             "sigma": _safe_float(r.get("sigma", 0), 6),
-            "recent_n": _safe_int(r.get("recent_n", 0)),
-            "recent_wr": _safe_float(r.get("recent_wr", 0)),
-            "recent_pf": _safe_float(r.get("recent_pf", 0), 2),
-            "full_pf": _safe_float(r.get("full_pf", 0), 2),
-            "full_n": _safe_int(r.get("full_n", 0)),
-            "half_life": _safe_float(r.get("half_life", 0), 1),
             "lookback": _safe_int(r.get("lookback", 20)),
-            "z_abs": _safe_float(r.get("z_abs", abs(r.get("z_latest", 0))), 3),
-            "shares1": _safe_int(r.get("shares1", 0)),
-            "shares2": _safe_int(r.get("shares2", 0)),
+            "shares1": _safe_int(r.get("shares1", 100)),
+            "shares2": _safe_int(r.get("shares2", 100)),
             "notional1": _safe_int(r.get("notional1", 0)),
             "notional2": _safe_int(r.get("notional2", 0)),
             "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
+            "full_pf": _safe_float(r.get("full_pf", 0), 2),
+            "full_n": _safe_int(r.get("full_n", 0)),
+            "half_life": _safe_float(r.get("half_life", 0), 1),
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
-            "is_buffer": bool(r.get("is_buffer", False)),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
         }
@@ -175,8 +186,8 @@ async def get_pairs_status():
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
-    entry_col = "is_entry" if "is_entry" in df.columns else "is_hot" if "is_hot" in df.columns else None
-    entry_df = df[df[entry_col] == True] if entry_col else pd.DataFrame()
+    entry_col = "is_entry" if "is_entry" in df.columns else "is_hot"
+    entry_df = df[df[entry_col] == True] if entry_col in df.columns else pd.DataFrame()
     entry_pairs = []
     for _, r in entry_df.iterrows():
         entry_pairs.append({
@@ -184,6 +195,8 @@ async def get_pairs_status():
             "z": _safe_float(r.get("z_latest", 0), 2),
             "direction": r.get("direction", ""),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
+            "shares1": _safe_int(r.get("shares1", 100)),
+            "shares2": _safe_int(r.get("shares2", 100)),
         })
 
     return {
@@ -196,30 +209,11 @@ async def get_pairs_status():
 
 @router.post("/api/dev/pairs/refresh")
 async def refresh_pairs_cache():
-    """キャッシュクリア+S3から最新ファイルをダウンロード"""
+    """キャッシュクリア（サーバーは次回リクエストでS3から再読込）"""
     _cache.clear()
-
-    refreshed = []
-    try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        resp = s3.list_objects_v2(
-            Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/pairs/pairs_signals_",
-        )
-        if "Contents" in resp:
-            keys = sorted([o["Key"] for o in resp["Contents"]])
-            if keys:
-                local = PAIRS_DIR / Path(keys[-1]).name
-                PAIRS_DIR.mkdir(parents=True, exist_ok=True)
-                s3.download_file(S3_BUCKET, keys[-1], str(local))
-                refreshed.append(Path(keys[-1]).name)
-    except Exception as e:
-        print(f"[pairs/refresh] S3 download failed: {e}")
-
     return {
         "status": "success",
-        "message": "Pairs cache refreshed",
-        "refreshed_files": refreshed,
+        "message": "Cache cleared, next request will reload from S3" if IS_SERVER else "Cache cleared",
         "updated_at": datetime.now().isoformat(),
     }
 
