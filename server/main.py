@@ -41,7 +41,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://192.168.0.20:3000",  # ← PCのLAN IPに置き換え
+        "http://localhost:3001",
+        "http://192.168.0.20:3000",
+        "http://192.168.0.20:3001",
         "https://stock-frontend-sigma.vercel.app",
         "https://ymnk.jp",
         "https://www.ymnk.jp",

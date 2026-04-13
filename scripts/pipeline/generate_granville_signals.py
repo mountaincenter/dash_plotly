@@ -187,6 +187,16 @@ def load_prices() -> pd.DataFrame:
     ps["prev_below"] = ps["prev_close"] < ps["prev_sma20"]
     ps["up_day"] = ps["Close"] > ps["prev_close"]
 
+    # HVB (HighVol+Bear) grade: 出来高急増+陰線の先行シグナル
+    # OOS PF: Grade A(HVB先行)=1.46 vs B(なし)=1.10, MaxDD 1/5
+    ps["vol_ma20"] = g["Volume"].transform(lambda x: x.rolling(20, min_periods=20).mean())
+    ps["vol_ratio"] = ps["Volume"] / ps["vol_ma20"]
+    ps["day_ret_oc"] = (ps["Close"] / ps["Open"] - 1) * 100
+    ps["_hvb"] = (ps["vol_ratio"] > 1.5) & (ps["day_ret_oc"] < 0)
+    ps["hvb_recent_5d"] = g["_hvb"].transform(
+        lambda x: x.shift(1).rolling(5, min_periods=1).max()
+    ).fillna(0).astype(bool)
+
     ps = ps.dropna(subset=["sma20"])
     return ps
 
@@ -309,6 +319,7 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         "prev_close": signals["prev_close"].round(1),
         "atr10_pct": signals["atr10_pct"].round(2),
         "ret5d": signals["ret5d"].round(2),
+        "hvb_grade": signals["hvb_recent_5d"].map({True: "A", False: "B"}),
     })
 
     # §5: ルール優先 → B4は乖離深い順（検証済み: Spearman r=-0.064, p<0.001）
@@ -433,6 +444,7 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
             "hold_days": hold_days,
             "max_hold": max_hold,
             "as_of": latest_date,
+            "hvb_grade": "A" if sig.get("hvb_recent_5d", False) else "B",
         }
 
         if not exited:
@@ -483,7 +495,7 @@ def main() -> int:
         out = pd.DataFrame(columns=[
             "signal_date", "ticker", "stock_name", "sector", "rule",
             "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
-            "entry_price_est", "prev_close",
+            "entry_price_est", "prev_close", "atr10_pct", "ret5d", "hvb_grade",
         ])
     out.to_parquet(signal_path, index=False)
     print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")
@@ -510,7 +522,7 @@ def main() -> int:
             "signal_date", "ticker", "stock_name", "sector", "rule",
             "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
             "entry_price_est", "prev_close", "atr10_pct", "ret5d",
-            "long_grade", "hold_days", "expected_pf",
+            "hvb_grade", "long_grade", "hold_days", "expected_pf",
         ])
     long_df.to_parquet(long_path, index=False)
     grade_counts = long_df["long_grade"].value_counts().to_dict() if not long_df.empty else {}
