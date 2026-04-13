@@ -52,6 +52,43 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
+def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
+    """S3から最新parquetを直接読み込み（サーバー用）"""
+    try:
+        import boto3
+        from botocore.exceptions import BotoCoreError, ClientError
+    except ImportError:
+        return pd.DataFrame()
+
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    try:
+        resp = s3.list_objects_v2(
+            Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
+        )
+    except (BotoCoreError, ClientError):
+        return pd.DataFrame()
+
+    if "Contents" not in resp:
+        return pd.DataFrame()
+    keys = sorted([o["Key"] for o in resp["Contents"]])
+    if not keys:
+        return pd.DataFrame()
+    import io
+    try:
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
+        return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+    except (BotoCoreError, ClientError, ValueError, OSError, pd.errors.EmptyDataError):
+        return pd.DataFrame()
+
+
+def _load_from_local(directory: Path, prefix: str) -> pd.DataFrame:
+    """ローカルファイルから読み込み（開発用）"""
+    path = _latest_file(directory, prefix)
+    if path is None:
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
 def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     cache_key = f"{s3_prefix}/{prefix}"
     cached = _cached(cache_key)
@@ -59,25 +96,9 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
         return cached
 
     if _IS_LOCAL:
-        path = _latest_file(directory, prefix)
-        if path is not None:
-            df = pd.read_parquet(path)
-        else:
-            df = pd.DataFrame()
+        df = _load_from_local(directory, prefix)
     else:
-        import boto3
-        import io
-        s3 = boto3.client("s3", region_name=AWS_REGION)
-        resp = s3.list_objects_v2(
-            Bucket=S3_BUCKET,
-            Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
-        )
-        keys = sorted([o["Key"] for o in resp.get("Contents", [])])
-        if keys:
-            obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
-            df = pd.read_parquet(io.BytesIO(obj["Body"].read()))
-        else:
-            df = pd.DataFrame()
+        df = _load_from_s3(prefix, s3_prefix)
 
     if not df.empty:
         _set_cache(cache_key, df)
@@ -209,7 +230,7 @@ async def refresh_pairs_cache():
 # V2_PAIRS: (tk1, tk2, lookback, pf, n, half_life) — パイプラインと同一定義
 try:
     from scripts.pipeline.generate_pairs_signals import V2_PAIRS
-except Exception:
+except ImportError:
     V2_PAIRS = []
 
 _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
@@ -217,26 +238,16 @@ _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
 }
 
 
-PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
-
-
 def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
-    """チャート用に2銘柄の日足Closeを取得（prices_topix優先→prices_max_1d フォールバック）"""
-    cache_key = "prices_topix_all"
-    df = _cached(cache_key)
-    if df is None:
-        if PRICES_TOPIX.exists():
-            df = pd.read_parquet(PRICES_TOPIX)
-        if df is None or df.empty:
-            from server.utils import read_prices_df, normalize_prices
-            df = read_prices_df("max", "1d")
-            if df is not None and not df.empty:
-                df = normalize_prices(df)
-        if df is not None and not df.empty:
-            _set_cache(cache_key, df)
+    """チャート用に2銘柄の日足Closeを取得"""
+    from server.utils import read_prices_df, normalize_prices
+
+    df = read_prices_df("max", "1d")
     if df is None or df.empty:
         return pd.DataFrame()
 
+    df = normalize_prices(df)
+    # ticker列で2銘柄抽出
     tk_col = "ticker" if "ticker" in df.columns else "Ticker"
     df = df[df[tk_col].isin([tk1, tk2])].copy()
     if df.empty:
@@ -247,6 +258,7 @@ def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values([tk_col, date_col])
 
+    # 直近days日に絞る
     all_dates = sorted(df[date_col].unique())
     if len(all_dates) > days:
         cutoff = all_dates[-days]
@@ -269,14 +281,17 @@ async def get_pair_chart(
     if cached is not None:
         return cached
 
+    # ペア情報取得
     pair_info = _V2_LOOKUP.get((tk1, tk2)) or _V2_LOOKUP.get((tk2, tk1))
     if pair_info is None:
         return JSONResponse(status_code=404, content={"detail": f"Pair {tk1}/{tk2} not found in V2_PAIRS"})
 
+    # tk1/tk2の順序をV2_PAIRSに合わせる
     if (tk1, tk2) not in _V2_LOOKUP:
         tk1, tk2 = tk2, tk1
     lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
 
+    # 銘柄名・閾値 — signalsパーケットから取得（_load_latestは_IS_LOCALでS3/ローカルを自動分岐）
     name1, name2 = tk1, tk2
     tk1_upper, tk1_lower = 0.0, 0.0
     sig_df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
@@ -289,6 +304,7 @@ async def get_pair_chart(
             tk1_upper = _safe_float(row.get("tk1_upper", 0))
             tk1_lower = _safe_float(row.get("tk1_lower", 0))
 
+    # 価格データ取得
     df = _load_prices_for_chart(tk1, tk2, days + lookback)
     if df.empty:
         return JSONResponse(status_code=404, content={"detail": "Price data not found"})
@@ -306,16 +322,19 @@ async def get_pair_chart(
     c2 = d2["Close"].values.astype(float)
     dates = [d.strftime("%Y-%m-%d") for d in common]
 
+    # 正規化価格 (返却範囲の先頭 = 100)
+    # lookback分の余裕を取ったので、返却はlookback以降
     start_idx = lookback
     base1 = c1[start_idx]
     base2 = c2[start_idx]
     norm1 = (c1[start_idx:] / base1 * 100).round(2).tolist()
     norm2 = (c2[start_idx:] / base2 * 100).round(2).tolist()
 
+    # ローリングz-score + ローリング半減期
     spread = np.log(c1 / c2)
     z_scores = []
     rolling_hl = []
-    hl_window = max(lookback, 60)
+    hl_window = max(lookback, 60)  # 半減期計算は最低60日のウィンドウ
     for i in range(start_idx, len(spread)):
         window = spread[i - lookback + 1: i + 1]
         mu = window.mean()
@@ -325,6 +344,7 @@ async def get_pair_chart(
         else:
             z_scores.append(round(float((spread[i] - mu) / sigma), 4))
 
+        # ローリング半減期: AR(1)係数からhalf_life = -log(2)/log(beta)
         if i >= hl_window:
             hl_spread = spread[i - hl_window + 1: i + 1]
             y = hl_spread[1:]
@@ -335,7 +355,7 @@ async def get_pair_chart(
                 beta = float(((x - x_mean) * (y - y.mean())).sum() / denom)
                 if 0 < beta < 1:
                     hl_val = round(-np.log(2) / np.log(beta), 1)
-                    rolling_hl.append(min(hl_val, 999.0))
+                    rolling_hl.append(min(hl_val, 999.0))  # 上限キャップ
                 else:
                     rolling_hl.append(None)
             else:
@@ -345,6 +365,7 @@ async def get_pair_chart(
 
     out_dates = dates[start_idx:]
 
+    # 最新z-scoreからdirection判定
     z_latest = z_scores[-1] if z_scores else 0.0
     direction = "short_tk1" if z_latest > 0 else "long_tk1"
 
@@ -358,6 +379,7 @@ async def get_pair_chart(
             "hl": rolling_hl[i],
         })
 
+    # 終値・前日比
     c1_last = round(float(c1[-1]), 1)
     c2_last = round(float(c2[-1]), 1)
     c1_prev = round(float(c1[-2]), 1) if len(c1) >= 2 else c1_last
