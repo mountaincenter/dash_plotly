@@ -309,13 +309,14 @@ def download_all_from_s3(
         if file_filter:
             download_files = [f for f in download_files if f in file_filter]
 
-        # ルート、backtest、market_summary、pairs、reversalに分類
-        subdirs = ('backtest/', 'market_summary/', 'pairs/', 'reversal/')
+        # ルート、backtest、market_summary、pairs、reversal、granvilleに分類
+        subdirs = ('backtest/', 'market_summary/', 'pairs/', 'reversal/', 'granville/')
         root_files = [f for f in download_files if not any(f.startswith(d) for d in subdirs)]
         backtest_files = [f for f in download_files if f.startswith('backtest/')]
         market_summary_files = [f for f in download_files if f.startswith('market_summary/')]
         pairs_files = [f for f in download_files if f.startswith('pairs/')]
         reversal_files = [f for f in download_files if f.startswith('reversal/')]
+        granville_files = [f for f in download_files if f.startswith('granville/')]
 
         # スキップされたファイル数
         skipped_count = len(all_files) - len(download_files)
@@ -329,6 +330,7 @@ def download_all_from_s3(
         print(f"    - Market Summary: {len(market_summary_files)} file(s)")
         print(f"    - Pairs: {len(pairs_files)} file(s)")
         print(f"    - Reversal: {len(reversal_files)} file(s)")
+        print(f"    - Granville: {len(granville_files)} file(s)")
 
         if not download_files:
             print("\n⚠️  No files to download")
@@ -356,6 +358,10 @@ def download_all_from_s3(
             print("  [Reversal]")
             for f in sorted(reversal_files):
                 print(f"    - {f}")
+        if granville_files:
+            print("  [Granville]")
+            for f in sorted(granville_files):
+                print(f"    - {f}")
 
     except Exception as e:
         print(f"  ✗ Failed to list S3 files: {e}")
@@ -379,9 +385,10 @@ def download_all_from_s3(
     (market_summary_dir / "raw").mkdir(parents=True, exist_ok=True)
     (market_summary_dir / "structured").mkdir(parents=True, exist_ok=True)
 
-    # pairs/reversalディレクトリも作成
+    # pairs/reversal/granvilleディレクトリも作成
     (PARQUET_DIR / "pairs").mkdir(parents=True, exist_ok=True)
     (PARQUET_DIR / "reversal").mkdir(parents=True, exist_ok=True)
+    (PARQUET_DIR / "granville").mkdir(parents=True, exist_ok=True)
 
     success_count = 0
     fail_count = 0

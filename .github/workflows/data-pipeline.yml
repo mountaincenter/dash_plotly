@@ -799,11 +799,11 @@ jobs:
 
           if [ $? -eq 0 ]; then
             echo "✅ Granville B1-B4 signal generation completed"
-            # signals + positions を S3にアップロード
-            for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet; do
+            # signals + positions + long_recommendations を S3にアップロード
+            for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/long_recommendations_*.parquet; do
               [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
             done
-            echo "✅ Uploaded granville signals/positions to S3"
+            echo "✅ Uploaded granville signals/positions/long_recommendations to S3"
           else
             echo "⚠️ Granville signal generation failed (non-critical)"
           fi
@@ -823,6 +823,31 @@ jobs:
           else
             echo "⚠️ Granville B1-B4 backtest failed (non-critical)"
           fi
+
+      - name: Generate Pairs Trading signals (16:45 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "============================================================"
+          echo "Generating Pairs Trading signals (161 pairs, v2)"
+          echo "============================================================"
+
+          mkdir -p data/parquet/pairs
+
+          # prices_topix.parquet は Granville step で生成済み
+          # prices_max_1d.parquet は Run Data Pipeline step で生成済み
+
+          python3 scripts/pipeline/generate_pairs_signals.py
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Pairs trading signals generated"
+            for f in data/parquet/pairs/pairs_signals_*.parquet; do
+              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}pairs/$(basename $f)" --only-show-errors
+            done
+            echo "✅ Uploaded pairs signals to S3"
+          else
+            echo "⚠️ Pairs trading signals failed (non-critical)"
+          fi
+        timeout-minutes: 10
 
       - name: Format Granville Slack notification
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
