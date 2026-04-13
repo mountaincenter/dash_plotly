@@ -351,6 +351,9 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "ml/grok_lgbm_meta.json")  # MLメタ情報（ML Retrainingで生成・使用）
         keep_keys.add(prefix + "ml/archive_with_features.parquet")  # ML特徴量データ（ML Retrainingで生成）
         keep_keys.add(prefix + "ml/wfcv_predictions.parquet")  # WFCV予測（ML Retrainingで生成、analysis-mlで使用）
+        keep_keys.add(prefix + "backtest/granville_ifd_archive.parquet")  # グランビルIFDアーカイブも保持
+        keep_keys.add(prefix + "backtest/granville_ifd_comparison.parquet")  # グランビルIFD戦略比較も保持
+        keep_keys.add(prefix + "granville_ifd_positions.parquet")  # グランビルIFDポジションも保持
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
         # backtest/deep_analysis_YYYY-MM-DD.json ファイルも保護
@@ -377,6 +380,12 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
                 keep_keys.add(key)
             # granville/ 配下の全parquetを保持（signals, positions, recommendations, prices_topix）
             if key.startswith(f"{prefix}granville/"):
+                keep_keys.add(key)
+            # reversal/ 配下の全parquetを保持（bearish_signals, bearish_positions）
+            if key.startswith(f"{prefix}reversal/"):
+                keep_keys.add(key)
+            # pairs/ 配下の全parquetを保持（pairs_signals）
+            if key.startswith(f"{prefix}pairs/"):
                 keep_keys.add(key)
 
         # 削除対象のファイルを抽出

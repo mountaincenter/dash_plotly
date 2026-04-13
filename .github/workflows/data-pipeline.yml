@@ -497,6 +497,27 @@ jobs:
           fi
         timeout-minutes: 10
 
+      - name: Generate bearish reversal signals (23:00 only, reference info)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
+        run: |
+          echo "============================================================"
+          echo "Generating bearish reversal signals (reference info only)"
+          echo "============================================================"
+
+          mkdir -p data/parquet/reversal
+
+          # 価格データ・VIデータはすでにダウンロード済み
+          if python3 scripts/pipeline/generate_bearish_signals.py; then
+            echo "✅ Bearish reversal signals generated"
+            for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
+              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}reversal/$(basename $f)" --only-show-errors
+            done
+            echo "✅ Uploaded reversal signals to S3"
+          else
+            echo "⚠️ Bearish reversal signals failed (non-critical, reference info only)"
+          fi
+        timeout-minutes: 5
+
       - name: Run backtest and archive
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |

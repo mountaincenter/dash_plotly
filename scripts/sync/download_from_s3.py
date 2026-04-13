@@ -207,6 +207,28 @@ def cleanup_local_parquet_files(exclude_manifest: bool = True) -> int:
         structured_count = len(list((market_summary_dir / "structured").glob("*.json"))) if (market_summary_dir / "structured").exists() else 0
         print(f"  ℹ Protected: market_summary/ ({raw_count} markdown, {structured_count} json files preserved)")
 
+    # pairs/ディレクトリの.parquetファイル削除（--clean時に再ダウンロードされる）
+    pairs_dir = PARQUET_DIR / "pairs"
+    if pairs_dir.exists() and pairs_dir.is_dir():
+        for file_path in pairs_dir.glob("*.parquet"):
+            try:
+                file_path.unlink()
+                print(f"  ✓ Deleted: pairs/{file_path.name}")
+                deleted_count += 1
+            except Exception as e:
+                print(f"  ✗ Failed to delete pairs/{file_path.name}: {e}")
+
+    # reversal/ディレクトリの.parquetファイル削除（--clean時に再ダウンロードされる）
+    reversal_dir = PARQUET_DIR / "reversal"
+    if reversal_dir.exists() and reversal_dir.is_dir():
+        for file_path in reversal_dir.glob("*.parquet"):
+            try:
+                file_path.unlink()
+                print(f"  ✓ Deleted: reversal/{file_path.name}")
+                deleted_count += 1
+            except Exception as e:
+                print(f"  ✗ Failed to delete reversal/{file_path.name}: {e}")
+
     # manifest.jsonの扱い
     manifest_path = PARQUET_DIR / "manifest.json"
     if manifest_path.exists() and not exclude_manifest:
@@ -287,10 +309,13 @@ def download_all_from_s3(
         if file_filter:
             download_files = [f for f in download_files if f in file_filter]
 
-        # ルート、backtest、market_summaryに分類
-        root_files = [f for f in download_files if not f.startswith('backtest/') and not f.startswith('market_summary/')]
+        # ルート、backtest、market_summary、pairs、reversalに分類
+        subdirs = ('backtest/', 'market_summary/', 'pairs/', 'reversal/')
+        root_files = [f for f in download_files if not any(f.startswith(d) for d in subdirs)]
         backtest_files = [f for f in download_files if f.startswith('backtest/')]
         market_summary_files = [f for f in download_files if f.startswith('market_summary/')]
+        pairs_files = [f for f in download_files if f.startswith('pairs/')]
+        reversal_files = [f for f in download_files if f.startswith('reversal/')]
 
         # スキップされたファイル数
         skipped_count = len(all_files) - len(download_files)
@@ -302,6 +327,8 @@ def download_all_from_s3(
         print(f"    - Root: {len(root_files)} file(s)")
         print(f"    - Backtest: {len(backtest_files)} file(s)")
         print(f"    - Market Summary: {len(market_summary_files)} file(s)")
+        print(f"    - Pairs: {len(pairs_files)} file(s)")
+        print(f"    - Reversal: {len(reversal_files)} file(s)")
 
         if not download_files:
             print("\n⚠️  No files to download")
@@ -320,6 +347,14 @@ def download_all_from_s3(
         if market_summary_files:
             print("  [Market Summary]")
             for f in sorted(market_summary_files):
+                print(f"    - {f}")
+        if pairs_files:
+            print("  [Pairs]")
+            for f in sorted(pairs_files):
+                print(f"    - {f}")
+        if reversal_files:
+            print("  [Reversal]")
+            for f in sorted(reversal_files):
                 print(f"    - {f}")
 
     except Exception as e:
@@ -343,6 +378,10 @@ def download_all_from_s3(
     market_summary_dir.mkdir(parents=True, exist_ok=True)
     (market_summary_dir / "raw").mkdir(parents=True, exist_ok=True)
     (market_summary_dir / "structured").mkdir(parents=True, exist_ok=True)
+
+    # pairs/reversalディレクトリも作成
+    (PARQUET_DIR / "pairs").mkdir(parents=True, exist_ok=True)
+    (PARQUET_DIR / "reversal").mkdir(parents=True, exist_ok=True)
 
     success_count = 0
     fail_count = 0

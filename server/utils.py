@@ -193,6 +193,7 @@ def _resolve_tag(tag: Optional[str]) -> Optional[str]:
         "large70": "TOPIX_LARGE70",
         "topix_large70": "TOPIX_LARGE70",
         "topixlarge70": "TOPIX_LARGE70",
+        "portfolio": "PORTFOLIO",
     }
     key = tag_norm.lower()
     return lut.get(key, tag_norm)
@@ -421,6 +422,84 @@ def load_all_stocks(tag: Optional[str] = None) -> List[Dict]:
 
             grok_df = grok_df.where(pd.notna(grok_df), None)
             return grok_df[cols].to_dict(orient="records")
+
+    # PORTFOLIO: hold_stocks + granville recommendations のティッカーを
+    # all_stocks.parquet からルックアップして返す
+    if resolved_tag == "PORTFOLIO":
+        tickers: set[str] = set()
+        # hold_stocks（ticker形式が .T なしの場合あり）
+        hs = _read_parquet_local(PARQUET_DIR / "hold_stocks.parquet")
+        if (hs is None or hs.empty) and _S3_BUCKET:
+            hs = _read_parquet_s3(_S3_BUCKET, _s3_key("hold_stocks.parquet"))
+        hs_name_map: dict[str, str] = {}
+        if hs is not None and not hs.empty and "ticker" in hs.columns:
+            for _, row in hs.iterrows():
+                tk = str(row["ticker"]).strip()
+                # .T 付加で正規化
+                if tk and not tk.endswith(".T"):
+                    tk = tk + ".T"
+                if tk:
+                    tickers.add(tk)
+                    if "stock_name" in row.index and pd.notna(row.get("stock_name")):
+                        hs_name_map[tk] = str(row["stock_name"])
+        # granville recommendations（最新ファイル）
+        granville_dir = PARQUET_DIR / "granville"
+        rec_files = sorted(granville_dir.glob("recommendations_*.parquet")) if granville_dir.exists() else []
+        rec_df = None
+        if rec_files:
+            rec_df = _read_parquet_local(rec_files[-1])
+        if (rec_df is None or rec_df.empty) and _S3_BUCKET:
+            try:
+                import boto3
+                s3 = boto3.client("s3", region_name=_AWS_REGION or "ap-northeast-1")
+                resp = s3.list_objects_v2(Bucket=_S3_BUCKET, Prefix=f"{_S3_PREFIX}/granville/recommendations_")
+                if "Contents" in resp:
+                    keys = sorted([o["Key"] for o in resp["Contents"]])
+                    if keys:
+                        rec_df = _read_parquet_s3(_S3_BUCKET, keys[-1])
+            except Exception:
+                pass
+        rec_name_map: dict[str, str] = {}
+        if rec_df is not None and not rec_df.empty and "ticker" in rec_df.columns:
+            for _, row in rec_df.iterrows():
+                tk = str(row["ticker"]).strip()
+                if tk:
+                    tickers.add(tk)
+                    if "stock_name" in row.index and pd.notna(row.get("stock_name")):
+                        rec_name_map[tk] = str(row["stock_name"])
+
+        if not tickers:
+            return []
+        # all_stocks からメタデータルックアップ
+        all_df = _read_parquet_local(ALL_STOCKS_PATH)
+        if (all_df is None or all_df.empty) and _S3_BUCKET and _S3_ALL_STOCKS_KEY:
+            all_df = _read_parquet_s3(_S3_BUCKET, _S3_ALL_STOCKS_KEY)
+        cols = ["ticker", "code", "stock_name", "market", "sectors", "series", "topixnewindexseries", "categories", "tags"]
+        results = []
+        found_tickers: set[str] = set()
+        if all_df is not None and not all_df.empty:
+            tk_col = "ticker" if "ticker" in all_df.columns else "code"
+            portfolio_df = all_df[all_df[tk_col].isin(tickers)].copy()
+            for col in cols:
+                if col not in portfolio_df.columns:
+                    portfolio_df[col] = pd.NA
+            for col in ["categories", "tags"]:
+                if col in portfolio_df.columns:
+                    portfolio_df[col] = portfolio_df[col].apply(lambda x: list(x) if x is not None and hasattr(x, '__iter__') and not isinstance(x, str) else x)
+            portfolio_df = portfolio_df.where(pd.notna(portfolio_df), None)
+            results = portfolio_df[cols].to_dict(orient="records")
+            found_tickers = {r["ticker"] for r in results if r.get("ticker")}
+        # all_stocks に存在しない銘柄は最低限のメタデータで追加
+        name_map = {**rec_name_map, **hs_name_map}
+        for tk in tickers - found_tickers:
+            code = tk.replace(".T", "")
+            results.append({
+                "ticker": tk, "code": code,
+                "stock_name": name_map.get(tk, ""),
+                "market": None, "sectors": None, "series": None,
+                "topixnewindexseries": None, "categories": ["PORTFOLIO"], "tags": None,
+            })
+        return results
 
     df = _read_parquet_local(ALL_STOCKS_PATH)
     if (df is None or df.empty) and _S3_BUCKET and _S3_ALL_STOCKS_KEY:
