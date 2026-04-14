@@ -200,7 +200,7 @@ async def get_long_recommendations():
     """B1-B3ロング推奨（H1/H2/H3フィルター通過分）"""
     df = _load_latest("long_recommendations")
     if df.empty:
-        return {"long_recommendations": [], "count": 0, "date": None, "regime": {}}
+        return {"long_recommendations": [], "count": 0, "date": None, "regime": _get_current_regime()}
 
     date_str = None
     if "signal_date" in df.columns:
