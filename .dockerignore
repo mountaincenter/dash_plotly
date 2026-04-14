@@ -17,3 +17,11 @@ terraform/
 .terraform/
 *.tfstate*
 .claude/
+strategy_verification/
+improvement/
+docs/
+grok_trending_performance/
+output/
+data/analysis/
+data/csv/
+data/prompts/

@@ -25,6 +25,8 @@ from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_file
 
+_SPLIT_RATIOS: dict[str, float] = {}
+
 load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
@@ -91,6 +93,58 @@ def fetch_batch(tickers: list[str], period: str = "5d") -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
+def _calculate_split_ratios(existing: pd.DataFrame, new_df: pd.DataFrame) -> dict[str, float]:
+    """最新データと既存データを比較し、終値比率を返す"""
+    if existing.empty or new_df.empty:
+        return {}
+
+    existing_last = (
+        existing.sort_values("date")
+        .dropna(subset=["Close"])
+        .groupby("ticker")["Close"]
+        .last()
+    )
+    new_first = (
+        new_df.sort_values("date")
+        .dropna(subset=["Close"])
+        .groupby("ticker")["Close"]
+        .first()
+    )
+
+    ratios: dict[str, float] = {}
+    common = existing_last.index.intersection(new_first.index)
+    for ticker in common:
+        old_close = existing_last[ticker]
+        new_close = new_first[ticker]
+        if pd.isna(old_close) or pd.isna(new_close) or old_close == 0:
+            continue
+        ratios[ticker] = float(new_close) / float(old_close)
+    return ratios
+
+
+def detect_splits(existing: pd.DataFrame, new_df: pd.DataFrame) -> list[str]:
+    """終値ギャップから株式分割の可能性がある銘柄を検出"""
+    global _SPLIT_RATIOS
+    _SPLIT_RATIOS = _calculate_split_ratios(existing, new_df)
+    return [t for t, ratio in _SPLIT_RATIOS.items() if ratio < 0.6 or ratio > 1.8]
+
+
+def refetch_full_history(tickers: list[str]) -> pd.DataFrame:
+    """株式分割が疑われる銘柄を最大期間で再取得"""
+    if not tickers:
+        return pd.DataFrame()
+
+    all_rows: list[pd.DataFrame] = []
+    for i in range(0, len(tickers), BATCH_SIZE):
+        batch = tickers[i:i + BATCH_SIZE]
+        df = fetch_batch(batch, period="max")
+        if not df.empty:
+            all_rows.append(df)
+        time.sleep(SLEEP_BETWEEN)
+
+    return pd.concat(all_rows, ignore_index=True) if all_rows else pd.DataFrame()
+
+
 def main() -> int:
     print("=" * 60)
     print("Update Granville Prices (TOPIX daily differential)")
@@ -144,6 +198,22 @@ def main() -> int:
     )]
     if len(new_df) < before:
         print(f"  Cleaned: {before - len(new_df)} zero-volume rows removed")
+
+    split_tickers = detect_splits(existing, new_df)
+    ratios = _SPLIT_RATIOS
+    if split_tickers:
+        for ticker in split_tickers:
+            ratio = ratios.get(ticker, float("nan"))
+            print(f"[SPLIT] Detected split for {ticker}: ratio={ratio:.3f}, re-fetching full history...")
+        refreshed = refetch_full_history(split_tickers)
+        if refreshed.empty:
+            print("  [WARN] Split refetch returned no data; keeping existing rows")
+        else:
+            refreshed["date"] = pd.to_datetime(refreshed["date"]).dt.tz_localize(None)
+            split_set = set(split_tickers)
+            existing = existing[~existing["ticker"].isin(split_set)].reset_index(drop=True)
+            new_df = new_df[~new_df["ticker"].isin(split_set)].reset_index(drop=True)
+            existing = pd.concat([existing, refreshed], ignore_index=True)
 
     print(f"\n[3/3] Merging and saving...")
     combined = pd.concat([existing, new_df], ignore_index=True)

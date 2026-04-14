@@ -37,9 +37,6 @@ load_dotenv_cascade()
 
 PAIRS_DIR = PARQUET_DIR / "pairs"
 PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
-PRICES_1D_CL = PARQUET_DIR / "screening" / "prices_max_1d_core_large.parquet"
-PRICES_1D_MID = PARQUET_DIR / "screening" / "prices_max_1d_mid400.parquet"
-PRICES_FALLBACK = PARQUET_DIR / "prices_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 
 Z_ENTRY = 2.0
@@ -222,30 +219,15 @@ def load_names() -> dict[str, str]:
 
 
 def load_prices(max_lookback: int) -> pd.DataFrame:
-    """価格データ読み込み（prices_topix優先、なければscreening→prices_max_1d）"""
+    """価格データ読み込み（prices_topixのみ）"""
     days = max_lookback + 10  # lookback + 余裕
-    frames = []
 
-    if PRICES_TOPIX.exists():
-        frames.append(pd.read_parquet(PRICES_TOPIX))
-        print(f"  [prices] Using prices_topix ({PRICES_TOPIX.name})")
-
-    if not frames:
-        if PRICES_1D_CL.exists():
-            frames.append(pd.read_parquet(PRICES_1D_CL))
-        if PRICES_1D_MID.exists():
-            frames.append(pd.read_parquet(PRICES_1D_MID))
-        if frames:
-            print("  [prices] Fallback: screening parquets")
-
-    if not frames and PRICES_FALLBACK.exists():
-        frames.append(pd.read_parquet(PRICES_FALLBACK))
-        print("  [prices] Fallback: prices_max_1d")
-
-    if not frames:
+    if not PRICES_TOPIX.exists():
+        print(f"  [ERROR] Missing prices file: {PRICES_TOPIX}")
         return pd.DataFrame()
 
-    ps = pd.concat(frames, ignore_index=True).drop_duplicates(subset=["ticker", "date"])
+    print(f"  [prices] Using prices_topix ({PRICES_TOPIX.name})")
+    ps = pd.read_parquet(PRICES_TOPIX).drop_duplicates(subset=["ticker", "date"])
     ps["date"] = pd.to_datetime(ps["date"])
     ps = ps.sort_values(["ticker", "date"])
     latest_dates = sorted(ps["date"].unique())[-days:]
