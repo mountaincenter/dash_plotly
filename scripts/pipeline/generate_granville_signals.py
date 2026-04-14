@@ -76,7 +76,7 @@ def _load_market_regime(latest_date: pd.Timestamp) -> dict:
     try:
         idx = pd.read_parquet(INDEX_PATH)
         idx["date"] = pd.to_datetime(idx["date"])
-        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].sort_values("date")
+        n225 = idx[idx["ticker"] == "^N225"][["date", "Close"]].dropna(subset=["date", "Close"]).sort_values("date")
         n225["sma20"] = n225["Close"].rolling(20).mean()
         n225["ret20"] = n225["Close"].pct_change(20) * 100
         row = n225[n225["date"] <= latest_date].iloc[-1]
