@@ -210,9 +210,13 @@ def main() -> int:
             print("  [WARN] Split refetch returned no data; keeping existing rows")
         else:
             refreshed["date"] = pd.to_datetime(refreshed["date"]).dt.tz_localize(None)
-            split_set = set(split_tickers)
-            existing = existing[~existing["ticker"].isin(split_set)].reset_index(drop=True)
-            new_df = new_df[~new_df["ticker"].isin(split_set)].reset_index(drop=True)
+            # 実際に取得できた銘柄だけ差し替え（取得失敗銘柄の既存データは保持）
+            fetched_tickers = set(refreshed["ticker"].unique())
+            missing = set(split_tickers) - fetched_tickers
+            if missing:
+                print(f"  [WARN] Refetch failed for {len(missing)} tickers, keeping existing: {sorted(missing)[:5]}")
+            existing = existing[~existing["ticker"].isin(fetched_tickers)].reset_index(drop=True)
+            new_df = new_df[~new_df["ticker"].isin(fetched_tickers)].reset_index(drop=True)
             existing = pd.concat([existing, refreshed], ignore_index=True)
 
     print(f"\n[3/3] Merging and saving...")
