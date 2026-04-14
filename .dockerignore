@@ -6,7 +6,7 @@ __pycache__/
 *.pyd
 *.log
 .ipynb_checkpoints/
-.env
+.env*
 data/parquet/
 data/reports/
 data/test_output/
