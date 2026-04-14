@@ -151,7 +151,7 @@ async def get_pairs_signals():
             "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
             "full_n": _safe_int(r.get("full_n", 0)),
-            "half_life": _safe_float(r.get("half_life", 0), 1),
+            "revert_1d": _safe_float(r.get("revert_1d", r.get("half_life", 0)), 1),
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
@@ -220,14 +220,14 @@ async def refresh_pairs_cache():
 
 # --- ペアチャート用 ---
 
-# V2_PAIRS: (tk1, tk2, lookback, pf, n, half_life) — パイプラインと同一定義
+# V2_PAIRS: (tk1, tk2, lookback, pf, n, revert_1d) — パイプラインと同一定義
 try:
     from scripts.pipeline.generate_pairs_signals import V2_PAIRS
 except ImportError:
     V2_PAIRS = []
 
 _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
-    (tk1, tk2): (lb, pf, n, hl) for tk1, tk2, lb, pf, n, hl in V2_PAIRS
+    (tk1, tk2): (lb, pf, n, r1d) for tk1, tk2, lb, pf, n, r1d in V2_PAIRS
 }
 
 
@@ -282,7 +282,7 @@ async def get_pair_chart(
     # tk1/tk2の順序をV2_PAIRSに合わせる
     if (tk1, tk2) not in _V2_LOOKUP:
         tk1, tk2 = tk2, tk1
-    lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
+    lookback, full_pf, full_n, revert_1d = _V2_LOOKUP[(tk1, tk2)]
 
     # 銘柄名・閾値 — signalsパーケットから取得（_load_latestはIS_SERVERでS3/ローカルを自動分岐）
     name1, name2 = tk1, tk2
@@ -389,7 +389,7 @@ async def get_pair_chart(
         "chg1": chg1, "chg2": chg2,
         "chg1_pct": chg1_pct, "chg2_pct": chg2_pct,
         "lookback": lookback, "full_pf": full_pf, "full_n": full_n,
-        "half_life": half_life,
+        "revert_1d": revert_1d,
         "z_latest": round(z_latest, 3),
         "direction": direction,
         "tk1_upper": tk1_upper,

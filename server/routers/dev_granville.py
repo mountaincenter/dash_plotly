@@ -214,6 +214,7 @@ async def get_long_recommendations():
             "sector": r.get("sector", ""),
             "rule": r.get("rule", ""),
             "long_grade": r.get("long_grade", ""),
+            "hvb_grade": r.get("hvb_grade", ""),
             "hold_days": _safe_int(r.get("hold_days", 0)),
             "close": _safe_float(r.get("close", 0)),
             "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
@@ -315,6 +316,7 @@ async def get_signals():
             "sma20_slope": _safe_float(r.get("sma20_slope", 0), 4),
             "entry_price_est": _safe_float(r.get("entry_price_est", 0)),
             "prev_close": _safe_float(r.get("prev_close", 0)),
+            "hvb_grade": r.get("hvb_grade", ""),
         }
         signals.append(sig)
 
@@ -542,6 +544,7 @@ async def get_positions():
                     "remaining_days": max(0, _safe_int(best.get("max_hold", 0)) - _safe_int(best.get("hold_days", 0))),
                     "exit_type": best.get("exit_type", "") if best.get("status") == "exit" else "",
                     "status": best.get("status", ""),
+                    "hvb_grade": best.get("hvb_grade", ""),
                 })
 
     return {"positions": positions, "exits": exits, "as_of": as_of}
