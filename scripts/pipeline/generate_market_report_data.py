@@ -308,8 +308,22 @@ def build_market_summary(date: str) -> dict[str, Any]:
                 pct = ((close - prev) / prev * 100) if prev else None
                 result[key] = {"close": _f(close), "prev_close": _f(prev), "change_pct": _f(pct)}
 
-    # USDJPY — yfinance直接取得（parquetは16:45時点でNaNになるため）
-    result["usdjpy"] = _yfinance_latest("JPY=X", date)
+    # USDJPY — yfinance直接取得、失敗時はparquetフォールバック
+    usdjpy = _yfinance_latest("JPY=X", date)
+    if "error" in usdjpy:
+        ccy = _read_parquet("currency_prices_max_1d.parquet")
+        if ccy is not None:
+            ccy_jpy = ccy[ccy["ticker"] == "JPY=X"].copy()
+            if not ccy_jpy.empty:
+                ccy_jpy["date"] = ccy_jpy["date"].apply(_to_date)
+                ccy_jpy = ccy_jpy.sort_values("date")
+                recent = ccy_jpy[ccy_jpy["date"] <= date].tail(2)
+                if len(recent) >= 1:
+                    close = float(recent.iloc[-1]["Close"])
+                    prev = float(recent.iloc[-2]["Close"]) if len(recent) >= 2 else None
+                    pct = ((close - prev) / prev * 100) if prev else None
+                    usdjpy = {"close": _f(close), "change_pct": _f(pct), "source": "parquet_fallback"}
+    result["usdjpy"] = usdjpy
 
     # Nikkei VI (no ticker column)
     if vi is not None:

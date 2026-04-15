@@ -10,6 +10,7 @@ boto3==1.40.40
 python-dotenv==1.1.1
 yfinance==0.2.66
 requests==2.32.4
+lxml==5.3.2
 openai==1.40.0
 xai-sdk==1.6.1
 s3fs==2024.12.0
