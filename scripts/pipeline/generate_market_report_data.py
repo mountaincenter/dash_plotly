@@ -547,33 +547,30 @@ def _fetch_boj_fm01() -> dict[str, Any]:
 
 
 def _fetch_boj_fm08() -> dict[str, Any]:
-    """日本銀行 FM08（外国為替公表相場）"""
+    """日本銀行 FM08（外国為替 日次データ）from stat-search.boj.or.jp"""
     try:
-        url = "https://www.boj.or.jp/about/services/tame/tame_rate/kijun/index.htm"
+        url = "https://www.stat-search.boj.or.jp/ssi/mtshtml/fm08_d_1.html"
         resp = requests.get(url, timeout=15)
         resp.raise_for_status()
         content = resp.content.decode("utf-8", errors="replace")
         tables = pd.read_html(io.StringIO(content))
         if not tables:
             return {"error": "no_table"}
-        # USD/JPY の公表仲値を探す
-        for tbl in tables:
-            tbl_str = tbl.to_string()
-            if "米ドル" in tbl_str or "USD" in tbl_str:
-                for _, row in tbl.iterrows():
-                    row_str = " ".join(str(v) for v in row.values)
-                    if "米ドル" in row_str or "USD" in row_str:
-                        nums = []
-                        for v in row.values:
-                            try:
-                                val = float(str(v).replace(",", ""))
-                                if 50 < val < 300:  # USD/JPY の妥当な範囲
-                                    nums.append(val)
-                            except (ValueError, TypeError):
-                                continue
-                        if nums:
-                            return {"center": _f(nums[0]), "source": "boj_fm08"}
-        return {"error": "parse_failed"}
+        tbl = tables[0]
+        # col0=日付, col1=仲値(インターバンク直物 中心), col2=もう一つの系列
+        # 末尾から非NaNの行を探す
+        for i in range(len(tbl) - 1, -1, -1):
+            date_str = str(tbl.iloc[i, 0]).strip()
+            val_str = str(tbl.iloc[i, 1]).strip()
+            if date_str == "nan" or val_str in ("nan", "NaN", ""):
+                continue
+            try:
+                val = float(val_str.replace(",", ""))
+                if 50 < val < 300:
+                    return {"center": _f(val), "date": date_str, "source": "boj_fm08"}
+            except (ValueError, TypeError):
+                continue
+        return {"error": "no_valid_data"}
     except Exception as e:
         return {"error": "fetch_failed", "detail": str(e)}
 
@@ -592,48 +589,75 @@ def _short_category(row: pd.Series | dict) -> str:
     return "NG"
 
 
+# --- Bucket 閾値 (dev_day_trade_list.py と同一) ---
+PROB_SHORT_THRESHOLD = 0.45
+PROB_LONG_THRESHOLD = 0.70
+WED_LONG_THRESHOLD = 0.35
+
+
+def _get_bucket(prob: float | None, weekday: str | None = None) -> str:
+    """prob_up / ml_prob から Bucket (SHORT/DISC/LONG) を返す"""
+    if prob is None or pd.isna(prob):
+        return ""
+    is_wednesday = weekday in ("水曜", "Wednesday", "Wed") if weekday else False
+    if is_wednesday:
+        return "LONG" if prob >= WED_LONG_THRESHOLD else "DISC"
+    if prob < PROB_SHORT_THRESHOLD:
+        return "SHORT"
+    if prob > PROB_LONG_THRESHOLD:
+        return "LONG"
+    return "DISC"
+
+
 def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]:
-    """archive データから grok セクションを構築（grade カラムがない場合あり）"""
+    """archive データから grok セクションを構築"""
+    # 曜日判定（水曜ロング用）
+    weekday = None
+    if "weekday" in arc_for.columns and not arc_for.empty:
+        weekday = arc_for.iloc[0].get("weekday")
+
     details = []
     for _, row in arc_for.iterrows():
-        p2_long = _f(row.get("profit_per_100_shares_phase2"))
-        short_result = -p2_long if p2_long is not None else None
+        # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
+        short_result = _f(row.get("profit_per_100_shares_phase2"))
         label = ("WIN" if short_result > 0 else "LOSE" if short_result < 0 else "DRAW") if short_result is not None else None
+        prob = row.get("ml_prob")
+        prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
+        bucket = _get_bucket(prob_val, weekday)
         details.append({
             "ticker": row.get("ticker", ""),
             "stock_name": row.get("stock_name", ""),
-            "grade": row.get("grade", ""),
+            "bucket": bucket,
+            "prob": _f(prob_val),
             "buy_price": _f(row.get("buy_price")),
             "shortable": bool(row.get("shortable", False)),
             "short_category": _short_category(row),
-            "p2_long": p2_long,
             "short_result": _f(short_result),
             "short_result_label": label,
         })
 
-    # grade 分布（archive に grade がある場合のみ）
-    grades = [d["grade"] for d in details if d["grade"]]
-    grade_dist = {}
-    for g in ["G1", "G2", "G3", "G4"]:
-        grade_dist[g] = grades.count(g)
+    # Bucket 分布
+    buckets = [d["bucket"] for d in details if d["bucket"]]
+    bucket_dist = {b: buckets.count(b) for b in ["SHORT", "DISC", "LONG"]}
 
-    g1g2 = [d for d in details if d["grade"] in ("G1", "G2")]
-    g1g2_short_total = sum(d["short_result"] or 0 for d in g1g2)
-    g1g2_tradeable = [d for d in g1g2 if d.get("short_category") in ("制度", "いちにち")]
-    g1g2_tradeable_total = sum(d["short_result"] or 0 for d in g1g2_tradeable)
+    # SHORT bucket サマリー
+    short_bucket = [d for d in details if d["bucket"] == "SHORT"]
+    short_total = sum(d["short_result"] or 0 for d in short_bucket)
+    short_tradeable = [d for d in short_bucket if d.get("short_category") in ("制度", "いちにち")]
+    short_tradeable_total = sum(d["short_result"] or 0 for d in short_tradeable)
 
     return {
         "selection_date": date,
-        "grade_distribution": grade_dist,
+        "bucket_distribution": bucket_dist,
         "total": len(details),
         "details": details,
         "summary": {
-            "g1g2_short_total": _f(g1g2_short_total),
-            "g1g2_tradeable_total": _f(g1g2_tradeable_total),
-            "g1g2_count": len(g1g2),
-            "g1g2_win": sum(1 for d in g1g2 if d["short_result_label"] == "WIN"),
-            "g1g2_lose": sum(1 for d in g1g2 if d["short_result_label"] == "LOSE"),
-            "g1g2_draw": sum(1 for d in g1g2 if d["short_result_label"] == "DRAW"),
+            "short_bucket_total": _f(short_total),
+            "short_tradeable_total": _f(short_tradeable_total),
+            "short_count": len(short_bucket),
+            "short_win": sum(1 for d in short_bucket if d["short_result_label"] == "WIN"),
+            "short_lose": sum(1 for d in short_bucket if d["short_result_label"] == "LOSE"),
+            "short_draw": sum(1 for d in short_bucket if d["short_result_label"] == "DRAW"),
         },
         "source": "archive",
     }
@@ -655,16 +679,21 @@ def build_grok(date: str) -> dict[str, Any] | None:
         if arc is not None and "selection_date" in arc.columns:
             arc_for = arc[arc["selection_date"] == date]
             if not arc_for.empty:
-                # archive からの簡易構築（grade がない場合あり）
+                # archive からの構築（ml_prob → bucket）
                 return _build_grok_from_archive(arc_for, date)
         print(f"  [INFO] No grok data for {date}")
         return None
 
-    # Grade 分布
-    grade_dist = grok["grade"].value_counts().to_dict()
-    for g in ["G1", "G2", "G3", "G4"]:
-        if g not in grade_dist:
-            grade_dist[g] = 0
+    # 曜日判定（水曜ロング用）
+    weekday = grok["weekday"].iloc[0] if "weekday" in grok.columns else None
+
+    # Bucket 分布（prob_up → bucket）
+    bucket_list = []
+    for _, row in grok.iterrows():
+        prob = row.get("prob_up")
+        prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
+        bucket_list.append(_get_bucket(prob_val, weekday))
+    bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "DISC", "LONG"]}
 
     # Archive から P2 結合
     arc = _read_parquet("backtest/grok_trending_archive.parquet")
@@ -675,12 +704,11 @@ def build_grok(date: str) -> dict[str, Any] | None:
             p2_map[r["ticker"]] = r.get("profit_per_100_shares_phase2", None)
 
     # 銘柄詳細
+    # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
     details = []
-    for _, row in grok.iterrows():
+    for i, (_, row) in enumerate(grok.iterrows()):
         ticker = row["ticker"]
-        p2_long = p2_map.get(ticker)
-        # ショート結果: LONG利益の符号反転
-        short_result = -p2_long if p2_long is not None else None
+        short_result = p2_map.get(ticker)
         if short_result is not None:
             if short_result > 0:
                 label = "WIN"
@@ -691,40 +719,278 @@ def build_grok(date: str) -> dict[str, Any] | None:
         else:
             label = None
 
+        prob = row.get("prob_up")
+        prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
+
         details.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
-            "grade": row.get("grade", ""),
+            "bucket": bucket_list[i],
+            "prob": _f(prob_val),
             "buy_price": _f(row.get("Close", row.get("close"))),
             "shortable": bool(row.get("shortable", False)),
             "short_category": _short_category(row),
-            "p2_long": _f(p2_long),
             "short_result": _f(short_result),
             "short_result_label": label,
         })
 
-    # G1+G2 サマリー
-    g1g2 = [d for d in details if d["grade"] in ("G1", "G2")]
-    g1g2_short_total = sum(d["short_result"] or 0 for d in g1g2)
-    g1g2_tradeable = [d for d in g1g2 if d["short_category"] in ("制度", "いちにち")]
-    g1g2_tradeable_total = sum(d["short_result"] or 0 for d in g1g2_tradeable)
-    g1g2_win = sum(1 for d in g1g2 if d["short_result_label"] == "WIN")
-    g1g2_lose = sum(1 for d in g1g2 if d["short_result_label"] == "LOSE")
-    g1g2_draw = sum(1 for d in g1g2 if d["short_result_label"] == "DRAW")
+    # SHORT bucket サマリー
+    short_bucket = [d for d in details if d["bucket"] == "SHORT"]
+    short_total = sum(d["short_result"] or 0 for d in short_bucket)
+    short_tradeable = [d for d in short_bucket if d["short_category"] in ("制度", "いちにち")]
+    short_tradeable_total = sum(d["short_result"] or 0 for d in short_tradeable)
 
     return {
         "selection_date": grok_date_str,
-        "grade_distribution": grade_dist,
+        "bucket_distribution": bucket_dist,
         "total": len(grok),
         "details": details,
         "summary": {
-            "g1g2_short_total": _f(g1g2_short_total),
-            "g1g2_tradeable_total": _f(g1g2_tradeable_total),
-            "g1g2_count": len(g1g2),
-            "g1g2_win": g1g2_win,
-            "g1g2_lose": g1g2_lose,
-            "g1g2_draw": g1g2_draw,
+            "short_bucket_total": _f(short_total),
+            "short_tradeable_total": _f(short_tradeable_total),
+            "short_count": len(short_bucket),
+            "short_win": sum(1 for d in short_bucket if d["short_result_label"] == "WIN"),
+            "short_lose": sum(1 for d in short_bucket if d["short_result_label"] == "LOSE"),
+            "short_draw": sum(1 for d in short_bucket if d["short_result_label"] == "DRAW"),
         },
+    }
+
+
+def _jquants_cmd(*args: str) -> list[dict]:
+    """jquants-cli を呼び出してJSONを返す"""
+    import subprocess
+    cmd = ["jquants", "-o", "json"] + list(args)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    return json.loads(result.stdout)
+
+
+def _jquants_master_map() -> dict[str, dict]:
+    """銘柄マスタ: Code → {CoName, MktNm, S33Nm, ...}"""
+    data = _jquants_cmd("eq", "master")
+    return {d["Code"]: d for d in data}
+
+
+def build_jquants_volume_leaders(date: str) -> dict[str, Any] | None:
+    """売買代金上位・値上がり率/値下がり率（jquants eq daily）"""
+    daily = _jquants_cmd("eq", "daily", "--date", date)
+    if not daily:
+        return None
+
+    master = _jquants_master_map()
+
+    # 売買代金上位20（Va > 0）
+    with_va = [d for d in daily if d.get("Va") and float(d["Va"]) > 0]
+    with_va.sort(key=lambda x: float(x["Va"]), reverse=True)
+
+    volume_leaders = []
+    for d in with_va[:20]:
+        code = d["Code"]
+        m = master.get(code, {})
+        va = float(d["Va"])
+        c = float(d["C"]) if d.get("C") else None
+        o = float(d["O"]) if d.get("O") else None
+        day_chg = ((c - o) / o * 100) if (c and o and o > 0) else None
+        volume_leaders.append({
+            "code": code,
+            "name": m.get("CoName", ""),
+            "market": m.get("MktNm", ""),
+            "sector": m.get("S33Nm", ""),
+            "close": _f(c),
+            "day_change_pct": _f(day_chg),
+            "trading_value_billion": _f(va / 1e9, 1),
+        })
+
+    # 値上がり率/値下がり率（売買代金1億以上）
+    items = []
+    for d in daily:
+        c = d.get("C")
+        o = d.get("O")
+        va = d.get("Va")
+        if c is None or o is None or va is None:
+            continue
+        c, o, va = float(c), float(o), float(va)
+        if o <= 0 or va < 1e8:
+            continue
+        pct = (c - o) / o * 100
+        items.append((d["Code"], pct, c, va))
+
+    gainers = sorted(items, key=lambda x: x[1], reverse=True)[:10]
+    losers = sorted(items, key=lambda x: x[1])[:10]
+
+    def _build_mover(code, pct, close, va):
+        m = master.get(code, {})
+        return {
+            "code": code,
+            "name": m.get("CoName", ""),
+            "market": m.get("MktNm", ""),
+            "close": _f(close),
+            "change_pct": _f(pct),
+            "trading_value_billion": _f(va / 1e9, 1),
+        }
+
+    return {
+        "date": date,
+        "volume_leaders": volume_leaders,
+        "top_gainers": [_build_mover(*g) for g in gainers],
+        "top_losers": [_build_mover(*l) for l in losers],
+        "source": "jquants_eq_daily",
+    }
+
+
+def build_jquants_investor_types(date: str) -> dict[str, Any] | None:
+    """投資部門別売買動向（週次、直近公表分）"""
+    data = _jquants_cmd("eq", "investor-types", "--section", "TSEPrime",
+                        "--from", (pd.Timestamp(date) - pd.Timedelta(days=14)).strftime("%Y-%m-%d"),
+                        "--to", date)
+    if not data:
+        return None
+
+    # 最新の公表データ
+    latest = data[-1]
+    frgn_bal = float(latest.get("FrgnBal", 0))
+    ind_bal = float(latest.get("IndBal", 0))
+    trst_bnk_bal = float(latest.get("TrstBnkBal", 0))
+
+    return {
+        "pub_date": latest.get("PubDate", ""),
+        "period": f"{latest.get('StDate', '')}~{latest.get('EnDate', '')}",
+        "foreign_net": _f(frgn_bal / 1e6, 0),  # 百万円単位
+        "individual_net": _f(ind_bal / 1e6, 0),
+        "trust_bank_net": _f(trst_bnk_bal / 1e6, 0),
+        "foreign_buy": _f(float(latest.get("FrgnBuy", 0)) / 1e6, 0),
+        "foreign_sell": _f(float(latest.get("FrgnSell", 0)) / 1e6, 0),
+        "source": "jquants_investor_types",
+    }
+
+
+def build_jquants_short_ratio(date: str) -> dict[str, Any] | None:
+    """業種別空売り比率"""
+    data = _jquants_cmd("mkt", "short-ratio", "--date", date)
+    if not data:
+        return None
+
+    sectors = []
+    for d in data:
+        sell_ex = float(d.get("SellExShortVa", 0))
+        short_w = float(d.get("ShrtWithResVa", 0))
+        short_n = float(d.get("ShrtNoResVa", 0))
+        total = sell_ex + short_w + short_n
+        ratio = (short_w + short_n) / total * 100 if total > 0 else None
+        sectors.append({
+            "s33_code": d.get("S33", ""),
+            "short_ratio": _f(ratio),
+            "total_value": _f(total / 1e6, 0),
+        })
+
+    sectors.sort(key=lambda x: x["short_ratio"] if x["short_ratio"] else 0, reverse=True)
+
+    return {
+        "date": date,
+        "sectors": sectors,
+        "source": "jquants_short_ratio",
+    }
+
+
+def build_jquants_margin(date: str) -> dict[str, Any] | None:
+    """信用残（日々公表銘柄）"""
+    data = _jquants_cmd("mkt", "margin-alert", "--date", date)
+    if not data:
+        return None
+
+    total_long = 0
+    total_short = 0
+    count = 0
+    for d in data:
+        long_out = float(d.get("LongOut", 0))
+        short_out = float(d.get("ShrtOut", 0))
+        total_long += long_out
+        total_short += short_out
+        count += 1
+
+    sl_ratio = total_long / total_short if total_short > 0 else None
+
+    return {
+        "date": date,
+        "alert_count": count,
+        "total_long_outstanding": _f(total_long, 0),
+        "total_short_outstanding": _f(total_short, 0),
+        "aggregate_sl_ratio": _f(sl_ratio, 2),
+        "source": "jquants_margin_alert",
+    }
+
+
+def build_jquants_breadth(date: str) -> dict[str, Any] | None:
+    """市場別騰落数（全体/プライム/スタンダード/グロース）"""
+    # 当日データ
+    curr_data = _jquants_cmd("eq", "daily", "--date", date)
+    if not curr_data:
+        return None
+
+    # 前営業日を特定（当日-1〜-5日で探す）
+    prev_date = None
+    td = pd.Timestamp(date)
+    for i in range(1, 6):
+        candidate = (td - pd.Timedelta(days=i)).strftime("%Y-%m-%d")
+        prev_data = _jquants_cmd("eq", "daily", "--date", candidate)
+        if prev_data:
+            prev_date = candidate
+            break
+
+    if not prev_date:
+        return None
+
+    # 前日終値マップ
+    prev_close = {}
+    for d in prev_data:
+        if d.get("C") is not None:
+            prev_close[d["Code"]] = float(d["C"])
+
+    # マスタで市場分類
+    master = _jquants_master_map()
+
+    # 市場別カウント
+    counts = {
+        "total": {"adv": 0, "dec": 0},
+        "prime": {"adv": 0, "dec": 0},
+        "standard": {"adv": 0, "dec": 0},
+        "growth": {"adv": 0, "dec": 0},
+    }
+    mkt_map = {"プライム": "prime", "スタンダード": "standard", "グロース": "growth"}
+
+    for d in curr_data:
+        code = d["Code"]
+        if d.get("C") is None or code not in prev_close:
+            continue
+        curr_c = float(d["C"])
+        prev_c = prev_close[code]
+
+        if curr_c > prev_c:
+            direction = "adv"
+        elif curr_c < prev_c:
+            direction = "dec"
+        else:
+            continue
+
+        counts["total"][direction] += 1
+        mkt_nm = master.get(code, {}).get("MktNm", "")
+        mkt_key = mkt_map.get(mkt_nm)
+        if mkt_key:
+            counts[mkt_key][direction] += 1
+
+    return {
+        "date": date,
+        "prev_date": prev_date,
+        "total_adv": counts["total"]["adv"],
+        "total_dec": counts["total"]["dec"],
+        "prime_adv": counts["prime"]["adv"],
+        "prime_dec": counts["prime"]["dec"],
+        "standard_adv": counts["standard"]["adv"],
+        "standard_dec": counts["standard"]["dec"],
+        "growth_adv": counts["growth"]["adv"],
+        "growth_dec": counts["growth"]["dec"],
+        "source": "jquants_eq_daily",
     }
 
 
@@ -790,6 +1056,11 @@ def main(target_date: str | None = None) -> int:
     result["rates"] = _safe(lambda: build_rates(date), "rates")
     result["grok"] = _safe(lambda: build_grok(date), "grok")
     result["calendar_anomaly"] = _safe(lambda: build_anomaly(date), "calendar_anomaly")
+    result["jquants_volume_leaders"] = _safe(lambda: build_jquants_volume_leaders(date), "jquants_volume_leaders")
+    result["jquants_investor_types"] = _safe(lambda: build_jquants_investor_types(date), "jquants_investor_types")
+    result["jquants_short_ratio"] = _safe(lambda: build_jquants_short_ratio(date), "jquants_short_ratio")
+    result["jquants_margin"] = _safe(lambda: build_jquants_margin(date), "jquants_margin")
+    result["jquants_breadth"] = _safe(lambda: build_jquants_breadth(date), "jquants_breadth")
     # 外部CSV取得失敗分を web_search_required に追加
     web_search: list[str] = []
     ms = result.get("market_summary") or {}
@@ -813,7 +1084,9 @@ def main(target_date: str | None = None) -> int:
 
     # セクション別ステータス
     for key in ["market_summary", "n225_topix_divergence", "sectors", "foreign_markets",
-                 "commodities", "rates", "grok", "calendar_anomaly"]:
+                 "commodities", "rates", "grok", "calendar_anomaly",
+                 "jquants_volume_leaders", "jquants_investor_types",
+                 "jquants_short_ratio", "jquants_margin", "jquants_breadth"]:
         val = result.get(key)
         if val is None:
             status = "NULL"
