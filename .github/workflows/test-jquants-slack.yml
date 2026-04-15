@@ -1,0 +1,76 @@
+name: Test J-Quants Slack Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "対象日付 (YYYY-MM-DD, 空欄で最新営業日)"
+        type: string
+        default: ""
+      dry_run:
+        description: "Slack送信せずに出力のみ確認"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  jquants-slack:
+    name: J-Quants → Slack
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Install jquants-cli
+        run: |
+          # Prebuilt binary from GitHub Releases (x86_64 Linux musl)
+          JQUANTS_VERSION="1.0.0"
+          JQUANTS_URL="https://github.com/J-Quants/jquants-cli/releases/download/v${JQUANTS_VERSION}/jquants-${JQUANTS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+
+          echo "📦 Downloading jquants-cli v${JQUANTS_VERSION}..."
+          curl -sL "$JQUANTS_URL" -o /tmp/jquants.tar.gz
+          tar -xzf /tmp/jquants.tar.gz -C /tmp/
+          chmod +x /tmp/jquants
+          sudo mv /tmp/jquants /usr/local/bin/jquants
+
+          echo "✅ jquants-cli installed:"
+          jquants --version
+
+      - name: Setup J-Quants authentication
+        run: |
+          mkdir -p ~/.config/jquants
+          EPOCH=$(date +%s)
+          printf '{"api_key":"%s","saved_at":%s}\n' "${{ secrets.JQUANTS_API_KEY }}" "$EPOCH" > ~/.config/jquants/credentials.json
+          echo "✅ J-Quants CLI credentials configured"
+
+      - name: Run jquants Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            ARGS="--date ${{ github.event.inputs.date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "🚀 Running: python3 scripts/format_jquants_slack.py $ARGS"
+          python3 scripts/format_jquants_slack.py $ARGS
