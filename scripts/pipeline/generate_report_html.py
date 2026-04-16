@@ -43,7 +43,7 @@ def _f(v: Any, decimals: int = 2) -> str:
     return f"{val:,.{decimals}f}"
 
 
-def _sign(v: Any) -> str:
+def _sign(v: Any, decimals: int = 2) -> str:
     """符号付き文字列"""
     if v is None:
         return "--"
@@ -53,7 +53,7 @@ def _sign(v: Any) -> str:
         return "--"
     if not math.isfinite(val):
         return "--"
-    return f"+{val:,.2f}" if val >= 0 else f"{val:,.2f}"
+    return f"+{val:,.{decimals}f}" if val >= 0 else f"{val:,.{decimals}f}"
 
 
 def _sign_pct(v: Any) -> str:
@@ -760,7 +760,7 @@ def _build_grok(data: dict) -> str:
     lines = ['<!-- ===== 8. Grok選定結果 ===== -->']
     lines.append('<div class="section">')
     short_wr = f'{short_win / short_count * 100:.0f}%' if short_count > 0 else "--"
-    lines.append(f'  <h2>本日のGrok選定 {total}銘柄 バケット評価 <span class="badge badge-emerald">SHORT勝率{short_wr} {_sign(short_total)}円</span> <span class="evidence-label evidence-fact">事実</span></h2>')
+    lines.append(f'  <h2>本日のGrok選定 {total}銘柄 バケット評価 <span class="badge badge-emerald">SHORT勝率{short_wr} {_sign(short_total, 0)}円</span> <span class="evidence-label evidence-fact">事実</span></h2>')
 
     # バケット分布カード
     # 各バケット集計
@@ -804,14 +804,14 @@ def _build_grok(data: dict) -> str:
             record += f'{b["draw"]}分'
         wr = f'（勝率{b["win"] / b["total"] * 100:.0f}%）' if b["total"] > 0 else ""
         lines.append(f'    <div class="stat-card"><div class="label">{blabel}</div>')
-        lines.append(f'      <div class="value {pl_cls}">{_sign(b["pl"])}円</div>')
+        lines.append(f'      <div class="value {pl_cls}">{_sign(b["pl"], 0)}円</div>')
         lines.append(f'      <div class="sub">{record}{wr}</div></div>')
     lines.append('  </div>')
 
     # 全銘柄テーブル (prob昇順)
     sorted_details = sorted(details, key=lambda x: x.get("prob", 0))
     lines.append('  <h3>全銘柄 prob昇順 <span class="evidence-label evidence-fact">事実</span></h3>')
-    lines.append('  <table><thead><tr><th>銘柄</th><th>Bucket</th><th class="r">prob</th><th>空売り区分</th><th class="r">買値</th><th class="r">損益</th><th>結果</th></tr></thead><tbody>')
+    lines.append('  <table><thead><tr><th>銘柄</th><th>Bucket</th><th class="r">prob</th><th>空売り区分</th><th class="r">始値</th><th class="r">終値</th><th class="r">損益</th><th>結果</th></tr></thead><tbody>')
 
     current_bucket = None
     for d in sorted_details:
@@ -828,10 +828,10 @@ def _build_grok(data: dict) -> str:
             else:
                 color = "var(--blue)"
                 bg_rgb = "96,165,250"
-            bucket_header = f'{_e(bucket)} {b.get("total", 0)}銘柄 {b.get("win", 0)}勝{b.get("lose", 0)}敗 = {_sign(b.get("pl", 0))}円'
+            bucket_header = f'{_e(bucket)} {b.get("total", 0)}銘柄 {b.get("win", 0)}勝{b.get("lose", 0)}敗 = {_sign(b.get("pl", 0), 0)}円'
             if bucket == "LONG":
                 bucket_header += "（ロング損益）"
-            lines.append(f'    <tr style="background:rgba({bg_rgb},0.03);"><td colspan="7" style="font-size:0.75rem;color:{color};font-weight:600;padding:4px 12px;border:none;">{bucket_header}</td></tr>')
+            lines.append(f'    <tr style="background:rgba({bg_rgb},0.03);"><td colspan="8" style="font-size:0.75rem;color:{color};font-weight:600;padding:4px 12px;border:none;">{bucket_header}</td></tr>')
 
         ticker = d.get("ticker", "").replace(".T", "")
         name = d.get("stock_name", "")
@@ -840,6 +840,14 @@ def _build_grok(data: dict) -> str:
         sr = d.get("short_result", 0) or 0
         label = d.get("short_result_label", "")
         cat = d.get("short_category", "")
+
+        # 終値 = 始値 - short_result / 100  (short_result = (buy - close) * 100)
+        close = d.get("daily_close")
+        if close is None and buy is not None and d.get("short_result") is not None:
+            try:
+                close = float(buy) - float(d.get("short_result")) / 100.0
+            except (ValueError, TypeError):
+                close = None
 
         if bucket == "LONG":
             pl = -sr
@@ -850,7 +858,7 @@ def _build_grok(data: dict) -> str:
 
         pl_cls = _css_class(pl)
         res_cls = "num-pos" if result_label == "WIN" else "num-neg" if result_label == "LOSE" else "num-neutral"
-        lines.append(f'    <tr><td>{_e(name)} ({_e(ticker)})</td><td>{_e(bucket)}</td><td class="r">{_f(prob, 3)}</td><td>{_e(cat)}</td><td class="r">{_f(buy, 0)}</td><td class="r {pl_cls}">{_sign(pl)}</td><td class="{res_cls}">{_e(result_label)}</td></tr>')
+        lines.append(f'    <tr><td>{_e(name)} ({_e(ticker)})</td><td>{_e(bucket)}</td><td class="r">{_f(prob, 3)}</td><td>{_e(cat)}</td><td class="r">{_f(buy, 0)}</td><td class="r">{_f(close, 0)}</td><td class="r {pl_cls}">{_sign(pl, 0)}</td><td class="{res_cls}">{_e(result_label)}</td></tr>')
 
     lines.append('  </tbody></table>')
 
