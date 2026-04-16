@@ -1286,6 +1286,39 @@ jobs:
             echo "⚠️ Market report data generation failed (non-critical)"
           fi
 
+      - name: Generate market report HTML (auto-data sections only)
+        if: success()
+        run: |
+          echo "============================================================"
+          echo "📄 Generating market report HTML (data sections)"
+          echo "推論セクションはプレースホルダで生成。後からClaude Codeで洗い替え。"
+          echo "============================================================"
+
+          # 最新のreport_data JSONから日付を抽出
+          REPORT_JSON=$(ls -t data/parquet/market_summary/structured/report_data_*.json 2>/dev/null | head -1)
+          if [ -z "$REPORT_JSON" ]; then
+            echo "⚠️ No report_data JSON found, skipping HTML generation"
+            exit 0
+          fi
+
+          REPORT_DATE=$(basename "$REPORT_JSON" | sed -E 's/report_data_(.+)\.json/\1/')
+          echo "  📅 Target date: $REPORT_DATE"
+
+          if python3 scripts/pipeline/generate_report_html.py "$REPORT_DATE"; then
+            HTML_FILE="data/reports/market_analysis_${REPORT_DATE//-/}.html"
+            if [ -f "$HTML_FILE" ]; then
+              # S3の reports/ プレフィックスにアップロード（FastAPIが配信する場所）
+              aws s3 cp "$HTML_FILE" "s3://${{ env.S3_BUCKET }}/reports/$(basename "$HTML_FILE")" --only-show-errors \
+                --content-type "text/html; charset=utf-8"
+              echo "  📤 Uploaded $(basename "$HTML_FILE") to s3://${{ env.S3_BUCKET }}/reports/"
+              echo "  🔗 View at: https://ymnk.jp/api/dev/reports/$(basename "$HTML_FILE")/view"
+            else
+              echo "  ⚠️ HTML file not found: $HTML_FILE"
+            fi
+          else
+            echo "⚠️ Report HTML generation failed (non-critical)"
+          fi
+
       - name: Check xAI billing
         if: success()
         env:

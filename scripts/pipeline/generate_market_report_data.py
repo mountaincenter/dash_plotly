@@ -227,6 +227,36 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
         return {"error": str(e)}
 
 
+def _fetch_nikkei_vi() -> dict[str, Any] | None:
+    """investing.comから日経VI(JNIVE)をJSON埋め込みデータで取得"""
+    try:
+        import re, json as _json
+        url = "https://www.investing.com/indices/nikkei-volatility"
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return None
+        # ページ内JSON: instrumentId=28878, open/lastClose/last/high/low/change/changePcr
+        m = re.search(r'\{[^{}]*"instrumentId"\s*:\s*"?28878"?[^{}]*\}', resp.text)
+        if not m:
+            return None
+        data = _json.loads(m.group())
+        return {
+            "close": _f(data.get("last")),
+            "open": _f(data.get("open")),
+            "high": _f(data.get("high")),
+            "low": _f(data.get("low")),
+            "prev_close": _f(data.get("lastClose")),
+            "change": _f(data.get("change")),
+            "change_pct": _f(data.get("changePcr")),
+            "source": "investing.com",
+        }
+    except Exception as e:
+        print(f"  [WARN] nikkei VI fetch failed: {e}")
+        return None
+
+
 def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
     """日経電子版から騰落銘柄数・売買代金を取得（日付検証付き）"""
     try:
@@ -325,11 +355,16 @@ def build_market_summary(date: str) -> dict[str, Any]:
                     usdjpy = {"close": _f(close), "change_pct": _f(pct), "source": "parquet_fallback"}
     result["usdjpy"] = usdjpy
 
-    # Nikkei VI (no ticker column)
-    if vi is not None:
+    # Nikkei VI — investing.com優先、失敗時はparquetフォールバック
+    vi_data = _fetch_nikkei_vi()
+    if vi_data is not None:
+        result["vi"] = vi_data
+    elif vi is not None:
         vi_copy = vi.copy()
         vi_copy["ticker"] = "VI"
         result["vi"] = _build_ohlc_entry(vi_copy, "VI", date, include_hl=True)
+        if "vi" in result:
+            result["vi"]["source"] = "parquet_fallback"
 
     # 騰落銘柄数・売買代金（日経電子版）
     breadth = _fetch_market_breadth(date)
