@@ -1288,6 +1288,7 @@ jobs:
 
       - name: Generate market report HTML (auto-data sections only)
         if: success()
+        continue-on-error: true
         run: |
           echo "============================================================"
           echo "📄 Generating market report HTML (data sections)"
@@ -1308,10 +1309,14 @@ jobs:
             HTML_FILE="data/reports/market_analysis_${REPORT_DATE//-/}.html"
             if [ -f "$HTML_FILE" ]; then
               # S3の reports/ プレフィックスにアップロード（FastAPIが配信する場所）
-              aws s3 cp "$HTML_FILE" "s3://${{ env.S3_BUCKET }}/reports/$(basename "$HTML_FILE")" --only-show-errors \
-                --content-type "text/html; charset=utf-8"
-              echo "  📤 Uploaded $(basename "$HTML_FILE") to s3://${{ env.S3_BUCKET }}/reports/"
-              echo "  🔗 View at: https://ymnk.jp/api/dev/reports/$(basename "$HTML_FILE")/view"
+              # IAM未付与時の落下防止: アップロード失敗もnon-criticalとして握りつぶす
+              if aws s3 cp "$HTML_FILE" "s3://${{ env.S3_BUCKET }}/reports/$(basename "$HTML_FILE")" --only-show-errors \
+                --content-type "text/html; charset=utf-8"; then
+                echo "  📤 Uploaded $(basename "$HTML_FILE") to s3://${{ env.S3_BUCKET }}/reports/"
+                echo "  🔗 View at: https://ymnk.jp/api/dev/reports/$(basename "$HTML_FILE")/view"
+              else
+                echo "  ⚠️ S3 upload failed (IAM policy or network) - HTML generated but not published"
+              fi
             else
               echo "  ⚠️ HTML file not found: $HTML_FILE"
             fi
