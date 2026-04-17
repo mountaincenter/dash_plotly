@@ -1,0 +1,154 @@
+name: Test Report Data Fetch
+
+# GHA runner環境で report 用データ取得が pipeline と同等に動くか検証する
+# - S3本番に書き込まない（artifact として吐くだけ）
+# - 使い捨て前提。検証完了後に削除する
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "対象日付 (YYYY-MM-DD, 空欄で最新営業日)"
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-report-data:
+    name: Test report data fetch
+    runs-on: ubuntu-latest
+    environment: AWS_OIDC
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      S3_BUCKET: ${{ vars.DATA_BUCKET || vars.S3_BUCKET }}
+      S3_PREFIX: ${{ vars.PARQUET_PREFIX || 'parquet/' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas numpy pyarrow yfinance beautifulsoup4 lxml
+
+      - name: Install jquants-cli
+        run: |
+          JQUANTS_VERSION="1.0.0"
+          JQUANTS_URL="https://github.com/J-Quants/jquants-cli/releases/download/v${JQUANTS_VERSION}/jquants-${JQUANTS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl -sL "$JQUANTS_URL" -o /tmp/jquants.tar.gz
+          tar -xzf /tmp/jquants.tar.gz -C /tmp/
+          chmod +x /tmp/jquants
+          sudo mv /tmp/jquants /usr/local/bin/jquants
+          jquants --version
+
+      - name: Setup J-Quants authentication
+        run: |
+          mkdir -p ~/.config/jquants
+          EPOCH=$(date +%s)
+          printf '{"api_key":"%s","saved_at":%s}\n' "${{ secrets.JQUANTS_API_KEY }}" "$EPOCH" > ~/.config/jquants/credentials.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download required parquet files from S3
+        run: |
+          mkdir -p data/parquet data/parquet/market_summary/structured data/parquet/backtest
+          for f in index_prices_max_1d topix_prices_max_1d currency_prices_max_1d \
+                   nikkei_vi_max_1d sectors_prices_max_1d futures_prices_max_1d \
+                   grok_trending market_anomaly; do
+            FILE="data/parquet/${f}.parquet"
+            echo "📥 ${f}.parquet"
+            aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}${f}.parquet" "$FILE" --only-show-errors || echo "  ⚠️ ${f}.parquet not found (skip)"
+          done
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}backtest/grok_trending_archive.parquet" \
+            data/parquet/backtest/grok_trending_archive.parquet --only-show-errors || echo "  ⚠️ archive not found (skip)"
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}backtest/grok_analysis_merged.parquet" \
+            data/parquet/backtest/grok_analysis_merged.parquet --only-show-errors || echo "  ⚠️ grok_analysis_merged not found (skip)"
+
+      - name: Generate market report data (JSON)
+        run: |
+          echo "============================================================"
+          echo "📊 generate_market_report_data.py"
+          echo "============================================================"
+          if [ -n "${{ inputs.date }}" ]; then
+            python3 scripts/pipeline/generate_market_report_data.py --date "${{ inputs.date }}"
+          else
+            python3 scripts/pipeline/generate_market_report_data.py
+          fi
+
+          echo ""
+          echo "--- Generated JSON ---"
+          ls -la data/parquet/market_summary/structured/ || true
+
+      - name: Inspect VI fetch result
+        run: |
+          echo "============================================================"
+          echo "🔍 VI fetch result (investing.com)"
+          echo "============================================================"
+          LATEST_JSON=$(ls -t data/parquet/market_summary/structured/report_data_*.json 2>/dev/null | head -1)
+          if [ -z "$LATEST_JSON" ]; then
+            echo "❌ No JSON generated"
+            exit 1
+          fi
+          echo "JSON: $LATEST_JSON"
+          python3 -c "
+          import json, sys
+          with open('$LATEST_JSON') as f:
+              d = json.load(f)
+          vi = d.get('market_summary', {}).get('vi', {})
+          print('VI:', json.dumps(vi, ensure_ascii=False, indent=2))
+          if vi.get('source') == 'investing.com':
+              print('✅ investing.com fetch success')
+          else:
+              print('❌ investing.com fetch failed - using fallback:', vi.get('source'))
+              sys.exit(1)
+          "
+
+      - name: Generate report HTML
+        run: |
+          echo "============================================================"
+          echo "📄 generate_report_html.py"
+          echo "============================================================"
+          LATEST_JSON=$(ls -t data/parquet/market_summary/structured/report_data_*.json 2>/dev/null | head -1)
+          REPORT_DATE=$(basename "$LATEST_JSON" | sed -E 's/report_data_(.+)\.json/\1/')
+          echo "Target date: $REPORT_DATE"
+          python3 scripts/pipeline/generate_report_html.py "$REPORT_DATE"
+
+          HTML_FILE="data/reports/market_analysis_${REPORT_DATE//-/}.html"
+          if [ -f "$HTML_FILE" ]; then
+            echo "✅ HTML generated: $HTML_FILE ($(wc -c < "$HTML_FILE") bytes)"
+            echo ""
+            echo "--- <title> ---"
+            grep -oE '<title>[^<]+</title>' "$HTML_FILE" || true
+            echo ""
+            echo "--- <h1> ---"
+            grep -oE '<h1>[^<]+<span[^>]+>[^<]+</span></h1>' "$HTML_FILE" | head -1 || true
+          else
+            echo "❌ HTML not found"
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-data-${{ github.run_id }}
+          path: |
+            data/parquet/market_summary/structured/report_data_*.json
+            data/reports/market_analysis_*.html
+          retention-days: 7
+          if-no-files-found: warn
