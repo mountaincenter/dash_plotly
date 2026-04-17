@@ -94,6 +94,50 @@ jobs:
           echo "--- Generated JSON ---"
           ls -la data/parquet/market_summary/structured/ || true
 
+      - name: Probe Rakuten JNIV endpoint (alternative source)
+        run: |
+          echo "============================================================"
+          echo "🔍 Rakuten JNIV endpoint probe (GHA runner)"
+          echo "============================================================"
+          URL="https://www.rakuten-sec.co.jp/smartphone/market/info/pagecontent?pid=4001&sym=.JNIV"
+          python3 <<'PYEOF'
+          import re, sys, urllib.request
+          url = "https://www.rakuten-sec.co.jp/smartphone/market/info/pagecontent?pid=4001&sym=.JNIV"
+          req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"})
+          try:
+              with urllib.request.urlopen(req, timeout=15) as resp:
+                  status = resp.status
+                  html = resp.read().decode("utf-8", errors="replace")
+              print(f"  status={status} len={len(html)}")
+              # 数値抽出
+              m_close = re.search(r'class="base">\s*([\d.]+)', html)
+              m_change = re.search(r'class="change">\s*<span[^>]*>([+\-]?[\d.]+)</span>', html)
+              m_pct = re.search(r'class="percent"><span[^>]*>([+\-]?[\d.]+)%</span>', html)
+              m_prev = re.search(r'前終<span class="update">\(([\d/]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+              m_high = re.search(r'高値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+              m_open = re.search(r'始値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+              m_low = re.search(r'安値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+              data = {
+                  "close": m_close.group(1) if m_close else None,
+                  "change": m_change.group(1) if m_change else None,
+                  "change_pct": m_pct.group(1) if m_pct else None,
+                  "prev_close": m_prev.group(2) if m_prev else None,
+                  "high": m_high.group(2) if m_high else None,
+                  "open": m_open.group(2) if m_open else None,
+                  "low": m_low.group(2) if m_low else None,
+              }
+              print(f"  parsed: {data}")
+              if all(v is not None for k, v in data.items()):
+                  print("✅ Rakuten JNIV fetch success (all fields parsed)")
+              else:
+                  missing = [k for k, v in data.items() if v is None]
+                  print(f"⚠️ Partial parse (missing: {missing})")
+                  sys.exit(1)
+          except Exception as e:
+              print(f"❌ Rakuten fetch failed: {type(e).__name__}: {e}")
+              sys.exit(1)
+          PYEOF
+
       - name: Inspect VI fetch result
         run: |
           echo "============================================================"
