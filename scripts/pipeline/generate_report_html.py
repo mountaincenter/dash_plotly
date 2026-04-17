@@ -307,10 +307,15 @@ def _build_market_summary(data: dict) -> str:
     vi_close = vi.get("close")
     vi_pct = vi.get("change_pct")
     vi_change = vi.get("change")
-    vi_src = vi.get("source", "parquet")
-    lines.append(f'    <div class="stat-card"><div class="label">日経VI</div>')
-    lines.append(f'      <div class="value {_css_class(vi_pct)}">{_f(vi_close)}</div>')
-    lines.append(f'      <div class="sub">前日比{_sign(vi_change)}（{_sign_pct(vi_pct)}） <span class="evidence-label evidence-fact">{_e(vi_src)}</span></div></div>')
+    vi_src = vi.get("source", "rakuten-sec")
+    if "error" in vi:
+        lines.append(f'    <div class="stat-card"><div class="label">日経VI</div>')
+        lines.append(f'      <div class="value num-neutral">--</div>')
+        lines.append(f'      <div class="sub">データ取得失敗 <span class="evidence-label evidence-unverified">{_e(vi_src)}</span></div></div>')
+    else:
+        lines.append(f'    <div class="stat-card"><div class="label">日経VI</div>')
+        lines.append(f'      <div class="value {_css_class(vi_pct)}">{_f(vi_close)}</div>')
+        lines.append(f'      <div class="sub">前日比{_sign(vi_change)}（{_sign_pct(vi_pct)}） <span class="evidence-label evidence-fact">{_e(vi_src)}</span></div></div>')
 
     lines.append('  </div>')  # grid-4
 

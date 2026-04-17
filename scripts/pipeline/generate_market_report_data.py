@@ -229,57 +229,59 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
 
 
 def _fetch_nikkei_vi() -> dict[str, Any] | None:
-    """investing.comから日経VI(JNIVE)をJSON埋め込みデータで取得"""
-    import re
-    import json as _json
+    """楽天証券スマホ版から日経VI(.JNIV)を取得。失敗時はNone。
 
-    url = "https://www.investing.com/indices/nikkei-volatility"
+    investing.comはGHA等のデータセンタIPで403。Rakutenの埋込HTMLは
+    status/各値が安定して取れるため一択にした。
+    """
+    import re
+
+    url = "https://www.rakuten-sec.co.jp/smartphone/market/info/pagecontent?pid=4001&sym=.JNIV"
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
     }
-    try:
-        last_error = None
-        with requests.Session() as session:
-            for attempt in range(1, 4):
-                try:
-                    resp = session.get(url, headers=headers, timeout=20)
-                    status = resp.status_code
-                    if status != 200:
-                        last_error = f"http_{status}"
-                        print(f"  [WARN] nikkei VI fetch attempt={attempt} status={status} url={url}")
-                    else:
-                        m = re.search(r'\{[^{}]*"instrumentId"\s*:\s*"?28878"?[^{}]*\}', resp.text)
-                        if m:
-                            data = _json.loads(m.group())
-                            return {
-                                "close": _f(data.get("last")),
-                                "open": _f(data.get("open")),
-                                "high": _f(data.get("high")),
-                                "low": _f(data.get("low")),
-                                "prev_close": _f(data.get("lastClose")),
-                                "change": _f(data.get("change")),
-                                "change_pct": _f(data.get("changePcr")),
-                                "source": "investing.com",
-                            }
-                        last_error = "instrument_json_not_found"
-                        title = re.search(r"<title>(.*?)</title>", resp.text, re.I | re.S)
-                        title_text = title.group(1).strip()[:120] if title else ""
-                        print(f"  [WARN] nikkei VI fetch attempt={attempt} parse_miss status=200 title={title_text!r} len={len(resp.text)}")
-                except requests.RequestException as e:
-                    last_error = f"{type(e).__name__}: {e}"
-                    print(f"  [WARN] nikkei VI fetch attempt={attempt} request_error={last_error}")
-                if attempt < 3:
-                    time.sleep(attempt)
-        print(f"  [WARN] nikkei VI fetch failed after retries: {last_error}")
-        return None
-    except Exception as e:
-        print(f"  [WARN] nikkei VI fetch failed: {e}")
-        return None
+    last_error = None
+    with requests.Session() as session:
+        for attempt in range(1, 4):
+            try:
+                resp = session.get(url, headers=headers, timeout=20)
+                if resp.status_code != 200:
+                    last_error = f"http_{resp.status_code}"
+                    print(f"  [WARN] nikkei VI fetch attempt={attempt} status={resp.status_code} url={url}")
+                else:
+                    html = resp.text
+                    m_close = re.search(r'class="base">\s*([\d.]+)', html)
+                    m_change = re.search(r'class="change">\s*<span[^>]*>([+\-]?[\d.]+)</span>', html)
+                    m_pct = re.search(r'class="percent"><span[^>]*>([+\-]?[\d.]+)%</span>', html)
+                    m_prev = re.search(r'前終<span class="update">\(([\d/]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+                    m_high = re.search(r'高値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+                    m_open = re.search(r'始値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+                    m_low = re.search(r'安値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
+                    if m_close and m_change and m_pct and m_prev and m_high and m_open and m_low:
+                        return {
+                            "close": _f(float(m_close.group(1))),
+                            "open": _f(float(m_open.group(2))),
+                            "high": _f(float(m_high.group(2))),
+                            "low": _f(float(m_low.group(2))),
+                            "prev_close": _f(float(m_prev.group(2))),
+                            "change": _f(float(m_change.group(1))),
+                            "change_pct": _f(float(m_pct.group(1))),
+                            "source": "rakuten-sec",
+                        }
+                    missing = [k for k, v in {
+                        "close": m_close, "change": m_change, "pct": m_pct,
+                        "prev": m_prev, "high": m_high, "open": m_open, "low": m_low,
+                    }.items() if v is None]
+                    last_error = f"parse_miss: missing={missing}"
+                    print(f"  [WARN] nikkei VI fetch attempt={attempt} {last_error} len={len(html)}")
+            except requests.RequestException as e:
+                last_error = f"{type(e).__name__}: {e}"
+                print(f"  [WARN] nikkei VI fetch attempt={attempt} request_error={last_error}")
+            if attempt < 3:
+                time.sleep(attempt)
+    print(f"  [WARN] nikkei VI fetch failed after retries: {last_error}")
+    return None
 
 
 def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
@@ -344,7 +346,6 @@ def build_market_summary(date: str) -> dict[str, Any]:
     idx = _read_parquet("index_prices_max_1d.parquet")
     topix = _read_parquet("topix_prices_max_1d.parquet")
     curr = _read_parquet("currency_prices_max_1d.parquet")
-    vi = _read_parquet("nikkei_vi_max_1d.parquet")
 
     result: dict[str, Any] = {}
 
@@ -380,16 +381,12 @@ def build_market_summary(date: str) -> dict[str, Any]:
                     usdjpy = {"close": _f(close), "change_pct": _f(pct), "source": "parquet_fallback"}
     result["usdjpy"] = usdjpy
 
-    # Nikkei VI — investing.com優先、失敗時はparquetフォールバック
+    # Nikkei VI — 楽天証券一択。失敗時は error マーカーを残す
     vi_data = _fetch_nikkei_vi()
     if vi_data is not None:
         result["vi"] = vi_data
-    elif vi is not None:
-        vi_copy = vi.copy()
-        vi_copy["ticker"] = "VI"
-        result["vi"] = _build_ohlc_entry(vi_copy, "VI", date, include_hl=True)
-        if "vi" in result:
-            result["vi"]["source"] = "parquet_fallback"
+    else:
+        result["vi"] = {"error": "no_data", "source": "rakuten-sec"}
 
     # 騰落銘柄数・売買代金（日経電子版）
     breadth = _fetch_market_breadth(date)
