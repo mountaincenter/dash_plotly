@@ -213,17 +213,13 @@ CSS = """:root {
 # Section builders
 # ---------------------------------------------------------------------------
 
-def _build_header(data: dict) -> str:
-    """h1 + subtitle + evidence legend"""
+def _build_header_title_parts(data: dict) -> tuple[str, str, str]:
+    """title/h1共通のdate_disp, badge_class, badge_textを生成"""
     ms = data.get("market_summary", {})
     n225 = ms.get("n225", {})
     close = n225.get("close")
     pct = n225.get("change_pct")
-    change = n225.get("change")
     vi = ms.get("vi", {})
-    breadth = ms.get("market_breadth", {})
-    adv = breadth.get("advancing", "--")
-    dec = breadth.get("declining", "--")
     sectors = data.get("sectors", {})
     up_count = sectors.get("up_count", "--")
     down_count = sectors.get("down_count", "--")
@@ -245,6 +241,12 @@ def _build_header(data: dict) -> str:
 
     badge_text = f"{direction} N225 {_f(close, 0)}({_sign_pct(pct)}) {vi_str} {up_count}上昇/{down_count}下落"
 
+    return date_disp, badge_class, badge_text
+
+
+def _build_header(data: dict) -> str:
+    """h1 + subtitle + evidence legend"""
+    date_disp, badge_class, badge_text = _build_header_title_parts(data)
     lines = []
     lines.append(f'<h1>マーケット振り返り {date_disp} <span class="badge {badge_class}">{badge_text}</span></h1>')
     lines.append(f'<div class="subtitle">自動生成レポート（データ転記）。推論セクションはClaude Codeで追記予定。</div>')
@@ -808,8 +810,8 @@ def _build_grok(data: dict) -> str:
         lines.append(f'      <div class="sub">{record}{wr}</div></div>')
     lines.append('  </div>')
 
-    # 全銘柄テーブル (prob昇順)
-    sorted_details = sorted(details, key=lambda x: x.get("prob", 0))
+    # 全銘柄テーブル (prob昇順)。prob=None は末尾に回す
+    sorted_details = sorted(details, key=lambda x: (x.get("prob") is None, x.get("prob") or 0))
     lines.append('  <h3>全銘柄 prob昇順 <span class="evidence-label evidence-fact">事実</span></h3>')
     lines.append('  <table><thead><tr><th>銘柄</th><th>Bucket</th><th class="r">prob</th><th>空売り区分</th><th class="r">始値</th><th class="r">終値</th><th class="r">損益</th><th>結果</th></tr></thead><tbody>')
 
@@ -963,7 +965,7 @@ def generate_report(date: str) -> str:
 
     sections = [
         f'<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">',
-        f'<title>マーケット振り返り {date}</title>',
+        f'<title>マーケット振り返り {_build_header_title_parts(data)[0]} - {_build_header_title_parts(data)[2]}</title>',
         f'<style>\n{CSS}\n</style>',
         '</head>\n<body>\n',
         _build_header(data),

@@ -17,6 +17,7 @@ import argparse
 import io
 import json
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -229,29 +230,53 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
 
 def _fetch_nikkei_vi() -> dict[str, Any] | None:
     """investing.comから日経VI(JNIVE)をJSON埋め込みデータで取得"""
+    import re
+    import json as _json
+
+    url = "https://www.investing.com/indices/nikkei-volatility"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
     try:
-        import re, json as _json
-        url = "https://www.investing.com/indices/nikkei-volatility"
-        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-        resp = requests.get(url, headers=headers, timeout=15)
-        if resp.status_code != 200:
-            return None
-        # ページ内JSON: instrumentId=28878, open/lastClose/last/high/low/change/changePcr
-        m = re.search(r'\{[^{}]*"instrumentId"\s*:\s*"?28878"?[^{}]*\}', resp.text)
-        if not m:
-            return None
-        data = _json.loads(m.group())
-        return {
-            "close": _f(data.get("last")),
-            "open": _f(data.get("open")),
-            "high": _f(data.get("high")),
-            "low": _f(data.get("low")),
-            "prev_close": _f(data.get("lastClose")),
-            "change": _f(data.get("change")),
-            "change_pct": _f(data.get("changePcr")),
-            "source": "investing.com",
-        }
+        last_error = None
+        with requests.Session() as session:
+            for attempt in range(1, 4):
+                try:
+                    resp = session.get(url, headers=headers, timeout=20)
+                    status = resp.status_code
+                    if status != 200:
+                        last_error = f"http_{status}"
+                        print(f"  [WARN] nikkei VI fetch attempt={attempt} status={status} url={url}")
+                    else:
+                        m = re.search(r'\{[^{}]*"instrumentId"\s*:\s*"?28878"?[^{}]*\}', resp.text)
+                        if m:
+                            data = _json.loads(m.group())
+                            return {
+                                "close": _f(data.get("last")),
+                                "open": _f(data.get("open")),
+                                "high": _f(data.get("high")),
+                                "low": _f(data.get("low")),
+                                "prev_close": _f(data.get("lastClose")),
+                                "change": _f(data.get("change")),
+                                "change_pct": _f(data.get("changePcr")),
+                                "source": "investing.com",
+                            }
+                        last_error = "instrument_json_not_found"
+                        title = re.search(r"<title>(.*?)</title>", resp.text, re.I | re.S)
+                        title_text = title.group(1).strip()[:120] if title else ""
+                        print(f"  [WARN] nikkei VI fetch attempt={attempt} parse_miss status=200 title={title_text!r} len={len(resp.text)}")
+                except requests.RequestException as e:
+                    last_error = f"{type(e).__name__}: {e}"
+                    print(f"  [WARN] nikkei VI fetch attempt={attempt} request_error={last_error}")
+                if attempt < 3:
+                    time.sleep(attempt)
+        print(f"  [WARN] nikkei VI fetch failed after retries: {last_error}")
+        return None
     except Exception as e:
         print(f"  [WARN] nikkei VI fetch failed: {e}")
         return None
