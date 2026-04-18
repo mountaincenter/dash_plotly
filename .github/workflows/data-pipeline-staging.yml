@@ -167,11 +167,11 @@ jobs:
           echo "✅ Data downloaded"
 
       # ===== 18:00 振り返りフェーズ =====
-      - name: "[Review] Fetch Nikkei VI from investing.com"
+      - name: "[Review] Fetch Nikkei VI from Rakuten-Sec"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
-          echo "📊 Fetching JNIVE (Nikkei VI) from investing.com JP..."
-          python scripts/pipeline/fetch_nikkei_vi_investing.py
+          echo "📊 Fetching Nikkei VI (JNIV) from Rakuten-Sec / trkd-asia..."
+          python scripts/pipeline/fetch_nikkei_vi_rakuten.py
         timeout-minutes: 5
 
       - name: "[Review] Update TOPIX daily prices"
