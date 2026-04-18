@@ -22,6 +22,7 @@ from common_cfg.paths import PARQUET_DIR
 router = APIRouter()
 
 PAIRS_DIR = PARQUET_DIR / "pairs"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
@@ -98,6 +99,42 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     return df
 
 
+def _s3_download(filename: str, dest: Path) -> None:
+    """S3 の top-level parquet を dest にダウンロード"""
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        key = f"{S3_PREFIX}/{filename}"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file(S3_BUCKET, key, str(dest))
+    except Exception:
+        pass
+
+
+def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+    path = PARQUET_DIR / filename
+    if IS_SERVER or not path.exists():
+        _s3_download(filename, path)
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    _set_cache(cache_key, df)
+    return df
+
+
+def _load_unified_signals(strategy: str) -> pd.DataFrame:
+    """signals.parquet から指定 strategy の行を抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("signals.parquet", "unified_signals")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == strategy].copy()
+
+
 def _safe_float(v, decimals: int = 1) -> float:
     try:
         return round(float(v), decimals)
@@ -115,7 +152,7 @@ def _safe_int(v) -> int:
 @router.get("/api/dev/pairs/signals")
 async def get_pairs_signals():
     """全ペアのシグナル（z-score, 閾値, 直近成績）"""
-    df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    df = _load_unified_signals("pairs")
 
     if df.empty:
         return {"pairs": [], "hot": [], "signal_date": None, "total": 0, "hot_count": 0}
@@ -172,7 +209,7 @@ async def get_pairs_signals():
 @router.get("/api/dev/pairs/status")
 async def get_pairs_status():
     """ペアトレード ステータスサマリー"""
-    df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    df = _load_unified_signals("pairs")
 
     if df.empty:
         return {
@@ -232,15 +269,19 @@ _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
 
 
 def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
-    """チャート用に2銘柄の日足Closeを取得"""
-    from server.utils import read_prices_df, normalize_prices
+    """チャート用に2銘柄の日足Closeを取得
 
-    df = read_prices_df("max", "1d")
-    if df is None or df.empty:
+    pairs は TOPIX 全体から銘柄を選ぶため prices_topix.parquet を読む
+    (prices_max_1d は Core30 系の限定銘柄のみで銀行銘柄を含まない)
+    """
+    prices_path = PARQUET_DIR / "granville" / "prices_topix.parquet"
+    if not prices_path.exists():
         return pd.DataFrame()
 
-    df = normalize_prices(df)
-    # ticker列で2銘柄抽出
+    df = pd.read_parquet(prices_path)
+    if df.empty:
+        return df
+
     tk_col = "ticker" if "ticker" in df.columns else "Ticker"
     df = df[df[tk_col].isin([tk1, tk2])].copy()
     if df.empty:
@@ -251,7 +292,6 @@ def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values([tk_col, date_col])
 
-    # 直近days日に絞る
     all_dates = sorted(df[date_col].unique())
     if len(all_dates) > days:
         cutoff = all_dates[-days]
@@ -284,10 +324,10 @@ async def get_pair_chart(
         tk1, tk2 = tk2, tk1
     lookback, full_pf, full_n, revert_1d = _V2_LOOKUP[(tk1, tk2)]
 
-    # 銘柄名・閾値 — signalsパーケットから取得（_load_latestはIS_SERVERでS3/ローカルを自動分岐）
+    # 銘柄名・閾値 — signals.parquet (pairs strategy) から取得
     name1, name2 = tk1, tk2
     tk1_upper, tk1_lower = 0.0, 0.0
-    sig_df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    sig_df = _load_unified_signals("pairs")
     if not sig_df.empty:
         match = sig_df[(sig_df["tk1"] == tk1) & (sig_df["tk2"] == tk2)]
         if not match.empty:

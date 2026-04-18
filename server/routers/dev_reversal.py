@@ -22,6 +22,10 @@ router = APIRouter()
 GRANVILLE_DIR = PARQUET_DIR / "granville"
 REVERSAL_DIR = PARQUET_DIR / "reversal"
 
+# 統合 parquet (2026-04-17 signals.parquet 統合後)
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "positions.parquet"
+
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
@@ -96,6 +100,44 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     return df
 
 
+def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
+    """統合 parquet (signals/positions) を読み込み。S3フォールバック+キャッシュ。"""
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
+    path = PARQUET_DIR / filename
+    if not path.exists():
+        _s3_download(filename, path)
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    df = pd.read_parquet(path)
+    _set_cache(cache_key, df)
+    return df
+
+
+def _load_unified_signals(strategy: str) -> pd.DataFrame:
+    """signals.parquet から指定 strategy の行を抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("signals.parquet", "unified_signals")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == strategy].copy()
+
+
+def _load_unified_positions(strategy: str) -> pd.DataFrame:
+    """positions.parquet から指定 strategy の行を抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("positions.parquet", "unified_positions")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == strategy].copy()
+
+
 def _safe_int(v) -> int:
     try:
         return int(v)
@@ -136,7 +178,8 @@ async def refresh_cache():
     refreshed = []
     for f in ["hold_stocks.parquet", "credit_status.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
-              "futures_prices_max_1d.parquet"]:
+              "futures_prices_max_1d.parquet",
+              "signals.parquet", "positions.parquet"]:
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
@@ -152,8 +195,8 @@ async def refresh_cache():
 @router.get("/api/dev/reversal/signals")
 async def get_signals():
     """B4 + 大陰線の統合シグナル（1レスポンスで両方返す）"""
-    # 大陰線シグナル
-    bearish_df = _load_latest(REVERSAL_DIR, "bearish_signals", "reversal")
+    # 大陰線シグナル (統合 signals.parquet の strategy=bearish 行)
+    bearish_df = _load_unified_signals("bearish")
     bearish_signals = []
     bearish_date = None
 
@@ -176,8 +219,8 @@ async def get_signals():
                 "vi": _safe_float(r.get("vi", 0), 1),
             })
 
-    # B4シグナル（granvilleから取得）
-    b4_df = _load_latest(GRANVILLE_DIR, "signals", "granville")
+    # B4シグナル (統合 signals.parquet の strategy=granville, rule=B4 行)
+    b4_df = _load_unified_signals("granville")
     b4_signals = []
     b4_date = None
 
@@ -217,14 +260,14 @@ async def get_status():
     vi = _get_vi()
 
     # 大陰線シグナル数
-    bearish_df = _load_latest(REVERSAL_DIR, "bearish_signals", "reversal")
+    bearish_df = _load_unified_signals("bearish")
     bearish_count = len(bearish_df)
     bearish_date = None
     if not bearish_df.empty and "signal_date" in bearish_df.columns:
         bearish_date = pd.to_datetime(bearish_df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
 
     # B4シグナル数
-    b4_df = _load_latest(GRANVILLE_DIR, "signals", "granville")
+    b4_df = _load_unified_signals("granville")
     b4_count = 0
     b4_date = None
     if not b4_df.empty:
@@ -257,7 +300,7 @@ async def get_status():
             pass
 
     # 大陰線ポジション数
-    bearish_pos = _load_latest(REVERSAL_DIR, "bearish_positions", "reversal")
+    bearish_pos = _load_unified_positions("bearish")
     bearish_open = 0
     bearish_exit = 0
     if not bearish_pos.empty and "status" in bearish_pos.columns:
@@ -283,7 +326,7 @@ async def get_status():
 async def get_positions():
     """B4 + 大陰線の統合ポジション"""
     # 大陰線ポジション
-    bearish_pos = _load_latest(REVERSAL_DIR, "bearish_positions", "reversal")
+    bearish_pos = _load_unified_positions("bearish")
     bearish_rows = []
     if not bearish_pos.empty:
         for _, r in bearish_pos.iterrows():
@@ -304,7 +347,7 @@ async def get_positions():
             })
 
     # B4ポジション（granvilleから）
-    b4_pos = _load_latest(GRANVILLE_DIR, "positions", "granville")
+    b4_pos = _load_unified_positions("granville")
     b4_rows = []
     if not b4_pos.empty:
         b4_only = b4_pos[b4_pos["rule"] == "B4"] if "rule" in b4_pos.columns else pd.DataFrame()

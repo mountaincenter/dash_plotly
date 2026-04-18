@@ -22,7 +22,7 @@ if str(ROOT) not in sys.path:
 
 from common_cfg.paths import PARQUET_DIR
 
-GRANVILLE_DIR = PARQUET_DIR / "granville"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 OUTPUT_PATH = Path("/tmp/granville_b4_section.txt")
 
 
@@ -77,16 +77,31 @@ def _load_cme_gap() -> tuple[float | None, float | None]:
 
 
 def main():
-    # B4シグナル読み込み
-    signals_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
-    if not signals_files:
-        print("No signals files found")
+    # B4シグナル読み込み（signals.parquet統合後: strategy=granville最新日のB4のみ抽出）
+    if not SIGNALS_PATH.exists():
+        print(f"No signals.parquet found: {SIGNALS_PATH}")
         return
 
-    latest = pd.read_parquet(signals_files[-1])
+    all_sigs = pd.read_parquet(SIGNALS_PATH)
+    if "strategy" in all_sigs.columns:
+        gran = all_sigs[all_sigs["strategy"] == "granville"].copy()
+    else:
+        gran = all_sigs.copy()
+
+    if gran.empty or "signal_date" not in gran.columns:
+        print("No granville signals available")
+        return
+
+    gran["signal_date"] = pd.to_datetime(gran["signal_date"], errors="coerce")
+    latest_date = gran["signal_date"].dropna().max()
+    if pd.isna(latest_date):
+        print("No granville signals with valid signal_date")
+        return
+
+    latest = gran[gran["signal_date"] == latest_date]
     b4 = latest[latest["rule"] == "B4"] if "rule" in latest.columns else pd.DataFrame()
-    sig_date = pd.to_datetime(latest["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in latest.columns else "?"
-    weekday = pd.to_datetime(sig_date).strftime("%a") if sig_date != "?" else ""
+    sig_date = latest_date.strftime("%Y-%m-%d")
+    weekday = latest_date.strftime("%a")
 
     # 市場環境
     vi = _load_vi()
@@ -166,7 +181,10 @@ def main():
             name = r.get("stock_name", "")[:8]
             dev = r.get("dev_from_sma20", 0)
             close = r.get("close", 0)
-            cost = calc_max_cost_100(close)
+            if pd.isna(close) or close == 0:
+                lines.append(f"`{tk}` {name} {dev:+.1f}% (close N/A)")
+                continue
+            cost = calc_max_cost_100(float(close))
             lines.append(f"`{tk}` {name} {dev:+.1f}% ¥{close:,.0f} (上限¥{cost:,})")
 
         blocks.append({

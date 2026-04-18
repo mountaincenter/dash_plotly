@@ -38,6 +38,7 @@ load_dotenv_cascade()
 PAIRS_DIR = PARQUET_DIR / "pairs"
 PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 Z_ENTRY = 2.0
 CAPITAL = 2_000_000
@@ -288,6 +289,10 @@ def calc_pair_signal(
     imbalance_pct = abs(notional1 - notional2) / max(notional1, notional2) * 100
 
     return {
+        "signal_date": common[-1],
+        "ticker": tk1,
+        "strategy": "pairs",
+        "pair_id": f"{tk1}|{tk2}",
         "tk1": tk1,
         "tk2": tk2,
         "c1": round(c1_last, 1),
@@ -306,7 +311,6 @@ def calc_pair_signal(
         "imbalance_pct": round(imbalance_pct, 1),
         "is_entry": abs(z_latest) >= Z_ENTRY,
         "direction": "short_tk1" if z_latest > 0 else "long_tk1",
-        "signal_date": common[-1],
     }
 
 
@@ -357,8 +361,17 @@ def main() -> int:
     else:
         df = pd.DataFrame()
 
-    signal_path = PAIRS_DIR / f"pairs_signals_{date_str}.parquet"
-    df.to_parquet(signal_path, index=False)
+    # signals.parquet に pairs 行をマージ（他 strategy を保持）
+    if not df.empty:
+        if SIGNALS_PATH.exists():
+            existing = pd.read_parquet(SIGNALS_PATH)
+            other = (existing[existing["strategy"] != "pairs"]
+                     if "strategy" in existing.columns else existing)
+            merged = pd.concat([df, other], ignore_index=True) if len(other) else df
+        else:
+            merged = df
+        SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        merged.to_parquet(SIGNALS_PATH, index=False)
 
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
@@ -381,14 +394,14 @@ def main() -> int:
         else:
             print("\n  No entry signals today")
 
-    # S3アップロード
+    # S3アップロード（signals.parquet を top-level に）
     print("\n[3/3] Uploading to S3...")
     try:
         cfg = load_s3_config()
-        if cfg and cfg.bucket:
-            upload_file(cfg, signal_path, f"pairs/pairs_signals_{date_str}.parquet")
+        if cfg and cfg.bucket and SIGNALS_PATH.exists():
+            upload_file(cfg, SIGNALS_PATH, "signals.parquet")
         else:
-            print("  [INFO] S3 bucket not configured")
+            print("  [INFO] S3 bucket not configured or signals.parquet missing")
     except Exception as e:
         print(f"  [WARN] S3 upload failed: {e}")
 

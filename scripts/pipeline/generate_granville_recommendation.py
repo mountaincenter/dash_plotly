@@ -34,10 +34,13 @@ load_dotenv_cascade()
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
 PRICES_PATH = GRANVILLE_DIR / "prices_topix.parquet"
+# 2026-04-17 統合: top-level signals.parquet を読み書き
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 MARGIN_LIMIT_PCT = 0.15  # §7: 証拠金上限15%（株価フィルター）
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
-RULE_MAX_HOLD = {"B4": 19, "B1": 13, "B3": 14, "B2": 15}
+# 2026-04-17 signals.py と統一 (再検証結果, 旧値 B4=19/B1=13/B3=14/B2=15 は廃止)
+RULE_MAX_HOLD = {"B4": 3, "B1": 30, "B3": 30, "B2": 30}
 
 # §7: 証拠金テーブル
 _LIMIT_TABLE = [
@@ -248,20 +251,23 @@ def main() -> int:
     print(f"  {datetime.now().isoformat()}")
     print("=" * 60)
 
-    signal_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
-    if not signal_files:
-        print("[ERROR] No signal files found")
+    if not SIGNALS_PATH.exists():
+        print(f"[ERROR] signals.parquet not found: {SIGNALS_PATH}")
+        print("  Run generate_granville_signals.py first")
         return 1
 
-    signal_path = signal_files[-1]
-    print(f"[1/3] Loading signals: {signal_path.name}")
-    signals = pd.read_parquet(signal_path)
+    print(f"[1/3] Loading unified signals: {SIGNALS_PATH.name}")
+    signals_all = pd.read_parquet(SIGNALS_PATH)
+    # 統合ファイル内の granville 行のみ処理 (pairs/reversal は対象外)
+    grv_mask = signals_all["strategy"] == "granville" if "strategy" in signals_all.columns else pd.Series(True, index=signals_all.index)
+    signals = signals_all[grv_mask].copy()
 
     if signals.empty:
-        print("[INFO] No signals to recommend")
+        print("[INFO] No granville signals to recommend")
+        # 他戦略の行を保持したまま書き戻し不要 → 早期終了
         return 0
 
-    date_str = signal_path.stem.replace("signals_", "")
+    date_str = pd.to_datetime(signals["signal_date"].iloc[0]).strftime("%Y-%m-%d")
 
     available = load_available_margin()
     hold_tickers = load_hold_stocks()
@@ -269,17 +275,12 @@ def main() -> int:
     print(f"  MAX_HOLD: {RULE_MAX_HOLD}")
     print(f"  Existing positions: {len(hold_tickers)}")
 
-    # §8: 既存保有銘柄を除外
-    before = len(signals)
-    signals = signals[~signals["ticker"].isin(hold_tickers)].copy()
-    if before > len(signals):
-        print(f"  Excluded {before - len(signals)} held stocks")
+    # §8: 既存保有銘柄を除外フラグ (統合ファイルでは行を消さず excluded フラグで管理)
+    signals["held"] = signals["ticker"].isin(hold_tickers)
+    if signals["held"].any():
+        print(f"  Held-stock rows: {int(signals['held'].sum())} (will not be recommended)")
 
-    if signals.empty:
-        print("[INFO] No new recommendations (all held)")
-        return 0
-
-    # 特徴量計算（スコアリング用）
+    # 特徴量計算（スコアリング用） — held 含め全行に付与
     print("\n[2/5] Computing features for scoring...")
     ps = pd.read_parquet(PRICES_PATH)
     ps["date"] = pd.to_datetime(ps["date"])
@@ -353,76 +354,82 @@ def main() -> int:
         print("  [WARN] prev_close not in signals, using entry_price_est")
         signals["margin"] = signals["entry_price_est"].apply(_required_margin)
 
-    # §8: 資金制約フィルタリング
+    # §8: 資金制約フィルタリング (統合ファイル: 行を消さず recommended/skip_reason/rec_rank を付与)
     print("\n[5/5] Applying constraints...")
-    recommended: list[dict] = []
     remaining = available
+    recommended_flags = []
+    skip_reasons = []
+    rec_ranks = []  # 採用順位 (1-based, 不採用は 0)
+    margin_pcts = []
+    next_rank = 1
 
+    # 優先順で走査 (B4 > B1 > B3 > B2, 同一ルール内はスコア降順)
     for _, row in signals.iterrows():
         margin = float(row["margin"])
+        margin_pcts.append(round(margin / available * 100, 2) if available > 0 else 0.0)
 
-        # §7: 証拠金上限15%チェック（株価フィルター）
-        if margin > available * MARGIN_LIMIT_PCT:
+        if bool(row.get("held", False)):
+            recommended_flags.append(False)
+            skip_reasons.append("held")
+            rec_ranks.append(0)
             continue
-
-        # 残余力不足
+        if margin > available * MARGIN_LIMIT_PCT:
+            recommended_flags.append(False)
+            skip_reasons.append("margin_limit_15pct")
+            rec_ranks.append(0)
+            continue
         if margin > remaining:
+            recommended_flags.append(False)
+            skip_reasons.append("capital_exhausted")
+            rec_ranks.append(0)
             continue
 
         remaining -= margin
-        rec = {
-            "signal_date": row["signal_date"],
-            "ticker": row["ticker"],
-            "stock_name": row.get("stock_name", ""),
-            "sector": row.get("sector", ""),
-            "rule": row["rule"],
-            "rank_score": float(row.get("rank_score", 50)),
-            "close": float(row["close"]),
-            "entry_price_est": float(row["entry_price_est"]),
-            "prev_close": float(row.get("prev_close", row["entry_price_est"])),
-            "sma20": float(row["sma20"]),
-            "dev_from_sma20": float(row["dev_from_sma20"]),
-            "atr10_pct": round(float(row.get("atr10_pct", 0)), 2),
-            "vol_ratio": round(float(row.get("vol_ratio", 0)), 2),
-            "rsi14": round(float(row.get("rsi14", 0)), 1),
-            "ret5d": round(float(row.get("ret5d", 0)), 2),
-            "expected_profit": int(row.get("expected_profit", 0)),
-            "margin": int(margin),
-            "margin_pct": round(margin / available * 100, 1),
-            "max_hold": _get_max_hold(row["rule"]),
-        }
-        recommended.append(rec)
+        recommended_flags.append(True)
+        skip_reasons.append("")
+        rec_ranks.append(next_rank)
+        next_rank += 1
 
-    result = pd.DataFrame(recommended)
-    if result.empty:
-        print("[INFO] No recommendations (all filtered by constraints)")
-        return 0
+    signals["recommended"] = recommended_flags
+    signals["skip_reason"] = skip_reasons
+    signals["rec_rank"] = pd.array(rec_ranks, dtype="Int32")
+    signals["margin_pct"] = margin_pcts
 
-    rec_path = GRANVILLE_DIR / f"recommendations_{date_str}.parquet"
-    result.to_parquet(rec_path, index=False)
-    print(f"\n[OK] {len(result)} recommendations → {rec_path.name}")
+    # _priority, held は内部用。不要な列を落とす
+    drop_cols = [c for c in ["_priority", "held"] if c in signals.columns]
+    if drop_cols:
+        signals = signals.drop(columns=drop_cols)
 
-    total_margin = result["margin"].sum()
-    print(f"  Total margin: ¥{total_margin:,.0f} / ¥{available:,.0f} "
-          f"({total_margin / available * 100:.1f}%)")
+    # 統合ファイルに書き戻し (granville 以外の戦略行は既存のまま維持)
+    other = signals_all[~grv_mask]
+    merged = pd.concat([signals, other], ignore_index=True) if len(other) else signals
+    merged.to_parquet(SIGNALS_PATH, index=False)
+
+    rec_df = signals[signals["recommended"]]
+    total_margin = int(rec_df["margin"].sum()) if not rec_df.empty else 0
+    print(f"\n[OK] Recommendations merged into {SIGNALS_PATH.name}")
+    print(f"  {len(rec_df)} recommended / {len(signals)} granville signals")
+    print(f"  Total margin: ¥{total_margin:,} / ¥{available:,.0f} "
+          f"({total_margin / available * 100:.1f}%)" if available else "")
 
     for rule in ["B4", "B1", "B3", "B2"]:
-        rdf = result[result["rule"] == rule]
+        rdf = rec_df[rec_df["rule"] == rule]
         if not rdf.empty:
-            print(f"  {rule}: {len(rdf)} stocks, margin ¥{rdf['margin'].sum():,.0f}")
+            print(f"  {rule}: {len(rdf)} stocks, margin ¥{int(rdf['margin'].sum()):,}")
 
-    print(f"\nRecommendations:")
-    for _, row in result.iterrows():
-        print(f"  [{row['rule']}] {row['ticker']} {row['stock_name']} "
-              f"Score={row['rank_score']:.0f} 期待¥{row['expected_profit']:,} "
-              f"¥{row['entry_price_est']:,.0f} ATR={row['atr10_pct']:.1f}% "
-              f"margin=¥{row['margin']:,.0f}")
+    if not rec_df.empty:
+        print("\nRecommended:")
+        for _, row in rec_df.iterrows():
+            print(f"  [{row['rule']}] {row['ticker']} {row['stock_name']} "
+                  f"Score={row['rank_score']:.0f} 期待¥{int(row['expected_profit']):,} "
+                  f"¥{float(row['entry_price_est']):,.0f} ATR={float(row['atr10_pct']):.1f}% "
+                  f"margin=¥{int(row['margin']):,}")
 
-    # S3アップロード
+    # S3アップロード (signals.parquet は signals.py が一次 upload、ここは上書き更新)
     try:
         cfg = load_s3_config()
         if cfg and cfg.bucket:
-            upload_file(cfg, rec_path, f"granville/recommendations_{date_str}.parquet")
+            upload_file(cfg, SIGNALS_PATH, "signals.parquet")
     except Exception as e:
         print(f"[WARN] S3 upload failed: {e}")
 

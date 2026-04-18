@@ -24,6 +24,10 @@ META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 CSV_DIR = ROOT / "data" / "csv"
 
+# 2026-04-17 統合 parquet (3戦略共通、現在は granville のみ)
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "positions.parquet"
+
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
@@ -47,7 +51,8 @@ async def refresh_cache():
     refreshed = []
     for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
-              "futures_prices_max_1d.parquet"]:
+              "futures_prices_max_1d.parquet",
+              "signals.parquet", "positions.parquet"]:
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
@@ -134,6 +139,44 @@ def _load_latest(prefix: str) -> pd.DataFrame:
     return df
 
 
+def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
+    """統合 parquet (signals/positions) を読み込み。S3フォールバック+キャッシュ。"""
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
+    path = PARQUET_DIR / filename
+    if not path.exists():
+        _s3_download(filename, path)
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    df = pd.read_parquet(path)
+    _set_cache(cache_key, df)
+    return df
+
+
+def _load_unified_signals() -> pd.DataFrame:
+    """signals.parquet から granville 行のみ抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("signals.parquet", "unified_signals")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == "granville"].copy()
+
+
+def _load_unified_positions() -> pd.DataFrame:
+    """positions.parquet から granville 行のみ抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("positions.parquet", "unified_positions")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == "granville"].copy()
+
+
 def _safe_int(v) -> int:
     try:
         return int(v)
@@ -155,13 +198,18 @@ def _safe_float(v, decimals: int = 1) -> float:
 @router.get("/api/dev/granville/recommendations")
 async def get_recommendations():
     """当日推奨銘柄（B4>B1>B3>B2、到着順、15%証拠金上限済み）"""
-    df = _load_latest("recommendations")
+    df = _load_unified_signals()
     if df.empty:
         return {"recommendations": [], "count": 0, "date": None}
 
     date_str = None
     if "signal_date" in df.columns:
         date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    if "recommended" in df.columns:
+        df = df[df["recommended"] == True].copy()
+        if "rec_rank" in df.columns:
+            df = df.sort_values("rec_rank", na_position="last")
 
     recs = []
     for _, r in df.iterrows():
@@ -198,13 +246,16 @@ async def get_recommendations():
 @router.get("/api/dev/granville/long-recommendations")
 async def get_long_recommendations():
     """B1-B3ロング推奨（H1/H2/H3フィルター通過分）"""
-    df = _load_latest("long_recommendations")
+    df = _load_unified_signals()
     if df.empty:
         return {"long_recommendations": [], "count": 0, "date": None, "regime": _get_current_regime()}
 
     date_str = None
     if "signal_date" in df.columns:
         date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    if "long_grade" in df.columns:
+        df = df[df["long_grade"].fillna("").astype(str) != ""].copy()
 
     recs = []
     for _, r in df.iterrows():
@@ -295,7 +346,7 @@ def _get_current_regime() -> dict:
 @router.get("/api/dev/granville/signals")
 async def get_signals():
     """当日全シグナル（フィルター前）"""
-    df = _load_latest("signals")
+    df = _load_unified_signals()
     if df.empty:
         return {"signals": [], "count": 0, "signal_date": None}
 
@@ -465,7 +516,7 @@ async def get_positions():
 
     # Exit候補（hold_stocksの実際の建日に紐づくもののみ）
     exits = []
-    calc_df = _load_latest("positions")
+    calc_df = _load_unified_positions()
 
     # hold_stocksのticker→建日マップ（弁済期限から6ヶ月逆算）
     hold_entry_map = {}  # {ticker_t: entry_date}
@@ -698,8 +749,8 @@ async def get_status():
     """現金保証金・信用余力・ポジション数・シグナル数"""
     credit = _load_credit_status()
 
-    # シグナル数
-    signals_df = _load_latest("signals")
+    # シグナル数（統合 signals.parquet から granville 行）
+    signals_df = _load_unified_signals()
     signal_count = len(signals_df)
     signal_date = None
     if not signals_df.empty and "signal_date" in signals_df.columns:
@@ -709,18 +760,20 @@ async def get_status():
     hold_df = _load_hold_stocks()
     hold_count = len(hold_df)
 
-    # 算出ポジション（Exit候補用）
-    pos_df = _load_latest("positions")
+    # 算出ポジション（Exit候補用、統合 positions.parquet から）
+    pos_df = _load_unified_positions()
     exit_count = 0
     if not pos_df.empty and "status" in pos_df.columns:
         exit_count = int((pos_df["status"] == "exit").sum())
 
-    # 推奨数
-    rec_df = _load_latest("recommendations")
-    rec_count = len(rec_df)
+    # 推奨数（signals.parquet の recommended フラグ）
+    rec_count = 0
     total_margin_used = 0
-    if not rec_df.empty and "margin" in rec_df.columns:
-        total_margin_used = int(rec_df["margin"].sum())
+    if not signals_df.empty and "recommended" in signals_df.columns:
+        rec_df = signals_df[signals_df["recommended"] == True]
+        rec_count = len(rec_df)
+        if "margin" in rec_df.columns:
+            total_margin_used = int(rec_df["margin"].sum())
 
     # ルール別内訳
     rule_breakdown = {}
@@ -733,12 +786,14 @@ async def get_status():
     # トリガー情報（CMEギャップ、SMA、VIX）
     triggers = _compute_triggers()
 
-    # ロング推奨
-    long_df = _load_latest("long_recommendations")
-    long_count = len(long_df)
+    # ロング推奨（signals.parquet の long_grade 非空行）
+    long_count = 0
     long_grades = {}
-    if not long_df.empty and "long_grade" in long_df.columns:
-        long_grades = long_df["long_grade"].value_counts().to_dict()
+    if not signals_df.empty and "long_grade" in signals_df.columns:
+        long_df = signals_df[signals_df["long_grade"].fillna("").astype(str) != ""]
+        long_count = len(long_df)
+        if not long_df.empty:
+            long_grades = long_df["long_grade"].value_counts().to_dict()
 
     regime = _get_current_regime()
 
@@ -802,8 +857,8 @@ async def get_b4_entry():
         "selected_cost": 0, "budget_remaining": 0, "date": None,
     }
 
-    # 今日のシグナル（B4のみ）
-    signals_df = _load_latest("signals")
+    # 今日のシグナル（B4のみ、統合 signals.parquet から granville 行）
+    signals_df = _load_unified_signals()
     if signals_df.empty:
         return {**_base_env, "decision": "no_signal"}
 

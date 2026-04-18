@@ -150,8 +150,8 @@ jobs:
             fi
           done
 
-          # production S3からhold_stocks/credit_status/orders/nikkei_vi/index/futures
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
+          # production S3からhold_stocks/credit_status/orders/index/futures（VIはstaging自前取得）
+          for f in hold_stocks.parquet orders.parquet credit_status.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
@@ -167,6 +167,13 @@ jobs:
           echo "✅ Data downloaded"
 
       # ===== 18:00 振り返りフェーズ =====
+      - name: "[Review] Fetch Nikkei VI from investing.com"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "📊 Fetching JNIVE (Nikkei VI) from investing.com JP..."
+          python scripts/pipeline/fetch_nikkei_vi_investing.py
+        timeout-minutes: 5
+
       - name: "[Review] Update TOPIX daily prices"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -195,25 +202,34 @@ jobs:
           python scripts/pipeline/generate_pairs_signals.py
         timeout-minutes: 10
 
+      - name: "[Review] Regenerate manifest.json (local only)"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          # signals.parquet / positions.parquet 更新後の manifest 再生成
+          # update_manifest.py は S3 cleanup も行うので、manifest生成関数のみ呼ぶ
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from scripts.pipeline.update_manifest import generate_manifest, save_manifest
+          manifest = generate_manifest()
+          save_manifest(manifest)
+          "
+        timeout-minutes: 5
+
       - name: "[Review] Upload review results to S3"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
           echo "☁️ Uploading review results..."
 
-          # granville signals, positions, prices_topix
-          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/prices_topix.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
+          # unified signals/positions (granville + bearish + pairs統合後)
+          for f in signals.parquet positions.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
-          # bearish reversal signals
-          for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}reversal/$(basename $f)" --only-show-errors
-          done
-
-          # pairs trading signals
-          for f in data/parquet/pairs/pairs_signals_*.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}pairs/$(basename $f)" --only-show-errors
-          done
+          # granville prices_topix (指数・TOPIXベンチマーク用)
+          [ -f "data/parquet/granville/prices_topix.parquet" ] && \
+            aws s3 cp "data/parquet/granville/prices_topix.parquet" \
+              "s3://$S3_BUCKET/${S3_PREFIX}granville/prices_topix.parquet" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet orders.parquet credit_status.parquet \
@@ -298,8 +314,8 @@ jobs:
         if: steps.exec_mode.outputs.phase == 'cme_update'
         run: |
           echo "🌅 Updating CME close..."
-          # production S3からVI同期
-          aws s3 cp "s3://stock-api-data/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          # staging S3から当日VI同期（18:00 fetchで保存済み）
+          aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
           python scripts/pipeline/update_cme_close.py
         timeout-minutes: 5
 
@@ -313,8 +329,8 @@ jobs:
       - name: Generate B4 Slack section
         if: steps.exec_mode.outputs.phase == 'review' || steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          # production S3からVI同期（Slack通知用）
-          aws s3 cp "s3://stock-api-data/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          # staging S3からVI同期（Slack通知用、18:00 fetchで保存済み）
+          aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
           python scripts/format_granville_b4_slack.py || true
         timeout-minutes: 5
 
@@ -370,11 +386,14 @@ jobs:
           echo "Phase: ${{ steps.exec_mode.outputs.phase }}"
           echo "Time: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')"
 
-          if [ -f "data/parquet/granville/signals_*.parquet" ] 2>/dev/null; then
-            echo "Signals: $(ls data/parquet/granville/signals_*.parquet 2>/dev/null | tail -1)"
+          if [ -f "data/parquet/signals.parquet" ]; then
+            echo "Signals: data/parquet/signals.parquet ($(wc -c < data/parquet/signals.parquet) bytes)"
           fi
-          if [ -f "data/parquet/granville/recommendations_*.parquet" ] 2>/dev/null; then
-            echo "Recommendations: $(ls data/parquet/granville/recommendations_*.parquet 2>/dev/null | tail -1)"
+          if [ -f "data/parquet/positions.parquet" ]; then
+            echo "Positions: data/parquet/positions.parquet ($(wc -c < data/parquet/positions.parquet) bytes)"
+          fi
+          if ls data/parquet/granville/recommendations_*.parquet >/dev/null 2>&1; then
+            echo "Recommendations: $(ls data/parquet/granville/recommendations_*.parquet | tail -1)"
           fi
 
           echo "=========================================="

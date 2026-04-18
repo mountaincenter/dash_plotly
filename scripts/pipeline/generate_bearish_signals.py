@@ -44,6 +44,10 @@ VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 
+# 統合 parquet (granville と共通、strategy="bearish" 行として merge)
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "positions.parquet"
+
 # 確定パラメータ
 BEARISH_THRESHOLD = -5.0      # 実体 ≤ -5%
 VI_MIN = 20.0                 # 日経VI ≥ 20
@@ -194,14 +198,17 @@ def detect_bearish_signals(ps: pd.DataFrame, vi_df: pd.DataFrame) -> pd.DataFram
         "stock_name": bearish.get("stock_name", pd.Series("", index=bearish.index)),
         "sector": bearish.get("sectors", pd.Series("", index=bearish.index)),
         "strategy": "bearish",
+        "direction": "short",
+        "pair_id": "",
         "close": bearish["Close"].round(1),
         "open": bearish["Open"].round(1),
-        "body_pct": bearish["body_pct"].round(2),
+        "entry_price_est": bearish["Close"].round(1),  # 翌寄付想定だが算出時点は close
+        "prev_close": bearish["prev_close"].round(1),
         "sma20": bearish["sma20"].round(2),
         "dev_from_sma20": bearish["dev_from_sma20"].round(3),
-        "entry_price_est": bearish["Close"].round(1),
-        "prev_close": bearish["prev_close"].round(1),
+        "body_pct": bearish["body_pct"].round(2),
         "vi": vi_val,
+        "max_hold": MAX_HOLD,
     })
 
     # 下落率が深い順
@@ -308,6 +315,8 @@ def generate_positions(ps: pd.DataFrame, vi_df: pd.DataFrame, latest_date: pd.Ti
             "ticker": sig["ticker"],
             "stock_name": sig.get("stock_name", ""),
             "strategy": "bearish",
+            "direction": "short",
+            "pair_id": "",
             "entry_date": e_date,
             "entry_price": round(ep, 1),
             "current_price": round(cp, 1),
@@ -364,32 +373,57 @@ def main() -> int:
     latest_date = ps["date"].max()
     date_str = latest_date.strftime("%Y-%m-%d")
 
-    # シグナル保存
-    signal_path = REVERSAL_DIR / f"bearish_signals_{date_str}.parquet"
     if out.empty:
         out = pd.DataFrame(columns=[
-            "signal_date", "ticker", "stock_name", "sector", "strategy",
-            "close", "open", "body_pct", "sma20", "dev_from_sma20",
-            "entry_price_est", "prev_close", "vi",
+            "signal_date", "ticker", "stock_name", "sector",
+            "strategy", "direction", "pair_id",
+            "close", "open", "entry_price_est", "prev_close",
+            "sma20", "dev_from_sma20", "body_pct", "vi", "max_hold",
         ])
-    out.to_parquet(signal_path, index=False)
-    print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")
 
     # ポジション計算
     positions = generate_positions(ps, vi_df, latest_date)
-    pos_path = REVERSAL_DIR / f"bearish_positions_{date_str}.parquet"
-    if not positions.empty:
-        positions.to_parquet(pos_path, index=False)
-        print(f"[OK] Saved: {pos_path.name} ({len(positions)} rows)")
+    if positions.empty:
+        positions = pd.DataFrame(columns=[
+            "ticker", "stock_name", "strategy", "direction", "pair_id",
+            "entry_date", "entry_price", "current_price", "sma20",
+            "pct", "pnl", "hold_days", "max_hold", "as_of",
+            "status", "exit_type",
+        ])
+
+    # ===== 統合 signals.parquet に merge (strategy="bearish" 行のみ差し替え) =====
+    if SIGNALS_PATH.exists():
+        existing_sigs = pd.read_parquet(SIGNALS_PATH)
+        other = (existing_sigs[existing_sigs["strategy"] != "bearish"]
+                 if "strategy" in existing_sigs.columns else existing_sigs)
+        merged_sigs = pd.concat([out, other], ignore_index=True) if len(other) else out
+    else:
+        merged_sigs = out
+    merged_sigs.to_parquet(SIGNALS_PATH, index=False)
+    print(f"\n[OK] bearish signals merged into {SIGNALS_PATH.name}")
+    print(f"     bearish={len(out)} / total={len(merged_sigs)}")
+
+    # ===== 統合 positions.parquet に merge (strategy="bearish" 行のみ差し替え) =====
+    if POSITIONS_PATH.exists():
+        existing_pos = pd.read_parquet(POSITIONS_PATH)
+        other_pos = (existing_pos[existing_pos["strategy"] != "bearish"]
+                     if "strategy" in existing_pos.columns else existing_pos)
+        merged_pos = pd.concat([positions, other_pos], ignore_index=True) if len(other_pos) else positions
+    else:
+        merged_pos = positions
+    merged_pos.to_parquet(POSITIONS_PATH, index=False)
+    b_open = int((positions["status"] == "open").sum()) if not positions.empty else 0
+    b_exit = int((positions["status"] == "exit").sum()) if not positions.empty else 0
+    print(f"[OK] bearish positions merged into {POSITIONS_PATH.name}")
+    print(f"     bearish={len(positions)} (open={b_open}, exit={b_exit}) / total={len(merged_pos)}")
 
     # S3アップロード
     print("\n[4/4] Uploading to S3...")
     try:
         cfg = load_s3_config()
         if cfg and cfg.bucket:
-            upload_file(cfg, signal_path, f"reversal/bearish_signals_{date_str}.parquet")
-            if not positions.empty:
-                upload_file(cfg, pos_path, f"reversal/bearish_positions_{date_str}.parquet")
+            upload_file(cfg, SIGNALS_PATH, "signals.parquet")
+            upload_file(cfg, POSITIONS_PATH, "positions.parquet")
         else:
             print("  [INFO] S3 bucket not configured")
     except Exception as e:

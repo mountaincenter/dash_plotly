@@ -15,12 +15,12 @@ IMPLEMENTATION.md §3-§5 準拠:
 
 Exit（§6）:
   20日高値: High[t] >= max(High[t-19:t+1])
-  MAX_HOLD: ルール別（B4=19, B1=13, B3=14, B2=15）ポートフォリオ最適化結果
+  MAX_HOLD: ルール別（B4=3, B1=30, B3=30, B2=30）2026-04-17再検証結果
   SLなし
 
-出力:
-  data/parquet/granville/signals_YYYY-MM-DD.parquet
-  data/parquet/granville/positions_YYYY-MM-DD.parquet
+出力 (2026-04-17 統合):
+  data/parquet/signals.parquet    -- 全戦略シグナル統合 (現在は granville のみ)
+  data/parquet/positions.parquet  -- 全戦略ポジション統合 (現在は granville のみ)
 """
 from __future__ import annotations
 
@@ -49,15 +49,23 @@ META_FALLBACK = PARQUET_DIR / "meta.parquet"
 CSV_DIR = ROOT / "data" / "csv"
 CREDIT_CSV = CSV_DIR / "credit_capacity.csv"
 
+# 2026-04-17 統合: signals.parquet / positions.parquet (top-level, 全戦略統合)
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "positions.parquet"
+
 RULE_PRIORITY = {"B4": 0, "B1": 1, "B3": 2, "B2": 3}
-# 全ルールMH15（資本効率最大: 全期間+直近2年検証で確定）
-RULE_MAX_HOLD = {"B4": 15, "B1": 15, "B3": 15, "B2": 15}
+# priority_rank は表示用 (1=最優先)。RULE_PRIORITY とは +1 オフセット
+RULE_PRIORITY_RANK = {"B4": 1, "B1": 2, "B3": 3, "B2": 4}
+# 2026-04-17 再検証 (Opus 4.7 + Codex, 27年フル期間, N=649K):
+# - B1/B2/B3: 全期間 capital_eff で MH30 が最適 (旧 MH15 比 +30-50%)
+# - B4: 逆張り性質で MH3 が最適 (PF 2.44-4.81 vs MH15 の PF 1.3-1.6)
+RULE_MAX_HOLD = {"B4": 3, "B1": 30, "B3": 30, "B2": 30}
 HIGH20D_PRE_ENTRY = 4  # 20日高値判定にエントリー前4日を含める（k=4最適、Codex検証済み）
 
-# B1-B3ロングフィルター定義（IS/OOS 5期間全てPF>1.0で検証済み）
-# H1: VI≥30 + B1 → IS 1.88, OOS 2.37 (hold9d)
-# H2: N225>SMA20 + CME flat(-0.5~0.5%) + B3 → IS 1.57, OOS 3.76 (hold9d)
-# H3: N225 ret20<-5% + B1 → IS 2.32, OOS 2.43 (hold4d)
+# B1-B3ロングフィルター定義 (2026-04-17 再検証, 期間別 capital_eff 最適):
+# H1: VI≥30 + B1 → hold 3d (全期間 PF 1.26, 5Y PF 1.85)
+# H2: N225>SMA20 + CME flat(-0.5~0.5%) + B3 → hold 9d (全期間 PF 1.21, 3Y PF 1.72, 現行維持)
+# H3: N225 ret20<-5% + B1 → hold 8d (10Y PF 1.86, 5Y PF 1.87)
 INDEX_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
 VI_PATH = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
@@ -118,17 +126,17 @@ def _classify_long_grade(rule: str, regime: dict) -> tuple[str, int, float] | No
     n225_ret20 = regime.get("n225_ret20")
     cme_gap = regime.get("cme_gap")
 
-    # H1: VI≥30 + B1 → hold 9d (IS 1.88, OOS 2.37)
+    # H1: VI≥30 + B1 → hold 3d (2026-04-17 再検証 全期間 PF 1.26, 5Y PF 1.85)
     if rule == "B1" and vi is not None and vi >= 30:
-        return ("H1", 9, 2.13)  # IS/OOS平均
+        return ("H1", 3, 1.85)
 
-    # H3: N225 ret20<-5% + B1 → hold 4d (IS 2.32, OOS 2.43)
+    # H3: N225 ret20<-5% + B1 → hold 8d (2026-04-17 再検証 10Y PF 1.86, 5Y PF 1.87)
     if rule == "B1" and n225_ret20 is not None and n225_ret20 < -5:
-        return ("H3", 4, 2.38)  # IS/OOS平均
+        return ("H3", 8, 1.87)
 
-    # H2: N225>SMA20 + CME flat + B3 → hold 9d (IS 1.57, OOS 3.76)
+    # H2: N225>SMA20 + CME flat + B3 → hold 9d (2026-04-17 再検証 3Y PF 1.72, 現行維持)
     if rule == "B3" and n225_above and cme_gap is not None and -0.5 <= cme_gap <= 0.5:
-        return ("H2", 9, 2.67)  # IS/OOS平均
+        return ("H2", 9, 1.72)
 
     return None
 
@@ -305,22 +313,31 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         signals["sectors"] = ""
 
     out = pd.DataFrame({
+        # 共通カラム (3戦略統合スキーマ)
         "signal_date": signals["date"],
         "ticker": signals["ticker"],
         "stock_name": signals.get("stock_name", pd.Series("", index=signals.index)),
         "sector": signals.get("sectors", pd.Series("", index=signals.index)),
-        "rule": signals["rule"],
+        "strategy": "granville",
+        "direction": "long",
+        "pair_id": "",
         "close": signals["Close"].round(1),
         "open": signals["Open"].round(1),
-        "sma20": signals["sma20"].round(2),
-        "dev_from_sma20": signals["dev_from_sma20"].round(3),
-        "sma20_slope": signals["sma20_slope"].round(4),
         "entry_price_est": signals["Close"].round(1),
         "prev_close": signals["prev_close"].round(1),
+        "sma20": signals["sma20"].round(2),
+        "dev_from_sma20": signals["dev_from_sma20"].round(3),
+        # Granville 固有
+        "rule": signals["rule"],
+        "sma20_slope": signals["sma20_slope"].round(4),
         "atr10_pct": signals["atr10_pct"].round(2),
         "ret5d": signals["ret5d"].round(2),
         "hvb_grade": signals["hvb_recent_5d"].map({True: "A", False: "B"}),
+        "hvb_recent_5d": signals["hvb_recent_5d"].astype(bool),
     })
+    # max_hold / priority_rank (ルール由来、H-filter override は後段で適用)
+    out["max_hold"] = out["rule"].map(RULE_MAX_HOLD).astype("int32")
+    out["priority_rank"] = out["rule"].map(RULE_PRIORITY_RANK).astype("int32")
 
     # §5: ルール優先 → B4は乖離深い順（検証済み: Spearman r=-0.064, p<0.001）
     out["_priority"] = out["rule"].map(RULE_PRIORITY)
@@ -431,19 +448,24 @@ def generate_positions(ps: pd.DataFrame, latest_date: pd.Timestamp) -> pd.DataFr
             atr10 = round(float(cur["atr10"]), 1)
 
         base = {
+            # 共通カラム (3戦略統合スキーマ)
             "ticker": sig["ticker"],
             "stock_name": sig.get("stock_name", ""),
-            "rule": sig["rule"],
+            "strategy": "granville",
+            "direction": "long",
+            "pair_id": "",
             "entry_date": e_date,
             "entry_price": round(ep, 1),
             "current_price": round(cp, 1),
-            "trigger_price": trigger_price,
-            "atr10": atr10,
             "pct": round((cp / ep - 1) * 100, 2),
             "pnl": int((cp - ep) * 100),
             "hold_days": hold_days,
             "max_hold": max_hold,
             "as_of": latest_date,
+            # Granville 固有
+            "rule": sig["rule"],
+            "trigger_price": trigger_price,
+            "atr10": atr10,
             "hvb_grade": "A" if sig.get("hvb_recent_5d", False) else "B",
         }
 
@@ -490,61 +512,83 @@ def main() -> int:
     latest_date = ps["date"].max()
     date_str = latest_date.strftime("%Y-%m-%d")
 
-    signal_path = GRANVILLE_DIR / f"signals_{date_str}.parquet"
-    if out.empty:
-        out = pd.DataFrame(columns=[
-            "signal_date", "ticker", "stock_name", "sector", "rule",
-            "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
-            "entry_price_est", "prev_close", "atr10_pct", "ret5d", "hvb_grade",
-        ])
-    out.to_parquet(signal_path, index=False)
-    print(f"\n[OK] Saved: {signal_path.name} ({len(out)} rows)")
-
-    # B1-B3 ロング推奨生成
+    # B1-B3 ロングフィルター判定 (H1/H2/H3) を signals に merge
     regime = _load_market_regime(latest_date)
     print(f"\n  Market regime: N225>SMA20={regime['n225_above_sma20']}, "
           f"ret20={regime['n225_ret20']}, CME gap={regime['cme_gap']}, VI={regime['vi']}")
 
-    long_recs = []
     if not out.empty:
+        long_grade_col, hold_days_col, expected_pf_col = [], [], []
         for _, sig in out.iterrows():
             if sig["rule"] in ("B1", "B2", "B3"):
                 grade = _classify_long_grade(sig["rule"], regime)
                 if grade:
-                    long_recs.append({**sig.to_dict(), "long_grade": grade[0], "hold_days": grade[1], "expected_pf": grade[2]})
-
-    long_df = pd.DataFrame(long_recs)
-    if not long_df.empty:
-        long_df = long_df.sort_values("expected_pf", ascending=False).reset_index(drop=True)
-    long_path = GRANVILLE_DIR / f"long_recommendations_{date_str}.parquet"
-    if long_df.empty:
-        long_df = pd.DataFrame(columns=[
-            "signal_date", "ticker", "stock_name", "sector", "rule",
-            "close", "open", "sma20", "dev_from_sma20", "sma20_slope",
-            "entry_price_est", "prev_close", "atr10_pct", "ret5d",
-            "hvb_grade", "long_grade", "hold_days", "expected_pf",
+                    long_grade_col.append(grade[0])
+                    hold_days_col.append(grade[1])
+                    expected_pf_col.append(grade[2])
+                    continue
+            long_grade_col.append("")
+            hold_days_col.append(pd.NA)
+            expected_pf_col.append(pd.NA)
+        out["long_grade"] = long_grade_col
+        out["hold_days"] = pd.array(hold_days_col, dtype="Int32")
+        out["expected_pf"] = pd.array(expected_pf_col, dtype="Float32")
+    else:
+        out = pd.DataFrame(columns=[
+            "signal_date", "ticker", "stock_name", "sector",
+            "strategy", "direction", "pair_id",
+            "close", "open", "entry_price_est", "prev_close", "sma20", "dev_from_sma20",
+            "rule", "sma20_slope", "atr10_pct", "ret5d",
+            "hvb_grade", "hvb_recent_5d", "max_hold", "priority_rank",
+            "long_grade", "hold_days", "expected_pf",
         ])
-    long_df.to_parquet(long_path, index=False)
-    grade_counts = long_df["long_grade"].value_counts().to_dict() if not long_df.empty else {}
-    print(f"[OK] Saved: {long_path.name} ({len(long_df)} recs) {grade_counts}")
 
-    # ポジション計算
+    # 統合 signals.parquet に merge (strategy="granville" 行のみ差し替え)
+    if SIGNALS_PATH.exists():
+        existing_sigs = pd.read_parquet(SIGNALS_PATH)
+        other_sigs = (existing_sigs[existing_sigs["strategy"] != "granville"]
+                      if "strategy" in existing_sigs.columns else existing_sigs)
+        merged_sigs = pd.concat([out, other_sigs], ignore_index=True) if len(other_sigs) else out
+    else:
+        merged_sigs = out
+    merged_sigs.to_parquet(SIGNALS_PATH, index=False)
+    print(f"\n[OK] Saved: {SIGNALS_PATH.name} ({len(out)} rows, strategy=granville / total={len(merged_sigs)})")
+    grade_counts = (out[out["long_grade"] != ""]["long_grade"].value_counts().to_dict()
+                    if not out.empty and "long_grade" in out.columns else {})
+    if grade_counts:
+        print(f"     long_grade: {grade_counts}")
+
+    # ポジション計算 → 統合 positions.parquet
     ps = detect_signals(ps)
     positions = generate_positions(ps, latest_date)
-    if not positions.empty:
-        pos_path = GRANVILLE_DIR / f"positions_{date_str}.parquet"
-        positions.to_parquet(pos_path, index=False)
-        print(f"[OK] Saved: {pos_path.name} ({len(positions)} rows)")
+    if positions.empty:
+        positions = pd.DataFrame(columns=[
+            "ticker", "stock_name", "strategy", "direction", "pair_id",
+            "entry_date", "entry_price", "current_price",
+            "pct", "pnl", "hold_days", "max_hold", "as_of",
+            "rule", "trigger_price", "atr10", "hvb_grade",
+            "status", "exit_type",
+        ])
+    # 統合 positions.parquet に merge (strategy="granville" 行のみ差し替え)
+    if POSITIONS_PATH.exists():
+        existing_pos = pd.read_parquet(POSITIONS_PATH)
+        other_pos = (existing_pos[existing_pos["strategy"] != "granville"]
+                     if "strategy" in existing_pos.columns else existing_pos)
+        merged_pos = pd.concat([positions, other_pos], ignore_index=True) if len(other_pos) else positions
+    else:
+        merged_pos = positions
+    merged_pos.to_parquet(POSITIONS_PATH, index=False)
+    open_n = (positions["status"] == "open").sum() if not positions.empty else 0
+    exit_n = (positions["status"] == "exit").sum() if not positions.empty else 0
+    print(f"[OK] Saved: {POSITIONS_PATH.name} ({len(positions)} rows granville, open={open_n}, exit={exit_n} / total={len(merged_pos)})")
 
     # S3アップロード
     print("\n[4/4] Uploading to S3...")
     try:
         cfg = load_s3_config()
         if cfg and cfg.bucket:
-            upload_file(cfg, signal_path, f"granville/signals_{date_str}.parquet")
-            upload_file(cfg, long_path, f"granville/long_recommendations_{date_str}.parquet")
-            if not positions.empty:
-                upload_file(cfg, pos_path, f"granville/positions_{date_str}.parquet")
+            upload_file(cfg, SIGNALS_PATH, "signals.parquet")
+            upload_file(cfg, POSITIONS_PATH, "positions.parquet")
         else:
             print("  [INFO] S3 bucket not configured")
     except Exception as e:
@@ -556,7 +600,8 @@ def main() -> int:
     for rule in ["B4", "B1", "B3", "B2"]:
         n = (out["rule"] == rule).sum() if not out.empty else 0
         print(f"  {rule}: {n}")
-    print(f"Long recommendations: {len(long_df)} {grade_counts}")
+    print(f"Long-filter: {grade_counts}")
+    print(f"Positions: {len(positions)} (open={open_n}, exit={exit_n})")
     print("=" * 60)
 
     return 0
