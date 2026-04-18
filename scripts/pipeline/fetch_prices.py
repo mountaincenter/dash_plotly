@@ -29,7 +29,7 @@ PRICE_CONFIGS = [
     {"period": "60d", "interval": "15m", "filename": "prices_60d_15m.parquet"},
     {"period": "60d", "interval": "5m", "filename": "prices_60d_5m.parquet"},
     {"period": "730d", "interval": "1h", "filename": "prices_730d_1h.parquet", "fallback_period": "max"},
-    {"period": "max", "interval": "1d", "filename": "prices_max_1d.parquet"},
+    {"period": "max", "interval": "1d", "filename": "prices_max_1d.parquet", "fallback_period": "max"},
     {"period": "max", "interval": "1mo", "filename": "prices_max_1mo.parquet"},
 ]
 
