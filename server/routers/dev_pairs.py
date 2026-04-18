@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from ..utils import read_prices_1d_df
 
 router = APIRouter()
 
@@ -271,16 +272,13 @@ _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
 def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
     """チャート用に2銘柄の日足Closeを取得
 
-    pairs は TOPIX 全体から銘柄を選ぶため prices_topix.parquet を読む
-    (prices_max_1d は Core30 系の限定銘柄のみで銀行銘柄を含まない)
+    signals.parquet → all_stocks.parquet → prices_max_1d.parquet の流れで
+    pair銘柄は prices_max_1d に含まれる。read_prices_1d_df は
+    ローカル→S3フォールバック＋キャッシュ済み。
     """
-    prices_path = PARQUET_DIR / "granville" / "prices_topix.parquet"
-    if not prices_path.exists():
+    df = read_prices_1d_df()
+    if df is None or df.empty:
         return pd.DataFrame()
-
-    df = pd.read_parquet(prices_path)
-    if df.empty:
-        return df
 
     tk_col = "ticker" if "ticker" in df.columns else "Ticker"
     df = df[df[tk_col].isin([tk1, tk2])].copy()
