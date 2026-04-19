@@ -176,7 +176,7 @@ async def refresh_cache():
     _cache.clear()
 
     refreshed = []
-    for f in ["hold_stocks.parquet", "credit_status.parquet",
+    for f in ["hold_stocks.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
               "futures_prices_max_1d.parquet",
               "signals.parquet", "positions.parquet"]:
@@ -276,20 +276,6 @@ async def get_status():
         if "rule" in b4_df.columns:
             b4_count = int((b4_df["rule"] == "B4").sum())
 
-    # 信用余力
-    cash_margin = 0
-    cs_path = PARQUET_DIR / "credit_status.parquet"
-    if cs_path.exists():
-        try:
-            cs = pd.read_parquet(cs_path)
-            row = cs[cs["asset"].str.contains("信用", na=False)]
-            if not row.empty:
-                cash_margin = int(row["value"].iloc[0])
-        except Exception:
-            pass
-    if cash_margin == 0:
-        cash_margin = 4_650_000
-
     # ポジション数
     hold_path = PARQUET_DIR / "hold_stocks.parquet"
     position_count = 0
@@ -310,7 +296,6 @@ async def get_status():
     return {
         "vi": _safe_float(vi, 1) if vi else None,
         "vi_signal": "green" if vi and vi >= 20 else "red" if vi else "unknown",
-        "cash_margin": cash_margin,
         "position_count": position_count,
         "bearish_count": bearish_count,
         "bearish_date": bearish_date,

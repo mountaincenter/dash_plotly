@@ -190,34 +190,7 @@ def _get_max_hold(rule: str) -> int:
     return RULE_MAX_HOLD.get(rule, 15)
 
 
-def load_available_margin() -> float:
-    """credit_status.parquetから現金保証金(信用)を取得"""
-    cs_path = PARQUET_DIR / "credit_status.parquet"
-    if cs_path.exists():
-        try:
-            cs = pd.read_parquet(cs_path)
-            row = cs[cs["asset"].str.contains("信用", na=False)]
-            if not row.empty:
-                val = float(row["value"].iloc[0])
-                if val > 0:
-                    return val
-        except Exception:
-            pass
-    # S3フォールバック
-    try:
-        from common_cfg.s3io import download_file
-        from common_cfg.s3cfg import load_s3_config
-        cfg = load_s3_config()
-        if cfg and cfg.bucket:
-            download_file(cfg, "credit_status.parquet", cs_path)
-            cs = pd.read_parquet(cs_path)
-            row = cs[cs["asset"].str.contains("信用", na=False)]
-            if not row.empty:
-                return float(row["value"].iloc[0])
-    except Exception:
-        pass
-    print(f"  [WARN] credit_status.parquet not found, using default 4,650,000")
-    return 4_650_000
+AVAILABLE_MARGIN_DEFAULT = 4_650_000
 
 
 def load_hold_stocks() -> set[str]:
@@ -269,7 +242,7 @@ def main() -> int:
 
     date_str = pd.to_datetime(signals["signal_date"].iloc[0]).strftime("%Y-%m-%d")
 
-    available = load_available_margin()
+    available = AVAILABLE_MARGIN_DEFAULT
     hold_tickers = load_hold_stocks()
     print(f"  Available margin: ¥{available:,.0f}")
     print(f"  MAX_HOLD: {RULE_MAX_HOLD}")

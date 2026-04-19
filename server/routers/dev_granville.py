@@ -49,7 +49,7 @@ async def refresh_cache():
 
     # staging S3から最新データを強制ダウンロード
     refreshed = []
-    for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
+    for f in ["hold_stocks.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
               "futures_prices_max_1d.parquet",
               "signals.parquet", "positions.parquet"]:
@@ -601,46 +601,6 @@ async def get_positions():
     return {"positions": positions, "exits": exits, "as_of": as_of}
 
 
-def _load_credit_status() -> dict:
-    """現金保証金と信用余力を取得（S3優先）"""
-    cash_margin = 0
-
-    # S3からcredit_status.parquetを取得
-    cs_path = PARQUET_DIR / "credit_status.parquet"
-    _s3_download("credit_status.parquet", cs_path)
-
-    if cs_path.exists():
-        try:
-            cs = pd.read_parquet(cs_path)
-            row = cs[cs["asset"].str.contains("信用", na=False)]
-            if not row.empty:
-                cash_margin = int(row["value"].iloc[0])
-        except Exception:
-            pass
-
-    if cash_margin == 0:
-        cash_margin = 4_650_000  # デフォルト
-
-    # 信用余力 = (現金保証金 - 必要保証金) / 委託保証金率(30%)
-    position_value = 0
-    hold_df = _load_hold_stocks()
-    if not hold_df.empty and "market_value" in hold_df.columns:
-        position_value = int(hold_df["market_value"].abs().sum())
-
-    # 必要保証金 = 建玉金額合計 * 30%
-    required_margin = 0
-    if not hold_df.empty and "cost_total" in hold_df.columns:
-        required_margin = int(hold_df["cost_total"].abs().sum() * 0.3)
-
-    credit_capacity = int((cash_margin - required_margin) / 0.3)
-
-    return {
-        "cash_margin": cash_margin,
-        "credit_capacity": max(0, credit_capacity),
-        "position_value": position_value,
-    }
-
-
 def _load_hold_stocks() -> pd.DataFrame:
     """hold_stocks.parquet をS3から取得"""
     local = PARQUET_DIR / "hold_stocks.parquet"
@@ -746,9 +706,7 @@ def _compute_triggers() -> dict:
 
 @router.get("/api/dev/granville/status")
 async def get_status():
-    """現金保証金・信用余力・ポジション数・シグナル数"""
-    credit = _load_credit_status()
-
+    """ポジション数・シグナル数"""
     # シグナル数（統合 signals.parquet から granville 行）
     signals_df = _load_unified_signals()
     signal_count = len(signals_df)
@@ -799,9 +757,6 @@ async def get_status():
 
     return {
         "triggers": triggers,
-        "cash_margin": credit["cash_margin"],
-        "credit_capacity": credit["credit_capacity"],
-        "position_value": credit["position_value"],
         "total_margin_used": total_margin_used,
         "signal_count": signal_count,
         "signal_date": signal_date,

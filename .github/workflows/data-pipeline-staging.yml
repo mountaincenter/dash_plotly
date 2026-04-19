@@ -150,8 +150,8 @@ jobs:
             fi
           done
 
-          # production S3からhold_stocks/credit_status/orders/index/futures（VIはstaging自前取得）
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
+          # production S3からhold_stocks/index/futures（VIはstaging自前取得）
+          for f in hold_stocks.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
@@ -232,7 +232,7 @@ jobs:
               "s3://$S3_BUCKET/${S3_PREFIX}granville/prices_topix.parquet" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet \
+          for f in hold_stocks.parquet \
                    nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
@@ -282,7 +282,7 @@ jobs:
           done
 
           # production S3から取得済みファイル → staging S3に同期
-          for f in hold_stocks.parquet orders.parquet credit_status.parquet \
+          for f in hold_stocks.parquet \
                    nikkei_vi_max_1d.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
