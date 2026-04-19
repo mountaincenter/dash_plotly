@@ -325,6 +325,50 @@ jobs:
           python scripts/format_granville_b4_slack.py
         timeout-minutes: 5
 
+      # ===== 07:00 Live Trading 判定 (sox_research/live_trading) =====
+      - name: "[CME] Download live_trading data from S3"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "📥 Syncing live_trading state from S3..."
+          for f in signals_log.csv trades.csv earnings_dates.json; do
+            aws s3 cp "s3://$S3_BUCKET/live_trading/$f" \
+              "sox_research/live_trading/$f" --only-show-errors 2>/dev/null \
+              && echo "  ✓ $f" \
+              || echo "  ⚠ $f not in S3 (initial run?)"
+          done
+
+      - name: "[CME] Live Trading signal check"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "📊 Live Trading signal check..."
+          python scripts/pipeline/live_trading_check.py
+        timeout-minutes: 5
+
+      - name: "[CME] Upload live_trading data to S3"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "☁️ Uploading live_trading state to S3..."
+          for f in signals_log.csv trades.csv earnings_dates.json; do
+            if [ -f "sox_research/live_trading/$f" ]; then
+              aws s3 cp "sox_research/live_trading/$f" \
+                "s3://$S3_BUCKET/live_trading/$f" --only-show-errors \
+                && echo "  ✓ $f"
+            fi
+          done
+
+      - name: "[CME] Slack notification (live_trading)"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+        run: |
+          if [ -f /tmp/live_trading_slack.json ] && [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data @/tmp/live_trading_slack.json "$SLACK_WEBHOOK_URL" \
+              && echo "✅ Live Trading Slack posted"
+          else
+            echo "⚠ Slack payload or webhook missing, skipping"
+          fi
+
       # ===== Slack通知（全フェーズ共通） =====
       - name: Generate B4 Slack section
         if: steps.exec_mode.outputs.phase == 'review' || steps.exec_mode.outputs.phase == 'prepare'

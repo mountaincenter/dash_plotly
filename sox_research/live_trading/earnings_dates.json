@@ -1,0 +1,12 @@
+{
+  "_comment": "決算発表予定日 (手動更新). jquants eq earnings-calendar に未登録の銘柄を管理. 判定ウィンドウは決算日±2営業日 (RULES.md と同期).",
+  "6857": {
+    "name": "アドバンテスト",
+    "earnings": [
+      {"date": "2026-04-24", "fy": "FY2026-03", "fq": "FY", "confirmed": false, "note": "直近2年の金曜パターンから推定。IR確認要"},
+      {"date": "2026-07-28", "fy": "FY2027-03", "fq": "1Q", "confirmed": false, "note": "推定"},
+      {"date": "2026-10-27", "fy": "FY2027-03", "fq": "2Q", "confirmed": false, "note": "推定"},
+      {"date": "2027-01-28", "fy": "FY2027-03", "fq": "3Q", "confirmed": false, "note": "推定"}
+    ]
+  }
+}
