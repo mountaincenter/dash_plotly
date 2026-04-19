@@ -65,6 +65,7 @@ EXCLUDE_PAIRS = {
     ("8360.T", "8386.T"),  # full_PF=0.89, recent_PF=0.77
     ("8386.T", "8392.T"),  # full_PF=0.90, recent_PF=0.66
     ("8411.T", "8524.T"),  # full_PF=0.56, recent_PF=0.54
+    ("6995.T", "7282.T"),  # 2y_PF=1.37→6m_PF=0.36 劣化明確 (pair_health_2026-04-19)
 }
 
 # Phase 70-71 共和分ベースペア (tk1, tk2, optimal_lookback, actual_pf, actual_n, revert_1d)
