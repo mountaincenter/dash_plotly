@@ -15,6 +15,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_file, download_file
 
+# V2_PAIRS (ペアトレード定義) を import
+sys.path.insert(0, str(Path(__file__).parent / "pipeline"))
+from generate_pairs_signals import V2_PAIRS
+
 # パス設定
 BASE_DIR = Path(__file__).parent.parent
 CSV_PATH = BASE_DIR / "data" / "csv" / "stock_results.csv"
@@ -203,14 +207,40 @@ if grok_trending_path.exists():
 
 print(f"戦略タグ: Grok合計 {len(grok_set)} 件読み込み")
 
+# Pairs戦略の検出 (同日・V2_PAIRS該当・逆方向のデイトレをpairsタグへ)
+PAIRS_START_DATE = pd.Timestamp("2026-04-10")
+PAIR_TICKERS = {frozenset([tk1.replace(".T", ""), tk2.replace(".T", "")])
+                for tk1, tk2, *_ in V2_PAIRS}
+
+
+def detect_pairs_keys(df_in):
+    keys = set()
+    df_p = df_in[df_in["約定日"] >= PAIRS_START_DATE]
+    for date, grp in df_p.groupby("約定日"):
+        longs = set(grp[grp["売買"] == "ロング"]["コード"].astype(str))
+        shorts = set(grp[grp["売買"] == "ショート"]["コード"].astype(str))
+        for pair in PAIR_TICKERS:
+            a, b = tuple(pair)
+            if (a in longs and b in shorts) or (a in shorts and b in longs):
+                keys.add((date.date(), a))
+                keys.add((date.date(), b))
+    return keys
+
+
+pairs_set = detect_pairs_keys(daily_stock)
+print(f"戦略タグ: Pairs {len(pairs_set)} 件検出")
+
 
 def tag_strategy(row):
     trade_date = row["約定日"]
+    key = (trade_date.date(), str(row["コード"]))
+    # Pairs戦略を最優先 (V2_PAIRS同日逆方向)
+    if key in pairs_set:
+        return "pairs"
     # 12/22より前は全てLLM
     if trade_date < pd.Timestamp("2025-12-22"):
         return "llm"
     # 2/24以降でgrok_setに不一致 → granville
-    key = (trade_date.date(), str(row["コード"]))
     if trade_date >= pd.Timestamp("2026-02-24") and key not in grok_set:
         return "granville"
     # 12/22以降はgrok（照合一致 or 12/22-2/23の全件）
@@ -221,7 +251,7 @@ strategy_counts = daily_stock["戦略"].value_counts()
 print(f"戦略タグ付け完了: {dict(strategy_counts)}")
 
 # 戦略別集計をサマリーに追加
-for strategy in ["grok", "granville", "llm"]:
+for strategy in ["pairs", "grok", "granville", "llm"]:
     s_df = daily_stock[daily_stock["戦略"] == strategy]
     s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
     s_count = len(s_df)
