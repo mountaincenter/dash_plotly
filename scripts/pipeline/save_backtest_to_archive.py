@@ -9,7 +9,8 @@ Grok trending銘柄のバックテスト結果をアーカイブに保存
 
 機能:
     - grok_trending.parquet を読み込み
-    - 翌営業日の株価データを取得（yfinance）
+    - 翌営業日の日次株価データを J-Quants から取得（未調整値、分割時も buy_price と整合）
+    - 5分足データは prices_60d_5m.parquet から取得
     - バックテスト結果を計算（Phase1, Phase2, Phase3）
     - 前場・全日の高値・安値・最大上昇率・最大下落率を計算
     - grok_trending_YYYYMMDD.parquet として保存
@@ -28,14 +29,12 @@ from pathlib import Path
 from datetime import datetime, timedelta, time
 from typing import Optional, Tuple, Any
 import traceback
-import time as time_module
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
-import yfinance as yf
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
@@ -615,9 +614,9 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
         dict: バックテストデータ
     """
     try:
-        # 前営業日が未指定の場合はJ-Quantsから取得
+        # 日足は J-Quants（未調整値）で統一。分割発生時も buy_price とスケール整合
+        fetcher = JQuantsFetcher()
         if prev_trading_day is None:
-            fetcher = JQuantsFetcher()
             prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
 
         # 日次データを取得（前営業日を含める）
@@ -627,52 +626,32 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             start_date = (backtest_date - timedelta(days=5)).strftime("%Y-%m-%d")
         end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
 
-        # yf.download()を使用（GitHub Actions環境でyf.Ticker().history()が失敗するため）
-        # リトライロジック（GitHub Actions環境でのAPI制限対策）
-        hist_daily = pd.DataFrame()
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                hist_daily = yf.download(
-                    ticker,
-                    start=start_date,
-                    end=end_date,
-                    interval="1d",
-                    progress=False,
-                    auto_adjust=False,
-                )
-                # MultiIndexの場合はフラット化
-                if not hist_daily.empty and isinstance(hist_daily.columns, pd.MultiIndex):
-                    hist_daily.columns = hist_daily.columns.get_level_values(0)
-                if not hist_daily.empty:
-                    break
-                if attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 2
-                    print(f"[WARN] {ticker}: Empty response, retry {attempt + 1}/{max_retries} after {wait_sec}s")
-                    time_module.sleep(wait_sec)
-            except Exception as e:
-                print(f"[WARN] {ticker}: yfinance error on attempt {attempt + 1}: {e}")
-                if attempt < max_retries - 1:
-                    time_module.sleep((attempt + 1) * 2)
-
-        # デバッグログ: yfinanceの戻り値を確認
-        print(f"[DEBUG] {ticker}: yfinance query start={start_date}, end={end_date}")
-        print(f"[DEBUG] {ticker}: hist_daily.empty={hist_daily.empty}, shape={hist_daily.shape}")
-        if not hist_daily.empty:
-            print(f"[DEBUG] {ticker}: hist_daily.index={list(hist_daily.index)}")
-
-        if hist_daily.empty:
-            print(f"[DEBUG] {ticker}: FAIL - hist_daily is empty after {max_retries} retries")
+        code = ticker.replace(".T", "")
+        try:
+            hist_daily = fetcher.get_prices_daily(
+                code=code, from_date=start_date, to_date=end_date
+            )
+        except Exception as e:
+            print(f"[WARN] {ticker}: J-Quants error: {e}")
             return None
 
-        # インデックスをdate型に変換
-        hist_daily.index = pd.to_datetime(hist_daily.index).date
-        backtest_date_obj = backtest_date.date()
+        print(f"[DEBUG] {ticker}: J-Quants query start={start_date}, end={end_date}")
+        print(f"[DEBUG] {ticker}: hist_daily.empty={hist_daily.empty}, shape={hist_daily.shape}")
 
-        print(f"[DEBUG] {ticker}: backtest_date_obj={backtest_date_obj}, index after conversion={list(hist_daily.index)}")
+        if hist_daily.empty:
+            print(f"[DEBUG] {ticker}: FAIL - J-Quants returned empty")
+            return None
+
+        # Date 列を date 型インデックスに変換
+        hist_daily = hist_daily.copy()
+        hist_daily["_date_key"] = pd.to_datetime(hist_daily["Date"]).dt.date
+        hist_daily = hist_daily.set_index("_date_key")
+
+        backtest_date_obj = backtest_date.date()
+        print(f"[DEBUG] {ticker}: backtest_date_obj={backtest_date_obj}, index={list(hist_daily.index)}")
 
         if backtest_date_obj not in hist_daily.index:
-            print(f"[DEBUG] {ticker}: FAIL - backtest_date_obj not in index")
+            print(f"[DEBUG] {ticker}: FAIL - backtest_date_obj not in J-Quants index")
             return None
 
         daily_row = hist_daily.loc[backtest_date_obj]
