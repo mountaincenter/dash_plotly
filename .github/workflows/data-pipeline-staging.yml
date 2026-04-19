@@ -150,8 +150,8 @@ jobs:
             fi
           done
 
-          # production S3からhold_stocks/index/futures（VIはstaging自前取得）
-          for f in hold_stocks.parquet index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
+          # production S3からindex/futures（hold_stocksは/sync-resultsがstaging S3に直接upload、VIはstaging自前取得）
+          for f in index_prices_max_1d.parquet futures_prices_max_1d.parquet; do
             echo "  Fetching $f from production S3..."
             aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
           done
