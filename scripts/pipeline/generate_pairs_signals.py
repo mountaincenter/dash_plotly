@@ -41,8 +41,9 @@ META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 Z_ENTRY = 2.0
+PF_MIN = 1.5       # walk-forward 実測PF下限。|z|≥Z_ENTRY かつ PF≥PF_MIN で is_entry
 CAPITAL = 2_000_000
-MAX_RECOMMEND = 3  # |z|上位の推奨ペア数
+MAX_RECOMMEND = 3  # |z|上位の推奨ペア数（PFフィルタ後の|z|順で繰上げ選抜）
 BUFFER_COUNT = 3   # entry次点のバッファペア数（6種類足取得対象）
 
 # 運用除外セクター（V2_PAIRS定義は161ペアのまま保持、ここで運用時のみ除外）
@@ -330,7 +331,7 @@ def calc_pair_signal(
         "notional1": round(notional1),
         "notional2": round(notional2),
         "imbalance_pct": round(imbalance_pct, 1),
-        "is_entry": abs(z_latest) >= Z_ENTRY,
+        "z_hit": abs(z_latest) >= Z_ENTRY,  # 生の|z|閾値判定。最終is_entryはmain()でPFと合わせて確定
         "direction": "short_tk1" if z_latest > 0 else "long_tk1",
     }
 
@@ -383,6 +384,9 @@ def main() -> int:
 
     if rows:
         df = pd.DataFrame(rows)
+        # 最終エントリー判定: |z|≥Z_ENTRY かつ walk-forward PF≥PF_MIN
+        # Top3 は |z| 降順で is_entry=True から取るので、PF<PF_MIN のペアは自動スキップされ下位から繰上げ
+        df["is_entry"] = df["z_hit"] & (df["full_pf"] >= PF_MIN)
         df = df.sort_values("z_abs", ascending=False)
         # entry次点のバッファ（6種類足取得対象、is_entry=Falseの|z|上位）
         non_entry = df[~df["is_entry"]].head(BUFFER_COUNT).index
@@ -406,7 +410,7 @@ def main() -> int:
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
     print(f"\n  Computed: {len(df)}, Skipped: {skip_count}, Excluded(sector): {excluded_sector}, Excluded(pair): {excluded_pair}")
-    print(f"  Entry signals (|z|>={Z_ENTRY}): {entry_count}, Buffer: {buffer_count}")
+    print(f"  Entry signals (|z|>={Z_ENTRY} & PF>={PF_MIN}): {entry_count}, Buffer: {buffer_count}")
 
     # 推奨ペア表示（|z|上位）
     if not df.empty:
