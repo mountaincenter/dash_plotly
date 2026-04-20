@@ -20,23 +20,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
 from common_cfg.paths import PARQUET_DIR
 
-SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+GRANVILLE_DIR = PARQUET_DIR / "granville"
 OUTPUT_PATH = Path("/tmp/granville_b4_section.txt")
 
 
 def _load_vi() -> float | None:
-    """日経VIを取得"""
-    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    if vi_path.exists():
-        try:
-            df = pd.read_parquet(vi_path)
-            df["date"] = pd.to_datetime(df["date"])
-            return float(df.sort_values("date").iloc[-1]["close"])
-        except Exception:
-            pass
-    return None
+    """楽天証券ライブ値から日経VI当日終値を取得。通知失敗回避のため例外時は None"""
+    try:
+        return float(fetch_nikkei_vi()["close"])
+    except NikkeiViFetchError as e:
+        print(f"[WARN] VI fetch failed: {e}")
+        return None
 
 
 def _load_cme_gap() -> tuple[float | None, float | None]:
@@ -77,31 +74,16 @@ def _load_cme_gap() -> tuple[float | None, float | None]:
 
 
 def main():
-    # B4シグナル読み込み（signals.parquet統合後: strategy=granville最新日のB4のみ抽出）
-    if not SIGNALS_PATH.exists():
-        print(f"No signals.parquet found: {SIGNALS_PATH}")
+    # B4シグナル読み込み
+    signals_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
+    if not signals_files:
+        print("No signals files found")
         return
 
-    all_sigs = pd.read_parquet(SIGNALS_PATH)
-    if "strategy" in all_sigs.columns:
-        gran = all_sigs[all_sigs["strategy"] == "granville"].copy()
-    else:
-        gran = all_sigs.copy()
-
-    if gran.empty or "signal_date" not in gran.columns:
-        print("No granville signals available")
-        return
-
-    gran["signal_date"] = pd.to_datetime(gran["signal_date"], errors="coerce")
-    latest_date = gran["signal_date"].dropna().max()
-    if pd.isna(latest_date):
-        print("No granville signals with valid signal_date")
-        return
-
-    latest = gran[gran["signal_date"] == latest_date]
+    latest = pd.read_parquet(signals_files[-1])
     b4 = latest[latest["rule"] == "B4"] if "rule" in latest.columns else pd.DataFrame()
-    sig_date = latest_date.strftime("%Y-%m-%d")
-    weekday = latest_date.strftime("%a")
+    sig_date = pd.to_datetime(latest["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in latest.columns else "?"
+    weekday = pd.to_datetime(sig_date).strftime("%a") if sig_date != "?" else ""
 
     # 市場環境
     vi = _load_vi()
@@ -181,10 +163,7 @@ def main():
             name = r.get("stock_name", "")[:8]
             dev = r.get("dev_from_sma20", 0)
             close = r.get("close", 0)
-            if pd.isna(close) or close == 0:
-                lines.append(f"`{tk}` {name} {dev:+.1f}% (close N/A)")
-                continue
-            cost = calc_max_cost_100(float(close))
+            cost = calc_max_cost_100(close)
             lines.append(f"`{tk}` {name} {dev:+.1f}% ¥{close:,.0f} (上限¥{cost:,})")
 
         blocks.append({
@@ -192,9 +171,9 @@ def main():
             "text": {"type": "mrkdwn", "text": "📋 *候補（乖離深い順）*\n" + "\n".join(lines)}
         })
 
-    # 出力
-    section_text = json.dumps(blocks, ensure_ascii=False)
-    OUTPUT_PATH.write_text(section_text, encoding="utf-8")
+    # 出力（先頭カンマ付き = 既存blocksに連結可能）
+    blocks_json = ",".join(json.dumps(b, ensure_ascii=False) for b in blocks)
+    OUTPUT_PATH.write_text("," + blocks_json, encoding="utf-8")
     print(f"[OK] B4 Slack section: {OUTPUT_PATH} ({len(blocks)} blocks)")
     print(f"  Decision: {decision}")
     print(f"  B4 signals: {len(b4)}")

@@ -36,6 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.env import load_dotenv_cascade
+from common_cfg.nikkei_vi import fetch_nikkei_vi
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_file
@@ -106,15 +107,10 @@ def _load_market_regime(latest_date: pd.Timestamp) -> dict:
     except Exception as e:
         print(f"  [WARN] CME gap load failed: {e}")
 
-    # VI
-    try:
-        if VI_PATH.exists():
-            vi_df = pd.read_parquet(VI_PATH)
-            vi_df["date"] = pd.to_datetime(vi_df["date"])
-            vi_row = vi_df[vi_df["date"] <= latest_date].sort_values("date").iloc[-1]
-            regime["vi"] = round(float(vi_row["close"]), 1)
-    except Exception as e:
-        print(f"  [WARN] VI load failed: {e}")
+    # VI: 楽天証券当日ライブ値（fail-fast: 判断に直結するため）
+    vi_data = fetch_nikkei_vi()
+    regime["vi"] = round(float(vi_data["close"]), 1)
+    regime["vi_prev_close"] = float(vi_data["prev_close"])
 
     return regime
 
@@ -246,12 +242,14 @@ def assign_rule(row: pd.Series) -> str:
     return "B2"
 
 
-def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
+def generate_signals(ps: pd.DataFrame, regime: dict | None = None) -> pd.DataFrame:
     """最新日のシグナルを生成"""
     ps = detect_signals(ps)
     meta = load_meta()
 
     latest_date = ps["date"].max()
+    if regime is None:
+        regime = _load_market_regime(latest_date)
     print(f"\n[2/4] Signal detection for {latest_date.date()}...")
 
     latest = ps[ps["date"] == latest_date].copy()
@@ -273,26 +271,18 @@ def generate_signals(ps: pd.DataFrame) -> pd.DataFrame:
         print(f"  B4 surge filter: {filtered_count} excluded")
 
     # VI30-40GU除外: VI 30-40帯 AND 前日比上昇 → B4除外（Codex検証済み、PF+8%）
+    # 判断に直結するため楽天証券ライブ値を fail-fast 参照（regimeでfetch済み）
     b4_mask2 = latest["B4"].copy()
     if b4_mask2.any():
-        try:
-            vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-            if vi_path.exists():
-                vi_df = pd.read_parquet(vi_path)
-                vi_df["date"] = pd.to_datetime(vi_df["date"])
-                vi_latest = vi_df[vi_df["date"] == latest_date]
-                if not vi_latest.empty:
-                    vi_close = float(vi_latest.iloc[0]["close"])
-                    vi_prev = vi_df[vi_df["date"] < latest_date].sort_values("date").iloc[-1]["close"] if len(vi_df[vi_df["date"] < latest_date]) > 0 else vi_close
-                    vi_chg = (vi_close - vi_prev) / vi_prev * 100
-                    if 30 <= vi_close <= 40 and vi_chg > 0:
-                        gu_count = b4_mask2.sum()
-                        latest["B4"] = False
-                        print(f"  B4 VI30-40GU filter: {gu_count} excluded (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
-                    else:
-                        print(f"  B4 VI30-40GU filter: not triggered (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
-        except Exception as e:
-            print(f"  [WARN] VI filter skipped: {e}")
+        vi_close = float(regime["vi"])
+        vi_prev = float(regime["vi_prev_close"])
+        vi_chg = (vi_close - vi_prev) / vi_prev * 100
+        if 30 <= vi_close <= 40 and vi_chg > 0:
+            gu_count = b4_mask2.sum()
+            latest["B4"] = False
+            print(f"  B4 VI30-40GU filter: {gu_count} excluded (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
+        else:
+            print(f"  B4 VI30-40GU filter: not triggered (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
 
     sig_mask = latest["B1"] | latest["B2"] | latest["B3"] | latest["B4"]
     signals = latest[sig_mask].copy()
@@ -499,7 +489,9 @@ def main() -> int:
     GRANVILLE_DIR.mkdir(parents=True, exist_ok=True)
 
     ps = load_prices()
-    out = generate_signals(ps)
+    latest_date = ps["date"].max()
+    regime = _load_market_regime(latest_date)
+    out = generate_signals(ps, regime)
 
     if out.empty:
         print("\n[INFO] No signals today")
@@ -509,11 +501,9 @@ def main() -> int:
             print(f"    [{row['rule']}] {row['ticker']} {row['stock_name']} "
                   f"¥{row['close']:,.0f} ({row['dev_from_sma20']:+.1f}%)")
 
-    latest_date = ps["date"].max()
     date_str = latest_date.strftime("%Y-%m-%d")
 
     # B1-B3 ロングフィルター判定 (H1/H2/H3) を signals に merge
-    regime = _load_market_regime(latest_date)
     print(f"\n  Market regime: N225>SMA20={regime['n225_above_sma20']}, "
           f"ret20={regime['n225_ret20']}, CME gap={regime['cme_gap']}, VI={regime['vi']}")
 

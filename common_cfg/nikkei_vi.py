@@ -58,6 +58,19 @@ def fetch_nikkei_vi(retries: int = 3, timeout: int = 20) -> dict[str, Any]:
                             "change_pct": float(m_pct.group(1)),
                             "source": "rakuten-sec",
                         }
+                    # 場中前・場中停止中はcloseが空になる。前終値が取れれば大引確定値として返す
+                    if m_prev and not m_close:
+                        prev = float(m_prev.group(2))
+                        return {
+                            "close": prev,
+                            "open": prev,
+                            "high": prev,
+                            "low": prev,
+                            "prev_close": prev,
+                            "change": 0.0,
+                            "change_pct": 0.0,
+                            "source": "rakuten-sec-prev",
+                        }
                     missing = [k for k, v in {
                         "close": m_close, "change": m_change, "pct": m_pct,
                         "prev": m_prev, "high": m_high, "open": m_open, "low": m_low,
