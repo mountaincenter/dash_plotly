@@ -162,15 +162,26 @@ async def get_pairs_signals():
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
 
+    # tk -> sector lookup (for frontend-side dedup of top3 display)
+    # meta_jquants.parquet は全上場銘柄 (3754) を網羅。all_stocks.parquet (116) は半導体ユニバース限定
+    sector_map: dict[str, str] = {}
+    stocks_df = _load_unified("meta_jquants.parquet", "unified_meta_jquants")
+    if not stocks_df.empty and "ticker" in stocks_df.columns and "sectors" in stocks_df.columns:
+        sector_map = dict(zip(stocks_df["ticker"].astype(str), stocks_df["sectors"].astype(str)))
+
     pairs = []
     entry = []
     for _, r in df.iterrows():
         pair_date = ""
         if "signal_date" in r.index and pd.notna(r.get("signal_date")):
             pair_date = pd.to_datetime(r["signal_date"]).strftime("%Y-%m-%d")
+        tk1 = r.get("tk1", "")
+        tk2 = r.get("tk2", "")
         item = {
-            "tk1": r.get("tk1", ""),
-            "tk2": r.get("tk2", ""),
+            "tk1": tk1,
+            "tk2": tk2,
+            "sector1": sector_map.get(str(tk1), ""),
+            "sector2": sector_map.get(str(tk2), ""),
             "name1": r.get("name1", ""),
             "name2": r.get("name2", ""),
             "c1": _safe_float(r.get("c1", 0)),
