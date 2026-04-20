@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
 
 router = APIRouter()
 
@@ -319,10 +320,8 @@ def _get_current_regime() -> dict:
         pass
 
     try:
-        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
-        vi_df["date"] = pd.to_datetime(vi_df["date"])
-        regime["vi"] = round(float(vi_df.sort_values("date").iloc[-1]["close"]), 1)
-    except Exception:
+        regime["vi"] = round(float(fetch_nikkei_vi()["close"]), 1)
+    except NikkeiViFetchError:
         pass
 
     try:
@@ -778,11 +777,8 @@ async def get_b4_entry():
     # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
     try:
-        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
-        vi_df["date"] = pd.to_datetime(vi_df["date"])
-        vi_df = vi_df.sort_values("date")
-        vi_val = float(vi_df["close"].iloc[-1])
-    except Exception:
+        vi_val = float(fetch_nikkei_vi()["close"])
+    except NikkeiViFetchError:
         pass
 
     cme_gap = None

@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
 
 router = APIRouter()
 
@@ -153,17 +154,11 @@ def _safe_float(v, decimals: int = 1) -> float:
 
 
 def _get_vi() -> Optional[float]:
-    """最新の日経VI値を取得"""
-    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    if vi_path.exists():
-        try:
-            vi_df = pd.read_parquet(vi_path)
-            vi_df["date"] = pd.to_datetime(vi_df["date"])
-            vi_df = vi_df.sort_values("date")
-            return float(vi_df["close"].iloc[-1])
-        except Exception:
-            pass
-    return None
+    """最新の日経VI値を楽天証券ライブ値から取得。失敗時は None"""
+    try:
+        return float(fetch_nikkei_vi()["close"])
+    except NikkeiViFetchError:
+        return None
 
 
 # ==========================================
