@@ -354,6 +354,13 @@ def main() -> int:
         return 1
     print(f"  {len(ps):,} rows, {ps['ticker'].nunique()} tickers")
 
+    # V2_PAIRS 全銘柄が prices_topix に存在するか検証（silent skip 防止）
+    pair_tickers = sorted({t for tk1, tk2, *_ in V2_PAIRS for t in (tk1, tk2)})
+    missing = sorted(set(pair_tickers) - set(ps["ticker"].unique()))
+    if missing:
+        print(f"[ERROR] Missing pair tickers in prices_topix ({len(missing)}): {missing[:20]}")
+        return 1
+
     names = load_names()
 
     print("\n[2/3] Calculating pair signals...")
@@ -396,17 +403,19 @@ def main() -> int:
     else:
         df = pd.DataFrame()
 
-    # signals.parquet に pairs 行をマージ（他 strategy を保持）
-    if not df.empty:
-        if SIGNALS_PATH.exists():
-            existing = pd.read_parquet(SIGNALS_PATH)
-            other = (existing[existing["strategy"] != "pairs"]
-                     if "strategy" in existing.columns else existing)
-            merged = pd.concat([df, other], ignore_index=True) if len(other) else df
-        else:
-            merged = df
-        SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        merged.to_parquet(SIGNALS_PATH, index=False)
+    # signals.parquet に pairs 行をマージ（他 strategy を保持、当日 0 件なら既存 pairs 行を削除）
+    if SIGNALS_PATH.exists():
+        existing = pd.read_parquet(SIGNALS_PATH)
+        other = (existing[existing["strategy"] != "pairs"]
+                 if "strategy" in existing.columns else existing)
+        merged = pd.concat([df, other], ignore_index=True) if len(other) else df
+    else:
+        merged = df
+    SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # atomic write: tmp → rename で中間状態が S3/読み手に見えない
+    tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+    merged.to_parquet(tmp, index=False)
+    tmp.replace(SIGNALS_PATH)
 
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0

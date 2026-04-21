@@ -19,8 +19,8 @@ Exit（§6）:
   SLなし
 
 出力 (2026-04-17 統合):
-  data/parquet/signals.parquet    -- 全戦略シグナル統合 (現在は granville のみ)
-  data/parquet/positions.parquet  -- 全戦略ポジション統合 (現在は granville のみ)
+  data/parquet/signals.parquet    -- 全戦略シグナル統合 (granville + bearish + pairs)
+  data/parquet/positions.parquet  -- granville + bearish のみ (pairs は 1日完結運用で追跡対象外)
 """
 from __future__ import annotations
 
@@ -541,7 +541,11 @@ def main() -> int:
         merged_sigs = pd.concat([out, other_sigs], ignore_index=True) if len(other_sigs) else out
     else:
         merged_sigs = out
-    merged_sigs.to_parquet(SIGNALS_PATH, index=False)
+    SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # atomic write: tmp → rename で中間状態が S3/読み手に見えない
+    tmp_sigs = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+    merged_sigs.to_parquet(tmp_sigs, index=False)
+    tmp_sigs.replace(SIGNALS_PATH)
     print(f"\n[OK] Saved: {SIGNALS_PATH.name} ({len(out)} rows, strategy=granville / total={len(merged_sigs)})")
     grade_counts = (out[out["long_grade"] != ""]["long_grade"].value_counts().to_dict()
                     if not out.empty and "long_grade" in out.columns else {})
@@ -567,7 +571,10 @@ def main() -> int:
         merged_pos = pd.concat([positions, other_pos], ignore_index=True) if len(other_pos) else positions
     else:
         merged_pos = positions
-    merged_pos.to_parquet(POSITIONS_PATH, index=False)
+    POSITIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp_pos = POSITIONS_PATH.parent / f"{POSITIONS_PATH.name}.tmp"
+    merged_pos.to_parquet(tmp_pos, index=False)
+    tmp_pos.replace(POSITIONS_PATH)
     open_n = (positions["status"] == "open").sum() if not positions.empty else 0
     exit_n = (positions["status"] == "exit").sum() if not positions.empty else 0
     print(f"[OK] Saved: {POSITIONS_PATH.name} ({len(positions)} rows granville, open={open_n}, exit={exit_n} / total={len(merged_pos)})")

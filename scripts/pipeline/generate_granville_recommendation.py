@@ -376,7 +376,11 @@ def main() -> int:
     # 統合ファイルに書き戻し (granville 以外の戦略行は既存のまま維持)
     other = signals_all[~grv_mask]
     merged = pd.concat([signals, other], ignore_index=True) if len(other) else signals
-    merged.to_parquet(SIGNALS_PATH, index=False)
+    SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # atomic write: tmp → rename で中間状態が S3/読み手に見えない
+    tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+    merged.to_parquet(tmp, index=False)
+    tmp.replace(SIGNALS_PATH)
 
     rec_df = signals[signals["recommended"]]
     total_margin = int(rec_df["margin"].sum()) if not rec_df.empty else 0

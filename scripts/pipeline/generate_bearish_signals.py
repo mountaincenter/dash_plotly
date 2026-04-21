@@ -399,7 +399,11 @@ def main() -> int:
         merged_sigs = pd.concat([out, other], ignore_index=True) if len(other) else out
     else:
         merged_sigs = out
-    merged_sigs.to_parquet(SIGNALS_PATH, index=False)
+    SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # atomic write: tmp → rename で中間状態が S3/読み手に見えない
+    tmp_sigs = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+    merged_sigs.to_parquet(tmp_sigs, index=False)
+    tmp_sigs.replace(SIGNALS_PATH)
     print(f"\n[OK] bearish signals merged into {SIGNALS_PATH.name}")
     print(f"     bearish={len(out)} / total={len(merged_sigs)}")
 
@@ -411,7 +415,10 @@ def main() -> int:
         merged_pos = pd.concat([positions, other_pos], ignore_index=True) if len(other_pos) else positions
     else:
         merged_pos = positions
-    merged_pos.to_parquet(POSITIONS_PATH, index=False)
+    POSITIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp_pos = POSITIONS_PATH.parent / f"{POSITIONS_PATH.name}.tmp"
+    merged_pos.to_parquet(tmp_pos, index=False)
+    tmp_pos.replace(POSITIONS_PATH)
     b_open = int((positions["status"] == "open").sum()) if not positions.empty else 0
     b_exit = int((positions["status"] == "exit").sum()) if not positions.empty else 0
     print(f"[OK] bearish positions merged into {POSITIONS_PATH.name}")
