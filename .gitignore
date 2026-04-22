@@ -59,6 +59,7 @@ data/parquet/*
 
 # レポートHTML（S3で管理、gitには載せない）
 data/reports/*.html
+data/reports/**/*.html
 
 # ---- Claude Code個人メモ（セッション引き継ぎ等、共有しない）----
 .claude/memory/

@@ -49,6 +49,15 @@ def _extract_date(filename: str) -> str:
     return ""
 
 
+def _classify_report_type(filename: str) -> str:
+    """filename prefix から report_type を判定。フロント側のタブ切替に使用。"""
+    if filename.startswith("trade_review_"):
+        return "results_report"
+    if filename.startswith("market_analysis"):
+        return "market_report"
+    return "other"
+
+
 def _extract_title_from_html(html: str, filename: str) -> str:
     """HTML の <title> からタイトルを取得。"""
     m = re.search(r"<title>(.+?)</title>", html, re.IGNORECASE)
@@ -71,7 +80,10 @@ def list_reports():
 
 def _list_local() -> list[dict]:
     reports = []
-    for f in REPORTS_DIR.glob("market_analysis*.html"):
+    for f in REPORTS_DIR.glob("*.html"):
+        report_type = _classify_report_type(f.name)
+        if report_type == "other":
+            continue
         reports.append({
             "filename": f.name,
             "date": _extract_date(f.name),
@@ -79,6 +91,7 @@ def _list_local() -> list[dict]:
                 f.read_text(encoding="utf-8", errors="ignore"), f.name
             ),
             "size_bytes": f.stat().st_size,
+            "report_type": report_type,
         })
     reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     return reports
@@ -93,6 +106,9 @@ def _list_s3() -> list[dict]:
             key = obj["Key"]
             name = key.removeprefix(REPORTS_PREFIX)
             if not name.endswith(".html"):
+                continue
+            report_type = _classify_report_type(name)
+            if report_type == "other":
                 continue
             title = name
             try:
@@ -109,6 +125,7 @@ def _list_s3() -> list[dict]:
                 "date": _extract_date(name),
                 "title": title,
                 "size_bytes": obj["Size"],
+                "report_type": report_type,
             })
         reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     except Exception as exc:
