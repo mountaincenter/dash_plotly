@@ -31,6 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
 
 OUTPUT_DIR = PARQUET_DIR / "market_summary" / "structured"
 
@@ -229,59 +230,26 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
 
 
 def _fetch_nikkei_vi() -> dict[str, Any] | None:
-    """楽天証券スマホ版から日経VI(.JNIV)を取得。失敗時はNone。
+    """楽天証券から日経VI(.JNIV)当日値を取得し、JSON安全化して返す。失敗時はNone。
 
-    investing.comはGHA等のデータセンタIPで403。Rakutenの埋込HTMLは
-    status/各値が安定して取れるため一択にした。
+    レポート用途のため失敗は致命ではなく None マーカーに丸める。判断系の fail-fast は
+    呼び出し側（common_cfg.nikkei_vi.fetch_nikkei_vi を直接使う側）の責務。
     """
-    import re
-
-    url = "https://www.rakuten-sec.co.jp/smartphone/market/info/pagecontent?pid=4001&sym=.JNIV"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    try:
+        data = fetch_nikkei_vi()
+    except NikkeiViFetchError as e:
+        print(f"  [WARN] {e}")
+        return None
+    return {
+        "close": _f(data["close"]),
+        "open": _f(data["open"]),
+        "high": _f(data["high"]),
+        "low": _f(data["low"]),
+        "prev_close": _f(data["prev_close"]),
+        "change": _f(data["change"]),
+        "change_pct": _f(data["change_pct"]),
+        "source": data["source"],
     }
-    last_error = None
-    with requests.Session() as session:
-        for attempt in range(1, 4):
-            try:
-                resp = session.get(url, headers=headers, timeout=20)
-                if resp.status_code != 200:
-                    last_error = f"http_{resp.status_code}"
-                    print(f"  [WARN] nikkei VI fetch attempt={attempt} status={resp.status_code} url={url}")
-                else:
-                    html = resp.text
-                    m_close = re.search(r'class="base">\s*([\d.]+)', html)
-                    m_change = re.search(r'class="change">\s*<span[^>]*>([+\-]?[\d.]+)</span>', html)
-                    m_pct = re.search(r'class="percent"><span[^>]*>([+\-]?[\d.]+)%</span>', html)
-                    m_prev = re.search(r'前終<span class="update">\(([\d/]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
-                    m_high = re.search(r'高値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
-                    m_open = re.search(r'始値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
-                    m_low = re.search(r'安値<span class="update">\(([\d:]+)\)</span>\s*</th>\s*<td>([\d.]+)</td>', html)
-                    if m_close and m_change and m_pct and m_prev and m_high and m_open and m_low:
-                        return {
-                            "close": _f(float(m_close.group(1))),
-                            "open": _f(float(m_open.group(2))),
-                            "high": _f(float(m_high.group(2))),
-                            "low": _f(float(m_low.group(2))),
-                            "prev_close": _f(float(m_prev.group(2))),
-                            "change": _f(float(m_change.group(1))),
-                            "change_pct": _f(float(m_pct.group(1))),
-                            "source": "rakuten-sec",
-                        }
-                    missing = [k for k, v in {
-                        "close": m_close, "change": m_change, "pct": m_pct,
-                        "prev": m_prev, "high": m_high, "open": m_open, "low": m_low,
-                    }.items() if v is None]
-                    last_error = f"parse_miss: missing={missing}"
-                    print(f"  [WARN] nikkei VI fetch attempt={attempt} {last_error} len={len(html)}")
-            except requests.RequestException as e:
-                last_error = f"{type(e).__name__}: {e}"
-                print(f"  [WARN] nikkei VI fetch attempt={attempt} request_error={last_error}")
-            if attempt < 3:
-                time.sleep(attempt)
-    print(f"  [WARN] nikkei VI fetch failed after retries: {last_error}")
-    return None
 
 
 def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
@@ -663,16 +631,12 @@ def _short_category(row: pd.Series | dict) -> str:
 # --- Bucket 閾値 (dev_day_trade_list.py と同一) ---
 PROB_SHORT_THRESHOLD = 0.45
 PROB_LONG_THRESHOLD = 0.70
-WED_LONG_THRESHOLD = 0.35
 
 
-def _get_bucket(prob: float | None, weekday: str | None = None) -> str:
+def _get_bucket(prob: float | None) -> str:
     """prob_up / ml_prob から Bucket (SHORT/DISC/LONG) を返す"""
     if prob is None or pd.isna(prob):
         return ""
-    is_wednesday = weekday in ("水曜", "Wednesday", "Wed") if weekday else False
-    if is_wednesday:
-        return "LONG" if prob >= WED_LONG_THRESHOLD else "DISC"
     if prob < PROB_SHORT_THRESHOLD:
         return "SHORT"
     if prob > PROB_LONG_THRESHOLD:
@@ -682,11 +646,6 @@ def _get_bucket(prob: float | None, weekday: str | None = None) -> str:
 
 def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]:
     """archive データから grok セクションを構築"""
-    # 曜日判定（水曜ロング用）
-    weekday = None
-    if "weekday" in arc_for.columns and not arc_for.empty:
-        weekday = arc_for.iloc[0].get("weekday")
-
     details = []
     for _, row in arc_for.iterrows():
         # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
@@ -694,7 +653,7 @@ def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]
         label = ("WIN" if short_result > 0 else "LOSE" if short_result < 0 else "DRAW") if short_result is not None else None
         prob = row.get("ml_prob")
         prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
-        bucket = _get_bucket(prob_val, weekday)
+        bucket = _get_bucket(prob_val)
         details.append({
             "ticker": row.get("ticker", ""),
             "stock_name": row.get("stock_name", ""),
@@ -756,15 +715,12 @@ def build_grok(date: str) -> dict[str, Any] | None:
         print(f"  [INFO] No grok data for {date}")
         return None
 
-    # 曜日判定（水曜ロング用）
-    weekday = grok["weekday"].iloc[0] if "weekday" in grok.columns else None
-
     # Bucket 分布（prob_up → bucket）
     bucket_list = []
     for _, row in grok.iterrows():
         prob = row.get("prob_up")
         prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
-        bucket_list.append(_get_bucket(prob_val, weekday))
+        bucket_list.append(_get_bucket(prob_val))
     bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "DISC", "LONG"]}
 
     # Archive から P2 + daily_close 結合

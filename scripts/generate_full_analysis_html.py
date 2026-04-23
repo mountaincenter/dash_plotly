@@ -145,10 +145,6 @@ def get_strategy_recommendation(row: pd.Series) -> dict:
                 'credit_type': None
             }
 
-    # 水曜日はショート不利
-    if weekday == 2:
-        return {'action': 'SKIP', 'reason': '水曜ショート不利', 'confidence': None, 'credit_type': None}
-
     # デフォルト: ATR7%+でショート
     if day_trade and atr >= 7.0 and rsi < 70:
         return {
@@ -359,16 +355,6 @@ tr:hover { background: #1c2128; }
 </div>
 <div class="strategy-rule" style="margin-top: 16px; background: #da3633; color: #fff;">
     ⚠️ 注意: <strong>RSI ≥ 70 の銘柄はショート禁止！</strong> 金曜RSI70+ショートは大負け (-324,150円)
-</div>
-</div>
-''')
-    elif tomorrow_weekday == 2:  # 水曜日
-        html_parts.append(f'''
-<div class="strategy-box caution">
-<div class="strategy-title caution">📅 明日の方針 ({tomorrow_str} {tomorrow_weekday_name}曜日)</div>
-<div class="strategy-rule" style="font-size: 16px;">
-    ⚠️ <strong>水曜日はショート不利</strong><br>
-    エントリーを控えるか、ロング戦略を検討してください。
 </div>
 </div>
 ''')
