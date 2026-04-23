@@ -1,9 +1,8 @@
 # server/routers/dev_reports.py
 """
-レポート一覧 + 表示 + ダウンロード API
+レポート一覧 + 表示 API
 GET  /api/dev/reports                      - レポート一覧
 GET  /api/dev/reports/{filename}/view      - HTML 表示
-GET  /api/dev/reports/{filename}/download  - HTML ダウンロード
 """
 from __future__ import annotations
 
@@ -13,7 +12,7 @@ import sys
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -141,30 +140,3 @@ def view_report(filename: str):
         raise HTTPException(status_code=404, detail=f"Not found: {exc}")
 
 
-@router.get("/api/dev/reports/{filename}/download")
-def download_report(filename: str):
-    """HTML をダウンロード。開発=FileResponse、本番=presigned URL。"""
-    html_name = _resolve_html_name(filename)
-    if not html_name.endswith(".html"):
-        raise HTTPException(status_code=400, detail="Invalid filename")
-
-    if _IS_LOCAL:
-        local_path = REPORTS_DIR / html_name
-        if not local_path.exists():
-            raise HTTPException(status_code=404, detail=f"Not found: {html_name}")
-        return FileResponse(
-            path=str(local_path),
-            media_type="text/html; charset=utf-8",
-            filename=html_name,
-        )
-
-    try:
-        s3 = _s3_client()
-        url = s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": S3_BUCKET, "Key": f"{REPORTS_PREFIX}{html_name}"},
-            ExpiresIn=3600,
-        )
-        return {"url": url}
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"download failed: {exc}")
