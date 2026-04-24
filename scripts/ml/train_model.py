@@ -116,7 +116,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     print(f"  Date range: {df_clean['backtest_date'].min().date()} ~ {df_clean['backtest_date'].max().date()}")
 
     X = df_clean[available_features].copy()
-    y = df_clean[TARGET_COLUMN].astype(int).values
+    y = (1 - df_clean[TARGET_COLUMN].astype(int)).values
     dates = df_clean['backtest_date'].values
     tickers = df_clean['ticker'].values
 
