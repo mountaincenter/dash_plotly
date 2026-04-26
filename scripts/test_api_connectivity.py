@@ -9,8 +9,6 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-import json
-
 import requests
 
 
@@ -47,49 +45,32 @@ def send_slack(results: list[dict[str, str | bool]]) -> None:
 
 
 def test_jquants_fins_announcement() -> bool:
-    """J-Quants fins_announcement API: 直近営業日の決算発表予定を取得"""
+    """jquants CLI 経由で fins_announcement を取得"""
+    import subprocess
+
     print("=" * 50)
-    print("[J-Quants] fins_announcement テスト")
+    print("[J-Quants] fins_announcement テスト (CLI)")
     print("=" * 50)
 
-    api_key = os.getenv("JQUANTS_API_KEY")
-    if not api_key:
-        print("[FAIL] JQUANTS_API_KEY が未設定")
-        return False
-
-    # id_token 取得
-    token_url = "https://api.jquants.com/v1/token/auth_refresh"
-    resp = requests.post(token_url, headers={"Authorization": f"Bearer {api_key}"}, timeout=30)
-    if resp.status_code != 200:
-        print(f"[FAIL] token取得失敗: {resp.status_code} {resp.text[:200]}")
-        return False
-    id_token = resp.json().get("idToken")
-    print(f"[OK] id_token 取得成功: {id_token[:20]}...")
-
-    # fins_announcement: 直近5営業日を試す
-    headers = {"Authorization": f"Bearer {id_token}"}
     today = datetime.now()
     for i in range(7):
         target = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        url = "https://api.jquants.com/v1/fins/announcement"
-        params = {"date": target}
-        resp = requests.get(url, headers=headers, params=params, timeout=30)
-        if resp.status_code != 200:
-            print(f"  {target}: HTTP {resp.status_code}")
+        cmd = ["jquants", "get", "fins-announcement", "--date", target]
+        print(f"  実行: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            print(f"  {target}: 失敗 ({result.stderr.strip()[:100]})")
             continue
 
-        data = resp.json()
-        announcements = data.get("announcement", [])
-        if not announcements:
+        lines = result.stdout.strip().split("\n")
+        if len(lines) <= 1:
             continue
 
-        print(f"\n[OK] {target}: {len(announcements)}件の決算発表予定")
-        for a in announcements[:3]:
-            print(f"  {a.get('Code')} {a.get('CompanyName')}")
-            print(f"    発表日: {a.get('Date')}")
-            print(f"    決算期: {a.get('FiscalYear')} {a.get('SectionName')}")
-        if len(announcements) > 3:
-            print(f"  ... 他 {len(announcements) - 3}件")
+        print(f"\n[OK] {target}: {len(lines) - 1}件の決算発表予定")
+        for line in lines[1:4]:
+            print(f"  {line}")
+        if len(lines) > 4:
+            print(f"  ... 他 {len(lines) - 4}件")
         return True
 
     print("[FAIL] 直近7日間でデータ取得できず")
@@ -122,8 +103,9 @@ def test_edinet_document_list() -> bool:
         meta = data.get("metadata", {})
         results = data.get("results", [])
 
-        if meta.get("status") != "200":
-            print(f"  {target}: status={meta.get('status')} {meta.get('message')}")
+        status = str(meta.get("status", ""))
+        if status != "200":
+            print(f"  {target}: status={status} {meta.get('message')}")
             continue
 
         if not results:
