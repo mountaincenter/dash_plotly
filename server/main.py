@@ -24,7 +24,6 @@ from server.routers.dev_ml_prediction import router as dev_ml_prediction_router
 from server.routers.tech_signals import router as tech_signals_router
 from server.routers.dev_reports import router as dev_reports_router
 from server.routers.dev_granville import router as dev_granville_router
-from server.routers.dev_analysis_ml import router as dev_analysis_ml_router
 from server.routers.dev_strategy import router as dev_strategy_router
 from server.routers.dev_pairs import router as dev_pairs_router
 from server.routers.dev_reversal import router as dev_reversal_router
@@ -116,7 +115,6 @@ app.include_router(dev_ml_prediction_router, tags=["ml-prediction"])
 app.include_router(tech_signals_router, tags=["tech-signals"])
 app.include_router(dev_reports_router, tags=["dev-reports"])
 app.include_router(dev_granville_router, tags=["granville"])
-app.include_router(dev_analysis_ml_router, tags=["analysis-ml"])
 app.include_router(dev_strategy_router, tags=["dev-strategy"])
 app.include_router(dev_pairs_router, tags=["pairs"])
 app.include_router(dev_reversal_router, tags=["reversal"])

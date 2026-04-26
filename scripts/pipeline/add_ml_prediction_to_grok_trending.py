@@ -2,19 +2,14 @@
 """
 add_ml_prediction_to_grok_trending.py
 
-grok_trending.parquetにML予測（prob_up, grade）カラムを追加する
+grok_trending.parquetにML予測（prob_up）カラムを追加する
 
 処理:
 1. grok_trending.parquet を読み込み
-2. MLモデルを読み込み（28特徴量/4クラスGrade方式）
+2. MLモデルを読み込み（28特徴量）
 3. 価格データ・市場データから特徴量を計算
 4. 各銘柄に対してML予測を実行
-5. prob_up, grade カラムを追加して保存
-
-Grade方式（ショート視点）:
-- G1+G2: 機械的SHORT推奨
-- G3: 裁量判断
-- G4: SKIP
+5. prob_up カラムを追加して保存
 
 実行タイミング: 23:00パイプライン（market_cap追加後）
 """
@@ -241,7 +236,7 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
         price_features = calc_price_features(ticker, target_date, prices_df, buy_price=close_price)
         if price_features is None:
-            results[ticker] = {'prob_up': None, 'grade': None}
+            results[ticker] = {'prob_up': None}
             continue
 
         all_features = {**existing_features, **price_features, **market_features}
@@ -259,18 +254,17 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
             prob = model.predict_proba(X)[0][1]
             results[ticker] = {
                 'prob_up': round(float(prob), 3),
-                'grade': get_grade(prob, grade_boundaries)
             }
         except Exception as e:
             print(f"   ⚠️ {ticker}: 予測失敗 - {e}")
-            results[ticker] = {'prob_up': None, 'grade': None}
+            results[ticker] = {'prob_up': None}
 
     return results
 
 
 def main():
     """メイン処理"""
-    print("=== grok_trending.parquet に ML予測（prob_up, quintile）を追加 ===\n")
+    print("=== grok_trending.parquet に ML予測（prob_up）を追加 ===\n")
 
     # 1. grok_trending.parquet 読み込み
     print(f"1. 読み込み: {GROK_TRENDING_FILE}")
@@ -285,16 +279,15 @@ def main():
     print("\n2. MLモデル読み込み")
     model, meta = load_ml_model()
     if model is None:
-        print("   ⚠️ MLモデルが読み込めません。prob_up/grade はNullで追加します。")
+        print("   ⚠️ MLモデルが読み込めません。prob_up はNullで追加します。")
         df['prob_up'] = None
-        df['grade'] = None
         df.to_parquet(GROK_TRENDING_FILE, index=False)
-        print(f"\n   保存完了（prob_up/grade = Null）")
+        print(f"\n   保存完了（prob_up = Null）")
         return 0
 
     print(f"   ✅ モデル読み込み完了")
     print(f"   特徴量数: {len(meta['feature_names'])}")
-    print(f"   Grade boundaries: {meta.get('grade_boundaries', 'N/A')}")
+    print(f"   Grade boundaries: {meta.get('grade_boundaries', 'N/A')} (参考値、gradeカラムは廃止済み)")
 
     # 3. 価格データ読み込み
     print("\n3. 価格データ読み込み")
@@ -317,26 +310,23 @@ def main():
 
     # 6. カラム追加
     prob_up_list = []
-    grade_list = []
     success_count = 0
 
     for _, row in df.iterrows():
         ticker = row['ticker']
         pred = predictions.get(ticker, {})
         prob_up = pred.get('prob_up')
-        grade = pred.get('grade')
         prob_up_list.append(prob_up)
-        grade_list.append(grade)
         if prob_up is not None:
             success_count += 1
-            print(f"   {ticker}: prob_up={prob_up:.3f}, grade={grade}")
+            print(f"   {ticker}: prob_up={prob_up:.3f}")
 
     df['prob_up'] = prob_up_list
-    df['grade'] = grade_list
 
     # 旧カラム削除（存在する場合）
-    if 'quintile' in df.columns:
-        df = df.drop(columns=['quintile'])
+    for old_col in ['quintile', 'grade']:
+        if old_col in df.columns:
+            df = df.drop(columns=[old_col])
 
     print(f"\n6. カラム追加完了")
     print(f"   成功: {success_count}/{len(df)} 銘柄")
@@ -352,11 +342,6 @@ def main():
     if len(valid_probs) > 0:
         print(f"prob_up 平均: {valid_probs.mean():.3f}")
         print(f"prob_up 中央値: {valid_probs.median():.3f}")
-        grade_counts = df['grade'].value_counts()
-        print(f"Grade分布:")
-        for g in ['G1', 'G2', 'G3', 'G4']:
-            count = grade_counts.get(g, 0)
-            print(f"  {g}: {count}銘柄")
 
     return 0
 
