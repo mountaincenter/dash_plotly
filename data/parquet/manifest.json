@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-04-03 19:22:20",
-  "update_flag": "2026-04-03",
+  "generated_at": "2026-04-24 18:41:44",
+  "update_flag": "2026-04-24",
   "grok_update_flag": false,
-  "grok_last_update_date": null,
+  "grok_last_update_date": "2026-04-23",
   "grok_last_update_time": null,
   "files": {
     "meta.parquet": {
@@ -20,11 +20,11 @@
         "categories",
         "tags"
       ],
-      "updated_at": "2026-04-03T08:06:47.916200"
+      "updated_at": "2026-04-23T18:48:39.638283"
     },
     "meta_jquants.parquet": {
       "exists": true,
-      "size_bytes": 112953,
+      "size_bytes": 112936,
       "row_count": 3751,
       "columns": [
         "ticker",
@@ -35,7 +35,7 @@
         "series",
         "topixnewindexseries"
       ],
-      "updated_at": "2026-04-03T08:06:46.798779"
+      "updated_at": "2026-04-23T18:48:40.079229"
     },
     "margin_code_master.parquet": {
       "exists": true,
@@ -49,12 +49,12 @@
         "market_code",
         "market_code_name"
       ],
-      "updated_at": "2026-04-02T14:37:51"
+      "updated_at": "2026-04-23T18:48:37.255288"
     },
     "all_stocks.parquet": {
       "exists": true,
-      "size_bytes": 13675,
-      "row_count": 12,
+      "size_bytes": 15628,
+      "row_count": 24,
       "columns": [
         "ticker",
         "code",
@@ -75,12 +75,12 @@
         "score",
         "key_signal"
       ],
-      "updated_at": "2026-04-03T08:06:49.798513"
+      "updated_at": "2026-04-23T18:47:48.544444"
     },
     "financials.parquet": {
       "exists": true,
-      "size_bytes": 9808,
-      "row_count": 11,
+      "size_bytes": 10783,
+      "row_count": 24,
       "columns": [
         "ticker",
         "code",
@@ -98,12 +98,12 @@
         "bps",
         "sharesOutstanding"
       ],
-      "updated_at": "2026-04-03T08:08:55.723229"
+      "updated_at": "2026-04-23T18:47:56.380929"
     },
     "announcements.parquet": {
       "exists": true,
-      "size_bytes": 3482,
-      "row_count": 11,
+      "size_bytes": 3672,
+      "row_count": 24,
       "columns": [
         "code",
         "ticker",
@@ -111,29 +111,88 @@
         "nextQuarter",
         "confidence"
       ],
-      "updated_at": "2026-04-03T08:08:55.725162"
+      "updated_at": "2026-04-23T18:47:49.258154"
     },
     "grok_trending.parquet": {
-      "exists": false,
-      "size_bytes": 0,
-      "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "exists": true,
+      "size_bytes": 40200,
+      "row_count": 19,
+      "columns": [
+        "ticker",
+        "code",
+        "stock_name",
+        "market",
+        "sectors",
+        "series",
+        "topixnewindexseries",
+        "categories",
+        "tags",
+        "reason",
+        "date",
+        "Close",
+        "price_diff",
+        "Volume",
+        "vol_ratio",
+        "atr14_pct",
+        "rsi9",
+        "score",
+        "key_signal",
+        "source",
+        "selected_time",
+        "updated_at",
+        "sentiment_score",
+        "policy_link",
+        "has_mention",
+        "mentioned_by",
+        "selection_score",
+        "prompt_version",
+        "grok_rank",
+        "selection_rank",
+        "weekday",
+        "margin_code",
+        "margin_code_name",
+        "jsf_restricted",
+        "is_shortable",
+        "shortable",
+        "day_trade",
+        "ng",
+        "day_trade_available_shares",
+        "margin_sell_balance",
+        "margin_buy_balance",
+        "nikkei_change_pct",
+        "futures_change_pct",
+        "is_extreme_market",
+        "extreme_market_reason",
+        "nikkei_close",
+        "nikkei_prev_close",
+        "nikkei_date",
+        "futures_price",
+        "futures_date",
+        "short_recommended",
+        "reason_category",
+        "market_cap",
+        "price_limit",
+        "limit_price_upper",
+        "max_cost_100",
+        "prob_up",
+        "grade"
+      ],
+      "updated_at": "2026-04-23T18:48:32.399063"
     },
     "grok_backtest_meta.parquet": {
       "exists": true,
-      "size_bytes": 1842,
+      "size_bytes": 1866,
       "row_count": 12,
       "columns": [
         "metric",
         "value"
       ],
-      "updated_at": "2026-04-03T08:14:47.318255"
+      "updated_at": "2026-04-23T18:48:21.205805"
     },
     "grok_top_stocks.parquet": {
       "exists": true,
-      "size_bytes": 5987,
-      "row_count": 71,
+      "size_bytes": 6421,
+      "row_count": 75,
       "columns": [
         "target_date",
         "ticker",
@@ -142,7 +201,7 @@
         "rank",
         "categories"
       ],
-      "updated_at": "2026-04-03T08:14:52.909253"
+      "updated_at": "2026-04-23T18:48:32.029974"
     },
     "scalping_entry.parquet": {
       "exists": false,
@@ -160,8 +219,8 @@
     },
     "prices_5d_1m.parquet": {
       "exists": true,
-      "size_bytes": 180190,
-      "row_count": 19380,
+      "size_bytes": 244140,
+      "row_count": 31128,
       "columns": [
         "date",
         "Open",
@@ -171,12 +230,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:50.997819"
+      "updated_at": "2026-04-23T18:48:44.415493"
     },
     "prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 213193,
-      "row_count": 16272,
+      "size_bytes": 397591,
+      "row_count": 32568,
       "columns": [
         "date",
         "Open",
@@ -186,12 +245,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:51.498824"
+      "updated_at": "2026-04-23T18:48:44.978626"
     },
     "prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 477528,
-      "row_count": 46728,
+      "size_bytes": 894716,
+      "row_count": 93840,
       "columns": [
         "date",
         "Open",
@@ -201,12 +260,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:52.318831"
+      "updated_at": "2026-04-23T18:48:45.496044"
     },
     "prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 604210,
-      "row_count": 61092,
+      "size_bytes": 1294554,
+      "row_count": 122184,
       "columns": [
         "date",
         "Open",
@@ -216,12 +275,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:53.845843"
+      "updated_at": "2026-04-23T18:48:45.856545"
     },
     "prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 1891217,
-      "row_count": 78624,
+      "size_bytes": 3113124,
+      "row_count": 157584,
       "columns": [
         "date",
         "Open",
@@ -231,12 +290,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:54.567849"
+      "updated_at": "2026-04-23T18:48:46.412727"
     },
     "prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 118609,
-      "row_count": 3792,
+      "size_bytes": 191815,
+      "row_count": 7584,
       "columns": [
         "date",
         "Open",
@@ -246,12 +305,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:56.700866"
+      "updated_at": "2026-04-23T18:48:46.757004"
     },
     "tech_snapshot_1d.parquet": {
       "exists": true,
-      "size_bytes": 15134,
-      "row_count": 12,
+      "size_bytes": 16406,
+      "row_count": 24,
       "columns": [
         "ticker",
         "date",
@@ -259,26 +318,51 @@
         "votes",
         "overall"
       ],
-      "updated_at": "2026-04-03T08:06:57.005868"
+      "updated_at": "2026-04-23T18:48:52.977042"
     },
     "intraday_analysis.parquet": {
-      "exists": false,
-      "size_bytes": 0,
-      "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "exists": true,
+      "size_bytes": 60156,
+      "row_count": 1446,
+      "columns": [
+        "ticker",
+        "date",
+        "dayOfWeek",
+        "prevClose",
+        "open",
+        "high",
+        "highTime",
+        "low",
+        "lowTime",
+        "amClose",
+        "amPnl",
+        "close",
+        "dayPnl",
+        "volatility"
+      ],
+      "updated_at": "2026-04-23T18:48:35.809571"
     },
     "intraday_averages.parquet": {
-      "exists": false,
-      "size_bytes": 0,
-      "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "exists": true,
+      "size_bytes": 35062,
+      "row_count": 1660,
+      "columns": [
+        "ticker",
+        "time",
+        "avg5d",
+        "avg10d",
+        "avg_mon",
+        "avg_tue",
+        "avg_wed",
+        "avg_thu",
+        "avg_fri"
+      ],
+      "updated_at": "2026-04-23T18:48:36.310210"
     },
     "index_prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 473612,
-      "row_count": 48902,
+      "size_bytes": 481351,
+      "row_count": 49616,
       "columns": [
         "date",
         "Open",
@@ -288,12 +372,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:06:59.710890"
+      "updated_at": "2026-04-23T18:48:33.195391"
     },
     "index_prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 1150513,
-      "row_count": 144956,
+      "size_bytes": 1163929,
+      "row_count": 147140,
       "columns": [
         "date",
         "Open",
@@ -303,12 +387,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:01.527905"
+      "updated_at": "2026-04-23T18:48:33.803634"
     },
     "index_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 1675446,
-      "row_count": 207858,
+      "size_bytes": 1669567,
+      "row_count": 207942,
       "columns": [
         "date",
         "Open",
@@ -318,12 +402,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:02.725914"
+      "updated_at": "2026-04-23T18:48:34.184004"
     },
     "index_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 2864714,
-      "row_count": 233324,
+      "size_bytes": 2876253,
+      "row_count": 233520,
       "columns": [
         "date",
         "Open",
@@ -333,11 +417,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:03.896924"
+      "updated_at": "2026-04-23T18:48:34.953608"
     },
     "index_prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 142451,
+      "size_bytes": 142574,
       "row_count": 6944,
       "columns": [
         "date",
@@ -348,12 +432,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:04.292927"
+      "updated_at": "2026-04-23T18:48:35.290392"
     },
     "futures_prices_60d_15m.parquet": {
       "exists": true,
-      "size_bytes": 425495,
-      "row_count": 17972,
+      "size_bytes": 435098,
+      "row_count": 18084,
       "columns": [
         "date",
         "Open",
@@ -363,12 +447,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:04.588930"
+      "updated_at": "2026-04-23T18:47:56.799983"
     },
     "futures_prices_60d_5m.parquet": {
       "exists": true,
-      "size_bytes": 954101,
-      "row_count": 53792,
+      "size_bytes": 960320,
+      "row_count": 54128,
       "columns": [
         "date",
         "Open",
@@ -378,12 +462,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:05.053934"
+      "updated_at": "2026-04-23T18:47:57.099333"
     },
     "futures_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 1218965,
-      "row_count": 54872,
+      "size_bytes": 1230096,
+      "row_count": 54968,
       "columns": [
         "date",
         "Open",
@@ -393,12 +477,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:05.579938"
+      "updated_at": "2026-04-23T18:47:57.854209"
     },
     "futures_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 767482,
-      "row_count": 25816,
+      "size_bytes": 769004,
+      "row_count": 25868,
       "columns": [
         "date",
         "Open",
@@ -408,11 +492,11 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:06.832948"
+      "updated_at": "2026-04-23T18:47:58.120125"
     },
     "futures_prices_max_1mo.parquet": {
       "exists": true,
-      "size_bytes": 42676,
+      "size_bytes": 42701,
       "row_count": 1052,
       "columns": [
         "date",
@@ -423,12 +507,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:07.948347"
+      "updated_at": "2026-04-23T18:47:58.300099"
     },
     "currency_prices_730d_1h.parquet": {
       "exists": true,
-      "size_bytes": 899340,
-      "row_count": 34500,
+      "size_bytes": 902949,
+      "row_count": 34550,
       "columns": [
         "date",
         "Open",
@@ -438,12 +522,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:09.402969"
+      "updated_at": "2026-04-23T18:47:55.000081"
     },
     "currency_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 421235,
-      "row_count": 15268,
+      "size_bytes": 422100,
+      "row_count": 15296,
       "columns": [
         "date",
         "Open",
@@ -453,7 +537,7 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:09.615971"
+      "updated_at": "2026-04-23T18:47:55.531177"
     },
     "currency_prices_max_1mo.parquet": {
       "exists": true,
@@ -468,12 +552,12 @@
         "Volume",
         "ticker"
       ],
-      "updated_at": "2026-04-03T08:07:09.698412"
+      "updated_at": "2026-04-23T18:47:55.869406"
     },
     "topix_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 155560,
-      "row_count": 5212,
+      "size_bytes": 156877,
+      "row_count": 5253,
       "columns": [
         "date",
         "ticker",
@@ -484,12 +568,12 @@
         "low",
         "close"
       ],
-      "updated_at": "2026-04-03T08:07:13.948009"
+      "updated_at": "2026-04-23T18:48:53.412497"
     },
     "sectors_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 2125409,
-      "row_count": 83919,
+      "size_bytes": 2138270,
+      "row_count": 84381,
       "columns": [
         "date",
         "ticker",
@@ -500,12 +584,12 @@
         "low",
         "close"
       ],
-      "updated_at": "2026-04-03T08:07:36.086182"
+      "updated_at": "2026-04-23T18:48:50.424914"
     },
     "series_prices_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 821855,
-      "row_count": 43231,
+      "size_bytes": 826853,
+      "row_count": 43469,
       "columns": [
         "date",
         "ticker",
@@ -516,12 +600,12 @@
         "low",
         "close"
       ],
-      "updated_at": "2026-04-03T08:07:48.078275"
+      "updated_at": "2026-04-23T18:48:50.885358"
     },
     "stock_results.parquet": {
       "exists": true,
-      "size_bytes": 24985,
-      "row_count": 528,
+      "size_bytes": 27761,
+      "row_count": 608,
       "columns": [
         "約定日",
         "コード",
@@ -533,21 +617,21 @@
         "数量",
         "戦略"
       ],
-      "updated_at": "2026-04-03T19:22:15.820944"
+      "updated_at": "2026-04-24T18:41:41.119017"
     },
     "stock_results_summary.parquet": {
       "exists": true,
-      "size_bytes": 2112,
+      "size_bytes": 2113,
       "row_count": 27,
       "columns": [
         "metric",
         "value"
       ],
-      "updated_at": "2026-04-03T19:22:15.820944"
+      "updated_at": "2026-04-24T18:41:41.119017"
     },
     "nikkei_vi_max_1d.parquet": {
       "exists": true,
-      "size_bytes": 10871,
+      "size_bytes": 10846,
       "row_count": 245,
       "columns": [
         "date",
@@ -556,26 +640,120 @@
         "low",
         "close"
       ],
-      "updated_at": "2026-04-03T19:22:15.820944"
+      "updated_at": "2026-04-24T18:41:41.119017"
     },
     "granville_ifd_signals.parquet": {
-      "exists": false,
-      "size_bytes": 0,
+      "exists": true,
+      "size_bytes": 6473,
       "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "columns": [
+        "signal_date",
+        "ticker",
+        "stock_name",
+        "sector",
+        "signal_type",
+        "tier",
+        "close",
+        "sma20",
+        "dev_from_sma20",
+        "sma20_slope",
+        "entry_price_est",
+        "sl_price",
+        "market_uptrend",
+        "ci_expand"
+      ],
+      "updated_at": "2026-04-23T18:48:20.918657"
     },
     "market_anomaly.parquet": {
-      "exists": false,
-      "size_bytes": 0,
-      "row_count": 0,
-      "columns": [],
-      "updated_at": null
+      "exists": true,
+      "size_bytes": 109900,
+      "row_count": 230,
+      "columns": [
+        "table_name",
+        "index",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "weekday",
+        "avg_all",
+        "median_all",
+        "win_rate_all",
+        "count_all",
+        "avg_5y",
+        "median_5y",
+        "win_rate_5y",
+        "count_5y",
+        "avg_10y",
+        "median_10y",
+        "win_rate_10y",
+        "count_10y",
+        "position",
+        "avg_return",
+        "median_return",
+        "win_rate",
+        "count",
+        "year",
+        "week_return_pct",
+        "march_return_pct",
+        "metric",
+        "value"
+      ],
+      "updated_at": "2026-04-23T18:48:37.562672"
     },
     "hold_stocks.parquet": {
       "exists": true,
-      "size_bytes": 8207,
-      "row_count": 6,
+      "size_bytes": 8208,
+      "row_count": 5,
       "columns": [
         "ticker",
         "stock_name",
@@ -591,39 +769,149 @@
         "expiry_date",
         "as_of"
       ],
-      "updated_at": "2026-04-03 19:22:20"
+      "updated_at": "2026-04-24 18:41:44"
     },
-    "orders.parquet": {
+    "fins_summary.parquet": {
       "exists": true,
-      "size_bytes": 7647,
-      "row_count": 1,
+      "size_bytes": 1309142,
+      "row_count": 8384,
       "columns": [
-        "order_no",
-        "status",
-        "ticker",
-        "stock_name",
-        "trade_type",
-        "direction",
-        "exec_condition",
-        "order_qty",
-        "filled_qty",
-        "order_price",
-        "margin_type",
-        "order_datetime",
-        "is_filled"
+        "DiscDate",
+        "DiscTime",
+        "Code",
+        "DiscNo",
+        "DocType",
+        "CurPerType",
+        "CurPerSt",
+        "CurPerEn",
+        "CurFYSt",
+        "CurFYEn",
+        "NxtFYSt",
+        "NxtFYEn",
+        "Sales",
+        "OP",
+        "OdP",
+        "NP",
+        "EPS",
+        "DEPS",
+        "TA",
+        "Eq",
+        "EqAR",
+        "BPS",
+        "CFO",
+        "CFI",
+        "CFF",
+        "CashEq",
+        "Div1Q",
+        "Div2Q",
+        "Div3Q",
+        "DivFY",
+        "DivAnn",
+        "DivUnit",
+        "DivTotalAnn",
+        "PayoutRatioAnn",
+        "FDiv1Q",
+        "FDiv2Q",
+        "FDiv3Q",
+        "FDivFY",
+        "FDivAnn",
+        "FDivUnit",
+        "FDivTotalAnn",
+        "FPayoutRatioAnn",
+        "NxFDiv1Q",
+        "NxFDiv2Q",
+        "NxFDiv3Q",
+        "NxFDivFY",
+        "NxFDivAnn",
+        "NxFDivUnit",
+        "NxFPayoutRatioAnn",
+        "FSales2Q",
+        "FOP2Q",
+        "FOdP2Q",
+        "FNP2Q",
+        "FEPS2Q",
+        "NxFSales2Q",
+        "NxFOP2Q",
+        "NxFOdP2Q",
+        "NxFNp2Q",
+        "NxFEPS2Q",
+        "FSales",
+        "FOP",
+        "FOdP",
+        "FNP",
+        "FEPS",
+        "NxFSales",
+        "NxFOP",
+        "NxFOdP",
+        "NxFNp",
+        "NxFEPS",
+        "MatChgSub",
+        "SigChgInC",
+        "ChgByASRev",
+        "ChgNoASRev",
+        "ChgAcEst",
+        "RetroRst",
+        "ShOutFY",
+        "TrShFY",
+        "AvgSh",
+        "NCSales",
+        "NCOP",
+        "NCOdP",
+        "NCNP",
+        "NCEPS",
+        "NCTA",
+        "NCEq",
+        "NCEqAR",
+        "NCBPS",
+        "FNCSales2Q",
+        "FNCOP2Q",
+        "FNCOdP2Q",
+        "FNCNP2Q",
+        "FNCEPS2Q",
+        "NxFNCSales2Q",
+        "NxFNCOP2Q",
+        "NxFNCOdP2Q",
+        "NxFNCNP2Q",
+        "NxFNCEPS2Q",
+        "FNCSales",
+        "FNCOP",
+        "FNCOdP",
+        "FNCNP",
+        "FNCEPS",
+        "NxFNCSales",
+        "NxFNCOP",
+        "NxFNCOdP",
+        "NxFNCNP",
+        "NxFNCEPS"
       ],
-      "updated_at": "2026-04-03 19:22:20"
+      "updated_at": "2026-04-26T13:46:34.002868"
     },
-    "credit_status.parquet": {
+    "edinet_documents.parquet": {
       "exists": true,
-      "size_bytes": 2382,
-      "row_count": 10,
+      "size_bytes": 607737,
+      "row_count": 38111,
       "columns": [
-        "asset",
-        "value",
-        "as_of"
+        "date",
+        "sec_code",
+        "edinet_code",
+        "filer_name",
+        "doc_type_code",
+        "doc_description",
+        "submit_date_time"
       ],
-      "updated_at": "2026-04-03 19:22:20"
+      "updated_at": "2026-04-26T13:46:34.002868"
+    },
+    "earnings_disclosure.parquet": {
+      "exists": true,
+      "size_bytes": 3968,
+      "row_count": 155,
+      "columns": [
+        "disc_date",
+        "disc_time",
+        "code",
+        "source"
+      ],
+      "updated_at": "2026-04-26T13:46:34.002868"
     }
   }
 }
