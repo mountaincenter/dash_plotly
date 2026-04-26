@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """
-J-Quants fins_announcement + EDINET 書類一覧 API 疎通テスト
-GHA workflow_dispatch から実行。各APIに1リクエストずつ送り、レスポンスを検証する。
+J-Quants fins/summary + EDINET 書類一覧 API 疎通テスト
+GHA workflow_dispatch から実行。各APIに軽量リクエストを送り、レスポンスを検証する。
 """
 from __future__ import annotations
 
 import os
-import sys
+import subprocess
 from datetime import datetime, timedelta
 
 import requests
 
 
 def send_slack(results: list[dict[str, str | bool]]) -> None:
-    """テスト結果をSlackに送信"""
     webhook = os.getenv("SLACK_TEST_WEBHOOK_URL")
     if not webhook:
         print("[SKIP] SLACK_TEST_WEBHOOK_URL 未設定、Slack送信スキップ")
@@ -44,40 +43,49 @@ def send_slack(results: list[dict[str, str | bool]]) -> None:
         print(f"[WARN] Slack送信失敗: {resp.status_code}")
 
 
-def test_jquants_fins_announcement() -> bool:
-    """jquants CLI 経由で fins_announcement を取得"""
-    import subprocess
-
+def test_jquants_fins_summary() -> tuple[bool, str]:
+    """jquants CLI v2: fins summary で DiscDate 取得テスト"""
     print("=" * 50)
-    print("[J-Quants] fins_announcement テスト (CLI)")
+    print("[J-Quants] fins/summary テスト (CLI v2)")
     print("=" * 50)
 
     today = datetime.now()
     for i in range(7):
         target = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        cmd = ["jquants", "get", "fins-announcement", "--date", target]
+        cmd = ["jquants", "--output", "json", "fins", "summary", "--date", target]
         print(f"  実行: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             print(f"  {target}: 失敗 ({result.stderr.strip()[:100]})")
             continue
 
-        lines = result.stdout.strip().split("\n")
-        if len(lines) <= 1:
+        import json
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            print(f"  {target}: JSON解析失敗")
             continue
 
-        print(f"\n[OK] {target}: {len(lines) - 1}件の決算発表予定")
-        for line in lines[1:4]:
-            print(f"  {line}")
-        if len(lines) > 4:
-            print(f"  ... 他 {len(lines) - 4}件")
-        return True
+        if not data:
+            print(f"  {target}: データなし")
+            continue
 
-    print("[FAIL] 直近7日間でデータ取得できず")
-    return False
+        print(f"\n[OK] {target}: {len(data)}件の決算開示")
+        for item in data[:3]:
+            code = item.get("Code", "?")
+            disc_date = item.get("DiscDate", "?")
+            disc_time = item.get("DiscTime", "?")
+            print(f"  {code} DiscDate={disc_date} DiscTime={disc_time}")
+        if len(data) > 3:
+            print(f"  ... 他 {len(data) - 3}件")
+
+        detail = f"{target}: {len(data)}件の決算開示 (DiscDate取得OK)"
+        return True, detail
+
+    return False, "直近7日間でデータ取得できず"
 
 
-def test_edinet_document_list() -> bool:
+def test_edinet_document_list() -> tuple[bool, str]:
     """EDINET 書類一覧API: 直近営業日の提出書類を取得"""
     print("\n" + "=" * 50)
     print("[EDINET] 書類一覧API テスト")
@@ -86,7 +94,7 @@ def test_edinet_document_list() -> bool:
     api_key = os.getenv("EDINET_API_KEY")
     if not api_key:
         print("[FAIL] EDINET_API_KEY が未設定")
-        return False
+        return False, "EDINET_API_KEY 未設定"
     print(f"[OK] EDINET_API_KEY: {api_key[:8]}...")
 
     today = datetime.now()
@@ -111,13 +119,11 @@ def test_edinet_document_list() -> bool:
         if not results:
             continue
 
-        # docTypeCode別集計
         type_counts: dict[str, int] = {}
         for doc in results:
             dtc = doc.get("docTypeCode", "?")
             type_counts[dtc] = type_counts.get(dtc, 0) + 1
 
-        # 決算短信(140)を探す
         kessan_count = type_counts.get("140", 0)
 
         print(f"\n[OK] {target}: 書類総数 {len(results)}件")
@@ -131,27 +137,26 @@ def test_edinet_document_list() -> bool:
             for doc in kessan_docs[:3]:
                 print(f"    {doc.get('filerName')} ({doc.get('secCode', '----')[:4]})")
                 print(f"      {doc.get('docDescription')}")
-        return True
 
-    print("[FAIL] 直近7日間でデータ取得できず")
-    return False
+        detail = f"{target}: 書類{len(results)}件 (決算短信{kessan_count}件)"
+        return True, detail
+
+    return False, "直近7日間でデータ取得できず"
 
 
 def main() -> int:
     results: list[dict[str, str | bool]] = []
 
-    jq_ok = test_jquants_fins_announcement()
-    results.append({"name": "J-Quants fins_announcement", "ok": jq_ok,
-                     "detail": "決算発表予定の取得" if jq_ok else "取得失敗"})
+    jq_ok, jq_detail = test_jquants_fins_summary()
+    results.append({"name": "J-Quants fins/summary", "ok": jq_ok, "detail": jq_detail})
 
-    ed_ok = test_edinet_document_list()
-    results.append({"name": "EDINET 書類一覧", "ok": ed_ok,
-                     "detail": "決算短信(docType=140)の取得" if ed_ok else "取得失敗"})
+    ed_ok, ed_detail = test_edinet_document_list()
+    results.append({"name": "EDINET 書類一覧", "ok": ed_ok, "detail": ed_detail})
 
     print("\n" + "=" * 50)
     print("[結果]")
-    print(f"  J-Quants fins_announcement: {'OK' if jq_ok else 'FAIL'}")
-    print(f"  EDINET 書類一覧:            {'OK' if ed_ok else 'FAIL'}")
+    print(f"  J-Quants fins/summary: {'OK' if jq_ok else 'FAIL'}")
+    print(f"  EDINET 書類一覧:       {'OK' if ed_ok else 'FAIL'}")
     print("=" * 50)
 
     send_slack(results)
