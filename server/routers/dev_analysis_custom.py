@@ -700,7 +700,8 @@ async def get_prob_bin_pf(
 
     group_keys = WEEKDAY_NAMES if view == "weekday" else sorted(df["group_key"].unique(), reverse=True)
     seg_col = "seg_1530"
-    sign = -1  # SHORT基準
+    # archiveはSHORTベース（prepare_data L183参照）: そのまま使用
+    sign = 1
 
     results = []
     for gk in group_keys:
@@ -712,11 +713,11 @@ async def get_prob_bin_pf(
             sub = gdf[gdf["prob_bin"] == label]
             n = len(sub)
             if n == 0:
-                bins_data.append({"label": label, "n": 0, "pf": None, "winRate": None, "avg": None, "total": None})
+                bins_data.append({"label": label, "n": 0, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
                 continue
             vals = sub[seg_col].dropna() * sign
             if len(vals) == 0:
-                bins_data.append({"label": label, "n": n, "pf": None, "winRate": None, "avg": None, "total": None})
+                bins_data.append({"label": label, "n": n, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
                 continue
             gp = float(vals[vals > 0].sum())
             gl = float(abs(vals[vals <= 0].sum()))
@@ -724,17 +725,23 @@ async def get_prob_bin_pf(
             wr = round(float((vals > 0).mean() * 100), 1)
             avg = round(float(vals.mean()))
             total = int(vals.sum())
-            bins_data.append({"label": label, "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total})
+            bp = sub["buy_price"].dropna()
+            pct_vals = sub[seg_col].dropna() / (bp[sub[seg_col].notna()].values * 100) * 100 if len(bp) > 0 else pd.Series(dtype=float)
+            avg_ret = round(float(pct_vals.mean()), 2) if len(pct_vals) > 0 else None
+            bins_data.append({"label": label, "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total, "avgReturn": avg_ret})
         # 合計
         all_vals = gdf[seg_col].dropna() * sign
         gp_all = float(all_vals[all_vals > 0].sum()) if len(all_vals) > 0 else 0
         gl_all = float(abs(all_vals[all_vals <= 0].sum())) if len(all_vals) > 0 else 0
+        all_bp = gdf["buy_price"].dropna()
+        all_pct = gdf[seg_col].dropna() / (all_bp[gdf[seg_col].notna()].values * 100) * 100 if len(all_bp) > 0 else pd.Series(dtype=float)
         results.append({
             "key": gk,
             "count": len(gdf),
             "total": int(all_vals.sum()) if len(all_vals) > 0 else 0,
             "pf": round(gp_all / gl_all, 2) if gl_all > 0 else None,
             "winRate": round(float((all_vals > 0).mean() * 100), 1) if len(all_vals) > 0 else None,
+            "avgReturn": round(float(all_pct.mean()), 2) if len(all_pct) > 0 else None,
             "bins": bins_data,
         })
 
