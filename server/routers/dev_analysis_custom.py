@@ -663,6 +663,90 @@ async def get_nikkei_change_pf(exclude_extreme: bool = False, direction: str = "
     })
 
 
+@router.get("/dev/analysis-custom/prob-bin-pf")
+async def get_prob_bin_pf(
+    view: str = "daily",
+    price_min: int = 0,
+    price_max: int = 999999,
+    margin_type: str = "",
+):
+    """prob 0.1区切り × 日別/週別/月別/曜日別パフォーマンス"""
+    if view not in ("daily", "weekly", "monthly", "weekday"):
+        raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれか")
+
+    df = _load_analysis_base(exclude_extreme=False, direction="short")
+    df = df[df["ml_prob"].notna()].copy()
+
+    if price_min > 0 or price_max < 999999:
+        df = df[(df["buy_price"] >= price_min) & (df["buy_price"] < price_max)]
+    if margin_type == "制度":
+        df = df[df["margin_type"] == "制度信用"]
+    elif margin_type == "いちにち":
+        df = df[df["margin_type"] == "いちにち信用"]
+
+    prob_bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    prob_labels = ["0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5",
+                   "0.5-0.6", "0.6-0.7", "0.7-0.8", "0.8-0.9", "0.9-1.0"]
+    df["prob_bin"] = pd.cut(df["ml_prob"], bins=prob_bins, labels=prob_labels, right=True, include_lowest=True)
+
+    if view == "weekly":
+        df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
+    elif view == "monthly":
+        df["group_key"] = df["date"].dt.strftime("%Y/%m")
+    elif view == "weekday":
+        df["group_key"] = df["date"].dt.weekday.map(lambda x: WEEKDAY_NAMES[x] if x < 5 else "")
+    else:
+        df["group_key"] = df["date"].dt.strftime("%Y-%m-%d")
+
+    group_keys = WEEKDAY_NAMES if view == "weekday" else sorted(df["group_key"].unique(), reverse=True)
+    seg_col = "seg_1530"
+    sign = -1  # SHORT基準
+
+    results = []
+    for gk in group_keys:
+        gdf = df[df["group_key"] == gk]
+        if len(gdf) == 0:
+            continue
+        bins_data = []
+        for label in prob_labels:
+            sub = gdf[gdf["prob_bin"] == label]
+            n = len(sub)
+            if n == 0:
+                bins_data.append({"label": label, "n": 0, "pf": None, "winRate": None, "avg": None, "total": None})
+                continue
+            vals = sub[seg_col].dropna() * sign
+            if len(vals) == 0:
+                bins_data.append({"label": label, "n": n, "pf": None, "winRate": None, "avg": None, "total": None})
+                continue
+            gp = float(vals[vals > 0].sum())
+            gl = float(abs(vals[vals <= 0].sum()))
+            pf = round(gp / gl, 2) if gl > 0 else None
+            wr = round(float((vals > 0).mean() * 100), 1)
+            avg = round(float(vals.mean()))
+            total = int(vals.sum())
+            bins_data.append({"label": label, "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total})
+        # 合計
+        all_vals = gdf[seg_col].dropna() * sign
+        gp_all = float(all_vals[all_vals > 0].sum()) if len(all_vals) > 0 else 0
+        gl_all = float(abs(all_vals[all_vals <= 0].sum())) if len(all_vals) > 0 else 0
+        results.append({
+            "key": gk,
+            "count": len(gdf),
+            "total": int(all_vals.sum()) if len(all_vals) > 0 else 0,
+            "pf": round(gp_all / gl_all, 2) if gl_all > 0 else None,
+            "winRate": round(float((all_vals > 0).mean() * 100), 1) if len(all_vals) > 0 else None,
+            "bins": bins_data,
+        })
+
+    return JSONResponse(content={
+        "view": view,
+        "probLabels": prob_labels,
+        "dataRange": _make_date_range(df),
+        "total": len(df),
+        "results": results,
+    })
+
+
 @router.get("/dev/analysis-custom/details")
 async def get_custom_details(
     view: str = "daily",
