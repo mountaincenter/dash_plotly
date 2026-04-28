@@ -99,6 +99,29 @@ def _row_class(v: Any) -> str:
         return ""
 
 
+_MARKET_ABBR = {"プライム": "P", "スタンダード": "S", "グロース": "G"}
+
+_NAME_SHORT: dict[str, str] = {
+    "野村アセットマネジメント株式会社　ＮＥＸＴ　ＦＵＮＤＳ日経平均レバレッジ・インデックス連動型上場投信": "NF日経レバETF",
+    "野村アセットマネジメント株式会社　ＮＥＸＴ　ＦＵＮＤＳ日経平均ダブルインバース・インデックス連動型上場投信": "NF日経Wインバ",
+    "三菱ＵＦＪアセットマネジメント株式会社　ＭＡＸＩＳ米国ＡＩインフラ株上場投信": "MAXIS米国AIインフラETF",
+}
+
+
+def _short_name(name: str) -> str:
+    return _NAME_SHORT.get(name, name)
+
+
+def _market_abbr(v: Any) -> str:
+    """市場名 → 略称（プライム=P, スタンダード=S, グロース=G, それ以外=O）"""
+    if v is None:
+        return ""
+    s = str(v).strip()
+    if not s:
+        return ""
+    return _MARKET_ABBR.get(s, "O")
+
+
 def _safe_get(d: dict, *keys, default=None):
     """ネストされたdict安全取得"""
     current = d
@@ -165,7 +188,6 @@ CSS = """:root {
   .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
   .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
-  @media (max-width:768px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
   .stat-card { background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:8px; padding:16px; text-align:center; }
   .stat-card .label { color:var(--text-muted); font-size:0.75rem; margin-bottom:4px; }
   .stat-card .value { font-size:1.5rem; font-weight:700; }
@@ -183,8 +205,15 @@ CSS = """:root {
   .factor-card .factor-detail { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
   .source-list { margin-top:12px; padding-left:20px; }
   .source-list li { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
-  .source-list a { color:var(--blue); text-decoration:none; }
-  .source-list a:hover { text-decoration:underline; }
+  a { color:#7dd3fc; text-decoration:none; border-bottom:1px dotted rgba(125,211,252,0.4); transition:color 0.15s, border-color 0.15s; }
+  a:hover { color:#bae6fd; border-bottom-color:rgba(186,230,253,0.8); }
+  a:visited { color:#a5b4fc; border-bottom-color:rgba(165,180,252,0.4); }
+  .alert-success a, .alert-success a:visited { color:#bef264; border-bottom-color:rgba(190,242,100,0.45); }
+  .alert-success a:hover { color:#ecfccb; border-bottom-color:rgba(236,252,203,0.85); }
+  .alert-warning a, .alert-warning a:visited { color:#fde047; border-bottom-color:rgba(253,224,71,0.5); }
+  .alert-warning a:hover { color:#fef9c3; border-bottom-color:rgba(254,249,195,0.85); }
+  .source-list a, .source-list a:visited { color:#7dd3fc; border-bottom:1px dotted rgba(125,211,252,0.4); }
+  .source-list a:hover { color:#bae6fd; }
   .tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; margin-right:4px; }
   .tag-bull { background:rgba(52,211,153,0.15); color:var(--emerald); }
   .tag-bear { background:rgba(251,113,133,0.15); color:var(--rose); }
@@ -206,7 +235,19 @@ CSS = """:root {
   .footnote { font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic; }
   .placeholder-section { border:2px dashed var(--amber); background:rgba(251,191,36,0.03); }
   .placeholder-note { color:var(--amber); font-size:0.85rem; padding:24px; text-align:center; }
-  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }"""
+  footer { text-align:center; color:var(--text-muted); font-size:0.7rem; margin-top:40px; padding:16px 0; border-top:1px solid var(--card-border); }
+  @media (max-width:768px) {
+    .grid-2,.grid-3,.grid-4,.factor-grid { grid-template-columns:1fr; }
+    body { text-wrap:pretty; word-break:normal; overflow-wrap:break-word; line-break:strict; padding:12px; }
+    .timeline-content, .factor-detail, .quote-box, .alert-box, p, li { text-wrap:pretty; }
+    .section { padding:16px; }
+    h1 { font-size:1.1rem; }
+    .section h2 { font-size:0.95rem; }
+    table { display:block; overflow-x:auto; white-space:nowrap; font-size:0.75rem; -webkit-overflow-scrolling:touch; max-width:100%; }
+    th,td { padding:6px 8px; }
+    td:nth-child(2), th:nth-child(2) { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .timeline-content, .factor-detail { font-size:0.8rem; white-space:normal; }
+  }"""
 
 
 # ---------------------------------------------------------------------------
@@ -411,9 +452,9 @@ def _build_volume_leaders(data: dict) -> str:
 
     # 売買代金TOP10
     lines.append('  <h3>売買代金TOP10</h3>')
-    lines.append('  <table><thead><tr><th>銘柄</th><th>市場</th><th>セクター</th><th class="r">終値</th><th class="r">変化率</th><th class="r">売買代金</th></tr></thead><tbody>')
+    lines.append('  <table><thead><tr><th>コード</th><th>銘柄</th><th>市場</th><th>セクター</th><th class="r">終値</th><th class="r">変化率</th><th class="r">売買代金</th></tr></thead><tbody>')
     for item in vl.get("volume_leaders", [])[:10]:
-        name = item.get("name", "")
+        name = _short_name(item.get("name", ""))
         code = item.get("code", "")[:4]
         market = item.get("market", "")
         sector = item.get("sector", "")
@@ -422,8 +463,9 @@ def _build_volume_leaders(data: dict) -> str:
         tv = item.get("trading_value_billion")
         tv_str = f'{tv:,.0f}億' if tv is not None else "--"
         rc = _row_class(pct)
-        lines.append(f'    <tr{rc}><td>{_e(name)} ({_e(code)})</td><td>{_e(market)}</td><td>{_e(sector)}</td><td class="r">{_f(close, 0)}</td><td class="r {_css_class(pct)}">{_sign_pct(pct)}</td><td class="r">{tv_str}</td></tr>')
+        lines.append(f'    <tr{rc}><td>{_e(code)}</td><td>{_e(name)}</td><td>{_market_abbr(market)}</td><td>{_e(sector)}</td><td class="r">{_f(close, 0)}</td><td class="r {_css_class(pct)}">{_sign_pct(pct)}</td><td class="r">{tv_str}</td></tr>')
     lines.append('  </tbody></table>')
+    lines.append('  <p class="footnote">市場略称: P=プライム / S=スタンダード / G=グロース / O=その他</p>')
 
     # 値上がり率・値下がり率 TOP5
     gainers = vl.get("top_gainers", [])[:5]
@@ -432,23 +474,23 @@ def _build_volume_leaders(data: dict) -> str:
         lines.append('  <div class="grid-2" style="margin-top:16px;">')
         if gainers:
             lines.append('    <div><h3>値上がり率TOP5</h3>')
-            lines.append('    <table><thead><tr><th>銘柄</th><th>市場</th><th class="r">変化率</th></tr></thead><tbody>')
+            lines.append('    <table><thead><tr><th>コード</th><th>銘柄</th><th>市場</th><th class="r">変化率</th></tr></thead><tbody>')
             for item in gainers:
-                name = item.get("name", "")
+                name = _short_name(item.get("name", ""))
                 code = item.get("code", "")[:4]
                 market = item.get("market", "")
                 pct = item.get("change_pct")
-                lines.append(f'      <tr class="highlight-row-green"><td>{_e(name)} ({_e(code)})</td><td>{_e(market)}</td><td class="r num-pos">{_sign_pct(pct)}</td></tr>')
+                lines.append(f'      <tr class="highlight-row-green"><td>{_e(code)}</td><td>{_e(name)}</td><td>{_market_abbr(market)}</td><td class="r num-pos">{_sign_pct(pct)}</td></tr>')
             lines.append('    </tbody></table></div>')
         if losers:
             lines.append('    <div><h3>値下がり率TOP5</h3>')
-            lines.append('    <table><thead><tr><th>銘柄</th><th>市場</th><th class="r">変化率</th></tr></thead><tbody>')
+            lines.append('    <table><thead><tr><th>コード</th><th>銘柄</th><th>市場</th><th class="r">変化率</th></tr></thead><tbody>')
             for item in losers:
-                name = item.get("name", "")
+                name = _short_name(item.get("name", ""))
                 code = item.get("code", "")[:4]
                 market = item.get("market", "")
                 pct = item.get("change_pct")
-                lines.append(f'      <tr class="highlight-row"><td>{_e(name)} ({_e(code)})</td><td>{_e(market)}</td><td class="r num-neg">{_sign_pct(pct)}</td></tr>')
+                lines.append(f'      <tr class="highlight-row"><td>{_e(code)}</td><td>{_e(name)}</td><td>{_market_abbr(market)}</td><td class="r num-neg">{_sign_pct(pct)}</td></tr>')
             lines.append('    </tbody></table></div>')
         lines.append('  </div>')
 
@@ -818,7 +860,7 @@ def _build_grok(data: dict) -> str:
     # 全銘柄テーブル (prob昇順)。prob=None は末尾に回す
     sorted_details = sorted(details, key=lambda x: (x.get("prob") is None, x.get("prob") or 0))
     lines.append('  <h3>全銘柄 prob昇順 <span class="evidence-label evidence-fact">事実</span></h3>')
-    lines.append('  <table><thead><tr><th>銘柄</th><th>Bucket</th><th class="r">prob</th><th>空売り区分</th><th class="r">始値</th><th class="r">終値</th><th class="r">損益</th><th>結果</th></tr></thead><tbody>')
+    lines.append('  <table><thead><tr><th>コード</th><th>銘柄</th><th>Bucket</th><th class="r">prob</th><th>空売り区分</th><th class="r">始値</th><th class="r">終値</th><th class="r">損益</th><th>結果</th></tr></thead><tbody>')
 
     current_bucket = None
     for d in sorted_details:
@@ -838,7 +880,7 @@ def _build_grok(data: dict) -> str:
             bucket_header = f'{_e(bucket)} {b.get("total", 0)}銘柄 {b.get("win", 0)}勝{b.get("lose", 0)}敗 = {_sign(b.get("pl", 0), 0)}円'
             if bucket == "LONG":
                 bucket_header += "（ロング損益）"
-            lines.append(f'    <tr style="background:rgba({bg_rgb},0.03);"><td colspan="8" style="font-size:0.75rem;color:{color};font-weight:600;padding:4px 12px;border:none;">{bucket_header}</td></tr>')
+            lines.append(f'    <tr style="background:rgba({bg_rgb},0.03);"><td colspan="9" style="font-size:0.75rem;color:{color};font-weight:600;padding:4px 12px;border:none;">{bucket_header}</td></tr>')
 
         ticker = d.get("ticker", "").replace(".T", "")
         name = d.get("stock_name", "")
@@ -865,7 +907,7 @@ def _build_grok(data: dict) -> str:
 
         pl_cls = _css_class(pl)
         res_cls = "num-pos" if result_label == "WIN" else "num-neg" if result_label == "LOSE" else "num-neutral"
-        lines.append(f'    <tr><td>{_e(name)} ({_e(ticker)})</td><td>{_e(bucket)}</td><td class="r">{_f(prob, 3)}</td><td>{_e(cat)}</td><td class="r">{_f(buy, 0)}</td><td class="r">{_f(close, 0)}</td><td class="r {pl_cls}">{_sign(pl, 0)}</td><td class="{res_cls}">{_e(result_label)}</td></tr>')
+        lines.append(f'    <tr><td>{_e(ticker)}</td><td>{_e(name)}</td><td>{_e(bucket)}</td><td class="r">{_f(prob, 3)}</td><td>{_e(cat)}</td><td class="r">{_f(buy, 0)}</td><td class="r">{_f(close, 0)}</td><td class="r {pl_cls}">{_sign(pl, 0)}</td><td class="{res_cls}">{_e(result_label)}</td></tr>')
 
     lines.append('  </tbody></table>')
 

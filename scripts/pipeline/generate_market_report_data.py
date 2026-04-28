@@ -54,10 +54,23 @@ def _safe(fn: callable, section_name: str) -> Any:
 
 def _read_parquet(name: str) -> pd.DataFrame | None:
     path = PARQUET_DIR / name
-    if not path.exists():
-        print(f"  [WARN] {name} not found")
-        return None
-    return pd.read_parquet(path)
+    if path.exists():
+        return pd.read_parquet(path)
+    # S3 fallback (ローカルにない場合)
+    import os, subprocess
+    s3_key = f"s3://stock-api-data/parquet/{name}"
+    try:
+        result = subprocess.run(
+            ["aws", "s3", "cp", s3_key, str(path), "--quiet"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0 and path.exists():
+            print(f"  [S3] {name} downloaded from S3")
+            return pd.read_parquet(path)
+    except Exception:
+        pass
+    print(f"  [WARN] {name} not found (local or S3)")
+    return None
 
 
 def _to_date(d: Any) -> str:
