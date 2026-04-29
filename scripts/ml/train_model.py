@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 train_model.py
-LightGBMで騰落確率予測モデルを学習（28特徴量 / 4クラス Grade方式）
+LightGBMで騰落確率予測モデルを学習（26特徴量 / bucket方式）
 
 === 損益計算とショート戦略の解釈 ===
 
@@ -14,11 +14,10 @@ LightGBMで騰落確率予測モデルを学習（28特徴量 / 4クラス Grade
 【モデルの出力】
 - prob_up = phase2_win=True の確率 = 株価上昇確率
 
-【4クラス Grade方式（ショート視点）】
-- G1 (prob_up下位25%): 機械的SHORT推奨
-- G2 (25-50%): 機械的SHORT推奨
-- G3 (50-75%): 裁量判断
-- G4 (上位25%): SKIP（ショート回避）
+【bucket方式（ショート視点）】
+- SHORT (prob_up ≤ 0.45): ショート推奨
+- DISC  (0.45 < prob_up ≤ 0.70): 裁量判断
+- LONG  (prob_up > 0.70): ショート回避
 """
 
 from __future__ import annotations
@@ -42,10 +41,9 @@ from common_cfg.paths import PARQUET_DIR
 FEATURES_PATH = PARQUET_DIR / "ml" / "archive_with_features.parquet"
 MODEL_DIR = ROOT / "models"
 
-# 使用する特徴量（28個）
 FEATURE_COLUMNS = [
-    # Grok由来
-    'grok_rank', 'selection_score', 'buy_price', 'market_cap',
+    # Grok由来（grok_rank/selection_scoreは棄却: 再選定でブレるノイズ、AUC+0.014で改善確認済み）
+    'buy_price', 'market_cap',
     'atr14_pct', 'vol_ratio', 'rsi9',
     'nikkei_change_pct', 'futures_change_pct',
     # 銘柄個別の価格特徴量
@@ -62,20 +60,25 @@ FEATURE_COLUMNS = [
     'macd_hist', 'bb_pctb', 'vol_trend',
 ]
 
-# 目的変数
 TARGET_COLUMN = 'phase2_win'
 
-# 4クラスGrade数
-N_GRADES = 4
+BUCKET_SHORT_THRESHOLD = 0.45
+BUCKET_LONG_THRESHOLD = 0.70
+
+
+def _assign_bucket(prob: float) -> str:
+    if prob <= BUCKET_SHORT_THRESHOLD:
+        return 'SHORT'
+    elif prob <= BUCKET_LONG_THRESHOLD:
+        return 'DISC'
+    return 'LONG'
 
 
 def load_data() -> pd.DataFrame:
-    """特徴量付きデータを読み込み（張り付き銘柄除外）"""
     print("[INFO] Loading features data...")
     df = pd.read_parquet(FEATURES_PATH)
     print(f"  Loaded: {len(df)} rows, {len(df.columns)} columns")
 
-    # 張り付き銘柄を除外（取引不可能）
     df['is_stuck'] = (
         (df['buy_price'] == df['high']) &
         (df['high'] == df['daily_close']) &
@@ -90,10 +93,8 @@ def load_data() -> pd.DataFrame:
 
 
 def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str], np.ndarray, np.ndarray, np.ndarray]:
-    """学習用データを準備（時系列順にソート）"""
     print("\n[INFO] Preparing data...")
 
-    # 欠損値の確認
     available_features = [col for col in FEATURE_COLUMNS if col in df.columns]
     missing_features = [col for col in FEATURE_COLUMNS if col not in df.columns]
 
@@ -102,15 +103,12 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
 
     print(f"  Using {len(available_features)} features")
 
-    # 目的変数の確認
     if TARGET_COLUMN not in df.columns:
         raise ValueError(f"Target column '{TARGET_COLUMN}' not found")
 
-    # 欠損行を除外
     df_clean = df.dropna(subset=[TARGET_COLUMN] + available_features).copy()
     print(f"  Rows after removing NaN: {len(df_clean)}/{len(df)}")
 
-    # 時系列順にソート
     df_clean['backtest_date'] = pd.to_datetime(df_clean['backtest_date'])
     df_clean = df_clean.sort_values('backtest_date').reset_index(drop=True)
     print(f"  Date range: {df_clean['backtest_date'].min().date()} ~ {df_clean['backtest_date'].max().date()}")
@@ -120,7 +118,6 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     dates = df_clean['backtest_date'].values
     tickers = df_clean['ticker'].values
 
-    # SHORT損益（-profit = ショート視点の損益）
     pnl_col = 'profit_per_100_shares_phase2'
     if pnl_col in df_clean.columns:
         pnl_values = (-df_clean[pnl_col]).values
@@ -140,24 +137,8 @@ def train_and_evaluate(
     pnl_values: np.ndarray,
     tickers: np.ndarray,
 ) -> tuple[lgb.LGBMClassifier, dict]:
-    """
-    時系列Walk-Forward CVで学習・評価
-
-    Args:
-        X: 特徴量DataFrame
-        y: 目的変数
-        feature_names: 特徴量名
-        dates: 日付配列（ソート済み）
-        pnl_values: SHORT損益配列（-profit_per_100_shares_phase2）
-        tickers: 銘柄コード配列
-
-    Returns:
-        best_model: 全データで学習したモデル
-        metrics: 評価指標
-    """
     print("\n[INFO] Training with Time-Series Walk-Forward CV...")
 
-    # LightGBMパラメータ
     params = {
         'objective': 'binary',
         'metric': 'auc',
@@ -172,13 +153,11 @@ def train_and_evaluate(
         'random_state': 42
     }
 
-    # 週単位でグループ化
     weeks = pd.to_datetime(dates).to_period('W')
     unique_weeks = weeks.unique()
     min_train_weeks = 4
 
     auc_scores = []
-    acc_scores = []
     all_preds = []
     all_true = []
     all_pnl = []
@@ -217,7 +196,6 @@ def train_and_evaluate(
     all_true = np.array(all_true)
     all_pnl = np.array(all_pnl)
 
-    # 全体評価
     overall_auc = roc_auc_score(all_true, all_preds)
     y_pred = (all_preds >= 0.5).astype(int)
     overall_acc = accuracy_score(all_true, y_pred)
@@ -225,43 +203,37 @@ def train_and_evaluate(
     overall_rec = recall_score(all_true, y_pred, zero_division=0)
     overall_f1 = f1_score(all_true, y_pred, zero_division=0)
 
-    # 4クラスGrade分析（ショート視点）
-    grade_labels = ['G1', 'G2', 'G3', 'G4']
-    grades = pd.qcut(all_preds, N_GRADES, labels=grade_labels, duplicates='drop')
+    buckets = np.array([_assign_bucket(1 - p) for p in all_preds])
 
-    # Grade境界値を記録
-    grade_boundaries = []
-    for g in grade_labels:
-        mask = grades == g
-        if mask.sum() > 0:
-            grade_boundaries.append(float(all_preds[mask].max()))
-    # 最後のG4は1.0
-    grade_boundaries[-1] = 1.0
+    bucket_results = []
+    print(f"\n[Bucket分析（ショート視点）]")
+    print(f"  SHORT ≤{BUCKET_SHORT_THRESHOLD}, DISC ≤{BUCKET_LONG_THRESHOLD}, LONG >{BUCKET_LONG_THRESHOLD}")
+    print(f"  {'Bucket':<8} {'件数':<8} {'SHORT勝率':<12} {'SHORT損益(¥)':<15} {'PF':<8}")
 
-    grade_results = []
-    print(f"\n[4クラスGrade分析（ショート視点）]")
-    print(f"  G1+G2 = 機械的SHORT, G3 = 裁量, G4 = SKIP")
-    print(f"  {'Grade':<8} {'件数':<8} {'SHORT勝率':<12} {'SHORT損益(¥)':<15}")
-
-    for g in grade_labels:
-        mask = grades == g
+    for bk in ['SHORT', 'DISC', 'LONG']:
+        mask = buckets == bk
         if mask.sum() > 0:
             count = int(mask.sum())
             short_wr = float((all_true[mask] == 0).mean())
             short_pnl = float(all_pnl[mask].sum())
-            grade_results.append({
-                'grade': g,
+            wins = all_pnl[mask][all_pnl[mask] > 0].sum()
+            losses = abs(all_pnl[mask][all_pnl[mask] < 0].sum())
+            pf = round(wins / losses, 2) if losses > 0 else float('inf')
+            bucket_results.append({
+                'bucket': bk,
                 'count': count,
                 'short_win_rate': short_wr,
                 'short_pnl_total': short_pnl,
+                'pf': pf,
             })
-            print(f"  {g:<8} {count:<8} {short_wr*100:<12.1f}% {short_pnl:>12,.0f}")
+            print(f"  {bk:<8} {count:<8} {short_wr*100:<12.1f}% {short_pnl:>12,.0f}  {pf}")
 
-    # G1+G2 合計
-    g12_mask = (grades == 'G1') | (grades == 'G2')
-    g12_wr = float((all_true[g12_mask] == 0).mean()) if g12_mask.sum() > 0 else 0
-    g12_pnl = float(all_pnl[g12_mask].sum()) if g12_mask.sum() > 0 else 0
-    print(f"  {'G1+G2':<8} {int(g12_mask.sum()):<8} {g12_wr*100:<12.1f}% {g12_pnl:>12,.0f}")
+    short_mask = buckets == 'SHORT'
+    short_wr = float((all_true[short_mask] == 0).mean()) if short_mask.sum() > 0 else 0
+    short_pnl = float(all_pnl[short_mask].sum()) if short_mask.sum() > 0 else 0
+    short_wins = all_pnl[short_mask][all_pnl[short_mask] > 0].sum() if short_mask.sum() > 0 else 0
+    short_losses = abs(all_pnl[short_mask][all_pnl[short_mask] < 0].sum()) if short_mask.sum() > 0 else 0
+    short_pf = round(short_wins / short_losses, 2) if short_losses > 0 else float('inf')
 
     metrics = {
         'auc_mean': overall_auc,
@@ -270,23 +242,24 @@ def train_and_evaluate(
         'precision_mean': overall_prec,
         'recall_mean': overall_rec,
         'f1_mean': overall_f1,
-        'g12_win_rate': g12_wr,
-        'g12_count': int(g12_mask.sum()),
-        'g12_pnl_total': g12_pnl,
+        'short_win_rate': short_wr,
+        'short_count': int(short_mask.sum()),
+        'short_pnl_total': short_pnl,
+        'short_pf': short_pf,
         'total_evaluated': len(all_true),
         'cv_method': 'time_series_walk_forward',
-        'n_grades': N_GRADES,
-        'grade_boundaries': grade_boundaries,
-        'grade_analysis': grade_results,
+        'bucket_thresholds': {
+            'short': BUCKET_SHORT_THRESHOLD,
+            'long': BUCKET_LONG_THRESHOLD,
+        },
+        'bucket_analysis': bucket_results,
     }
 
     print(f"\n[Time-Series CV Summary]")
     print(f"  Evaluated samples: {len(all_true)}")
     print(f"  AUC: {metrics['auc_mean']:.4f}")
-    print(f"  Grade boundaries: {grade_boundaries}")
-    print(f"  G1+G2 SHORT: {metrics['g12_count']} samples, WR={metrics['g12_win_rate']*100:.1f}%, PnL=¥{metrics['g12_pnl_total']:,.0f}")
+    print(f"  SHORT bucket: {metrics['short_count']} samples, WR={metrics['short_win_rate']*100:.1f}%, PnL=¥{metrics['short_pnl_total']:,.0f}, PF={short_pf}")
 
-    # WFCV予測をparquet保存
     wfcv_df = pd.DataFrame({
         'backtest_date': all_dates,
         'ticker': all_tickers,
@@ -297,7 +270,6 @@ def train_and_evaluate(
     wfcv_df.to_parquet(wfcv_path, index=False)
     print(f"\n✓ WFCV predictions saved: {wfcv_path} ({len(wfcv_df)} rows)")
 
-    # 全データで最終モデルを学習
     print("\n[INFO] Training final model on all data...")
     final_model = lgb.LGBMClassifier(**params)
     final_model.fit(X, y)
@@ -306,7 +278,6 @@ def train_and_evaluate(
 
 
 def print_feature_importance(model: lgb.LGBMClassifier, feature_names: list[str]):
-    """特徴量重要度を表示"""
     print("\n[Feature Importance]")
     importance = model.feature_importances_
     sorted_idx = np.argsort(importance)[::-1]
@@ -316,29 +287,29 @@ def print_feature_importance(model: lgb.LGBMClassifier, feature_names: list[str]
 
 
 def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dict):
-    """モデルを保存"""
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     model_path = MODEL_DIR / "grok_lgbm_model.pkl"
     meta_path = MODEL_DIR / "grok_lgbm_meta.json"
 
-    # モデル保存
     joblib.dump(model, model_path)
     print(f"\n✓ Model saved: {model_path}")
 
-    # メタ情報保存
     import json
     meta = {
         'feature_names': feature_names,
         'target': TARGET_COLUMN,
         'metrics': metrics,
         'n_features': len(feature_names),
-        'n_grades': N_GRADES,
-        'grade_boundaries': metrics.get('grade_boundaries', []),
+        'bucket_thresholds': {
+            'short': BUCKET_SHORT_THRESHOLD,
+            'long': BUCKET_LONG_THRESHOLD,
+        },
         'notes': {
-            'strategy': 'SHORT_4CLASS',
-            'interpretation': 'G1+G2=機械的SHORT, G3=裁量, G4=SKIP',
+            'strategy': 'SHORT_BUCKET',
+            'interpretation': 'SHORT=prob_up≤0.45, DISC=0.45-0.70, LONG=>0.70',
             'stuck_excluded': True,
+            'removed_features': ['grok_rank', 'selection_score'],
         }
     }
     with open(meta_path, 'w') as f:
@@ -347,7 +318,6 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
 
 
 def update_archive_with_prob():
-    """archiveにml_probカラムを追加（既存カラムは変更しない）"""
     archive_path = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
     wfcv_path = MODEL_DIR / "wfcv_predictions.parquet"
 
@@ -397,27 +367,15 @@ def update_archive_with_prob():
 
 
 def main():
-    """メイン処理"""
     print("=" * 60)
     print("Train ML Model for Price Movement Prediction")
     print("=" * 60)
 
-    # データ読み込み
     df = load_data()
-
-    # データ準備
     X, y, feature_names, dates, pnl_values, tickers = prepare_data(df)
-
-    # 学習・評価（時系列CV）
     best_model, metrics = train_and_evaluate(X, y, feature_names, dates, pnl_values, tickers)
-
-    # 特徴量重要度
     print_feature_importance(best_model, feature_names)
-
-    # モデル保存
     save_model(best_model, feature_names, metrics)
-
-    # archiveにml_probカラムを追加
     update_archive_with_prob()
 
     print("\n" + "=" * 60)

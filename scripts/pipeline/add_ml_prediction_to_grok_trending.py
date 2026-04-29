@@ -223,8 +223,6 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
         close_price = row.get('Close')
 
         existing_features = {
-            'grok_rank': row.get('grok_rank'),
-            'selection_score': row.get('selection_score'),
             'buy_price': close_price,
             'market_cap': row.get('market_cap'),
             'atr14_pct': row.get('atr14_pct'),
