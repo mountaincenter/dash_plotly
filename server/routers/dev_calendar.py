@@ -221,7 +221,7 @@ async def get_calendar_data():
         if not today_row.empty:
             today_data = {"flags": _build_flags(today_row.iloc[0])}
 
-        future = cal[cal["date"] > today_str].head(30)
+        future = cal[cal["date"] > today_str].head(60)
         for _, row in future.iterrows():
             flags = _build_flags(row)
             if flags:
