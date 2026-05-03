@@ -180,47 +180,54 @@ def _calc_year_summary(trades: list[dict]) -> list[dict]:
     return summaries
 
 
+def _build_flags(row) -> list[str]:
+    """カレンダー行からイベントフラグ文字列リストを生成"""
+    flags = []
+    if row.get("sq4_entry"):
+        flags.append("SQ-4 買い")
+    if row.get("sq3_exit"):
+        flags.append("SQ-4 決済")
+    if row.get("sq_day"):
+        flags.append("SQ日")
+
+    qe_remain = int(row["qe_remain"]) if pd.notna(row.get("qe_remain")) else None
+    if qe_remain is not None:
+        q = f"{row['date'].month // 3}Q"
+        if row.get("qe_1306_buy") and qe_remain == 4:
+            flags.append(f"{q}-4 買い")
+        if row.get("qe_1306_sell") and qe_remain == 3:
+            flags.append(f"{q}-4 決済")
+        if row.get("qe_1306_buy") and qe_remain == 3:
+            flags.append(f"{q}-3 買い")
+        if row.get("qe_1306_sell") and qe_remain == 2:
+            flags.append(f"{q}-3 決済")
+        if qe_remain == 1:
+            flags.append(f"{q}末")
+
+    return flags
+
+
 @router.get("/api/dev/calendar")
 async def get_calendar_data():
     cal = _load_calendar()
     prices = _load_1306_prices()
     qe_data = _load_qe_json()
 
-    # --- today's status ---
     today_str = date.today().isoformat()
-    today_flags = {}
+    today_data: dict = {"flags": []}
     upcoming = []
     if not cal.empty:
         today_row = cal[cal["date"] == today_str]
         if not today_row.empty:
-            r = today_row.iloc[0]
-            today_flags = {
-                "sq_day": bool(r.get("sq_day", False)),
-                "sq4_entry": bool(r.get("sq4_entry", False)),
-                "sq3_exit": bool(r.get("sq3_exit", False)),
-                "qe_remain": int(r["qe_remain"]) if pd.notna(r.get("qe_remain")) else None,
-                "qe_1306_buy": bool(r.get("qe_1306_buy", False)),
-                "qe_1306_sell": bool(r.get("qe_1306_sell", False)),
-            }
+            today_data = {"flags": _build_flags(today_row.iloc[0])}
 
         future = cal[cal["date"] > today_str].head(30)
         for _, row in future.iterrows():
-            flags = []
-            if row.get("sq4_entry"):
-                flags.append("SQ-4 買い")
-            if row.get("sq3_exit"):
-                flags.append("SQ-3 売り")
-            if row.get("sq_day"):
-                flags.append("SQ日")
-            if row.get("qe_1306_buy"):
-                flags.append("1306 買い")
-            if row.get("qe_1306_sell"):
-                flags.append("1306 売り")
+            flags = _build_flags(row)
             if flags:
                 upcoming.append({
                     "date": row["date"].strftime("%Y-%m-%d"),
                     "flags": flags,
-                    "qe_remain": int(row["qe_remain"]) if pd.notna(row.get("qe_remain")) else None,
                 })
 
     # --- 1306 latest price ---
@@ -246,7 +253,7 @@ async def get_calendar_data():
     total_pnl_100 = sum(t["pnl_100"] for t in trades if t.get("pnl_100") is not None)
 
     return {
-        "today": today_flags,
+        "today": today_data,
         "upcoming": upcoming,
         "etf_latest": etf_latest,
         "etf1306": {
