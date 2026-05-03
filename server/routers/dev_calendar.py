@@ -95,6 +95,8 @@ def _load_qe_json() -> dict:
     if cached is not None:
         return cached
     if not QE_JSON_PATH.exists():
+        _s3_download("quarter_end_effect.json", QE_JSON_PATH)
+    if not QE_JSON_PATH.exists():
         return {}
     with open(QE_JSON_PATH, encoding="utf-8") as f:
         data = json.load(f)

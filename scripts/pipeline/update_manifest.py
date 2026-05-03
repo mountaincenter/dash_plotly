@@ -349,6 +349,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "backtest/grok_analysis_merged.parquet")  # バックテスト統合データ（v2.0.3）も保持
         keep_keys.add(prefix + "backtest/grok_analysis_merged_v2_1.parquet")  # バックテスト統合データ（v2.1）も保持
         keep_keys.add(prefix + "backtest/trading_recommendation.json")  # 売買推奨データも保持
+        keep_keys.add(prefix + "quarter_end_effect.json")  # 1306四半期末バックテスト（Calendar Trades）
         keep_keys.add(prefix + "grok_day_trade_list.parquet")  # デイトレードリスト（手動管理）は絶対に削除しない
         keep_keys.add(prefix + "grok_prices_max_1d.parquet")  # ML学習・予測用の価格データ（ML Retrainingで使用）
         keep_keys.add(prefix + "ml/grok_lgbm_model.pkl")  # MLモデル（ML Retrainingで生成・使用）
