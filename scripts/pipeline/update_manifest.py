@@ -72,8 +72,9 @@ UPLOAD_FILES = [
     "granville_ifd_signals.parquet",
     # カレンダーアノマリー分析（金曜生成）
     "market_anomaly.parquet",
-    # Calendar Trades（SQ-4/1306四半期末、年1回生成）
+    # Calendar Trades（SQ-4/1306四半期末）
     "calendar.parquet",
+    "etf_1306_prices.parquet",
     # 2026-04-17 統合シグナル/ポジション (top-level, 3戦略統合想定、現在は granville のみ)
     "signals.parquet",
     "positions.parquet",

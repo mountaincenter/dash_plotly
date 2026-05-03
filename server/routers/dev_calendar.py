@@ -4,6 +4,7 @@ Calendar Trades API
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
@@ -24,13 +25,14 @@ from common_cfg.paths import PARQUET_DIR
 router = APIRouter()
 
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
-INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
+ETF_1306_PATH = PARQUET_DIR / "etf_1306_prices.parquet"
 QE_JSON_PATH = ROOT / "data" / "analysis" / "quarter_end_effect.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
 S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+_IS_LOCAL = PARQUET_DIR.exists()
 
 _cache: dict[str, tuple[datetime, object]] = {}
 CACHE_TTL = 300
@@ -46,6 +48,31 @@ def _cached(key: str) -> Optional[object]:
 
 def _set_cache(key: str, data: object) -> None:
     _cache[key] = (datetime.now(), data)
+
+
+def _read_parquet_by_env(filename: str) -> pd.DataFrame:
+    """環境フラグに応じてparquetを完全分離で読み込む（フォールバック禁止）。"""
+    if _IS_LOCAL:
+        return pd.read_parquet(PARQUET_DIR / filename)
+
+    import boto3
+
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/{filename}")
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
+
+
+def _read_json_by_env(s3_key: str, local_path: Path) -> dict:
+    """環境フラグに応じてJSONを完全分離で読み込む（フォールバック禁止）。"""
+    if _IS_LOCAL:
+        with open(local_path, encoding="utf-8") as f:
+            return json.load(f)
+
+    import boto3
+
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+    return json.loads(obj["Body"].read().decode("utf-8"))
 
 
 def _s3_download(s3_key: str, local_path: Path) -> bool:
@@ -64,11 +91,7 @@ def _load_calendar() -> pd.DataFrame:
     cached = _cached("calendar")
     if cached is not None:
         return cached
-    if not CALENDAR_PATH.exists():
-        _s3_download("calendar.parquet", CALENDAR_PATH)
-    if not CALENDAR_PATH.exists():
-        return pd.DataFrame()
-    df = pd.read_parquet(CALENDAR_PATH)
+    df = _read_parquet_by_env("calendar.parquet")
     df["date"] = pd.to_datetime(df["date"])
     _set_cache("calendar", df)
     return df
@@ -78,12 +101,7 @@ def _load_1306_prices() -> pd.DataFrame:
     cached = _cached("1306_prices")
     if cached is not None:
         return cached
-    if not INDEX_PRICES_PATH.exists():
-        _s3_download("index_prices_max_1d.parquet", INDEX_PRICES_PATH)
-    if not INDEX_PRICES_PATH.exists():
-        return pd.DataFrame()
-    df = pd.read_parquet(INDEX_PRICES_PATH)
-    df = df[df["ticker"] == "1306.T"].copy()
+    df = _read_parquet_by_env("etf_1306_prices.parquet")
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
     _set_cache("1306_prices", df)
@@ -94,12 +112,7 @@ def _load_qe_json() -> dict:
     cached = _cached("qe_json")
     if cached is not None:
         return cached
-    if not QE_JSON_PATH.exists():
-        _s3_download("quarter_end_effect.json", QE_JSON_PATH)
-    if not QE_JSON_PATH.exists():
-        return {}
-    with open(QE_JSON_PATH, encoding="utf-8") as f:
-        data = json.load(f)
+    data = _read_json_by_env(f"{S3_PREFIX}/quarter_end_effect.json", QE_JSON_PATH)
     _set_cache("qe_json", data)
     return data
 
@@ -145,7 +158,6 @@ def _calc_year_summary(trades: list[dict]) -> list[dict]:
         total_ret = sum(rets)
         pf = round(sum(wins) / abs(sum(losses)), 2) if losses and sum(losses) != 0 else None
 
-        # DD: 累積リターンの最大ドローダウン
         cum = 0.0
         peak = 0.0
         max_dd = 0.0
@@ -191,7 +203,6 @@ async def get_calendar_data():
                 "qe_1306_sell": bool(r.get("qe_1306_sell", False)),
             }
 
-        # upcoming events (next 30 business days)
         future = cal[cal["date"] > today_str].head(30)
         for _, row in future.iterrows():
             flags = []
@@ -253,7 +264,7 @@ async def get_calendar_data():
 async def refresh_cache():
     _cache.clear()
     refreshed = []
-    for f in ["calendar.parquet", "index_prices_max_1d.parquet"]:
+    for f in ["calendar.parquet", "etf_1306_prices.parquet"]:
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
