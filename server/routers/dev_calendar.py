@@ -118,7 +118,7 @@ def _load_qe_json() -> dict:
 
 
 def _enrich_trades(trades: list[dict], prices: pd.DataFrame) -> list[dict]:
-    """tradesにentry_price, exit_price, pnl_100を追加"""
+    """tradesにentry_price, exit_price, pnl_1000(1000株)を追加"""
     price_map = {}
     for _, row in prices.iterrows():
         d = row["date"].strftime("%Y-%m-%d")
@@ -128,12 +128,12 @@ def _enrich_trades(trades: list[dict], prices: pd.DataFrame) -> list[dict]:
     for t in trades:
         entry_p = price_map.get(t["entry_date"])
         exit_p = price_map.get(t["exit_date"])
-        pnl_100 = round((exit_p - entry_p) * 100, 0) if entry_p is not None and exit_p is not None else None
+        pnl_10000 = round((exit_p - entry_p) * 1000, 0) if entry_p is not None and exit_p is not None else None
         enriched.append({
             **t,
             "entry_price": round(entry_p, 1) if entry_p is not None else None,
             "exit_price": round(exit_p, 1) if exit_p is not None else None,
-            "pnl_100": int(pnl_100) if pnl_100 is not None else None,
+            "pnl_1000": int(pnl_1000) if pnl_1000 is not None else None,
         })
     return enriched
 
@@ -153,8 +153,8 @@ def _calc_year_summary(trades: list[dict]) -> list[dict]:
         wins = [r for r in rets if r > 0]
         losses = [r for r in rets if r <= 0]
 
-        pnl_100_list = [t["pnl_100"] for t in yr_trades if t.get("pnl_100") is not None]
-        total_pnl_100 = sum(pnl_100_list) if pnl_100_list else None
+        pnl_1000_list = [t["pnl_1000"] for t in yr_trades if t.get("pnl_1000") is not None]
+        total_pnl_1000 = sum(pnl_1000_list) if pnl_1000_list else None
         total_ret = sum(rets)
         pf = round(sum(wins) / abs(sum(losses)), 2) if losses and sum(losses) != 0 else None
 
@@ -173,7 +173,7 @@ def _calc_year_summary(trades: list[dict]) -> list[dict]:
             "wins": len(wins),
             "wr": round(len(wins) / n * 100, 1) if n else 0,
             "total_ret": round(total_ret, 3),
-            "pnl_100": total_pnl_100,
+            "pnl_1000": total_pnl_1000,
             "pf": pf,
             "max_dd": round(max_dd, 3),
         })
@@ -250,7 +250,7 @@ async def get_calendar_data():
     default_stats = {"total": 0, "wins": 0, "losses": 0, "wr": 0, "avg": 0, "median": 0, "max": 0, "min": 0, "pf": 0, "total_ret": 0}
     stats = {**default_stats, **qe_data.get("stats", {})}
 
-    total_pnl_100 = sum(t["pnl_100"] for t in trades if t.get("pnl_100") is not None)
+    total_pnl_1000 = sum(t["pnl_1000"] for t in trades if t.get("pnl_1000") is not None)
 
     return {
         "today": today_data,
@@ -259,7 +259,7 @@ async def get_calendar_data():
         "etf1306": {
             "stats": {
                 **stats,
-                "pnl_100": total_pnl_100,
+                "pnl_1000": total_pnl_1000,
             },
             "year_summary": year_summary,
             "trades": trades,
