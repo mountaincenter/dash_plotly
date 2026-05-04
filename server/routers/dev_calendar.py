@@ -128,7 +128,7 @@ def _enrich_trades(trades: list[dict], prices: pd.DataFrame) -> list[dict]:
     for t in trades:
         entry_p = price_map.get(t["entry_date"])
         exit_p = price_map.get(t["exit_date"])
-        pnl_10000 = round((exit_p - entry_p) * 1000, 0) if entry_p is not None and exit_p is not None else None
+        pnl_1000 = round((exit_p - entry_p) * 1000, 0) if entry_p is not None and exit_p is not None else None
         enriched.append({
             **t,
             "entry_price": round(entry_p, 1) if entry_p is not None else None,
