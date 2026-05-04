@@ -27,6 +27,7 @@ router = APIRouter()
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 ETF_1306_PATH = PARQUET_DIR / "etf_1306_prices.parquet"
 QE_JSON_PATH = ROOT / "data" / "analysis" / "quarter_end_effect.json"
+SQ4_JSON_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
@@ -114,6 +115,15 @@ def _load_qe_json() -> dict:
         return cached
     data = _read_json_by_env(f"{S3_PREFIX}/quarter_end_effect.json", QE_JSON_PATH)
     _set_cache("qe_json", data)
+    return data
+
+
+def _load_sq4_json() -> dict:
+    cached = _cached("sq4_json")
+    if cached is not None:
+        return cached
+    data = _read_json_by_env("analysis/sq4_trades.json", SQ4_JSON_PATH)
+    _set_cache("sq4_json", data)
     return data
 
 
@@ -252,6 +262,9 @@ async def get_calendar_data():
 
     total_pnl_1000 = sum(t["pnl_1000"] for t in trades if t.get("pnl_1000") is not None)
 
+    # --- SQ-4 trades ---
+    sq4_data = _load_sq4_json()
+
     return {
         "today": today_data,
         "upcoming": upcoming,
@@ -264,6 +277,13 @@ async def get_calendar_data():
             "year_summary": year_summary,
             "trades": trades,
         },
+        "sq4": {
+            "stats": sq4_data.get("stats", {}),
+            "stats_by_price": sq4_data.get("stats_by_price", {}),
+            "next_sq4": sq4_data.get("next_sq4"),
+            "candidates": sq4_data.get("candidates", {}),
+            "monthly": sq4_data.get("monthly", []),
+        },
     }
 
 
@@ -275,4 +295,14 @@ async def refresh_cache():
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
+    # sq4_trades.json is in analysis/ not parquet/
+    sq4_local = SQ4_JSON_PATH
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        sq4_local.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file(S3_BUCKET, "analysis/sq4_trades.json", str(sq4_local))
+        refreshed.append("sq4_trades.json")
+    except Exception:
+        pass
     return {"status": "success", "refreshed_files": refreshed}

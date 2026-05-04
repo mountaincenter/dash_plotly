@@ -75,6 +75,7 @@ UPLOAD_FILES = [
     # Calendar Trades（SQ-4/1306四半期末）
     "calendar.parquet",
     "etf_1306_prices.parquet",
+    "prices_topix500_oc.parquet",
     # 2026-04-17 統合シグナル/ポジション (top-level, 3戦略統合想定、現在は granville のみ)
     "signals.parquet",
     "positions.parquet",
