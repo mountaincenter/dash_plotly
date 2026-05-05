@@ -939,8 +939,10 @@ async def get_stats(rule: Optional[str] = None):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col])
 
-    # 未完了トレード（データ末尾打ち切り）を除外
+    # 未完了トレード分離（statsからは除外、tradesリストには含める）
+    open_trades_df = pd.DataFrame()
     if "exit_type" in df.columns:
+        open_trades_df = df[df["exit_type"] == "end_of_data"].copy()
         df = df[df["exit_type"] != "end_of_data"]
 
     # B1-B4 ルール別統計
@@ -977,11 +979,15 @@ async def get_stats(rule: Optional[str] = None):
         for month, mdf in monthly_df.groupby("month"):
             n = len(mdf)
             wins = int((mdf["ret_pct"] > 0).sum())
+            m_gp = mdf[mdf["pnl_yen"] > 0]["pnl_yen"].sum()
+            m_gl = abs(mdf[mdf["pnl_yen"] < 0]["pnl_yen"].sum())
+            m_pf = _safe_float(m_gp / m_gl, 2) if m_gl > 0 else None
             monthly.append({
                 "month": month,
                 "count": n,
                 "pnl": _safe_int(mdf["pnl_yen"].sum()),
                 "win_rate": _safe_float(wins / n * 100),
+                "pf": m_pf,
             })
         monthly.sort(key=lambda x: x["month"])
 
@@ -992,6 +998,8 @@ async def get_stats(rule: Optional[str] = None):
     gp = monthly_df[monthly_df["pnl_yen"] > 0]["pnl_yen"].sum() if not monthly_df.empty else 0
     gl = abs(monthly_df[monthly_df["pnl_yen"] < 0]["pnl_yen"].sum()) if not monthly_df.empty else 0
     filtered_pf = _safe_float(gp / gl, 2) if gl > 0 else 0
+    filtered_avg_pct = _safe_float(monthly_df["ret_pct"].mean(), 2) if filtered_total > 0 else 0
+    filtered_avg_pct = _safe_float(monthly_df["ret_pct"].mean(), 2) if filtered_total > 0 else 0
 
     # MaxDD (月次PnL累計ベース)
     max_dd_amount = 0
@@ -1035,10 +1043,10 @@ async def get_stats(rule: Optional[str] = None):
                 "pf": y_pf,
             })
 
-    # 個別トレードリスト
+    # 個別トレードリスト（完了 + 保有中）
     trades = []
+    trade_cols = ["ticker", "stock_name", "entry_date", "exit_date", "entry_price", "exit_price", "ret_pct", "pnl_yen", "exit_type"]
     if not monthly_df.empty:
-        trade_cols = ["ticker", "stock_name", "entry_date", "exit_date", "entry_price", "exit_price", "ret_pct", "pnl_yen", "exit_type"]
         tdf = monthly_df[[c for c in trade_cols if c in monthly_df.columns]].copy()
         tdf["entry_date"] = tdf["entry_date"].dt.strftime("%Y-%m-%d")
         tdf["exit_date"] = tdf["exit_date"].dt.strftime("%Y-%m-%d") if "exit_date" in tdf.columns else ""
@@ -1046,6 +1054,19 @@ async def get_stats(rule: Optional[str] = None):
         tdf["exit_price"] = tdf["exit_price"].round(1)
         tdf["ret_pct"] = tdf["ret_pct"].round(2)
         trades = tdf.to_dict("records")
+    # 保有中（end_of_data）もリストに追加
+    if rule_filter and not open_trades_df.empty:
+        otf = open_trades_df[open_trades_df["rule"] == rule_filter] if "rule" in open_trades_df.columns else open_trades_df
+        if not otf.empty:
+            otdf = otf[[c for c in trade_cols if c in otf.columns]].copy()
+            otdf["entry_date"] = otdf["entry_date"].dt.strftime("%Y-%m-%d")
+            otdf["exit_date"] = ""
+            otdf["exit_price"] = None
+            otdf["ret_pct"] = None
+            otdf["pnl_yen"] = None
+            otdf["entry_price"] = otdf["entry_price"].round(1)
+            otdf["exit_type"] = "open"
+            trades.extend(otdf.to_dict("records"))
 
     return {
         "by_rule": by_rule,
@@ -1055,7 +1076,8 @@ async def get_stats(rule: Optional[str] = None):
         "total_pnl": filtered_pnl,
         "win_rate": filtered_wr,
         "pf": filtered_pf,
+        "avg_pct": filtered_avg_pct,
         "rule_filter": rule_filter,
-        "max_dd": {"amount": int(max_dd_amount), "pct": round(max_dd_pct, 2)},
+        "max_dd": {"amount": int(max_dd_amount)},
         "year_summary": year_summary,
     }
