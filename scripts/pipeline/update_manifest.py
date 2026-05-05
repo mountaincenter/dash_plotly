@@ -253,6 +253,11 @@ def upload_files_to_s3() -> bool:
         upload_targets.append(granville_archive)
         print(f"  [INFO] Added Granville IFD archive: granville_ifd_archive.parquet")
 
+    b1b4_archive = backtest_dir / "granville_b1b4_archive.parquet"
+    if b1b4_archive.exists():
+        upload_targets.append(b1b4_archive)
+        print(f"  [INFO] Added Granville B1-B4 archive: granville_b1b4_archive.parquet")
+
     # CI先行指数（improvement/data/macro/ → S3: macro/estat_ci_index.parquet）
     # base_dir外なので直接S3アップロード
     ci_file = ROOT / "improvement" / "data" / "macro" / "estat_ci_index.parquet"
@@ -345,6 +350,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
         keep_keys.add(prefix + "backtest/granville_ifd_archive.parquet")  # グランビルIFDアーカイブも保持
+        keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB4バックテストも保持
         keep_keys.add(prefix + "backtest/granville_ifd_comparison.parquet")  # グランビルIFD戦略比較も保持
         keep_keys.add(prefix + "granville_ifd_positions.parquet")  # グランビルIFDポジションも保持
         keep_keys.add(prefix + "macro/estat_ci_index.parquet")  # CI先行指数（グランビルIFDで使用）

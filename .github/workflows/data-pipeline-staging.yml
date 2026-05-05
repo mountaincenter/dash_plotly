@@ -202,6 +202,13 @@ jobs:
           python scripts/pipeline/generate_pairs_signals.py
         timeout-minutes: 10
 
+      - name: "[Review] Backtest Granville B4 archive"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "📊 Regenerating Granville B4 backtest archive (6Y)..."
+          python scripts/pipeline/backtest_granville_b1b4.py 6
+        timeout-minutes: 30
+
       - name: "[Review] Regenerate manifest.json (local only)"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -230,6 +237,11 @@ jobs:
           [ -f "data/parquet/granville/prices_topix.parquet" ] && \
             aws s3 cp "data/parquet/granville/prices_topix.parquet" \
               "s3://$S3_BUCKET/${S3_PREFIX}granville/prices_topix.parquet" --only-show-errors
+
+          # B4 backtest archive
+          [ -f "data/parquet/backtest/granville_b1b4_archive.parquet" ] && \
+            aws s3 cp "data/parquet/backtest/granville_b1b4_archive.parquet" \
+              "s3://$S3_BUCKET/${S3_PREFIX}backtest/granville_b1b4_archive.parquet" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet \

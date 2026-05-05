@@ -271,12 +271,13 @@ def run_backtest(ps: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> int:
+    lookback = int(sys.argv[1]) if len(sys.argv) > 1 else 6
     print("=" * 60)
-    print("Granville B1-B4 Backtest (2Y, TOPIX)")
+    print(f"Granville B1-B4 Backtest ({lookback}Y, TOPIX)")
     print(f"  {datetime.now().isoformat()}")
     print("=" * 60)
 
-    ps = load_prices(lookback_years=2)
+    ps = load_prices(lookback_years=lookback)
     result = run_backtest(ps)
 
     if result.empty:
