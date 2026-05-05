@@ -372,13 +372,13 @@ def load_topix_stocks() -> pd.DataFrame:
 def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
     """
     signals.parquet (strategy discriminator) から
-    granville / bearish / pairs の 18列行を生成して返す。
+    granville / pairs の 18列行を生成して返す。
     pairs は tk1/tk2 を2行に展開、is_entry | is_buffer のみ対象。
     """
     import numpy as np
 
     empty = pd.DataFrame(columns=ALL_STOCKS_COLS)
-    result = {"granville": empty.copy(), "bearish": empty.copy(), "pairs": empty.copy()}
+    result = {"granville": empty.copy(), "pairs": empty.copy()}
 
     if not SIGNALS_PATH.exists():
         print(f"  [WARN] signals.parquet not found: {SIGNALS_PATH}")
@@ -415,12 +415,6 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
     if not gr.empty:
         result["granville"] = _to_18col(gr["ticker"], "GRANVILLE")
         print(f"  [INFO] Granville from signals.parquet: {len(result['granville'])} stocks")
-
-    # bearish
-    br = signals[signals["strategy"] == "bearish"]
-    if not br.empty:
-        result["bearish"] = _to_18col(br["ticker"], "BEARISH_REVERSAL")
-        print(f"  [INFO] Bearish from signals.parquet: {len(result['bearish'])} stocks")
 
     # pairs: is_entry | is_buffer の tk1/tk2 を展開
     pr = signals[signals["strategy"] == "pairs"]
@@ -499,10 +493,9 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
     meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
 
-    # granville / bearish / pairs: 統合 signals.parquet から読み込み
+    # granville / pairs: 統合 signals.parquet から読み込み
     strategy_rows = _build_rows_from_signals()
     granville_recs = strategy_rows["granville"]
-    bearish_df = strategy_rows["bearish"]
     pairs_df = strategy_rows["pairs"]
 
     # hold_stocks.parquetから保有銘柄を読み込み
@@ -550,10 +543,9 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
         except Exception as e:
             print(f"  [WARN] hold_stocks.parquet read failed: {e}")
 
-    # all_stocks = grok + granville推奨 + 保有銘柄 + 大陰線ヒット + ペアentry+buffer
     # source間で同一tickerがある場合 (例: 8053.T が HOLD + PAIRS)、
     # categories/tags は union し、メタ列は non-null 優先で畳み込む
-    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, bearish_df, pairs_df], ignore_index=True)
+    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, pairs_df], ignore_index=True)
 
     def _union_list(series: pd.Series) -> list:
         merged: list = []
@@ -600,7 +592,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Bearish: {len(bearish_df)}, Pairs: {len(pairs_df)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Pairs: {len(pairs_df)})")
     return all_stocks
 
 

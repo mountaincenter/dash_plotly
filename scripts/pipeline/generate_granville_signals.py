@@ -19,8 +19,8 @@ Exit（§6）:
   SLなし
 
 出力 (2026-04-17 統合):
-  data/parquet/signals.parquet    -- 全戦略シグナル統合 (granville + bearish + pairs)
-  data/parquet/positions.parquet  -- granville + bearish のみ (pairs は 1日完結運用で追跡対象外)
+  data/parquet/signals.parquet    -- 全戦略シグナル統合 (granville + pairs)
+  data/parquet/positions.parquet  -- granville のみ (pairs は 1日完結運用で追跡対象外)
 """
 from __future__ import annotations
 

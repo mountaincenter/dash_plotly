@@ -134,7 +134,7 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal data/parquet/pairs data/parquet/screening
+          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/pairs data/parquet/screening
 
           # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
@@ -188,13 +188,6 @@ jobs:
           python scripts/pipeline/generate_granville_signals.py
         timeout-minutes: 30
 
-      - name: "[Review] Generate bearish reversal signals"
-        if: steps.exec_mode.outputs.phase == 'review'
-        run: |
-          echo "🔻 Generating bearish reversal signals (Core+Large, from prices_topix)..."
-          python scripts/pipeline/generate_bearish_signals.py
-        timeout-minutes: 10
-
       - name: "[Review] Generate pairs trading signals"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -228,7 +221,7 @@ jobs:
         run: |
           echo "☁️ Uploading review results..."
 
-          # unified signals/positions (granville + bearish + pairs統合後)
+          # unified signals/positions (granville + pairs)
           for f in signals.parquet positions.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
@@ -269,10 +262,10 @@ jobs:
           python scripts/pipeline/generate_sq4_picks.py
         timeout-minutes: 5
 
-      - name: "[Prepare] Update all_stocks (grok + granville + bearish + pairs)"
+      - name: "[Prepare] Update all_stocks (grok + granville + pairs)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          echo "🔄 Updating all_stocks.parquet (incl. bearish hits + pairs entry)..."
+          echo "🔄 Updating all_stocks.parquet (granville + pairs)..."
           python scripts/pipeline/create_all_stocks.py
         timeout-minutes: 5
 

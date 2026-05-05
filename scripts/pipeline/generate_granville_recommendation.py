@@ -231,7 +231,7 @@ def main() -> int:
 
     print(f"[1/3] Loading unified signals: {SIGNALS_PATH.name}")
     signals_all = pd.read_parquet(SIGNALS_PATH)
-    # 統合ファイル内の granville 行のみ処理 (pairs/reversal は対象外)
+    # 統合ファイル内の granville 行のみ処理 (pairs は対象外)
     grv_mask = signals_all["strategy"] == "granville" if "strategy" in signals_all.columns else pd.Series(True, index=signals_all.index)
     signals = signals_all[grv_mask].copy()
 
