@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-04",
+  "generated": "2026-05-05",
   "params": {
     "backtest_start": "2022-04-01",
     "price_min": 1000,
@@ -81,7 +81,8 @@
       "total_pnl_100": 17870,
       "picks": [
         {
-          "code": "23270",
+          "code": "2327",
+          "name": "日鉄ソリューションズ",
           "prev_close": 1875.0,
           "entry_price": 1820.0,
           "exit_price": 1935.0,
@@ -90,7 +91,8 @@
           "pnl_100": 11500
         },
         {
-          "code": "91010",
+          "code": "9101",
+          "name": "日本郵船",
           "prev_close": 3340.0,
           "entry_price": 3250.0,
           "exit_price": 3333.3,
@@ -99,7 +101,8 @@
           "pnl_100": 8330
         },
         {
-          "code": "77350",
+          "code": "7735",
+          "name": "ＳＣＲＥＥＮホールディングス",
           "prev_close": 3057.5,
           "entry_price": 3000.0,
           "exit_price": 2992.5,
@@ -108,7 +111,8 @@
           "pnl_100": -750
         },
         {
-          "code": "62010",
+          "code": "6201",
+          "name": "豊田自動織機",
           "prev_close": 8440.0,
           "entry_price": 8290.0,
           "exit_price": 8140.0,
@@ -117,7 +121,8 @@
           "pnl_100": -15000
         },
         {
-          "code": "96840",
+          "code": "9684",
+          "name": "スクウェア・エニックス・ホールディングス",
           "prev_close": 1923.3,
           "entry_price": 1890.0,
           "exit_price": 1926.7,
@@ -126,7 +131,8 @@
           "pnl_100": 3670
         },
         {
-          "code": "72590",
+          "code": "7259",
+          "name": "アイシン",
           "prev_close": 1398.3,
           "entry_price": 1375.0,
           "exit_price": 1366.7,
@@ -135,7 +141,8 @@
           "pnl_100": -830
         },
         {
-          "code": "72700",
+          "code": "7270",
+          "name": "ＳＵＢＡＲＵ",
           "prev_close": 1914.0,
           "entry_price": 1883.0,
           "exit_price": 1895.5,
@@ -144,7 +151,8 @@
           "pnl_100": 1250
         },
         {
-          "code": "31050",
+          "code": "3105",
+          "name": "日清紡ホールディングス",
           "prev_close": 1067.0,
           "entry_price": 1050.0,
           "exit_price": 1037.0,
@@ -153,7 +161,8 @@
           "pnl_100": -1300
         },
         {
-          "code": "91040",
+          "code": "9104",
+          "name": "商船三井",
           "prev_close": 3250.0,
           "entry_price": 3200.0,
           "exit_price": 3240.0,
@@ -162,7 +171,8 @@
           "pnl_100": 4000
         },
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 6540.0,
           "entry_price": 6440.0,
           "exit_price": 6510.0,
@@ -181,7 +191,8 @@
       "total_pnl_100": -49500,
       "picks": [
         {
-          "code": "54110",
+          "code": "5411",
+          "name": "ＪＦＥホールディングス",
           "prev_close": 1594.0,
           "entry_price": 1510.0,
           "exit_price": 1509.0,
@@ -190,7 +201,8 @@
           "pnl_100": -100
         },
         {
-          "code": "81740",
+          "code": "8174",
+          "name": "日本瓦斯",
           "prev_close": 1819.0,
           "entry_price": 1761.0,
           "exit_price": 1881.0,
@@ -199,7 +211,8 @@
           "pnl_100": 12000
         },
         {
-          "code": "57130",
+          "code": "5713",
+          "name": "住友金属鉱山",
           "prev_close": 5749.0,
           "entry_price": 5570.0,
           "exit_price": 5220.0,
@@ -208,7 +221,8 @@
           "pnl_100": -35000
         },
         {
-          "code": "67280",
+          "code": "6728",
+          "name": "アルバック",
           "prev_close": 5170.0,
           "entry_price": 5010.0,
           "exit_price": 4990.0,
@@ -217,7 +231,8 @@
           "pnl_100": -2000
         },
         {
-          "code": "67540",
+          "code": "6754",
+          "name": "アンリツ",
           "prev_close": 1530.0,
           "entry_price": 1483.0,
           "exit_price": 1487.0,
@@ -226,7 +241,8 @@
           "pnl_100": 400
         },
         {
-          "code": "97660",
+          "code": "9766",
+          "name": "コナミグループ",
           "prev_close": 8210.0,
           "entry_price": 7960.0,
           "exit_price": 7570.0,
@@ -235,7 +251,8 @@
           "pnl_100": -39000
         },
         {
-          "code": "63010",
+          "code": "6301",
+          "name": "小松製作所",
           "prev_close": 3230.0,
           "entry_price": 3132.0,
           "exit_price": 3098.0,
@@ -244,7 +261,8 @@
           "pnl_100": -3400
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 2993.0,
           "entry_price": 2903.0,
           "exit_price": 3180.0,
@@ -253,7 +271,8 @@
           "pnl_100": 27700
         },
         {
-          "code": "30640",
+          "code": "3064",
+          "name": "ＭｏｎｏｔａＲＯ",
           "prev_close": 2082.0,
           "entry_price": 2020.0,
           "exit_price": 2019.0,
@@ -262,7 +281,8 @@
           "pnl_100": -100
         },
         {
-          "code": "69510",
+          "code": "6951",
+          "name": "日本電子",
           "prev_close": 6080.0,
           "entry_price": 5900.0,
           "exit_price": 5800.0,
@@ -281,7 +301,8 @@
       "total_pnl_100": 7800,
       "picks": [
         {
-          "code": "43240",
+          "code": "4324",
+          "name": "電通グループ",
           "prev_close": 4415.0,
           "entry_price": 4275.0,
           "exit_price": 4335.0,
@@ -290,7 +311,8 @@
           "pnl_100": 6000
         },
         {
-          "code": "65320",
+          "code": "6532",
+          "name": "ベイカレント",
           "prev_close": 3780.0,
           "entry_price": 3685.0,
           "exit_price": 3550.0,
@@ -299,7 +321,8 @@
           "pnl_100": -13500
         },
         {
-          "code": "60980",
+          "code": "6098",
+          "name": "リクルートホールディングス",
           "prev_close": 4619.0,
           "entry_price": 4504.0,
           "exit_price": 4524.0,
@@ -308,7 +331,8 @@
           "pnl_100": 2000
         },
         {
-          "code": "69630",
+          "code": "6963",
+          "name": "ローム",
           "prev_close": 2702.5,
           "entry_price": 2637.5,
           "exit_price": 2652.5,
@@ -317,7 +341,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "23710",
+          "code": "2371",
+          "name": "カカクコム",
           "prev_close": 2499.0,
           "entry_price": 2439.0,
           "exit_price": 2390.0,
@@ -326,7 +351,8 @@
           "pnl_100": -4900
         },
         {
-          "code": "62680",
+          "code": "6268",
+          "name": "ナブテスコ",
           "prev_close": 3145.0,
           "entry_price": 3070.0,
           "exit_price": 3230.0,
@@ -335,7 +361,8 @@
           "pnl_100": 16000
         },
         {
-          "code": "68690",
+          "code": "6869",
+          "name": "シスメックス",
           "prev_close": 2816.0,
           "entry_price": 2749.3,
           "exit_price": 2764.3,
@@ -344,7 +371,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "43850",
+          "code": "4385",
+          "name": "メルカリ",
           "prev_close": 2135.0,
           "entry_price": 2085.0,
           "exit_price": 2027.0,
@@ -353,7 +381,8 @@
           "pnl_100": -5800
         },
         {
-          "code": "24330",
+          "code": "2433",
+          "name": "博報堂ＤＹホールディングス",
           "prev_close": 1343.0,
           "entry_price": 1312.0,
           "exit_price": 1327.0,
@@ -362,7 +391,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "36590",
+          "code": "3659",
+          "name": "ネクソン",
           "prev_close": 3205.0,
           "entry_price": 3135.0,
           "exit_price": 3170.0,
@@ -381,7 +411,8 @@
       "total_pnl_100": 93930,
       "picks": [
         {
-          "code": "19280",
+          "code": "1928",
+          "name": "積水ハウス",
           "prev_close": 2361.5,
           "entry_price": 2287.5,
           "exit_price": 2306.0,
@@ -390,7 +421,8 @@
           "pnl_100": 1850
         },
         {
-          "code": "94330",
+          "code": "9433",
+          "name": "ＫＤＤＩ",
           "prev_close": 2156.5,
           "entry_price": 2101.0,
           "exit_price": 2152.0,
@@ -399,7 +431,8 @@
           "pnl_100": 5100
         },
         {
-          "code": "80350",
+          "code": "8035",
+          "name": "東京エレクトロン",
           "prev_close": 14220.0,
           "entry_price": 13866.7,
           "exit_price": 14190.0,
@@ -408,7 +441,8 @@
           "pnl_100": 32330
         },
         {
-          "code": "61460",
+          "code": "6146",
+          "name": "ディスコ",
           "prev_close": 10200.0,
           "entry_price": 9966.7,
           "exit_price": 9976.7,
@@ -417,7 +451,8 @@
           "pnl_100": 1000
         },
         {
-          "code": "57110",
+          "code": "5711",
+          "name": "三菱マテリアル",
           "prev_close": 1924.0,
           "entry_price": 1884.0,
           "exit_price": 1942.0,
@@ -426,7 +461,8 @@
           "pnl_100": 5800
         },
         {
-          "code": "57130",
+          "code": "5713",
+          "name": "住友金属鉱山",
           "prev_close": 4136.0,
           "entry_price": 4066.0,
           "exit_price": 4122.0,
@@ -435,7 +471,8 @@
           "pnl_100": 5600
         },
         {
-          "code": "69760",
+          "code": "6976",
+          "name": "太陽誘電",
           "prev_close": 4380.0,
           "entry_price": 4310.0,
           "exit_price": 4365.0,
@@ -444,7 +481,8 @@
           "pnl_100": 5500
         },
         {
-          "code": "94350",
+          "code": "9435",
+          "name": "光通信",
           "prev_close": 13700.0,
           "entry_price": 13500.0,
           "exit_price": 13830.0,
@@ -453,7 +491,8 @@
           "pnl_100": 33000
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 1765.0,
           "entry_price": 1740.0,
           "exit_price": 1775.0,
@@ -462,7 +501,8 @@
           "pnl_100": 3500
         },
         {
-          "code": "77350",
+          "code": "7735",
+          "name": "ＳＣＲＥＥＮホールディングス",
           "prev_close": 2202.5,
           "entry_price": 2172.5,
           "exit_price": 2175.0,
@@ -481,7 +521,8 @@
       "total_pnl_100": 46840,
       "picks": [
         {
-          "code": "68690",
+          "code": "6869",
+          "name": "シスメックス",
           "prev_close": 3098.7,
           "entry_price": 2828.3,
           "exit_price": 2756.0,
@@ -490,7 +531,8 @@
           "pnl_100": -7230
         },
         {
-          "code": "97660",
+          "code": "9766",
+          "name": "コナミグループ",
           "prev_close": 7490.0,
           "entry_price": 6900.0,
           "exit_price": 6880.0,
@@ -499,7 +541,8 @@
           "pnl_100": -2000
         },
         {
-          "code": "68450",
+          "code": "6845",
+          "name": "アズビル",
           "prev_close": 1027.5,
           "entry_price": 955.0,
           "exit_price": 1021.3,
@@ -508,7 +551,8 @@
           "pnl_100": 6630
         },
         {
-          "code": "40880",
+          "code": "4088",
+          "name": "エア・ウォーター",
           "prev_close": 1789.0,
           "entry_price": 1669.0,
           "exit_price": 1720.0,
@@ -517,7 +561,8 @@
           "pnl_100": 5100
         },
         {
-          "code": "26070",
+          "code": "2607",
+          "name": "不二製油",
           "prev_close": 2275.0,
           "entry_price": 2158.0,
           "exit_price": 2253.0,
@@ -526,7 +571,8 @@
           "pnl_100": 9500
         },
         {
-          "code": "81130",
+          "code": "8113",
+          "name": "ユニ・チャーム",
           "prev_close": 1595.0,
           "entry_price": 1513.3,
           "exit_price": 1574.3,
@@ -535,7 +581,8 @@
           "pnl_100": 6100
         },
         {
-          "code": "41860",
+          "code": "4186",
+          "name": "東京応化工業",
           "prev_close": 2383.3,
           "entry_price": 2283.3,
           "exit_price": 2436.7,
@@ -544,7 +591,8 @@
           "pnl_100": 15340
         },
         {
-          "code": "16050",
+          "code": "1605",
+          "name": "ＩＮＰＥＸ",
           "prev_close": 1415.0,
           "entry_price": 1356.0,
           "exit_price": 1471.0,
@@ -553,7 +601,8 @@
           "pnl_100": 11500
         },
         {
-          "code": "22060",
+          "code": "2206",
+          "name": "江崎グリコ",
           "prev_close": 3760.0,
           "entry_price": 3620.0,
           "exit_price": 3675.0,
@@ -562,7 +611,8 @@
           "pnl_100": 5500
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 2296.0,
           "entry_price": 2211.0,
           "exit_price": 2175.0,
@@ -581,7 +631,8 @@
       "total_pnl_100": -57050,
       "picks": [
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 7720.0,
           "entry_price": 7180.0,
           "exit_price": 6440.0,
@@ -590,7 +641,8 @@
           "pnl_100": -74000
         },
         {
-          "code": "47330",
+          "code": "4733",
+          "name": "オービックビジネスコンサルタント",
           "prev_close": 4870.0,
           "entry_price": 4760.0,
           "exit_price": 4910.0,
@@ -599,7 +651,8 @@
           "pnl_100": 15000
         },
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 3155.0,
           "entry_price": 3085.0,
           "exit_price": 2932.0,
@@ -608,7 +661,8 @@
           "pnl_100": -15300
         },
         {
-          "code": "77350",
+          "code": "7735",
+          "name": "ＳＣＲＥＥＮホールディングス",
           "prev_close": 2262.5,
           "entry_price": 2225.0,
           "exit_price": 2297.5,
@@ -617,7 +671,8 @@
           "pnl_100": 7250
         },
         {
-          "code": "25930",
+          "code": "2593",
+          "name": "伊藤園",
           "prev_close": 6160.0,
           "entry_price": 6060.0,
           "exit_price": 5830.0,
@@ -626,7 +681,8 @@
           "pnl_100": -23000
         },
         {
-          "code": "69020",
+          "code": "6902",
+          "name": "デンソー",
           "prev_close": 1838.0,
           "entry_price": 1808.3,
           "exit_price": 1802.0,
@@ -635,7 +691,8 @@
           "pnl_100": -630
         },
         {
-          "code": "45780",
+          "code": "4578",
+          "name": "大塚ホールディングス",
           "prev_close": 4536.0,
           "entry_price": 4466.0,
           "exit_price": 4527.0,
@@ -644,7 +701,8 @@
           "pnl_100": 6100
         },
         {
-          "code": "68690",
+          "code": "6869",
+          "name": "シスメックス",
           "prev_close": 2697.0,
           "entry_price": 2656.0,
           "exit_price": 2680.3,
@@ -653,7 +711,8 @@
           "pnl_100": 2430
         },
         {
-          "code": "67070",
+          "code": "6707",
+          "name": "サンケン電気",
           "prev_close": 4680.0,
           "entry_price": 4610.0,
           "exit_price": 4710.0,
@@ -662,7 +721,8 @@
           "pnl_100": 10000
         },
         {
-          "code": "45680",
+          "code": "4568",
+          "name": "第一三共",
           "prev_close": 4129.0,
           "entry_price": 4068.0,
           "exit_price": 4219.0,
@@ -681,7 +741,8 @@
       "total_pnl_100": -180550,
       "picks": [
         {
-          "code": "61360",
+          "code": "6136",
+          "name": "オーエスジー",
           "prev_close": 1892.0,
           "entry_price": 1812.0,
           "exit_price": 1798.0,
@@ -690,7 +751,8 @@
           "pnl_100": -1400
         },
         {
-          "code": "61460",
+          "code": "6146",
+          "name": "ディスコ",
           "prev_close": 11700.0,
           "entry_price": 11233.3,
           "exit_price": 10383.3,
@@ -699,7 +761,8 @@
           "pnl_100": -85000
         },
         {
-          "code": "72760",
+          "code": "7276",
+          "name": "小糸製作所",
           "prev_close": 2156.0,
           "entry_price": 2081.0,
           "exit_price": 2047.0,
@@ -708,7 +771,8 @@
           "pnl_100": -3400
         },
         {
-          "code": "33820",
+          "code": "3382",
+          "name": "セブン＆アイ・ホールディングス",
           "prev_close": 1895.0,
           "entry_price": 1830.0,
           "exit_price": 1750.0,
@@ -717,7 +781,8 @@
           "pnl_100": -8000
         },
         {
-          "code": "40620",
+          "code": "4062",
+          "name": "イビデン",
           "prev_close": 2282.5,
           "entry_price": 2212.5,
           "exit_price": 2085.0,
@@ -726,7 +791,8 @@
           "pnl_100": -12750
         },
         {
-          "code": "41940",
+          "code": "4194",
+          "name": "ビジョナル",
           "prev_close": 11010.0,
           "entry_price": 10680.0,
           "exit_price": 10070.0,
@@ -735,7 +801,8 @@
           "pnl_100": -61000
         },
         {
-          "code": "69650",
+          "code": "6965",
+          "name": "浜松ホトニクス",
           "prev_close": 3360.0,
           "entry_price": 3260.0,
           "exit_price": 3165.0,
@@ -744,7 +811,8 @@
           "pnl_100": -9500
         },
         {
-          "code": "64810",
+          "code": "6481",
+          "name": "ＴＨＫ",
           "prev_close": 2632.0,
           "entry_price": 2556.0,
           "exit_price": 2513.0,
@@ -753,7 +821,8 @@
           "pnl_100": -4300
         },
         {
-          "code": "64360",
+          "code": "6436",
+          "name": "アマノ",
           "prev_close": 2584.0,
           "entry_price": 2511.0,
           "exit_price": 2515.0,
@@ -762,7 +831,8 @@
           "pnl_100": 400
         },
         {
-          "code": "81740",
+          "code": "8174",
+          "name": "日本瓦斯",
           "prev_close": 2155.0,
           "entry_price": 2095.0,
           "exit_price": 2139.0,
@@ -781,7 +851,8 @@
       "total_pnl_100": 42100,
       "picks": [
         {
-          "code": "77520",
+          "code": "7752",
+          "name": "リコー",
           "prev_close": 1123.0,
           "entry_price": 1052.0,
           "exit_price": 1066.0,
@@ -790,7 +861,8 @@
           "pnl_100": 1400
         },
         {
-          "code": "82820",
+          "code": "8282",
+          "name": "ケーズホールディングス",
           "prev_close": 1185.0,
           "entry_price": 1129.0,
           "exit_price": 1127.0,
@@ -799,7 +871,8 @@
           "pnl_100": -200
         },
         {
-          "code": "94040",
+          "code": "9404",
+          "name": "日本テレビホールディングス",
           "prev_close": 1089.0,
           "entry_price": 1042.0,
           "exit_price": 1053.0,
@@ -808,7 +881,8 @@
           "pnl_100": 1100
         },
         {
-          "code": "45400",
+          "code": "4540",
+          "name": "ツムラ",
           "prev_close": 3040.0,
           "entry_price": 2920.0,
           "exit_price": 2870.0,
@@ -817,7 +891,8 @@
           "pnl_100": -5000
         },
         {
-          "code": "41510",
+          "code": "4151",
+          "name": "協和キリン",
           "prev_close": 3375.0,
           "entry_price": 3250.0,
           "exit_price": 3250.0,
@@ -826,7 +901,8 @@
           "pnl_100": 0
         },
         {
-          "code": "82420",
+          "code": "8242",
+          "name": "エイチ・ツー・オー　リテイリング",
           "prev_close": 1327.0,
           "entry_price": 1280.0,
           "exit_price": 1256.0,
@@ -835,7 +911,8 @@
           "pnl_100": -2400
         },
         {
-          "code": "41940",
+          "code": "4194",
+          "name": "ビジョナル",
           "prev_close": 10470.0,
           "entry_price": 10250.0,
           "exit_price": 10670.0,
@@ -844,7 +921,8 @@
           "pnl_100": 42000
         },
         {
-          "code": "28010",
+          "code": "2801",
+          "name": "キッコーマン",
           "prev_close": 1584.0,
           "entry_price": 1554.0,
           "exit_price": 1590.0,
@@ -853,7 +931,8 @@
           "pnl_100": 3600
         },
         {
-          "code": "22220",
+          "code": "2222",
+          "name": "寿スピリッツ",
           "prev_close": 1568.0,
           "entry_price": 1542.0,
           "exit_price": 1568.0,
@@ -862,7 +941,8 @@
           "pnl_100": 2600
         },
         {
-          "code": "49120",
+          "code": "4912",
+          "name": "ライオン",
           "prev_close": 1445.0,
           "entry_price": 1424.0,
           "exit_price": 1414.0,
@@ -881,7 +961,8 @@
       "total_pnl_100": 26070,
       "picks": [
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 6530.0,
           "entry_price": 6230.0,
           "exit_price": 6290.0,
@@ -890,7 +971,8 @@
           "pnl_100": 6000
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 2511.0,
           "entry_price": 2434.0,
           "exit_price": 2552.0,
@@ -899,7 +981,8 @@
           "pnl_100": 11800
         },
         {
-          "code": "87660",
+          "code": "8766",
+          "name": "東京海上ホールディングス",
           "prev_close": 2753.0,
           "entry_price": 2703.0,
           "exit_price": 2776.5,
@@ -908,7 +991,8 @@
           "pnl_100": 7350
         },
         {
-          "code": "77330",
+          "code": "7733",
+          "name": "オリンパス",
           "prev_close": 2698.0,
           "entry_price": 2650.0,
           "exit_price": 2666.0,
@@ -917,7 +1001,8 @@
           "pnl_100": 1600
         },
         {
-          "code": "83030",
+          "code": "8303",
+          "name": "ＳＢＩ新生銀行",
           "prev_close": 2253.0,
           "entry_price": 2221.0,
           "exit_price": 2237.0,
@@ -926,7 +1011,8 @@
           "pnl_100": 1600
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 2387.5,
           "entry_price": 2355.0,
           "exit_price": 2382.5,
@@ -935,7 +1021,8 @@
           "pnl_100": 2750
         },
         {
-          "code": "21270",
+          "code": "2127",
+          "name": "日本Ｍ＆Ａセンターホールディングス",
           "prev_close": 1914.0,
           "entry_price": 1888.0,
           "exit_price": 1857.0,
@@ -944,7 +1031,8 @@
           "pnl_100": -3100
         },
         {
-          "code": "32880",
+          "code": "3288",
+          "name": "オープンハウスグループ",
           "prev_close": 5670.0,
           "entry_price": 5600.0,
           "exit_price": 5560.0,
@@ -953,7 +1041,8 @@
           "pnl_100": -4000
         },
         {
-          "code": "30920",
+          "code": "3092",
+          "name": "ＺＯＺＯ",
           "prev_close": 1126.7,
           "entry_price": 1113.3,
           "exit_price": 1120.0,
@@ -962,7 +1051,8 @@
           "pnl_100": 670
         },
         {
-          "code": "64170",
+          "code": "6417",
+          "name": "ＳＡＮＫＹＯ",
           "prev_close": 1050.0,
           "entry_price": 1038.0,
           "exit_price": 1052.0,
@@ -981,7 +1071,8 @@
       "total_pnl_100": 58470,
       "picks": [
         {
-          "code": "47510",
+          "code": "4751",
+          "name": "サイバーエージェント",
           "prev_close": 1190.0,
           "entry_price": 1160.0,
           "exit_price": 1159.0,
@@ -990,7 +1081,8 @@
           "pnl_100": -100
         },
         {
-          "code": "88020",
+          "code": "8802",
+          "name": "三菱地所",
           "prev_close": 1692.5,
           "entry_price": 1652.5,
           "exit_price": 1656.0,
@@ -999,7 +1091,8 @@
           "pnl_100": 350
         },
         {
-          "code": "65860",
+          "code": "6586",
+          "name": "マキタ",
           "prev_close": 3125.0,
           "entry_price": 3055.0,
           "exit_price": 3090.0,
@@ -1008,7 +1101,8 @@
           "pnl_100": 3500
         },
         {
-          "code": "30030",
+          "code": "3003",
+          "name": "ヒューリック",
           "prev_close": 1040.0,
           "entry_price": 1017.0,
           "exit_price": 1029.0,
@@ -1017,7 +1111,8 @@
           "pnl_100": 1200
         },
         {
-          "code": "37690",
+          "code": "3769",
+          "name": "ＧＭＯペイメントゲートウェイ",
           "prev_close": 11030.0,
           "entry_price": 10800.0,
           "exit_price": 11000.0,
@@ -1026,7 +1121,8 @@
           "pnl_100": 20000
         },
         {
-          "code": "94490",
+          "code": "9449",
+          "name": "ＧＭＯインターネットグループ",
           "prev_close": 2465.0,
           "entry_price": 2415.0,
           "exit_price": 2408.0,
@@ -1035,7 +1131,8 @@
           "pnl_100": -700
         },
         {
-          "code": "68690",
+          "code": "6869",
+          "name": "シスメックス",
           "prev_close": 2527.0,
           "entry_price": 2477.0,
           "exit_price": 2636.7,
@@ -1044,7 +1141,8 @@
           "pnl_100": 15970
         },
         {
-          "code": "91430",
+          "code": "9143",
+          "name": "ＳＧホールディングス",
           "prev_close": 1783.0,
           "entry_price": 1749.0,
           "exit_price": 1765.0,
@@ -1053,7 +1151,8 @@
           "pnl_100": 1600
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 2110.0,
           "entry_price": 2070.0,
           "exit_price": 2167.5,
@@ -1062,7 +1161,8 @@
           "pnl_100": 9750
         },
         {
-          "code": "24130",
+          "code": "2413",
+          "name": "エムスリー",
           "prev_close": 3497.0,
           "entry_price": 3433.0,
           "exit_price": 3502.0,
@@ -1081,7 +1181,8 @@
       "total_pnl_100": 41880,
       "picks": [
         {
-          "code": "69250",
+          "code": "6925",
+          "name": "ウシオ電機",
           "prev_close": 1712.0,
           "entry_price": 1541.0,
           "exit_price": 1585.0,
@@ -1090,7 +1191,8 @@
           "pnl_100": 4400
         },
         {
-          "code": "36260",
+          "code": "3626",
+          "name": "ＴＩＳ",
           "prev_close": 3685.0,
           "entry_price": 3335.0,
           "exit_price": 3465.0,
@@ -1099,7 +1201,8 @@
           "pnl_100": 13000
         },
         {
-          "code": "62010",
+          "code": "6201",
+          "name": "豊田自動織機",
           "prev_close": 7740.0,
           "entry_price": 7450.0,
           "exit_price": 7570.0,
@@ -1108,7 +1211,8 @@
           "pnl_100": 12000
         },
         {
-          "code": "42080",
+          "code": "4208",
+          "name": "ＵＢＥ",
           "prev_close": 1971.0,
           "entry_price": 1907.0,
           "exit_price": 1982.0,
@@ -1117,7 +1221,8 @@
           "pnl_100": 7500
         },
         {
-          "code": "45400",
+          "code": "4540",
+          "name": "ツムラ",
           "prev_close": 2711.0,
           "entry_price": 2639.0,
           "exit_price": 2616.0,
@@ -1126,7 +1231,8 @@
           "pnl_100": -2300
         },
         {
-          "code": "72400",
+          "code": "7240",
+          "name": "ＮＯＫ",
           "prev_close": 1207.0,
           "entry_price": 1178.0,
           "exit_price": 1185.0,
@@ -1135,7 +1241,8 @@
           "pnl_100": 700
         },
         {
-          "code": "40620",
+          "code": "4062",
+          "name": "イビデン",
           "prev_close": 2580.0,
           "entry_price": 2530.0,
           "exit_price": 2497.5,
@@ -1144,7 +1251,8 @@
           "pnl_100": -3250
         },
         {
-          "code": "72590",
+          "code": "7259",
+          "name": "アイシン",
           "prev_close": 1218.3,
           "entry_price": 1195.0,
           "exit_price": 1208.3,
@@ -1153,7 +1261,8 @@
           "pnl_100": 1330
         },
         {
-          "code": "52140",
+          "code": "5214",
+          "name": "日本電気硝子",
           "prev_close": 2368.0,
           "entry_price": 2323.0,
           "exit_price": 2378.0,
@@ -1162,7 +1271,8 @@
           "pnl_100": 5500
         },
         {
-          "code": "39940",
+          "code": "3994",
+          "name": "マネーフォワード",
           "prev_close": 5340.0,
           "entry_price": 5240.0,
           "exit_price": 5270.0,
@@ -1181,7 +1291,8 @@
       "total_pnl_100": 10000,
       "picks": [
         {
-          "code": "45680",
+          "code": "4568",
+          "name": "第一三共",
           "prev_close": 4468.0,
           "entry_price": 4418.0,
           "exit_price": 4416.0,
@@ -1190,7 +1301,8 @@
           "pnl_100": -200
         },
         {
-          "code": "64170",
+          "code": "6417",
+          "name": "ＳＡＮＫＹＯ",
           "prev_close": 1128.0,
           "entry_price": 1118.0,
           "exit_price": 1104.0,
@@ -1199,7 +1311,8 @@
           "pnl_100": -1400
         },
         {
-          "code": "25790",
+          "code": "2579",
+          "name": "コカ・コーラ　ボトラーズジャパンホールディングス",
           "prev_close": 1423.0,
           "entry_price": 1413.0,
           "exit_price": 1414.0,
@@ -1208,7 +1321,8 @@
           "pnl_100": 100
         },
         {
-          "code": "46120",
+          "code": "4612",
+          "name": "日本ペイントホールディングス",
           "prev_close": 1225.0,
           "entry_price": 1217.0,
           "exit_price": 1200.0,
@@ -1217,7 +1331,8 @@
           "pnl_100": -1700
         },
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 5690.0,
           "entry_price": 5660.0,
           "exit_price": 5760.0,
@@ -1226,7 +1341,8 @@
           "pnl_100": 10000
         },
         {
-          "code": "80560",
+          "code": "8056",
+          "name": "ＢＩＰＲＯＧＹ",
           "prev_close": 3070.0,
           "entry_price": 3055.0,
           "exit_price": 3050.0,
@@ -1235,7 +1351,8 @@
           "pnl_100": -500
         },
         {
-          "code": "67540",
+          "code": "6754",
+          "name": "アンリツ",
           "prev_close": 1260.0,
           "entry_price": 1254.0,
           "exit_price": 1255.0,
@@ -1244,7 +1361,8 @@
           "pnl_100": 100
         },
         {
-          "code": "95310",
+          "code": "9531",
+          "name": "東京瓦斯",
           "prev_close": 2568.0,
           "entry_price": 2556.0,
           "exit_price": 2584.0,
@@ -1253,7 +1371,8 @@
           "pnl_100": 2800
         },
         {
-          "code": "25310",
+          "code": "2531",
+          "name": "宝ホールディングス",
           "prev_close": 1088.0,
           "entry_price": 1083.0,
           "exit_price": 1075.0,
@@ -1262,7 +1381,8 @@
           "pnl_100": -800
         },
         {
-          "code": "83030",
+          "code": "8303",
+          "name": "ＳＢＩ新生銀行",
           "prev_close": 2470.0,
           "entry_price": 2460.0,
           "exit_price": 2476.0,
@@ -1281,7 +1401,8 @@
       "total_pnl_100": 46600,
       "picks": [
         {
-          "code": "41860",
+          "code": "4186",
+          "name": "東京応化工業",
           "prev_close": 2360.0,
           "entry_price": 2306.7,
           "exit_price": 2360.0,
@@ -1290,7 +1411,8 @@
           "pnl_100": 5330
         },
         {
-          "code": "65060",
+          "code": "6506",
+          "name": "安川電機",
           "prev_close": 5480.0,
           "entry_price": 5380.0,
           "exit_price": 5510.0,
@@ -1299,7 +1421,8 @@
           "pnl_100": 13000
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 3335.0,
           "entry_price": 3310.0,
           "exit_price": 3325.0,
@@ -1308,7 +1431,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "75500",
+          "code": "7550",
+          "name": "ゼンショーホールディングス",
           "prev_close": 3985.0,
           "entry_price": 3960.0,
           "exit_price": 4080.0,
@@ -1317,7 +1441,8 @@
           "pnl_100": 12000
         },
         {
-          "code": "65320",
+          "code": "6532",
+          "name": "ベイカレント",
           "prev_close": 5040.0,
           "entry_price": 5010.0,
           "exit_price": 5020.0,
@@ -1326,7 +1451,8 @@
           "pnl_100": 1000
         },
         {
-          "code": "90030",
+          "code": "9003",
+          "name": "相鉄ホールディングス",
           "prev_close": 2287.0,
           "entry_price": 2276.0,
           "exit_price": 2285.0,
@@ -1335,7 +1461,8 @@
           "pnl_100": 900
         },
         {
-          "code": "41940",
+          "code": "4194",
+          "name": "ビジョナル",
           "prev_close": 6820.0,
           "entry_price": 6790.0,
           "exit_price": 6670.0,
@@ -1344,7 +1471,8 @@
           "pnl_100": -12000
         },
         {
-          "code": "91430",
+          "code": "9143",
+          "name": "ＳＧホールディングス",
           "prev_close": 1910.0,
           "entry_price": 1902.0,
           "exit_price": 1898.0,
@@ -1353,7 +1481,8 @@
           "pnl_100": -400
         },
         {
-          "code": "36970",
+          "code": "3697",
+          "name": "ＳＨＩＦＴ",
           "prev_close": 1486.0,
           "entry_price": 1480.0,
           "exit_price": 1724.7,
@@ -1362,7 +1491,8 @@
           "pnl_100": 24470
         },
         {
-          "code": "47510",
+          "code": "4751",
+          "name": "サイバーエージェント",
           "prev_close": 1090.0,
           "entry_price": 1086.0,
           "exit_price": 1094.0,
@@ -1381,7 +1511,8 @@
       "total_pnl_100": 6800,
       "picks": [
         {
-          "code": "49110",
+          "code": "4911",
+          "name": "資生堂",
           "prev_close": 6900.0,
           "entry_price": 6690.0,
           "exit_price": 6674.0,
@@ -1390,7 +1521,8 @@
           "pnl_100": -1600
         },
         {
-          "code": "16050",
+          "code": "1605",
+          "name": "ＩＮＰＥＸ",
           "prev_close": 1484.0,
           "entry_price": 1450.0,
           "exit_price": 1469.0,
@@ -1399,7 +1531,8 @@
           "pnl_100": 1900
         },
         {
-          "code": "53340",
+          "code": "5334",
+          "name": "日本特殊陶業",
           "prev_close": 2627.0,
           "entry_price": 2578.0,
           "exit_price": 2607.0,
@@ -1408,7 +1541,8 @@
           "pnl_100": 2900
         },
         {
-          "code": "82830",
+          "code": "8283",
+          "name": "ＰＡＬＴＡＣ",
           "prev_close": 5100.0,
           "entry_price": 5010.0,
           "exit_price": 5140.0,
@@ -1417,7 +1551,8 @@
           "pnl_100": 13000
         },
         {
-          "code": "49220",
+          "code": "4922",
+          "name": "コーセーホールディングス",
           "prev_close": 16200.0,
           "entry_price": 15920.0,
           "exit_price": 15660.0,
@@ -1426,7 +1561,8 @@
           "pnl_100": -26000
         },
         {
-          "code": "58310",
+          "code": "5831",
+          "name": "しずおかフィナンシャルグループ",
           "prev_close": 1012.0,
           "entry_price": 995.0,
           "exit_price": 1018.0,
@@ -1435,7 +1571,8 @@
           "pnl_100": 2300
         },
         {
-          "code": "84110",
+          "code": "8411",
+          "name": "みずほフィナンシャルグループ",
           "prev_close": 1996.0,
           "entry_price": 1964.0,
           "exit_price": 2010.0,
@@ -1444,7 +1581,8 @@
           "pnl_100": 4600
         },
         {
-          "code": "94330",
+          "code": "9433",
+          "name": "ＫＤＤＩ",
           "prev_close": 2136.5,
           "entry_price": 2102.5,
           "exit_price": 2122.5,
@@ -1453,7 +1591,8 @@
           "pnl_100": 2000
         },
         {
-          "code": "51010",
+          "code": "5101",
+          "name": "横浜ゴム",
           "prev_close": 2951.0,
           "entry_price": 2905.0,
           "exit_price": 2935.0,
@@ -1462,7 +1601,8 @@
           "pnl_100": 3000
         },
         {
-          "code": "83540",
+          "code": "8354",
+          "name": "ふくおかフィナンシャルグループ",
           "prev_close": 2539.0,
           "entry_price": 2500.0,
           "exit_price": 2547.0,
@@ -1481,7 +1621,8 @@
       "total_pnl_100": 49510,
       "picks": [
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 5840.0,
           "entry_price": 5260.0,
           "exit_price": 4905.0,
@@ -1490,7 +1631,8 @@
           "pnl_100": -35500
         },
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 3517.0,
           "entry_price": 3461.0,
           "exit_price": 3439.0,
@@ -1499,7 +1641,8 @@
           "pnl_100": -2200
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 4432.5,
           "entry_price": 4398.8,
           "exit_price": 4482.5,
@@ -1508,7 +1651,8 @@
           "pnl_100": 8370
         },
         {
-          "code": "77290",
+          "code": "7729",
+          "name": "東京精密",
           "prev_close": 6240.0,
           "entry_price": 6210.0,
           "exit_price": 6400.0,
@@ -1517,7 +1661,8 @@
           "pnl_100": 19000
         },
         {
-          "code": "80350",
+          "code": "8035",
+          "name": "東京エレクトロン",
           "prev_close": 19275.0,
           "entry_price": 19195.0,
           "exit_price": 19635.0,
@@ -1526,7 +1671,8 @@
           "pnl_100": 44000
         },
         {
-          "code": "67070",
+          "code": "6707",
+          "name": "サンケン電気",
           "prev_close": 11280.0,
           "entry_price": 11250.0,
           "exit_price": 11430.0,
@@ -1535,7 +1681,8 @@
           "pnl_100": 18000
         },
         {
-          "code": "75500",
+          "code": "7550",
+          "name": "ゼンショーホールディングス",
           "prev_close": 6020.0,
           "entry_price": 6013.0,
           "exit_price": 6107.0,
@@ -1544,7 +1691,8 @@
           "pnl_100": 9400
         },
         {
-          "code": "22220",
+          "code": "2222",
+          "name": "寿スピリッツ",
           "prev_close": 2196.0,
           "entry_price": 2196.0,
           "exit_price": 2148.0,
@@ -1553,7 +1701,8 @@
           "pnl_100": -4800
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 3445.0,
           "entry_price": 3445.0,
           "exit_price": 3350.0,
@@ -1562,7 +1711,8 @@
           "pnl_100": -9500
         },
         {
-          "code": "41860",
+          "code": "4186",
+          "name": "東京応化工業",
           "prev_close": 2813.3,
           "entry_price": 2813.3,
           "exit_price": 2840.7,
@@ -1581,7 +1731,8 @@
       "total_pnl_100": -3480,
       "picks": [
         {
-          "code": "45070",
+          "code": "4507",
+          "name": "塩野義製薬",
           "prev_close": 1973.0,
           "entry_price": 1940.7,
           "exit_price": 1912.7,
@@ -1590,7 +1741,8 @@
           "pnl_100": -2800
         },
         {
-          "code": "67070",
+          "code": "6707",
+          "name": "サンケン電気",
           "prev_close": 12450.0,
           "entry_price": 12250.0,
           "exit_price": 12540.0,
@@ -1599,7 +1751,8 @@
           "pnl_100": 29000
         },
         {
-          "code": "67520",
+          "code": "6752",
+          "name": "パナソニック　ホールディングス",
           "prev_close": 1719.0,
           "entry_price": 1691.5,
           "exit_price": 1663.5,
@@ -1608,7 +1761,8 @@
           "pnl_100": -2800
         },
         {
-          "code": "31160",
+          "code": "3116",
+          "name": "トヨタ紡織",
           "prev_close": 2604.5,
           "entry_price": 2567.5,
           "exit_price": 2490.0,
@@ -1617,7 +1771,8 @@
           "pnl_100": -7750
         },
         {
-          "code": "72030",
+          "code": "7203",
+          "name": "トヨタ自動車",
           "prev_close": 2299.5,
           "entry_price": 2270.0,
           "exit_price": 2211.0,
@@ -1626,7 +1781,8 @@
           "pnl_100": -5900
         },
         {
-          "code": "45190",
+          "code": "4519",
+          "name": "中外製薬",
           "prev_close": 3907.0,
           "entry_price": 3861.0,
           "exit_price": 3822.0,
@@ -1635,7 +1791,8 @@
           "pnl_100": -3900
         },
         {
-          "code": "19110",
+          "code": "1911",
+          "name": "住友林業",
           "prev_close": 1116.7,
           "entry_price": 1104.3,
           "exit_price": 1096.0,
@@ -1644,7 +1801,8 @@
           "pnl_100": -830
         },
         {
-          "code": "41940",
+          "code": "4194",
+          "name": "ビジョナル",
           "prev_close": 7590.0,
           "entry_price": 7510.0,
           "exit_price": 7680.0,
@@ -1653,7 +1811,8 @@
           "pnl_100": 17000
         },
         {
-          "code": "45360",
+          "code": "4536",
+          "name": "参天製薬",
           "prev_close": 1210.0,
           "entry_price": 1200.0,
           "exit_price": 1171.0,
@@ -1662,7 +1821,8 @@
           "pnl_100": -2900
         },
         {
-          "code": "45680",
+          "code": "4568",
+          "name": "第一三共",
           "prev_close": 4133.0,
           "entry_price": 4099.0,
           "exit_price": 3873.0,
@@ -1681,7 +1841,8 @@
       "total_pnl_100": 31980,
       "picks": [
         {
-          "code": "58010",
+          "code": "5801",
+          "name": "古河電気工業",
           "prev_close": 2601.5,
           "entry_price": 2351.5,
           "exit_price": 2416.0,
@@ -1690,7 +1851,8 @@
           "pnl_100": 6450
         },
         {
-          "code": "81110",
+          "code": "8111",
+          "name": "ゴールドウイン",
           "prev_close": 3845.0,
           "entry_price": 3545.0,
           "exit_price": 3433.3,
@@ -1699,7 +1861,8 @@
           "pnl_100": -11170
         },
         {
-          "code": "22060",
+          "code": "2206",
+          "name": "江崎グリコ",
           "prev_close": 3788.0,
           "entry_price": 3561.0,
           "exit_price": 3678.0,
@@ -1708,7 +1871,8 @@
           "pnl_100": 11700
         },
         {
-          "code": "61340",
+          "code": "6134",
+          "name": "ＦＵＪＩ",
           "prev_close": 2440.0,
           "entry_price": 2301.0,
           "exit_price": 2380.5,
@@ -1717,7 +1881,8 @@
           "pnl_100": 7950
         },
         {
-          "code": "41510",
+          "code": "4151",
+          "name": "協和キリン",
           "prev_close": 2720.0,
           "entry_price": 2570.0,
           "exit_price": 2661.5,
@@ -1726,7 +1891,8 @@
           "pnl_100": 9150
         },
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 3396.0,
           "entry_price": 3256.0,
           "exit_price": 3296.0,
@@ -1735,7 +1901,8 @@
           "pnl_100": 4000
         },
         {
-          "code": "54110",
+          "code": "5411",
+          "name": "ＪＦＥホールディングス",
           "prev_close": 2273.5,
           "entry_price": 2214.5,
           "exit_price": 2234.0,
@@ -1744,7 +1911,8 @@
           "pnl_100": 1950
         },
         {
-          "code": "69760",
+          "code": "6976",
+          "name": "太陽誘電",
           "prev_close": 4164.0,
           "entry_price": 4060.0,
           "exit_price": 4072.0,
@@ -1753,7 +1921,8 @@
           "pnl_100": 1200
         },
         {
-          "code": "66740",
+          "code": "6674",
+          "name": "ジーエス・ユアサ　コーポレーション",
           "prev_close": 2831.0,
           "entry_price": 2762.5,
           "exit_price": 2745.0,
@@ -1762,7 +1931,8 @@
           "pnl_100": -1750
         },
         {
-          "code": "95030",
+          "code": "9503",
+          "name": "関西電力",
           "prev_close": 1843.5,
           "entry_price": 1800.0,
           "exit_price": 1825.0,
@@ -1781,7 +1951,8 @@
       "total_pnl_100": 6790,
       "picks": [
         {
-          "code": "65320",
+          "code": "6532",
+          "name": "ベイカレント",
           "prev_close": 5134.0,
           "entry_price": 5034.0,
           "exit_price": 5094.0,
@@ -1790,7 +1961,8 @@
           "pnl_100": 6000
         },
         {
-          "code": "77290",
+          "code": "7729",
+          "name": "東京精密",
           "prev_close": 7940.0,
           "entry_price": 7850.0,
           "exit_price": 7920.0,
@@ -1799,7 +1971,8 @@
           "pnl_100": 7000
         },
         {
-          "code": "36970",
+          "code": "3697",
+          "name": "ＳＨＩＦＴ",
           "prev_close": 1992.7,
           "entry_price": 1974.0,
           "exit_price": 1960.3,
@@ -1808,7 +1981,8 @@
           "pnl_100": -1370
         },
         {
-          "code": "45360",
+          "code": "4536",
+          "name": "参天製薬",
           "prev_close": 1357.5,
           "entry_price": 1346.5,
           "exit_price": 1372.5,
@@ -1817,7 +1991,8 @@
           "pnl_100": 2600
         },
         {
-          "code": "20020",
+          "code": "2002",
+          "name": "日清製粉グループ本社",
           "prev_close": 1940.5,
           "entry_price": 1925.0,
           "exit_price": 1938.5,
@@ -1826,7 +2001,8 @@
           "pnl_100": 1350
         },
         {
-          "code": "45270",
+          "code": "4527",
+          "name": "ロート製薬",
           "prev_close": 3901.0,
           "entry_price": 3870.0,
           "exit_price": 3805.0,
@@ -1835,7 +2011,8 @@
           "pnl_100": -6500
         },
         {
-          "code": "82330",
+          "code": "8233",
+          "name": "高島屋",
           "prev_close": 1107.5,
           "entry_price": 1100.0,
           "exit_price": 1088.3,
@@ -1844,7 +2021,8 @@
           "pnl_100": -1170
         },
         {
-          "code": "42040",
+          "code": "4204",
+          "name": "積水化学工業",
           "prev_close": 2242.0,
           "entry_price": 2227.0,
           "exit_price": 2224.5,
@@ -1853,7 +2031,8 @@
           "pnl_100": -250
         },
         {
-          "code": "35490",
+          "code": "3549",
+          "name": "クスリのアオキホールディングス",
           "prev_close": 3062.3,
           "entry_price": 3043.3,
           "exit_price": 3053.0,
@@ -1862,7 +2041,8 @@
           "pnl_100": 970
         },
         {
-          "code": "28970",
+          "code": "2897",
+          "name": "日清食品ホールディングス",
           "prev_close": 4241.7,
           "entry_price": 4216.7,
           "exit_price": 4198.3,
@@ -1881,7 +2061,8 @@
       "total_pnl_100": 150540,
       "picks": [
         {
-          "code": "42080",
+          "code": "4208",
+          "name": "ＵＢＥ",
           "prev_close": 2402.0,
           "entry_price": 2302.0,
           "exit_price": 2357.0,
@@ -1890,7 +2071,8 @@
           "pnl_100": 5500
         },
         {
-          "code": "61360",
+          "code": "6136",
+          "name": "オーエスジー",
           "prev_close": 1733.0,
           "entry_price": 1700.0,
           "exit_price": 1764.0,
@@ -1899,7 +2081,8 @@
           "pnl_100": 6400
         },
         {
-          "code": "72720",
+          "code": "7272",
+          "name": "ヤマハ発動機",
           "prev_close": 1250.7,
           "entry_price": 1227.3,
           "exit_price": 1272.7,
@@ -1908,7 +2091,8 @@
           "pnl_100": 4540
         },
         {
-          "code": "67070",
+          "code": "6707",
+          "name": "サンケン電気",
           "prev_close": 8410.0,
           "entry_price": 8260.0,
           "exit_price": 8470.0,
@@ -1917,7 +2101,8 @@
           "pnl_100": 21000
         },
         {
-          "code": "67520",
+          "code": "6752",
+          "name": "パナソニック　ホールディングス",
           "prev_close": 1571.5,
           "entry_price": 1548.0,
           "exit_price": 1620.5,
@@ -1926,7 +2111,8 @@
           "pnl_100": 7250
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 4240.0,
           "entry_price": 4181.0,
           "exit_price": 4303.0,
@@ -1935,7 +2121,8 @@
           "pnl_100": 12200
         },
         {
-          "code": "40210",
+          "code": "4021",
+          "name": "日産化学",
           "prev_close": 6378.0,
           "entry_price": 6290.0,
           "exit_price": 6457.0,
@@ -1944,7 +2131,8 @@
           "pnl_100": 16700
         },
         {
-          "code": "80350",
+          "code": "8035",
+          "name": "東京エレクトロン",
           "prev_close": 19755.0,
           "entry_price": 19500.0,
           "exit_price": 20100.0,
@@ -1953,7 +2141,8 @@
           "pnl_100": 60000
         },
         {
-          "code": "50760",
+          "code": "5076",
+          "name": "インフロニア・ホールディングス",
           "prev_close": 1502.0,
           "entry_price": 1483.0,
           "exit_price": 1541.5,
@@ -1962,7 +2151,8 @@
           "pnl_100": 5850
         },
         {
-          "code": "62690",
+          "code": "6269",
+          "name": "三井海洋開発",
           "prev_close": 1682.0,
           "entry_price": 1661.0,
           "exit_price": 1772.0,
@@ -1981,7 +2171,8 @@
       "total_pnl_100": -38630,
       "picks": [
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 2950.0,
           "entry_price": 2750.0,
           "exit_price": 2797.5,
@@ -1990,7 +2181,8 @@
           "pnl_100": 4750
         },
         {
-          "code": "22060",
+          "code": "2206",
+          "name": "江崎グリコ",
           "prev_close": 4549.0,
           "entry_price": 4269.0,
           "exit_price": 4207.0,
@@ -1999,7 +2191,8 @@
           "pnl_100": -6200
         },
         {
-          "code": "91070",
+          "code": "9107",
+          "name": "川崎汽船",
           "prev_close": 1790.3,
           "entry_price": 1690.3,
           "exit_price": 1539.0,
@@ -2008,7 +2201,8 @@
           "pnl_100": -15130
         },
         {
-          "code": "91010",
+          "code": "9101",
+          "name": "日本郵船",
           "prev_close": 3783.0,
           "entry_price": 3644.0,
           "exit_price": 3530.0,
@@ -2017,7 +2211,8 @@
           "pnl_100": -11400
         },
         {
-          "code": "91040",
+          "code": "9104",
+          "name": "商船三井",
           "prev_close": 3913.0,
           "entry_price": 3796.0,
           "exit_price": 3819.0,
@@ -2026,7 +2221,8 @@
           "pnl_100": 2300
         },
         {
-          "code": "46760",
+          "code": "4676",
+          "name": "フジ・メディア・ホールディングス",
           "prev_close": 1556.0,
           "entry_price": 1538.0,
           "exit_price": 1547.5,
@@ -2035,7 +2231,8 @@
           "pnl_100": 950
         },
         {
-          "code": "91430",
+          "code": "9143",
+          "name": "ＳＧホールディングス",
           "prev_close": 2179.5,
           "entry_price": 2154.5,
           "exit_price": 2093.5,
@@ -2044,7 +2241,8 @@
           "pnl_100": -6100
         },
         {
-          "code": "52010",
+          "code": "5201",
+          "name": "ＡＧＣ",
           "prev_close": 5162.0,
           "entry_price": 5130.0,
           "exit_price": 5189.0,
@@ -2053,7 +2251,8 @@
           "pnl_100": 5900
         },
         {
-          "code": "18030",
+          "code": "1803",
+          "name": "清水建設",
           "prev_close": 1098.0,
           "entry_price": 1093.0,
           "exit_price": 997.5,
@@ -2062,7 +2261,8 @@
           "pnl_100": -9550
         },
         {
-          "code": "90760",
+          "code": "9076",
+          "name": "セイノーホールディングス",
           "prev_close": 2228.5,
           "entry_price": 2220.5,
           "exit_price": 2179.0,
@@ -2081,7 +2281,8 @@
       "total_pnl_100": -66400,
       "picks": [
         {
-          "code": "50210",
+          "code": "5021",
+          "name": "コスモエネルギーホールディングス",
           "prev_close": 2808.0,
           "entry_price": 2675.0,
           "exit_price": 2705.0,
@@ -2090,7 +2291,8 @@
           "pnl_100": 3000
         },
         {
-          "code": "72610",
+          "code": "7261",
+          "name": "マツダ",
           "prev_close": 1601.5,
           "entry_price": 1538.5,
           "exit_price": 1552.5,
@@ -2099,7 +2301,8 @@
           "pnl_100": 1400
         },
         {
-          "code": "24330",
+          "code": "2433",
+          "name": "博報堂ＤＹホールディングス",
           "prev_close": 1091.0,
           "entry_price": 1061.0,
           "exit_price": 1071.0,
@@ -2108,7 +2311,8 @@
           "pnl_100": 1000
         },
         {
-          "code": "62010",
+          "code": "6201",
+          "name": "豊田自動織機",
           "prev_close": 12920.0,
           "entry_price": 12625.0,
           "exit_price": 11995.0,
@@ -2117,7 +2321,8 @@
           "pnl_100": -63000
         },
         {
-          "code": "65250",
+          "code": "6525",
+          "name": "ＫＯＫＵＳＡＩ　ＥＬＥＣＴＲＩＣ",
           "prev_close": 3225.0,
           "entry_price": 3155.0,
           "exit_price": 3015.0,
@@ -2126,7 +2331,8 @@
           "pnl_100": -14000
         },
         {
-          "code": "65440",
+          "code": "6544",
+          "name": "ジャパンエレベーターサービスホールディングス",
           "prev_close": 1167.5,
           "entry_price": 1142.5,
           "exit_price": 1129.0,
@@ -2135,7 +2341,8 @@
           "pnl_100": -1350
         },
         {
-          "code": "45360",
+          "code": "4536",
+          "name": "参天製薬",
           "prev_close": 1422.5,
           "entry_price": 1392.5,
           "exit_price": 1386.0,
@@ -2144,7 +2351,8 @@
           "pnl_100": -650
         },
         {
-          "code": "81290",
+          "code": "8129",
+          "name": "東邦ホールディングス",
           "prev_close": 3320.0,
           "entry_price": 3251.0,
           "exit_price": 3277.0,
@@ -2153,7 +2361,8 @@
           "pnl_100": 2600
         },
         {
-          "code": "74760",
+          "code": "7476",
+          "name": "アズワン",
           "prev_close": 2538.5,
           "entry_price": 2488.5,
           "exit_price": 2480.5,
@@ -2162,7 +2371,8 @@
           "pnl_100": -800
         },
         {
-          "code": "51050",
+          "code": "5105",
+          "name": "ＴＯＹＯ　ＴＩＲＥ",
           "prev_close": 2518.5,
           "entry_price": 2470.0,
           "exit_price": 2524.0,
@@ -2181,7 +2391,8 @@
       "total_pnl_100": 38250,
       "picks": [
         {
-          "code": "40630",
+          "code": "4063",
+          "name": "信越化学工業",
           "prev_close": 5725.0,
           "entry_price": 5500.0,
           "exit_price": 5552.0,
@@ -2190,7 +2401,8 @@
           "pnl_100": 5200
         },
         {
-          "code": "67230",
+          "code": "6723",
+          "name": "ルネサスエレクトロニクス",
           "prev_close": 2494.5,
           "entry_price": 2420.0,
           "exit_price": 2391.5,
@@ -2199,7 +2411,8 @@
           "pnl_100": -2850
         },
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 3629.0,
           "entry_price": 3554.0,
           "exit_price": 3615.0,
@@ -2208,7 +2421,8 @@
           "pnl_100": 6100
         },
         {
-          "code": "67070",
+          "code": "6707",
+          "name": "サンケン電気",
           "prev_close": 7445.0,
           "entry_price": 7314.0,
           "exit_price": 7260.0,
@@ -2217,7 +2431,8 @@
           "pnl_100": -5400
         },
         {
-          "code": "68560",
+          "code": "6856",
+          "name": "堀場製作所",
           "prev_close": 10735.0,
           "entry_price": 10560.0,
           "exit_price": 10955.0,
@@ -2226,7 +2441,8 @@
           "pnl_100": 39500
         },
         {
-          "code": "39940",
+          "code": "3994",
+          "name": "マネーフォワード",
           "prev_close": 4155.0,
           "entry_price": 4089.0,
           "exit_price": 4122.0,
@@ -2235,7 +2451,8 @@
           "pnl_100": 3300
         },
         {
-          "code": "69630",
+          "code": "6963",
+          "name": "ローム",
           "prev_close": 2704.5,
           "entry_price": 2663.0,
           "exit_price": 2584.0,
@@ -2244,7 +2461,8 @@
           "pnl_100": -7900
         },
         {
-          "code": "61410",
+          "code": "6141",
+          "name": "ＤＭＧ森精機",
           "prev_close": 2702.5,
           "entry_price": 2664.5,
           "exit_price": 2725.0,
@@ -2253,7 +2471,8 @@
           "pnl_100": 6050
         },
         {
-          "code": "30380",
+          "code": "3038",
+          "name": "神戸物産",
           "prev_close": 4152.0,
           "entry_price": 4094.0,
           "exit_price": 4009.0,
@@ -2262,7 +2481,8 @@
           "pnl_100": -8500
         },
         {
-          "code": "53010",
+          "code": "5301",
+          "name": "東海カーボン",
           "prev_close": 1039.0,
           "entry_price": 1025.5,
           "exit_price": 1053.0,
@@ -2281,7 +2501,8 @@
       "total_pnl_100": -92900,
       "picks": [
         {
-          "code": "64790",
+          "code": "6479",
+          "name": "ミネベアミツミ",
           "prev_close": 3101.0,
           "entry_price": 2961.0,
           "exit_price": 2854.0,
@@ -2290,7 +2511,8 @@
           "pnl_100": -10700
         },
         {
-          "code": "94010",
+          "code": "9401",
+          "name": "ＴＢＳホールディングス",
           "prev_close": 4099.0,
           "entry_price": 3959.0,
           "exit_price": 3971.0,
@@ -2299,7 +2521,8 @@
           "pnl_100": 1200
         },
         {
-          "code": "68490",
+          "code": "6849",
+          "name": "日本光電工業",
           "prev_close": 2247.5,
           "entry_price": 2182.5,
           "exit_price": 2037.0,
@@ -2308,7 +2531,8 @@
           "pnl_100": -14550
         },
         {
-          "code": "74530",
+          "code": "7453",
+          "name": "良品計画",
           "prev_close": 1126.8,
           "entry_price": 1101.8,
           "exit_price": 1048.3,
@@ -2317,7 +2541,8 @@
           "pnl_100": -5350
         },
         {
-          "code": "46760",
+          "code": "4676",
+          "name": "フジ・メディア・ホールディングス",
           "prev_close": 1890.0,
           "entry_price": 1850.0,
           "exit_price": 1834.0,
@@ -2326,7 +2551,8 @@
           "pnl_100": -1600
         },
         {
-          "code": "95310",
+          "code": "9531",
+          "name": "東京瓦斯",
           "prev_close": 3440.0,
           "entry_price": 3399.0,
           "exit_price": 3280.0,
@@ -2335,7 +2561,8 @@
           "pnl_100": -11900
         },
         {
-          "code": "68060",
+          "code": "6806",
+          "name": "ヒロセ電機",
           "prev_close": 17205.0,
           "entry_price": 17000.0,
           "exit_price": 16580.0,
@@ -2344,7 +2571,8 @@
           "pnl_100": -42000
         },
         {
-          "code": "95080",
+          "code": "9508",
+          "name": "九州電力",
           "prev_close": 1188.5,
           "entry_price": 1177.0,
           "exit_price": 1157.0,
@@ -2353,7 +2581,8 @@
           "pnl_100": -2000
         },
         {
-          "code": "36350",
+          "code": "3635",
+          "name": "コーエーテクモホールディングス",
           "prev_close": 1878.5,
           "entry_price": 1860.5,
           "exit_price": 1817.5,
@@ -2362,7 +2591,8 @@
           "pnl_100": -4300
         },
         {
-          "code": "22640",
+          "code": "2264",
+          "name": "森永乳業",
           "prev_close": 3025.0,
           "entry_price": 2998.0,
           "exit_price": 2981.0,
@@ -2381,7 +2611,8 @@
       "total_pnl_100": -27670,
       "picks": [
         {
-          "code": "59290",
+          "code": "5929",
+          "name": "三和ホールディングス",
           "prev_close": 2677.0,
           "entry_price": 2412.0,
           "exit_price": 2504.5,
@@ -2390,7 +2621,8 @@
           "pnl_100": 9250
         },
         {
-          "code": "25930",
+          "code": "2593",
+          "name": "伊藤園",
           "prev_close": 4198.0,
           "entry_price": 3898.0,
           "exit_price": 3800.0,
@@ -2399,7 +2631,8 @@
           "pnl_100": -9800
         },
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 4682.0,
           "entry_price": 4447.0,
           "exit_price": 4546.0,
@@ -2408,7 +2641,8 @@
           "pnl_100": 9900
         },
         {
-          "code": "24320",
+          "code": "2432",
+          "name": "ディー・エヌ・エー",
           "prev_close": 1495.0,
           "entry_price": 1455.0,
           "exit_price": 1338.5,
@@ -2417,7 +2651,8 @@
           "pnl_100": -11650
         },
         {
-          "code": "91470",
+          "code": "9147",
+          "name": "ＮＩＰＰＯＮ　ＥＸＰＲＥＳＳホールディングス",
           "prev_close": 2679.7,
           "entry_price": 2613.7,
           "exit_price": 2552.3,
@@ -2426,7 +2661,8 @@
           "pnl_100": -6140
         },
         {
-          "code": "83040",
+          "code": "8304",
+          "name": "あおぞら銀行",
           "prev_close": 2681.0,
           "entry_price": 2615.0,
           "exit_price": 2524.0,
@@ -2435,7 +2671,8 @@
           "pnl_100": -9100
         },
         {
-          "code": "40450",
+          "code": "4045",
+          "name": "東亞合成",
           "prev_close": 1528.0,
           "entry_price": 1502.0,
           "exit_price": 1472.5,
@@ -2444,7 +2681,8 @@
           "pnl_100": -2950
         },
         {
-          "code": "90640",
+          "code": "9064",
+          "name": "ヤマトホールディングス",
           "prev_close": 2284.0,
           "entry_price": 2250.0,
           "exit_price": 2182.0,
@@ -2453,7 +2691,8 @@
           "pnl_100": -6800
         },
         {
-          "code": "37740",
+          "code": "3774",
+          "name": "インターネットイニシアティブ",
           "prev_close": 2787.5,
           "entry_price": 2750.0,
           "exit_price": 2745.0,
@@ -2462,7 +2701,8 @@
           "pnl_100": -500
         },
         {
-          "code": "25010",
+          "code": "2501",
+          "name": "サッポロホールディングス",
           "prev_close": 1284.2,
           "entry_price": 1267.8,
           "exit_price": 1269.0,
@@ -2481,7 +2721,8 @@
       "total_pnl_100": 32410,
       "picks": [
         {
-          "code": "30920",
+          "code": "3092",
+          "name": "ＺＯＺＯ",
           "prev_close": 1222.3,
           "entry_price": 1184.0,
           "exit_price": 1207.3,
@@ -2490,7 +2731,8 @@
           "pnl_100": 2330
         },
         {
-          "code": "92010",
+          "code": "9201",
+          "name": "日本航空",
           "prev_close": 2880.5,
           "entry_price": 2851.0,
           "exit_price": 2900.0,
@@ -2499,7 +2741,8 @@
           "pnl_100": 4900
         },
         {
-          "code": "49800",
+          "code": "4980",
+          "name": "デクセリアルズ",
           "prev_close": 2029.3,
           "entry_price": 2013.7,
           "exit_price": 2004.0,
@@ -2508,7 +2751,8 @@
           "pnl_100": -970
         },
         {
-          "code": "91420",
+          "code": "9142",
+          "name": "九州旅客鉄道",
           "prev_close": 3456.0,
           "entry_price": 3430.0,
           "exit_price": 3495.0,
@@ -2517,7 +2761,8 @@
           "pnl_100": 6500
         },
         {
-          "code": "43240",
+          "code": "4324",
+          "name": "電通グループ",
           "prev_close": 4165.0,
           "entry_price": 4134.0,
           "exit_price": 4158.0,
@@ -2526,7 +2771,8 @@
           "pnl_100": 2400
         },
         {
-          "code": "30380",
+          "code": "3038",
+          "name": "神戸物産",
           "prev_close": 3628.0,
           "entry_price": 3601.0,
           "exit_price": 3628.0,
@@ -2535,7 +2781,8 @@
           "pnl_100": 2700
         },
         {
-          "code": "30640",
+          "code": "3064",
+          "name": "ＭｏｎｏｔａＲＯ",
           "prev_close": 1747.5,
           "entry_price": 1735.5,
           "exit_price": 1770.0,
@@ -2544,7 +2791,8 @@
           "pnl_100": 3450
         },
         {
-          "code": "33490",
+          "code": "3349",
+          "name": "コスモス薬品",
           "prev_close": 6935.0,
           "entry_price": 6887.5,
           "exit_price": 6940.0,
@@ -2553,7 +2801,8 @@
           "pnl_100": 5250
         },
         {
-          "code": "90220",
+          "code": "9022",
+          "name": "東海旅客鉄道",
           "prev_close": 3673.0,
           "entry_price": 3650.0,
           "exit_price": 3670.0,
@@ -2562,7 +2811,8 @@
           "pnl_100": 2000
         },
         {
-          "code": "90200",
+          "code": "9020",
+          "name": "東日本旅客鉄道",
           "prev_close": 2897.0,
           "entry_price": 2879.0,
           "exit_price": 2917.5,
@@ -2581,7 +2831,8 @@
       "total_pnl_100": 80810,
       "picks": [
         {
-          "code": "40620",
+          "code": "4062",
+          "name": "イビデン",
           "prev_close": 3074.0,
           "entry_price": 2924.0,
           "exit_price": 2850.0,
@@ -2590,7 +2841,8 @@
           "pnl_100": -7400
         },
         {
-          "code": "77290",
+          "code": "7729",
+          "name": "東京精密",
           "prev_close": 10640.0,
           "entry_price": 10340.0,
           "exit_price": 10920.0,
@@ -2599,7 +2851,8 @@
           "pnl_100": 58000
         },
         {
-          "code": "42050",
+          "code": "4205",
+          "name": "日本ゼオン",
           "prev_close": 1539.0,
           "entry_price": 1501.0,
           "exit_price": 1493.0,
@@ -2608,7 +2861,8 @@
           "pnl_100": -800
         },
         {
-          "code": "49110",
+          "code": "4911",
+          "name": "資生堂",
           "prev_close": 4354.0,
           "entry_price": 4250.0,
           "exit_price": 4320.0,
@@ -2617,7 +2871,8 @@
           "pnl_100": 7000
         },
         {
-          "code": "36590",
+          "code": "3659",
+          "name": "ネクソン",
           "prev_close": 2516.0,
           "entry_price": 2461.0,
           "exit_price": 2566.5,
@@ -2626,7 +2881,8 @@
           "pnl_100": 10550
         },
         {
-          "code": "27680",
+          "code": "2768",
+          "name": "双日",
           "prev_close": 4279.0,
           "entry_price": 4189.0,
           "exit_price": 4278.0,
@@ -2635,7 +2891,8 @@
           "pnl_100": 8900
         },
         {
-          "code": "40630",
+          "code": "4063",
+          "name": "信越化学工業",
           "prev_close": 6074.0,
           "entry_price": 5950.0,
           "exit_price": 5903.0,
@@ -2644,7 +2901,8 @@
           "pnl_100": -4700
         },
         {
-          "code": "67620",
+          "code": "6762",
+          "name": "ＴＤＫ",
           "prev_close": 1432.2,
           "entry_price": 1403.0,
           "exit_price": 1445.6,
@@ -2653,7 +2911,8 @@
           "pnl_100": 4260
         },
         {
-          "code": "50190",
+          "code": "5019",
+          "name": "出光興産",
           "prev_close": 1053.0,
           "entry_price": 1032.5,
           "exit_price": 1035.0,
@@ -2662,7 +2921,8 @@
           "pnl_100": 250
         },
         {
-          "code": "50210",
+          "code": "5021",
+          "name": "コスモエネルギーホールディングス",
           "prev_close": 3757.0,
           "entry_price": 3690.0,
           "exit_price": 3737.5,
@@ -2681,7 +2941,8 @@
       "total_pnl_100": 10680,
       "picks": [
         {
-          "code": "90720",
+          "code": "9072",
+          "name": "ニッコンホールディングス",
           "prev_close": 1465.3,
           "entry_price": 1365.3,
           "exit_price": 1456.0,
@@ -2690,7 +2951,8 @@
           "pnl_100": 9070
         },
         {
-          "code": "44520",
+          "code": "4452",
+          "name": "花王",
           "prev_close": 7028.0,
           "entry_price": 6714.0,
           "exit_price": 6747.0,
@@ -2699,7 +2961,8 @@
           "pnl_100": 3300
         },
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 3365.0,
           "entry_price": 3233.0,
           "exit_price": 3203.0,
@@ -2708,7 +2971,8 @@
           "pnl_100": -3000
         },
         {
-          "code": "39940",
+          "code": "3994",
+          "name": "マネーフォワード",
           "prev_close": 5218.0,
           "entry_price": 5018.0,
           "exit_price": 5097.0,
@@ -2717,7 +2981,8 @@
           "pnl_100": 7900
         },
         {
-          "code": "24130",
+          "code": "2413",
+          "name": "エムスリー",
           "prev_close": 1610.5,
           "entry_price": 1570.5,
           "exit_price": 1538.5,
@@ -2726,7 +2991,8 @@
           "pnl_100": -3200
         },
         {
-          "code": "96840",
+          "code": "9684",
+          "name": "スクウェア・エニックス・ホールディングス",
           "prev_close": 1572.0,
           "entry_price": 1535.7,
           "exit_price": 1579.3,
@@ -2735,7 +3001,8 @@
           "pnl_100": 4360
         },
         {
-          "code": "26700",
+          "code": "2670",
+          "name": "エービーシー・マート",
           "prev_close": 3151.0,
           "entry_price": 3081.0,
           "exit_price": 2972.5,
@@ -2744,7 +3011,8 @@
           "pnl_100": -10850
         },
         {
-          "code": "37690",
+          "code": "3769",
+          "name": "ＧＭＯペイメントゲートウェイ",
           "prev_close": 7421.0,
           "entry_price": 7271.0,
           "exit_price": 7204.0,
@@ -2753,7 +3021,8 @@
           "pnl_100": -6700
         },
         {
-          "code": "65320",
+          "code": "6532",
+          "name": "ベイカレント",
           "prev_close": 3217.0,
           "entry_price": 3162.0,
           "exit_price": 3186.0,
@@ -2762,7 +3031,8 @@
           "pnl_100": 2400
         },
         {
-          "code": "43850",
+          "code": "4385",
+          "name": "メルカリ",
           "prev_close": 2151.0,
           "entry_price": 2118.0,
           "exit_price": 2192.0,
@@ -2781,7 +3051,8 @@
       "total_pnl_100": 38520,
       "picks": [
         {
-          "code": "46120",
+          "code": "4612",
+          "name": "日本ペイントホールディングス",
           "prev_close": 1050.0,
           "entry_price": 999.6,
           "exit_price": 996.2,
@@ -2790,7 +3061,8 @@
           "pnl_100": -340
         },
         {
-          "code": "61410",
+          "code": "6141",
+          "name": "ＤＭＧ森精機",
           "prev_close": 4223.0,
           "entry_price": 4123.0,
           "exit_price": 4121.0,
@@ -2799,7 +3071,8 @@
           "pnl_100": -200
         },
         {
-          "code": "70110",
+          "code": "7011",
+          "name": "三菱重工業",
           "prev_close": 2036.0,
           "entry_price": 1993.0,
           "exit_price": 2000.0,
@@ -2808,7 +3081,8 @@
           "pnl_100": 700
         },
         {
-          "code": "65060",
+          "code": "6506",
+          "name": "安川電機",
           "prev_close": 5972.0,
           "entry_price": 5853.0,
           "exit_price": 5800.0,
@@ -2817,7 +3091,8 @@
           "pnl_100": -5300
         },
         {
-          "code": "30990",
+          "code": "3099",
+          "name": "三越伊勢丹ホールディングス",
           "prev_close": 3528.0,
           "entry_price": 3467.0,
           "exit_price": 3490.0,
@@ -2826,7 +3101,8 @@
           "pnl_100": 2300
         },
         {
-          "code": "45430",
+          "code": "4543",
+          "name": "テルモ",
           "prev_close": 2747.5,
           "entry_price": 2701.0,
           "exit_price": 2804.5,
@@ -2835,7 +3111,8 @@
           "pnl_100": 10350
         },
         {
-          "code": "66450",
+          "code": "6645",
+          "name": "オムロン",
           "prev_close": 5799.0,
           "entry_price": 5701.0,
           "exit_price": 5773.0,
@@ -2844,7 +3121,8 @@
           "pnl_100": 7200
         },
         {
-          "code": "70120",
+          "code": "7012",
+          "name": "川崎重工業",
           "prev_close": 1224.6,
           "entry_price": 1204.6,
           "exit_price": 1220.4,
@@ -2853,7 +3131,8 @@
           "pnl_100": 1580
         },
         {
-          "code": "65010",
+          "code": "6501",
+          "name": "日立製作所",
           "prev_close": 3709.0,
           "entry_price": 3650.0,
           "exit_price": 3834.0,
@@ -2862,7 +3141,8 @@
           "pnl_100": 18400
         },
         {
-          "code": "72590",
+          "code": "7259",
+          "name": "アイシン",
           "prev_close": 1792.0,
           "entry_price": 1765.0,
           "exit_price": 1803.3,
@@ -2881,7 +3161,8 @@
       "total_pnl_100": 170000,
       "picks": [
         {
-          "code": "60980",
+          "code": "6098",
+          "name": "リクルートホールディングス",
           "prev_close": 7882.0,
           "entry_price": 7094.0,
           "exit_price": 7582.0,
@@ -2890,7 +3171,8 @@
           "pnl_100": 48800
         },
         {
-          "code": "86300",
+          "code": "8630",
+          "name": "ＳＯＭＰＯホールディングス",
           "prev_close": 3016.0,
           "entry_price": 2714.5,
           "exit_price": 2854.5,
@@ -2899,7 +3181,8 @@
           "pnl_100": 14000
         },
         {
-          "code": "72700",
+          "code": "7270",
+          "name": "ＳＵＢＡＲＵ",
           "prev_close": 2666.5,
           "entry_price": 2400.0,
           "exit_price": 2388.0,
@@ -2908,7 +3191,8 @@
           "pnl_100": -1200
         },
         {
-          "code": "65060",
+          "code": "6506",
+          "name": "安川電機",
           "prev_close": 4783.0,
           "entry_price": 4305.0,
           "exit_price": 4500.0,
@@ -2917,7 +3201,8 @@
           "pnl_100": 19500
         },
         {
-          "code": "84180",
+          "code": "8418",
+          "name": "山口フィナンシャルグループ",
           "prev_close": 1711.5,
           "entry_price": 1540.5,
           "exit_price": 1452.0,
@@ -2926,7 +3211,8 @@
           "pnl_100": -8850
         },
         {
-          "code": "19110",
+          "code": "1911",
+          "name": "住友林業",
           "prev_close": 1782.0,
           "entry_price": 1604.0,
           "exit_price": 1682.0,
@@ -2935,7 +3221,8 @@
           "pnl_100": 7800
         },
         {
-          "code": "62010",
+          "code": "6201",
+          "name": "豊田自動織機",
           "prev_close": 11015.0,
           "entry_price": 9915.0,
           "exit_price": 10585.0,
@@ -2944,7 +3231,8 @@
           "pnl_100": 67000
         },
         {
-          "code": "65030",
+          "code": "6503",
+          "name": "三菱電機",
           "prev_close": 2200.0,
           "entry_price": 1980.5,
           "exit_price": 2099.0,
@@ -2953,7 +3241,8 @@
           "pnl_100": 11850
         },
         {
-          "code": "59910",
+          "code": "5991",
+          "name": "日本発條",
           "prev_close": 1481.0,
           "entry_price": 1336.0,
           "exit_price": 1376.0,
@@ -2962,7 +3251,8 @@
           "pnl_100": 4000
         },
         {
-          "code": "63610",
+          "code": "6361",
+          "name": "荏原製作所",
           "prev_close": 1898.5,
           "entry_price": 1714.0,
           "exit_price": 1785.0,
@@ -2981,7 +3271,8 @@
       "total_pnl_100": 213150,
       "picks": [
         {
-          "code": "67230",
+          "code": "6723",
+          "name": "ルネサスエレクトロニクス",
           "prev_close": 2156.5,
           "entry_price": 1956.5,
           "exit_price": 2115.5,
@@ -2990,7 +3281,8 @@
           "pnl_100": 15900
         },
         {
-          "code": "65250",
+          "code": "6525",
+          "name": "ＫＯＫＵＳＡＩ　ＥＬＥＣＴＲＩＣ",
           "prev_close": 3245.0,
           "entry_price": 3000.0,
           "exit_price": 3155.0,
@@ -2999,7 +3291,8 @@
           "pnl_100": 15500
         },
         {
-          "code": "65260",
+          "code": "6526",
+          "name": "ソシオネクスト",
           "prev_close": 2802.0,
           "entry_price": 2602.0,
           "exit_price": 2755.0,
@@ -3008,7 +3301,8 @@
           "pnl_100": 15300
         },
         {
-          "code": "67280",
+          "code": "6728",
+          "name": "アルバック",
           "prev_close": 7413.0,
           "entry_price": 6918.0,
           "exit_price": 7316.0,
@@ -3017,7 +3311,8 @@
           "pnl_100": 39800
         },
         {
-          "code": "63230",
+          "code": "6323",
+          "name": "ローツェ",
           "prev_close": 1837.0,
           "entry_price": 1720.0,
           "exit_price": 1797.0,
@@ -3026,7 +3321,8 @@
           "pnl_100": 7700
         },
         {
-          "code": "70110",
+          "code": "7011",
+          "name": "三菱重工業",
           "prev_close": 1712.0,
           "entry_price": 1603.0,
           "exit_price": 1696.5,
@@ -3035,7 +3331,8 @@
           "pnl_100": 9350
         },
         {
-          "code": "68570",
+          "code": "6857",
+          "name": "アドバンテスト",
           "prev_close": 5868.0,
           "entry_price": 5500.0,
           "exit_price": 5899.0,
@@ -3044,7 +3341,8 @@
           "pnl_100": 39900
         },
         {
-          "code": "69510",
+          "code": "6951",
+          "name": "日本電子",
           "prev_close": 5672.0,
           "entry_price": 5325.0,
           "exit_price": 5465.0,
@@ -3053,7 +3351,8 @@
           "pnl_100": 14000
         },
         {
-          "code": "77290",
+          "code": "7729",
+          "name": "東京精密",
           "prev_close": 6980.0,
           "entry_price": 6580.0,
           "exit_price": 6906.0,
@@ -3062,7 +3361,8 @@
           "pnl_100": 32600
         },
         {
-          "code": "65040",
+          "code": "6504",
+          "name": "富士電機",
           "prev_close": 7677.0,
           "entry_price": 7255.0,
           "exit_price": 7486.0,
@@ -3081,7 +3381,8 @@
       "total_pnl_100": 33160,
       "picks": [
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 4177.0,
           "entry_price": 4077.0,
           "exit_price": 4178.0,
@@ -3090,7 +3391,8 @@
           "pnl_100": 10100
         },
         {
-          "code": "30380",
+          "code": "3038",
+          "name": "神戸物産",
           "prev_close": 4356.0,
           "entry_price": 4301.0,
           "exit_price": 4316.0,
@@ -3099,7 +3401,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "37740",
+          "code": "3774",
+          "name": "インターネットイニシアティブ",
           "prev_close": 3022.0,
           "entry_price": 2984.5,
           "exit_price": 2981.5,
@@ -3108,7 +3411,8 @@
           "pnl_100": -300
         },
         {
-          "code": "22690",
+          "code": "2269",
+          "name": "明治ホールディングス",
           "prev_close": 3676.0,
           "entry_price": 3633.0,
           "exit_price": 3598.0,
@@ -3117,7 +3421,8 @@
           "pnl_100": -3500
         },
         {
-          "code": "90240",
+          "code": "9024",
+          "name": "西武ホールディングス",
           "prev_close": 3302.0,
           "entry_price": 3277.0,
           "exit_price": 3412.0,
@@ -3126,7 +3431,8 @@
           "pnl_100": 13500
         },
         {
-          "code": "30640",
+          "code": "3064",
+          "name": "ＭｏｎｏｔａＲＯ",
           "prev_close": 2362.0,
           "entry_price": 2344.5,
           "exit_price": 2385.5,
@@ -3135,7 +3441,8 @@
           "pnl_100": 4100
         },
         {
-          "code": "35490",
+          "code": "3549",
+          "name": "クスリのアオキホールディングス",
           "prev_close": 3487.0,
           "entry_price": 3463.0,
           "exit_price": 3529.0,
@@ -3144,7 +3451,8 @@
           "pnl_100": 6600
         },
         {
-          "code": "19110",
+          "code": "1911",
+          "name": "住友林業",
           "prev_close": 2178.7,
           "entry_price": 2166.7,
           "exit_price": 2177.3,
@@ -3153,7 +3461,8 @@
           "pnl_100": 1060
         },
         {
-          "code": "19420",
+          "code": "1942",
+          "name": "関電工",
           "prev_close": 2202.0,
           "entry_price": 2190.0,
           "exit_price": 2192.0,
@@ -3162,7 +3471,8 @@
           "pnl_100": 200
         },
         {
-          "code": "48870",
+          "code": "4887",
+          "name": "サワイグループホールディングス",
           "prev_close": 2133.0,
           "entry_price": 2122.5,
           "exit_price": 2121.5,
@@ -3181,7 +3491,8 @@
       "total_pnl_100": 20800,
       "picks": [
         {
-          "code": "65260",
+          "code": "6526",
+          "name": "ソシオネクスト",
           "prev_close": 2922.0,
           "entry_price": 2630.0,
           "exit_price": 2480.5,
@@ -3190,7 +3501,8 @@
           "pnl_100": -14950
         },
         {
-          "code": "95060",
+          "code": "9506",
+          "name": "東北電力",
           "prev_close": 1504.5,
           "entry_price": 1367.0,
           "exit_price": 1302.5,
@@ -3199,7 +3511,8 @@
           "pnl_100": -6450
         },
         {
-          "code": "63020",
+          "code": "6302",
+          "name": "住友重機械工業",
           "prev_close": 3446.0,
           "entry_price": 3150.0,
           "exit_price": 3278.0,
@@ -3208,7 +3521,8 @@
           "pnl_100": 12800
         },
         {
-          "code": "67020",
+          "code": "6702",
+          "name": "富士通",
           "prev_close": 2963.0,
           "entry_price": 2711.0,
           "exit_price": 2677.0,
@@ -3217,7 +3531,8 @@
           "pnl_100": -3400
         },
         {
-          "code": "36260",
+          "code": "3626",
+          "name": "ＴＩＳ",
           "prev_close": 3826.0,
           "entry_price": 3546.0,
           "exit_price": 3597.0,
@@ -3226,7 +3541,8 @@
           "pnl_100": 5100
         },
         {
-          "code": "77310",
+          "code": "7731",
+          "name": "ニコン",
           "prev_close": 1908.5,
           "entry_price": 1788.5,
           "exit_price": 1869.5,
@@ -3235,7 +3551,8 @@
           "pnl_100": 8100
         },
         {
-          "code": "72700",
+          "code": "7270",
+          "name": "ＳＵＢＡＲＵ",
           "prev_close": 2781.5,
           "entry_price": 2631.5,
           "exit_price": 2577.0,
@@ -3244,7 +3561,8 @@
           "pnl_100": -5450
         },
         {
-          "code": "80150",
+          "code": "8015",
+          "name": "豊田通商",
           "prev_close": 2643.0,
           "entry_price": 2501.5,
           "exit_price": 2640.0,
@@ -3253,7 +3571,8 @@
           "pnl_100": 13850
         },
         {
-          "code": "95040",
+          "code": "9504",
+          "name": "中国電力",
           "prev_close": 1112.5,
           "entry_price": 1053.0,
           "exit_price": 1075.0,
@@ -3262,7 +3581,8 @@
           "pnl_100": 2200
         },
         {
-          "code": "74760",
+          "code": "7476",
+          "name": "アズワン",
           "prev_close": 2874.5,
           "entry_price": 2722.0,
           "exit_price": 2812.0,
@@ -3281,7 +3601,8 @@
       "total_pnl_100": -58900,
       "picks": [
         {
-          "code": "96270",
+          "code": "9627",
+          "name": "アインホールディングス",
           "prev_close": 5020.0,
           "entry_price": 4614.0,
           "exit_price": 4590.0,
@@ -3290,7 +3611,8 @@
           "pnl_100": -2400
         },
         {
-          "code": "30920",
+          "code": "3092",
+          "name": "ＺＯＺＯ",
           "prev_close": 1654.0,
           "entry_price": 1584.0,
           "exit_price": 1579.0,
@@ -3299,7 +3621,8 @@
           "pnl_100": -500
         },
         {
-          "code": "25870",
+          "code": "2587",
+          "name": "サントリービバレッジ＆フード",
           "prev_close": 5125.0,
           "entry_price": 5048.0,
           "exit_price": 4955.0,
@@ -3308,7 +3631,8 @@
           "pnl_100": -9300
         },
         {
-          "code": "90200",
+          "code": "9020",
+          "name": "東日本旅客鉄道",
           "prev_close": 2879.0,
           "entry_price": 2841.5,
           "exit_price": 2793.0,
@@ -3317,7 +3641,8 @@
           "pnl_100": -4850
         },
         {
-          "code": "78670",
+          "code": "7867",
+          "name": "タカラトミー",
           "prev_close": 4389.0,
           "entry_price": 4335.0,
           "exit_price": 4350.0,
@@ -3326,7 +3651,8 @@
           "pnl_100": 1500
         },
         {
-          "code": "69520",
+          "code": "6952",
+          "name": "カシオ計算機",
           "prev_close": 1246.0,
           "entry_price": 1233.0,
           "exit_price": 1255.5,
@@ -3335,7 +3661,8 @@
           "pnl_100": 2250
         },
         {
-          "code": "63680",
+          "code": "6368",
+          "name": "オルガノ",
           "prev_close": 8800.0,
           "entry_price": 8710.0,
           "exit_price": 8320.0,
@@ -3344,7 +3671,8 @@
           "pnl_100": -39000
         },
         {
-          "code": "43850",
+          "code": "4385",
+          "name": "メルカリ",
           "prev_close": 1915.5,
           "entry_price": 1898.0,
           "exit_price": 1882.5,
@@ -3353,7 +3681,8 @@
           "pnl_100": -1550
         },
         {
-          "code": "87950",
+          "code": "8795",
+          "name": "Ｔ＆Ｄホールディングス",
           "prev_close": 2782.5,
           "entry_price": 2765.0,
           "exit_price": 2739.0,
@@ -3362,7 +3691,8 @@
           "pnl_100": -2600
         },
         {
-          "code": "90220",
+          "code": "9022",
+          "name": "東海旅客鉄道",
           "prev_close": 3032.0,
           "entry_price": 3014.0,
           "exit_price": 2989.5,
@@ -3381,7 +3711,8 @@
       "total_pnl_100": -57800,
       "picks": [
         {
-          "code": "72720",
+          "code": "7272",
+          "name": "ヤマハ発動機",
           "prev_close": 1404.5,
           "entry_price": 1375.5,
           "exit_price": 1357.5,
@@ -3390,7 +3721,8 @@
           "pnl_100": -1800
         },
         {
-          "code": "47040",
+          "code": "4704",
+          "name": "トレンドマイクロ",
           "prev_close": 8567.0,
           "entry_price": 8417.0,
           "exit_price": 8235.0,
@@ -3399,7 +3731,8 @@
           "pnl_100": -18200
         },
         {
-          "code": "67240",
+          "code": "6724",
+          "name": "セイコーエプソン",
           "prev_close": 2875.5,
           "entry_price": 2825.5,
           "exit_price": 2769.5,
@@ -3408,7 +3741,8 @@
           "pnl_100": -5600
         },
         {
-          "code": "28010",
+          "code": "2801",
+          "name": "キッコーマン",
           "prev_close": 1762.5,
           "entry_price": 1735.0,
           "exit_price": 1674.0,
@@ -3417,7 +3751,8 @@
           "pnl_100": -6100
         },
         {
-          "code": "24320",
+          "code": "2432",
+          "name": "ディー・エヌ・エー",
           "prev_close": 3135.0,
           "entry_price": 3090.0,
           "exit_price": 2869.5,
@@ -3426,7 +3761,8 @@
           "pnl_100": -22050
         },
         {
-          "code": "79510",
+          "code": "7951",
+          "name": "ヤマハ",
           "prev_close": 1129.5,
           "entry_price": 1113.5,
           "exit_price": 1104.0,
@@ -3435,7 +3771,8 @@
           "pnl_100": -950
         },
         {
-          "code": "67700",
+          "code": "6770",
+          "name": "アルプスアルパイン",
           "prev_close": 1612.5,
           "entry_price": 1590.0,
           "exit_price": 1584.0,
@@ -3444,7 +3781,8 @@
           "pnl_100": -600
         },
         {
-          "code": "22820",
+          "code": "2282",
+          "name": "日本ハム",
           "prev_close": 5094.0,
           "entry_price": 5023.0,
           "exit_price": 4978.0,
@@ -3453,7 +3791,8 @@
           "pnl_100": -4500
         },
         {
-          "code": "72030",
+          "code": "7203",
+          "name": "トヨタ自動車",
           "prev_close": 3146.0,
           "entry_price": 3103.0,
           "exit_price": 3052.0,
@@ -3462,7 +3801,8 @@
           "pnl_100": -5100
         },
         {
-          "code": "69880",
+          "code": "6988",
+          "name": "日東電工",
           "prev_close": 2680.0,
           "entry_price": 2645.0,
           "exit_price": 2716.0,
@@ -3481,7 +3821,8 @@
       "total_pnl_100": 12580,
       "picks": [
         {
-          "code": "81110",
+          "code": "8111",
+          "name": "ゴールドウイン",
           "prev_close": 2879.0,
           "entry_price": 2667.0,
           "exit_price": 2593.7,
@@ -3490,7 +3831,8 @@
           "pnl_100": -7330
         },
         {
-          "code": "69650",
+          "code": "6965",
+          "name": "浜松ホトニクス",
           "prev_close": 1935.0,
           "entry_price": 1805.0,
           "exit_price": 1780.0,
@@ -3499,7 +3841,8 @@
           "pnl_100": -2500
         },
         {
-          "code": "41510",
+          "code": "4151",
+          "name": "協和キリン",
           "prev_close": 2240.0,
           "entry_price": 2135.0,
           "exit_price": 2078.5,
@@ -3508,7 +3851,8 @@
           "pnl_100": -5650
         },
         {
-          "code": "77310",
+          "code": "7731",
+          "name": "ニコン",
           "prev_close": 1693.5,
           "entry_price": 1616.0,
           "exit_price": 1515.0,
@@ -3517,7 +3861,8 @@
           "pnl_100": -10100
         },
         {
-          "code": "61340",
+          "code": "6134",
+          "name": "ＦＵＪＩ",
           "prev_close": 2283.5,
           "entry_price": 2185.0,
           "exit_price": 2196.0,
@@ -3526,7 +3871,8 @@
           "pnl_100": 1100
         },
         {
-          "code": "54110",
+          "code": "5411",
+          "name": "ＪＦＥホールディングス",
           "prev_close": 1800.0,
           "entry_price": 1730.0,
           "exit_price": 1763.5,
@@ -3535,7 +3881,8 @@
           "pnl_100": 3350
         },
         {
-          "code": "93020",
+          "code": "9302",
+          "name": "三井倉庫ホールディングス",
           "prev_close": 2543.3,
           "entry_price": 2466.7,
           "exit_price": 2553.3,
@@ -3544,7 +3891,8 @@
           "pnl_100": 8660
         },
         {
-          "code": "77410",
+          "code": "7741",
+          "name": "ＨＯＹＡ",
           "prev_close": 19415.0,
           "entry_price": 18915.0,
           "exit_price": 19010.0,
@@ -3553,7 +3901,8 @@
           "pnl_100": 9500
         },
         {
-          "code": "79740",
+          "code": "7974",
+          "name": "任天堂",
           "prev_close": 11000.0,
           "entry_price": 10735.0,
           "exit_price": 10935.0,
@@ -3562,7 +3911,8 @@
           "pnl_100": 20000
         },
         {
-          "code": "88300",
+          "code": "8830",
+          "name": "住友不動産",
           "prev_close": 2702.0,
           "entry_price": 2644.5,
           "exit_price": 2600.0,
@@ -3581,7 +3931,8 @@
       "total_pnl_100": -109250,
       "picks": [
         {
-          "code": "79360",
+          "code": "7936",
+          "name": "アシックス",
           "prev_close": 3228.0,
           "entry_price": 3122.0,
           "exit_price": 3068.0,
@@ -3590,7 +3941,8 @@
           "pnl_100": -5400
         },
         {
-          "code": "285A0",
+          "code": "285A",
+          "name": "キオクシアホールディングス",
           "prev_close": 2790.0,
           "entry_price": 2733.0,
           "exit_price": 2648.0,
@@ -3599,7 +3951,8 @@
           "pnl_100": -8500
         },
         {
-          "code": "83770",
+          "code": "8377",
+          "name": "ほくほくフィナンシャルグループ",
           "prev_close": 2334.5,
           "entry_price": 2295.5,
           "exit_price": 2165.0,
@@ -3608,7 +3961,8 @@
           "pnl_100": -13050
         },
         {
-          "code": "90060",
+          "code": "9006",
+          "name": "京浜急行電鉄",
           "prev_close": 1580.5,
           "entry_price": 1555.0,
           "exit_price": 1547.0,
@@ -3617,7 +3971,8 @@
           "pnl_100": -800
         },
         {
-          "code": "81360",
+          "code": "8136",
+          "name": "サンリオ",
           "prev_close": 1257.2,
           "entry_price": 1238.4,
           "exit_price": 1183.4,
@@ -3626,7 +3981,8 @@
           "pnl_100": -5500
         },
         {
-          "code": "70030",
+          "code": "7003",
+          "name": "三井Ｅ＆Ｓ",
           "prev_close": 1823.0,
           "entry_price": 1797.0,
           "exit_price": 1745.0,
@@ -3635,7 +3991,8 @@
           "pnl_100": -5200
         },
         {
-          "code": "79740",
+          "code": "7974",
+          "name": "任天堂",
           "prev_close": 10335.0,
           "entry_price": 10200.0,
           "exit_price": 10055.0,
@@ -3644,7 +4001,8 @@
           "pnl_100": -14500
         },
         {
-          "code": "67580",
+          "code": "6758",
+          "name": "ソニーグループ",
           "prev_close": 3569.0,
           "entry_price": 3526.0,
           "exit_price": 3389.0,
@@ -3653,7 +4011,8 @@
           "pnl_100": -13700
         },
         {
-          "code": "65010",
+          "code": "6501",
+          "name": "日立製作所",
           "prev_close": 3810.0,
           "entry_price": 3766.0,
           "exit_price": 3625.0,
@@ -3662,7 +4021,8 @@
           "pnl_100": -14100
         },
         {
-          "code": "65320",
+          "code": "6532",
+          "name": "ベイカレント",
           "prev_close": 6236.0,
           "entry_price": 6165.0,
           "exit_price": 5880.0,
@@ -3681,7 +4041,8 @@
       "total_pnl_100": 233800,
       "picks": [
         {
-          "code": "67010",
+          "code": "6701",
+          "name": "日本電気",
           "prev_close": 2980.5,
           "entry_price": 2682.5,
           "exit_price": 2807.0,
@@ -3690,7 +4051,8 @@
           "pnl_100": 12450
         },
         {
-          "code": "68560",
+          "code": "6856",
+          "name": "堀場製作所",
           "prev_close": 8854.0,
           "entry_price": 7969.0,
           "exit_price": 8609.0,
@@ -3699,7 +4061,8 @@
           "pnl_100": 64000
         },
         {
-          "code": "19630",
+          "code": "1963",
+          "name": "日揮ホールディングス",
           "prev_close": 1061.5,
           "entry_price": 955.4,
           "exit_price": 1013.0,
@@ -3708,7 +4071,8 @@
           "pnl_100": 5760
         },
         {
-          "code": "66740",
+          "code": "6674",
+          "name": "ジーエス・ユアサ　コーポレーション",
           "prev_close": 2181.5,
           "entry_price": 1963.5,
           "exit_price": 2170.5,
@@ -3717,7 +4081,8 @@
           "pnl_100": 20700
         },
         {
-          "code": "79740",
+          "code": "7974",
+          "name": "任天堂",
           "prev_close": 9977.0,
           "entry_price": 8980.0,
           "exit_price": 9841.0,
@@ -3726,7 +4091,8 @@
           "pnl_100": 86100
         },
         {
-          "code": "57110",
+          "code": "5711",
+          "name": "三菱マテリアル",
           "prev_close": 2197.0,
           "entry_price": 1977.5,
           "exit_price": 2109.0,
@@ -3735,7 +4101,8 @@
           "pnl_100": 13150
         },
         {
-          "code": "36970",
+          "code": "3697",
+          "name": "ＳＨＩＦＴ",
           "prev_close": 1095.0,
           "entry_price": 985.6,
           "exit_price": 1056.5,
@@ -3744,7 +4111,8 @@
           "pnl_100": 7090
         },
         {
-          "code": "69810",
+          "code": "6981",
+          "name": "村田製作所",
           "prev_close": 2102.0,
           "entry_price": 1892.0,
           "exit_price": 2002.5,
@@ -3753,7 +4121,8 @@
           "pnl_100": 11050
         },
         {
-          "code": "49110",
+          "code": "4911",
+          "name": "資生堂",
           "prev_close": 2607.5,
           "entry_price": 2347.0,
           "exit_price": 2344.5,
@@ -3762,7 +4131,8 @@
           "pnl_100": -250
         },
         {
-          "code": "51100",
+          "code": "5110",
+          "name": "住友ゴム工業",
           "prev_close": 1476.5,
           "entry_price": 1329.0,
           "exit_price": 1466.5,
@@ -3781,7 +4151,8 @@
       "total_pnl_100": 26720,
       "picks": [
         {
-          "code": "47680",
+          "code": "4768",
+          "name": "大塚商会",
           "prev_close": 3171.0,
           "entry_price": 2911.0,
           "exit_price": 2865.5,
@@ -3790,7 +4161,8 @@
           "pnl_100": -4550
         },
         {
-          "code": "95030",
+          "code": "9503",
+          "name": "関西電力",
           "prev_close": 1755.0,
           "entry_price": 1638.0,
           "exit_price": 1660.5,
@@ -3799,7 +4171,8 @@
           "pnl_100": 2250
         },
         {
-          "code": "36350",
+          "code": "3635",
+          "name": "コーエーテクモホールディングス",
           "prev_close": 2448.0,
           "entry_price": 2327.0,
           "exit_price": 2491.0,
@@ -3808,7 +4181,8 @@
           "pnl_100": 16400
         },
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 3836.0,
           "entry_price": 3696.0,
           "exit_price": 3703.0,
@@ -3817,7 +4191,8 @@
           "pnl_100": 700
         },
         {
-          "code": "91070",
+          "code": "9107",
+          "name": "川崎汽船",
           "prev_close": 1950.0,
           "entry_price": 1890.0,
           "exit_price": 1949.0,
@@ -3826,7 +4201,8 @@
           "pnl_100": 5900
         },
         {
-          "code": "96020",
+          "code": "9602",
+          "name": "東宝",
           "prev_close": 1632.0,
           "entry_price": 1594.0,
           "exit_price": 1555.2,
@@ -3835,7 +4211,8 @@
           "pnl_100": -3880
         },
         {
-          "code": "77520",
+          "code": "7752",
+          "name": "リコー",
           "prev_close": 1506.0,
           "entry_price": 1476.5,
           "exit_price": 1533.5,
@@ -3844,7 +4221,8 @@
           "pnl_100": 5700
         },
         {
-          "code": "80880",
+          "code": "8088",
+          "name": "岩谷産業",
           "prev_close": 1364.0,
           "entry_price": 1340.0,
           "exit_price": 1365.5,
@@ -3853,7 +4231,8 @@
           "pnl_100": 2550
         },
         {
-          "code": "64600",
+          "code": "6460",
+          "name": "セガサミーホールディングス",
           "prev_close": 2992.5,
           "entry_price": 2942.5,
           "exit_price": 2940.0,
@@ -3862,7 +4241,8 @@
           "pnl_100": -250
         },
         {
-          "code": "54440",
+          "code": "5444",
+          "name": "大和工業",
           "prev_close": 8489.0,
           "entry_price": 8350.0,
           "exit_price": 8369.0,
@@ -3881,7 +4261,8 @@
       "total_pnl_100": 59250,
       "picks": [
         {
-          "code": "33490",
+          "code": "3349",
+          "name": "コスモス薬品",
           "prev_close": 8822.0,
           "entry_price": 8700.0,
           "exit_price": 8815.0,
@@ -3890,7 +4271,8 @@
           "pnl_100": 11500
         },
         {
-          "code": "67520",
+          "code": "6752",
+          "name": "パナソニック　ホールディングス",
           "prev_close": 1567.5,
           "entry_price": 1546.5,
           "exit_price": 1544.5,
@@ -3899,7 +4281,8 @@
           "pnl_100": -200
         },
         {
-          "code": "65060",
+          "code": "6506",
+          "name": "安川電機",
           "prev_close": 3148.0,
           "entry_price": 3108.0,
           "exit_price": 3287.0,
@@ -3908,7 +4291,8 @@
           "pnl_100": 17900
         },
         {
-          "code": "30380",
+          "code": "3038",
+          "name": "神戸物産",
           "prev_close": 4546.0,
           "entry_price": 4491.0,
           "exit_price": 4567.0,
@@ -3917,7 +4301,8 @@
           "pnl_100": 7600
         },
         {
-          "code": "94680",
+          "code": "9468",
+          "name": "ＫＡＤＯＫＡＷＡ",
           "prev_close": 3683.0,
           "entry_price": 3640.0,
           "exit_price": 3710.0,
@@ -3926,7 +4311,8 @@
           "pnl_100": 7000
         },
         {
-          "code": "59290",
+          "code": "5929",
+          "name": "三和ホールディングス",
           "prev_close": 5107.0,
           "entry_price": 5049.0,
           "exit_price": 5005.0,
@@ -3935,7 +4321,8 @@
           "pnl_100": -4400
         },
         {
-          "code": "78320",
+          "code": "7832",
+          "name": "バンダイナムコホールディングス",
           "prev_close": 4634.0,
           "entry_price": 4585.0,
           "exit_price": 4715.0,
@@ -3944,7 +4331,8 @@
           "pnl_100": 13000
         },
         {
-          "code": "30640",
+          "code": "3064",
+          "name": "ＭｏｎｏｔａＲＯ",
           "prev_close": 2818.5,
           "entry_price": 2789.0,
           "exit_price": 2867.5,
@@ -3953,7 +4341,8 @@
           "pnl_100": 7850
         },
         {
-          "code": "81740",
+          "code": "8174",
+          "name": "日本瓦斯",
           "prev_close": 2612.0,
           "entry_price": 2586.5,
           "exit_price": 2589.0,
@@ -3962,7 +4351,8 @@
           "pnl_100": 250
         },
         {
-          "code": "30880",
+          "code": "3088",
+          "name": "マツキヨココカラ＆カンパニー",
           "prev_close": 2848.0,
           "entry_price": 2821.5,
           "exit_price": 2809.0,
@@ -3981,7 +4371,8 @@
       "total_pnl_100": 20100,
       "picks": [
         {
-          "code": "65060",
+          "code": "6506",
+          "name": "安川電機",
           "prev_close": 3155.0,
           "entry_price": 3000.0,
           "exit_price": 2833.0,
@@ -3990,7 +4381,8 @@
           "pnl_100": -16700
         },
         {
-          "code": "69540",
+          "code": "6954",
+          "name": "ファナック",
           "prev_close": 3899.0,
           "entry_price": 3800.0,
           "exit_price": 3747.0,
@@ -3999,7 +4391,8 @@
           "pnl_100": -5300
         },
         {
-          "code": "66320",
+          "code": "6632",
+          "name": "ＪＶＣケンウッド",
           "prev_close": 1179.5,
           "entry_price": 1161.0,
           "exit_price": 1136.0,
@@ -4008,7 +4401,8 @@
           "pnl_100": -2500
         },
         {
-          "code": "58380",
+          "code": "5838",
+          "name": "楽天銀行",
           "prev_close": 6495.0,
           "entry_price": 6395.0,
           "exit_price": 6379.0,
@@ -4017,7 +4411,8 @@
           "pnl_100": -1600
         },
         {
-          "code": "58010",
+          "code": "5801",
+          "name": "古河電気工業",
           "prev_close": 7198.0,
           "entry_price": 7090.0,
           "exit_price": 7420.0,
@@ -4026,7 +4421,8 @@
           "pnl_100": 33000
         },
         {
-          "code": "65040",
+          "code": "6504",
+          "name": "富士電機",
           "prev_close": 6713.0,
           "entry_price": 6613.0,
           "exit_price": 6595.0,
@@ -4035,7 +4431,8 @@
           "pnl_100": -1800
         },
         {
-          "code": "70120",
+          "code": "7012",
+          "name": "川崎重工業",
           "prev_close": 2022.0,
           "entry_price": 1993.8,
           "exit_price": 2034.0,
@@ -4044,7 +4441,8 @@
           "pnl_100": 4020
         },
         {
-          "code": "70030",
+          "code": "7003",
+          "name": "三井Ｅ＆Ｓ",
           "prev_close": 2672.0,
           "entry_price": 2635.0,
           "exit_price": 2711.0,
@@ -4053,7 +4451,8 @@
           "pnl_100": 7600
         },
         {
-          "code": "58030",
+          "code": "5803",
+          "name": "フジクラ",
           "prev_close": 1253.3,
           "entry_price": 1236.7,
           "exit_price": 1302.5,
@@ -4062,7 +4461,8 @@
           "pnl_100": 6580
         },
         {
-          "code": "61410",
+          "code": "6141",
+          "name": "ＤＭＧ森精機",
           "prev_close": 3270.0,
           "entry_price": 3227.0,
           "exit_price": 3195.0,
@@ -4081,7 +4481,8 @@
       "total_pnl_100": 168510,
       "picks": [
         {
-          "code": "79510",
+          "code": "7951",
+          "name": "ヤマハ",
           "prev_close": 1088.0,
           "entry_price": 981.0,
           "exit_price": 983.6,
@@ -4090,7 +4491,8 @@
           "pnl_100": 260
         },
         {
-          "code": "66320",
+          "code": "6632",
+          "name": "ＪＶＣケンウッド",
           "prev_close": 1185.0,
           "entry_price": 1100.0,
           "exit_price": 1177.5,
@@ -4099,7 +4501,8 @@
           "pnl_100": 7750
         },
         {
-          "code": "22220",
+          "code": "2222",
+          "name": "寿スピリッツ",
           "prev_close": 2055.0,
           "entry_price": 1915.0,
           "exit_price": 1905.0,
@@ -4108,7 +4511,8 @@
           "pnl_100": -1000
         },
         {
-          "code": "63680",
+          "code": "6368",
+          "name": "オルガノ",
           "prev_close": 9360.0,
           "entry_price": 8840.0,
           "exit_price": 10600.0,
@@ -4117,7 +4521,8 @@
           "pnl_100": 176000
         },
         {
-          "code": "83080",
+          "code": "8308",
+          "name": "りそなホールディングス",
           "prev_close": 1401.0,
           "entry_price": 1330.0,
           "exit_price": 1361.0,
@@ -4126,7 +4531,8 @@
           "pnl_100": 3100
         },
         {
-          "code": "60980",
+          "code": "6098",
+          "name": "リクルートホールディングス",
           "prev_close": 9090.0,
           "entry_price": 8640.0,
           "exit_price": 8719.0,
@@ -4135,7 +4541,8 @@
           "pnl_100": 7900
         },
         {
-          "code": "82530",
+          "code": "8253",
+          "name": "クレディセゾン",
           "prev_close": 4115.0,
           "entry_price": 3913.0,
           "exit_price": 3933.0,
@@ -4144,7 +4551,8 @@
           "pnl_100": 2000
         },
         {
-          "code": "83590",
+          "code": "8359",
+          "name": "八十二長野銀行",
           "prev_close": 1375.5,
           "entry_price": 1310.0,
           "exit_price": 1339.0,
@@ -4153,7 +4561,8 @@
           "pnl_100": 2900
         },
         {
-          "code": "84110",
+          "code": "8411",
+          "name": "みずほフィナンシャルグループ",
           "prev_close": 4452.0,
           "entry_price": 4242.0,
           "exit_price": 4395.0,
@@ -4162,7 +4571,8 @@
           "pnl_100": 15300
         },
         {
-          "code": "77290",
+          "code": "7729",
+          "name": "東京精密",
           "prev_close": 9443.0,
           "entry_price": 9000.0,
           "exit_price": 8543.0,
@@ -4181,7 +4591,8 @@
       "total_pnl_100": -15220,
       "picks": [
         {
-          "code": "14140",
+          "code": "1414",
+          "name": "ショーボンドホールディングス",
           "prev_close": 1304.0,
           "entry_price": 1279.8,
           "exit_price": 1251.3,
@@ -4190,7 +4601,8 @@
           "pnl_100": -2850
         },
         {
-          "code": "82820",
+          "code": "8282",
+          "name": "ケーズホールディングス",
           "prev_close": 1586.5,
           "entry_price": 1569.0,
           "exit_price": 1585.0,
@@ -4199,7 +4611,8 @@
           "pnl_100": 1600
         },
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 2849.0,
           "entry_price": 2820.0,
           "exit_price": 2786.0,
@@ -4208,7 +4621,8 @@
           "pnl_100": -3400
         },
         {
-          "code": "58380",
+          "code": "5838",
+          "name": "楽天銀行",
           "prev_close": 7926.0,
           "entry_price": 7850.0,
           "exit_price": 7660.0,
@@ -4217,7 +4631,8 @@
           "pnl_100": -19000
         },
         {
-          "code": "58300",
+          "code": "5830",
+          "name": "いよぎんホールディングス",
           "prev_close": 2026.0,
           "entry_price": 2007.0,
           "exit_price": 2005.5,
@@ -4226,7 +4641,8 @@
           "pnl_100": -150
         },
         {
-          "code": "75320",
+          "code": "7532",
+          "name": "パン・パシフィック・インターナショナルホールディングス",
           "prev_close": 1102.2,
           "entry_price": 1092.0,
           "exit_price": 1066.8,
@@ -4235,7 +4651,8 @@
           "pnl_100": -2520
         },
         {
-          "code": "26700",
+          "code": "2670",
+          "name": "エービーシー・マート",
           "prev_close": 3255.0,
           "entry_price": 3227.0,
           "exit_price": 3113.0,
@@ -4244,7 +4661,8 @@
           "pnl_100": -11400
         },
         {
-          "code": "19420",
+          "code": "1942",
+          "name": "関電工",
           "prev_close": 4003.0,
           "entry_price": 3969.0,
           "exit_price": 4014.0,
@@ -4253,7 +4671,8 @@
           "pnl_100": 4500
         },
         {
-          "code": "84110",
+          "code": "8411",
+          "name": "みずほフィナンシャルグループ",
           "prev_close": 4859.0,
           "entry_price": 4818.0,
           "exit_price": 4815.0,
@@ -4262,7 +4681,8 @@
           "pnl_100": -300
         },
         {
-          "code": "32880",
+          "code": "3288",
+          "name": "オープンハウスグループ",
           "prev_close": 7886.0,
           "entry_price": 7831.0,
           "exit_price": 8014.0,
@@ -4281,7 +4701,8 @@
       "total_pnl_100": -19150,
       "picks": [
         {
-          "code": "83080",
+          "code": "8308",
+          "name": "りそなホールディングス",
           "prev_close": 1483.0,
           "entry_price": 1411.5,
           "exit_price": 1457.5,
@@ -4290,7 +4711,8 @@
           "pnl_100": 4600
         },
         {
-          "code": "30380",
+          "code": "3038",
+          "name": "神戸物産",
           "prev_close": 3900.0,
           "entry_price": 3741.0,
           "exit_price": 3723.0,
@@ -4299,7 +4721,8 @@
           "pnl_100": -1800
         },
         {
-          "code": "58380",
+          "code": "5838",
+          "name": "楽天銀行",
           "prev_close": 8368.0,
           "entry_price": 8125.0,
           "exit_price": 7718.0,
@@ -4308,7 +4731,8 @@
           "pnl_100": -40700
         },
         {
-          "code": "83060",
+          "code": "8306",
+          "name": "三菱ＵＦＪフィナンシャル・グループ",
           "prev_close": 2313.0,
           "entry_price": 2263.0,
           "exit_price": 2293.5,
@@ -4317,7 +4741,8 @@
           "pnl_100": 3050
         },
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 2563.0,
           "entry_price": 2524.5,
           "exit_price": 2549.5,
@@ -4326,7 +4751,8 @@
           "pnl_100": 2500
         },
         {
-          "code": "84110",
+          "code": "8411",
+          "name": "みずほフィナンシャルグループ",
           "prev_close": 4800.0,
           "entry_price": 4730.0,
           "exit_price": 4754.0,
@@ -4335,7 +4761,8 @@
           "pnl_100": 2400
         },
         {
-          "code": "71890",
+          "code": "7189",
+          "name": "西日本フィナンシャルホールディングス",
           "prev_close": 2420.0,
           "entry_price": 2401.0,
           "exit_price": 2420.0,
@@ -4344,7 +4771,8 @@
           "pnl_100": 1900
         },
         {
-          "code": "82830",
+          "code": "8283",
+          "name": "ＰＡＬＴＡＣ",
           "prev_close": 4593.0,
           "entry_price": 4559.0,
           "exit_price": 4591.0,
@@ -4353,7 +4781,8 @@
           "pnl_100": 3200
         },
         {
-          "code": "83160",
+          "code": "8316",
+          "name": "三井住友フィナンシャルグループ",
           "prev_close": 4048.0,
           "entry_price": 4024.0,
           "exit_price": 4053.0,
@@ -4362,7 +4791,8 @@
           "pnl_100": 2900
         },
         {
-          "code": "24320",
+          "code": "2432",
+          "name": "ディー・エヌ・エー",
           "prev_close": 2312.5,
           "entry_price": 2305.0,
           "exit_price": 2333.0,
@@ -4381,7 +4811,8 @@
       "total_pnl_100": -2510,
       "picks": [
         {
-          "code": "64650",
+          "code": "6465",
+          "name": "ホシザキ",
           "prev_close": 5339.0,
           "entry_price": 5000.0,
           "exit_price": 4978.0,
@@ -4390,7 +4821,8 @@
           "pnl_100": -2200
         },
         {
-          "code": "72670",
+          "code": "7267",
+          "name": "本田技研工業",
           "prev_close": 1585.0,
           "entry_price": 1505.0,
           "exit_price": 1523.5,
@@ -4399,7 +4831,8 @@
           "pnl_100": 1850
         },
         {
-          "code": "66450",
+          "code": "6645",
+          "name": "オムロン",
           "prev_close": 4248.0,
           "entry_price": 4038.0,
           "exit_price": 3861.0,
@@ -4408,7 +4841,8 @@
           "pnl_100": -17700
         },
         {
-          "code": "88010",
+          "code": "8801",
+          "name": "三井不動産",
           "prev_close": 1641.0,
           "entry_price": 1584.5,
           "exit_price": 1694.5,
@@ -4417,7 +4851,8 @@
           "pnl_100": 11000
         },
         {
-          "code": "45190",
+          "code": "4519",
+          "name": "中外製薬",
           "prev_close": 7468.0,
           "entry_price": 7242.0,
           "exit_price": 7521.0,
@@ -4426,7 +4861,8 @@
           "pnl_100": 27900
         },
         {
-          "code": "31050",
+          "code": "3105",
+          "name": "日清紡ホールディングス",
           "prev_close": 1286.5,
           "entry_price": 1250.0,
           "exit_price": 1252.5,
@@ -4435,7 +4871,8 @@
           "pnl_100": 250
         },
         {
-          "code": "81360",
+          "code": "8136",
+          "name": "サンリオ",
           "prev_close": 1269.2,
           "entry_price": 1240.2,
           "exit_price": 1187.6,
@@ -4444,7 +4881,8 @@
           "pnl_100": -5260
         },
         {
-          "code": "72610",
+          "code": "7261",
+          "name": "マツダ",
           "prev_close": 1119.0,
           "entry_price": 1097.0,
           "exit_price": 1133.5,
@@ -4453,7 +4891,8 @@
           "pnl_100": 3650
         },
         {
-          "code": "60980",
+          "code": "6098",
+          "name": "リクルートホールディングス",
           "prev_close": 8487.0,
           "entry_price": 8350.0,
           "exit_price": 8282.0,
@@ -4462,7 +4901,8 @@
           "pnl_100": -6800
         },
         {
-          "code": "35630",
+          "code": "3563",
+          "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
           "prev_close": 8018.0,
           "entry_price": 7891.0,
           "exit_price": 7739.0,
@@ -4481,7 +4921,8 @@
       "total_pnl_100": -4750,
       "picks": [
         {
-          "code": "63010",
+          "code": "6301",
+          "name": "小松製作所",
           "prev_close": 5120.0,
           "entry_price": 5026.0,
           "exit_price": 5047.0,
@@ -4490,7 +4931,8 @@
           "pnl_100": 2100
         },
         {
-          "code": "88760",
+          "code": "8876",
+          "name": "リログループ",
           "prev_close": 1674.5,
           "entry_price": 1649.0,
           "exit_price": 1676.0,
@@ -4499,7 +4941,8 @@
           "pnl_100": 2700
         },
         {
-          "code": "37690",
+          "code": "3769",
+          "name": "ＧＭＯペイメントゲートウェイ",
           "prev_close": 10150.0,
           "entry_price": 10020.0,
           "exit_price": 9918.0,
@@ -4508,7 +4951,8 @@
           "pnl_100": -10200
         },
         {
-          "code": "68060",
+          "code": "6806",
+          "name": "ヒロセ電機",
           "prev_close": 17320.0,
           "entry_price": 17100.0,
           "exit_price": 17155.0,
@@ -4517,7 +4961,8 @@
           "pnl_100": 5500
         },
         {
-          "code": "45430",
+          "code": "4543",
+          "name": "テルモ",
           "prev_close": 2369.0,
           "entry_price": 2339.0,
           "exit_price": 2349.5,
@@ -4526,7 +4971,8 @@
           "pnl_100": 1050
         },
         {
-          "code": "70030",
+          "code": "7003",
+          "name": "三井Ｅ＆Ｓ",
           "prev_close": 6288.0,
           "entry_price": 6212.0,
           "exit_price": 6205.0,
@@ -4535,7 +4981,8 @@
           "pnl_100": -700
         },
         {
-          "code": "60980",
+          "code": "6098",
+          "name": "リクルートホールディングス",
           "prev_close": 8249.0,
           "entry_price": 8158.0,
           "exit_price": 8080.0,
@@ -4544,7 +4991,8 @@
           "pnl_100": -7800
         },
         {
-          "code": "67580",
+          "code": "6758",
+          "name": "ソニーグループ",
           "prev_close": 4332.0,
           "entry_price": 4285.0,
           "exit_price": 4306.0,
@@ -4553,7 +5001,8 @@
           "pnl_100": 2100
         },
         {
-          "code": "47510",
+          "code": "4751",
+          "name": "サイバーエージェント",
           "prev_close": 1351.5,
           "entry_price": 1338.0,
           "exit_price": 1349.0,
@@ -4562,7 +5011,8 @@
           "pnl_100": 1100
         },
         {
-          "code": "30860",
+          "code": "3086",
+          "name": "Ｊ．フロント　リテイリング",
           "prev_close": 2223.5,
           "entry_price": 2201.5,
           "exit_price": 2195.5,
@@ -4581,7 +5031,8 @@
       "total_pnl_100": 4000,
       "picks": [
         {
-          "code": "28710",
+          "code": "2871",
+          "name": "ニチレイ",
           "prev_close": 1866.0,
           "entry_price": 1842.0,
           "exit_price": 1867.5,
@@ -4590,7 +5041,8 @@
           "pnl_100": 2550
         },
         {
-          "code": "47330",
+          "code": "4733",
+          "name": "オービックビジネスコンサルタント",
           "prev_close": 8453.0,
           "entry_price": 8347.0,
           "exit_price": 8500.0,
@@ -4599,7 +5051,8 @@
           "pnl_100": 15300
         },
         {
-          "code": "35490",
+          "code": "3549",
+          "name": "クスリのアオキホールディングス",
           "prev_close": 4678.0,
           "entry_price": 4630.0,
           "exit_price": 4331.0,
@@ -4608,7 +5061,8 @@
           "pnl_100": -29900
         },
         {
-          "code": "23710",
+          "code": "2371",
+          "name": "カカクコム",
           "prev_close": 2312.0,
           "entry_price": 2289.0,
           "exit_price": 2306.5,
@@ -4617,7 +5071,8 @@
           "pnl_100": 1750
         },
         {
-          "code": "24130",
+          "code": "2413",
+          "name": "エムスリー",
           "prev_close": 2114.0,
           "entry_price": 2095.0,
           "exit_price": 2085.5,
@@ -4626,7 +5081,8 @@
           "pnl_100": -950
         },
         {
-          "code": "49670",
+          "code": "4967",
+          "name": "小林製薬",
           "prev_close": 5428.0,
           "entry_price": 5380.0,
           "exit_price": 5465.0,
@@ -4635,7 +5091,8 @@
           "pnl_100": 8500
         },
         {
-          "code": "47510",
+          "code": "4751",
+          "name": "サイバーエージェント",
           "prev_close": 1338.0,
           "entry_price": 1328.0,
           "exit_price": 1391.5,
@@ -4644,7 +5101,8 @@
           "pnl_100": 6350
         },
         {
-          "code": "97590",
+          "code": "9759",
+          "name": "ＮＳＤ",
           "prev_close": 3464.0,
           "entry_price": 3440.0,
           "exit_price": 3440.0,
@@ -4653,7 +5111,8 @@
           "pnl_100": 0
         },
         {
-          "code": "39230",
+          "code": "3923",
+          "name": "ラクス",
           "prev_close": 1040.0,
           "entry_price": 1033.0,
           "exit_price": 1036.0,
@@ -4662,7 +5121,8 @@
           "pnl_100": 300
         },
         {
-          "code": "46810",
+          "code": "4681",
+          "name": "リゾートトラスト",
           "prev_close": 1962.5,
           "entry_price": 1950.0,
           "exit_price": 1951.0,
@@ -4681,7 +5141,8 @@
       "total_pnl_100": 272850,
       "picks": [
         {
-          "code": "28010",
+          "code": "2801",
+          "name": "キッコーマン",
           "prev_close": 1514.0,
           "entry_price": 1380.0,
           "exit_price": 1432.0,
@@ -4690,7 +5151,8 @@
           "pnl_100": 5200
         },
         {
-          "code": "68490",
+          "code": "6849",
+          "name": "日本光電工業",
           "prev_close": 1731.0,
           "entry_price": 1580.0,
           "exit_price": 1743.5,
@@ -4699,7 +5161,8 @@
           "pnl_100": 16350
         },
         {
-          "code": "69650",
+          "code": "6965",
+          "name": "浜松ホトニクス",
           "prev_close": 1790.0,
           "entry_price": 1650.0,
           "exit_price": 1714.0,
@@ -4708,7 +5171,8 @@
           "pnl_100": 6400
         },
         {
-          "code": "81110",
+          "code": "8111",
+          "name": "ゴールドウイン",
           "prev_close": 2652.5,
           "entry_price": 2448.5,
           "exit_price": 2488.5,
@@ -4717,7 +5181,8 @@
           "pnl_100": 4000
         },
         {
-          "code": "64790",
+          "code": "6479",
+          "name": "ミネベアミツミ",
           "prev_close": 3395.0,
           "entry_price": 3151.0,
           "exit_price": 3498.0,
@@ -4726,7 +5191,8 @@
           "pnl_100": 34700
         },
         {
-          "code": "24320",
+          "code": "2432",
+          "name": "ディー・エヌ・エー",
           "prev_close": 2616.5,
           "entry_price": 2446.5,
           "exit_price": 2528.5,
@@ -4735,7 +5201,8 @@
           "pnl_100": 8200
         },
         {
-          "code": "63700",
+          "code": "6370",
+          "name": "栗田工業",
           "prev_close": 7658.0,
           "entry_price": 7208.0,
           "exit_price": 7799.0,
@@ -4744,7 +5211,8 @@
           "pnl_100": 59100
         },
         {
-          "code": "77310",
+          "code": "7731",
+          "name": "ニコン",
           "prev_close": 1937.0,
           "entry_price": 1824.5,
           "exit_price": 1954.0,
@@ -4753,7 +5221,8 @@
           "pnl_100": 12950
         },
         {
-          "code": "71860",
+          "code": "7186",
+          "name": "横浜フィナンシャルグループ",
           "prev_close": 1539.5,
           "entry_price": 1455.5,
           "exit_price": 1632.0,
@@ -4762,7 +5231,8 @@
           "pnl_100": 17650
         },
         {
-          "code": "57130",
+          "code": "5713",
+          "name": "住友金属鉱山",
           "prev_close": 8825.0,
           "entry_price": 8375.0,
           "exit_price": 9458.0,
@@ -4781,7 +5251,8 @@
       "total_pnl_100": 219010,
       "picks": [
         {
-          "code": "99840",
+          "code": "9984",
+          "name": "ソフトバンクグループ",
           "prev_close": 3926.0,
           "entry_price": 3534.0,
           "exit_price": 3632.0,
@@ -4790,7 +5261,8 @@
           "pnl_100": 9800
         },
         {
-          "code": "41860",
+          "code": "4186",
+          "name": "東京応化工業",
           "prev_close": 8815.0,
           "entry_price": 7935.0,
           "exit_price": 8008.0,
@@ -4799,7 +5271,8 @@
           "pnl_100": 7300
         },
         {
-          "code": "58030",
+          "code": "5803",
+          "name": "フジクラ",
           "prev_close": 4183.3,
           "entry_price": 3766.7,
           "exit_price": 4010.8,
@@ -4808,7 +5281,8 @@
           "pnl_100": 24410
         },
         {
-          "code": "77350",
+          "code": "7735",
+          "name": "ＳＣＲＥＥＮホールディングス",
           "prev_close": 10400.0,
           "entry_price": 9370.0,
           "exit_price": 9727.5,
@@ -4817,7 +5291,8 @@
           "pnl_100": 35750
         },
         {
-          "code": "71800",
+          "code": "7180",
+          "name": "九州フィナンシャルグループ",
           "prev_close": 1231.5,
           "entry_price": 1111.5,
           "exit_price": 1220.0,
@@ -4826,7 +5301,8 @@
           "pnl_100": 10850
         },
         {
-          "code": "40620",
+          "code": "4062",
+          "name": "イビデン",
           "prev_close": 7880.0,
           "entry_price": 7121.0,
           "exit_price": 7833.0,
@@ -4835,7 +5311,8 @@
           "pnl_100": 71200
         },
         {
-          "code": "65250",
+          "code": "6525",
+          "name": "ＫＯＫＵＳＡＩ　ＥＬＥＣＴＲＩＣ",
           "prev_close": 6235.0,
           "entry_price": 5635.0,
           "exit_price": 5827.0,
@@ -4844,7 +5321,8 @@
           "pnl_100": 19200
         },
         {
-          "code": "67230",
+          "code": "6723",
+          "name": "ルネサスエレクトロニクス",
           "prev_close": 2610.5,
           "entry_price": 2360.5,
           "exit_price": 2549.5,
@@ -4853,7 +5331,8 @@
           "pnl_100": 18900
         },
         {
-          "code": "71670",
+          "code": "7167",
+          "name": "めぶきフィナンシャルグループ",
           "prev_close": 1255.5,
           "entry_price": 1135.5,
           "exit_price": 1215.5,
@@ -4862,7 +5341,8 @@
           "pnl_100": 8000
         },
         {
-          "code": "63230",
+          "code": "6323",
+          "name": "ローツェ",
           "prev_close": 3075.0,
           "entry_price": 2785.0,
           "exit_price": 2921.0,
@@ -4881,7 +5361,8 @@
       "total_pnl_100": -34000,
       "picks": [
         {
-          "code": "34360",
+          "code": "3436",
+          "name": "ＳＵＭＣＯ",
           "prev_close": 1738.0,
           "entry_price": 1713.5,
           "exit_price": 1763.0,
@@ -4890,7 +5371,8 @@
           "pnl_100": 4950
         },
         {
-          "code": "87950",
+          "code": "8795",
+          "name": "Ｔ＆Ｄホールディングス",
           "prev_close": 4152.0,
           "entry_price": 4097.0,
           "exit_price": 3963.0,
@@ -4899,7 +5381,8 @@
           "pnl_100": -13400
         },
         {
-          "code": "40910",
+          "code": "4091",
+          "name": "日本酸素ホールディングス",
           "prev_close": 5869.0,
           "entry_price": 5800.0,
           "exit_price": 5813.0,
@@ -4908,7 +5391,8 @@
           "pnl_100": 1300
         },
         {
-          "code": "41860",
+          "code": "4186",
+          "name": "東京応化工業",
           "prev_close": 7702.0,
           "entry_price": 7613.0,
           "exit_price": 7768.0,
@@ -4917,7 +5401,8 @@
           "pnl_100": 15500
         },
         {
-          "code": "77310",
+          "code": "7731",
+          "name": "ニコン",
           "prev_close": 2018.0,
           "entry_price": 2000.0,
           "exit_price": 1939.5,
@@ -4926,7 +5411,8 @@
           "pnl_100": -6050
         },
         {
-          "code": "54440",
+          "code": "5444",
+          "name": "大和工業",
           "prev_close": 12205.0,
           "entry_price": 12100.0,
           "exit_price": 11875.0,
@@ -4935,7 +5421,8 @@
           "pnl_100": -22500
         },
         {
-          "code": "40610",
+          "code": "4061",
+          "name": "デンカ",
           "prev_close": 3790.0,
           "entry_price": 3758.0,
           "exit_price": 3751.0,
@@ -4944,7 +5431,8 @@
           "pnl_100": -700
         },
         {
-          "code": "98430",
+          "code": "9843",
+          "name": "ニトリホールディングス",
           "prev_close": 2379.0,
           "entry_price": 2359.0,
           "exit_price": 2356.0,
@@ -4953,7 +5441,8 @@
           "pnl_100": -300
         },
         {
-          "code": "65250",
+          "code": "6525",
+          "name": "ＫＯＫＵＳＡＩ　ＥＬＥＣＴＲＩＣ",
           "prev_close": 5244.0,
           "entry_price": 5201.0,
           "exit_price": 5148.0,
@@ -4962,7 +5451,8 @@
           "pnl_100": -5300
         },
         {
-          "code": "18010",
+          "code": "1801",
+          "name": "大成建設",
           "prev_close": 16030.0,
           "entry_price": 15900.0,
           "exit_price": 15825.0,

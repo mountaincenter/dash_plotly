@@ -26,6 +26,7 @@ import pandas as pd
 from common_cfg.paths import PARQUET_DIR
 
 PRICES_PATH = PARQUET_DIR / "prices_topix500_oc.parquet"
+META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
 
@@ -104,11 +105,24 @@ def compute_sq_dates(bdays: list[pd.Timestamp], start: str) -> list[dict]:
     return results
 
 
+def load_name_map() -> dict[str, str]:
+    """5桁Code → stock_name のマッピング"""
+    if not META_PATH.exists():
+        return {}
+    meta = pd.read_parquet(META_PATH)
+    name_map = {}
+    for _, row in meta.iterrows():
+        code_5 = str(row["code"]) + "0"
+        name_map[code_5] = row["stock_name"]
+    return name_map
+
+
 def select_picks(
     ps: pd.DataFrame,
     sq4_date: pd.Timestamp,
     prev_date: pd.Timestamp,
     sq3_date: pd.Timestamp,
+    name_map: dict[str, str] | None = None,
 ) -> list[dict]:
     prev_data = ps[ps["Date"] == prev_date][["Code", "AdjC"]].rename(
         columns={"AdjC": "prev_close"}
@@ -135,9 +149,12 @@ def select_picks(
 
     trades = []
     for _, row in picks.iterrows():
+        code_5 = row["Code"]
+        code_4 = code_5[:-1] if len(code_5) == 5 and code_5[-1] == "0" else code_5
         ret_pct = (row["exit_close"] / row["entry_open"] - 1) * 100
         trades.append({
-            "code": row["Code"],
+            "code": code_4,
+            "name": (name_map or {}).get(code_5, ""),
             "prev_close": round(float(row["prev_close"]), 1),
             "entry_price": round(float(row["entry_open"]), 1),
             "exit_price": round(float(row["exit_close"]), 1),
@@ -237,17 +254,21 @@ def main() -> int:
     print(f"  {len(ps):,} rows, {ps['Code'].nunique()} codes (TOPIX 500)")
     print(f"  Range: {ps['Date'].min().date()} ~ {ps['Date'].max().date()}")
 
-    print("\n[2] Computing business days & SQ dates...")
+    print("\n[2] Loading name map from meta_jquants...")
+    name_map = load_name_map()
+    print(f"  {len(name_map)} codes mapped")
+
+    print("\n[3] Computing business days & SQ dates...")
     bdays = sorted(ps["Date"].unique())
     sq_schedule = compute_sq_dates(bdays, BACKTEST_START)
     print(f"  SQ-4 dates found: {len(sq_schedule)}")
 
-    print("\n[3] Selecting picks for each SQ-4...")
+    print("\n[4] Selecting picks for each SQ-4...")
     monthly_results = []
     all_trades = []
 
     for sq in sq_schedule:
-        trades = select_picks(ps, sq["sq4_entry"], sq["prev_day"], sq["sq3_exit"])
+        trades = select_picks(ps, sq["sq4_entry"], sq["prev_day"], sq["sq3_exit"], name_map)
         if not trades:
             continue
 
@@ -272,7 +293,7 @@ def main() -> int:
         print(f"  {sq['month']} | {sq['sq4_entry'].strftime('%m/%d')}→{sq['sq3_exit'].strftime('%m/%d')} "
               f"| N={len(trades):2d} | ret={month_ret:+.2f}% {symbol}")
 
-    print(f"\n[4] Computing stats...")
+    print(f"\n[5] Computing stats...")
     stats = calc_stats(all_trades)
     stats_by_price = calc_stats_by_price(all_trades)
 
@@ -284,14 +305,14 @@ def main() -> int:
     for seg, s in stats_by_price.items():
         print(f"  [{seg}] N={s['total']} PF={s['pf']} WR={s['wr']:.1f}%")
 
-    print(f"\n[5] Next SQ-4...")
+    print(f"\n[6] Next SQ-4...")
     next_sq4 = get_next_sq4(CALENDAR_PATH)
     candidates = get_candidates(ps)
     if next_sq4:
         print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
     print(f"  Candidates: {candidates['count']} stocks (≥5000: {candidates['price_5000_plus']})")
 
-    print(f"\n[6] Saving {OUTPUT_PATH.name}...")
+    print(f"\n[7] Saving {OUTPUT_PATH.name}...")
     output = {
         "generated": date.today().isoformat(),
         "params": {
