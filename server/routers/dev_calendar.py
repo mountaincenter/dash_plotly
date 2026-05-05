@@ -337,7 +337,6 @@ async def get_calendar_data():
         },
         "sq4": {
             "stats": sq4_data.get("stats", {}),
-            "stats_by_price": sq4_data.get("stats_by_price", {}),
             "stats_cme_down": sq4_data.get("stats_cme_down", {}),
             "stats_cme_up": sq4_data.get("stats_cme_up", {}),
             "max_dd": sq4_data.get("max_dd", {}),

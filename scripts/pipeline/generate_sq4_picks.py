@@ -3,8 +3,10 @@
 generate_sq4_picks.py
 SQ-4銘柄選定 + 過去トレード結果生成
 
-prices_topix500_oc.parquet (J-Quants AdjO+AdjC, TOPIX 500) から
-各月のSQ-4日にGap-down Top10を選定し、翌日(SQ-3)大引成決済のバックテスト結果をJSON出力。
+選定ロジック: 外需セクター × 5日リターン worst10 (前営業日終値ベース)
+エントリー: SQ-4日 寄成
+イグジット: SQ-3日 大引成
+Go/No-go: CME NKD=F 前日比下落 → Go
 
 実行方法:
     python3 scripts/pipeline/generate_sq4_picks.py
@@ -34,8 +36,13 @@ OUTPUT_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
 BACKTEST_START = "2022-04-01"
 PRICE_MIN = 1000
 PRICE_MAX = 20000
-GAP_FLOOR = -10.0
 TOP_N = 10
+
+GAISHU_SECTORS = frozenset({
+    "電気機器", "輸送用機器", "機械", "精密機器",
+    "化学", "非鉄金属", "鉄鋼", "ゴム製品",
+    "海運業", "鉱業", "石油･石炭製品",
+})
 
 
 def load_prices() -> pd.DataFrame:
@@ -43,7 +50,16 @@ def load_prices() -> pd.DataFrame:
     ps["Date"] = pd.to_datetime(ps["Date"])
     ps["Code"] = ps["Code"].astype(str)
     ps = ps.sort_values(["Code", "Date"]).drop_duplicates(subset=["Code", "Date"])
+    ps["prev_close"] = ps.groupby("Code")["AdjC"].shift(1)
+    ps["ret_5d"] = ps.groupby("Code")["AdjC"].pct_change(5)
     return ps
+
+
+def load_gaishu_codes() -> set[str]:
+    """外需セクターの5桁Codeセットを返す"""
+    meta = pd.read_parquet(META_PATH)
+    meta["Code"] = meta["code"].astype(str) + "0"
+    return set(meta[meta["sectors"].isin(GAISHU_SECTORS)]["Code"])
 
 
 def load_cme() -> pd.DataFrame:
@@ -121,33 +137,38 @@ def select_picks(
     sq4_date: pd.Timestamp,
     prev_date: pd.Timestamp,
     sq3_date: pd.Timestamp,
+    gaishu_codes: set[str],
     name_map: dict[str, str] | None = None,
 ) -> list[dict]:
-    prev_data = ps[ps["Date"] == prev_date][["Code", "AdjC"]].rename(
-        columns={"AdjC": "prev_close"}
-    )
-    entry_data = ps[ps["Date"] == sq4_date][["Code", "AdjO"]].rename(
+    """外需セクター × 5日ret worst10 で選定"""
+    prev_data = ps[ps["Date"] == prev_date][["Code", "AdjC", "ret_5d"]].copy()
+    prev_data = prev_data.rename(columns={"AdjC": "prev_close"})
+    prev_data = prev_data[
+        (prev_data["prev_close"] >= PRICE_MIN)
+        & (prev_data["prev_close"] <= PRICE_MAX)
+        & (prev_data["Code"].isin(gaishu_codes))
+    ]
+    prev_data = prev_data.dropna(subset=["ret_5d"])
+
+    if prev_data.empty:
+        return []
+
+    picks_df = prev_data.nsmallest(TOP_N, "ret_5d")
+    codes = picks_df["Code"].tolist()
+
+    entry_data = ps[(ps["Date"] == sq4_date) & (ps["Code"].isin(codes))][["Code", "AdjO"]].rename(
         columns={"AdjO": "entry_open"}
     )
-    exit_data = ps[ps["Date"] == sq3_date][["Code", "AdjC"]].rename(
+    exit_data = ps[(ps["Date"] == sq3_date) & (ps["Code"].isin(codes))][["Code", "AdjC"]].rename(
         columns={"AdjC": "exit_close"}
     )
 
-    merged = prev_data.merge(entry_data, on="Code").merge(exit_data, on="Code")
-    merged = merged[
-        (merged["prev_close"] >= PRICE_MIN)
-        & (merged["prev_close"] <= PRICE_MAX)
-    ]
-    merged["gap_pct"] = (merged["entry_open"] / merged["prev_close"] - 1) * 100
-    merged = merged[merged["gap_pct"] >= GAP_FLOOR]
-
+    merged = picks_df[["Code", "prev_close", "ret_5d"]].merge(entry_data, on="Code").merge(exit_data, on="Code")
     if merged.empty:
         return []
 
-    picks = merged.nsmallest(TOP_N, "gap_pct")
-
     trades = []
-    for _, row in picks.iterrows():
+    for _, row in merged.iterrows():
         code_5 = row["Code"]
         code_4 = code_5[:-1] if len(code_5) == 5 and code_5[-1] == "0" else code_5
         ret_pct = (row["exit_close"] / row["entry_open"] - 1) * 100
@@ -155,9 +176,9 @@ def select_picks(
             "code": code_4,
             "name": (name_map or {}).get(code_5, ""),
             "prev_close": round(float(row["prev_close"]), 1),
+            "ret_5d": round(float(row["ret_5d"] * 100), 2),
             "entry_price": round(float(row["entry_open"]), 1),
             "exit_price": round(float(row["exit_close"]), 1),
-            "gap_pct": round(float(row["gap_pct"]), 2),
             "ret_pct": round(float(ret_pct), 2),
             "pnl_100": int(round((row["exit_close"] - row["entry_open"]) * 100)),
         })
@@ -254,29 +275,34 @@ def get_next_sq4(calendar_path: Path) -> dict | None:
     }
 
 
-def get_candidates(ps: pd.DataFrame) -> dict:
+def get_candidates(ps: pd.DataFrame, gaishu_codes: set[str]) -> dict:
     latest_date = ps["Date"].max()
     latest = ps[ps["Date"] == latest_date][["Code", "AdjC"]].copy()
     latest = latest[
-        (latest["AdjC"] >= PRICE_MIN) & (latest["AdjC"] <= PRICE_MAX)
+        (latest["AdjC"] >= PRICE_MIN)
+        & (latest["AdjC"] <= PRICE_MAX)
+        & (latest["Code"].isin(gaishu_codes))
     ]
     return {
         "as_of": latest_date.strftime("%Y-%m-%d"),
         "count": len(latest),
-        "price_5000_plus": int((latest["AdjC"] >= 5000).sum()),
-        "price_under_5000": int((latest["AdjC"] < 5000).sum()),
+        "sector": "外需",
     }
 
 
 def main() -> int:
     print("=" * 60)
-    print("Generate SQ-4 Picks (Gap-down Top 10)")
+    print("Generate SQ-4 Picks (外需×5日ret worst10)")
     print("=" * 60)
 
-    print("\n[1] Loading prices_topix500_oc.parquet (J-Quants AdjO+AdjC)...")
+    print("\n[1] Loading prices_topix500_oc.parquet...")
     ps = load_prices()
     print(f"  {len(ps):,} rows, {ps['Code'].nunique()} codes (TOPIX 500)")
     print(f"  Range: {ps['Date'].min().date()} ~ {ps['Date'].max().date()}")
+
+    print("\n[1.5] Loading gaishu sector codes...")
+    gaishu_codes = load_gaishu_codes()
+    print(f"  {len(gaishu_codes)} codes in gaishu sectors")
 
     print("\n[2] Loading name map from meta_jquants...")
     name_map = load_name_map()
@@ -300,7 +326,7 @@ def main() -> int:
             cme_close_map[row["date"]] = row["Close"]
 
     for sq in sq_schedule:
-        trades = select_picks(ps, sq["sq4_entry"], sq["prev_day"], sq["sq3_exit"], name_map)
+        trades = select_picks(ps, sq["sq4_entry"], sq["prev_day"], sq["sq3_exit"], gaishu_codes, name_map)
         if not trades:
             continue
 
@@ -349,7 +375,6 @@ def main() -> int:
 
     print(f"\n[6] Computing stats...")
     stats = calc_stats(all_trades)
-    stats_by_price = calc_stats_by_price(all_trades)
 
     # CME分割stats
     cme_down_trades = []
@@ -368,15 +393,13 @@ def main() -> int:
     print(f"  CME down: N={stats_cme_down.get('total',0)} PF={stats_cme_down.get('pf','N/A')}")
     print(f"  CME up:   N={stats_cme_up.get('total',0)} PF={stats_cme_up.get('pf','N/A')}")
 
-    for seg, s in stats_by_price.items():
-        print(f"  [{seg}] N={s['total']} PF={s['pf']} WR={s['wr']:.1f}%")
 
     print(f"\n[7] Next SQ-4...")
     next_sq4 = get_next_sq4(CALENDAR_PATH)
-    candidates = get_candidates(ps)
+    candidates = get_candidates(ps, gaishu_codes)
     if next_sq4:
         print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
-    print(f"  Candidates: {candidates['count']} stocks (≥5000: {candidates['price_5000_plus']})")
+    print(f"  Candidates: {candidates['count']} stocks (外需×{PRICE_MIN}-{PRICE_MAX}円)")
 
     max_dd = calc_max_dd(monthly_results)
     # CME下落時のみのMaxDD
@@ -390,11 +413,10 @@ def main() -> int:
             "backtest_start": BACKTEST_START,
             "price_min": PRICE_MIN,
             "price_max": PRICE_MAX,
-            "gap_floor": GAP_FLOOR,
             "top_n": TOP_N,
+            "selection": "gaishu_5d_ret_worst10",
         },
         "stats": stats,
-        "stats_by_price": stats_by_price,
         "stats_cme_down": stats_cme_down,
         "stats_cme_up": stats_cme_up,
         "max_dd": max_dd,
