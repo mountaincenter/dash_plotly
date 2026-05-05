@@ -295,12 +295,19 @@ def main() -> int:
         month_ret = sum(t["ret_pct"] for t in trades)
         month_pnl = sum(t["pnl_100"] for t in trades)
 
-        # CME金曜(=SQ-4前日)のリターン
+        # CME: SQ-4前日付近の直近2営業日を探す（米休場対応）
         friday = sq["prev_day"]
         friday_idx = bdays.index(friday)
-        thursday = bdays[friday_idx - 1] if friday_idx >= 1 else None
-        cme_fri = cme_close_map.get(friday)
-        cme_thu = cme_close_map.get(thursday) if thursday else None
+        cme_fri = None
+        cme_thu = None
+        for offset in range(3):
+            idx = friday_idx - offset
+            if idx >= 0 and bdays[idx] in cme_close_map:
+                if cme_fri is None:
+                    cme_fri = cme_close_map[bdays[idx]]
+                elif cme_thu is None:
+                    cme_thu = cme_close_map[bdays[idx]]
+                    break
         cme_change = None
         cme_ret = None
         if cme_fri is not None and cme_thu is not None and cme_thu != 0:

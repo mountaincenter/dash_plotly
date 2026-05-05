@@ -62,30 +62,30 @@
     }
   },
   "stats_cme_down": {
-    "total": 190,
-    "wins": 140,
-    "losses": 50,
-    "wr": 73.7,
-    "avg_ret": 2.211,
-    "median_ret": 1.75,
+    "total": 210,
+    "wins": 151,
+    "losses": 59,
+    "wr": 71.9,
+    "avg_ret": 2.093,
+    "median_ret": 1.42,
     "max_ret": 19.91,
     "min_ret": -10.31,
-    "pf": 4.75,
-    "total_ret": 420.18,
-    "total_pnl_100": 1489670
+    "pf": 4.54,
+    "total_ret": 439.47,
+    "total_pnl_100": 1502270
   },
   "stats_cme_up": {
-    "total": 260,
-    "wins": 132,
-    "losses": 128,
-    "wr": 50.8,
-    "avg_ret": -0.097,
-    "median_ret": 0.075,
+    "total": 270,
+    "wins": 139,
+    "losses": 131,
+    "wr": 51.5,
+    "avg_ret": -0.044,
+    "median_ret": 0.09,
     "max_ret": 9.54,
     "min_ret": -8.95,
-    "pf": 0.91,
-    "total_ret": -25.26,
-    "total_pnl_100": -84640
+    "pf": 0.96,
+    "total_ret": -11.94,
+    "total_pnl_100": -46120
   },
   "next_sq4": {
     "entry_date": "2026-06-08",
@@ -1449,8 +1449,8 @@
       "n_picks": 10,
       "total_ret": 24.1,
       "total_pnl_100": 46600,
-      "cme_change": null,
-      "cme_ret": null,
+      "cme_change": -65,
+      "cme_ret": -0.23,
       "picks": [
         {
           "code": "4186",
@@ -3129,8 +3129,8 @@
       "n_picks": 10,
       "total_ret": 13.32,
       "total_pnl_100": 38520,
-      "cme_change": null,
-      "cme_ret": null,
+      "cme_change": 375,
+      "cme_ret": 0.92,
       "picks": [
         {
           "code": "4612",
@@ -5481,8 +5481,8 @@
       "n_picks": 10,
       "total_ret": -4.81,
       "total_pnl_100": -34000,
-      "cme_change": null,
-      "cme_ret": null,
+      "cme_change": -860,
+      "cme_ret": -1.59,
       "picks": [
         {
           "code": "3436",
