@@ -989,6 +989,48 @@ async def get_stats(rule: Optional[str] = None):
     gl = abs(monthly_df[monthly_df["pnl_yen"] < 0]["pnl_yen"].sum()) if not monthly_df.empty else 0
     filtered_pf = _safe_float(gp / gl, 2) if gl > 0 else 0
 
+    # MaxDD (月次PnL累計ベース)
+    max_dd_amount = 0
+    max_dd_pct = 0.0
+    if monthly:
+        cum = 0
+        peak = 0
+        for m in monthly:
+            cum += m["pnl"]
+            peak = max(peak, cum)
+            max_dd_amount = min(max_dd_amount, cum - peak)
+        cum_pct = 0.0
+        peak_pct = 0.0
+        for m in monthly:
+            n_month = m["count"]
+            if n_month > 0:
+                mdf_month = monthly_df[monthly_df["entry_date"].dt.strftime("%Y-%m") == m["month"]]
+                cum_pct += float(mdf_month["ret_pct"].sum())
+            peak_pct = max(peak_pct, cum_pct)
+            max_dd_pct = min(max_dd_pct, cum_pct - peak_pct)
+
+    # 年別サマリー
+    year_summary = []
+    if "entry_date" in monthly_df.columns and not monthly_df.empty:
+        monthly_df["year"] = monthly_df["entry_date"].dt.year
+        for year, ydf in monthly_df.groupby("year"):
+            n = len(ydf)
+            wins = int((ydf["ret_pct"] > 0).sum())
+            y_pnl = _safe_int(ydf["pnl_yen"].sum())
+            y_ret = _safe_float(ydf["ret_pct"].sum(), 2)
+            y_gp = ydf[ydf["pnl_yen"] > 0]["pnl_yen"].sum()
+            y_gl = abs(ydf[ydf["pnl_yen"] < 0]["pnl_yen"].sum())
+            y_pf = _safe_float(y_gp / y_gl, 2) if y_gl > 0 else None
+            year_summary.append({
+                "year": int(year),
+                "n": n,
+                "wins": wins,
+                "wr": _safe_float(wins / n * 100, 1),
+                "pnl": y_pnl,
+                "total_ret": y_ret,
+                "pf": y_pf,
+            })
+
     return {
         "by_rule": by_rule,
         "monthly": monthly,
@@ -997,4 +1039,6 @@ async def get_stats(rule: Optional[str] = None):
         "win_rate": filtered_wr,
         "pf": filtered_pf,
         "rule_filter": rule_filter,
+        "max_dd": {"amount": int(max_dd_amount), "pct": round(max_dd_pct, 2)},
+        "year_summary": year_summary,
     }
