@@ -1031,9 +1031,22 @@ async def get_stats(rule: Optional[str] = None):
                 "pf": y_pf,
             })
 
+    # 個別トレードリスト
+    trades = []
+    if not monthly_df.empty:
+        trade_cols = ["ticker", "stock_name", "entry_date", "exit_date", "entry_price", "exit_price", "ret_pct", "pnl_yen", "exit_type"]
+        tdf = monthly_df[[c for c in trade_cols if c in monthly_df.columns]].copy()
+        tdf["entry_date"] = tdf["entry_date"].dt.strftime("%Y-%m-%d")
+        tdf["exit_date"] = tdf["exit_date"].dt.strftime("%Y-%m-%d") if "exit_date" in tdf.columns else ""
+        tdf["entry_price"] = tdf["entry_price"].round(1)
+        tdf["exit_price"] = tdf["exit_price"].round(1)
+        tdf["ret_pct"] = tdf["ret_pct"].round(2)
+        trades = tdf.to_dict("records")
+
     return {
         "by_rule": by_rule,
         "monthly": monthly,
+        "trades": trades,
         "total_trades": filtered_total,
         "total_pnl": filtered_pnl,
         "win_rate": filtered_wr,
