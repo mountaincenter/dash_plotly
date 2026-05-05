@@ -27,6 +27,7 @@ from common_cfg.paths import PARQUET_DIR
 
 PRICES_PATH = PARQUET_DIR / "prices_topix500_oc.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
+FUTURES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
 
@@ -43,6 +44,17 @@ def load_prices() -> pd.DataFrame:
     ps["Code"] = ps["Code"].astype(str)
     ps = ps.sort_values(["Code", "Date"]).drop_duplicates(subset=["Code", "Date"])
     return ps
+
+
+def load_cme() -> pd.DataFrame:
+    """CME NKD=F 日足を読み込み"""
+    if not FUTURES_PATH.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(FUTURES_PATH)
+    cme = df[df["ticker"] == "NKD=F"][["date", "Close"]].copy()
+    cme["date"] = pd.to_datetime(cme["date"])
+    cme = cme.dropna(subset=["Close"]).sort_values("date").reset_index(drop=True)
+    return cme
 
 
 def compute_sq_dates(bdays: list[pd.Timestamp], start: str) -> list[dict]:
@@ -258,14 +270,22 @@ def main() -> int:
     name_map = load_name_map()
     print(f"  {len(name_map)} codes mapped")
 
-    print("\n[3] Computing business days & SQ dates...")
+    print("\n[3] Loading CME NKD=F...")
+    cme = load_cme()
+    print(f"  {len(cme)} rows" if not cme.empty else "  not available")
+
+    print("\n[4] Computing business days & SQ dates...")
     bdays = sorted(ps["Date"].unique())
     sq_schedule = compute_sq_dates(bdays, BACKTEST_START)
     print(f"  SQ-4 dates found: {len(sq_schedule)}")
 
-    print("\n[4] Selecting picks for each SQ-4...")
+    print("\n[5] Selecting picks for each SQ-4...")
     monthly_results = []
     all_trades = []
+    cme_close_map = {}
+    if not cme.empty:
+        for _, row in cme.iterrows():
+            cme_close_map[row["date"]] = row["Close"]
 
     for sq in sq_schedule:
         trades = select_picks(ps, sq["sq4_entry"], sq["prev_day"], sq["sq3_exit"], name_map)
@@ -275,6 +295,18 @@ def main() -> int:
         month_ret = sum(t["ret_pct"] for t in trades)
         month_pnl = sum(t["pnl_100"] for t in trades)
 
+        # CME金曜(=SQ-4前日)のリターン
+        friday = sq["prev_day"]
+        friday_idx = bdays.index(friday)
+        thursday = bdays[friday_idx - 1] if friday_idx >= 1 else None
+        cme_fri = cme_close_map.get(friday)
+        cme_thu = cme_close_map.get(thursday) if thursday else None
+        cme_change = None
+        cme_ret = None
+        if cme_fri is not None and cme_thu is not None and cme_thu != 0:
+            cme_change = int(round(cme_fri - cme_thu))
+            cme_ret = round((cme_fri / cme_thu - 1) * 100, 2)
+
         monthly_results.append({
             "month": sq["month"],
             "entry_date": sq["sq4_entry"].strftime("%Y-%m-%d"),
@@ -282,6 +314,8 @@ def main() -> int:
             "n_picks": len(trades),
             "total_ret": round(month_ret, 2),
             "total_pnl_100": month_pnl,
+            "cme_change": cme_change,
+            "cme_ret": cme_ret,
             "picks": trades,
         })
         all_trades.extend(
@@ -290,29 +324,42 @@ def main() -> int:
             for t in trades
         )
         symbol = "+" if month_ret > 0 else "-" if month_ret < 0 else "="
+        cme_str = f"CME={cme_change:+,}" if cme_change is not None else ""
         print(f"  {sq['month']} | {sq['sq4_entry'].strftime('%m/%d')}→{sq['sq3_exit'].strftime('%m/%d')} "
-              f"| N={len(trades):2d} | ret={month_ret:+.2f}% {symbol}")
+              f"| N={len(trades):2d} | ret={month_ret:+.2f}% {symbol} {cme_str}")
 
-    print(f"\n[5] Computing stats...")
+    print(f"\n[6] Computing stats...")
     stats = calc_stats(all_trades)
     stats_by_price = calc_stats_by_price(all_trades)
+
+    # CME分割stats
+    cme_down_trades = []
+    cme_up_trades = []
+    for m in monthly_results:
+        if m["cme_ret"] is not None:
+            target = cme_down_trades if m["cme_ret"] < 0 else cme_up_trades
+            target.extend(m["picks"])
+    stats_cme_down = calc_stats(cme_down_trades) if cme_down_trades else {}
+    stats_cme_up = calc_stats(cme_up_trades) if cme_up_trades else {}
 
     print(f"  Total trades: {stats.get('total', 0)}")
     print(f"  Win rate: {stats.get('wr', 0):.1f}%")
     print(f"  PF: {stats.get('pf', 'N/A')}")
     print(f"  Avg ret: {stats.get('avg_ret', 0):+.3f}%")
+    print(f"  CME down: N={stats_cme_down.get('total',0)} PF={stats_cme_down.get('pf','N/A')}")
+    print(f"  CME up:   N={stats_cme_up.get('total',0)} PF={stats_cme_up.get('pf','N/A')}")
 
     for seg, s in stats_by_price.items():
         print(f"  [{seg}] N={s['total']} PF={s['pf']} WR={s['wr']:.1f}%")
 
-    print(f"\n[6] Next SQ-4...")
+    print(f"\n[7] Next SQ-4...")
     next_sq4 = get_next_sq4(CALENDAR_PATH)
     candidates = get_candidates(ps)
     if next_sq4:
         print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
     print(f"  Candidates: {candidates['count']} stocks (≥5000: {candidates['price_5000_plus']})")
 
-    print(f"\n[7] Saving {OUTPUT_PATH.name}...")
+    print(f"\n[8] Saving {OUTPUT_PATH.name}...")
     output = {
         "generated": date.today().isoformat(),
         "params": {
@@ -324,6 +371,8 @@ def main() -> int:
         },
         "stats": stats,
         "stats_by_price": stats_by_price,
+        "stats_cme_down": stats_cme_down,
+        "stats_cme_up": stats_cme_up,
         "next_sq4": next_sq4,
         "candidates": candidates,
         "monthly": monthly_results,

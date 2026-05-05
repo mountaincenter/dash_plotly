@@ -280,6 +280,8 @@ async def get_calendar_data():
         "sq4": {
             "stats": sq4_data.get("stats", {}),
             "stats_by_price": sq4_data.get("stats_by_price", {}),
+            "stats_cme_down": sq4_data.get("stats_cme_down", {}),
+            "stats_cme_up": sq4_data.get("stats_cme_up", {}),
             "next_sq4": sq4_data.get("next_sq4"),
             "candidates": sq4_data.get("candidates", {}),
             "monthly": sq4_data.get("monthly", []),
