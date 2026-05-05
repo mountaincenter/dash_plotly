@@ -939,6 +939,10 @@ async def get_stats(rule: Optional[str] = None):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col])
 
+    # 未完了トレード（データ末尾打ち切り）を除外
+    if "exit_type" in df.columns:
+        df = df[df["exit_type"] != "end_of_data"]
+
     # B1-B4 ルール別統計
     rule_filter = rule  # パラメータを退避
     by_rule = {}
