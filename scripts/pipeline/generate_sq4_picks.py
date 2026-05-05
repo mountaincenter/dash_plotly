@@ -58,61 +58,48 @@ def load_cme() -> pd.DataFrame:
 
 
 def compute_sq_dates(bdays: list[pd.Timestamp], start: str) -> list[dict]:
-    bday_set = set(bdays)
+    """calendar.parquetのsq4_entry/sq3_exitフラグからSQ日程を構築"""
+    cal = pd.read_parquet(CALENDAR_PATH)
+    cal["date"] = pd.to_datetime(cal["date"])
     start_ts = pd.Timestamp(start)
     last_bday = bdays[-1]
+    bday_set = set(bdays)
+
+    sq4_dates = cal[cal["sq4_entry"] == True]["date"].tolist()
+    sq3_dates = cal[cal["sq3_exit"] == True]["date"].tolist()
+    sq_days = cal[cal["sq_day"] == True]["date"].tolist()
 
     results = []
-    years = sorted(set(d.year for d in bdays if d >= start_ts))
+    for sq4 in sq4_dates:
+        if sq4 < start_ts:
+            continue
+        if sq4 not in bday_set:
+            continue
 
-    for year in years:
-        for month in range(1, 13):
-            fridays = []
-            d = date(year, month, 1)
-            while d.month == month:
-                if d.weekday() == 4:
-                    fridays.append(pd.Timestamp(d))
-                d = date.fromordinal(d.toordinal() + 1)
+        sq3_after = [d for d in sq3_dates if d > sq4]
+        if not sq3_after:
+            continue
+        sq3 = sq3_after[0]
+        if sq3 > last_bday:
+            continue
 
-            if len(fridays) < 2:
-                continue
-            second_friday = fridays[1]
+        sq_after = [d for d in sq_days if d > sq3]
+        sq_day = sq_after[0] if sq_after else sq3
 
-            if second_friday > last_bday:
-                continue
+        sq4_idx = bdays.index(sq4)
+        if sq4_idx < 1:
+            continue
+        prev_day = bdays[sq4_idx - 1]
 
-            if second_friday in bday_set:
-                sq_day = second_friday
-            else:
-                candidates = [b for b in bdays if b <= second_friday]
-                if not candidates:
-                    continue
-                sq_day = candidates[-1]
+        month_str = f"{sq_day.year}-{sq_day.month:02d}"
 
-            sq_idx = bdays.index(sq_day)
-            if sq_idx < 4:
-                continue
-
-            sq4 = bdays[sq_idx - 4]
-            sq3 = bdays[sq_idx - 3]
-
-            if sq4 < start_ts:
-                continue
-            if sq3 > last_bday:
-                continue
-
-            sq4_prev_idx = bdays.index(sq4) - 1
-            if sq4_prev_idx < 0:
-                continue
-            prev_day = bdays[sq4_prev_idx]
-
-            results.append({
-                "month": f"{year}-{month:02d}",
-                "sq_day": sq_day,
-                "sq4_entry": sq4,
-                "sq3_exit": sq3,
-                "prev_day": prev_day,
-            })
+        results.append({
+            "month": month_str,
+            "sq_day": sq_day,
+            "sq4_entry": sq4,
+            "sq3_exit": sq3,
+            "prev_day": prev_day,
+        })
 
     return results
 

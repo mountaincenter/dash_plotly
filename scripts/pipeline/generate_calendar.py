@@ -25,7 +25,8 @@ import pandas as pd
 
 from common_cfg.paths import PARQUET_DIR
 
-YEAR = date.today().year
+START_YEAR = 2022
+END_YEAR = date.today().year
 OUTPUT_PATH = PARQUET_DIR / "calendar.parquet"
 
 
@@ -165,23 +166,33 @@ def build_calendar(bdays: list[date], sq_flags: dict, qe_flags: dict) -> pd.Data
 
 def main() -> int:
     print("=" * 60)
-    print(f"Generate Calendar Parquet ({YEAR})")
+    print(f"Generate Calendar Parquet ({START_YEAR}-{END_YEAR})")
     print("=" * 60)
 
     print("\n[1] 営業日取得 (jquants mkt calendar)")
-    bdays = fetch_business_days(YEAR)
+    all_bdays = []
+    for year in range(START_YEAR, END_YEAR + 1):
+        all_bdays.extend(fetch_business_days(year))
+    all_bdays.sort()
 
     print("\n[2] SQ日特定 + SQ-4/SQ-3フラグ")
-    sq_days = find_sq_days(bdays)
-    sq_flags = calc_sq_flags(bdays, sq_days)
+    all_sq_flags = {}
+    for year in range(START_YEAR, END_YEAR + 1):
+        year_bdays = [d for d in all_bdays if d.year == year]
+        sq_days = find_sq_days(year_bdays)
+        sq_flags = calc_sq_flags(year_bdays, sq_days)
+        all_sq_flags.update(sq_flags)
 
     print("\n[3] 四半期末フラグ")
-    qe_flags = calc_quarter_end_flags(bdays)
+    all_qe_flags = {}
+    for year in range(START_YEAR, END_YEAR + 1):
+        year_bdays = [d for d in all_bdays if d.year == year]
+        qe_flags = calc_quarter_end_flags(year_bdays)
+        all_qe_flags.update(qe_flags)
 
     print("\n[4] calendar.parquet 生成")
-    df = build_calendar(bdays, sq_flags, qe_flags)
+    df = build_calendar(all_bdays, all_sq_flags, all_qe_flags)
 
-    # サマリー
     print(f"\n  営業日数: {len(df)}")
     print(f"  SQ-4エントリー日: {df['sq4_entry'].sum()}回")
     print(f"  1306買い日: {df['qe_1306_buy'].sum()}回")
