@@ -250,6 +250,13 @@ jobs:
           python scripts/pipeline/generate_granville_recommendation.py
         timeout-minutes: 10
 
+      - name: "[Prepare] Generate SQ-4 picks"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📋 Generating SQ-4 picks (外需×5日ret worst10)..."
+          python scripts/pipeline/generate_sq4_picks.py
+        timeout-minutes: 5
+
       - name: "[Prepare] Update all_stocks (grok + granville + bearish + pairs)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -280,6 +287,10 @@ jobs:
                    prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
+
+          # sq4_trades.json
+          [ -f "data/analysis/sq4_trades.json" ] && \
+            aws s3 cp "data/analysis/sq4_trades.json" "s3://$S3_BUCKET/analysis/sq4_trades.json" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet \
@@ -317,6 +328,15 @@ jobs:
           # staging S3から当日VI同期（18:00 fetchで保存済み）
           aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
           python scripts/pipeline/update_cme_close.py
+        timeout-minutes: 5
+
+      - name: "[CME] Regenerate SQ-4 picks (CME確定後)"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "📋 Regenerating SQ-4 picks with latest CME..."
+          python scripts/pipeline/generate_sq4_picks.py
+          [ -f "data/analysis/sq4_trades.json" ] && \
+            aws s3 cp "data/analysis/sq4_trades.json" "s3://$S3_BUCKET/analysis/sq4_trades.json" --only-show-errors
         timeout-minutes: 5
 
       - name: "[CME] Generate B4 Slack section"
