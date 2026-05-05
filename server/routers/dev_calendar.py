@@ -127,6 +127,56 @@ def _load_sq4_json() -> dict:
     return data
 
 
+def _load_cme_latest() -> dict:
+    """CME NKD=F 直近終値を取得"""
+    cached = _cached("cme_latest")
+    if cached is not None:
+        return cached
+    try:
+        df = _read_parquet_by_env("futures_prices_max_1d.parquet")
+        cme = df[df["ticker"] == "NKD=F"][["date", "Close"]].copy()
+        cme["date"] = pd.to_datetime(cme["date"])
+        cme = cme.dropna(subset=["Close"]).sort_values("date").reset_index(drop=True)
+        if len(cme) < 2:
+            return {}
+        latest = cme.iloc[-1]
+        prev = cme.iloc[-2]
+        result = {
+            "date": latest["date"].strftime("%Y-%m-%d"),
+            "close": int(round(latest["Close"])),
+            "prev_close": int(round(prev["Close"])),
+            "change": int(round(latest["Close"] - prev["Close"])),
+            "change_pct": round((latest["Close"] / prev["Close"] - 1) * 100, 2),
+        }
+        _set_cache("cme_latest", result)
+        return result
+    except Exception:
+        return {}
+
+
+def _calc_1306_max_dd(trades: list[dict]) -> dict:
+    """1306トレードからMaxDD計算"""
+    if not trades:
+        return {"amount": 0, "pct": 0.0}
+    cum = 0
+    peak = 0
+    max_dd_amount = 0
+    cum_ret = 0.0
+    peak_ret = 0.0
+    max_dd_pct = 0.0
+    for t in trades:
+        pnl = t.get("pnl_1000") or 0
+        cum += pnl
+        peak = max(peak, cum)
+        max_dd_amount = min(max_dd_amount, cum - peak)
+
+        cum_ret += t.get("ret_pct", 0)
+        peak_ret = max(peak_ret, cum_ret)
+        max_dd_pct = min(max_dd_pct, cum_ret - peak_ret)
+
+    return {"amount": int(max_dd_amount), "pct": round(max_dd_pct, 3)}
+
+
 def _enrich_trades(trades: list[dict], prices: pd.DataFrame) -> list[dict]:
     """tradesにentry_price, exit_price, pnl_1000(1000株)を追加"""
     price_map = {}
@@ -262,6 +312,12 @@ async def get_calendar_data():
 
     total_pnl_1000 = sum(t["pnl_1000"] for t in trades if t.get("pnl_1000") is not None)
 
+    # --- 1306 MaxDD ---
+    etf_max_dd = _calc_1306_max_dd(trades)
+
+    # --- CME latest ---
+    cme_latest = _load_cme_latest()
+
     # --- SQ-4 trades ---
     sq4_data = _load_sq4_json()
 
@@ -269,11 +325,13 @@ async def get_calendar_data():
         "today": today_data,
         "upcoming": upcoming,
         "etf_latest": etf_latest,
+        "cme_latest": cme_latest,
         "etf1306": {
             "stats": {
                 **stats,
                 "pnl_1000": total_pnl_1000,
             },
+            "max_dd": etf_max_dd,
             "year_summary": year_summary,
             "trades": trades,
         },
@@ -282,6 +340,8 @@ async def get_calendar_data():
             "stats_by_price": sq4_data.get("stats_by_price", {}),
             "stats_cme_down": sq4_data.get("stats_cme_down", {}),
             "stats_cme_up": sq4_data.get("stats_cme_up", {}),
+            "max_dd": sq4_data.get("max_dd", {}),
+            "max_dd_cme_down": sq4_data.get("max_dd_cme_down", {}),
             "next_sq4": sq4_data.get("next_sq4"),
             "candidates": sq4_data.get("candidates", {}),
             "monthly": sq4_data.get("monthly", []),

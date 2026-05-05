@@ -87,6 +87,14 @@
     "total_ret": -38.24,
     "total_pnl_100": -199720
   },
+  "max_dd": {
+    "amount": -237600,
+    "pct": -64.92
+  },
+  "max_dd_cme_down": {
+    "amount": -66400,
+    "pct": -17.2
+  },
   "next_sq4": {
     "entry_date": "2026-06-08",
     "exit_date": "2026-06-09"

@@ -192,6 +192,31 @@ def calc_stats(all_trades: list[dict]) -> dict:
     }
 
 
+def calc_max_dd(monthly_results: list[dict]) -> dict:
+    """月次PnLからMaxDD(金額・比率)を計算"""
+    if not monthly_results:
+        return {"amount": 0, "pct": 0.0}
+    cum = 0
+    peak = 0
+    max_dd_amount = 0
+    cum_rets = []
+    cum_ret = 0.0
+    peak_ret = 0.0
+    max_dd_pct = 0.0
+    for m in monthly_results:
+        cum += m["total_pnl_100"]
+        peak = max(peak, cum)
+        dd = cum - peak
+        max_dd_amount = min(max_dd_amount, dd)
+
+        cum_ret += m["total_ret"]
+        peak_ret = max(peak_ret, cum_ret)
+        dd_pct = cum_ret - peak_ret
+        max_dd_pct = min(max_dd_pct, dd_pct)
+
+    return {"amount": int(max_dd_amount), "pct": round(max_dd_pct, 2)}
+
+
 def calc_stats_by_price(all_trades: list[dict]) -> dict:
     segments = {
         "1000_5000": (1000, 5000),
@@ -353,6 +378,11 @@ def main() -> int:
         print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
     print(f"  Candidates: {candidates['count']} stocks (≥5000: {candidates['price_5000_plus']})")
 
+    max_dd = calc_max_dd(monthly_results)
+    # CME下落時のみのMaxDD
+    cme_down_monthly = [m for m in monthly_results if m.get("cme_ret") is not None and m["cme_ret"] < 0]
+    max_dd_cme_down = calc_max_dd(cme_down_monthly)
+
     print(f"\n[8] Saving {OUTPUT_PATH.name}...")
     output = {
         "generated": date.today().isoformat(),
@@ -367,6 +397,8 @@ def main() -> int:
         "stats_by_price": stats_by_price,
         "stats_cme_down": stats_cme_down,
         "stats_cme_up": stats_cme_up,
+        "max_dd": max_dd,
+        "max_dd_cme_down": max_dd_cme_down,
         "next_sq4": next_sq4,
         "candidates": candidates,
         "monthly": monthly_results,
