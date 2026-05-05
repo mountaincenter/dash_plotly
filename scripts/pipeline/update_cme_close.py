@@ -91,6 +91,28 @@ def main():
     if excluded:
         print(f"  Excluded: {', '.join(excluded)}")
 
+    # futures_prices_max_1d.parquet にNKD最新行をupsert
+    futures_path = PARQUET_DIR / "futures_prices_max_1d.parquet"
+    if futures_path.exists():
+        try:
+            fut_df = pd.read_parquet(futures_path)
+            nkd_rows = nkd.reset_index().rename(columns={"Date": "date"})
+            nkd_rows["ticker"] = "NKD=F"
+            nkd_rows["date"] = pd.to_datetime(nkd_rows["date"]).dt.tz_localize(None)
+            fut_df["date"] = pd.to_datetime(fut_df["date"])
+            existing_nkd = fut_df[fut_df["ticker"] == "NKD=F"]
+            existing_dates = set(existing_nkd["date"].dt.strftime("%Y-%m-%d"))
+            new_rows = nkd_rows[~nkd_rows["date"].dt.strftime("%Y-%m-%d").isin(existing_dates)]
+            if not new_rows.empty:
+                cols = [c for c in fut_df.columns if c in new_rows.columns]
+                fut_df = pd.concat([fut_df, new_rows[cols]], ignore_index=True)
+                fut_df.to_parquet(futures_path, index=False)
+                print(f"  [OK] Updated futures_prices_max_1d.parquet (+{len(new_rows)} NKD rows)")
+            else:
+                print("  [OK] futures_prices_max_1d.parquet already up to date")
+        except Exception as e:
+            print(f"  [WARN] Failed to update futures parquet: {e}")
+
     # 結果保存
     result = {
         "nkd_close": nkd_close,

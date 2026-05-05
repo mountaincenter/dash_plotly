@@ -332,7 +332,10 @@ jobs:
           echo "🌅 Updating CME close..."
           # staging S3から当日VI同期（18:00 fetchで保存済み）
           aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
+          aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors || true
           python scripts/pipeline/update_cme_close.py
+          [ -f "data/parquet/futures_prices_max_1d.parquet" ] && \
+            aws s3 cp "data/parquet/futures_prices_max_1d.parquet" "s3://$S3_BUCKET/${S3_PREFIX}futures_prices_max_1d.parquet" --only-show-errors
         timeout-minutes: 5
 
       - name: "[CME] Regenerate SQ-4 picks (CME確定後)"
