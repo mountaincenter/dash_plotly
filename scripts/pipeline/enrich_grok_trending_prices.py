@@ -135,7 +135,12 @@ def calc_extreme_market_info() -> dict:
         print("[WARN] Not enough Nikkei data")
         return result
 
-    nikkei_df = nikkei_df.sort_values("date")
+    nikkei_df = nikkei_df.dropna(subset=["Close"]).sort_values("date")
+
+    if len(nikkei_df) < 2:
+        print("[WARN] Not enough Nikkei data after dropna")
+        return result
+
     latest_nikkei = nikkei_df["Close"].iloc[-1]
     prev_nikkei = nikkei_df["Close"].iloc[-2]
     latest_nikkei_date = nikkei_df["date"].iloc[-1]
@@ -162,7 +167,7 @@ def calc_extreme_market_info() -> dict:
         print("[WARN] NKD=F data not found in futures_prices_60d_5m.parquet")
         return result
 
-    futures_df = futures_df.sort_values("date")
+    futures_df = futures_df.dropna(subset=["Close"]).sort_values("date")
     latest_futures = futures_df["Close"].iloc[-1]
     latest_futures_time = futures_df["date"].iloc[-1]
 
