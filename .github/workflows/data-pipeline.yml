@@ -103,6 +103,7 @@ jobs:
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
           echo "Current hour (JST): $CURRENT_HOUR"
 
+          # --- dispatch (手動) ---
           # force_cme_mode が true の場合、CME更新モード
           if [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
@@ -121,18 +122,36 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
-          # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし、Grok選定実行）
-          elif [ "$CURRENT_HOUR" = "23" ]; then
+          # --- schedule (cron) --- github.event.schedule で判定、壁時計はfallback
+          # 23:00 JST cron (UTC 14:00) → GHA遅延で00:xx JSTになっても正しくgrokモード
+          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
-            echo "📊 GROK Daily Mode (23:00 JST) - Grok selection enabled"
-          # 07時（22:00 UTC）はCME更新モード
-          elif [ "$CURRENT_HOUR" = "07" ]; then
+            echo "📊 GROK Daily Mode (scheduled 23:00 JST, actual hour: $CURRENT_HOUR)"
+          # 07:00 JST cron (UTC 22:00) → CME更新モード
+          elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
-            echo "🌅 CME Update Mode (07:00 JST) - CME close + B4 judgment"
+            echo "🌅 CME Update Mode (scheduled 07:00 JST, actual hour: $CURRENT_HOUR)"
+          # 16:45 JST cron (UTC 07:45) → stock_data モード
+          elif [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
+            echo "mode=stock_data" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=false" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "💹 Stock Data Mode (scheduled 16:45 JST, actual hour: $CURRENT_HOUR)"
+          # --- fallback (壁時計) ---
+          elif [ "$CURRENT_HOUR" = "23" ] || [ "$CURRENT_HOUR" = "00" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=false" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (fallback hour: $CURRENT_HOUR)"
+          elif [ "$CURRENT_HOUR" = "07" ] || [ "$CURRENT_HOUR" = "08" ]; then
+            echo "mode=cme_update" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=cme" >> $GITHUB_OUTPUT
+            echo "🌅 CME Update Mode (fallback hour: $CURRENT_HOUR)"
           else
             echo "mode=stock_data" >> $GITHUB_OUTPUT
             echo "skip_trading_check=false" >> $GITHUB_OUTPUT

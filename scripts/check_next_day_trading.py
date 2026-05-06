@@ -59,8 +59,13 @@ def check_next_day_is_trading() -> tuple[bool, str]:
     print(f"Current time (UTC): {now_utc.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Current time (JST): {now_jst.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # 翌日の日付を計算
-    tomorrow_jst = now_jst + timedelta(days=1)
+    # 論理日付: 0-2時台は前日23:00 runの遅延とみなす
+    logical_date = now_jst.date()
+    if now_jst.hour < 3:
+        logical_date = logical_date - timedelta(days=1)
+        print(f"⚠️ Hour < 3 JST: treating as delayed 23:00 run (logical date: {logical_date})")
+
+    tomorrow_jst = datetime.combine(logical_date + timedelta(days=1), datetime.min.time())
     tomorrow_date_str = tomorrow_jst.strftime('%Y-%m-%d')
 
     print(f"Tomorrow's date (JST): {tomorrow_date_str}")
