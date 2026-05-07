@@ -134,7 +134,7 @@ jobs:
       - name: Download data from S3
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/reversal data/parquet/pairs data/parquet/screening
+          mkdir -p data/parquet/granville data/parquet/backtest data/parquet/pairs data/parquet/screening
 
           # staging S3からgranville関連データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
@@ -171,13 +171,6 @@ jobs:
           python scripts/pipeline/generate_granville_signals.py
         timeout-minutes: 30
 
-      - name: "[Review] Generate bearish reversal signals"
-        if: steps.exec_mode.outputs.phase == 'review'
-        run: |
-          echo "🔻 Generating bearish reversal signals (Core+Large, from prices_topix)..."
-          python scripts/pipeline/generate_bearish_signals.py
-        timeout-minutes: 10
-
       - name: "[Review] Generate pairs trading signals"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -193,11 +186,6 @@ jobs:
           # granville signals, positions, prices_topix
           for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/prices_topix.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
-          done
-
-          # bearish reversal signals
-          for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}reversal/$(basename $f)" --only-show-errors
           done
 
           # pairs trading signals
@@ -224,10 +212,10 @@ jobs:
           python scripts/pipeline/generate_granville_recommendation.py
         timeout-minutes: 10
 
-      - name: "[Prepare] Update all_stocks (grok + granville + bearish + pairs)"
+      - name: "[Prepare] Update all_stocks (grok + granville + pairs)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          echo "🔄 Updating all_stocks.parquet (incl. bearish hits + pairs entry)..."
+          echo "🔄 Updating all_stocks.parquet (incl. pairs entry)..."
           python scripts/pipeline/create_all_stocks.py
         timeout-minutes: 5
 
