@@ -45,6 +45,10 @@ CAPITAL = 2_000_000
 MAX_RECOMMEND = 3  # |z|上位の推奨ペア数
 BUFFER_COUNT = 3   # entry次点のバッファペア数（6種類足取得対象）
 
+EXCLUDE_PAIRS = {
+    ("4088.T", "4401.T"),  # 特別注意銘柄指定 2026-05-01 (不正会計)
+}
+
 # Phase 70-71 共和分ベースペア (tk1, tk2, optimal_lookback, 5yr_pf, 5yr_n, revert_1d)
 # revert_1d: |z|≥2発動時に翌日|z|が縮小した割合(%). 1日完結戦略の期待勝率
 V2_PAIRS = [
@@ -350,7 +354,11 @@ def main() -> int:
     print("\n[2/3] Calculating pair signals...")
     rows: list[dict] = []
     skip_count = 0
+    excluded_pair = 0
     for tk1, tk2, lookback, full_pf, full_n, revert_1d in V2_PAIRS:
+        if (tk1, tk2) in EXCLUDE_PAIRS:
+            excluded_pair += 1
+            continue
         r = calc_pair_signal(ps, tk1, tk2, lookback)
         if r:
             r["name1"] = names.get(tk1, tk1)
@@ -380,7 +388,7 @@ def main() -> int:
 
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
-    print(f"\n  Computed: {len(df)}, Skipped: {skip_count}")
+    print(f"\n  Computed: {len(df)}, Skipped: {skip_count}, Excluded(pair): {excluded_pair}")
     print(f"  Entry signals (|z|>={Z_ENTRY}): {entry_count}, Buffer: {buffer_count}")
 
     # 推奨ペア表示（|z|上位）
