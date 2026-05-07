@@ -89,7 +89,7 @@ def _bday_index(bdays: list[date], target: date) -> int:
 
 
 def calc_sq_flags(bdays: list[date], sq_days: dict[int, date]) -> dict[date, dict]:
-    """SQ-4（エントリー）とSQ-3（イグジット）を営業日逆算"""
+    """SQ-4（エントリー）とSQ-3（イグジット）、SQ+1（ショート）を営業日逆算"""
     flags: dict[date, dict] = {}
     bday_list = list(bdays)
 
@@ -105,7 +105,13 @@ def calc_sq_flags(bdays: list[date], sq_days: dict[int, date]) -> dict[date, dic
             flags.setdefault(sq4, {})["sq4_entry"] = True
             flags.setdefault(sq3, {})["sq3_exit"] = True
 
-            print(f"  {month:2d}月 SQ={sq_date} | SQ-4={sq4}(買) → SQ-3={sq3}(売)")
+            # SQ+1 = 翌営業日（前日上昇Top N ショート）
+            if sq_idx + 1 < len(bday_list):
+                sq_plus1 = bday_list[sq_idx + 1]
+                flags.setdefault(sq_plus1, {})["sq_plus1_short"] = True
+                print(f"  {month:2d}月 SQ={sq_date} | SQ-4={sq4}(買) → SQ-3={sq3}(売) | SQ+1={sq_plus1}(売)")
+            else:
+                print(f"  {month:2d}月 SQ={sq_date} | SQ-4={sq4}(買) → SQ-3={sq3}(売)")
 
     return flags
 
@@ -152,6 +158,7 @@ def build_calendar(bdays: list[date], sq_flags: dict, qe_flags: dict) -> pd.Data
         row["sq_day"] = sf.get("sq_day", False)
         row["sq4_entry"] = sf.get("sq4_entry", False)
         row["sq3_exit"] = sf.get("sq3_exit", False)
+        row["sq_plus1_short"] = sf.get("sq_plus1_short", False)
         row["qe_remain"] = qf.get("qe_remain", None)
         row["qe_1306_buy"] = qf.get("qe_1306_buy", False)
         row["qe_1306_sell"] = qf.get("qe_1306_sell", False)
@@ -195,6 +202,7 @@ def main() -> int:
 
     print(f"\n  営業日数: {len(df)}")
     print(f"  SQ-4エントリー日: {df['sq4_entry'].sum()}回")
+    print(f"  SQ+1ショート日: {df['sq_plus1_short'].sum()}回")
     print(f"  1306買い日: {df['qe_1306_buy'].sum()}回")
     print(f"  1306売り日: {df['qe_1306_sell'].sum()}回")
 

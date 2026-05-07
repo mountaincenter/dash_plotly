@@ -249,6 +249,8 @@ def _build_flags(row) -> list[str]:
         flags.append("SQ-4 決済")
     if row.get("sq_day"):
         flags.append("SQ日")
+    if row.get("sq_plus1_short"):
+        flags.append("SQ+1 売り")
 
     qe_remain = int(row["qe_remain"]) if pd.notna(row.get("qe_remain")) else None
     if qe_remain is not None:
