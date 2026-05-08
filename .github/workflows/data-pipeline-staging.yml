@@ -286,6 +286,20 @@ jobs:
           python scripts/pipeline/generate_sq4_picks.py
         timeout-minutes: 5
 
+      - name: "[Prepare] Generate Weekday Edge trades"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📋 Generating Weekday Edge trades (曜日×USフィルタ)..."
+          python scripts/pipeline/generate_weekday_edge_trades.py
+        timeout-minutes: 5
+
+      - name: "[Prepare] Regenerate calendar.parquet"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📅 Regenerating calendar.parquet..."
+          python scripts/pipeline/generate_calendar.py
+        timeout-minutes: 5
+
       - name: "[Prepare] Update all_stocks (grok + granville + pairs)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -310,8 +324,8 @@ jobs:
             [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
           done
 
-          # all_stocks & prices
-          for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json \
+          # all_stocks & prices & calendar
+          for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json calendar.parquet \
                    prices_max_1d.parquet prices_max_1mo.parquet prices_5d_1m.parquet \
                    prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
@@ -320,6 +334,10 @@ jobs:
           # sq4_trades.json
           [ -f "data/analysis/sq4_trades.json" ] && \
             aws s3 cp "data/analysis/sq4_trades.json" "s3://$S3_BUCKET/analysis/sq4_trades.json" --only-show-errors
+
+          # weekday_edge_trades.json
+          [ -f "data/analysis/weekday_edge_trades.json" ] && \
+            aws s3 cp "data/analysis/weekday_edge_trades.json" "s3://$S3_BUCKET/analysis/weekday_edge_trades.json" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet \

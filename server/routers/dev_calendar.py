@@ -29,6 +29,7 @@ ETF_1306_PATH = PARQUET_DIR / "etf_1306_prices.parquet"
 QE_JSON_PATH = ROOT / "data" / "analysis" / "quarter_end_effect.json"
 SQ4_JSON_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
 SQ_PLUS1_JSON_PATH = ROOT / "data" / "analysis" / "sq_plus1_trades.json"
+WEEKDAY_EDGE_JSON_PATH = ROOT / "data" / "analysis" / "weekday_edge_trades.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
@@ -134,6 +135,15 @@ def _load_sq_plus1_json() -> dict:
         return cached
     data = _read_json_by_env("analysis/sq_plus1_trades.json", SQ_PLUS1_JSON_PATH)
     _set_cache("sq_plus1_json", data)
+    return data
+
+
+def _load_weekday_edge_json() -> dict:
+    cached = _cached("weekday_edge_json")
+    if cached is not None:
+        return cached
+    data = _read_json_by_env("analysis/weekday_edge_trades.json", WEEKDAY_EDGE_JSON_PATH)
+    _set_cache("weekday_edge_json", data)
     return data
 
 
@@ -336,6 +346,12 @@ async def get_calendar_data():
     # --- SQ+1 trades ---
     sq_plus1_data = _load_sq_plus1_json()
 
+    # --- Weekday Edge trades ---
+    try:
+        weekday_edge_data = _load_weekday_edge_json()
+    except Exception:
+        weekday_edge_data = {}
+
     return {
         "today": today_data,
         "upcoming": upcoming,
@@ -368,6 +384,16 @@ async def get_calendar_data():
             "max_dd_cme_down": sq_plus1_data.get("max_dd_cme_down", {}),
             "next_sq_plus1": sq_plus1_data.get("next_sq_plus1"),
             "monthly": sq_plus1_data.get("monthly", []),
+        },
+        "weekday_edge": {
+            "params": weekday_edge_data.get("params", {}),
+            "stats_filtered": weekday_edge_data.get("stats_filtered", {}),
+            "stats_all": weekday_edge_data.get("stats_all", {}),
+            "max_dd_filtered": weekday_edge_data.get("max_dd_filtered", {}),
+            "yearly": weekday_edge_data.get("yearly", []),
+            "stock_stats": weekday_edge_data.get("stock_stats", []),
+            "next_entries": weekday_edge_data.get("next_entries", []),
+            "weekly": weekday_edge_data.get("weekly", []),
         },
     }
 

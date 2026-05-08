@@ -149,6 +149,8 @@ def calc_quarter_end_flags(bdays: list[date]) -> dict[date, dict]:
 
 def build_calendar(bdays: list[date], sq_flags: dict, qe_flags: dict) -> pd.DataFrame:
     """全フラグを統合してDataFrame化"""
+    WEEKDAY_LONG_DOWS = {2, 3, 4}   # 水木金
+    WEEKDAY_SHORT_DOWS = {0, 1}     # 月火
     rows = []
     for d in bdays:
         row = {"date": d}
@@ -162,6 +164,8 @@ def build_calendar(bdays: list[date], sq_flags: dict, qe_flags: dict) -> pd.Data
         row["qe_remain"] = qf.get("qe_remain", None)
         row["qe_1306_buy"] = qf.get("qe_1306_buy", False)
         row["qe_1306_sell"] = qf.get("qe_1306_sell", False)
+        row["weekday_long"] = d.weekday() in WEEKDAY_LONG_DOWS
+        row["weekday_short"] = d.weekday() in WEEKDAY_SHORT_DOWS
 
         rows.append(row)
 
