@@ -174,6 +174,33 @@ def _load_cme_latest() -> dict:
         return {}
 
 
+def _load_sp500_latest() -> dict:
+    """S&P500 直近終値を取得"""
+    cached = _cached("sp500_latest")
+    if cached is not None:
+        return cached
+    try:
+        df = _read_parquet_by_env("index_prices_max_1d.parquet")
+        sp = df[df["ticker"] == "^GSPC"][["date", "Close"]].copy()
+        sp["date"] = pd.to_datetime(sp["date"])
+        sp = sp.dropna(subset=["Close"]).sort_values("date").reset_index(drop=True)
+        if len(sp) < 2:
+            return {}
+        latest = sp.iloc[-1]
+        prev = sp.iloc[-2]
+        result = {
+            "date": latest["date"].strftime("%Y-%m-%d"),
+            "close": round(float(latest["Close"]), 2),
+            "prev_close": round(float(prev["Close"]), 2),
+            "change": round(float(latest["Close"] - prev["Close"]), 2),
+            "change_pct": round((latest["Close"] / prev["Close"] - 1) * 100, 2),
+        }
+        _set_cache("sp500_latest", result)
+        return result
+    except Exception:
+        return {}
+
+
 def _calc_1306_max_dd(trades: list[dict]) -> dict:
     """1306トレードからMaxDD計算"""
     if not trades:
@@ -340,6 +367,9 @@ async def get_calendar_data():
     # --- CME latest ---
     cme_latest = _load_cme_latest()
 
+    # --- S&P500 latest ---
+    sp500_latest = _load_sp500_latest()
+
     # --- SQ-4 trades ---
     sq4_data = _load_sq4_json()
 
@@ -357,6 +387,7 @@ async def get_calendar_data():
         "upcoming": upcoming,
         "etf_latest": etf_latest,
         "cme_latest": cme_latest,
+        "sp500_latest": sp500_latest,
         "etf1306": {
             "stats": {
                 **stats,
