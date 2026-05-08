@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05",
+  "generated": "2026-05-08",
   "params": {
     "backtest_start": "2022-04-01",
     "price_min": 1000,
@@ -61,7 +61,69 @@
   "candidates": {
     "as_of": "2026-05-01",
     "count": 154,
-    "sector": "外需"
+    "sector": "外需",
+    "picks": [
+      {
+        "code": "6702",
+        "name": "富士通",
+        "prev_close": 3075.0,
+        "ret_5d": -18.5
+      },
+      {
+        "code": "4088",
+        "name": "エア・ウォーター",
+        "prev_close": 1895.5,
+        "ret_5d": -14.11
+      },
+      {
+        "code": "6770",
+        "name": "アルプスアルパイン",
+        "prev_close": 2012.5,
+        "ret_5d": -11.85
+      },
+      {
+        "code": "7751",
+        "name": "キヤノン",
+        "prev_close": 4017.0,
+        "ret_5d": -8.06
+      },
+      {
+        "code": "6501",
+        "name": "日立製作所",
+        "prev_close": 4795.0,
+        "ret_5d": -7.84
+      },
+      {
+        "code": "6436",
+        "name": "アマノ",
+        "prev_close": 3573.0,
+        "ret_5d": -6.95
+      },
+      {
+        "code": "6988",
+        "name": "日東電工",
+        "prev_close": 2995.0,
+        "ret_5d": -6.76
+      },
+      {
+        "code": "7202",
+        "name": "いすゞ自動車",
+        "prev_close": 2120.5,
+        "ret_5d": -6.59
+      },
+      {
+        "code": "6301",
+        "name": "小松製作所",
+        "prev_close": 6514.0,
+        "ret_5d": -6.54
+      },
+      {
+        "code": "3116",
+        "name": "トヨタ紡織",
+        "prev_close": 2207.0,
+        "ret_5d": -6.32
+      }
+    ]
   },
   "monthly": [
     {

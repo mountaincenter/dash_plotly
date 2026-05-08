@@ -227,7 +227,29 @@ def main() -> int:
             continue
         p1 = trading_days[sq_i + 1]
         if p1 >= today:
-            next_sq_plus1 = {"sq_date": str(sq_d), "entry_date": str(p1)}
+            next_info: dict = {"sq_date": str(sq_d), "entry_date": str(p1)}
+            # SQ日の価格が確定していれば候補銘柄を生成
+            sq_prices = prices[prices["date"] == sq_d].copy()
+            if not sq_prices.empty:
+                sq_prices = sq_prices[(sq_prices["prev_close"] >= 1000) & (sq_prices["prev_close"] <= 20000)]
+                sq_prices = sq_prices.dropna(subset=["ret_total"])
+                if len(sq_prices) >= 10:
+                    cme_info = cme_map.get(sq_d)
+                    cme_down = cme_info and cme_info["ret"] is not None and cme_info["ret"] < 0
+                    top_n = 5 if cme_down else 10
+                    top_up = sq_prices.nlargest(top_n, "ret_total")
+                    next_info["cme_direction"] = "DOWN" if cme_down else "UP"
+                    next_info["top_n"] = top_n
+                    next_info["picks"] = [
+                        {
+                            "code": row["code"],
+                            "name": master.get(row["code"], ""),
+                            "prev_close": round(float(row["prev_close"]), 1),
+                            "prev_day_ret": round(float(row["ret_total"] * 100), 2),
+                        }
+                        for _, row in top_up.iterrows()
+                    ]
+            next_sq_plus1 = next_info
             break
 
     stats_ret = _evaluate(all_pnl_ret)

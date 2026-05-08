@@ -275,18 +275,31 @@ def get_next_sq4(calendar_path: Path) -> dict | None:
     }
 
 
-def get_candidates(ps: pd.DataFrame, gaishu_codes: set[str]) -> dict:
+def get_candidates(ps: pd.DataFrame, gaishu_codes: set[str], name_map: dict[str, str] | None = None) -> dict:
     latest_date = ps["Date"].max()
-    latest = ps[ps["Date"] == latest_date][["Code", "AdjC"]].copy()
+    latest = ps[ps["Date"] == latest_date][["Code", "AdjC", "ret_5d"]].copy()
     latest = latest[
         (latest["AdjC"] >= PRICE_MIN)
         & (latest["AdjC"] <= PRICE_MAX)
         & (latest["Code"].isin(gaishu_codes))
     ]
+    latest = latest.dropna(subset=["ret_5d"])
+    worst10 = latest.nsmallest(TOP_N, "ret_5d")
+    picks = []
+    for _, row in worst10.iterrows():
+        code_5 = row["Code"]
+        code_4 = code_5[:-1] if len(code_5) == 5 and code_5[-1] == "0" else code_5
+        picks.append({
+            "code": code_4,
+            "name": (name_map or {}).get(code_5, ""),
+            "prev_close": round(float(row["AdjC"]), 1),
+            "ret_5d": round(float(row["ret_5d"] * 100), 2),
+        })
     return {
         "as_of": latest_date.strftime("%Y-%m-%d"),
         "count": len(latest),
         "sector": "外需",
+        "picks": picks,
     }
 
 
@@ -396,7 +409,7 @@ def main() -> int:
 
     print(f"\n[7] Next SQ-4...")
     next_sq4 = get_next_sq4(CALENDAR_PATH)
-    candidates = get_candidates(ps, gaishu_codes)
+    candidates = get_candidates(ps, gaishu_codes, name_map)
     if next_sq4:
         print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
     print(f"  Candidates: {candidates['count']} stocks (外需×{PRICE_MIN}-{PRICE_MAX}円)")
