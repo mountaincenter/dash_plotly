@@ -28,6 +28,7 @@ CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 ETF_1306_PATH = PARQUET_DIR / "etf_1306_prices.parquet"
 QE_JSON_PATH = ROOT / "data" / "analysis" / "quarter_end_effect.json"
 SQ4_JSON_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
+SQ_PLUS1_JSON_PATH = ROOT / "data" / "analysis" / "sq_plus1_trades.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
@@ -124,6 +125,15 @@ def _load_sq4_json() -> dict:
         return cached
     data = _read_json_by_env("analysis/sq4_trades.json", SQ4_JSON_PATH)
     _set_cache("sq4_json", data)
+    return data
+
+
+def _load_sq_plus1_json() -> dict:
+    cached = _cached("sq_plus1_json")
+    if cached is not None:
+        return cached
+    data = _read_json_by_env("analysis/sq_plus1_trades.json", SQ_PLUS1_JSON_PATH)
+    _set_cache("sq_plus1_json", data)
     return data
 
 
@@ -323,6 +333,9 @@ async def get_calendar_data():
     # --- SQ-4 trades ---
     sq4_data = _load_sq4_json()
 
+    # --- SQ+1 trades ---
+    sq_plus1_data = _load_sq_plus1_json()
+
     return {
         "today": today_data,
         "upcoming": upcoming,
@@ -346,6 +359,15 @@ async def get_calendar_data():
             "next_sq4": sq4_data.get("next_sq4"),
             "candidates": sq4_data.get("candidates", {}),
             "monthly": sq4_data.get("monthly", []),
+        },
+        "sq_plus1": {
+            "stats": sq_plus1_data.get("stats", {}),
+            "stats_cme_down": sq_plus1_data.get("stats_cme_down", {}),
+            "stats_cme_up": sq_plus1_data.get("stats_cme_up", {}),
+            "max_dd": sq_plus1_data.get("max_dd", {}),
+            "max_dd_cme_down": sq_plus1_data.get("max_dd_cme_down", {}),
+            "next_sq_plus1": sq_plus1_data.get("next_sq_plus1"),
+            "monthly": sq_plus1_data.get("monthly", []),
         },
     }
 
