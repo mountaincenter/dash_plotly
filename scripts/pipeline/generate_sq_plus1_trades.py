@@ -216,41 +216,56 @@ def main() -> int:
             cme_up_pnl_ret.extend(month_pnl_ret)
             cme_up_pnl_100.extend(month_pnl_100)
 
-    # next SQ+1
+    # next SQ+1 — calendar.parquetから翌営業日を取得（pricesにない未来日にも対応）
     today = date.today()
+    cal_dates = sorted(cal[cal["date"] >= today]["date"].tolist())
     next_sq_plus1 = None
     for sq_d in sq_dates:
-        if sq_d not in td_idx:
-            continue
-        sq_i = td_idx[sq_d]
-        if sq_i + 1 >= len(trading_days):
-            continue
-        p1 = trading_days[sq_i + 1]
-        if p1 >= today:
-            next_info: dict = {"sq_date": str(sq_d), "entry_date": str(p1)}
-            # SQ日の価格が確定していれば候補銘柄を生成
-            sq_prices = prices[prices["date"] == sq_d].copy()
-            if not sq_prices.empty:
-                sq_prices = sq_prices[(sq_prices["prev_close"] >= 1000) & (sq_prices["prev_close"] <= 20000)]
-                sq_prices = sq_prices.dropna(subset=["ret_total"])
-                if len(sq_prices) >= 10:
-                    cme_info = cme_map.get(sq_d)
-                    cme_down = cme_info and cme_info["ret"] is not None and cme_info["ret"] < 0
-                    top_n = 5 if cme_down else 10
-                    top_up = sq_prices.nlargest(top_n, "ret_total")
-                    next_info["cme_direction"] = "DOWN" if cme_down else "UP"
-                    next_info["top_n"] = top_n
-                    next_info["picks"] = [
-                        {
-                            "code": row["code"],
-                            "name": master.get(row["code"], ""),
-                            "prev_close": round(float(row["prev_close"]), 1),
-                            "prev_day_ret": round(float(row["ret_total"] * 100), 2),
-                        }
-                        for _, row in top_up.iterrows()
-                    ]
-            next_sq_plus1 = next_info
-            break
+        if sq_d < today:
+            if sq_d in td_idx:
+                sq_i = td_idx[sq_d]
+                if sq_i + 1 < len(trading_days):
+                    p1 = trading_days[sq_i + 1]
+                    if p1 < today:
+                        continue
+                else:
+                    # pricesの最終日がSQ日: calendarから翌営業日を取得
+                    p1_candidates = [d for d in cal_dates if d > sq_d]
+                    if not p1_candidates:
+                        continue
+                    p1 = p1_candidates[0]
+            else:
+                continue
+        else:
+            p1_candidates = [d for d in cal_dates if d > sq_d]
+            if not p1_candidates:
+                continue
+            p1 = p1_candidates[0]
+
+        next_info: dict = {"sq_date": str(sq_d), "entry_date": str(p1)}
+        # SQ日の価格が確定していれば候補銘柄を生成
+        sq_prices = prices[prices["date"] == sq_d].copy()
+        if not sq_prices.empty:
+            sq_prices = sq_prices[(sq_prices["prev_close"] >= 1000) & (sq_prices["prev_close"] <= 20000)]
+            sq_prices = sq_prices.dropna(subset=["ret_total"])
+            if len(sq_prices) >= 10:
+                cme_info = cme_map.get(sq_d)
+                cme_down = cme_info and cme_info["ret"] is not None and cme_info["ret"] < 0
+                top_n = 5 if cme_down else 10
+                top_up = sq_prices.nlargest(top_n, "ret_total")
+                next_info["cme_direction"] = "DOWN" if cme_down else "UP"
+                next_info["top_n"] = top_n
+                next_info["picks"] = [
+                    {
+                        "code": row["code"],
+                        "name": master.get(row["code"], ""),
+                        "prev_close": round(float(row["prev_close"]), 1),
+                        "prev_day_ret": round(float(row["ret_total"] * 100), 2),
+                    }
+                    for _, row in top_up.iterrows()
+                ]
+        next_sq_plus1 = next_info
+        break
 
     stats_ret = _evaluate(all_pnl_ret)
     stats_ret["total_pnl_100"] = int(round(sum(all_pnl_100))) if all_pnl_100 else 0
