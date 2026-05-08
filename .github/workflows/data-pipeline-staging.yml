@@ -196,15 +196,28 @@ jobs:
         timeout-minutes: 10
 
       - name: "[Review] Monthly pair health check"
+        id: pair_health
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
           if python scripts/check_last_trading_day_of_month.py; then
             echo "月末営業日: pair health check実行"
             python scripts/analysis/pair_health_check.py
+            echo "ran=true" >> "$GITHUB_OUTPUT"
           else
             echo "月末ではない: スキップ"
+            echo "ran=false" >> "$GITHUB_OUTPUT"
           fi
         timeout-minutes: 15
+
+      - name: "[Review] Upload pair health check artifacts"
+        if: steps.pair_health.outputs.ran == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pair-health-check
+          path: |
+            data/analysis/pair_health_*.csv
+            docs/pair_health_*.html
+          retention-days: 90
 
       - name: "[Review] Backtest Granville B4 archive"
         if: steps.exec_mode.outputs.phase == 'review'

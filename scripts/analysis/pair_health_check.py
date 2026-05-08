@@ -24,7 +24,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "pipeline"))
-from generate_pairs_signals import V2_PAIRS, EXCLUDE_PAIRS, Z_ENTRY  # type: ignore
+from generate_pairs_signals import V2_PAIRS, EXCLUDE_PAIRS, TEMP_EXCLUDED, Z_ENTRY  # type: ignore
 
 EXCLUDE_SECTORS = [(9000, 9099)]
 PRICES = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
@@ -180,18 +180,19 @@ def main():
     ].sort_values("pf_6m", ascending=False)
     print(improved[["tk1", "tk2", "full_pf", "pf_2y", "pf_6m", "n_6m"]].to_string(index=False))
 
-    temp_excluded = df[df["pair_excluded"]].copy()
-    if not temp_excluded.empty:
+    temp_mask = df.apply(lambda r: (r["tk1"], r["tk2"]) in TEMP_EXCLUDED, axis=1)
+    temp_df = df[temp_mask].copy()
+    if not temp_df.empty:
         print("\n=== TEMP除外ペアの復帰候補 (pf_6m>=1.5 & n_6m>=3) ===")
-        candidates = temp_excluded[
-            (temp_excluded["pf_6m"] >= 1.5) & (temp_excluded["n_6m"] >= 3)
+        candidates = temp_df[
+            (temp_df["pf_6m"] >= 1.5) & (temp_df["n_6m"] >= 3)
         ]
         if candidates.empty:
             print("  復帰候補なし")
         else:
             print(candidates[["tk1", "tk2", "full_pf", "pf_2y", "pf_6m", "n_6m", "ratio_6m_over_full"]].to_string(index=False))
         print("\n=== TEMP除外ペアの現状 ===")
-        print(temp_excluded[["tk1", "tk2", "full_pf", "pf_2y", "pf_6m", "n_6m", "ratio_6m_over_full"]].to_string(index=False))
+        print(temp_df[["tk1", "tk2", "full_pf", "pf_2y", "pf_6m", "n_6m", "ratio_6m_over_full"]].to_string(index=False))
 
     # Simple HTML table
     html_path = OUT_HTML_DIR / f"pair_health_{date_str}.html"

@@ -71,6 +71,11 @@ EXCLUDE_PAIRS = {
     ("4187.T", "4203.T"),  # [TEMP:2026-05-08] 同上 + 4203減益で逆方向乖離
 }
 
+TEMP_EXCLUDED = {
+    ("4187.T", "4401.T"),
+    ("4187.T", "4203.T"),
+}
+
 # Phase 70-71 共和分ベースペア (tk1, tk2, optimal_lookback, actual_pf, actual_n, revert_1d)
 # PF/N は 2020-01 〜 2026-04 walk-forward 実測値（In-Sample バイアス除去）
 V2_PAIRS = [
