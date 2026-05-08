@@ -181,6 +181,13 @@ jobs:
           python scripts/pipeline/update_granville_prices.py
         timeout-minutes: 45
 
+      - name: "[Review] Fetch Calendar prices (1306 + TOPIX500)"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          echo "📈 Fetching Calendar prices (1306 ETF + TOPIX500 OC)..."
+          python scripts/pipeline/fetch_calendar_prices.py
+        timeout-minutes: 30
+
       - name: "[Review] Generate Granville signals"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -250,6 +257,11 @@ jobs:
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
+          # Calendar prices (SQ-4/SQ+1戦略用)
+          for f in prices_topix500_oc.parquet etf_1306_prices.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
+          done
+
           # granville prices_topix (指数・TOPIXベンチマーク用)
           [ -f "data/parquet/granville/prices_topix.parquet" ] && \
             aws s3 cp "data/parquet/granville/prices_topix.parquet" \
@@ -284,6 +296,13 @@ jobs:
         run: |
           echo "📋 Generating SQ-4 picks (外需×5日ret worst10)..."
           python scripts/pipeline/generate_sq4_picks.py
+        timeout-minutes: 5
+
+      - name: "[Prepare] Generate SQ+1 trades"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📋 Generating SQ+1 trades (SQ翌営業日ショート)..."
+          python scripts/pipeline/generate_sq_plus1_trades.py
         timeout-minutes: 5
 
       - name: "[Prepare] Generate Weekday Edge trades"
@@ -331,13 +350,11 @@ jobs:
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
-          # sq4_trades.json
-          [ -f "data/analysis/sq4_trades.json" ] && \
-            aws s3 cp "data/analysis/sq4_trades.json" "s3://$S3_BUCKET/analysis/sq4_trades.json" --only-show-errors
-
-          # weekday_edge_trades.json
-          [ -f "data/analysis/weekday_edge_trades.json" ] && \
-            aws s3 cp "data/analysis/weekday_edge_trades.json" "s3://$S3_BUCKET/analysis/weekday_edge_trades.json" --only-show-errors
+          # Calendar Trades JSON (sq4 + sq_plus1 + weekday_edge)
+          for f in sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
+            [ -f "data/analysis/$f" ] && \
+              aws s3 cp "data/analysis/$f" "s3://$S3_BUCKET/analysis/$f" --only-show-errors
+          done
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet \
@@ -378,15 +395,6 @@ jobs:
           python scripts/pipeline/update_cme_close.py
           [ -f "data/parquet/futures_prices_max_1d.parquet" ] && \
             aws s3 cp "data/parquet/futures_prices_max_1d.parquet" "s3://$S3_BUCKET/${S3_PREFIX}futures_prices_max_1d.parquet" --only-show-errors
-        timeout-minutes: 5
-
-      - name: "[CME] Regenerate SQ-4 picks (CME確定後)"
-        if: steps.exec_mode.outputs.phase == 'cme_update'
-        run: |
-          echo "📋 Regenerating SQ-4 picks with latest CME..."
-          python scripts/pipeline/generate_sq4_picks.py
-          [ -f "data/analysis/sq4_trades.json" ] && \
-            aws s3 cp "data/analysis/sq4_trades.json" "s3://$S3_BUCKET/analysis/sq4_trades.json" --only-show-errors
         timeout-minutes: 5
 
       - name: "[CME] Generate B4 Slack section"
