@@ -195,6 +195,17 @@ jobs:
           python scripts/pipeline/generate_pairs_signals.py
         timeout-minutes: 10
 
+      - name: "[Review] Monthly pair health check"
+        if: steps.exec_mode.outputs.phase == 'review'
+        run: |
+          if python scripts/check_last_trading_day_of_month.py; then
+            echo "月末営業日: pair health check実行"
+            python scripts/analysis/pair_health_check.py
+          else
+            echo "月末ではない: スキップ"
+          fi
+        timeout-minutes: 15
+
       - name: "[Review] Backtest Granville B4 archive"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
