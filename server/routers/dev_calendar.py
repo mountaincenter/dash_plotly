@@ -174,6 +174,19 @@ def _load_cme_latest() -> dict:
         return {}
 
 
+def _next_trading_date() -> str | None:
+    """calendar.parquetから翌営業日を取得"""
+    try:
+        cal = _load_calendar()
+        today = pd.Timestamp(date.today())
+        future = cal[cal["date"] > today].sort_values("date")
+        if future.empty:
+            return None
+        return future.iloc[0]["date"].strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _load_sp500_latest() -> dict:
     """S&P500 直近終値を取得"""
     cached = _cached("sp500_latest")
@@ -388,6 +401,7 @@ async def get_calendar_data():
         "etf_latest": etf_latest,
         "cme_latest": cme_latest,
         "sp500_latest": sp500_latest,
+        "next_trading_date": _next_trading_date(),
         "etf1306": {
             "stats": {
                 **stats,
