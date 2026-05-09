@@ -187,6 +187,36 @@ def _next_trading_date() -> str | None:
         return None
 
 
+def _load_latest_prices() -> dict[str, dict]:
+    """prices_topix500_oc から銘柄ごとの最新終値・前日比を取得"""
+    cached = _cached("latest_prices")
+    if cached is not None:
+        return cached
+    try:
+        df = _read_parquet_by_env("prices_topix500_oc.parquet")
+        df.columns = ["date", "code", "adj_open", "adj_close"]
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values(["code", "date"])
+        result: dict[str, dict] = {}
+        for code, grp in df.groupby("code"):
+            grp = grp.dropna(subset=["adj_close"]).tail(2)
+            if len(grp) < 1:
+                continue
+            latest = grp.iloc[-1]
+            prev_close = grp.iloc[-2]["adj_close"] if len(grp) >= 2 else None
+            change = round(float(latest["adj_close"] - prev_close), 1) if prev_close else None
+            change_pct = round(float((latest["adj_close"] / prev_close - 1) * 100), 2) if prev_close else None
+            result[str(code)] = {
+                "prev_close": round(float(latest["adj_close"]), 1),
+                "prev_day_ret": change_pct,
+                "prev_day_change": change,
+            }
+        _set_cache("latest_prices", result)
+        return result
+    except Exception:
+        return {}
+
+
 def _load_sp500_latest() -> dict:
     """S&P500 直近終値を取得"""
     cached = _cached("sp500_latest")
@@ -394,6 +424,15 @@ async def get_calendar_data():
         weekday_edge_data = _load_weekday_edge_json()
     except Exception:
         weekday_edge_data = {}
+
+    # weekday_edge next_entries に最新終値を付与
+    latest_prices = _load_latest_prices()
+    we_entries = weekday_edge_data.get("next_entries", [])
+    for entry in we_entries:
+        code = entry.get("code", "")
+        price_info = latest_prices.get(code, {})
+        entry["prev_close"] = price_info.get("prev_close")
+        entry["prev_day_ret"] = price_info.get("prev_day_ret")
 
     return {
         "today": today_data,
