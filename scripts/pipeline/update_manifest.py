@@ -72,6 +72,10 @@ UPLOAD_FILES = [
     "granville_ifd_signals.parquet",
     # カレンダーアノマリー分析（金曜生成）
     "market_anomaly.parquet",
+    # signals.parquet（全戦略統合）
+    "signals.parquet",
+    # カレンダー
+    "calendar.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
@@ -357,6 +361,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "backtest/granville_ifd_archive.parquet")  # グランビルIFDアーカイブも保持
         keep_keys.add(prefix + "backtest/granville_ifd_comparison.parquet")  # グランビルIFD戦略比較も保持
         keep_keys.add(prefix + "granville_ifd_positions.parquet")  # グランビルIFDポジションも保持
+        keep_keys.add(prefix + "breadth_daily.parquet")  # 騰落レシオ用日次データ（洗い替え蓄積）
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
         # backtest/deep_analysis_YYYY-MM-DD.json ファイルも保護
