@@ -18,17 +18,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from ..utils import read_prices_1d_df
 
 router = APIRouter()
 
 PAIRS_DIR = PARQUET_DIR / "pairs"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
 _S3_PREFIX_RAW = os.getenv("PARQUET_PREFIX", "parquet")
 S3_PREFIX = _S3_PREFIX_RAW.strip("/") if _S3_PREFIX_RAW else "parquet"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
-_IS_LOCAL = PARQUET_DIR.exists()
 
 # キャッシュ
 _cache: dict[str, tuple[datetime, object]] = {}
@@ -52,33 +53,24 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
+_IS_LOCAL = PARQUET_DIR.exists()
+
+
 def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
     """S3から最新parquetを直接読み込み（サーバー用）"""
-    try:
-        import boto3
-        from botocore.exceptions import BotoCoreError, ClientError
-    except ImportError:
-        return pd.DataFrame()
-
+    import boto3
     s3 = boto3.client("s3", region_name=AWS_REGION)
-    try:
-        resp = s3.list_objects_v2(
-            Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
-        )
-    except (BotoCoreError, ClientError):
-        return pd.DataFrame()
-
+    resp = s3.list_objects_v2(
+        Bucket=S3_BUCKET, Prefix=f"{S3_PREFIX}/{s3_prefix}/{prefix}_",
+    )
     if "Contents" not in resp:
         return pd.DataFrame()
     keys = sorted([o["Key"] for o in resp["Contents"]])
     if not keys:
         return pd.DataFrame()
     import io
-    try:
-        obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
-        return pd.read_parquet(io.BytesIO(obj["Body"].read()))
-    except (BotoCoreError, ClientError, ValueError, OSError, pd.errors.EmptyDataError):
-        return pd.DataFrame()
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=keys[-1])
+    return pd.read_parquet(io.BytesIO(obj["Body"].read()))
 
 
 def _load_from_local(directory: Path, prefix: str) -> pd.DataFrame:
@@ -98,11 +90,50 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     if _IS_LOCAL:
         df = _load_from_local(directory, prefix)
     else:
-        df = _load_from_s3(prefix, s3_prefix)
+        try:
+            df = _load_from_s3(prefix, s3_prefix)
+        except Exception:
+            df = pd.DataFrame()
 
     if not df.empty:
         _set_cache(cache_key, df)
     return df
+
+
+def _s3_download(filename: str, dest: Path) -> None:
+    """S3 の top-level parquet を dest にダウンロード"""
+    try:
+        import boto3
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        key = f"{S3_PREFIX}/{filename}"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file(S3_BUCKET, key, str(dest))
+    except Exception:
+        pass
+
+
+def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+    path = PARQUET_DIR / filename
+    if not _IS_LOCAL or not path.exists():
+        _s3_download(filename, path)
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    _set_cache(cache_key, df)
+    return df
+
+
+def _load_unified_signals(strategy: str) -> pd.DataFrame:
+    """signals.parquet から指定 strategy の行を抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("signals.parquet", "unified_signals")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == strategy].copy()
 
 
 def _safe_float(v, decimals: int = 1) -> float:
@@ -122,14 +153,21 @@ def _safe_int(v) -> int:
 @router.get("/api/dev/pairs/signals")
 async def get_pairs_signals():
     """全ペアのシグナル（z-score, 閾値, 直近成績）"""
-    df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    df = _load_unified_signals("pairs")
 
     if df.empty:
-        return {"pairs": [], "entry": [], "signal_date": None, "total": 0, "entry_count": 0}
+        return {"pairs": [], "hot": [], "signal_date": None, "total": 0, "hot_count": 0}
 
     signal_date = None
     if "signal_date" in df.columns:
         signal_date = pd.to_datetime(df["signal_date"]).max().strftime("%Y-%m-%d")
+
+    # tk -> sector lookup (for frontend-side dedup of top3 display)
+    # meta_jquants.parquet は全上場銘柄 (3754) を網羅。all_stocks.parquet (116) は半導体ユニバース限定
+    sector_map: dict[str, str] = {}
+    stocks_df = _load_unified("meta_jquants.parquet", "unified_meta_jquants")
+    if not stocks_df.empty and "ticker" in stocks_df.columns and "sectors" in stocks_df.columns:
+        sector_map = dict(zip(stocks_df["ticker"].astype(str), stocks_df["sectors"].astype(str)))
 
     pairs = []
     entry = []
@@ -137,9 +175,13 @@ async def get_pairs_signals():
         pair_date = ""
         if "signal_date" in r.index and pd.notna(r.get("signal_date")):
             pair_date = pd.to_datetime(r["signal_date"]).strftime("%Y-%m-%d")
+        tk1 = r.get("tk1", "")
+        tk2 = r.get("tk2", "")
         item = {
-            "tk1": r.get("tk1", ""),
-            "tk2": r.get("tk2", ""),
+            "tk1": tk1,
+            "tk2": tk2,
+            "sector1": sector_map.get(str(tk1), ""),
+            "sector2": sector_map.get(str(tk2), ""),
             "name1": r.get("name1", ""),
             "name2": r.get("name2", ""),
             "c1": _safe_float(r.get("c1", 0)),
@@ -158,7 +200,7 @@ async def get_pairs_signals():
             "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
             "full_n": _safe_int(r.get("full_n", 0)),
-            "half_life": _safe_float(r.get("half_life", 0), 1),
+            "revert_1d": _safe_float(r.get("revert_1d", r.get("half_life", 0)), 1),
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
@@ -179,14 +221,14 @@ async def get_pairs_signals():
 @router.get("/api/dev/pairs/status")
 async def get_pairs_status():
     """ペアトレード ステータスサマリー"""
-    df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    df = _load_unified_signals("pairs")
 
     if df.empty:
         return {
             "signal_date": None,
             "total_pairs": 0,
-            "entry_count": 0,
-            "entry_pairs": [],
+            "hot_count": 0,
+            "hot_pairs": [],
         }
 
     signal_date = None
@@ -220,34 +262,35 @@ async def refresh_pairs_cache():
     _cache.clear()
     return {
         "status": "success",
-        "message": "Cache cleared, next request will reload from S3" if not _IS_LOCAL else "Cache cleared",
+        "message": "Cache cleared" if _IS_LOCAL else "Cache cleared, next request will reload from S3",
         "updated_at": datetime.now().isoformat(),
     }
 
 
 # --- ペアチャート用 ---
 
-# V2_PAIRS: (tk1, tk2, lookback, pf, n, half_life) — パイプラインと同一定義
+# V2_PAIRS: (tk1, tk2, lookback, pf, n, revert_1d) — パイプラインと同一定義
 try:
     from scripts.pipeline.generate_pairs_signals import V2_PAIRS
 except ImportError:
     V2_PAIRS = []
 
 _V2_LOOKUP: dict[tuple[str, str], tuple[int, float, int, float]] = {
-    (tk1, tk2): (lb, pf, n, hl) for tk1, tk2, lb, pf, n, hl in V2_PAIRS
+    (tk1, tk2): (lb, pf, n, r1d) for tk1, tk2, lb, pf, n, r1d in V2_PAIRS
 }
 
 
 def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
-    """チャート用に2銘柄の日足Closeを取得"""
-    from server.utils import read_prices_df, normalize_prices
+    """チャート用に2銘柄の日足Closeを取得
 
-    df = read_prices_df("max", "1d")
+    signals.parquet → all_stocks.parquet → prices_max_1d.parquet の流れで
+    pair銘柄は prices_max_1d に含まれる。read_prices_1d_df は
+    ローカル→S3フォールバック＋キャッシュ済み。
+    """
+    df = read_prices_1d_df()
     if df is None or df.empty:
         return pd.DataFrame()
 
-    df = normalize_prices(df)
-    # ticker列で2銘柄抽出
     tk_col = "ticker" if "ticker" in df.columns else "Ticker"
     df = df[df[tk_col].isin([tk1, tk2])].copy()
     if df.empty:
@@ -258,7 +301,6 @@ def _load_prices_for_chart(tk1: str, tk2: str, days: int) -> pd.DataFrame:
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values([tk_col, date_col])
 
-    # 直近days日に絞る
     all_dates = sorted(df[date_col].unique())
     if len(all_dates) > days:
         cutoff = all_dates[-days]
@@ -289,12 +331,12 @@ async def get_pair_chart(
     # tk1/tk2の順序をV2_PAIRSに合わせる
     if (tk1, tk2) not in _V2_LOOKUP:
         tk1, tk2 = tk2, tk1
-    lookback, full_pf, full_n, half_life = _V2_LOOKUP[(tk1, tk2)]
+    lookback, full_pf, full_n, revert_1d = _V2_LOOKUP[(tk1, tk2)]
 
-    # 銘柄名・閾値 — signalsパーケットから取得（_load_latestは_IS_LOCALでS3/ローカルを自動分岐）
+    # 銘柄名・閾値 — signals.parquet (pairs strategy) から取得
     name1, name2 = tk1, tk2
     tk1_upper, tk1_lower = 0.0, 0.0
-    sig_df = _load_latest(PAIRS_DIR, "pairs_signals", "pairs")
+    sig_df = _load_unified_signals("pairs")
     if not sig_df.empty:
         match = sig_df[(sig_df["tk1"] == tk1) & (sig_df["tk2"] == tk2)]
         if not match.empty:
@@ -396,7 +438,7 @@ async def get_pair_chart(
         "chg1": chg1, "chg2": chg2,
         "chg1_pct": chg1_pct, "chg2_pct": chg2_pct,
         "lookback": lookback, "full_pf": full_pf, "full_n": full_n,
-        "half_life": half_life,
+        "revert_1d": revert_1d,
         "z_latest": round(z_latest, 3),
         "direction": direction,
         "tk1_upper": tk1_upper,
