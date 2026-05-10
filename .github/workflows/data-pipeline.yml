@@ -303,7 +303,14 @@ jobs:
           fi
           echo "✅ margin_code_master.parquet downloaded from S3"
 
-          # 2. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          # 2. calendar.parquet（S3から、年1回生成済み）
+          if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}calendar.parquet" "data/parquet/calendar.parquet" --only-show-errors; then
+            echo "❌ ERROR: Failed to download calendar.parquet from S3"
+            exit 1
+          fi
+          echo "✅ calendar.parquet downloaded from S3"
+
+          # 3. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
           JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
           JSF_PATH="data/parquet/jsf_seigenichiran.csv"
           echo "📥 Downloading JSF restrictions from $JSF_URL..."
@@ -592,6 +599,13 @@ jobs:
             exit 1
           fi
           echo "✅ margin_code_master.parquet downloaded from S3"
+
+          # 2. calendar.parquet（S3から、年1回生成済み）
+          if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}calendar.parquet" "data/parquet/calendar.parquet" --only-show-errors; then
+            echo "❌ ERROR: Failed to download calendar.parquet from S3"
+            exit 1
+          fi
+          echo "✅ calendar.parquet downloaded from S3"
 
           # 2. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
           JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"

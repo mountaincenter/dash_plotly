@@ -55,7 +55,6 @@ class PipelineRunner:
 
         # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
         self.steps.extend([
-            ("pipeline.generate_calendar", "カレンダーparquet生成"),
             ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
             ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
             ("pipeline.generate_pairs_signals", "ペアトレーディングシグナル生成"),
