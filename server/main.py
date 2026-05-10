@@ -27,6 +27,7 @@ from server.routers.dev_granville import router as dev_granville_router
 from server.routers.dev_strategy import router as dev_strategy_router
 from server.routers.dev_pairs import router as dev_pairs_router
 from server.routers.dev_reversal import router as dev_reversal_router
+from server.routers.dev_calendar import router as dev_calendar_router
 
 import os
 
@@ -118,3 +119,4 @@ app.include_router(dev_granville_router, tags=["granville"])
 app.include_router(dev_strategy_router, tags=["dev-strategy"])
 app.include_router(dev_pairs_router, tags=["pairs"])
 app.include_router(dev_reversal_router, tags=["reversal"])
+app.include_router(dev_calendar_router, tags=["calendar"])
