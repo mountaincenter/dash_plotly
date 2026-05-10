@@ -311,7 +311,43 @@ jobs:
           fi
           echo "✅ calendar.parquet downloaded from S3"
 
-          # 3. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          # 3. prices_topix500_oc.parquet（差分更新のベース）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}prices_topix500_oc.parquet" "data/parquet/prices_topix500_oc.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ prices_topix500_oc.parquet downloaded from S3"
+          else
+            echo "⚠️ prices_topix500_oc.parquet not found on S3 (will fetch from scratch)"
+          fi
+
+          # 4. etf_1306_prices.parquet（差分更新のベース）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}etf_1306_prices.parquet" "data/parquet/etf_1306_prices.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ etf_1306_prices.parquet downloaded from S3"
+          else
+            echo "⚠️ etf_1306_prices.parquet not found on S3 (will fetch from scratch)"
+          fi
+
+          # 5. granville/prices_topix.parquet（グランビル・ペア用TOPIX価格）
+          mkdir -p data/parquet/granville
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" "data/parquet/granville/prices_topix.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ granville/prices_topix.parquet downloaded from S3"
+          else
+            echo "⚠️ granville/prices_topix.parquet not found on S3"
+          fi
+
+          # 6. index_prices_max_1d.parquet（グランビルN225レジーム判定用）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}index_prices_max_1d.parquet" "data/parquet/index_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ index_prices_max_1d.parquet downloaded from S3"
+          else
+            echo "⚠️ index_prices_max_1d.parquet not found on S3"
+          fi
+
+          # 7. futures_prices_max_1d.parquet（SQ-4/SQ+1/グランビルCMEギャップ用）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ futures_prices_max_1d.parquet downloaded from S3"
+          else
+            echo "⚠️ futures_prices_max_1d.parquet not found on S3"
+          fi
+
+          # 8. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
           JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
           JSF_PATH="data/parquet/jsf_seigenichiran.csv"
           echo "📥 Downloading JSF restrictions from $JSF_URL..."
@@ -608,7 +644,43 @@ jobs:
           fi
           echo "✅ calendar.parquet downloaded from S3"
 
-          # 2. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          # 3. prices_topix500_oc.parquet（差分更新のベース）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}prices_topix500_oc.parquet" "data/parquet/prices_topix500_oc.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ prices_topix500_oc.parquet downloaded from S3"
+          else
+            echo "⚠️ prices_topix500_oc.parquet not found on S3 (will fetch from scratch)"
+          fi
+
+          # 4. etf_1306_prices.parquet（差分更新のベース）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}etf_1306_prices.parquet" "data/parquet/etf_1306_prices.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ etf_1306_prices.parquet downloaded from S3"
+          else
+            echo "⚠️ etf_1306_prices.parquet not found on S3 (will fetch from scratch)"
+          fi
+
+          # 5. granville/prices_topix.parquet（グランビル・ペア用TOPIX価格）
+          mkdir -p data/parquet/granville
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" "data/parquet/granville/prices_topix.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ granville/prices_topix.parquet downloaded from S3"
+          else
+            echo "⚠️ granville/prices_topix.parquet not found on S3"
+          fi
+
+          # 6. index_prices_max_1d.parquet（グランビルN225レジーム判定用）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}index_prices_max_1d.parquet" "data/parquet/index_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ index_prices_max_1d.parquet downloaded from S3"
+          else
+            echo "⚠️ index_prices_max_1d.parquet not found on S3"
+          fi
+
+          # 7. futures_prices_max_1d.parquet（SQ-4/SQ+1/グランビルCMEギャップ用）
+          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
+            echo "✅ futures_prices_max_1d.parquet downloaded from S3"
+          else
+            echo "⚠️ futures_prices_max_1d.parquet not found on S3"
+          fi
+
+          # 8. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
           JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
           JSF_PATH="data/parquet/jsf_seigenichiran.csv"
           echo "📥 Downloading JSF restrictions from $JSF_URL..."
