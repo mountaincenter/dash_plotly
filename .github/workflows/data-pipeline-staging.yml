@@ -512,6 +512,33 @@ jobs:
                 TEXT="$TEXT\n\n$B4_TEXT"
               fi
             fi
+            if [ -f /tmp/allocation_summary.json ]; then
+              ALLOC_TEXT=$(python3 -c "
+          import json
+          with open('/tmp/allocation_summary.json') as f:
+              s = json.load(f)
+          lines = ['🛡️ *寄前アロケータ* (' + s.get('target_date', '?') + ')']
+          vi = s.get('vi_close')
+          if vi is not None:
+              lines.append(f'  VI: {vi:.1f} ({s.get(\"vi_regime\", \"?\")})')
+          dd20 = s.get('dd_20d_pct')
+          if dd20 is not None:
+              lines.append(f'  20日DD: {dd20*100:.1f}%')
+          cme = s.get('cme_change_pct')
+          if cme is not None:
+              lines.append(f'  CME Gap: {cme:+.2f}%')
+          lc = s.get('level_counts', {})
+          if lc:
+              parts = [f'{k}:{v}' for k, v in lc.items()]
+              lines.append('  判定: ' + ' / '.join(parts))
+          for w in s.get('warnings', []):
+              lines.append(f'  ⚠ {w}')
+          print('\n'.join(lines))
+          " 2>/dev/null || echo "")
+              if [ -n "$ALLOC_TEXT" ]; then
+                TEXT="$TEXT\n\n$ALLOC_TEXT"
+              fi
+            fi
             curl -X POST -H 'Content-type: application/json' \
               --data "{\"text\":\"$TEXT\"}" "$SLACK_WEBHOOK_URL" || true
           fi
