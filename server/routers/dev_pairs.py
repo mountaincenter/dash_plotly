@@ -53,7 +53,7 @@ def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
     return files[-1] if files else None
 
 
-IS_SERVER = os.getenv("ENVIRONMENT") in ("staging", "production")
+_IS_LOCAL = PARQUET_DIR.exists()
 
 
 def _load_from_s3(prefix: str, s3_prefix: str) -> pd.DataFrame:
@@ -87,13 +87,13 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
     if cached is not None:
         return cached
 
-    if IS_SERVER:
+    if _IS_LOCAL:
+        df = _load_from_local(directory, prefix)
+    else:
         try:
             df = _load_from_s3(prefix, s3_prefix)
         except Exception:
             df = pd.DataFrame()
-    else:
-        df = _load_from_local(directory, prefix)
 
     if not df.empty:
         _set_cache(cache_key, df)
@@ -117,7 +117,7 @@ def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
     if cached is not None:
         return cached
     path = PARQUET_DIR / filename
-    if IS_SERVER or not path.exists():
+    if not _IS_LOCAL or not path.exists():
         _s3_download(filename, path)
     if not path.exists():
         return pd.DataFrame()
@@ -262,7 +262,7 @@ async def refresh_pairs_cache():
     _cache.clear()
     return {
         "status": "success",
-        "message": "Cache cleared, next request will reload from S3" if IS_SERVER else "Cache cleared",
+        "message": "Cache cleared" if _IS_LOCAL else "Cache cleared, next request will reload from S3",
         "updated_at": datetime.now().isoformat(),
     }
 
