@@ -28,6 +28,7 @@ from common_cfg.paths import PARQUET_DIR
 
 PRICES_PATH = PARQUET_DIR / "prices_topix500_oc.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "weekday_edge_trades.json"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 # --- 銘柄定義 ---
 # LONG Core 9銘柄 (アドバンテスト除外)
@@ -342,6 +343,37 @@ def main() -> int:
     print(f"  MaxDD(フィルタ有): {dd['amount']}円 / {dd['pct']}%")
     print(f"  週数: {len(weekly_summary)}")
     print(f"\n[OK] {OUTPUT_PATH}")
+
+    # signals.parquet に当日シグナル行を merge
+    if next_entries:
+        sig_rows = []
+        for e in next_entries:
+            code = str(e["code"])
+            ticker = code[:4] + ".T" if len(code) == 5 else code + ".T"
+            sig_rows.append({
+                "signal_date": pd.Timestamp(e["date"]),
+                "ticker": ticker,
+                "strategy": "weekday",
+                "direction": e["direction"].lower(),
+                "pair_id": "",
+                "stock_name": e.get("name", ""),
+                "entry_price_est": None,
+                "prev_close": None,
+            })
+        if sig_rows:
+            new_sigs = pd.DataFrame(sig_rows)
+            if SIGNALS_PATH.exists():
+                existing = pd.read_parquet(SIGNALS_PATH)
+                other = existing[existing["strategy"] != "weekday"] if "strategy" in existing.columns else existing
+                merged = pd.concat([new_sigs, other], ignore_index=True)
+            else:
+                merged = new_sigs
+            SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+            merged.to_parquet(tmp, index=False)
+            tmp.replace(SIGNALS_PATH)
+            print(f"[OK] signals.parquet merged: {len(new_sigs)} rows (strategy=weekday / total={len(merged)})")
+
     return 0
 
 

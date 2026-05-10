@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-08T17:18:02.156895",
+  "generated": "2026-05-10T11:44:55.060955",
   "params": {
     "strategy": "Weekday Edge",
     "long_core": 9,
@@ -11,30 +11,30 @@
     "hold": "寄成IN → 引成OUT (日計り)"
   },
   "stats_filtered": {
-    "total": 2924,
-    "wins": 1720,
-    "losses": 1204,
+    "total": 2928,
+    "wins": 1723,
+    "losses": 1205,
     "wr": 58.8,
     "avg_ret": 0.35,
-    "median_ret": 0.26,
+    "median_ret": 0.27,
     "max_ret": 14.21,
     "min_ret": -9.63,
     "pf": 1.94,
-    "total_ret": 1011.44,
-    "total_pnl_100": 3243600
+    "total_ret": 1012.12,
+    "total_pnl_100": 3248350
   },
   "stats_all": {
-    "total": 3545,
-    "wins": 2039,
-    "losses": 1506,
-    "wr": 57.5,
+    "total": 3553,
+    "wins": 2045,
+    "losses": 1508,
+    "wr": 57.6,
     "avg_ret": 0.33,
-    "median_ret": 0.22,
+    "median_ret": 0.23,
     "max_ret": 14.21,
     "min_ret": -10.32,
-    "pf": 1.82,
-    "total_ret": 1163.48,
-    "total_pnl_100": 4695130
+    "pf": 1.83,
+    "total_ret": 1171.94,
+    "total_pnl_100": 4751630
   },
   "max_dd_filtered": {
     "amount": -61100,
@@ -118,17 +118,17 @@
       }
     },
     {
-      "total": 262,
-      "wins": 166,
-      "losses": 96,
-      "wr": 63.4,
-      "avg_ret": 0.48,
+      "total": 266,
+      "wins": 169,
+      "losses": 97,
+      "wr": 63.5,
+      "avg_ret": 0.47,
       "median_ret": 0.47,
       "max_ret": 9.08,
       "min_ret": -9.63,
-      "pf": 1.94,
-      "total_ret": 125.37,
-      "total_pnl_100": 569450,
+      "pf": 1.93,
+      "total_ret": 126.05,
+      "total_pnl_100": 574200,
       "year": 2026,
       "max_dd": {
         "amount": -50900,
@@ -145,34 +145,34 @@
       "dow": 4,
       "dow_label": "金",
       "stats_filtered": {
-        "total": 181,
+        "total": 182,
         "wins": 106,
-        "losses": 75,
-        "wr": 58.6,
-        "avg_ret": 0.38,
+        "losses": 76,
+        "wr": 58.2,
+        "avg_ret": 0.37,
         "median_ret": 0.22,
         "max_ret": 8.53,
         "min_ret": -4.27,
-        "pf": 2.04,
-        "total_ret": 68.31,
-        "total_pnl_100": 68,
-        "pnl_100_total": 93450
+        "pf": 1.99,
+        "total_ret": 66.78,
+        "total_pnl_100": 67,
+        "pnl_100_total": 90450
       },
       "stats_all": {
-        "total": 204,
+        "total": 205,
         "wins": 118,
-        "losses": 86,
-        "wr": 57.8,
-        "avg_ret": 0.35,
+        "losses": 87,
+        "wr": 57.6,
+        "avg_ret": 0.34,
         "median_ret": 0.22,
         "max_ret": 8.53,
         "min_ret": -4.27,
-        "pf": 2.01,
-        "total_ret": 72.1,
-        "total_pnl_100": 72
+        "pf": 1.97,
+        "total_ret": 70.57,
+        "total_pnl_100": 71
       },
-      "n_filtered": 181,
-      "n_all": 204
+      "n_filtered": 182,
+      "n_all": 205
     },
     {
       "code": "50160",
@@ -233,20 +233,20 @@
         "pnl_100_total": 57700
       },
       "stats_all": {
-        "total": 91,
+        "total": 92,
         "wins": 55,
-        "losses": 36,
-        "wr": 60.4,
-        "avg_ret": 0.42,
+        "losses": 37,
+        "wr": 59.8,
+        "avg_ret": 0.4,
         "median_ret": 0.15,
         "max_ret": 10.29,
         "min_ret": -7.01,
-        "pf": 2.0,
-        "total_ret": 38.66,
-        "total_pnl_100": 39
+        "pf": 1.93,
+        "total_ret": 37.18,
+        "total_pnl_100": 37
       },
       "n_filtered": 75,
-      "n_all": 91
+      "n_all": 92
     },
     {
       "code": "83770",
@@ -256,34 +256,34 @@
       "dow": 4,
       "dow_label": "金",
       "stats_filtered": {
-        "total": 181,
-        "wins": 107,
+        "total": 182,
+        "wins": 108,
         "losses": 74,
-        "wr": 59.1,
+        "wr": 59.3,
         "avg_ret": 0.43,
         "median_ret": 0.43,
         "max_ret": 6.32,
         "min_ret": -7.19,
         "pf": 1.93,
-        "total_ret": 78.58,
+        "total_ret": 78.87,
         "total_pnl_100": 79,
-        "pnl_100_total": 175650
+        "pnl_100_total": 177450
       },
       "stats_all": {
-        "total": 204,
-        "wins": 118,
+        "total": 205,
+        "wins": 119,
         "losses": 86,
-        "wr": 57.8,
+        "wr": 58.0,
         "avg_ret": 0.41,
-        "median_ret": 0.35,
+        "median_ret": 0.34,
         "max_ret": 6.32,
         "min_ret": -7.19,
         "pf": 1.94,
-        "total_ret": 83.92,
+        "total_ret": 84.22,
         "total_pnl_100": 84
       },
-      "n_filtered": 181,
-      "n_all": 204
+      "n_filtered": 182,
+      "n_all": 205
     },
     {
       "code": "19510",
@@ -293,34 +293,34 @@
       "dow": 4,
       "dow_label": "金",
       "stats_filtered": {
-        "total": 181,
-        "wins": 112,
+        "total": 182,
+        "wins": 113,
         "losses": 69,
-        "wr": 61.9,
-        "avg_ret": 0.26,
-        "median_ret": 0.23,
+        "wr": 62.1,
+        "avg_ret": 0.27,
+        "median_ret": 0.24,
         "max_ret": 4.85,
         "min_ret": -2.59,
-        "pf": 2.15,
-        "total_ret": 47.72,
-        "total_pnl_100": 48,
-        "pnl_100_total": 87860
+        "pf": 2.18,
+        "total_ret": 49.12,
+        "total_pnl_100": 49,
+        "pnl_100_total": 92010
       },
       "stats_all": {
-        "total": 204,
-        "wins": 124,
+        "total": 205,
+        "wins": 125,
         "losses": 80,
-        "wr": 60.8,
+        "wr": 61.0,
         "avg_ret": 0.23,
         "median_ret": 0.22,
         "max_ret": 4.85,
         "min_ret": -2.59,
-        "pf": 1.93,
-        "total_ret": 46.02,
-        "total_pnl_100": 46
+        "pf": 1.96,
+        "total_ret": 47.43,
+        "total_pnl_100": 47
       },
-      "n_filtered": 181,
-      "n_all": 204
+      "n_filtered": 182,
+      "n_all": 205
     },
     {
       "code": "90720",
@@ -344,20 +344,20 @@
         "pnl_100_total": 128560
       },
       "stats_all": {
-        "total": 204,
-        "wins": 115,
+        "total": 205,
+        "wins": 116,
         "losses": 89,
-        "wr": 56.4,
-        "avg_ret": 0.26,
-        "median_ret": 0.15,
+        "wr": 56.6,
+        "avg_ret": 0.28,
+        "median_ret": 0.16,
         "max_ret": 7.51,
         "min_ret": -3.68,
-        "pf": 1.91,
-        "total_ret": 53.68,
-        "total_pnl_100": 54
+        "pf": 1.99,
+        "total_ret": 58.37,
+        "total_pnl_100": 58
       },
       "n_filtered": 175,
-      "n_all": 204
+      "n_all": 205
     },
     {
       "code": "61410",
@@ -381,20 +381,20 @@
         "pnl_100_total": 221450
       },
       "stats_all": {
-        "total": 204,
-        "wins": 121,
+        "total": 205,
+        "wins": 122,
         "losses": 83,
-        "wr": 59.3,
+        "wr": 59.5,
         "avg_ret": 0.42,
-        "median_ret": 0.32,
+        "median_ret": 0.33,
         "max_ret": 8.73,
         "min_ret": -4.0,
-        "pf": 1.88,
-        "total_ret": 85.61,
-        "total_pnl_100": 86
+        "pf": 1.9,
+        "total_ret": 87.03,
+        "total_pnl_100": 87
       },
       "n_filtered": 175,
-      "n_all": 204
+      "n_all": 205
     },
     {
       "code": "59290",
@@ -404,34 +404,34 @@
       "dow": 4,
       "dow_label": "金",
       "stats_filtered": {
-        "total": 181,
-        "wins": 102,
+        "total": 182,
+        "wins": 103,
         "losses": 79,
-        "wr": 56.4,
+        "wr": 56.6,
         "avg_ret": 0.34,
-        "median_ret": 0.14,
+        "median_ret": 0.15,
         "max_ret": 14.21,
         "min_ret": -9.63,
         "pf": 1.86,
-        "total_ret": 61.71,
+        "total_ret": 62.21,
         "total_pnl_100": 62,
-        "pnl_100_total": 152850
+        "pnl_100_total": 154650
       },
       "stats_all": {
-        "total": 204,
-        "wins": 113,
+        "total": 205,
+        "wins": 114,
         "losses": 91,
-        "wr": 55.4,
+        "wr": 55.6,
         "avg_ret": 0.34,
-        "median_ret": 0.1,
+        "median_ret": 0.12,
         "max_ret": 14.21,
         "min_ret": -9.63,
         "pf": 1.87,
-        "total_ret": 68.92,
+        "total_ret": 69.42,
         "total_pnl_100": 69
       },
-      "n_filtered": 181,
-      "n_all": 204
+      "n_filtered": 182,
+      "n_all": 205
     },
     {
       "code": "19440",
@@ -455,20 +455,20 @@
         "pnl_100_total": 205000
       },
       "stats_all": {
-        "total": 204,
-        "wins": 115,
+        "total": 205,
+        "wins": 116,
         "losses": 89,
-        "wr": 56.4,
-        "avg_ret": 0.27,
+        "wr": 56.6,
+        "avg_ret": 0.28,
         "median_ret": 0.19,
         "max_ret": 6.23,
         "min_ret": -8.08,
-        "pf": 1.79,
-        "total_ret": 54.64,
-        "total_pnl_100": 55
+        "pf": 1.83,
+        "total_ret": 57.81,
+        "total_pnl_100": 58
       },
       "n_filtered": 175,
-      "n_all": 204
+      "n_all": 205
     },
     {
       "code": "68570",
@@ -880,34 +880,6 @@
   ],
   "next_entries": [
     {
-      "date": "2026-05-08",
-      "code": "54060",
-      "name": "神戸製鋼所",
-      "direction": "LONG",
-      "dow_label": "金"
-    },
-    {
-      "date": "2026-05-08",
-      "code": "83770",
-      "name": "ほくほくフィナンシャルグループ",
-      "direction": "LONG",
-      "dow_label": "金"
-    },
-    {
-      "date": "2026-05-08",
-      "code": "19510",
-      "name": "エクシオグループ",
-      "direction": "LONG",
-      "dow_label": "金"
-    },
-    {
-      "date": "2026-05-08",
-      "code": "59290",
-      "name": "三和ホールディングス",
-      "direction": "LONG",
-      "dow_label": "金"
-    },
-    {
       "date": "2026-05-11",
       "code": "45160",
       "name": "日本新薬",
@@ -1018,6 +990,34 @@
       "name": "きんでん",
       "direction": "LONG",
       "dow_label": "木"
+    },
+    {
+      "date": "2026-05-15",
+      "code": "54060",
+      "name": "神戸製鋼所",
+      "direction": "LONG",
+      "dow_label": "金"
+    },
+    {
+      "date": "2026-05-15",
+      "code": "83770",
+      "name": "ほくほくフィナンシャルグループ",
+      "direction": "LONG",
+      "dow_label": "金"
+    },
+    {
+      "date": "2026-05-15",
+      "code": "19510",
+      "name": "エクシオグループ",
+      "direction": "LONG",
+      "dow_label": "金"
+    },
+    {
+      "date": "2026-05-15",
+      "code": "59290",
+      "name": "三和ホールディングス",
+      "direction": "LONG",
+      "dow_label": "金"
     }
   ],
   "weekly": [
@@ -41160,6 +41160,68 @@
           "ret_pct": 1.02,
           "pnl_100": 5300,
           "us_prev_ret": 0.8
+        }
+      ]
+    },
+    {
+      "week": "2026-W19",
+      "start_date": "2026-05-08",
+      "end_date": "2026-05-08",
+      "n_trades": 4,
+      "total_ret": 0.68,
+      "total_pnl_100": 4750,
+      "picks": [
+        {
+          "date": "2026-05-08",
+          "code": "54060",
+          "name": "神戸製鋼所",
+          "direction": "LONG",
+          "group": "core",
+          "dow_label": "金",
+          "adj_open": 1967.0,
+          "adj_close": 1937.0,
+          "ret_pct": -1.53,
+          "pnl_100": -3000,
+          "us_prev_ret": -0.38
+        },
+        {
+          "date": "2026-05-08",
+          "code": "83770",
+          "name": "ほくほくフィナンシャルグループ",
+          "direction": "LONG",
+          "group": "core",
+          "dow_label": "金",
+          "adj_open": 6059.0,
+          "adj_close": 6077.0,
+          "ret_pct": 0.3,
+          "pnl_100": 1800,
+          "us_prev_ret": -0.38
+        },
+        {
+          "date": "2026-05-08",
+          "code": "19510",
+          "name": "エクシオグループ",
+          "direction": "LONG",
+          "group": "core",
+          "dow_label": "金",
+          "adj_open": 2944.5,
+          "adj_close": 2986.0,
+          "ret_pct": 1.41,
+          "pnl_100": 4150,
+          "us_prev_ret": -0.38
+        },
+        {
+          "date": "2026-05-08",
+          "code": "59290",
+          "name": "三和ホールディングス",
+          "direction": "LONG",
+          "group": "core",
+          "dow_label": "金",
+          "adj_open": 3625.0,
+          "adj_close": 3643.0,
+          "ret_pct": 0.5,
+          "pnl_100": 1800,
+          "us_prev_ret": -0.38
         }
       ]
     }

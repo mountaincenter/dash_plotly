@@ -32,6 +32,7 @@ META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "sq4_trades.json"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 BACKTEST_START = "2022-04-01"
 PRICE_MIN = 1000
@@ -444,6 +445,37 @@ def main() -> int:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     print(f"  {OUTPUT_PATH} ({OUTPUT_PATH.stat().st_size:,} bytes)")
+
+    # signals.parquet に当日シグナル行を merge
+    if next_sq4 and candidates and candidates.get("picks"):
+        sig_rows = []
+        for p in candidates["picks"]:
+            code = str(p["code"])
+            ticker = code + ".T" if not code.endswith(".T") else code
+            sig_rows.append({
+                "signal_date": pd.Timestamp(next_sq4["entry_date"]),
+                "ticker": ticker,
+                "strategy": "sq4",
+                "direction": "long",
+                "pair_id": "",
+                "stock_name": p.get("name", ""),
+                "entry_price_est": p.get("prev_close"),
+                "prev_close": p.get("prev_close"),
+            })
+        if sig_rows:
+            new_sigs = pd.DataFrame(sig_rows)
+            if SIGNALS_PATH.exists():
+                existing = pd.read_parquet(SIGNALS_PATH)
+                other = existing[existing["strategy"] != "sq4"] if "strategy" in existing.columns else existing
+                merged = pd.concat([new_sigs, other], ignore_index=True)
+            else:
+                merged = new_sigs
+            SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+            merged.to_parquet(tmp, index=False)
+            tmp.replace(SIGNALS_PATH)
+            print(f"[OK] signals.parquet merged: {len(new_sigs)} rows (strategy=sq4 / total={len(merged)})")
+
     print("\n[OK] Done")
     return 0
 

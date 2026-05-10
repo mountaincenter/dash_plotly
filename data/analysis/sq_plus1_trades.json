@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-08T21:16:24.460683",
+  "generated": "2026-05-10T11:44:48.815572",
   "params": {
     "strategy": "SQ+1d SHORT",
     "selection": "前日(SQ日)上昇Top N",
@@ -58,7 +58,74 @@
     "amount": -61100,
     "pct": -61100.0
   },
-  "next_sq_plus1": null,
+  "next_sq_plus1": {
+    "sq_date": "2026-05-08",
+    "entry_date": "2026-05-11",
+    "cme_direction": "UP",
+    "top_n": 10,
+    "picks": [
+      {
+        "code": "34360",
+        "name": "ＳＵＭＣＯ",
+        "prev_close": 3033.0,
+        "prev_day_ret": 17.97
+      },
+      {
+        "code": "23710",
+        "name": "カカクコム",
+        "prev_close": 2708.0,
+        "prev_day_ret": 7.63
+      },
+      {
+        "code": "35630",
+        "name": "ＦＯＯＤ　＆　ＬＩＦＥ　ＣＯＭＰＡＮＩＥＳ",
+        "prev_close": 9582.0,
+        "prev_day_ret": 7.49
+      },
+      {
+        "code": "65260",
+        "name": "ソシオネクスト",
+        "prev_close": 2050.5,
+        "prev_day_ret": 7.49
+      },
+      {
+        "code": "37740",
+        "name": "インターネットイニシアティブ",
+        "prev_close": 2770.5,
+        "prev_day_ret": 7.4
+      },
+      {
+        "code": "53340",
+        "name": "日本特殊陶業",
+        "prev_close": 8083.0,
+        "prev_day_ret": 7.37
+      },
+      {
+        "code": "65060",
+        "name": "安川電機",
+        "prev_close": 5973.0,
+        "prev_day_ret": 6.6
+      },
+      {
+        "code": "62680",
+        "name": "ナブテスコ",
+        "prev_close": 5253.0,
+        "prev_day_ret": 6.57
+      },
+      {
+        "code": "69540",
+        "name": "ファナック",
+        "prev_close": 7095.0,
+        "prev_day_ret": 5.92
+      },
+      {
+        "code": "24320",
+        "name": "ディー・エヌ・エー",
+        "prev_close": 2531.0,
+        "prev_day_ret": 5.71
+      }
+    ]
+  },
   "monthly": [
     {
       "month": "2022-04",

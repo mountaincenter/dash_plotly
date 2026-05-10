@@ -372,13 +372,14 @@ def load_topix_stocks() -> pd.DataFrame:
 def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
     """
     signals.parquet (strategy discriminator) から
-    granville / pairs の 18列行を生成して返す。
+    各戦略の 18列行を生成して返す。
     pairs は tk1/tk2 を2行に展開、is_entry | is_buffer のみ対象。
     """
     import numpy as np
 
     empty = pd.DataFrame(columns=ALL_STOCKS_COLS)
-    result = {"granville": empty.copy(), "pairs": empty.copy()}
+    strategies = ["granville", "pairs", "sq_plus1", "sq4", "weekday"]
+    result = {s: empty.copy() for s in strategies}
 
     if not SIGNALS_PATH.exists():
         print(f"  [WARN] signals.parquet not found: {SIGNALS_PATH}")
@@ -419,7 +420,6 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
     # pairs: is_entry | is_buffer の tk1/tk2 を展開
     pr = signals[signals["strategy"] == "pairs"]
     if not pr.empty:
-        # object dtype でも安全に bool 化 (None/NaN → False)
         def _as_bool(s: pd.Series) -> pd.Series:
             return s.apply(lambda v: bool(v) if v is True or v is False else False)
 
@@ -432,6 +432,16 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
             pair_tickers = pair_tickers[pair_tickers.notna() & (pair_tickers != "")]
             result["pairs"] = _to_18col(pair_tickers, "PAIRS")
             print(f"  [INFO] Pairs entry+buffer from signals.parquet: {len(result['pairs'])} tickers")
+
+    # sq_plus1 / sq4 / weekday: ticker列からそのまま展開
+    for strat, cat in [("sq_plus1", "SQ_PLUS1"), ("sq4", "SQ4"), ("weekday", "WEEKDAY")]:
+        sub = signals[signals["strategy"] == strat]
+        if not sub.empty and "ticker" in sub.columns:
+            tickers = sub["ticker"].dropna()
+            tickers = tickers[tickers != ""]
+            if not tickers.empty:
+                result[strat] = _to_18col(tickers, cat)
+                print(f"  [INFO] {cat} from signals.parquet: {len(result[strat])} stocks")
 
     return result
 
@@ -493,10 +503,13 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # 重複する静的銘柄を除外（スキャルピング/Grokに統合済み）
     meta_clean = meta[~meta["ticker"].isin(overlap_entry | overlap_active | overlap_grok)].copy()
 
-    # granville / pairs: 統合 signals.parquet から読み込み
+    # signals.parquet から全戦略の銘柄を読み込み
     strategy_rows = _build_rows_from_signals()
     granville_recs = strategy_rows["granville"]
     pairs_df = strategy_rows["pairs"]
+    sq_plus1_df = strategy_rows["sq_plus1"]
+    sq4_df = strategy_rows["sq4"]
+    weekday_df = strategy_rows["weekday"]
 
     # hold_stocks.parquetから保有銘柄を読み込み
     import numpy as np
@@ -545,7 +558,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
 
     # source間で同一tickerがある場合 (例: 8053.T が HOLD + PAIRS)、
     # categories/tags は union し、メタ列は non-null 優先で畳み込む
-    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, pairs_df], ignore_index=True)
+    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, pairs_df, sq_plus1_df, sq4_df, weekday_df], ignore_index=True)
 
     def _union_list(series: pd.Series) -> list:
         merged: list = []
@@ -592,7 +605,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Pairs: {len(pairs_df)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Pairs: {len(pairs_df)}, SQ+1: {len(sq_plus1_df)}, SQ4: {len(sq4_df)}, Weekday: {len(weekday_df)})")
     return all_stocks
 
 

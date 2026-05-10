@@ -4,7 +4,7 @@ on:
   schedule:
     # staging: production(16:45/23:00)と被らない時間帯
     - cron: "0 9 * * *"   # UTC 09:00 = JST 18:00 - 振り返り（日足更新 + シグナル生成）
-    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 - 明日の準備（推奨生成 + 価格取得 + デプロイ）
+    - cron: "0 16 * * *"  # UTC 16:00 = JST 01:00 (25:00) - 統合準備（production grok取得 + 推奨 + 価格取得 + デプロイ）
     - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 - CME終値確定 + 判定更新
   workflow_dispatch:
     inputs:
@@ -54,6 +54,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install jquants-cli
+        run: |
+          JQUANTS_VERSION="1.0.0"
+          curl -sL "https://github.com/J-Quants/jquants-cli/releases/download/v${JQUANTS_VERSION}/jquants-${JQUANTS_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jquants.tar.gz
+          tar -xzf /tmp/jquants.tar.gz -C /tmp/
+          chmod +x /tmp/jquants
+          sudo mv /tmp/jquants /usr/local/bin/jquants
+          echo "✅ jquants-cli $(jquants --version) installed"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -65,7 +74,12 @@ jobs:
           cat > .env.jquants <<EOF
           JQUANTS_API_KEY=${{ secrets.JQUANTS_API_KEY }}
           EOF
-          echo "✅ J-Quants configured"
+
+          mkdir -p ~/.config/jquants
+          EPOCH=$(date +%s)
+          printf '{"api_key":"%s","saved_at":%s}\n' "${{ secrets.JQUANTS_API_KEY }}" "$EPOCH" > ~/.config/jquants/credentials.json
+
+          echo "✅ J-Quants authentication configured (Python + CLI)"
 
       # ===== 実行モード判定 =====
       - name: Determine execution mode
@@ -81,16 +95,16 @@ jobs:
             echo "📊 FORCED: Review only (18:00相当)"
           elif [ "$MODE" = "prepare_only" ]; then
             echo "phase=prepare" >> $GITHUB_OUTPUT
-            echo "📋 FORCED: Prepare only (22:00相当)"
+            echo "📋 FORCED: Prepare only (25:00相当)"
           elif [ "$MODE" = "cme_update_only" ]; then
             echo "phase=cme_update" >> $GITHUB_OUTPUT
             echo "🌅 FORCED: CME update only (07:00相当)"
           elif [ "$CURRENT_HOUR" = "18" ]; then
             echo "phase=review" >> $GITHUB_OUTPUT
             echo "📊 18:00 JST - Review mode"
-          elif [ "$CURRENT_HOUR" = "22" ]; then
+          elif [ "$CURRENT_HOUR" = "01" ]; then
             echo "phase=prepare" >> $GITHUB_OUTPUT
-            echo "📋 22:00 JST - Prepare mode"
+            echo "📋 01:00 JST (25:00) - Prepare mode"
           elif [ "$CURRENT_HOUR" = "07" ]; then
             echo "phase=cme_update" >> $GITHUB_OUTPUT
             echo "🌅 07:00 JST - CME update mode"
@@ -157,12 +171,19 @@ jobs:
           done
 
           # production S3からマスタデータ（staging S3にない場合のみ）
-          for f in meta_jquants.parquet meta.parquet grok_trending.parquet; do
+          for f in meta_jquants.parquet meta.parquet; do
             if [ ! -f "data/parquet/$f" ]; then
               echo "  Fetching $f from production S3..."
               aws s3 cp "s3://stock-api-data/${S3_PREFIX}$f" "data/parquet/$f" --only-show-errors && echo "  ✓ $f" || echo "  ✗ $f not found"
             fi
           done
+
+          # grok_trending.parquet は production 23:00 の結果を常に最新取得
+          echo "  Fetching grok_trending.parquet from production S3 (always overwrite)..."
+          aws s3 cp "s3://stock-api-data/${S3_PREFIX}grok_trending.parquet" "data/parquet/grok_trending.parquet" --only-show-errors && echo "  ✓ grok_trending.parquet" || echo "  ✗ grok_trending.parquet not found"
+          # production 完了確認用: S3上の最終更新日時をログ出力
+          S3_LAST=$(aws s3api head-object --bucket stock-api-data --key "${S3_PREFIX}grok_trending.parquet" --query 'LastModified' --output text 2>/dev/null || echo "N/A")
+          echo "  ℹ grok_trending.parquet S3 LastModified: $S3_LAST"
 
           echo "✅ Data downloaded"
 
@@ -319,10 +340,10 @@ jobs:
           python scripts/pipeline/generate_calendar.py
         timeout-minutes: 5
 
-      - name: "[Prepare] Update all_stocks (grok + granville + pairs)"
+      - name: "[Prepare] Update all_stocks (grok + signals.parquet全戦略)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          echo "🔄 Updating all_stocks.parquet (granville + pairs)..."
+          echo "🔄 Updating all_stocks.parquet (grok + granville + pairs + sq_plus1 + sq4 + weekday)..."
           python scripts/pipeline/create_all_stocks.py
         timeout-minutes: 5
 
@@ -333,18 +354,20 @@ jobs:
           python scripts/pipeline/fetch_prices.py
         timeout-minutes: 20
 
+      - name: "[Prepare] Update manifest.json"
+        if: steps.exec_mode.outputs.phase == 'prepare'
+        run: |
+          echo "📋 Regenerating manifest.json for prepare phase..."
+          python scripts/pipeline/update_manifest.py
+        timeout-minutes: 3
+
       - name: "[Prepare] Upload prepare results to S3"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
           echo "☁️ Uploading prepare results..."
 
-          # recommendations
-          for f in data/parquet/granville/recommendations_*.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://$S3_BUCKET/${S3_PREFIX}granville/$(basename $f)" --only-show-errors
-          done
-
-          # all_stocks & prices & calendar
-          for f in all_stocks.parquet tech_snapshot_1d.parquet manifest.json calendar.parquet \
+          # all_stocks & signals & prices & calendar
+          for f in all_stocks.parquet signals.parquet tech_snapshot_1d.parquet manifest.json calendar.parquet \
                    prices_max_1d.parquet prices_max_1mo.parquet prices_5d_1m.parquet \
                    prices_60d_15m.parquet prices_60d_5m.parquet prices_730d_1h.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-08",
+  "generated": "2026-05-10",
   "params": {
     "backtest_start": "2022-04-01",
     "price_min": 1000,
@@ -59,69 +59,69 @@
     "exit_date": "2026-06-09"
   },
   "candidates": {
-    "as_of": "2026-05-01",
-    "count": 154,
+    "as_of": "2026-05-08",
+    "count": 153,
     "sector": "外需",
     "picks": [
       {
-        "code": "6702",
-        "name": "富士通",
-        "prev_close": 3075.0,
-        "ret_5d": -18.5
-      },
-      {
         "code": "4088",
         "name": "エア・ウォーター",
-        "prev_close": 1895.5,
-        "ret_5d": -14.11
+        "prev_close": 1938.5,
+        "ret_5d": -13.11
+      },
+      {
+        "code": "6702",
+        "name": "富士通",
+        "prev_close": 3382.0,
+        "ret_5d": -11.58
       },
       {
         "code": "6770",
         "name": "アルプスアルパイン",
-        "prev_close": 2012.5,
-        "ret_5d": -11.85
+        "prev_close": 2083.0,
+        "ret_5d": -9.45
       },
       {
-        "code": "7751",
-        "name": "キヤノン",
-        "prev_close": 4017.0,
-        "ret_5d": -8.06
+        "code": "6701",
+        "name": "日本電気",
+        "prev_close": 4200.0,
+        "ret_5d": -9.19
+      },
+      {
+        "code": "6632",
+        "name": "ＪＶＣケンウッド",
+        "prev_close": 1096.0,
+        "ret_5d": -8.17
       },
       {
         "code": "6501",
         "name": "日立製作所",
-        "prev_close": 4795.0,
-        "ret_5d": -7.84
-      },
-      {
-        "code": "6436",
-        "name": "アマノ",
-        "prev_close": 3573.0,
-        "ret_5d": -6.95
-      },
-      {
-        "code": "6988",
-        "name": "日東電工",
-        "prev_close": 2995.0,
-        "ret_5d": -6.76
-      },
-      {
-        "code": "7202",
-        "name": "いすゞ自動車",
-        "prev_close": 2120.5,
-        "ret_5d": -6.59
+        "prev_close": 4938.0,
+        "ret_5d": -7.8
       },
       {
         "code": "6301",
         "name": "小松製作所",
-        "prev_close": 6514.0,
-        "ret_5d": -6.54
+        "prev_close": 6566.0,
+        "ret_5d": -6.9
       },
       {
-        "code": "3116",
-        "name": "トヨタ紡織",
-        "prev_close": 2207.0,
-        "ret_5d": -6.32
+        "code": "5631",
+        "name": "日本製鋼所",
+        "prev_close": 9209.0,
+        "ret_5d": -5.53
+      },
+      {
+        "code": "7203",
+        "name": "トヨタ自動車",
+        "prev_close": 2913.0,
+        "ret_5d": -5.02
+      },
+      {
+        "code": "6988",
+        "name": "日東電工",
+        "prev_close": 3158.0,
+        "ret_5d": -4.36
       }
     ]
   },

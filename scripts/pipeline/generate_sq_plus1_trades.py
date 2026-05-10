@@ -27,6 +27,7 @@ PRICES_PATH = PARQUET_DIR / "prices_topix500_oc.parquet"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_max_1d.parquet"
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "sq_plus1_trades.json"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 
 
 def _load_master() -> dict[str, str]:
@@ -307,6 +308,37 @@ def main() -> int:
     print(f"  CME↓ PF: {stats_cme_down.get('pf', '—')} (n={stats_cme_down.get('total', 0)})")
     print(f"  CME↑ PF: {stats_cme_up.get('pf', '—')} (n={stats_cme_up.get('total', 0)})")
     print(f"\n[OK] {OUTPUT_PATH}")
+
+    # signals.parquet に当日シグナル行を merge
+    if next_sq_plus1 and "picks" in next_sq_plus1:
+        sig_rows = []
+        for p in next_sq_plus1["picks"]:
+            code = str(p["code"])
+            ticker = code[:4] + ".T" if len(code) == 5 else code + ".T"
+            sig_rows.append({
+                "signal_date": pd.Timestamp(next_sq_plus1["entry_date"]),
+                "ticker": ticker,
+                "strategy": "sq_plus1",
+                "direction": "short",
+                "pair_id": "",
+                "stock_name": p.get("name", ""),
+                "entry_price_est": p.get("prev_close"),
+                "prev_close": p.get("prev_close"),
+            })
+        if sig_rows:
+            new_sigs = pd.DataFrame(sig_rows)
+            if SIGNALS_PATH.exists():
+                existing = pd.read_parquet(SIGNALS_PATH)
+                other = existing[existing["strategy"] != "sq_plus1"] if "strategy" in existing.columns else existing
+                merged = pd.concat([new_sigs, other], ignore_index=True)
+            else:
+                merged = new_sigs
+            SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+            merged.to_parquet(tmp, index=False)
+            tmp.replace(SIGNALS_PATH)
+            print(f"[OK] signals.parquet merged: {len(new_sigs)} rows (strategy=sq_plus1 / total={len(merged)})")
+
     return 0
 
 
