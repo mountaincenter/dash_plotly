@@ -364,6 +364,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "ml/grok_lgbm_meta.json")  # MLメタ情報（ML Retrainingで生成・使用）
         keep_keys.add(prefix + "ml/archive_with_features.parquet")  # ML特徴量データ（ML Retrainingで生成）
         keep_keys.add(prefix + "ml/wfcv_predictions.parquet")  # WFCV予測（ML Retrainingで生成、analysis-mlで使用）
+        keep_keys.add(prefix + "allocation.parquet")  # 寄前アロケータ結果（07:00 CMEフェーズで生成）
 
         # backtest/grok_trending_YYYYMMDD.parquet ファイルも保護（7日分）
         # backtest/deep_analysis_YYYY-MM-DD.json ファイルも保護

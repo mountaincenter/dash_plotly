@@ -426,6 +426,15 @@ jobs:
           python scripts/format_granville_b4_slack.py
         timeout-minutes: 5
 
+      - name: "[CME] Pre-market allocation (risk control)"
+        if: steps.exec_mode.outputs.phase == 'cme_update'
+        run: |
+          echo "🛡️ Running pre-market allocator..."
+          python scripts/pipeline/generate_pre_market_allocation.py
+          [ -f "data/parquet/allocation.parquet" ] && \
+            aws s3 cp "data/parquet/allocation.parquet" "s3://$S3_BUCKET/${S3_PREFIX}allocation.parquet" --only-show-errors
+        timeout-minutes: 5
+
       # ===== 07:00 Live Trading 判定 (sox_research/live_trading) =====
       - name: "[CME] Download live_trading data from S3"
         if: steps.exec_mode.outputs.phase == 'cme_update'

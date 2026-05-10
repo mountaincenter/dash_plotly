@@ -28,6 +28,7 @@ from server.routers.dev_analysis_ml import router as dev_analysis_ml_router
 from server.routers.dev_strategy import router as dev_strategy_router
 from server.routers.dev_pairs import router as dev_pairs_router
 from server.routers.dev_calendar import router as dev_calendar_router
+from server.routers.dev_allocation import router as dev_allocation_router
 
 import os
 
@@ -120,3 +121,4 @@ app.include_router(dev_analysis_ml_router, tags=["analysis-ml"])
 app.include_router(dev_strategy_router, tags=["dev-strategy"])
 app.include_router(dev_pairs_router, tags=["pairs"])
 app.include_router(dev_calendar_router, tags=["calendar"])
+app.include_router(dev_allocation_router, tags=["allocation"])
