@@ -27,6 +27,10 @@ on:
         description: "16:45モードを強制（Grok選定スキップ、バックテスト実行）"
         type: boolean
         default: false
+      force_grok_skip:
+        description: "23:00モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
+        type: boolean
+        default: false
       force_cme_mode:
         description: "CME更新モードを強制（07:00相当）"
         type: boolean
@@ -110,6 +114,12 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
             echo "🌅 FORCED CME Update Mode (07:00相当)"
+          # force_grok_skip: 23:00モードでGrok選定だけスキップ
+          elif [ "${{ github.event.inputs.force_grok_skip }}" = "true" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (Grok selection SKIPPED, using existing grok_trending.parquet)"
           # force_1645_mode が true の場合、強制的に16:45モード（Grok選定スキップ）
           elif [ "${{ github.event.inputs.force_1645_mode }}" = "true" ]; then
             echo "mode=stock_data_forced" >> $GITHUB_OUTPUT
