@@ -814,73 +814,18 @@ jobs:
           fi
         timeout-minutes: 45
 
-      - name: Generate Granville B1-B4 signals
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+      - name: Upload Granville/Pairs artifacts to S3
+        if: success()
         run: |
-          echo "============================================================"
-          echo "Generating Granville B1-B4 signals (16:45 only)"
-          echo "============================================================"
-
-          # S3からgranville関連データをダウンロード
-          for f in hold_stocks.parquet credit_status.parquet orders.parquet nikkei_vi_max_1d.parquet; do
-            if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" > /dev/null 2>&1; then
-              aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" "data/parquet/$f" --only-show-errors
-            fi
+          echo "📤 Uploading Granville signals/positions/long_recommendations..."
+          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/long_recommendations_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
           done
-
-          python3 scripts/pipeline/generate_granville_signals.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Granville B1-B4 signal generation completed"
-            # signals + positions + long_recommendations を S3にアップロード
-            for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/long_recommendations_*.parquet; do
-              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
-            done
-            echo "✅ Uploaded granville signals/positions/long_recommendations to S3"
-          else
-            echo "⚠️ Granville signal generation failed (non-critical)"
-          fi
-        timeout-minutes: 30
-
-      - name: Backtest Granville B1-B4 archive
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "============================================================"
-          echo "Backtesting Granville B1-B4 archive (16:45 only)"
-          echo "============================================================"
-
-          python3 scripts/pipeline/backtest_granville_b1b4.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Granville B1-B4 backtest completed"
-          else
-            echo "⚠️ Granville B1-B4 backtest failed (non-critical)"
-          fi
-
-      - name: Generate Pairs Trading signals (16:45 only)
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          echo "============================================================"
-          echo "Generating Pairs Trading signals (161 pairs, v2)"
-          echo "============================================================"
-
-          mkdir -p data/parquet/pairs
-
-          # prices_topix.parquet は Granville step で生成済み
-          # prices_max_1d.parquet は Run Data Pipeline step で生成済み
-
-          python3 scripts/pipeline/generate_pairs_signals.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Pairs trading signals generated"
-            for f in data/parquet/pairs/pairs_signals_*.parquet; do
-              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}pairs/$(basename $f)" --only-show-errors
-            done
-            echo "✅ Uploaded pairs signals to S3"
-          else
-            echo "⚠️ Pairs trading signals failed (non-critical)"
-          fi
-        timeout-minutes: 10
+          echo "📤 Uploading Pairs signals..."
+          for f in data/parquet/pairs/pairs_signals_*.parquet; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}pairs/$(basename $f)" --only-show-errors
+          done
+          echo "✅ Granville/Pairs artifacts uploaded"
 
       - name: Upload Calendar Trades JSON to S3
         if: success()

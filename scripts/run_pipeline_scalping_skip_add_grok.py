@@ -53,9 +53,12 @@ class PipelineRunner:
                 # ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
             ])
 
-        # signals.parquet 統合ステップ（create_all_stocks の前に実行）
+        # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
         self.steps.extend([
             ("pipeline.generate_calendar", "カレンダーparquet生成"),
+            ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
+            ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
+            ("pipeline.generate_pairs_signals", "ペアトレーディングシグナル生成"),
             ("pipeline.generate_sq4_picks", "SQ-4日銘柄選定"),
             ("pipeline.generate_sq_plus1_trades", "SQ+1日ショート銘柄選定"),
             ("pipeline.generate_weekday_edge_trades", "曜日エッジ銘柄選定"),
@@ -87,11 +90,10 @@ class PipelineRunner:
                 ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
             )
 
-        # グランビル価格更新 + シグナル生成 + バックテスト（16:45 JST実行時のみ）
+        # グランビル価格更新 + バックテスト（16:45 JST実行時のみ）
         if skip_grok:
             self.steps.extend([
                 ("pipeline.update_granville_prices", "グランビルTOPIX価格更新"),
-                ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
                 ("pipeline.backtest_granville_b1b4", "グランビルB1-B4バックテストアーカイブ"),
             ])
 
