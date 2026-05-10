@@ -26,6 +26,10 @@ on:
         description: "16:45モードを強制（Grok選定スキップ、バックテスト実行）"
         type: boolean
         default: false
+      force_grok_skip:
+        description: "23:00モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -96,6 +100,12 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
+          # force_grok_skip: 23:00モードでGrok選定だけスキップ
+          elif [ "${{ github.event.inputs.force_grok_skip }}" = "true" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (Grok selection SKIPPED, using existing grok_trending.parquet)"
           # 23時（14:00 UTC）の実行はGROKモード（営業日チェックなし、Grok選定実行）
           elif [ "$CURRENT_HOUR" = "23" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT

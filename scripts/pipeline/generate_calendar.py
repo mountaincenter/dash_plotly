@@ -39,7 +39,7 @@ def fetch_business_days(year: int) -> list[date]:
             "--from", f"{year}-01-01",
             "--to", f"{year}-12-31",
         ],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, check=True, timeout=30,
     )
     df = pd.read_csv(io.StringIO(result.stdout))
     # HolDiv==1 が営業日（スキーマ説明と実データが逆）
