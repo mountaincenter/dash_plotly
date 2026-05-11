@@ -350,72 +350,21 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     return features
 
 
-PROB_SHORT_THRESHOLD = 0.45
-PROB_LONG_THRESHOLD = 0.70
-
-
-WEEKDAY_RULES = {
-    0: {  # 月曜
-        "weekday": "月",
-        "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
-    },
-    1: {  # 火曜
-        "weekday": "火",
-        "direction": "short",
-        "rule": "SHORT (prob<0.45) — 最強日",
-        "pf": 3.38,
-        "note": "火曜SHORTが全戦略の基盤",
-    },
-    2: {  # 水曜
-        "weekday": "水",
-        "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
-    },
-    3: {  # 木曜
-        "weekday": "木",
-        "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.84,
-        "note": "通常ルール適用。Gap-and-Fade傾向あり（寄付後に下落）",
-    },
-    4: {  # 金曜
-        "weekday": "金",
-        "direction": "excluded",
-        "rule": "見送り推奨 (PF 1.09 — コスト負け)",
-        "pf": 1.09,
-        "note": "SHORT PF=1.09でコスト込みマイナス。エントリー非推奨",
-    },
-}
-
-
-def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
-    """取引日の曜日ルールを返す"""
-    if trade_date is None:
-        return None
-    wd = trade_date.weekday()
-    return WEEKDAY_RULES.get(wd)
-
-
-def get_bucket(prob: float) -> str:
-    """prob_upから閾値区分 (SHORT/DISC/LONG) を返す"""
-    if prob < PROB_SHORT_THRESHOLD:
-        return "SHORT"
-    elif prob > PROB_LONG_THRESHOLD:
-        return "LONG"
-    return "DISC"
+def get_grade(prob: float, boundaries: list[float]) -> str:
+    """prob_upからGrade (G1-G4) を返す"""
+    for i, b in enumerate(boundaries):
+        if prob <= b:
+            return f"G{i + 1}"
+    return f"G{len(boundaries)}"
 
 
 def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: pd.DataFrame) -> dict:
-    """grok_dfの各銘柄に対してML予測を実行（28特徴量/閾値区分方式）"""
+    """grok_dfの各銘柄に対してML予測を実行（28特徴量/4クラスGrade方式）"""
     if model is None:
         return {}
 
     feature_names = meta['feature_names']
+    grade_boundaries = meta.get('grade_boundaries', [0.25, 0.40, 0.55, 1.0])
     target_date = pd.to_datetime(grok_df['date'].iloc[0])
     market_data = load_market_data()
     market_features = calc_market_features(target_date, market_data)
@@ -440,7 +389,7 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
         price_features = calc_price_features(ticker, target_date, prices_df, buy_price=close_price)
         if price_features is None:
-            results[ticker] = {'prob_up': None, 'bucket': None}
+            results[ticker] = {'prob_up': None, 'grade': None}
             continue
 
         all_features = {**existing_features, **price_features, **market_features}
@@ -458,10 +407,10 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
             prob = model.predict_proba(X)[0][1]
             results[ticker] = {
                 'prob_up': round(float(prob), 3),
-                'bucket': get_bucket(prob)
+                'grade': get_grade(prob, grade_boundaries)
             }
         except Exception:
-            results[ticker] = {'prob_up': None, 'bucket': None}
+            results[ticker] = {'prob_up': None, 'grade': None}
 
     return results
 
@@ -622,12 +571,10 @@ async def get_day_trade_list():
     Returns:
     - total: 総銘柄数
     - summary: {shortable, day_trade, ng}
-    - stocks: 銘柄リスト（appearance_count, prob_up, bucket付き）
+    - stocks: 銘柄リスト（appearance_count, prob_up, grade付き）
     """
     grok_df = load_grok_trending()
     day_trade_df = load_day_trade_list()
-
-    trade_date = pd.to_datetime(grok_df['date'].iloc[0]) if not grok_df.empty else None
 
     # archiveから登場回数を計算（2025-11-04以降）
     try:
@@ -706,10 +653,11 @@ async def get_day_trade_list():
 
         # ML予測結果を取得（parquetファイルのカラムを優先、なければ動的計算）
         prob_up = row.get('prob_up') if pd.notna(row.get('prob_up')) else None
+        grade = row.get('grade') if pd.notna(row.get('grade')) else None
         if prob_up is None:
             ml_result = ml_predictions.get(ticker, {})
             prob_up = ml_result.get('prob_up')
-        bucket = get_bucket(prob_up) if prob_up is not None else None
+            grade = ml_result.get('grade')
 
         stocks.append({
             "ticker": ticker,
@@ -720,7 +668,7 @@ async def get_day_trade_list():
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "prob_up": prob_up,
-            "bucket": bucket,
+            "grade": grade,
             "shortable": shortable,
             "day_trade": day_trade,
             "ng": ng,
@@ -784,27 +732,9 @@ async def get_day_trade_list():
         "total_required_funds": total_required_funds,
     }
 
-    # 先物変化率・N225変化率（全銘柄共通、grok_trendingから取得）
-    futures_change_pct = None
-    nikkei_change_pct = None
-    if len(grok_df) > 0:
-        first_row = grok_df.iloc[0]
-        if pd.notna(first_row.get("futures_change_pct")):
-            futures_change_pct = round(float(first_row["futures_change_pct"]), 3)
-        if pd.notna(first_row.get("nikkei_change_pct")):
-            nikkei_change_pct = round(float(first_row["nikkei_change_pct"]), 3)
-
-    # 曜日ルール
-    weekday_rule = get_weekday_rule(trade_date)
-
     return JSONResponse(content={
         "total": len(stocks),
         "summary": summary,
-        "market": {
-            "futures_change_pct": futures_change_pct,
-            "nikkei_change_pct": nikkei_change_pct,
-        },
-        "weekday_rule": weekday_rule,
         "stocks": stocks
     })
 

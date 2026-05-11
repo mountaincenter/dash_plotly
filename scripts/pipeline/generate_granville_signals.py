@@ -284,7 +284,7 @@ def generate_signals(ps: pd.DataFrame, regime: dict | None = None) -> pd.DataFra
         else:
             print(f"  B4 VI30-40GU filter: not triggered (VI={vi_close:.1f}, chg={vi_chg:+.1f}%)")
 
-    sig_mask = latest["B1"] | latest["B2"] | latest["B3"] | latest["B4"]
+    sig_mask = latest["B4"]
     signals = latest[sig_mask].copy()
     print(f"  Total after filter: {len(signals)}")
 

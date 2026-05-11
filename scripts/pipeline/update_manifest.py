@@ -342,6 +342,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
         keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB1-B4バックテストアーカイブ
+        keep_keys.add(prefix + "positions.parquet")  # グランビルポジション管理（generate_granville_signalsで生成）
         keep_keys.add(prefix + "hold_stocks.parquet")  # MarketSpeed実保有ポジション（generate_stock_results_html.pyで管理）
         keep_keys.add(prefix + "orders.parquet")  # MarketSpeed注文履歴
         keep_keys.add(prefix + "credit_status.parquet")  # MarketSpeed資産状況

@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
 
 router = APIRouter()
 
@@ -23,6 +24,10 @@ GRANVILLE_DIR = PARQUET_DIR / "granville"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 META_FALLBACK = PARQUET_DIR / "meta.parquet"
 CSV_DIR = ROOT / "data" / "csv"
+
+# 2026-04-17 統合 parquet (3戦略共通、現在は granville のみ)
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+POSITIONS_PATH = PARQUET_DIR / "positions.parquet"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
@@ -45,9 +50,10 @@ async def refresh_cache():
 
     # staging S3から最新データを強制ダウンロード
     refreshed = []
-    for f in ["hold_stocks.parquet", "orders.parquet", "credit_status.parquet",
+    for f in ["hold_stocks.parquet",
               "nikkei_vi_max_1d.parquet", "index_prices_max_1d.parquet",
-              "futures_prices_max_1d.parquet"]:
+              "futures_prices_max_1d.parquet",
+              "signals.parquet", "positions.parquet"]:
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
@@ -134,6 +140,44 @@ def _load_latest(prefix: str) -> pd.DataFrame:
     return df
 
 
+def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
+    """統合 parquet (signals/positions) を読み込み。S3フォールバック+キャッシュ。"""
+    cached = _cached(cache_key)
+    if cached is not None:
+        return cached
+
+    path = PARQUET_DIR / filename
+    if not path.exists():
+        _s3_download(filename, path)
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    df = pd.read_parquet(path)
+    _set_cache(cache_key, df)
+    return df
+
+
+def _load_unified_signals() -> pd.DataFrame:
+    """signals.parquet から granville 行のみ抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("signals.parquet", "unified_signals")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == "granville"].copy()
+
+
+def _load_unified_positions() -> pd.DataFrame:
+    """positions.parquet から granville 行のみ抽出。strategy 列が無い旧形式は空を返す"""
+    df = _load_unified("positions.parquet", "unified_positions")
+    if df.empty:
+        return df
+    if "strategy" not in df.columns:
+        return df.iloc[0:0].copy()
+    return df[df["strategy"] == "granville"].copy()
+
+
 def _safe_int(v) -> int:
     try:
         return int(v)
@@ -155,13 +199,18 @@ def _safe_float(v, decimals: int = 1) -> float:
 @router.get("/api/dev/granville/recommendations")
 async def get_recommendations():
     """当日推奨銘柄（B4>B1>B3>B2、到着順、15%証拠金上限済み）"""
-    df = _load_latest("recommendations")
+    df = _load_unified_signals()
     if df.empty:
         return {"recommendations": [], "count": 0, "date": None}
 
     date_str = None
     if "signal_date" in df.columns:
         date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    if "recommended" in df.columns:
+        df = df[df["recommended"] == True].copy()
+        if "rec_rank" in df.columns:
+            df = df.sort_values("rec_rank", na_position="last")
 
     recs = []
     for _, r in df.iterrows():
@@ -198,13 +247,16 @@ async def get_recommendations():
 @router.get("/api/dev/granville/long-recommendations")
 async def get_long_recommendations():
     """B1-B3ロング推奨（H1/H2/H3フィルター通過分）"""
-    df = _load_latest("long_recommendations")
+    df = _load_unified_signals()
     if df.empty:
-        return {"long_recommendations": [], "count": 0, "date": None, "regime": {}}
+        return {"long_recommendations": [], "count": 0, "date": None, "regime": _get_current_regime()}
 
     date_str = None
     if "signal_date" in df.columns:
         date_str = pd.to_datetime(df["signal_date"].iloc[0]).strftime("%Y-%m-%d")
+
+    if "long_grade" in df.columns:
+        df = df[df["long_grade"].fillna("").astype(str) != ""].copy()
 
     recs = []
     for _, r in df.iterrows():
@@ -268,10 +320,8 @@ def _get_current_regime() -> dict:
         pass
 
     try:
-        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
-        vi_df["date"] = pd.to_datetime(vi_df["date"])
-        regime["vi"] = round(float(vi_df.sort_values("date").iloc[-1]["close"]), 1)
-    except Exception:
+        regime["vi"] = round(float(fetch_nikkei_vi()["close"]), 1)
+    except NikkeiViFetchError:
         pass
 
     try:
@@ -295,7 +345,7 @@ def _get_current_regime() -> dict:
 @router.get("/api/dev/granville/signals")
 async def get_signals():
     """当日全シグナル（フィルター前）"""
-    df = _load_latest("signals")
+    df = _load_unified_signals()
     if df.empty:
         return {"signals": [], "count": 0, "signal_date": None}
 
@@ -465,7 +515,7 @@ async def get_positions():
 
     # Exit候補（hold_stocksの実際の建日に紐づくもののみ）
     exits = []
-    calc_df = _load_latest("positions")
+    calc_df = _load_unified_positions()
 
     # hold_stocksのticker→建日マップ（弁済期限から6ヶ月逆算）
     hold_entry_map = {}  # {ticker_t: entry_date}
@@ -548,46 +598,6 @@ async def get_positions():
                 })
 
     return {"positions": positions, "exits": exits, "as_of": as_of}
-
-
-def _load_credit_status() -> dict:
-    """現金保証金と信用余力を取得（S3優先）"""
-    cash_margin = 0
-
-    # S3からcredit_status.parquetを取得
-    cs_path = PARQUET_DIR / "credit_status.parquet"
-    _s3_download("credit_status.parquet", cs_path)
-
-    if cs_path.exists():
-        try:
-            cs = pd.read_parquet(cs_path)
-            row = cs[cs["asset"].str.contains("信用", na=False)]
-            if not row.empty:
-                cash_margin = int(row["value"].iloc[0])
-        except Exception:
-            pass
-
-    if cash_margin == 0:
-        cash_margin = 4_650_000  # デフォルト
-
-    # 信用余力 = (現金保証金 - 必要保証金) / 委託保証金率(30%)
-    position_value = 0
-    hold_df = _load_hold_stocks()
-    if not hold_df.empty and "market_value" in hold_df.columns:
-        position_value = int(hold_df["market_value"].abs().sum())
-
-    # 必要保証金 = 建玉金額合計 * 30%
-    required_margin = 0
-    if not hold_df.empty and "cost_total" in hold_df.columns:
-        required_margin = int(hold_df["cost_total"].abs().sum() * 0.3)
-
-    credit_capacity = int((cash_margin - required_margin) / 0.3)
-
-    return {
-        "cash_margin": cash_margin,
-        "credit_capacity": max(0, credit_capacity),
-        "position_value": position_value,
-    }
 
 
 def _load_hold_stocks() -> pd.DataFrame:
@@ -695,11 +705,9 @@ def _compute_triggers() -> dict:
 
 @router.get("/api/dev/granville/status")
 async def get_status():
-    """現金保証金・信用余力・ポジション数・シグナル数"""
-    credit = _load_credit_status()
-
-    # シグナル数
-    signals_df = _load_latest("signals")
+    """ポジション数・シグナル数"""
+    # シグナル数（統合 signals.parquet から granville 行）
+    signals_df = _load_unified_signals()
     signal_count = len(signals_df)
     signal_date = None
     if not signals_df.empty and "signal_date" in signals_df.columns:
@@ -709,18 +717,20 @@ async def get_status():
     hold_df = _load_hold_stocks()
     hold_count = len(hold_df)
 
-    # 算出ポジション（Exit候補用）
-    pos_df = _load_latest("positions")
+    # 算出ポジション（Exit候補用、統合 positions.parquet から）
+    pos_df = _load_unified_positions()
     exit_count = 0
     if not pos_df.empty and "status" in pos_df.columns:
         exit_count = int((pos_df["status"] == "exit").sum())
 
-    # 推奨数
-    rec_df = _load_latest("recommendations")
-    rec_count = len(rec_df)
+    # 推奨数（signals.parquet の recommended フラグ）
+    rec_count = 0
     total_margin_used = 0
-    if not rec_df.empty and "margin" in rec_df.columns:
-        total_margin_used = int(rec_df["margin"].sum())
+    if not signals_df.empty and "recommended" in signals_df.columns:
+        rec_df = signals_df[signals_df["recommended"] == True]
+        rec_count = len(rec_df)
+        if "margin" in rec_df.columns:
+            total_margin_used = int(rec_df["margin"].sum())
 
     # ルール別内訳
     rule_breakdown = {}
@@ -733,20 +743,19 @@ async def get_status():
     # トリガー情報（CMEギャップ、SMA、VIX）
     triggers = _compute_triggers()
 
-    # ロング推奨
-    long_df = _load_latest("long_recommendations")
-    long_count = len(long_df)
+    # ロング推奨（signals.parquet の long_grade 非空行）
+    long_count = 0
     long_grades = {}
-    if not long_df.empty and "long_grade" in long_df.columns:
-        long_grades = long_df["long_grade"].value_counts().to_dict()
+    if not signals_df.empty and "long_grade" in signals_df.columns:
+        long_df = signals_df[signals_df["long_grade"].fillna("").astype(str) != ""]
+        long_count = len(long_df)
+        if not long_df.empty:
+            long_grades = long_df["long_grade"].value_counts().to_dict()
 
     regime = _get_current_regime()
 
     return {
         "triggers": triggers,
-        "cash_margin": credit["cash_margin"],
-        "credit_capacity": credit["credit_capacity"],
-        "position_value": credit["position_value"],
         "total_margin_used": total_margin_used,
         "signal_count": signal_count,
         "signal_date": signal_date,
@@ -768,11 +777,8 @@ async def get_b4_entry():
     # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
     try:
-        vi_df = _read_parquet_by_env("nikkei_vi_max_1d.parquet")
-        vi_df["date"] = pd.to_datetime(vi_df["date"])
-        vi_df = vi_df.sort_values("date")
-        vi_val = float(vi_df["close"].iloc[-1])
-    except Exception:
+        vi_val = float(fetch_nikkei_vi()["close"])
+    except NikkeiViFetchError:
         pass
 
     cme_gap = None
@@ -802,8 +808,8 @@ async def get_b4_entry():
         "selected_cost": 0, "budget_remaining": 0, "date": None,
     }
 
-    # 今日のシグナル（B4のみ）
-    signals_df = _load_latest("signals")
+    # 今日のシグナル（B4のみ、統合 signals.parquet から granville 行）
+    signals_df = _load_unified_signals()
     if signals_df.empty:
         return {**_base_env, "decision": "no_signal"}
 
@@ -933,6 +939,12 @@ async def get_stats(rule: Optional[str] = None):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col])
 
+    # 未完了トレード分離（statsからは除外、tradesリストには含める）
+    open_trades_df = pd.DataFrame()
+    if "exit_type" in df.columns:
+        open_trades_df = df[df["exit_type"] == "end_of_data"].copy()
+        df = df[df["exit_type"] != "end_of_data"]
+
     # B1-B4 ルール別統計
     rule_filter = rule  # パラメータを退避
     by_rule = {}
@@ -967,11 +979,15 @@ async def get_stats(rule: Optional[str] = None):
         for month, mdf in monthly_df.groupby("month"):
             n = len(mdf)
             wins = int((mdf["ret_pct"] > 0).sum())
+            m_gp = mdf[mdf["pnl_yen"] > 0]["pnl_yen"].sum()
+            m_gl = abs(mdf[mdf["pnl_yen"] < 0]["pnl_yen"].sum())
+            m_pf = _safe_float(m_gp / m_gl, 2) if m_gl > 0 else None
             monthly.append({
                 "month": month,
                 "count": n,
                 "pnl": _safe_int(mdf["pnl_yen"].sum()),
                 "win_rate": _safe_float(wins / n * 100),
+                "pf": m_pf,
             })
         monthly.sort(key=lambda x: x["month"])
 
@@ -982,13 +998,86 @@ async def get_stats(rule: Optional[str] = None):
     gp = monthly_df[monthly_df["pnl_yen"] > 0]["pnl_yen"].sum() if not monthly_df.empty else 0
     gl = abs(monthly_df[monthly_df["pnl_yen"] < 0]["pnl_yen"].sum()) if not monthly_df.empty else 0
     filtered_pf = _safe_float(gp / gl, 2) if gl > 0 else 0
+    filtered_avg_pct = _safe_float(monthly_df["ret_pct"].mean(), 2) if filtered_total > 0 else 0
+    filtered_avg_pct = _safe_float(monthly_df["ret_pct"].mean(), 2) if filtered_total > 0 else 0
+
+    # MaxDD (月次PnL累計ベース)
+    max_dd_amount = 0
+    max_dd_pct = 0.0
+    if monthly:
+        cum = 0
+        peak = 0
+        for m in monthly:
+            cum += m["pnl"]
+            peak = max(peak, cum)
+            max_dd_amount = min(max_dd_amount, cum - peak)
+        cum_pct = 0.0
+        peak_pct = 0.0
+        for m in monthly:
+            n_month = m["count"]
+            if n_month > 0:
+                mdf_month = monthly_df[monthly_df["entry_date"].dt.strftime("%Y-%m") == m["month"]]
+                cum_pct += float(mdf_month["ret_pct"].sum())
+            peak_pct = max(peak_pct, cum_pct)
+            max_dd_pct = min(max_dd_pct, cum_pct - peak_pct)
+
+    # 年別サマリー
+    year_summary = []
+    if "entry_date" in monthly_df.columns and not monthly_df.empty:
+        monthly_df["year"] = monthly_df["entry_date"].dt.year
+        for year, ydf in monthly_df.groupby("year"):
+            n = len(ydf)
+            wins = int((ydf["ret_pct"] > 0).sum())
+            y_pnl = _safe_int(ydf["pnl_yen"].sum())
+            y_ret = _safe_float(ydf["ret_pct"].sum(), 2)
+            y_gp = ydf[ydf["pnl_yen"] > 0]["pnl_yen"].sum()
+            y_gl = abs(ydf[ydf["pnl_yen"] < 0]["pnl_yen"].sum())
+            y_pf = _safe_float(y_gp / y_gl, 2) if y_gl > 0 else None
+            year_summary.append({
+                "year": int(year),
+                "n": n,
+                "wins": wins,
+                "wr": _safe_float(wins / n * 100, 1),
+                "pnl": y_pnl,
+                "total_ret": y_ret,
+                "pf": y_pf,
+            })
+
+    # 個別トレードリスト（完了 + 保有中）
+    trades = []
+    trade_cols = ["ticker", "stock_name", "entry_date", "exit_date", "entry_price", "exit_price", "ret_pct", "pnl_yen", "exit_type"]
+    if not monthly_df.empty:
+        tdf = monthly_df[[c for c in trade_cols if c in monthly_df.columns]].copy()
+        tdf["entry_date"] = tdf["entry_date"].dt.strftime("%Y-%m-%d")
+        tdf["exit_date"] = tdf["exit_date"].dt.strftime("%Y-%m-%d") if "exit_date" in tdf.columns else ""
+        tdf["entry_price"] = tdf["entry_price"].round(1)
+        tdf["exit_price"] = tdf["exit_price"].round(1)
+        tdf["ret_pct"] = tdf["ret_pct"].round(2)
+        trades = tdf.to_dict("records")
+    # 保有中（end_of_data）もリストに追加
+    if rule_filter and not open_trades_df.empty:
+        otf = open_trades_df[open_trades_df["rule"] == rule_filter] if "rule" in open_trades_df.columns else open_trades_df
+        if not otf.empty:
+            otdf = otf[[c for c in trade_cols if c in otf.columns]].copy()
+            otdf["entry_date"] = otdf["entry_date"].dt.strftime("%Y-%m-%d")
+            otdf["exit_date"] = ""
+            otdf["exit_price"] = None
+            otdf["ret_pct"] = None
+            otdf["pnl_yen"] = None
+            otdf["entry_price"] = otdf["entry_price"].round(1)
+            otdf["exit_type"] = "open"
+            trades.extend(otdf.to_dict("records"))
 
     return {
         "by_rule": by_rule,
         "monthly": monthly,
+        "trades": trades,
         "total_trades": filtered_total,
         "total_pnl": filtered_pnl,
         "win_rate": filtered_wr,
         "pf": filtered_pf,
+        "avg_pct": filtered_avg_pct,
         "rule_filter": rule_filter,
+        "max_dd": {"amount": int(max_dd_amount)},
+        "year_summary": year_summary,
     }
