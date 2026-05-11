@@ -220,6 +220,8 @@ def main() -> int:
     if not df_1306.empty:
         df_1306.to_parquet(ETF_OUTPUT, index=False)
         print(f"  Saved: {ETF_OUTPUT.name}")
+    else:
+        print("  ⚠️ WARNING: 1306 data is empty (jquants API failure or no existing data)")
 
     # --- TOPIX 500 ---
     print("\n[2/2] TOPIX 500 AdjO+AdjC...")
@@ -244,6 +246,8 @@ def main() -> int:
         print(f"  Range: {df_topix['Date'].min().date()} → {df_topix['Date'].max().date()}")
         df_topix.to_parquet(TOPIX500_OUTPUT, index=False)
         print(f"  Saved: {TOPIX500_OUTPUT.name}")
+    else:
+        print("  ⚠️ WARNING: TOPIX500 data is empty (jquants API failure or no existing data)")
 
     print("\n[OK] Done")
     return 0
