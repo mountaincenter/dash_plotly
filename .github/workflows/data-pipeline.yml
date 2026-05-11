@@ -822,6 +822,11 @@ jobs:
             echo "⚠️ Granville recommendations failed (non-critical)"
           fi
 
+      - name: Upload signals.parquet to S3
+        if: success()
+        run: |
+          [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
+
       - name: Upload Calendar Trades JSON to S3
         if: success()
         run: |
