@@ -58,6 +58,7 @@ class PipelineRunner:
             ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
             ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
             ("pipeline.generate_pairs_signals", "ペアトレーディングシグナル生成"),
+            ("pipeline.generate_quarter_end", "四半期末戦略バックテスト（1306 ETF）"),
             ("pipeline.generate_sq4_picks", "SQ-4日銘柄選定"),
             ("pipeline.generate_sq_plus1_trades", "SQ+1日ショート銘柄選定"),
             ("pipeline.generate_weekday_edge_trades", "曜日エッジ銘柄選定"),

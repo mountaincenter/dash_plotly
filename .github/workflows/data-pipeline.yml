@@ -927,7 +927,7 @@ jobs:
       - name: Upload Calendar Trades JSON to S3
         if: success()
         run: |
-          for f in sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
+          for f in quarter_end_effect.json sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
             [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
           done
 
