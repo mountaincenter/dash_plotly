@@ -76,6 +76,8 @@ UPLOAD_FILES = [
     "signals.parquet",
     # カレンダー
     "calendar.parquet",
+    "etf_1306_prices.parquet",
+    "prices_topix500_oc.parquet",
 ]
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"

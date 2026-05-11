@@ -115,7 +115,7 @@ def _load_qe_json() -> dict:
     cached = _cached("qe_json")
     if cached is not None:
         return cached
-    data = _read_json_by_env(f"{S3_PREFIX}/quarter_end_effect.json", QE_JSON_PATH)
+    data = _read_json_by_env("analysis/quarter_end_effect.json", QE_JSON_PATH)
     _set_cache("qe_json", data)
     return data
 
@@ -361,9 +361,25 @@ def _build_flags(row) -> list[str]:
 
 @router.get("/api/dev/calendar")
 async def get_calendar_data():
-    cal = _load_calendar()
-    prices = _load_1306_prices()
-    qe_data = _load_qe_json()
+    errors: list[str] = []
+
+    try:
+        cal = _load_calendar()
+    except Exception as e:
+        cal = pd.DataFrame()
+        errors.append(f"calendar: {e}")
+
+    try:
+        prices = _load_1306_prices()
+    except Exception as e:
+        prices = pd.DataFrame()
+        errors.append(f"etf_1306_prices: {e}")
+
+    try:
+        qe_data = _load_qe_json()
+    except Exception as e:
+        qe_data = {}
+        errors.append(f"quarter_end_effect: {e}")
 
     today_str = date.today().isoformat()
     today_data: dict = {"flags": []}
@@ -397,8 +413,8 @@ async def get_calendar_data():
 
     # --- 1306 trade performance ---
     trades_raw = qe_data.get("trades", [])
-    trades = _enrich_trades(trades_raw, prices)
-    year_summary = _calc_year_summary(trades)
+    trades = _enrich_trades(trades_raw, prices) if not prices.empty else trades_raw
+    year_summary = _calc_year_summary(trades) if trades else []
     default_stats = {"total": 0, "wins": 0, "losses": 0, "wr": 0, "avg": 0, "median": 0, "max": 0, "min": 0, "pf": 0, "total_ret": 0}
     stats = {**default_stats, **qe_data.get("stats", {})}
 
@@ -414,10 +430,18 @@ async def get_calendar_data():
     sp500_latest = _load_sp500_latest()
 
     # --- SQ-4 trades ---
-    sq4_data = _load_sq4_json()
+    try:
+        sq4_data = _load_sq4_json()
+    except Exception as e:
+        sq4_data = {}
+        errors.append(f"sq4_trades: {e}")
 
     # --- SQ+1 trades ---
-    sq_plus1_data = _load_sq_plus1_json()
+    try:
+        sq_plus1_data = _load_sq_plus1_json()
+    except Exception as e:
+        sq_plus1_data = {}
+        errors.append(f"sq_plus1_trades: {e}")
 
     # --- Weekday Edge trades ---
     try:
@@ -426,13 +450,19 @@ async def get_calendar_data():
         weekday_edge_data = {}
 
     # weekday_edge next_entries に最新終値を付与
-    latest_prices = _load_latest_prices()
+    try:
+        latest_prices = _load_latest_prices()
+    except Exception:
+        latest_prices = {}
     we_entries = weekday_edge_data.get("next_entries", [])
     for entry in we_entries:
         code = entry.get("code", "")
         price_info = latest_prices.get(code, {})
         entry["prev_close"] = price_info.get("prev_close")
         entry["prev_day_ret"] = price_info.get("prev_day_ret")
+
+    if errors:
+        print(f"[WARN] /api/dev/calendar partial errors: {errors}")
 
     return {
         "today": today_data,
@@ -479,6 +509,7 @@ async def get_calendar_data():
             "next_entries": weekday_edge_data.get("next_entries", []),
             "weekly": weekday_edge_data.get("weekly", []),
         },
+        "_errors": errors if errors else None,
     }
 
 
