@@ -912,7 +912,7 @@ jobs:
         timeout-minutes: 45
 
       - name: Upload Granville/Pairs artifacts to S3
-        if: success()
+        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
           echo "📤 Uploading Granville signals/positions/long_recommendations..."
           for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/long_recommendations_*.parquet; do
@@ -927,7 +927,7 @@ jobs:
           echo "✅ Granville/Pairs artifacts uploaded"
 
       - name: Upload Calendar Trades data to S3
-        if: success()
+        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
           echo "📤 Uploading calendar price parquets..."
           for f in etf_1306_prices.parquet prices_topix500_oc.parquet; do
