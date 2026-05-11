@@ -922,6 +922,8 @@ jobs:
           for f in data/parquet/pairs/pairs_signals_*.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}pairs/$(basename $f)" --only-show-errors
           done
+          echo "📤 Uploading unified signals.parquet..."
+          [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
           echo "✅ Granville/Pairs artifacts uploaded"
 
       - name: Upload Calendar Trades JSON to S3
