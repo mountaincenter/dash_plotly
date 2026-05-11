@@ -822,6 +822,13 @@ jobs:
             echo "⚠️ Granville recommendations failed (non-critical)"
           fi
 
+      - name: Upload Calendar Trades JSON to S3
+        if: success()
+        run: |
+          for f in quarter_end_effect.json sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
+            [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
+          done
+
       - name: Generate market anomaly data (Friday only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |

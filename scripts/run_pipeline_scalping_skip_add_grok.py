@@ -53,6 +53,15 @@ class PipelineRunner:
                 # ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
             ])
 
+        # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
+        self.steps.extend([
+            ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
+            ("pipeline.generate_quarter_end", "四半期末戦略バックテスト（1306 ETF）"),
+            ("pipeline.generate_sq4_picks", "SQ-4日銘柄選定"),
+            ("pipeline.generate_sq_plus1_trades", "SQ+1日ショート銘柄選定"),
+            ("pipeline.generate_weekday_edge_trades", "曜日エッジ銘柄選定"),
+        ])
+
         # 共通ステップ
         self.steps.extend([
             ("pipeline.create_all_stocks", "銘柄統合（Meta + Grok）"),
