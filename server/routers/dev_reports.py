@@ -56,6 +56,12 @@ def _extract_title_from_html(html: str, filename: str) -> str:
     return filename
 
 
+def _classify_report_type(filename: str) -> str:
+    if filename.startswith("trade_review"):
+        return "results_report"
+    return "market_report"
+
+
 def _resolve_html_name(filename: str) -> str:
     return filename.replace(".pdf", ".html") if filename.endswith(".pdf") else filename
 
@@ -78,7 +84,21 @@ def _list_local() -> list[dict]:
                 f.read_text(encoding="utf-8", errors="ignore"), f.name
             ),
             "size_bytes": f.stat().st_size,
+            "report_type": "market_report",
         })
+    trade_dir = REPORTS_DIR / "trade_review"
+    if trade_dir.exists():
+        for f in trade_dir.glob("*.html"):
+            canonical = f"trade_review_{f.name}" if not f.name.startswith("trade_review") else f.name
+            reports.append({
+                "filename": canonical,
+                "date": _extract_date(f.name),
+                "title": _extract_title_from_html(
+                    f.read_text(encoding="utf-8", errors="ignore"), f.name
+                ),
+                "size_bytes": f.stat().st_size,
+                "report_type": "results_report",
+            })
     reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     return reports
 
@@ -108,6 +128,7 @@ def _list_s3() -> list[dict]:
                 "date": _extract_date(name),
                 "title": title,
                 "size_bytes": obj["Size"],
+                "report_type": _classify_report_type(name),
             })
         reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     except Exception as exc:
@@ -122,6 +143,9 @@ def view_report(filename: str):
 
     if _IS_LOCAL:
         local_path = REPORTS_DIR / html_name
+        if not local_path.exists() and html_name.startswith("trade_review_"):
+            sub_name = html_name.removeprefix("trade_review_")
+            local_path = REPORTS_DIR / "trade_review" / sub_name
         if not local_path.exists():
             raise HTTPException(status_code=404, detail=f"Not found: {html_name}")
         return HTMLResponse(
