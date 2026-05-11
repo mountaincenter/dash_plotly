@@ -418,7 +418,7 @@ async def get_calendar_data():
     default_stats = {"total": 0, "wins": 0, "losses": 0, "wr": 0, "avg": 0, "median": 0, "max": 0, "min": 0, "pf": 0, "total_ret": 0}
     stats = {**default_stats, **qe_data.get("stats", {})}
 
-    total_pnl_1000 = sum(t["pnl_1000"] for t in trades if t.get("pnl_1000") is not None)
+    total_pnl_1000 = sum(t.get("pnl_1000", 0) for t in trades)
 
     # --- 1306 MaxDD ---
     etf_max_dd = _calc_1306_max_dd(trades)
@@ -446,14 +446,16 @@ async def get_calendar_data():
     # --- Weekday Edge trades ---
     try:
         weekday_edge_data = _load_weekday_edge_json()
-    except Exception:
+    except Exception as e:
         weekday_edge_data = {}
+        errors.append(f"weekday_edge: {e}")
 
     # weekday_edge next_entries に最新終値を付与
     try:
         latest_prices = _load_latest_prices()
-    except Exception:
+    except Exception as e:
         latest_prices = {}
+        errors.append(f"latest_prices: {e}")
     we_entries = weekday_edge_data.get("next_entries", [])
     for entry in we_entries:
         code = entry.get("code", "")

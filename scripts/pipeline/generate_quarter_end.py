@@ -53,7 +53,7 @@ def generate_trades(cal: pd.DataFrame, prices: pd.DataFrame) -> list[dict]:
         for year in cal["date"].dt.year.unique():
             month_rows = cal[
                 (cal["date"].dt.year == year) & (cal["date"].dt.month == qe_month)
-            ]
+            ].sort_values("date")
             if month_rows.empty:
                 continue
 
