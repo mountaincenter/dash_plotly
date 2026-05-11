@@ -828,7 +828,7 @@ jobs:
           [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
 
       - name: Upload Calendar Trades data to S3
-        if: success()
+        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
           echo "📤 Uploading calendar price parquets..."
           for f in etf_1306_prices.parquet prices_topix500_oc.parquet; do
