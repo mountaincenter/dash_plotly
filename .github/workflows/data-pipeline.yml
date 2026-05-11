@@ -827,9 +827,14 @@ jobs:
         run: |
           [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
 
-      - name: Upload Calendar Trades JSON to S3
+      - name: Upload Calendar Trades data to S3
         if: success()
         run: |
+          echo "📤 Uploading calendar price parquets..."
+          for f in etf_1306_prices.parquet prices_topix500_oc.parquet; do
+            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" --only-show-errors && echo "✅ $f uploaded"
+          done
+          echo "📤 Uploading calendar trades JSON..."
           for f in quarter_end_effect.json sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
             [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
           done
