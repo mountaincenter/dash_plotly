@@ -297,6 +297,39 @@ def main() -> int:
     _cal = pd.read_parquet(CALENDAR_PATH)
     _cal["date"] = pd.to_datetime(_cal["date"])
     trading_days: set = set(_cal["date"].dt.date.tolist())
+    trading_days_sorted = sorted(trading_days)
+
+    # 決算発表日: code(5桁) → set of dates
+    # announcements.parquet(次回予定) + fins_summary.parquet(過去実績)
+    earnings_dates: dict[str, set[date]] = {}
+    ann_path = PARQUET_DIR / "announcements.parquet"
+    if ann_path.exists():
+        ann = pd.read_parquet(ann_path)
+        for _, r in ann.iterrows():
+            raw = str(r.get("ticker", r.get("code", ""))).replace(".T", "")
+            code5 = raw + "0" if len(raw) == 4 else raw
+            try:
+                d = date.fromisoformat(str(r["announcementDate"]))
+                earnings_dates.setdefault(code5, set()).add(d)
+            except (ValueError, KeyError):
+                pass
+    fins_path = PARQUET_DIR / "fins_summary.parquet"
+    if fins_path.exists():
+        fins = pd.read_parquet(fins_path)
+        for _, r in fins.iterrows():
+            code5 = str(r["Code"])
+            try:
+                d = pd.to_datetime(r["DiscDate"]).date()
+                earnings_dates.setdefault(code5, set()).add(d)
+            except (ValueError, KeyError):
+                pass
+
+    def _next_trading_day(d: date) -> date | None:
+        for td in trading_days_sorted:
+            if td > d:
+                return td
+        return None
+
     next_entries = []
     from datetime import timedelta
     for d_offset in range(0, 14):
@@ -306,13 +339,20 @@ def main() -> int:
         cdow = check.weekday()
         for cfg in LONG_CORE + LONG_SPOT + SHORT_CORE:
             if cfg["dow"] == cdow:
-                next_entries.append({
+                entry: dict = {
                     "date": check.isoformat(),
                     "code": cfg["code"],
                     "name": cfg["name"],
                     "direction": "SHORT" if cfg in SHORT_CORE else "LONG",
                     "dow_label": DOW_LABELS[cdow],
-                })
+                }
+                edates = earnings_dates.get(cfg["code"], set())
+                for ed in edates:
+                    ntd = _next_trading_day(ed)
+                    if check == ed or (ntd and check == ntd):
+                        entry["earnings_alert"] = ed.isoformat()
+                        break
+                next_entries.append(entry)
     next_entries = next_entries[:20]
 
     output = {
