@@ -21,7 +21,6 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from common_cfg.nikkei_vi import fetch_nikkei_vi
 from common_cfg.paths import PARQUET_DIR
 
 
@@ -62,9 +61,17 @@ def main():
         n225_chg = round((float(n225["Close"].iloc[-1]) / float(n225["Close"].iloc[-2]) - 1) * 100, 2)
         print(f"  N225 chg: {n225_chg:+.2f}%")
 
-    # 日経VI: 楽天証券ライブ値（fail-fast: 判断に直結）
-    vi = float(fetch_nikkei_vi()["close"])
-    print(f"  VI: {vi:.1f}")
+    # 日経VI: 16:45パイプラインで保存済みのparquetから読む（07:00時点で値は変わらない）
+    vi = None
+    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
+    if vi_path.exists():
+        vi_df = pd.read_parquet(vi_path)
+        if not vi_df.empty and "close" in vi_df.columns:
+            vi = float(vi_df["close"].iloc[-1])
+    if vi is not None:
+        print(f"  VI: {vi:.1f}")
+    else:
+        print("  VI: N/A (parquet not found)")
 
     # 除外ルール判定
     excluded = []

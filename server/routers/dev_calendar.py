@@ -179,7 +179,7 @@ def _next_trading_date() -> str | None:
     try:
         cal = _load_calendar()
         today = pd.Timestamp(date.today())
-        future = cal[cal["date"] > today].sort_values("date")
+        future = cal[cal["date"] >= today].sort_values("date")
         if future.empty:
             return None
         return future.iloc[0]["date"].strftime("%Y-%m-%d")
