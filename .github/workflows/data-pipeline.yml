@@ -1323,7 +1323,7 @@ jobs:
           echo "   File size: $FILE_SIZE"
 
       - name: Generate market report data
-        if: success()
+        if: success() && (steps.exec_mode.outputs.mode == 'stock_data' || steps.exec_mode.outputs.mode == 'stock_data_forced')
         run: |
           echo "============================================================"
           echo "📊 Generating market report data JSON"
@@ -1362,7 +1362,7 @@ jobs:
           fi
 
       - name: Generate market report HTML (auto-data sections only)
-        if: success()
+        if: success() && (steps.exec_mode.outputs.mode == 'stock_data' || steps.exec_mode.outputs.mode == 'stock_data_forced')
         continue-on-error: true
         run: |
           echo "============================================================"
