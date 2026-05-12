@@ -736,15 +736,17 @@ def build_grok(date: str) -> dict[str, Any] | None:
         bucket_list.append(_get_bucket(prob_val))
     bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "DISC", "LONG"]}
 
-    # Archive から P2 + daily_close 結合
+    # Archive から P2 + daily_close + buy_price 結合
     arc = _read_parquet("backtest/grok_trending_archive.parquet")
     p2_map: dict[str, float] = {}
     close_map: dict[str, float] = {}
+    open_map: dict[str, float] = {}
     if arc is not None:
         arc_for = arc[arc["selection_date"] == grok_date_str]
         for _, r in arc_for.iterrows():
             p2_map[r["ticker"]] = r.get("profit_per_100_shares_phase2", None)
             close_map[r["ticker"]] = r.get("daily_close", None)
+            open_map[r["ticker"]] = r.get("buy_price", None)
 
     # 銘柄詳細
     # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
@@ -770,7 +772,7 @@ def build_grok(date: str) -> dict[str, Any] | None:
             "stock_name": row.get("stock_name", ""),
             "bucket": bucket_list[i],
             "prob": _f(prob_val),
-            "buy_price": _f(row.get("Close", row.get("close"))),
+            "buy_price": _f(open_map.get(ticker, row.get("Close", row.get("close")))),
             "daily_close": _f(close_map.get(ticker)),
             "shortable": bool(row.get("shortable", False)),
             "short_category": _short_category(row),
