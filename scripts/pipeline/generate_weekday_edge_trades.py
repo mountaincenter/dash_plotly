@@ -29,6 +29,7 @@ from common_cfg.paths import PARQUET_DIR
 PRICES_PATH = PARQUET_DIR / "prices_topix500_oc.parquet"
 OUTPUT_PATH = ROOT / "data" / "analysis" / "weekday_edge_trades.json"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 
 # --- 銘柄定義 ---
 # LONG Core 9銘柄 (アドバンテスト除外)
@@ -291,13 +292,17 @@ def main() -> int:
     stats_all = _evaluate(all_rets)
     stats_all["total_pnl_100"] = int(round(sum(all_pnls)))
 
-    # 次のエントリー日
+    # 次のエントリー日（calendar.parquetの営業日のみ）
     today = date.today()
-    today_dow = today.weekday()
+    _cal = pd.read_parquet(CALENDAR_PATH)
+    _cal["date"] = pd.to_datetime(_cal["date"])
+    trading_days: set = set(_cal["date"].dt.date.tolist())
     next_entries = []
-    for d_offset in range(0, 7):
-        from datetime import timedelta
+    from datetime import timedelta
+    for d_offset in range(0, 14):
         check = today + timedelta(days=d_offset)
+        if check not in trading_days:
+            continue
         cdow = check.weekday()
         for cfg in LONG_CORE + LONG_SPOT + SHORT_CORE:
             if cfg["dow"] == cdow:

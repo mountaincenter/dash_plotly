@@ -61,17 +61,17 @@ def main():
         n225_chg = round((float(n225["Close"].iloc[-1]) / float(n225["Close"].iloc[-2]) - 1) * 100, 2)
         print(f"  N225 chg: {n225_chg:+.2f}%")
 
-    # 日経VI
+    # 日経VI: 16:45パイプラインで保存済みのparquetから読む（07:00時点で値は変わらない）
     vi = None
     vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
     if vi_path.exists():
-        try:
-            vi_df = pd.read_parquet(vi_path)
-            vi_df["date"] = pd.to_datetime(vi_df["date"])
-            vi = float(vi_df.sort_values("date").iloc[-1]["close"])
-            print(f"  VI: {vi:.1f}")
-        except Exception:
-            pass
+        vi_df = pd.read_parquet(vi_path)
+        if not vi_df.empty and "close" in vi_df.columns:
+            vi = float(vi_df["close"].iloc[-1])
+    if vi is not None:
+        print(f"  VI: {vi:.1f}")
+    else:
+        print("  VI: N/A (parquet not found)")
 
     # 除外ルール判定
     excluded = []
