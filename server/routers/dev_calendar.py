@@ -175,11 +175,18 @@ def _load_cme_latest() -> dict:
 
 
 def _next_trading_date() -> str | None:
-    """calendar.parquetから翌営業日を取得"""
+    """weekday_edge_trades.jsonのpipeline確定値を優先、なければcalendar.parquetでフォールバック"""
+    try:
+        we = _load_weekday_edge_json()
+        ntd = we.get("next_trading_date")
+        if ntd:
+            return ntd
+    except Exception:
+        pass
     try:
         cal = _load_calendar()
         today = pd.Timestamp(date.today())
-        future = cal[cal["date"] >= today].sort_values("date")
+        future = cal[cal["date"] > today].sort_values("date")
         if future.empty:
             return None
         return future.iloc[0]["date"].strftime("%Y-%m-%d")
@@ -533,4 +540,16 @@ async def refresh_cache():
         refreshed.append("sq4_trades.json")
     except Exception:
         pass
+    for json_name, local_path in [
+        ("weekday_edge_trades.json", WEEKDAY_EDGE_JSON_PATH),
+        ("sq_plus1_trades.json", SQ_PLUS1_JSON_PATH),
+    ]:
+        try:
+            import boto3
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            s3.download_file(S3_BUCKET, f"analysis/{json_name}", str(local_path))
+            refreshed.append(json_name)
+        except Exception:
+            pass
     return {"status": "success", "refreshed_files": refreshed}

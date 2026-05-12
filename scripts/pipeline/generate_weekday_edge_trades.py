@@ -13,8 +13,10 @@ import io
 import json
 import subprocess
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+
+JST = timezone(timedelta(hours=9))
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -293,11 +295,26 @@ def main() -> int:
     stats_all["total_pnl_100"] = int(round(sum(all_pnls)))
 
     # 次のエントリー日（calendar.parquetの営業日のみ）
-    today = date.today()
+    # 15時以降は当日取引終了済みなので翌営業日を起点にする
+    now_jst = datetime.now(JST)
+    today = now_jst.date()
     _cal = pd.read_parquet(CALENDAR_PATH)
     _cal["date"] = pd.to_datetime(_cal["date"])
     trading_days: set = set(_cal["date"].dt.date.tolist())
     trading_days_sorted = sorted(trading_days)
+
+    def _next_trading_day_from(d: date) -> date | None:
+        for td in trading_days_sorted:
+            if td > d:
+                return td
+        return None
+
+    if now_jst.hour >= 15:
+        start_date = _next_trading_day_from(today)
+        if start_date is None:
+            start_date = today
+    else:
+        start_date = today
 
     # 決算発表日: code(5桁) → set of dates
     # announcements.parquet(次回予定) + fins_summary.parquet(過去実績)
@@ -325,15 +342,11 @@ def main() -> int:
                 pass
 
     def _next_trading_day(d: date) -> date | None:
-        for td in trading_days_sorted:
-            if td > d:
-                return td
-        return None
+        return _next_trading_day_from(d)
 
     next_entries = []
-    from datetime import timedelta
     for d_offset in range(0, 14):
-        check = today + timedelta(days=d_offset)
+        check = start_date + timedelta(days=d_offset)
         if check not in trading_days:
             continue
         cdow = check.weekday()
@@ -356,7 +369,8 @@ def main() -> int:
     next_entries = next_entries[:20]
 
     output = {
-        "generated": datetime.now().isoformat(),
+        "generated": datetime.now(JST).isoformat(),
+        "next_trading_date": start_date.isoformat() if start_date else None,
         "params": {
             "strategy": "Weekday Edge",
             "long_core": len(LONG_CORE),

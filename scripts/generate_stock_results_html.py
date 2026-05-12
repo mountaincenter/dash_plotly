@@ -61,14 +61,14 @@ df_filtered["単価_num"] = df_filtered["単価(円)"].str.replace(",", "").asty
 df_filtered["取得価額_num"] = df_filtered["平均取得価額(円)"].str.replace(",", "").astype(float)
 
 # 銘柄別日別売買別集計（先に作成）
-daily_stock = df_filtered.groupby(["約定日", "コード", "銘柄名", "position_type"]).agg({
+daily_stock = df_filtered.groupby(["約定日", "取得日/建日", "コード", "銘柄名", "position_type"]).agg({
     "取得価額_num": "mean",
     "単価_num": "mean",
     "実現損益_num": "sum",
     "数量(株/口)": lambda x: pd.to_numeric(x.astype(str).str.replace(",", ""), errors="coerce").fillna(0).astype(int).sum()
 }).reset_index()
 
-daily_stock.columns = ["約定日", "コード", "銘柄名", "売買", "平均取得価額", "平均単価", "実現損益", "数量"]
+daily_stock.columns = ["約定日", "取得日", "コード", "銘柄名", "売買", "平均取得価額", "平均単価", "実現損益", "数量"]
 
 # 週別集計
 weekly_stock = df_filtered.groupby(["週", "コード", "銘柄名", "position_type"]).agg({
@@ -203,17 +203,33 @@ if grok_trending_path.exists():
 
 print(f"戦略タグ: Grok合計 {len(grok_set)} 件読み込み")
 
+# V2_PAIRS 銘柄セット
+pair_codes: set[str] = set()
+try:
+    sys.path.insert(0, str(BASE_DIR / "scripts" / "pipeline"))
+    from generate_pairs_signals import V2_PAIRS
+    for a, b, *_ in V2_PAIRS:
+        pair_codes.add(a.replace(".T", ""))
+        pair_codes.add(b.replace(".T", ""))
+except Exception as e:
+    print(f"戦略タグ: V2_PAIRS読み込み失敗: {e}")
+
 
 def tag_strategy(row):
     trade_date = row["約定日"]
     # 12/22より前は全てLLM
     if trade_date < pd.Timestamp("2025-12-22"):
         return "llm"
-    # 2/24以降でgrok_setに不一致 → granville
     key = (trade_date.date(), str(row["コード"]))
-    if trade_date >= pd.Timestamp("2026-02-24") and key not in grok_set:
+    # grokアーカイブ/トレンドに一致 → grok
+    if key in grok_set:
+        return "grok"
+    # 2/24以降: V2_PAIRS銘柄 → pair, それ以外 → granville
+    if trade_date >= pd.Timestamp("2026-02-24"):
+        if str(row["コード"]) in pair_codes:
+            return "pair"
         return "granville"
-    # 12/22以降はgrok（照合一致 or 12/22-2/23の全件）
+    # 12/22-2/23はgrok
     return "grok"
 
 daily_stock["戦略"] = daily_stock.apply(tag_strategy, axis=1)
