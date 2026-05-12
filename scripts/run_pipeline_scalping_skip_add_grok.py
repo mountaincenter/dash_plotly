@@ -53,6 +53,12 @@ class PipelineRunner:
                 # ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
             ])
 
+        # prices_topix更新（16:45のみ: シグナル生成が当日終値を使うため先に実行）
+        if skip_grok:
+            self.steps.append(
+                ("pipeline.update_granville_prices", "グランビルTOPIX価格更新")
+            )
+
         # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
         self.steps.extend([
             ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
@@ -90,12 +96,11 @@ class PipelineRunner:
                 ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
             )
 
-        # グランビル価格更新 + バックテスト（16:45 JST実行時のみ）
+        # グランビルバックテスト（16:45 JST実行時のみ）
         if skip_grok:
-            self.steps.extend([
-                ("pipeline.update_granville_prices", "グランビルTOPIX価格更新"),
-                ("pipeline.backtest_granville_b1b4", "グランビルB1-B4バックテストアーカイブ"),
-            ])
+            self.steps.append(
+                ("pipeline.backtest_granville_b1b4", "グランビルB1-B4バックテストアーカイブ")
+            )
 
         # バックテストメタ情報生成（常に実行）
         # 16:00 JST: backtest/アーカイブから計算
