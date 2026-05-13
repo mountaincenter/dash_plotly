@@ -7,7 +7,7 @@ on:
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
     - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "0 14 * * *"  # UTC 14:00 = JST 23:00 (当日) - Grok選定 + 株価データ更新
+    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 (当日) - Grok選定 + 株価データ更新
     - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       force_grok_skip:
-        description: "23:00モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
+        description: "22:00モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
         type: boolean
         default: false
       force_cme_mode:
@@ -114,7 +114,7 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
             echo "🌅 FORCED CME Update Mode (07:00相当)"
-          # force_grok_skip: 23:00モードでGrok選定だけスキップ
+          # force_grok_skip: 22:00モードでGrok選定だけスキップ
           elif [ "${{ github.event.inputs.force_grok_skip }}" = "true" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
@@ -133,12 +133,12 @@ jobs:
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
           # --- schedule (cron) --- github.event.schedule で判定、壁時計はfallback
-          # 23:00 JST cron (UTC 14:00) → GHA遅延で00:xx JSTになっても正しくgrokモード
-          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+          # 22:00 JST cron (UTC 13:00) → GHA遅延で23:xx JSTになっても日付跨ぎ回避
+          elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
-            echo "📊 GROK Daily Mode (scheduled 23:00 JST, actual hour: $CURRENT_HOUR)"
+            echo "📊 GROK Daily Mode (scheduled 22:00 JST, actual hour: $CURRENT_HOUR)"
           # 07:00 JST cron (UTC 22:00) → CME更新モード
           elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
@@ -152,7 +152,7 @@ jobs:
             echo "skip_grok=true" >> $GITHUB_OUTPUT
             echo "💹 Stock Data Mode (scheduled 16:45 JST, actual hour: $CURRENT_HOUR)"
           # --- fallback (壁時計) ---
-          elif [ "$CURRENT_HOUR" = "23" ] || [ "$CURRENT_HOUR" = "00" ]; then
+          elif [ "$CURRENT_HOUR" = "22" ] || [ "$CURRENT_HOUR" = "23" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
@@ -187,7 +187,7 @@ jobs:
 
           exit $EXIT_CODE
 
-      - name: Check next day is trading day (for 23:00 run)
+      - name: Check next day is trading day (for 22:00 run)
         id: check_next_trading
         if: (steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced') && github.event.inputs.skip_trading_day_check != 'true'
         env:
@@ -293,7 +293,7 @@ jobs:
             echo "⚠️ Manual force update enabled for meta_jquants.parquet"
           fi
 
-          # 取引制限データをダウンロード（23:00 Grok選定用）
+          # 取引制限データをダウンロード（22:00 Grok選定用）
           echo "📥 Downloading trading restriction data for Grok selection..."
           mkdir -p data/parquet
 
@@ -378,14 +378,14 @@ jobs:
 
           exit $EXIT_CODE
 
-      - name: Generate trading recommendation (23:00 only)
+      - name: Generate trading recommendation (22:00 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         env:
           INPUT_GROK_TRENDING: data/parquet/grok_trending.parquet
           OUTPUT_RECOMMENDATION_JSON: data/parquet/backtest/trading_recommendation.json
         run: |
           echo "============================================================"
-          echo "Generating trading_recommendation.json (23:00 Grok selection)"
+          echo "Generating trading_recommendation.json (22:00 Grok selection)"
           echo "============================================================"
 
           mkdir -p data/parquet/backtest
@@ -399,7 +399,7 @@ jobs:
           fi
           echo "✅ prices_max_1d.parquet exists"
 
-          # S3からgrok_trending.parquetをダウンロード（23:00に生成されたもの）
+          # S3からgrok_trending.parquetをダウンロード（22:00に生成されたもの）
           echo "📥 Downloading grok_trending.parquet from S3..."
           if ! aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
@@ -526,14 +526,14 @@ jobs:
 
           echo "============================================================"
 
-      - name: Update day trade list (23:00 only)
+      - name: Update day trade list (22:00 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
           S3_PREFIX: ${{ env.S3_PREFIX }}
         run: |
           echo "============================================================"
-          echo "Updating grok_day_trade_list.parquet (23:00 Grok selection)"
+          echo "Updating grok_day_trade_list.parquet (22:00 Grok selection)"
           echo "============================================================"
 
           # grok_trending.parquet は前のステップでダウンロード済み
@@ -556,11 +556,11 @@ jobs:
 
           echo "============================================================"
 
-      - name: Generate Granville recommendations (23:00 only)
+      - name: Generate Granville recommendations (22:00 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         run: |
           echo "============================================================"
-          echo "Generating Granville recommendations (23:00 only)"
+          echo "Generating Granville recommendations (22:00 only)"
           echo "============================================================"
 
           mkdir -p data/parquet/granville
@@ -584,7 +584,7 @@ jobs:
           fi
         timeout-minutes: 10
 
-      - name: Generate bearish reversal signals (23:00 only, reference info)
+      - name: Generate bearish reversal signals (22:00 only, reference info)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         run: |
           echo "============================================================"
@@ -850,8 +850,8 @@ jobs:
             # cron判定
             if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
               RUN_TIME="16:45"
-            elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-              RUN_TIME="23:00"
+            elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+              RUN_TIME="22:00"
             else
               RUN_TIME="manual"
             fi
@@ -1197,7 +1197,7 @@ jobs:
           GROK_FILES_COUNT=$(ls data/parquet/backtest/grok_trending_202*.parquet 2>/dev/null | wc -l)
           echo "  ✅ Downloaded $GROK_FILES_COUNT grok_trending files"
 
-          # trading_recommendation.json をダウンロード（23:00に生成されたもの）
+          # trading_recommendation.json をダウンロード（22:00に生成されたもの）
           echo "  - Downloading trading_recommendation.json (required)..."
           if ! aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
@@ -1217,7 +1217,7 @@ jobs:
             data/parquet/grok_trending.parquet \
             --only-show-errors; then
             echo "  ❌ ERROR: Failed to download grok_trending.parquet from S3"
-            echo "  This file should have been created by yesterday's 23:00 Grok selection"
+            echo "  This file should have been created by yesterday's 22:00 Grok selection"
             echo "  Pipeline cannot proceed without this file"
             exit 1
           fi
@@ -1497,8 +1497,8 @@ jobs:
         run: |
           TRIGGER_TIME="Manual Run"
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-              TRIGGER_TIME="23:00 JST"
+            if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+              TRIGGER_TIME="22:00 JST"
             elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
               TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
@@ -1514,7 +1514,7 @@ jobs:
             JQUANTS_STATUS="⚠️ 障害発生（静的銘柄のみで更新）"
           fi
 
-          # GROK銘柄情報をフォーマット（23:00のみ）
+          # GROK銘柄情報をフォーマット（22:00のみ）
           GROK_SECTION=""
           BILLING_SECTION=""
 
@@ -1539,8 +1539,8 @@ jobs:
             ML_SECTION=$(cat /tmp/ml_section.txt)
           fi
 
-          # 23:00 または force_grok=true → GROK銘柄を表示
-          if [ "${{ github.event.schedule }}" = "0 14 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
+          # 22:00 または force_grok=true → GROK銘柄を表示
+          if [ "${{ github.event.schedule }}" = "0 13 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
             if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
@@ -1609,8 +1609,8 @@ jobs:
         run: |
           TRIGGER_TIME="Manual Run"
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-              TRIGGER_TIME="23:00 JST"
+            if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+              TRIGGER_TIME="22:00 JST"
             elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
               TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
