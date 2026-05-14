@@ -618,3 +618,43 @@ async def get_available_dates():
     dates_str = [d.isoformat() for d in dates]
 
     return {"dates": dates_str}
+
+
+# ── Strategy × Weekday Matrix ──
+
+import json as _json
+_STRATEGY_MATRIX_PATH = ROOT / "data" / "analysis" / "strategy_matrix.json"
+_matrix_cache: dict = {}
+_matrix_cache_ts: datetime | None = None
+_MATRIX_CACHE_TTL = 300
+
+
+def _load_strategy_matrix() -> dict:
+    global _matrix_cache, _matrix_cache_ts
+    now = datetime.now()
+    if _matrix_cache_ts and (now - _matrix_cache_ts).total_seconds() < _MATRIX_CACHE_TTL:
+        return _matrix_cache
+
+    if _STRATEGY_MATRIX_PATH.exists():
+        with open(_STRATEGY_MATRIX_PATH, encoding="utf-8") as f:
+            _matrix_cache = _json.load(f)
+        _matrix_cache_ts = now
+        return _matrix_cache
+
+    try:
+        import io
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        obj = s3.get_object(Bucket=S3_BUCKET, Key="analysis/strategy_matrix.json")
+        _matrix_cache = _json.loads(obj["Body"].read().decode("utf-8"))
+        _matrix_cache_ts = now
+        return _matrix_cache
+    except Exception:
+        return {}
+
+
+@router.get("/api/dev/backtest/strategy-weekday-matrix")
+async def get_strategy_weekday_matrix():
+    data = _load_strategy_matrix()
+    if not data:
+        raise HTTPException(status_code=404, detail="strategy_matrix.json not found")
+    return data
