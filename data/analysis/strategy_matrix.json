@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-14T20:07:30.654974",
+  "generated_at": "2026-05-14T20:36:15.989183",
   "weekdays": [
     "月",
     "火",
@@ -13,50 +13,50 @@
       "description": "prob<0.35 制度/いちにち",
       "by_weekday": {
         "月": {
-          "n": 44,
-          "wins": 23,
-          "wr": 52.3,
-          "pf": 1.34,
-          "total_pnl": 32900
+          "n": 56,
+          "wins": 30,
+          "wr": 53.6,
+          "pf": 0.87,
+          "total_pnl": -14500
         },
         "火": {
-          "n": 52,
-          "wins": 34,
-          "wr": 65.4,
-          "pf": 4.42,
-          "total_pnl": 239500
+          "n": 64,
+          "wins": 46,
+          "wr": 71.9,
+          "pf": 7.24,
+          "total_pnl": 472000
         },
         "水": {
-          "n": 49,
-          "wins": 23,
-          "wr": 46.9,
-          "pf": 1.03,
-          "total_pnl": 3900
+          "n": 58,
+          "wins": 25,
+          "wr": 43.1,
+          "pf": 1.19,
+          "total_pnl": 22500
         },
         "木": {
-          "n": 54,
+          "n": 69,
           "wins": 37,
-          "wr": 68.5,
-          "pf": 4.6,
-          "total_pnl": 207583
+          "wr": 53.6,
+          "pf": 1.08,
+          "total_pnl": 14850
         },
         "金": {
-          "n": 47,
-          "wins": 26,
-          "wr": 55.3,
-          "pf": 1.67,
-          "total_pnl": 61900
+          "n": 56,
+          "wins": 31,
+          "wr": 55.4,
+          "pf": 0.73,
+          "total_pnl": -69000
         },
         "overall": {
-          "n": 246,
-          "wins": 143,
-          "wr": 58.1,
-          "pf": 2.26,
-          "total_pnl": 545783
+          "n": 303,
+          "wins": 169,
+          "wr": 55.8,
+          "pf": 1.56,
+          "total_pnl": 425850
         },
         "_meta": {
-          "prob_direction": "high",
-          "total_trades": 246
+          "prob_direction": "low",
+          "total_trades": 303
         }
       }
     },
@@ -188,7 +188,7 @@
   },
   "ratings": {
     "月": {
-      "grok_short": "△",
+      "grok_short": "×",
       "weekday_edge": "○",
       "pairs": "△"
     },
@@ -203,12 +203,12 @@
       "pairs": "△"
     },
     "木": {
-      "grok_short": "◎",
+      "grok_short": "△",
       "weekday_edge": "○",
       "pairs": "△"
     },
     "金": {
-      "grok_short": "○",
+      "grok_short": "×",
       "weekday_edge": "○",
       "pairs": "○"
     }

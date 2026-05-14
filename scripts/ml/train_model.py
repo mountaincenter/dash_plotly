@@ -120,7 +120,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     dates = df_clean['backtest_date'].values
     tickers = df_clean['ticker'].values
 
-    # SHORT損益（-profit = ショート視点の損益）
+    # staging archive: profit = (daily_close - buy_price) * 100 = LONG PnL → 符号反転でSHORT PnL
     pnl_col = 'profit_per_100_shares_phase2'
     if pnl_col in df_clean.columns:
         pnl_values = (-df_clean[pnl_col]).values
@@ -148,7 +148,7 @@ def train_and_evaluate(
         y: 目的変数
         feature_names: 特徴量名
         dates: 日付配列（ソート済み）
-        pnl_values: SHORT損益配列（-profit_per_100_shares_phase2）
+        pnl_values: SHORT損益配列（-profit_per_100_shares_phase2、staging archiveはLONG基準のため符号反転）
         tickers: 銘柄コード配列
 
     Returns:
