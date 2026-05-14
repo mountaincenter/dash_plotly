@@ -938,6 +938,21 @@ jobs:
             [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
           done
 
+      - name: Generate strategy weekday matrix
+        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
+        run: |
+          echo "📊 Generating strategy × weekday PF matrix..."
+          mkdir -p data/analysis
+          python3 scripts/pipeline/generate_strategy_matrix.py || echo "⚠️ Strategy matrix generation failed (non-fatal)"
+
+          if [ -f "data/analysis/strategy_matrix.json" ]; then
+            aws s3 cp \
+              data/analysis/strategy_matrix.json \
+              "s3://${{ env.S3_BUCKET }}/analysis/strategy_matrix.json" \
+              --only-show-errors
+            echo "✅ strategy_matrix.json uploaded to S3"
+          fi
+
       - name: Format Granville Slack notification
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
