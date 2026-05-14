@@ -942,6 +942,10 @@ jobs:
         if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
           echo "📊 Generating strategy × weekday PF matrix..."
+          if [ ! -f "data/parquet/backtest/grok_trending_archive.parquet" ]; then
+            echo "⚠️ grok_trending_archive.parquet not found, skipping strategy matrix"
+            exit 0
+          fi
           mkdir -p data/analysis
           python3 scripts/pipeline/generate_strategy_matrix.py || echo "⚠️ Strategy matrix generation failed (non-fatal)"
 
