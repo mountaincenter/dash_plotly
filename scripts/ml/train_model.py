@@ -5,14 +5,15 @@ LightGBMで騰落確率予測モデルを学習（26特徴量 / bucket方式）
 
 === 損益計算とショート戦略の解釈 ===
 
-【archiveの損益計算（ロング基準）】
+【archiveの損益計算（ショート基準）】
 - buy_price = 寄付（Open）
 - daily_close = 終値（Close）
-- phase2_return = (daily_close - buy_price) / buy_price
-- phase2_win = True if phase2_return > 0（株価上昇 = ロング利益）
+- phase2_return = (buy_price - daily_close) / buy_price
+- phase2_win = True if phase2_return > 0（株価下落 = ショート利益）
 
 【モデルの出力】
-- prob_up = phase2_win=True の確率 = 株価上昇確率
+- y = 1 - phase2_win → y=1は「ショート負け」= ロング側
+- prob_up = P(y=1) = ショートが負ける確率
 
 【bucket方式（ショート視点）】
 - SHORT (prob_up ≤ 0.45): ショート推奨
@@ -120,7 +121,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
 
     pnl_col = 'profit_per_100_shares_phase2'
     if pnl_col in df_clean.columns:
-        pnl_values = (-df_clean[pnl_col]).values
+        pnl_values = df_clean[pnl_col].values
     else:
         pnl_values = np.zeros(len(y))
 
@@ -203,7 +204,7 @@ def train_and_evaluate(
     overall_rec = recall_score(all_true, y_pred, zero_division=0)
     overall_f1 = f1_score(all_true, y_pred, zero_division=0)
 
-    buckets = np.array([_assign_bucket(1 - p) for p in all_preds])
+    buckets = np.array([_assign_bucket(p) for p in all_preds])
 
     bucket_results = []
     print(f"\n[Bucket分析（ショート視点）]")
