@@ -1,0 +1,216 @@
+{
+  "generated_at": "2026-05-14T20:07:30.654974",
+  "weekdays": [
+    "月",
+    "火",
+    "水",
+    "木",
+    "金"
+  ],
+  "strategies": {
+    "grok_short": {
+      "label": "grok SHORT",
+      "description": "prob<0.35 制度/いちにち",
+      "by_weekday": {
+        "月": {
+          "n": 44,
+          "wins": 23,
+          "wr": 52.3,
+          "pf": 1.34,
+          "total_pnl": 32900
+        },
+        "火": {
+          "n": 52,
+          "wins": 34,
+          "wr": 65.4,
+          "pf": 4.42,
+          "total_pnl": 239500
+        },
+        "水": {
+          "n": 49,
+          "wins": 23,
+          "wr": 46.9,
+          "pf": 1.03,
+          "total_pnl": 3900
+        },
+        "木": {
+          "n": 54,
+          "wins": 37,
+          "wr": 68.5,
+          "pf": 4.6,
+          "total_pnl": 207583
+        },
+        "金": {
+          "n": 47,
+          "wins": 26,
+          "wr": 55.3,
+          "pf": 1.67,
+          "total_pnl": 61900
+        },
+        "overall": {
+          "n": 246,
+          "wins": 143,
+          "wr": 58.1,
+          "pf": 2.26,
+          "total_pnl": 545783
+        },
+        "_meta": {
+          "prob_direction": "high",
+          "total_trades": 246
+        }
+      }
+    },
+    "weekday_edge": {
+      "label": "曜日アノマリー",
+      "description": "20銘柄 L/S",
+      "by_weekday": {
+        "月": {
+          "n": 1071,
+          "wins": 618,
+          "wr": 57.7,
+          "pf": 1.91,
+          "total_pnl": 1089520
+        },
+        "火": {
+          "n": 454,
+          "wins": 269,
+          "wr": 59.3,
+          "pf": 1.73,
+          "total_pnl": 632260
+        },
+        "水": {
+          "n": 75,
+          "wins": 48,
+          "wr": 64.0,
+          "pf": 4.98,
+          "total_pnl": 399300
+        },
+        "木": {
+          "n": 600,
+          "wins": 358,
+          "wr": 59.7,
+          "pf": 2.01,
+          "total_pnl": 612710
+        },
+        "金": {
+          "n": 728,
+          "wins": 430,
+          "wr": 59.1,
+          "pf": 1.79,
+          "total_pnl": 514560
+        },
+        "overall": {
+          "n": 2928,
+          "wins": 1723,
+          "wr": 58.8,
+          "pf": 1.95,
+          "total_pnl": 3248350
+        }
+      }
+    },
+    "pairs": {
+      "label": "ペアトレード",
+      "description": "V2_PAIRS Top3",
+      "by_weekday": {
+        "月": {
+          "n": 766,
+          "wins": 434,
+          "wr": 56.7,
+          "pf": 1.35,
+          "total_pnl": 414448
+        },
+        "火": {
+          "n": 833,
+          "wins": 413,
+          "wr": 49.6,
+          "pf": 1.2,
+          "total_pnl": 310750
+        },
+        "水": {
+          "n": 854,
+          "wins": 466,
+          "wr": 54.6,
+          "pf": 1.2,
+          "total_pnl": 303532
+        },
+        "木": {
+          "n": 836,
+          "wins": 462,
+          "wr": 55.3,
+          "pf": 1.15,
+          "total_pnl": 229940
+        },
+        "金": {
+          "n": 838,
+          "wins": 461,
+          "wr": 55.0,
+          "pf": 1.58,
+          "total_pnl": 726186
+        },
+        "overall": {
+          "n": 4127,
+          "wins": 2236,
+          "wr": 54.2,
+          "pf": 1.28,
+          "total_pnl": 1984858
+        }
+      }
+    },
+    "calendar": {
+      "label": "Calendar",
+      "description": "SQ-4/SQ+1/1306",
+      "summary": {
+        "sq4": {
+          "pf": 3.32,
+          "n": 490,
+          "wr": 64.7,
+          "total_ret": 672.68
+        },
+        "sq_plus1": {
+          "pf": 1.87,
+          "n": 365,
+          "wr": 61.1,
+          "total_ret": 204.36
+        },
+        "etf1306": {
+          "pf": 8.83,
+          "n": 41,
+          "wr": 73.2,
+          "total_ret": 29.9
+        },
+        "sq4_cme_down": {
+          "pf": 7.44,
+          "n": 210,
+          "wr": 76.7
+        }
+      }
+    }
+  },
+  "ratings": {
+    "月": {
+      "grok_short": "△",
+      "weekday_edge": "○",
+      "pairs": "△"
+    },
+    "火": {
+      "grok_short": "◎",
+      "weekday_edge": "○",
+      "pairs": "△"
+    },
+    "水": {
+      "grok_short": "△",
+      "weekday_edge": "◎",
+      "pairs": "△"
+    },
+    "木": {
+      "grok_short": "◎",
+      "weekday_edge": "○",
+      "pairs": "△"
+    },
+    "金": {
+      "grok_short": "○",
+      "weekday_edge": "○",
+      "pairs": "○"
+    }
+  }
+}
