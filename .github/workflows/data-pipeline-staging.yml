@@ -1,4 +1,4 @@
-name: Data Pipeline (Staging - Granville v2)
+name: Data Pipeline (Staging)
 
 on:
   schedule:
@@ -150,7 +150,7 @@ jobs:
           echo "📥 Downloading data from S3..."
           mkdir -p data/parquet/granville data/parquet/backtest data/parquet/pairs data/parquet/screening
 
-          # staging S3からgranville関連データ
+          # staging S3から運用データ
           aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX" data/parquet/ --only-show-errors \
             --exclude "market_summary/*" --exclude "macro/*" --exclude "ml/*"
 
@@ -209,13 +209,6 @@ jobs:
           python scripts/pipeline/fetch_calendar_prices.py
         timeout-minutes: 30
 
-      - name: "[Review] Generate Granville signals"
-        if: steps.exec_mode.outputs.phase == 'review'
-        run: |
-          echo "🔍 Generating Granville B1-B4 signals..."
-          python scripts/pipeline/generate_granville_signals.py
-        timeout-minutes: 30
-
       - name: "[Review] Generate pairs trading signals"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -247,13 +240,6 @@ jobs:
             docs/pair_health_*.html
           retention-days: 90
 
-      - name: "[Review] Backtest Granville B4 archive"
-        if: steps.exec_mode.outputs.phase == 'review'
-        run: |
-          echo "📊 Regenerating Granville B4 backtest archive (6Y)..."
-          python scripts/pipeline/backtest_granville_b1b4.py 6
-        timeout-minutes: 30
-
       - name: "[Review] Regenerate manifest.json (local only)"
         if: steps.exec_mode.outputs.phase == 'review'
         run: |
@@ -273,7 +259,7 @@ jobs:
         run: |
           echo "☁️ Uploading review results..."
 
-          # unified signals/positions (granville + pairs)
+          # unified signals/positions
           for f in signals.parquet positions.parquet; do
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
@@ -283,15 +269,10 @@ jobs:
             [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://$S3_BUCKET/${S3_PREFIX}$f" --only-show-errors
           done
 
-          # granville prices_topix (指数・TOPIXベンチマーク用)
+          # TOPIX prices (pairs/index benchmark shared data)
           [ -f "data/parquet/granville/prices_topix.parquet" ] && \
             aws s3 cp "data/parquet/granville/prices_topix.parquet" \
               "s3://$S3_BUCKET/${S3_PREFIX}granville/prices_topix.parquet" --only-show-errors
-
-          # B4 backtest archive
-          [ -f "data/parquet/backtest/granville_b1b4_archive.parquet" ] && \
-            aws s3 cp "data/parquet/backtest/granville_b1b4_archive.parquet" \
-              "s3://$S3_BUCKET/${S3_PREFIX}backtest/granville_b1b4_archive.parquet" --only-show-errors
 
           # production S3から取得済みファイル → staging S3に同期
           for f in hold_stocks.parquet \
@@ -305,13 +286,6 @@ jobs:
           echo "✅ Review results uploaded"
 
       # ===== 22:00 準備フェーズ =====
-      - name: "[Prepare] Generate Granville recommendations"
-        if: steps.exec_mode.outputs.phase == 'prepare'
-        run: |
-          echo "📋 Generating recommendations for tomorrow..."
-          python scripts/pipeline/generate_granville_recommendation.py
-        timeout-minutes: 10
-
       - name: "[Prepare] Generate SQ-4 picks"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
@@ -343,7 +317,7 @@ jobs:
       - name: "[Prepare] Update all_stocks (grok + signals.parquet全戦略)"
         if: steps.exec_mode.outputs.phase == 'prepare'
         run: |
-          echo "🔄 Updating all_stocks.parquet (grok + granville + pairs + sq_plus1 + sq4 + weekday)..."
+          echo "🔄 Updating all_stocks.parquet (grok + pairs + sq_plus1 + sq4 + weekday)..."
           python scripts/pipeline/create_all_stocks.py
         timeout-minutes: 5
 
@@ -420,12 +394,6 @@ jobs:
             aws s3 cp "data/parquet/futures_prices_max_1d.parquet" "s3://$S3_BUCKET/${S3_PREFIX}futures_prices_max_1d.parquet" --only-show-errors
         timeout-minutes: 5
 
-      - name: "[CME] Generate B4 Slack section"
-        if: steps.exec_mode.outputs.phase == 'cme_update'
-        run: |
-          python scripts/format_granville_b4_slack.py
-        timeout-minutes: 5
-
       - name: "[CME] Pre-market allocation (risk control)"
         if: steps.exec_mode.outputs.phase == 'cme_update'
         run: |
@@ -480,14 +448,6 @@ jobs:
           fi
 
       # ===== Slack通知（全フェーズ共通） =====
-      - name: Generate B4 Slack section
-        if: steps.exec_mode.outputs.phase == 'review' || steps.exec_mode.outputs.phase == 'prepare'
-        run: |
-          # staging S3からVI同期（Slack通知用、18:00 fetchで保存済み）
-          aws s3 cp "s3://$S3_BUCKET/${S3_PREFIX}nikkei_vi_max_1d.parquet" "data/parquet/nikkei_vi_max_1d.parquet" --only-show-errors || true
-          python scripts/format_granville_b4_slack.py || true
-        timeout-minutes: 5
-
       - name: Slack notification (success)
         if: success()
         env:
@@ -497,21 +457,6 @@ jobs:
           TIME=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
             TEXT="✅ *Staging Pipeline Succeeded* ($PHASE)\n$TIME"
-            if [ -f /tmp/granville_b4_section.txt ]; then
-              B4_TEXT=$(python3 -c "
-          import json
-          with open('/tmp/granville_b4_section.txt') as f:
-              blocks = json.load(f)
-          parts = []
-          for b in blocks:
-              t = b.get('text', {}).get('text', '')
-              if t: parts.append(t)
-          print('\n'.join(parts))
-          " 2>/dev/null || echo "")
-              if [ -n "$B4_TEXT" ]; then
-                TEXT="$TEXT\n\n$B4_TEXT"
-              fi
-            fi
             if [ -f /tmp/allocation_summary.json ]; then
               ALLOC_TEXT=$(python3 -c "
           import json
@@ -573,8 +518,4 @@ jobs:
           if [ -f "data/parquet/positions.parquet" ]; then
             echo "Positions: data/parquet/positions.parquet ($(wc -c < data/parquet/positions.parquet) bytes)"
           fi
-          if ls data/parquet/granville/recommendations_*.parquet >/dev/null 2>&1; then
-            echo "Recommendations: $(ls data/parquet/granville/recommendations_*.parquet | tail -1)"
-          fi
-
           echo "=========================================="

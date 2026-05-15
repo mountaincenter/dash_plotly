@@ -240,9 +240,9 @@ def tag_strategy(row):
     # 12/22より前は全てLLM
     if trade_date < pd.Timestamp("2025-12-22"):
         return "llm"
-    # 2/24以降でgrok_setに不一致 → granville
+    # 2/24以降でgrok_setに不一致 → 運用外/未分類
     if trade_date >= pd.Timestamp("2026-02-24") and key not in grok_set:
-        return "granville"
+        return "other"
     # 12/22以降はgrok（照合一致 or 12/22-2/23の全件）
     return "grok"
 
@@ -251,7 +251,7 @@ strategy_counts = daily_stock["戦略"].value_counts()
 print(f"戦略タグ付け完了: {dict(strategy_counts)}")
 
 # 戦略別集計をサマリーに追加
-for strategy in ["pairs", "grok", "granville", "llm"]:
+for strategy in ["pairs", "grok", "other", "llm"]:
     s_df = daily_stock[daily_stock["戦略"] == strategy]
     s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
     s_count = len(s_df)
