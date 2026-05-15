@@ -352,6 +352,12 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 
 PROB_SHORT_THRESHOLD = 0.45
 PROB_LONG_THRESHOLD = 0.70
+EXPECTED_PF_MIN_N = 30
+
+PROB_BINS = [0.0, 0.20, 0.32, 0.45, 0.50, 0.60, 0.70, 1.000001]
+PROB_LABELS = ["<.20", ".20-.32", ".32-.45", ".45-.50", ".50-.60", ".60-.70", ">=.70"]
+PRICE_BINS = [0, 500, 1000, 3000, float("inf")]
+PRICE_LABELS = ["<500", "500-1000", "1000-3000", ">=3000"]
 
 
 WEEKDAY_RULES = {
@@ -408,6 +414,188 @@ def get_bucket(prob: float) -> str:
     elif prob > PROB_LONG_THRESHOLD:
         return "LONG"
     return "DISC"
+
+
+def get_prob_bin(prob: float | None) -> str | None:
+    """prob_upを検証用の実測PF binへ変換"""
+    if prob is None or pd.isna(prob):
+        return None
+    for i in range(len(PROB_BINS) - 1):
+        if PROB_BINS[i] <= float(prob) < PROB_BINS[i + 1]:
+            return PROB_LABELS[i]
+    return None
+
+
+def get_price_band(price: float | None) -> str | None:
+    """株価帯を粗い実測PF binへ変換"""
+    if price is None or pd.isna(price):
+        return None
+    for i in range(len(PRICE_BINS) - 1):
+        if PRICE_BINS[i] <= float(price) < PRICE_BINS[i + 1]:
+            return PRICE_LABELS[i]
+    return None
+
+
+def get_credit_bucket(
+    is_system_shortable: bool,
+    day_trade: bool,
+    ng: bool,
+    day_trade_available_shares: int | None,
+) -> str:
+    """実運用向けの信用区分。重複時は制度信用を優先する。"""
+    if ng:
+        return "その他/不可"
+    if is_system_shortable:
+        return "制度信用"
+    if day_trade:
+        if day_trade_available_shares is not None and day_trade_available_shares > 0:
+            return "いちにち信用_除株数0"
+        return "いちにち信用_株数0"
+    return "その他/不可"
+
+
+def _pf_metrics(group: pd.DataFrame) -> dict:
+    pnl = pd.to_numeric(group["profit_per_100_shares_phase2"], errors="coerce").fillna(0)
+    wins = pnl[pnl > 0]
+    losses = pnl[pnl < 0]
+    pf = float(wins.sum() / abs(losses.sum())) if abs(losses.sum()) > 0 else None
+    trade_count = int((pnl != 0).sum())
+    return {
+        "n": int(len(group)),
+        "pf": round(pf, 2) if pf is not None else None,
+        "avg_pnl": round(float(pnl.mean()), 1) if len(pnl) else None,
+        "wr": round(float(len(wins) / trade_count * 100), 1) if trade_count else None,
+    }
+
+
+def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
+    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。
+
+    細かい粒度ほど優先するが、サンプルが少ない場合は呼び出し側で粗い粒度へfallbackする。
+    """
+    if archive_df.empty or "ml_prob" not in archive_df.columns:
+        return {}
+
+    df = archive_df.copy()
+    df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
+    df = df[
+        (df["backtest_date"] >= pd.Timestamp("2026-01-01"))
+        & df["ml_prob"].notna()
+        & df["phase2_return"].notna()
+    ].copy()
+    df = df[df["phase2_return"].abs() >= 1e-12]
+    if df.empty:
+        return {}
+
+    df["weekday_jp"] = df["backtest_date"].dt.dayofweek.map(lambda x: WEEKDAY_NAMES[x])
+    df["prob_bin"] = df["ml_prob"].apply(get_prob_bin)
+    df["price_band"] = df["buy_price"].apply(get_price_band)
+    shares = pd.to_numeric(
+        df.get("day_trade_available_shares", pd.Series(pd.NA, index=df.index)),
+        errors="coerce",
+    )
+    is_system_shortable_values = df.get("is_shortable", pd.Series(False, index=df.index))
+    day_trade_values = df.get("day_trade", pd.Series(False, index=df.index))
+    ng_values = df.get("ng", pd.Series(False, index=df.index))
+    df["credit_bucket"] = [
+        get_credit_bucket(
+            bool(is_system_shortable) if pd.notna(is_system_shortable) else False,
+            bool(day_trade) if pd.notna(day_trade) else False,
+            bool(ng) if pd.notna(ng) else False,
+            int(share) if pd.notna(share) else None,
+        )
+        for is_system_shortable, day_trade, ng, share in zip(
+            is_system_shortable_values,
+            day_trade_values,
+            ng_values,
+            shares,
+        )
+    ]
+
+    lookup = {}
+    group_levels = [
+        ("weekday+credit+price+prob", ["weekday_jp", "credit_bucket", "price_band", "prob_bin"]),
+        ("weekday+credit+prob", ["weekday_jp", "credit_bucket", "prob_bin"]),
+        ("weekday+price+prob", ["weekday_jp", "price_band", "prob_bin"]),
+        ("weekday+prob", ["weekday_jp", "prob_bin"]),
+        ("credit+prob", ["credit_bucket", "prob_bin"]),
+        ("prob", ["prob_bin"]),
+        ("weekday", ["weekday_jp"]),
+        ("all", []),
+    ]
+    for name, cols in group_levels:
+        if cols:
+            grouped = df.dropna(subset=cols).groupby(cols, dropna=False)
+            for key, group in grouped:
+                if not isinstance(key, tuple):
+                    key = (key,)
+                lookup[(name, key)] = _pf_metrics(group)
+        else:
+            lookup[(name, tuple())] = _pf_metrics(df)
+
+    return lookup
+
+
+def estimate_grok_expected_pf(
+    lookup: dict,
+    weekday_jp: str | None,
+    credit_bucket: str,
+    price_band: str | None,
+    prob_bin: str | None,
+) -> dict:
+    """今日の候補に最も近い実測PFを返す。件数不足なら粗い条件へfallback。"""
+    if not lookup or not weekday_jp or not prob_bin:
+        return {
+            "expected_pf": None,
+            "expected_pf_basis": None,
+            "expected_pf_n": 0,
+            "expected_pnl_avg": None,
+            "expected_wr": None,
+        }
+
+    candidates = [
+        ("weekday+credit+price+prob", (weekday_jp, credit_bucket, price_band, prob_bin)),
+        ("weekday+credit+prob", (weekday_jp, credit_bucket, prob_bin)),
+        ("weekday+price+prob", (weekday_jp, price_band, prob_bin)),
+        ("weekday+prob", (weekday_jp, prob_bin)),
+        ("credit+prob", (credit_bucket, prob_bin)),
+        ("prob", (prob_bin,)),
+        ("weekday", (weekday_jp,)),
+        ("all", tuple()),
+    ]
+    fallback = None
+    for basis, key in candidates:
+        metrics = lookup.get((basis, key))
+        if not metrics:
+            continue
+        if fallback is None:
+            fallback = (basis, metrics)
+        if metrics["n"] >= EXPECTED_PF_MIN_N:
+            return {
+                "expected_pf": metrics["pf"],
+                "expected_pf_basis": basis,
+                "expected_pf_n": metrics["n"],
+                "expected_pnl_avg": metrics["avg_pnl"],
+                "expected_wr": metrics["wr"],
+            }
+
+    if fallback:
+        basis, metrics = fallback
+        return {
+            "expected_pf": metrics["pf"],
+            "expected_pf_basis": f"{basis}_low_n",
+            "expected_pf_n": metrics["n"],
+            "expected_pnl_avg": metrics["avg_pnl"],
+            "expected_wr": metrics["wr"],
+        }
+
+    return {
+        "expected_pf": None,
+        "expected_pf_basis": None,
+        "expected_pf_n": 0,
+        "expected_pnl_avg": None,
+        "expected_wr": None,
+    }
 
 
 def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: pd.DataFrame) -> dict:
@@ -635,10 +823,13 @@ async def get_day_trade_list():
         if not archive_df.empty:
             archive_df = archive_df[archive_df['selection_date'] >= '2025-11-04']
             appearance_counts = archive_df['ticker'].value_counts().to_dict()
+            expected_pf_lookup = build_grok_expected_pf_lookup(archive_df)
         else:
             appearance_counts = {}
+            expected_pf_lookup = {}
     except Exception:
         appearance_counts = {}
+        expected_pf_lookup = {}
 
     # ストップ高/安フラグを計算
     try:
@@ -676,6 +867,11 @@ async def get_day_trade_list():
         else:
             shortable = bool(dtl.get("shortable", False))
 
+        if "is_shortable" in row and pd.notna(row["is_shortable"]):
+            is_system_shortable = bool(row["is_shortable"])
+        else:
+            is_system_shortable = shortable
+
         if "day_trade" in row and pd.notna(row["day_trade"]):
             day_trade = bool(row["day_trade"])
         else:
@@ -710,6 +906,22 @@ async def get_day_trade_list():
             ml_result = ml_predictions.get(ticker, {})
             prob_up = ml_result.get('prob_up')
         bucket = get_bucket(prob_up) if prob_up is not None else None
+        prob_bin = get_prob_bin(prob_up)
+        price_band = get_price_band(row.get("Close"))
+        weekday_jp = WEEKDAY_NAMES[trade_date.weekday()] if trade_date is not None else None
+        credit_bucket = get_credit_bucket(
+            is_system_shortable,
+            day_trade,
+            ng,
+            day_trade_available_shares,
+        )
+        expected = estimate_grok_expected_pf(
+            expected_pf_lookup,
+            weekday_jp,
+            credit_bucket,
+            price_band,
+            prob_bin,
+        )
 
         stocks.append({
             "ticker": ticker,
@@ -720,7 +932,11 @@ async def get_day_trade_list():
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "prob_up": prob_up,
+            "prob_bin": prob_bin,
+            "price_band": price_band,
             "bucket": bucket,
+            "credit_bucket": credit_bucket,
+            "is_system_shortable": is_system_shortable,
             "shortable": shortable,
             "day_trade": day_trade,
             "ng": ng,
@@ -731,11 +947,15 @@ async def get_day_trade_list():
             "max_cost_100": int(max_cost_100) if max_cost_100 is not None else None,
             "short_recommended": bool(row.get("short_recommended")) if pd.notna(row.get("short_recommended")) else False,
             "reason_category": row.get("reason_category") if pd.notna(row.get("reason_category")) else None,
+            **expected,
         })
 
-    # ソート: 制度 → いちにち → NG → grok_rank
+    # ソート: expected_pf → 平均損益 → 実行可能性 → grok_rank
+    # 目的はGrok候補内で「過去WFCV上、最もお金が増えた条件に近い順」に並べること。
     stocks.sort(key=lambda s: (
-        0 if s["shortable"] else (1 if s["day_trade"] else 2),
+        -(s["expected_pf"] if s.get("expected_pf") is not None else -1),
+        -(s["expected_pnl_avg"] if s.get("expected_pnl_avg") is not None else -10**9),
+        0 if not s["ng"] and s["credit_bucket"] != "その他/不可" else 1,
         s.get("grok_rank") or 999
     ))
 

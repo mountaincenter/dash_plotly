@@ -389,6 +389,7 @@ def main() -> int:
             r["name1"] = names.get(tk1, tk1)
             r["name2"] = names.get(tk2, tk2)
             r["full_pf"] = full_pf
+            r["expected_pf"] = full_pf
             r["full_n"] = full_n
             r["revert_1d"] = revert_1d
             rows.append(r)

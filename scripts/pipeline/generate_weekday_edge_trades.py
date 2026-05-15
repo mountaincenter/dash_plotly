@@ -162,6 +162,7 @@ def main() -> int:
     us_filtered_daily_records: list[dict] = []
 
     stock_stats: list[dict] = []
+    stock_pf_map: dict[tuple[str, str, int], dict] = {}
 
     for cfg in all_configs:
         code, dow, direction = cfg["code"], cfg["dow"], cfg["direction"]
@@ -232,7 +233,7 @@ def main() -> int:
         else:
             s_all = {}
 
-        stock_stats.append({
+        stock_stat = {
             "code": code,
             "name": cfg["name"],
             "direction": direction,
@@ -243,7 +244,14 @@ def main() -> int:
             "stats_all": s_all,
             "n_filtered": len(sub_filtered),
             "n_all": len(sub_all),
-        })
+        }
+        stock_stats.append(stock_stat)
+        stock_pf_map[(code, direction, dow)] = {
+            "expected_pf": s_filt.get("pf"),
+            "expected_pf_n": len(sub_filtered),
+            "expected_pnl_avg": s_filt.get("avg_ret"),
+            "expected_wr": s_filt.get("wr"),
+        }
 
     # 週次集約
     print(f"\n[3] 週次集約 ({len(weekly_trades)}週)")
@@ -359,6 +367,7 @@ def main() -> int:
                     "direction": "SHORT" if cfg in SHORT_CORE else "LONG",
                     "dow_label": DOW_LABELS[cdow],
                 }
+                entry.update(stock_pf_map.get((cfg["code"], entry["direction"], cdow), {}))
                 edates = earnings_dates.get(cfg["code"], set())
                 for ed in edates:
                     ntd = _next_trading_day(ed)
@@ -418,6 +427,10 @@ def main() -> int:
                 "stock_name": e.get("name", ""),
                 "entry_price_est": None,
                 "prev_close": None,
+                "expected_pf": e.get("expected_pf"),
+                "expected_pf_n": e.get("expected_pf_n"),
+                "expected_pnl_avg": e.get("expected_pnl_avg"),
+                "expected_wr": e.get("expected_wr"),
             })
         if sig_rows:
             new_sigs = pd.DataFrame(sig_rows)
