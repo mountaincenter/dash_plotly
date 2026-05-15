@@ -378,7 +378,7 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
     import numpy as np
 
     empty = pd.DataFrame(columns=ALL_STOCKS_COLS)
-    strategies = ["granville", "pairs", "sq_plus1", "sq4", "weekday"]
+    strategies = ["pairs", "sq_plus1", "sq4", "weekday"]
     result = {s: empty.copy() for s in strategies}
 
     if not SIGNALS_PATH.exists():
@@ -410,12 +410,6 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
                   "atr14_pct", "rsi14", "score", "key_signal"]:
             df[c] = None
         return df[ALL_STOCKS_COLS].copy()
-
-    # granville
-    gr = signals[signals["strategy"] == "granville"]
-    if not gr.empty:
-        result["granville"] = _to_18col(gr["ticker"], "GRANVILLE")
-        print(f"  [INFO] Granville from signals.parquet: {len(result['granville'])} stocks")
 
     # pairs: is_entry | is_buffer の tk1/tk2 を展開
     pr = signals[signals["strategy"] == "pairs"]
@@ -505,7 +499,6 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
 
     # signals.parquet から全戦略の銘柄を読み込み
     strategy_rows = _build_rows_from_signals()
-    granville_recs = strategy_rows["granville"]
     pairs_df = strategy_rows["pairs"]
     sq_plus1_df = strategy_rows["sq_plus1"]
     sq4_df = strategy_rows["sq4"]
@@ -558,7 +551,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
 
     # source間で同一tickerがある場合 (例: 8053.T が HOLD + PAIRS)、
     # categories/tags は union し、メタ列は non-null 優先で畳み込む
-    all_stocks = pd.concat([grok_trending, granville_recs, hold_stocks_df, pairs_df, sq_plus1_df, sq4_df, weekday_df], ignore_index=True)
+    all_stocks = pd.concat([grok_trending, hold_stocks_df, pairs_df, sq_plus1_df, sq4_df, weekday_df], ignore_index=True)
 
     def _union_list(series: pd.Series) -> list:
         merged: list = []
@@ -605,7 +598,7 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
     # date カラムの型を統一（文字列に変換、Noneはそのまま）
     all_stocks["date"] = all_stocks["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
 
-    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Granville: {len(granville_recs)}, Hold: {len(hold_stocks_df)}, Pairs: {len(pairs_df)}, SQ+1: {len(sq_plus1_df)}, SQ4: {len(sq4_df)}, Weekday: {len(weekday_df)})")
+    print(f"[OK] Merged: {len(all_stocks)} stocks (Grok: {len(grok_trending)}, Hold: {len(hold_stocks_df)}, Pairs: {len(pairs_df)}, SQ+1: {len(sq_plus1_df)}, SQ4: {len(sq4_df)}, Weekday: {len(weekday_df)})")
     return all_stocks
 
 

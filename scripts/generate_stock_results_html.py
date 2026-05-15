@@ -224,11 +224,11 @@ def tag_strategy(row):
     # grokアーカイブ/トレンドに一致 → grok
     if key in grok_set:
         return "grok"
-    # 2/24以降: V2_PAIRS銘柄 → pair, それ以外 → granville
+    # 2/24以降: V2_PAIRS銘柄 → pair, それ以外 → 運用外/未分類
     if trade_date >= pd.Timestamp("2026-02-24"):
         if str(row["コード"]) in pair_codes:
             return "pair"
-        return "granville"
+        return "other"
     # 12/22-2/23はgrok
     return "grok"
 
@@ -237,7 +237,7 @@ strategy_counts = daily_stock["戦略"].value_counts()
 print(f"戦略タグ付け完了: {dict(strategy_counts)}")
 
 # 戦略別集計をサマリーに追加
-for strategy in ["grok", "granville", "llm"]:
+for strategy in ["grok", "pair", "other", "llm"]:
     s_df = daily_stock[daily_stock["戦略"] == strategy]
     s_profit = s_df["実現損益"].sum() if len(s_df) > 0 else 0
     s_count = len(s_df)
@@ -431,17 +431,3 @@ if s3_cfg.bucket:
             print(f"[OK] staging S3 にも hold_stocks.parquet をコピー完了")
         except Exception as e:
             print(f"[WARNING] staging S3 コピー失敗: {e}")
-
-    # Granville APIのキャッシュもリフレッシュ（hold_stocks即時反映）
-    REFRESH_URLS = [
-        ("production", "https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"),
-        ("staging", "https://5ua83r8kwu.ap-northeast-1.awsapprunner.com/api/dev/granville/refresh"),
-    ]
-    for label, url in REFRESH_URLS:
-        try:
-            req = urllib.request.Request(url, method="POST")
-            with urllib.request.urlopen(req, timeout=30) as response:
-                result = response.read().decode("utf-8")
-                print(f"[OK] {label} Granvilleキャッシュリフレッシュ完了: {result}")
-        except (urllib.error.URLError, Exception) as e:
-            print(f"[WARNING] {label} Granvilleキャッシュリフレッシュ失敗: {e}")

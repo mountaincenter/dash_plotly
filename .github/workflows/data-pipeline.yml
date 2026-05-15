@@ -568,55 +568,6 @@ jobs:
 
           echo "============================================================"
 
-      - name: Generate Granville recommendations (22:00 only)
-        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
-        run: |
-          echo "============================================================"
-          echo "Generating Granville recommendations (22:00 only)"
-          echo "============================================================"
-
-          mkdir -p data/parquet/granville
-
-          # S3からgranville関連データをダウンロード
-          for f in hold_stocks.parquet credit_status.parquet orders.parquet nikkei_vi_max_1d.parquet; do
-            aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" "data/parquet/$f" --only-show-errors 2>/dev/null || true
-          done
-
-          # granvilleデータをS3からダウンロード（16:45で生成済み）
-          aws s3 sync "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/" "data/parquet/granville/" --only-show-errors || true
-
-          if python3 scripts/pipeline/generate_granville_recommendation.py; then
-            echo "✅ Granville recommendations generated"
-            for f in data/parquet/granville/recommendations_*.parquet; do
-              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
-            done
-            echo "✅ Uploaded granville recommendations to S3"
-          else
-            echo "⚠️ Granville recommendations failed (non-critical, signals may not exist yet)"
-          fi
-        timeout-minutes: 10
-
-      - name: Generate bearish reversal signals (22:00 only, reference info)
-        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
-        run: |
-          echo "============================================================"
-          echo "Generating bearish reversal signals (reference info only)"
-          echo "============================================================"
-
-          mkdir -p data/parquet/reversal
-
-          # 価格データ・VIデータはすでにダウンロード済み
-          if python3 scripts/pipeline/generate_bearish_signals.py; then
-            echo "✅ Bearish reversal signals generated"
-            for f in data/parquet/reversal/bearish_signals_*.parquet data/parquet/reversal/bearish_positions_*.parquet; do
-              [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}reversal/$(basename $f)" --only-show-errors
-            done
-            echo "✅ Uploaded reversal signals to S3"
-          else
-            echo "⚠️ Bearish reversal signals failed (non-critical, reference info only)"
-          fi
-        timeout-minutes: 5
-
       - name: Run backtest and archive
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -929,20 +880,16 @@ jobs:
           fi
         timeout-minutes: 45
 
-      - name: Upload Granville/Pairs artifacts to S3
+      - name: Upload Pairs artifacts to S3
         if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
-          echo "📤 Uploading Granville signals/positions/long_recommendations..."
-          for f in data/parquet/granville/signals_*.parquet data/parquet/granville/positions_*.parquet data/parquet/granville/long_recommendations_*.parquet; do
-            [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/$(basename $f)" --only-show-errors
-          done
           echo "📤 Uploading Pairs signals..."
           for f in data/parquet/pairs/pairs_signals_*.parquet; do
             [ -f "$f" ] && aws s3 cp "$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}pairs/$(basename $f)" --only-show-errors
           done
           echo "📤 Uploading unified signals.parquet..."
           [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
-          echo "✅ Granville/Pairs artifacts uploaded"
+          echo "✅ Pairs artifacts uploaded"
 
       - name: Upload Calendar Trades data to S3
         if: success() && steps.exec_mode.outputs.mode != 'cme_update'
@@ -974,11 +921,6 @@ jobs:
               --only-show-errors
             echo "✅ strategy_matrix.json uploaded to S3"
           fi
-
-      - name: Format Granville Slack notification
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
-        run: |
-          python3 scripts/format_granville_b4_slack.py || true
 
       # ===== 07:00 CME更新フェーズ =====
       - name: "[CME] Check trading day"
@@ -1039,15 +981,6 @@ jobs:
               "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" --only-show-errors
             echo "✅ Uploaded updated futures_prices_max_1d.parquet to S3"
           fi
-        timeout-minutes: 5
-
-      - name: "[CME] Generate B4 Slack section"
-        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
-        run: |
-          # 日経VI最新値をS3からダウンロード（16:45で保存済み）
-          mkdir -p data/analysis
-          aws s3 cp "s3://${S3_BUCKET}/analysis/nikkei_vi_latest.json" "data/analysis/nikkei_vi_latest.json" --only-show-errors 2>/dev/null || true
-          python scripts/format_granville_b4_slack.py || true
         timeout-minutes: 5
 
       - name: Generate market anomaly data (last trading day of week)
@@ -1567,12 +1500,6 @@ jobs:
             BILLING_SECTION=",$(cat /tmp/billing_section.txt)"
           fi
 
-          # Granville B4 (16:45 + 07:00 CME)
-          GRANVILLE_SECTION=""
-          if [ -f "/tmp/granville_b4_section.txt" ] && [ -s "/tmp/granville_b4_section.txt" ]; then
-            GRANVILLE_SECTION=$(cat /tmp/granville_b4_section.txt)
-          fi
-
           # ML Retraining (last trading day of week)
           ML_SECTION=""
           if [ -f "/tmp/ml_section.txt" ] && [ -s "/tmp/ml_section.txt" ]; then
@@ -1637,7 +1564,7 @@ jobs:
                     "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 ]
-              }'"$BILLING_SECTION$GROK_SECTION$GRANVILLE_SECTION$ML_SECTION"'
+              }'"$BILLING_SECTION$GROK_SECTION$ML_SECTION"'
             ]
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
