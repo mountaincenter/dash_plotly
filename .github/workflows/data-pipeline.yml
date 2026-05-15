@@ -347,7 +347,19 @@ jobs:
             echo "⚠️ futures_prices_max_1d.parquet not found on S3"
           fi
 
-          # 8. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
+          # 8. nikkei_vi_latest.json（22:00モードのみ: 16:45で保存済みのVI値を取得）
+          # 16:45モードではupdate_granville_prices.pyが生成するのでダウンロード不要
+          # （VI取得失敗時に前日JSONを再アップロードする問題を回避）
+          if [ "$SKIP_GROK_GENERATION" = "false" ]; then
+            mkdir -p data/analysis
+            if aws s3 cp "s3://${{ env.S3_BUCKET }}/analysis/nikkei_vi_latest.json" "data/analysis/nikkei_vi_latest.json" --only-show-errors 2>/dev/null; then
+              echo "✅ nikkei_vi_latest.json downloaded from S3"
+            else
+              echo "⚠️ nikkei_vi_latest.json not found on S3"
+            fi
+          fi
+
+          # 9. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
           JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
           JSF_PATH="data/parquet/jsf_seigenichiran.csv"
           echo "📥 Downloading JSF restrictions from $JSF_URL..."
@@ -906,6 +918,12 @@ jobs:
 
           if [ $? -eq 0 ]; then
             echo "✅ Granville prices updated"
+            # 日経VI最新値をS3にアップロード（analysis/直下、parquet/prefix外）
+            if [ -f "data/analysis/nikkei_vi_latest.json" ]; then
+              aws s3 cp "data/analysis/nikkei_vi_latest.json" \
+                "s3://${{ env.S3_BUCKET }}/analysis/nikkei_vi_latest.json" --only-show-errors
+              echo "✅ nikkei_vi_latest.json uploaded to S3"
+            fi
           else
             echo "⚠️ Granville prices update failed (non-critical)"
           fi
@@ -1026,6 +1044,9 @@ jobs:
       - name: "[CME] Generate B4 Slack section"
         if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
         run: |
+          # 日経VI最新値をS3からダウンロード（16:45で保存済み）
+          mkdir -p data/analysis
+          aws s3 cp "s3://${S3_BUCKET}/analysis/nikkei_vi_latest.json" "data/analysis/nikkei_vi_latest.json" --only-show-errors 2>/dev/null || true
           python scripts/format_granville_b4_slack.py || true
         timeout-minutes: 5
 

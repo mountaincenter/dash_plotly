@@ -36,7 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.env import load_dotenv_cascade
-from common_cfg.nikkei_vi import fetch_nikkei_vi
+from common_cfg.nikkei_vi import load_vi_latest
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import upload_file
@@ -107,10 +107,13 @@ def _load_market_regime(latest_date: pd.Timestamp) -> dict:
     except Exception as e:
         print(f"  [WARN] CME gap load failed: {e}")
 
-    # VI: 楽天証券当日ライブ値（fail-fast: 判断に直結するため）
-    vi_data = fetch_nikkei_vi()
-    regime["vi"] = round(float(vi_data["close"]), 1)
-    regime["vi_prev_close"] = float(vi_data["prev_close"])
+    # VI: nikkei_vi_latest.json から読込（16:45パイプラインで保存済み）
+    vi_data = load_vi_latest()
+    if vi_data and vi_data.get("close") is not None:
+        regime["vi"] = round(float(vi_data["close"]), 1)
+        regime["vi_prev_close"] = float(vi_data.get("prev_close", 0))
+    else:
+        print("  [WARN] nikkei_vi_latest.json not found, VI unavailable")
 
     return regime
 

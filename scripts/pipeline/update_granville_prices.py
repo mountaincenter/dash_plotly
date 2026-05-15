@@ -165,6 +165,16 @@ def main() -> int:
     if failed > 0:
         print(f"\n  [WARN] {failed} tickers failed to fetch")
 
+    # 日経VI当日値を取得して保存（16:45は大引後なので確定値が取れる）
+    # S3アップロードはGHA側で実施（upload_fileのprefix付加を回避するため）
+    from common_cfg.nikkei_vi import fetch_nikkei_vi, save_vi_latest, NikkeiViFetchError
+    try:
+        vi_data = fetch_nikkei_vi()
+        path = save_vi_latest(vi_data)
+        print(f"  ✅ 日経VI: {vi_data['close']} (saved to {path.name})")
+    except NikkeiViFetchError as e:
+        print(f"  [WARN] 日経VI取得失敗: {e}")
+
     return 0
 
 

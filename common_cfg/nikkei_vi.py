@@ -6,11 +6,19 @@
 """
 from __future__ import annotations
 
+import json
+import os
 import re
+import tempfile
 import time
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Any
 
 import requests
+
+_JST = timezone(timedelta(hours=9))
+LATEST_JSON_PATH = Path(__file__).resolve().parents[1] / "data" / "analysis" / "nikkei_vi_latest.json"
 
 URL = "https://www.rakuten-sec.co.jp/smartphone/market/info/pagecontent?pid=4001&sym=.JNIV"
 HEADERS = {
@@ -68,3 +76,87 @@ def fetch_nikkei_vi(retries: int = 3, timeout: int = 20) -> dict[str, Any]:
             if attempt < retries:
                 time.sleep(attempt)
     raise NikkeiViFetchError(f"nikkei VI fetch failed after {retries} attempts: {last_error}")
+
+
+def _atomic_json_write(path: Path, data: dict) -> None:
+    """tmp → os.replace で書込中断時の破損を防止。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save_vi_latest(data: dict[str, Any]) -> Path:
+    """fetch_nikkei_vi() の戻り値を JSON に保存。"""
+    payload = {
+        "generated_at": datetime.now(_JST).isoformat(),
+        **data,
+    }
+    _atomic_json_write(LATEST_JSON_PATH, payload)
+    return LATEST_JSON_PATH
+
+
+def _is_fresh(data: dict, max_age_hours: float = 72) -> bool:
+    """72h = 金曜16:45→月曜07:00(~63h)を許容。3連休超は stale。"""
+    gen = data.get("generated_at")
+    if not gen:
+        print("  [WARN] nikkei_vi_latest.json has no generated_at, treating as stale")
+        return False
+    try:
+        dt = datetime.fromisoformat(gen)
+        age_h = (datetime.now(_JST) - dt).total_seconds() / 3600
+        if age_h > max_age_hours:
+            print(f"  [WARN] nikkei_vi_latest.json is {age_h:.0f}h old, treating as stale")
+            return False
+    except (ValueError, TypeError):
+        pass
+    return True
+
+
+def _fetch_from_s3() -> dict[str, Any] | None:
+    try:
+        from common_cfg.s3cfg import load_s3_config
+        from common_cfg.s3io import _init_s3_client
+        cfg = load_s3_config()
+        if not cfg or not cfg.bucket:
+            return None
+        s3 = _init_s3_client(cfg)
+        if s3 is None:
+            return None
+        obj = s3.get_object(Bucket=cfg.bucket, Key="analysis/nikkei_vi_latest.json")
+        data = json.loads(obj["Body"].read().decode("utf-8"))
+        _atomic_json_write(LATEST_JSON_PATH, data)
+        return data
+    except Exception as e:
+        print(f"  [WARN] VI S3 fallback failed: {e}")
+        return None
+
+
+def load_vi_latest() -> dict[str, Any] | None:
+    """保存済みの当日VI値を読み込む。ローカルなければ S3 フォールバック。"""
+    if LATEST_JSON_PATH.exists():
+        try:
+            with open(LATEST_JSON_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  [WARN] nikkei_vi_latest.json corrupted: {e}, falling back to S3")
+            return _fetch_from_s3()
+        if _is_fresh(data):
+            return data
+        s3_data = _fetch_from_s3()
+        if s3_data and _is_fresh(s3_data):
+            return s3_data
+        # S3も古いかNone → ローカル(古くてもないよりまし)
+        return data
+    s3_data = _fetch_from_s3()
+    if s3_data and not _is_fresh(s3_data):
+        print("  [WARN] S3 VI data is stale, using anyway (no local alternative)")
+    return s3_data

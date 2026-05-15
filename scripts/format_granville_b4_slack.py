@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from common_cfg.nikkei_vi import load_vi_latest
 from common_cfg.paths import PARQUET_DIR
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
@@ -27,15 +28,11 @@ OUTPUT_PATH = Path("/tmp/granville_b4_section.txt")
 
 
 def _load_vi() -> float | None:
-    """日経VIを取得"""
-    vi_path = PARQUET_DIR / "nikkei_vi_max_1d.parquet"
-    if vi_path.exists():
-        try:
-            df = pd.read_parquet(vi_path)
-            df["date"] = pd.to_datetime(df["date"])
-            return float(df.sort_values("date").iloc[-1]["close"])
-        except Exception:
-            pass
+    """nikkei_vi_latest.json から日経VI当日終値を取得。"""
+    vi_data = load_vi_latest()
+    if vi_data and vi_data.get("close") is not None:
+        return float(vi_data["close"])
+    print("[WARN] nikkei_vi_latest.json not found, VI unavailable")
     return None
 
 

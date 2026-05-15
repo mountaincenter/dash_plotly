@@ -31,7 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
-from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
+from common_cfg.nikkei_vi import load_vi_latest
 
 OUTPUT_DIR = PARQUET_DIR / "market_summary" / "structured"
 
@@ -243,25 +243,20 @@ def _yfinance_latest(ticker: str, target_date: str) -> dict[str, Any]:
 
 
 def _fetch_nikkei_vi() -> dict[str, Any] | None:
-    """楽天証券から日経VI(.JNIV)当日値を取得し、JSON安全化して返す。失敗時はNone。
-
-    レポート用途のため失敗は致命ではなく None マーカーに丸める。判断系の fail-fast は
-    呼び出し側（common_cfg.nikkei_vi.fetch_nikkei_vi を直接使う側）の責務。
-    """
-    try:
-        data = fetch_nikkei_vi()
-    except NikkeiViFetchError as e:
-        print(f"  [WARN] {e}")
+    """nikkei_vi_latest.json から日経VI当日値を読込。失敗時はNone。"""
+    data = load_vi_latest()
+    if data is None:
+        print("  [WARN] nikkei_vi_latest.json not found, VI unavailable")
         return None
     return {
-        "close": _f(data["close"]),
-        "open": _f(data["open"]),
-        "high": _f(data["high"]),
-        "low": _f(data["low"]),
-        "prev_close": _f(data["prev_close"]),
-        "change": _f(data["change"]),
-        "change_pct": _f(data["change_pct"]),
-        "source": data["source"],
+        "close": _f(data.get("close")),
+        "open": _f(data.get("open")),
+        "high": _f(data.get("high")),
+        "low": _f(data.get("low")),
+        "prev_close": _f(data.get("prev_close")),
+        "change": _f(data.get("change")),
+        "change_pct": _f(data.get("change_pct")),
+        "source": data.get("source", "rakuten-sec"),
     }
 
 

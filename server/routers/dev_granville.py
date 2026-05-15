@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
-from common_cfg.nikkei_vi import NikkeiViFetchError, fetch_nikkei_vi
+from common_cfg.nikkei_vi import load_vi_latest
 
 router = APIRouter()
 
@@ -319,10 +319,9 @@ def _get_current_regime() -> dict:
     except Exception:
         pass
 
-    try:
-        regime["vi"] = round(float(fetch_nikkei_vi()["close"]), 1)
-    except NikkeiViFetchError:
-        pass
+    vi_data = load_vi_latest()
+    if vi_data and vi_data.get("close") is not None:
+        regime["vi"] = round(float(vi_data["close"]), 1)
 
     try:
         fut = _read_parquet_by_env("futures_prices_max_1d.parquet")
@@ -776,10 +775,9 @@ async def get_b4_entry():
 
     # 市場環境データ取得（シグナル有無に関わらず常に取得）
     vi_val = None
-    try:
-        vi_val = float(fetch_nikkei_vi()["close"])
-    except NikkeiViFetchError:
-        pass
+    vi_json = load_vi_latest()
+    if vi_json and vi_json.get("close") is not None:
+        vi_val = float(vi_json["close"])
 
     cme_gap = None
     n225_chg = None
