@@ -88,6 +88,12 @@ def load_data() -> pd.DataFrame:
     stuck_count = df['is_stuck'].sum()
     df = df[~df['is_stuck']].drop(columns=['is_stuck'])
     print(f"  Excluded {stuck_count} stuck stocks (not tradeable)")
+
+    phase2_return = pd.to_numeric(df.get('phase2_return'), errors='coerce')
+    zero_return_mask = phase2_return.fillna(0).abs() < 1e-12
+    zero_return_count = int(zero_return_mask.sum())
+    df = df[~zero_return_mask]
+    print(f"  Excluded {zero_return_count} zero-return rows (no directional label)")
     print(f"  Tradeable: {len(df)} rows")
 
     return df
@@ -125,7 +131,7 @@ def prepare_data(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str],
     else:
         pnl_values = np.zeros(len(y))
 
-    print(f"  Target distribution: Win={y.sum()}, Lose={len(y)-y.sum()} (Win rate: {y.mean()*100:.1f}%)")
+    print(f"  Target distribution: Up={y.sum()}, Down={len(y)-y.sum()} (Up rate: {y.mean()*100:.1f}%)")
 
     return X, y, available_features, dates, pnl_values, tickers
 
@@ -310,6 +316,7 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
             'strategy': 'SHORT_BUCKET',
             'interpretation': 'SHORT=prob_up≤0.45, DISC=0.45-0.70, LONG=>0.70',
             'stuck_excluded': True,
+            'zero_return_excluded': True,
             'removed_features': ['grok_rank', 'selection_score'],
         }
     }
@@ -335,36 +342,57 @@ def update_archive_with_prob():
     arc["backtest_date"] = pd.to_datetime(arc["backtest_date"])
     wfcv["backtest_date"] = pd.to_datetime(wfcv["backtest_date"])
 
-    for col in ["ml_grade", "ml_prob"]:
+    if "ml_prob" in arc.columns and "ml_prob_legacy" not in arc.columns:
+        arc["ml_prob_legacy"] = arc["ml_prob"]
+
+    for col in ["ml_grade", "ml_prob", "ml_prob_wfcv"]:
         if col in arc.columns:
             arc = arc.drop(columns=[col])
 
     wfcv_dedup = wfcv[["backtest_date", "ticker", "ml_prob"]].drop_duplicates(
         subset=["backtest_date", "ticker"], keep="last"
-    )
+    ).rename(columns={"ml_prob": "ml_prob_wfcv"})
 
     merged = arc.merge(
         wfcv_dedup,
         on=["backtest_date", "ticker"],
         how="left",
     )
+    if "ml_prob_live" not in merged.columns:
+        merged["ml_prob_live"] = pd.NA
+
+    legacy_available = (
+        merged["ml_prob_legacy"].notna()
+        if "ml_prob_legacy" in merged.columns
+        else pd.Series(False, index=merged.index)
+    )
+    legacy_live_mask = (
+        merged["ml_prob_wfcv"].isna()
+        & merged["ml_prob_live"].isna()
+        & legacy_available
+    )
+    merged.loc[legacy_live_mask, "ml_prob_live"] = merged.loc[legacy_live_mask, "ml_prob_legacy"]
+
+    merged["ml_prob"] = merged["ml_prob_wfcv"]
+    merged["ml_prob_source"] = np.where(merged["ml_prob_wfcv"].notna(), "wfcv", merged.get("ml_prob_source"))
+    merged.loc[legacy_live_mask, "ml_prob_source"] = "legacy_live"
 
     if len(merged) != original_len:
         print(f"[ERROR] Row count changed: {original_len} -> {len(merged)}. Aborting.")
         return
 
     for col in original_cols:
-        if col in ("ml_grade", "ml_prob"):
+        if col in ("ml_grade", "ml_prob", "ml_prob_wfcv"):
             continue
         if col not in merged.columns:
             print(f"[ERROR] Column '{col}' lost after merge. Aborting.")
             return
 
-    prob_matched = merged["ml_prob"].notna().sum()
-    print(f"\n[INFO] Archive ml_prob update: {prob_matched}/{original_len} rows matched")
+    prob_matched = merged["ml_prob_wfcv"].notna().sum()
+    print(f"\n[INFO] Archive ml_prob_wfcv update: {prob_matched}/{original_len} rows matched")
 
     merged.to_parquet(archive_path, index=False)
-    print(f"✓ Archive updated with ml_prob: {archive_path}")
+    print(f"✓ Archive updated with ml_prob_wfcv/ml_prob: {archive_path}")
 
 
 def main():

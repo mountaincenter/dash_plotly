@@ -1025,7 +1025,9 @@ def run_backtest() -> pd.DataFrame:
             "is_extreme_market": row.get("is_extreme_market"),
             "extreme_market_reason": row.get("extreme_market_reason"),
             # ML予測（23:00 pipeline で grok_trending.parquet に付与済み）
-            "ml_prob": row.get("ml_prob", row.get("prob_up")),
+            # 日次本番予測はWFCV検証用のml_probと混ぜない
+            "ml_prob_live": row.get("ml_prob_live", row.get("ml_prob", row.get("prob_up"))),
+            "ml_prob_source": "live",
         }
 
         results.append(result)
