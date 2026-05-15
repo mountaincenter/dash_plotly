@@ -10,7 +10,7 @@ index_prices_max_1d.parquet から ^N225 と 1306.T を抽出し、
 from __future__ import annotations
 
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -34,12 +34,22 @@ TARGETS: Dict[str, int] = {
     "1306.T": 2008,
 }
 
-TODAY = date(2026, 3, 2)
-# ISO week for today
-TODAY_ISO_WEEK = TODAY.isocalendar()[1]  # Week 10
-NEXT_WEEK = TODAY_ISO_WEEK  # 2026-03-02 is Monday of Week 10, so "coming week" = Week 10
-NEXT_WEEK_DISPLAY = NEXT_WEEK
-CURRENT_MONTH = TODAY.month  # 3
+JST = timezone(timedelta(hours=9))
+TODAY = datetime.now(JST).date()
+
+
+def _next_monday(today: date) -> date:
+    """今日より後の次の月曜を返す。週末/週末前の来週予報用。"""
+    days_until_monday = 7 - today.weekday()
+    if days_until_monday <= 0:
+        days_until_monday += 7
+    return today + timedelta(days=days_until_monday)
+
+
+FORECAST_START = _next_monday(TODAY)
+NEXT_WEEK = FORECAST_START.isocalendar()[1]
+CURRENT_MONTH = FORECAST_START.month
+CURRENT_MONTH_LABEL = f"{CURRENT_MONTH}月"
 
 
 def load_data() -> Dict[str, pd.DataFrame]:
@@ -176,29 +186,29 @@ def calc_month_position_effect(df: pd.DataFrame) -> pd.DataFrame:
 # E. 来週予報データ
 # ──────────────────────────────────────────────
 def calc_next_week_forecast(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-    """来週(Week 10)の過去実績、3月サマリー、月曜特性"""
-    # Week 10 の年別リターン
+    """来週の過去実績、対象月サマリー、月曜特性"""
+    # 対象週の年別リターン
     week_data = df[df["iso_week"] == NEXT_WEEK].groupby("year")["return_pct"].sum()
     week_summary = pd.DataFrame({
         "year": week_data.index,
         "week_return_pct": week_data.values,
     })
 
-    # 3月のアノマリー
-    march_data = df[df["month"] == 3].groupby("year")["return_pct"].sum()
-    march_summary = pd.DataFrame({
-        "year": march_data.index,
-        "march_return_pct": march_data.values,
+    # 対象月のアノマリー
+    month_data = df[df["month"] == CURRENT_MONTH].groupby("year")["return_pct"].sum()
+    month_summary = pd.DataFrame({
+        "year": month_data.index,
+        "month_return_pct": month_data.values,
     })
 
-    # 月曜 × 3月 × Week 10 の重複
-    monday_march_w10 = df[
-        (df["weekday"] == 0) & (df["month"] == 3) & (df["iso_week"] == NEXT_WEEK)
+    # 月曜 × 対象月 × 対象週 の重複
+    monday_month_week = df[
+        (df["weekday"] == 0) & (df["month"] == CURRENT_MONTH) & (df["iso_week"] == NEXT_WEEK)
     ]["return_pct"]
 
-    # 3月最初の営業日（月初効果）
-    march_first_days = df[df["month"] == 3].sort_values("date")
-    march_first_day = march_first_days.groupby("year").first()["return_pct"]
+    # 対象月最初の営業日（月初効果）
+    month_first_days = df[df["month"] == CURRENT_MONTH].sort_values("date")
+    month_first_day = month_first_days.groupby("year").first()["return_pct"]
 
     overlap_df = pd.DataFrame({
         "metric": [
@@ -206,32 +216,32 @@ def calc_next_week_forecast(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
             f"Week {NEXT_WEEK} 中央値",
             f"Week {NEXT_WEEK} 勝率",
             f"Week {NEXT_WEEK} サンプル数",
-            "3月 平均",
-            "3月 中央値",
-            "3月 勝率",
-            "月曜×3月×Week10 平均",
-            "月曜×3月×Week10 サンプル数",
-            "3月初日 平均",
-            "3月初日 勝率",
+            f"{CURRENT_MONTH_LABEL} 平均",
+            f"{CURRENT_MONTH_LABEL} 中央値",
+            f"{CURRENT_MONTH_LABEL} 勝率",
+            f"月曜×{CURRENT_MONTH_LABEL}×Week{NEXT_WEEK} 平均",
+            f"月曜×{CURRENT_MONTH_LABEL}×Week{NEXT_WEEK} サンプル数",
+            f"{CURRENT_MONTH_LABEL}初日 平均",
+            f"{CURRENT_MONTH_LABEL}初日 勝率",
         ],
         "value": [
             week_data.mean(),
             week_data.median(),
             (week_data > 0).sum() / len(week_data) * 100 if len(week_data) else np.nan,
             len(week_data),
-            march_data.mean(),
-            march_data.median(),
-            (march_data > 0).sum() / len(march_data) * 100 if len(march_data) else np.nan,
-            monday_march_w10.mean() if len(monday_march_w10) else np.nan,
-            len(monday_march_w10),
-            march_first_day.mean(),
-            (march_first_day > 0).sum() / len(march_first_day) * 100 if len(march_first_day) else np.nan,
+            month_data.mean(),
+            month_data.median(),
+            (month_data > 0).sum() / len(month_data) * 100 if len(month_data) else np.nan,
+            monday_month_week.mean() if len(monday_month_week) else np.nan,
+            len(monday_month_week),
+            month_first_day.mean(),
+            (month_first_day > 0).sum() / len(month_first_day) * 100 if len(month_first_day) else np.nan,
         ],
     })
 
     return {
         "week_history": week_summary,
-        "march_history": march_summary,
+        "month_history": month_summary,
         "overlap": overlap_df,
     }
 
@@ -268,12 +278,15 @@ def print_section(title: str, width: int = 72) -> None:
 def print_weekly_forecast(ticker: str, df: pd.DataFrame, forecast: Dict) -> None:
     """来週の予報を表示"""
     week_hist = forecast["week_history"]
-    march_hist = forecast["march_history"]
+    month_hist = forecast["month_history"]
     overlap = forecast["overlap"]
 
-    print_section(f"[{ticker}] 来週のアノマリー予報 (Week {NEXT_WEEK}, 2026年3月第1週)")
+    print_section(
+        f"[{ticker}] 来週のアノマリー予報 "
+        f"(Week {NEXT_WEEK}, {FORECAST_START.year}年{CURRENT_MONTH_LABEL})"
+    )
 
-    # Week 10 過去実績
+    # 対象週 過去実績
     print(f"\n  ■ Week {NEXT_WEEK} 過去実績 (週間リターン%)")
     if not week_hist.empty:
         recent = week_hist.tail(10)
@@ -290,21 +303,21 @@ def print_weekly_forecast(ticker: str, df: pd.DataFrame, forecast: Dict) -> None
         print(f"    ---")
         print(f"    平均: {avg:+.2f}%  中央値: {med:+.2f}%  勝率: {wr:.0f}% ({len(week_hist)}年)")
 
-    # 3月アノマリー
-    print(f"\n  ■ 3月アノマリー (月間リターン%)")
-    if not march_hist.empty:
-        recent_march = march_hist.tail(10)
-        for _, row in recent_march.iterrows():
+    # 対象月アノマリー
+    print(f"\n  ■ {CURRENT_MONTH_LABEL}アノマリー (月間リターン%)")
+    if not month_hist.empty:
+        recent_month = month_hist.tail(10)
+        for _, row in recent_month.iterrows():
             yr = int(row["year"])
-            ret = row["march_return_pct"]
+            ret = row["month_return_pct"]
             sign = "+" if ret > 0 else ""
             print(f"    {yr}: {sign}{ret:6.2f}%")
 
-        mavg = march_hist["march_return_pct"].mean()
-        mmed = march_hist["march_return_pct"].median()
-        mwr = (march_hist["march_return_pct"] > 0).sum() / len(march_hist) * 100
+        mavg = month_hist["month_return_pct"].mean()
+        mmed = month_hist["month_return_pct"].median()
+        mwr = (month_hist["month_return_pct"] > 0).sum() / len(month_hist) * 100
         print(f"    ---")
-        print(f"    平均: {mavg:+.2f}%  中央値: {mmed:+.2f}%  勝率: {mwr:.0f}% ({len(march_hist)}年)")
+        print(f"    平均: {mavg:+.2f}%  中央値: {mmed:+.2f}%  勝率: {mwr:.0f}% ({len(month_hist)}年)")
 
     # 重複条件
     print(f"\n  ■ 複合条件")
@@ -378,7 +391,7 @@ def print_monthly_heatmap_summary(ticker: str, monthly_df: pd.DataFrame) -> None
 def main() -> int:
     print("=" * 72)
     print("  カレンダーアノマリー分析")
-    print(f"  分析日: {TODAY}  来週: Week {NEXT_WEEK}")
+    print(f"  分析日: {TODAY}  予報開始日: {FORECAST_START}  来週: Week {NEXT_WEEK}")
     print("=" * 72)
 
     if not SOURCE_PATH.exists():
@@ -416,7 +429,7 @@ def main() -> int:
         # E. 来週予報
         forecast = calc_next_week_forecast(df)
         all_tables.append((f"{label}_week_history", forecast["week_history"]))
-        all_tables.append((f"{label}_march_history", forecast["march_history"]))
+        all_tables.append((f"{label}_month_history", forecast["month_history"]))
         all_tables.append((f"{label}_overlap", forecast["overlap"]))
         print_weekly_forecast(ticker, df, forecast)
 
@@ -443,15 +456,15 @@ def main() -> int:
         df = data[ticker]
         label = ticker
 
-        # Week 10
-        w10 = df[df["iso_week"] == NEXT_WEEK].groupby("year")["return_pct"].sum()
-        w10_avg = w10.mean() if len(w10) else 0
-        w10_wr = (w10 > 0).sum() / len(w10) * 100 if len(w10) else 0
+        # 対象週
+        week_returns = df[df["iso_week"] == NEXT_WEEK].groupby("year")["return_pct"].sum()
+        week_avg = week_returns.mean() if len(week_returns) else 0
+        week_wr = (week_returns > 0).sum() / len(week_returns) * 100 if len(week_returns) else 0
 
-        # 3月
-        m3 = df[df["month"] == 3].groupby("year")["return_pct"].sum()
-        m3_avg = m3.mean() if len(m3) else 0
-        m3_wr = (m3 > 0).sum() / len(m3) * 100 if len(m3) else 0
+        # 対象月
+        month_returns = df[df["month"] == CURRENT_MONTH].groupby("year")["return_pct"].sum()
+        month_avg = month_returns.mean() if len(month_returns) else 0
+        month_wr = (month_returns > 0).sum() / len(month_returns) * 100 if len(month_returns) else 0
 
         # 月曜
         mon = df[df["weekday"] == 0]["return_pct"]
@@ -464,21 +477,21 @@ def main() -> int:
         first5_avg = first5.mean() if len(first5) else 0
 
         print(f"\n  [{label}]")
-        print(f"    Week {NEXT_WEEK} 過去平均: {w10_avg:+.2f}%  勝率: {w10_wr:.0f}%")
-        print(f"    3月アノマリー:   {m3_avg:+.2f}%  勝率: {m3_wr:.0f}%")
+        print(f"    Week {NEXT_WEEK} 過去平均: {week_avg:+.2f}%  勝率: {week_wr:.0f}%")
+        print(f"    {CURRENT_MONTH_LABEL}アノマリー: {month_avg:+.2f}%  勝率: {month_wr:.0f}%")
         print(f"    月曜平均:        {mon_avg:+.3f}%")
         print(f"    月初5日平均:     {first5_avg:+.3f}%")
 
         # 判定
         signals = []
-        if w10_avg > 0 and w10_wr >= 50:
+        if week_avg > 0 and week_wr >= 50:
             signals.append(f"Week{NEXT_WEEK}↑")
-        elif w10_avg < 0 and w10_wr < 50:
+        elif week_avg < 0 and week_wr < 50:
             signals.append(f"Week{NEXT_WEEK}↓")
-        if m3_avg > 0 and m3_wr >= 50:
-            signals.append("3月↑")
-        elif m3_avg < 0 and m3_wr < 50:
-            signals.append("3月↓")
+        if month_avg > 0 and month_wr >= 50:
+            signals.append(f"{CURRENT_MONTH_LABEL}↑")
+        elif month_avg < 0 and month_wr < 50:
+            signals.append(f"{CURRENT_MONTH_LABEL}↓")
         if first5_avg > 0:
             signals.append("月初効果↑")
 
