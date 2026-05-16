@@ -26,7 +26,7 @@ WORKDIR /app
 # 依存インストール（キャッシュ効果のため requirements だけ先にコピー）
 COPY requirements.txt ./
 RUN python -m pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --retries 10 --timeout 120 -r requirements.txt
 
 # アプリ本体
 COPY . .
