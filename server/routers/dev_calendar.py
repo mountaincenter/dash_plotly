@@ -526,7 +526,7 @@ async def get_calendar_data():
 async def refresh_cache():
     _cache.clear()
     refreshed = []
-    for f in ["calendar.parquet", "etf_1306_prices.parquet"]:
+    for f in ["calendar.parquet", "etf_1306_prices.parquet", "index_prices_max_1d.parquet"]:
         local = PARQUET_DIR / f
         if _s3_download(f, local):
             refreshed.append(f)
