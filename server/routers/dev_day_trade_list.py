@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import pandas as pd
 import numpy as np
 import tempfile
@@ -36,9 +38,56 @@ ML_META_PATH = BASE_DIR / "models" / "grok_lgbm_meta.json"
 INDEX_PRICES_PATH = BASE_DIR / "data" / "parquet" / "index_prices_max_1d.parquet"
 FUTURES_PRICES_PATH = BASE_DIR / "data" / "parquet" / "futures_prices_max_1d.parquet"
 CURRENCY_PRICES_PATH = BASE_DIR / "data" / "parquet" / "currency_prices_max_1d.parquet"
+LOCAL_MANUAL_LOG_DIR = BASE_DIR / "data" / "manual_edit_logs"
+LOCAL_MANUAL_BACKUP_DIR = BASE_DIR / "data" / "manual_backups"
 
 # 曜日名
 WEEKDAY_NAMES = ['月', '火', '水', '木', '金', '土', '日']
+MANUAL_FIELDS = {
+    "shortable",
+    "day_trade",
+    "ng",
+    "day_trade_available_shares",
+    "margin_sell_balance",
+    "margin_buy_balance",
+}
+BOOL_MANUAL_FIELDS = {"shortable", "day_trade", "ng"}
+NUMERIC_MANUAL_FIELDS = {"day_trade_available_shares", "margin_sell_balance", "margin_buy_balance"}
+
+
+def _storage_mode() -> str:
+    mode = os.getenv("DATA_SOURCE_MODE") or os.getenv("STORAGE_MODE")
+    if not mode:
+        env = (os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("NODE_ENV") or "").lower()
+        mode = "s3" if env in {"production", "staging"} else "local"
+    mode = mode.lower()
+    if mode not in {"local", "s3"}:
+        raise HTTPException(status_code=500, detail=f"Invalid DATA_SOURCE_MODE: {mode}")
+    return mode
+
+
+def _read_s3_parquet(name: str) -> pd.DataFrame:
+    import boto3
+    from botocore.exceptions import ClientError
+
+    bucket, _, region = _s3_settings()
+    key = _s3_key(name)
+    s3_client = boto3.client("s3", region_name=region)
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+            s3_client.download_fileobj(bucket, key, tmp_file)
+            tmp_path = tmp_file.name
+
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return df
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            raise HTTPException(status_code=404, detail=f"{name} がS3に見つかりません")
+        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
 
 
 def calc_price_limit(price: float) -> int:
@@ -417,87 +466,203 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
 def load_day_trade_list() -> pd.DataFrame:
     """ローカルまたはS3からデイトレードリストを読み込み"""
-    if DAY_TRADE_LIST_PATH.exists():
-        return pd.read_parquet(DAY_TRADE_LIST_PATH)
-
-    # S3から取得
-    try:
-        import boto3
-        from botocore.exceptions import ClientError
-
-        bucket = os.getenv("S3_BUCKET", "stock-api-data")
-        key = "parquet/grok_day_trade_list.parquet"
-        region = os.getenv("AWS_REGION", "ap-northeast-1")
-
-        s3_client = boto3.client("s3", region_name=region)
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(bucket, key, tmp_file)
-            tmp_path = tmp_file.name
-
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return df
-
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            raise HTTPException(status_code=404, detail="grok_day_trade_list.parquet が見つかりません")
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+    if _storage_mode() == "s3":
+        return _read_s3_parquet("grok_day_trade_list.parquet")
+    if not DAY_TRADE_LIST_PATH.exists():
+        raise HTTPException(status_code=404, detail="ローカル grok_day_trade_list.parquet が見つかりません")
+    return pd.read_parquet(DAY_TRADE_LIST_PATH)
 
 
-def save_day_trade_list(df: pd.DataFrame) -> None:
-    """ローカルとS3にデイトレードリストを保存"""
-    import boto3
-
-    # ローカルに保存
-    DAY_TRADE_LIST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(DAY_TRADE_LIST_PATH, index=False)
-
-    # S3にも保存（必須）
+def _s3_settings() -> tuple[str, str, str]:
     bucket = os.getenv("S3_BUCKET", "stock-api-data")
-    key = "parquet/grok_day_trade_list.parquet"
+    prefix = os.getenv("S3_PREFIX", "parquet/").strip("/")
     region = os.getenv("AWS_REGION", "ap-northeast-1")
+    return bucket, prefix, region
 
-    s3_client = boto3.client("s3", region_name=region)
 
+def _s3_key(name: str) -> str:
+    _, prefix, _ = _s3_settings()
+    return f"{prefix}/{name}" if prefix else name
+
+
+def _now_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _backup_s3_object(s3_client, bucket: str, source_key: str, backup_name: str) -> str | None:
+    backup_key = _s3_key(f"manual_backups/{backup_name}_{_now_stamp()}.parquet")
+    try:
+        s3_client.copy_object(
+            Bucket=bucket,
+            CopySource={"Bucket": bucket, "Key": source_key},
+            Key=backup_key,
+        )
+        return backup_key
+    except Exception as e:
+        print(f"Warning: S3 backup skipped for {source_key}: {e}")
+        return None
+
+
+def _backup_local_file(path: Path, backup_name: str) -> str | None:
+    if not path.exists():
+        return None
+    LOCAL_MANUAL_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup_path = LOCAL_MANUAL_BACKUP_DIR / f"{backup_name}_{_now_stamp()}.parquet"
+    backup_path.write_bytes(path.read_bytes())
+    return str(backup_path.relative_to(BASE_DIR))
+
+
+def _validate_non_negative(value, field: str, ticker: str) -> None:
+    if value is None or pd.isna(value):
+        return
+    if int(value) < 0:
+        raise HTTPException(status_code=400, detail=f"{ticker}: {field} must be >= 0")
+
+
+def _validate_manual_update(item: dict) -> dict:
+    ticker = str(item.get("ticker", "")).strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="ticker is required")
+
+    invalid = set(item) - MANUAL_FIELDS - {"ticker"}
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"{ticker}: invalid fields: {sorted(invalid)}")
+
+    cleaned = {"ticker": ticker}
+    for field in BOOL_MANUAL_FIELDS:
+        if field in item:
+            value = item[field]
+            if value is not None and not isinstance(value, bool):
+                raise HTTPException(status_code=400, detail=f"{ticker}: {field} must be boolean")
+            cleaned[field] = value
+    for field in NUMERIC_MANUAL_FIELDS:
+        if field in item:
+            value = item[field]
+            if value in ("", None):
+                cleaned[field] = None
+            else:
+                try:
+                    value = int(value)
+                except (TypeError, ValueError):
+                    raise HTTPException(status_code=400, detail=f"{ticker}: {field} must be integer")
+                _validate_non_negative(value, field, ticker)
+                cleaned[field] = value
+    return cleaned
+
+
+def _validate_grok_trending_schema(df: pd.DataFrame) -> list[str]:
+    warnings = []
+    required = {"ticker", "date"}
+    missing = sorted(required - set(df.columns))
+    if missing:
+        raise HTTPException(status_code=500, detail=f"grok_trending.parquet missing columns: {missing}")
+    if df["ticker"].astype(str).str.strip().eq("").any():
+        raise HTTPException(status_code=500, detail="grok_trending.parquet has empty ticker")
+    duplicate_count = int(df["ticker"].astype(str).duplicated().sum())
+    if duplicate_count:
+        raise HTTPException(status_code=500, detail=f"grok_trending.parquet has duplicate tickers: {duplicate_count}")
+
+    dates = pd.to_datetime(df["date"], errors="coerce")
+    if dates.isna().any():
+        raise HTTPException(status_code=500, detail="grok_trending.parquet has invalid date values")
+    unique_dates = dates.dt.strftime("%Y-%m-%d").unique().tolist()
+    if len(unique_dates) != 1:
+        warnings.append(f"date column has multiple dates: {unique_dates}")
+    else:
+        target_date = pd.to_datetime(unique_dates[0]).date()
+        today_jst = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+        if target_date < today_jst:
+            warnings.append(f"target date {target_date} is older than today {today_jst}")
+    return warnings
+
+
+def _write_manual_edit_log(payload: dict) -> str | None:
+    stamp = _now_stamp()
+    payload = _json_safe({"logged_at": stamp, **payload})
+    LOCAL_MANUAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = LOCAL_MANUAL_LOG_DIR / f"grok_manual_edit_{stamp}.json"
+    local_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if _storage_mode() == "local":
+        return str(local_path.relative_to(BASE_DIR))
+
+    import boto3
+    bucket, _, region = _s3_settings()
+    key = _s3_key(f"manual_edit_logs/{local_path.name}")
+    try:
+        s3_client = boto3.client("s3", region_name=region)
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=local_path.read_bytes(),
+            ContentType="application/json",
+        )
+        return key
+    except Exception as e:
+        print(f"Warning: manual edit log S3 upload failed: {e}")
+        return None
+
+
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, tuple):
+        return [_json_safe(v) for v in value]
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    if isinstance(value, (np.bool_,)):
+        return bool(value)
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return value
+
+
+def _parquet_bytes(df: pd.DataFrame) -> bytes:
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=False)
     buffer.seek(0)
-    s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
+    return buffer.getvalue()
+
+
+def save_day_trade_list(df: pd.DataFrame, backup: bool = True) -> dict:
+    """Configured storage にデイトレードリストを保存"""
+    mode = _storage_mode()
+    if mode == "local":
+        DAY_TRADE_LIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        backup_key = _backup_local_file(DAY_TRADE_LIST_PATH, "grok_day_trade_list") if backup else None
+        df.to_parquet(DAY_TRADE_LIST_PATH, index=False)
+        return {"mode": mode, "local_path": str(DAY_TRADE_LIST_PATH.relative_to(BASE_DIR)), "backup_key": backup_key}
+
+    import boto3
+
+    bucket, _, region = _s3_settings()
+    key = _s3_key("grok_day_trade_list.parquet")
+
+    s3_client = boto3.client("s3", region_name=region)
+    backup_key = _backup_s3_object(s3_client, bucket, key, "grok_day_trade_list") if backup else None
+
+    s3_client.put_object(Bucket=bucket, Key=key, Body=_parquet_bytes(df))
+    return {"mode": mode, "s3_key": key, "backup_key": backup_key}
 
 
 def load_grok_trending() -> pd.DataFrame:
     """ローカルまたはS3からgrok_trending.parquetを読み込み"""
-    if GROK_TRENDING_PATH.exists():
-        return pd.read_parquet(GROK_TRENDING_PATH)
-
-    # S3から取得
-    try:
-        import boto3
-        from botocore.exceptions import ClientError
-
-        bucket = os.getenv("S3_BUCKET", "stock-api-data")
-        key = "parquet/grok_trending.parquet"
-        region = os.getenv("AWS_REGION", "ap-northeast-1")
-
-        s3_client = boto3.client("s3", region_name=region)
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(bucket, key, tmp_file)
-            tmp_path = tmp_file.name
-
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return df
-
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            raise HTTPException(status_code=404, detail="grok_trending.parquet が見つかりません")
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+    if _storage_mode() == "s3":
+        return _read_s3_parquet("grok_trending.parquet")
+    if not GROK_TRENDING_PATH.exists():
+        raise HTTPException(status_code=404, detail="ローカル grok_trending.parquet が見つかりません")
+    return pd.read_parquet(GROK_TRENDING_PATH)
 
 
 def load_grok_archive() -> pd.DataFrame:
@@ -532,25 +697,43 @@ def load_grok_archive() -> pd.DataFrame:
         raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
 
 
-def save_grok_trending(df: pd.DataFrame) -> None:
-    """ローカルとS3にgrok_trending.parquetを保存"""
+def save_grok_trending(df: pd.DataFrame, changes: list[dict] | None = None) -> dict:
+    """Configured storage にgrok_trending.parquetを保存"""
+    mode = _storage_mode()
+    warnings = _validate_grok_trending_schema(df)
+
+    if mode == "local":
+        GROK_TRENDING_PATH.parent.mkdir(parents=True, exist_ok=True)
+        backup_key = _backup_local_file(GROK_TRENDING_PATH, "grok_trending")
+        df.to_parquet(GROK_TRENDING_PATH, index=False)
+        log_key = _write_manual_edit_log({
+            "target": "grok_trending.parquet",
+            "mode": mode,
+            "local_path": str(GROK_TRENDING_PATH.relative_to(BASE_DIR)),
+            "backup_key": backup_key,
+            "warnings": warnings,
+            "changes": changes or [],
+        })
+        return {"mode": mode, "local_path": str(GROK_TRENDING_PATH.relative_to(BASE_DIR)), "backup_key": backup_key, "log_key": log_key, "warnings": warnings}
+
     import boto3
 
-    # ローカルに保存
-    GROK_TRENDING_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(GROK_TRENDING_PATH, index=False)
-
-    # S3にも保存
-    bucket = os.getenv("S3_BUCKET", "stock-api-data")
-    key = "parquet/grok_trending.parquet"
-    region = os.getenv("AWS_REGION", "ap-northeast-1")
+    bucket, _, region = _s3_settings()
+    key = _s3_key("grok_trending.parquet")
 
     s3_client = boto3.client("s3", region_name=region)
+    backup_key = _backup_s3_object(s3_client, bucket, key, "grok_trending")
+    s3_client.put_object(Bucket=bucket, Key=key, Body=_parquet_bytes(df))
 
-    buffer = io.BytesIO()
-    df.to_parquet(buffer, index=False)
-    buffer.seek(0)
-    s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
+    log_key = _write_manual_edit_log({
+        "target": "grok_trending.parquet",
+        "mode": mode,
+        "s3_key": key,
+        "backup_key": backup_key,
+        "warnings": warnings,
+        "changes": changes or [],
+    })
+    return {"mode": mode, "s3_key": key, "backup_key": backup_key, "log_key": log_key, "warnings": warnings}
 
 
 class DayTradeUpdateRequest(BaseModel):
@@ -735,7 +918,20 @@ async def get_day_trade_list():
     return JSONResponse(content={
         "total": len(stocks),
         "summary": summary,
-        "stocks": stocks
+        "stocks": stocks,
+        "storage": {
+            "mode": _storage_mode(),
+            "grokTrending": (
+                {"s3_key": _s3_key("grok_trending.parquet")}
+                if _storage_mode() == "s3"
+                else {"local_path": str(GROK_TRENDING_PATH.relative_to(BASE_DIR))}
+            ),
+            "dayTradeList": (
+                {"s3_key": _s3_key("grok_day_trade_list.parquet")}
+                if _storage_mode() == "s3"
+                else {"local_path": str(DAY_TRADE_LIST_PATH.relative_to(BASE_DIR))}
+            ),
+        },
     })
 
 
@@ -782,16 +978,18 @@ async def update_day_trade_item(ticker: str, request: DayTradeUpdateRequest):
     if not dtl_mask.any():
         raise HTTPException(status_code=404, detail=f"ティッカー {ticker} が見つかりません")
 
-    if request.shortable is not None:
-        dtl_df.loc[dtl_mask, "shortable"] = request.shortable
-    if request.day_trade is not None:
-        dtl_df.loc[dtl_mask, "day_trade"] = request.day_trade
-    if request.ng is not None:
-        dtl_df.loc[dtl_mask, "ng"] = request.ng
-    if request.day_trade_available_shares is not None:
-        dtl_df.loc[dtl_mask, "day_trade_available_shares"] = request.day_trade_available_shares
+    request_fields = getattr(request, "model_fields_set", getattr(request, "__fields_set__", set()))
+    item = {"ticker": ticker_str}
+    for field in MANUAL_FIELDS:
+        if field in request_fields:
+            item[field] = getattr(request, field)
+    cleaned = _validate_manual_update(item)
 
-    save_day_trade_list(dtl_df)
+    for field in BOOL_MANUAL_FIELDS | {"day_trade_available_shares"}:
+        if field in cleaned and field != "ticker":
+            dtl_df.loc[dtl_mask, field] = cleaned[field]
+
+    day_trade_meta = save_day_trade_list(dtl_df)
 
     # grok_trending.parquet も更新
     try:
@@ -799,29 +997,34 @@ async def update_day_trade_item(ticker: str, request: DayTradeUpdateRequest):
         grok_mask = grok_df["ticker"].astype(str) == ticker_str
 
         if grok_mask.any():
-            if request.shortable is not None:
-                grok_df.loc[grok_mask, "shortable"] = request.shortable
-            if request.day_trade is not None:
-                grok_df.loc[grok_mask, "day_trade"] = request.day_trade
-            if request.ng is not None:
-                grok_df.loc[grok_mask, "ng"] = request.ng
-            if request.day_trade_available_shares is not None:
-                grok_df.loc[grok_mask, "day_trade_available_shares"] = request.day_trade_available_shares
-            # 売り残・買い残はgrok_trending.parquetのみで管理
-            if request.margin_sell_balance is not None:
-                grok_df.loc[grok_mask, "margin_sell_balance"] = request.margin_sell_balance
-            if request.margin_buy_balance is not None:
-                grok_df.loc[grok_mask, "margin_buy_balance"] = request.margin_buy_balance
-
-            save_grok_trending(grok_df)
+            before = grok_df.loc[grok_mask, list(MANUAL_FIELDS & set(grok_df.columns))].iloc[0].to_dict()
+            for field in MANUAL_FIELDS:
+                if field in cleaned and field != "ticker":
+                    grok_df.loc[grok_mask, field] = cleaned[field]
+            after = grok_df.loc[grok_mask, list(MANUAL_FIELDS & set(grok_df.columns))].iloc[0].to_dict()
+            grok_meta = save_grok_trending(grok_df, changes=[{
+                "ticker": ticker_str,
+                "before": before,
+                "after": after,
+                "source": "single_update",
+            }])
+        else:
+            grok_meta = None
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Warning: grok_trending.parquet更新失敗: {str(e)}")
+        grok_meta = None
 
     # 更新後のデータを返す
     updated = dtl_df[dtl_mask].iloc[0].to_dict()
     return JSONResponse(content={
         "message": "更新しました",
-        "stock": updated
+        "stock": updated,
+        "storage": {
+            "dayTradeList": day_trade_meta,
+            "grokTrending": grok_meta,
+        },
     })
 
 
@@ -846,7 +1049,9 @@ async def bulk_update_day_trade_list(updates: list[dict]):
     errors = []
     updated_tickers = []
 
-    for item in updates:
+    cleaned_updates = [_validate_manual_update(item) for item in updates]
+
+    for item in cleaned_updates:
         ticker = str(item.get("ticker", ""))
         mask = dtl_df["ticker"].astype(str) == ticker
 
@@ -854,49 +1059,50 @@ async def bulk_update_day_trade_list(updates: list[dict]):
             errors.append({"ticker": ticker, "error": "見つかりません"})
             continue
 
-        if "shortable" in item:
-            dtl_df.loc[mask, "shortable"] = item["shortable"]
-        if "day_trade" in item:
-            dtl_df.loc[mask, "day_trade"] = item["day_trade"]
-        if "ng" in item:
-            dtl_df.loc[mask, "ng"] = item["ng"]
-        if "day_trade_available_shares" in item:
-            dtl_df.loc[mask, "day_trade_available_shares"] = item["day_trade_available_shares"]
+        for field in BOOL_MANUAL_FIELDS | {"day_trade_available_shares"}:
+            if field in item:
+                dtl_df.loc[mask, field] = item[field]
 
         updated_count += 1
         updated_tickers.append((ticker, item))
 
     # grok_day_trade_list.parquet を保存
-    save_day_trade_list(dtl_df)
+    day_trade_meta = save_day_trade_list(dtl_df)
 
     # grok_trending.parquet も更新
     try:
         grok_df = load_grok_trending()
+        change_log = []
 
         for ticker, item in updated_tickers:
             mask = grok_df["ticker"].astype(str) == ticker
             if mask.any():
-                if "shortable" in item:
-                    grok_df.loc[mask, "shortable"] = item["shortable"]
-                if "day_trade" in item:
-                    grok_df.loc[mask, "day_trade"] = item["day_trade"]
-                if "ng" in item:
-                    grok_df.loc[mask, "ng"] = item["ng"]
-                if "day_trade_available_shares" in item:
-                    grok_df.loc[mask, "day_trade_available_shares"] = item["day_trade_available_shares"]
-                # 売り残・買い残はgrok_trending.parquetのみで管理
-                if "margin_sell_balance" in item:
-                    grok_df.loc[mask, "margin_sell_balance"] = item["margin_sell_balance"]
-                if "margin_buy_balance" in item:
-                    grok_df.loc[mask, "margin_buy_balance"] = item["margin_buy_balance"]
+                before = grok_df.loc[mask, list(MANUAL_FIELDS & set(grok_df.columns))].iloc[0].to_dict()
+                for field in MANUAL_FIELDS:
+                    if field in item:
+                        grok_df.loc[mask, field] = item[field]
+                after = grok_df.loc[mask, list(MANUAL_FIELDS & set(grok_df.columns))].iloc[0].to_dict()
+                change_log.append({
+                    "ticker": ticker,
+                    "before": before,
+                    "after": after,
+                    "source": "bulk_update",
+                })
 
-        save_grok_trending(grok_df)
+        grok_meta = save_grok_trending(grok_df, changes=change_log)
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Warning: grok_trending.parquet更新失敗: {str(e)}")
+        grok_meta = None
 
     return JSONResponse(content={
         "updated": updated_count,
-        "errors": errors
+        "errors": errors,
+        "storage": {
+            "dayTradeList": day_trade_meta,
+            "grokTrending": grok_meta,
+        },
     })
 
 
