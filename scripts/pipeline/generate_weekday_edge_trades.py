@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """曜日×US前夜エッジ 週次トレードデータ生成。
 
-TOPIX500から選定した銘柄を曜日別にLONG/SHORT。
-USフィルタ: LONG=US前夜+1%以下、SHORT=US前夜-1%以上。
-寄成IN→引成OUT（日計り）。
+J-Quants 10年検証で絞った運用候補を曜日別にLONG/SHORT。
+USフィルタ: LONG=US前夜0%以下、SHORT=US前夜0%以上。
+原則は寄成IN→引成OUT、例外は事前固定利確指値→大引不成。
 
 出力: data/analysis/weekday_edge_trades.json
 """
 from __future__ import annotations
 
-import io
 import json
-import subprocess
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -33,45 +31,38 @@ OUTPUT_PATH = ROOT / "data" / "analysis" / "weekday_edge_trades.json"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 
-# --- 銘柄定義 ---
-# LONG Core 9銘柄 (アドバンテスト除外)
-LONG_CORE = [
-    {"code": "54060", "dow": 4, "name": "神戸製鋼所"},
-    {"code": "50160", "dow": 2, "name": "ＪＸ金属"},
-    {"code": "83030", "dow": 3, "name": "ＳＢＩ新生銀行"},
-    {"code": "83770", "dow": 4, "name": "ほくほくフィナンシャルグループ"},
-    {"code": "19510", "dow": 4, "name": "エクシオグループ"},
-    {"code": "90720", "dow": 3, "name": "ニッコンホールディングス"},
-    {"code": "61410", "dow": 3, "name": "ＤＭＧ森精機"},
-    {"code": "59290", "dow": 4, "name": "三和ホールディングス"},
-    {"code": "19440", "dow": 3, "name": "きんでん"},
-]
-
-# アドバンテスト スポット (US下落時のみ)
-LONG_SPOT = [
-    {"code": "68570", "dow": 2, "name": "アドバンテスト"},
-]
-
-# SHORT Core 10銘柄
-SHORT_CORE = [
-    {"code": "45160", "dow": 0, "name": "日本新薬"},
-    {"code": "16050", "dow": 0, "name": "ＩＮＰＥＸ"},
-    {"code": "42040", "dow": 0, "name": "積水化学工業"},
-    {"code": "58440", "dow": 1, "name": "京都フィナンシャルグループ"},
-    {"code": "58380", "dow": 1, "name": "楽天銀行"},
-    {"code": "52010", "dow": 0, "name": "ＡＧＣ"},
-    {"code": "44010", "dow": 0, "name": "ＡＤＥＫＡ"},
-    {"code": "53320", "dow": 1, "name": "ＴＯＴＯ"},
-    {"code": "28970", "dow": 0, "name": "日清食品ホールディングス"},
-    {"code": "57110", "dow": 0, "name": "三菱マテリアル"},
+# --- 運用銘柄定義 ---
+# J-Quants 10年検証(2016-05-15..2026-05-15)から、価格上限・USフィルタ・
+# 同一銘柄同一曜日のLONG/SHORT衝突解消を通した「実運用候補」だけを採用する。
+ACTIVE_WEEKDAY_CONFIGS = [
+    {"code": "19510", "dow": 2, "name": "エクシオグループ", "direction": "LONG", "group": "principle", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "open_close", "take_profit_pct": None, "exit_rule": "寄成IN→引成OUT", "risk_grade": "B_candidate", "expected_pf": 2.15, "expected_wr": 58.4, "expected_avg_ret": 0.3085},
+    {"code": "68490", "dow": 0, "name": "日本光電工業", "direction": "SHORT", "group": "exception", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "limit_close", "take_profit_pct": 2.0, "exit_rule": "寄成IN→利確2.0%指値/大引不成", "risk_grade": "B_candidate", "expected_pf": 1.75, "expected_wr": 52.2, "expected_avg_ret": 0.2579},
+    {"code": "71640", "dow": 2, "name": "全国保証", "direction": "SHORT", "group": "exception", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "limit_close", "take_profit_pct": 2.0, "exit_rule": "寄成IN→利確2.0%指値/大引不成", "risk_grade": "B_candidate", "expected_pf": 1.74, "expected_wr": 57.8, "expected_avg_ret": 0.2275},
+    {"code": "80860", "dow": 0, "name": "ニプロ", "direction": "SHORT", "group": "exception", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "limit_close", "take_profit_pct": 1.5, "exit_rule": "寄成IN→利確1.5%指値/大引不成", "risk_grade": "B_candidate", "expected_pf": 1.68, "expected_wr": 55.7, "expected_avg_ret": 0.2088},
+    {"code": "94330", "dow": 0, "name": "ＫＤＤＩ", "direction": "LONG", "group": "principle", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "open_close", "take_profit_pct": None, "exit_rule": "寄成IN→引成OUT", "risk_grade": "B_candidate", "expected_pf": 1.68, "expected_wr": 55.2, "expected_avg_ret": 0.2073},
+    {"code": "23310", "dow": 0, "name": "ＡＬＳＯＫ", "direction": "LONG", "group": "principle", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "open_close", "take_profit_pct": None, "exit_rule": "寄成IN→引成OUT", "risk_grade": "B_candidate", "expected_pf": 1.60, "expected_wr": 50.5, "expected_avg_ret": 0.2348},
+    {"code": "34070", "dow": 2, "name": "旭化成", "direction": "SHORT", "group": "principle", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "open_close", "take_profit_pct": None, "exit_rule": "寄成IN→引成OUT", "risk_grade": "B_candidate", "expected_pf": 1.60, "expected_wr": 57.4, "expected_avg_ret": 0.2292},
+    {"code": "19440", "dow": 2, "name": "きんでん", "direction": "LONG", "group": "exception", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "limit_close", "take_profit_pct": 2.0, "exit_rule": "寄成IN→利確2.0%指値/大引不成", "risk_grade": "B_candidate", "expected_pf": 1.66, "expected_wr": 54.7, "expected_avg_ret": 0.2028},
+    {"code": "80310", "dow": 2, "name": "三井物産", "direction": "LONG", "group": "exception", "capital_tier": "principle_under_15000", "us_filter": "us_red_green", "order_style": "limit_close", "take_profit_pct": 1.25, "exit_rule": "寄成IN→利確1.25%指値/大引不成", "risk_grade": "B_candidate", "expected_pf": 1.55, "expected_wr": 59.2, "expected_avg_ret": 0.2008},
 ]
 
 DOW_LABELS = {0: "月", 1: "火", 2: "水", 3: "木", 4: "金"}
 
 
 def _fetch_sp500() -> dict[pd.Timestamp, float]:
-    """S&P500 日次リターンを取得"""
-    sp = yf.download("^GSPC", start="2022-01-01", progress=False)
+    """S&P500 日次リターンを取得。ネットワーク不能時はローカルParquetを使う。"""
+    local_path = PARQUET_DIR / "index_prices_max_1d.parquet"
+    if local_path.exists():
+        local = pd.read_parquet(local_path)
+        sp = local[local["ticker"] == "^GSPC"][["date", "Close"]].copy()
+        sp["date"] = pd.to_datetime(sp["date"])
+        sp = sp.sort_values("date").set_index("date")
+        sp["ret"] = sp["Close"].pct_change()
+        return sp["ret"].to_dict()
+
+    sp = yf.download("^GSPC", start="2016-05-01", progress=False, auto_adjust=False)
+    if sp.empty:
+        return {}
     sp = sp[["Close"]].copy()
     sp.columns = ["close"]
     sp["ret"] = sp["close"].pct_change()
@@ -85,6 +76,30 @@ def _get_prev_us_ret(jp_date: pd.Timestamp, sp_ret: dict) -> float | None:
         if t in sp_ret and not pd.isna(sp_ret[t]):
             return float(sp_ret[t])
     return None
+
+
+def _us_mask(sub: pd.DataFrame, cfg: dict) -> pd.Series:
+    """前日夜に確定できるUS前夜条件だけでシグナルを絞る。"""
+    direction = cfg["direction"]
+    us_filter = cfg.get("us_filter")
+    if us_filter != "us_red_green":
+        return pd.Series(True, index=sub.index)
+    if direction == "LONG":
+        return sub["us_prev_ret"] <= 0.0
+    return sub["us_prev_ret"] >= 0.0
+
+
+def _order_fields(cfg: dict) -> dict:
+    return {
+        "capital_tier": cfg.get("capital_tier"),
+        "order_style": cfg.get("order_style"),
+        "take_profit_pct": cfg.get("take_profit_pct"),
+        "exit_rule": cfg.get("exit_rule"),
+        "risk_grade": cfg.get("risk_grade"),
+        "expected_pf": cfg.get("expected_pf"),
+        "expected_wr": cfg.get("expected_wr"),
+        "expected_avg_ret": cfg.get("expected_avg_ret"),
+    }
 
 
 def _evaluate(rets: list[float]) -> dict:
@@ -147,13 +162,7 @@ def main() -> int:
     date_us_ret = {d: _get_prev_us_ret(d, sp_ret) for d in unique_dates}
     prices["us_prev_ret"] = prices["date"].map(date_us_ret)
 
-    all_configs = []
-    for stock in LONG_CORE:
-        all_configs.append({**stock, "direction": "LONG", "group": "core"})
-    for stock in LONG_SPOT:
-        all_configs.append({**stock, "direction": "LONG", "group": "spot"})
-    for stock in SHORT_CORE:
-        all_configs.append({**stock, "direction": "SHORT", "group": "core"})
+    all_configs = ACTIVE_WEEKDAY_CONFIGS
 
     print(f"\n[2] トレード計算 ({len(all_configs)}銘柄)")
 
@@ -162,12 +171,10 @@ def main() -> int:
     us_filtered_daily_records: list[dict] = []
 
     stock_stats: list[dict] = []
-    stock_pf_map: dict[tuple[str, str, int], dict] = {}
 
     for cfg in all_configs:
         code, dow, direction = cfg["code"], cfg["dow"], cfg["direction"]
         sign = -1 if direction == "SHORT" else 1
-        is_spot = cfg["group"] == "spot"
 
         sub = prices[(prices["code"] == code) & (prices["dow"] == dow)].dropna(
             subset=["adj_open", "adj_close"]
@@ -177,15 +184,7 @@ def main() -> int:
         sub["ret_pct"] = (sub["adj_close"] / sub["adj_open"] - 1) * sign * 100
         sub["pnl_100"] = (sub["adj_close"] - sub["adj_open"]) * sign * 100
 
-        # USフィルタ
-        if direction == "LONG":
-            if is_spot:
-                # アドバンテスト: US下落時のみ
-                us_mask = sub["us_prev_ret"] < -0.01
-            else:
-                us_mask = sub["us_prev_ret"] <= 0.01
-        else:
-            us_mask = sub["us_prev_ret"] >= -0.01
+        us_mask = _us_mask(sub, cfg)
 
         sub_all = sub.copy()
         sub_filtered = sub[us_mask].copy()
@@ -213,6 +212,7 @@ def main() -> int:
                 "ret_pct": ret_val,
                 "pnl_100": pnl_val,
                 "us_prev_ret": round(float(row["us_prev_ret"]) * 100, 2) if pd.notna(row["us_prev_ret"]) else None,
+                **_order_fields(cfg),
             })
 
             us_filtered_daily_records.append({"date": date_str, "pnl_100": float(row["pnl_100"]), "ret_pct": float(row["ret_pct"])})
@@ -233,7 +233,7 @@ def main() -> int:
         else:
             s_all = {}
 
-        stock_stat = {
+        stock_stats.append({
             "code": code,
             "name": cfg["name"],
             "direction": direction,
@@ -244,14 +244,8 @@ def main() -> int:
             "stats_all": s_all,
             "n_filtered": len(sub_filtered),
             "n_all": len(sub_all),
-        }
-        stock_stats.append(stock_stat)
-        stock_pf_map[(code, direction, dow)] = {
-            "expected_pf": s_filt.get("pf"),
-            "expected_pf_n": len(sub_filtered),
-            "expected_pnl_avg": s_filt.get("avg_ret"),
-            "expected_wr": s_filt.get("wr"),
-        }
+            **_order_fields(cfg),
+        })
 
     # 週次集約
     print(f"\n[3] 週次集約 ({len(weekly_trades)}週)")
@@ -353,42 +347,38 @@ def main() -> int:
         return _next_trading_day_from(d)
 
     next_entries = []
-    for d_offset in range(0, 14):
-        check = start_date + timedelta(days=d_offset)
-        if check not in trading_days:
-            continue
-        cdow = check.weekday()
-        for cfg in LONG_CORE + LONG_SPOT + SHORT_CORE:
-            if cfg["dow"] == cdow:
-                entry: dict = {
-                    "date": check.isoformat(),
-                    "code": cfg["code"],
-                    "name": cfg["name"],
-                    "direction": "SHORT" if cfg in SHORT_CORE else "LONG",
-                    "dow_label": DOW_LABELS[cdow],
-                }
-                entry.update(stock_pf_map.get((cfg["code"], entry["direction"], cdow), {}))
-                edates = earnings_dates.get(cfg["code"], set())
-                for ed in edates:
-                    ntd = _next_trading_day(ed)
-                    if check == ed or (ntd and check == ntd):
-                        entry["earnings_alert"] = ed.isoformat()
-                        break
-                next_entries.append(entry)
-    next_entries = next_entries[:20]
+    if start_date and start_date in trading_days:
+        cdow = start_date.weekday()
+        for cfg in ACTIVE_WEEKDAY_CONFIGS:
+            if cfg["dow"] != cdow:
+                continue
+            entry: dict = {
+                "date": start_date.isoformat(),
+                "code": cfg["code"],
+                "name": cfg["name"],
+                "direction": cfg["direction"],
+                "dow_label": DOW_LABELS[cdow],
+                **_order_fields(cfg),
+            }
+            edates = earnings_dates.get(cfg["code"], set())
+            for ed in edates:
+                ntd = _next_trading_day(ed)
+                if start_date == ed or (ntd and start_date == ntd):
+                    entry["earnings_alert"] = ed.isoformat()
+                    break
+            next_entries.append(entry)
 
     output = {
         "generated": datetime.now(JST).isoformat(),
         "next_trading_date": start_date.isoformat() if start_date else None,
         "params": {
-            "strategy": "Weekday Edge",
-            "long_core": len(LONG_CORE),
-            "long_spot": len(LONG_SPOT),
-            "short_core": len(SHORT_CORE),
-            "us_filter_long": "US前夜 ≤ +1%",
-            "us_filter_short": "US前夜 ≥ -1%",
-            "us_filter_spot": "US前夜 < -1% (アドバンテストのみ)",
-            "hold": "寄成IN → 引成OUT (日計り)",
+            "strategy": "Weekday Edge Operable v20260515",
+            "active_configs": len(ACTIVE_WEEKDAY_CONFIGS),
+            "principle": "寄成IN→引成OUT",
+            "exception": "寄成IN→事前固定利確指値/大引不成",
+            "us_filter": "us_red_green: LONG=US前夜<=0%, SHORT=US前夜>=0%",
+            "capital_rule": "原則: 15000円以下。例外/特別枠は別管理。",
+            "conflict_rule": "同一銘柄・同一曜日のLONG/SHORT衝突は片方向のみ採用",
         },
         "stats_filtered": stats_filtered,
         "stats_all": stats_all,
@@ -428,9 +418,13 @@ def main() -> int:
                 "entry_price_est": None,
                 "prev_close": None,
                 "expected_pf": e.get("expected_pf"),
-                "expected_pf_n": e.get("expected_pf_n"),
-                "expected_pnl_avg": e.get("expected_pnl_avg"),
                 "expected_wr": e.get("expected_wr"),
+                "expected_avg_ret": e.get("expected_avg_ret"),
+                "order_style": e.get("order_style"),
+                "take_profit_pct": e.get("take_profit_pct"),
+                "exit_rule": e.get("exit_rule"),
+                "capital_tier": e.get("capital_tier"),
+                "risk_grade": e.get("risk_grade"),
             })
         if sig_rows:
             new_sigs = pd.DataFrame(sig_rows)
