@@ -867,10 +867,10 @@ async def get_day_trade_list():
         else:
             shortable = bool(dtl.get("shortable", False))
 
-        if "is_shortable" in row and pd.notna(row["is_shortable"]):
-            is_system_shortable = bool(row["is_shortable"])
-        else:
-            is_system_shortable = shortable
+        # Current candidates should use the manually reviewed operational
+        # shortable flag. The raw is_shortable column is an upstream hint and
+        # can be stale after frontend review.
+        is_system_shortable = shortable
 
         if "day_trade" in row and pd.notna(row["day_trade"]):
             day_trade = bool(row["day_trade"])
