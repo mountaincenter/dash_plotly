@@ -150,6 +150,35 @@ def _safe_int(v) -> int:
         return 0
 
 
+def _value_or_default(v, default):
+    if pd.isna(v):
+        return default
+    return v
+
+
+def _pair_validity_from_full_n(full_n: int) -> dict[str, object]:
+    if full_n >= 150:
+        return {
+            "pair_validity": "principle_strong",
+            "pair_validity_label": "原則・厚め",
+            "pair_validity_rank": 1,
+            "pair_validity_reason": "walk-forward実測N>=150。サンプル厚めの原則候補。",
+        }
+    if full_n >= 120:
+        return {
+            "pair_validity": "principle",
+            "pair_validity_label": "原則",
+            "pair_validity_rank": 2,
+            "pair_validity_reason": "walk-forward実測N>=120。原則候補。",
+        }
+    return {
+        "pair_validity": "exception_caution",
+        "pair_validity_label": "例外注意",
+        "pair_validity_rank": 3,
+        "pair_validity_reason": "walk-forward実測N<120。機会は残すがサイズ縮小または見送り候補。",
+    }
+
+
 @router.get("/api/dev/pairs/signals")
 async def get_pairs_signals():
     """全ペアのシグナル（z-score, 閾値, 直近成績）"""
@@ -177,6 +206,8 @@ async def get_pairs_signals():
             pair_date = pd.to_datetime(r["signal_date"]).strftime("%Y-%m-%d")
         tk1 = r.get("tk1", "")
         tk2 = r.get("tk2", "")
+        full_n = _safe_int(r.get("full_n", 0))
+        validity = _pair_validity_from_full_n(full_n)
         item = {
             "tk1": tk1,
             "tk2": tk2,
@@ -199,8 +230,12 @@ async def get_pairs_signals():
             "notional2": _safe_int(r.get("notional2", 0)),
             "imbalance_pct": _safe_float(r.get("imbalance_pct", 0), 1),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
-            "full_n": _safe_int(r.get("full_n", 0)),
+            "full_n": full_n,
             "revert_1d": _safe_float(r.get("revert_1d", r.get("half_life", 0)), 1),
+            "pair_validity": _value_or_default(r.get("pair_validity"), validity["pair_validity"]),
+            "pair_validity_label": _value_or_default(r.get("pair_validity_label"), validity["pair_validity_label"]),
+            "pair_validity_rank": _safe_int(_value_or_default(r.get("pair_validity_rank"), validity["pair_validity_rank"])),
+            "pair_validity_reason": _value_or_default(r.get("pair_validity_reason"), validity["pair_validity_reason"]),
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
@@ -239,11 +274,18 @@ async def get_pairs_status():
     entry_df = df[df[entry_col] == True] if entry_col in df.columns else pd.DataFrame()
     entry_pairs = []
     for _, r in entry_df.iterrows():
+        full_n = _safe_int(r.get("full_n", 0))
+        validity = _pair_validity_from_full_n(full_n)
         entry_pairs.append({
             "pair": f"{r.get('name1', r.get('tk1', ''))} / {r.get('name2', r.get('tk2', ''))}",
             "z": _safe_float(r.get("z_latest", 0), 2),
             "direction": r.get("direction", ""),
             "full_pf": _safe_float(r.get("full_pf", 0), 2),
+            "full_n": full_n,
+            "pair_validity": _value_or_default(r.get("pair_validity"), validity["pair_validity"]),
+            "pair_validity_label": _value_or_default(r.get("pair_validity_label"), validity["pair_validity_label"]),
+            "pair_validity_rank": _safe_int(_value_or_default(r.get("pair_validity_rank"), validity["pair_validity_rank"])),
+            "pair_validity_reason": _value_or_default(r.get("pair_validity_reason"), validity["pair_validity_reason"]),
             "shares1": _safe_int(r.get("shares1", 100)),
             "shares2": _safe_int(r.get("shares2", 100)),
         })
