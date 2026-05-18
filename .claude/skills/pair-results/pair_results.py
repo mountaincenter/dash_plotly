@@ -11,7 +11,7 @@ import sys
 
 import pandas as pd
 
-BASE = Path("/Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly")
+BASE = Path("/Users/hiroyukiyamanaka/dev/python_stock_rebuild/dash_plotly")
 PARQUET = BASE / "data" / "parquet" / "stock_results.parquet"
 
 sys.path.insert(0, str(BASE / "scripts" / "pipeline"))

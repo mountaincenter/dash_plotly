@@ -14,7 +14,7 @@ disable-model-invocation: true
 ### Step 2: 日次report_dataの収集
 対象週の各営業日のreport_data JSONをS3から取得する：
 ```bash
-cd /Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly
+cd /Users/hiroyukiyamanaka/dev/python_stock_rebuild/dash_plotly
 for d in <月曜> <火曜> <水曜> <木曜> <金曜>; do
   aws s3 cp "s3://stock-api-data/parquet/market_summary/structured/report_data_${d}.json" "/tmp/report_data_${d}.json" --only-show-errors 2>/dev/null
 done

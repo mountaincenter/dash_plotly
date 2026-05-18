@@ -14,7 +14,7 @@ disable-model-invocation: true
 ### Step 2: 日次report_dataの収集
 対象月の全営業日のreport_data JSONをS3から取得する：
 ```bash
-cd /Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly
+cd /Users/hiroyukiyamanaka/dev/python_stock_rebuild/dash_plotly
 aws s3 ls s3://stock-api-data/parquet/market_summary/structured/ | grep "report_data_<YYYY-MM>" | awk '{print $4}'
 ```
 各JSONをダウンロードし、取得できた/できなかった日付を報告する。

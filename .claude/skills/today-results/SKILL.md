@@ -12,13 +12,15 @@ disable-model-invocation: true
 
 ## 手順（省略禁止）
 
+最初に `MEMORY/trade_report_rules.md` を読む。
+
 ### Step 1: 事前確認
 - CSV `data/csv/stock_results＿today.csv` の「約定日」列を確認
 - 複数日混在 / 約定日 ≠ 今日 (JST) の場合はスクリプトがエラー停止する
 
 ### Step 2: HTML生成
 ```bash
-cd /Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly
+cd /Users/hiroyukiyamanaka/dev/python_stock_rebuild/dash_plotly
 python3 .claude/skills/today-results/gen_trade_review.py
 ```
 - 出力先: `data/reports/trade_review/YYYYMMDD.html`
@@ -49,12 +51,21 @@ curl -s https://muuq3bv2n2.ap-northeast-1.awsapprunner.com/api/dev/reports | \
 
 | データ | ソース |
 |--------|--------|
-| 取引結果 | `data/csv/stock_results＿today.csv` |
+| 取引結果 | `data/csv/stock_results__today.csv` |
+| 保有建玉 | `data/csv/hold_stocks.csv` |
+| 注文意図・注文種別 | `data/csv/order.csv` |
 | grok bucket/prob | `s3://stock-api-data/parquet/grok_trending.parquet` |
 | 戦略分類 (granville/pairs/reversal) | `s3://stock-api-data-staging/parquet/signals.parquet` |
 | 銘柄マスタ・セクター | `jquants eq master` |
 | 日足 | `jquants eq daily` |
 | 5分足 | yfinance |
+
+## 過去レポート修復
+
+- 通常の当日生成とは別作業として扱う。
+- 指定された基準レポート（例: 2026/05/07）を仕様として読む。
+- 過去の生データが可変で再現不能な場合でも、既存S3/local HTML、stock_results parquet、CSV、pair/calendar/Grokデータ、内部API、必要な外部API/WebSearchを照合して修復する。
+- 「過去日生成不可」は、当日用スクリプトで過去を完全再生成しないという意味。公開済みHTMLの修復を禁止するものではない。
 
 ## 前提
 

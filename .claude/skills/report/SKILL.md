@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 ### Step 2: report_data生成
 ```bash
-cd /Users/hiroyukiyamanaka/Desktop/python_stock/dash_plotly
+cd /Users/hiroyukiyamanaka/dev/python_stock_rebuild/dash_plotly
 python3 scripts/pipeline/generate_market_report_data.py --date <対象日>
 ```
 全セクションがOKであることを確認。ERRORがあれば原因を報告して停止。
@@ -32,12 +32,14 @@ report_data JSONを読み、以下を全て確認して表示する：
 数値を全てユーザーに提示して確認を得る。
 
 ### Step 4: マーケットコンテキスト収集
-以下の情報をWebSearchで取得する：
-- 当日の主要ニュース・イベント（日経新聞等）
-- 前日のNY市場の動き
-- 地政学リスク（イラン情勢等、進行中のもの）
-- 権利確定日・期末等のカレンダーイベント
-- CME NKD先物の動き
+以下の情報をWebSearchで取得する。YouTube、Amazon、SNS、掲示板、出典不明まとめサイトは使わない：
+- 当日の主要ニュース・イベント（日経、Reuters、Bloomberg、QUICK、株探大引け等）
+- 前日のNY市場、VIX、CME/NKD、欧州・アジア市場の動き
+- 金利・為替（財務省、日銀、Reuters、Bloomberg、OANDA等）
+- セクター要因（JPX/業種別指数、日経、Reuters、Bloomberg、株探等）
+- 個別銘柄材料（TDnet、EDINET、企業IR、日経、Reuters、株探等）
+- マクロ・政策・統計（e-Stat、総務省、内閣府、METI、MHLW、財務省、日銀等）
+- コモディティ・原油（EIA、CME/ICE、Reuters、Bloomberg等）
 
 収集したコンテキストをユーザーに提示する。
 
@@ -53,8 +55,10 @@ aws s3 ls s3://stock-api-data/reports/ | grep "market_analysis_2026" | grep -v w
 
 **絶対ルール：**
 - 全ての数値はStep 3のreport_data JSONから取得する。1つも捏造しない。
+- report_dataだけで足りない場合は、S3/parquet/CSV、J-Quants、yfinance、e-Stat、EDINET/TDnet、内部API、WebSearchの順に根拠を確認し、取得元を本文または参照ソースに残す。
 - マーケットコンテキスト（Step 4）は要因分析・結論に反映する。
 - evidence label（事実/推論/未検証）を全セクションに付与する。
+- `データ未取得`、`取得失敗`、`placeholder`、`追記予定`を完成版に残さない。未補完がある場合は完成扱いしない。
 - 3月期末要因（権利確定日、権利落ち日、期末ドレッシング等）が該当する場合は必ず言及する。
 
 出力先: /tmp/market_analysis_<YYYYMMDD>.html

@@ -33,6 +33,13 @@ if str(ROOT) not in sys.path:
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.nikkei_vi import load_vi_latest
 
+try:
+    from common_cfg.env import load_dotenv_cascade
+
+    load_dotenv_cascade()
+except Exception:
+    pass
+
 OUTPUT_DIR = PARQUET_DIR / "market_summary" / "structured"
 
 # 曜日名マップ
@@ -799,9 +806,15 @@ def _jquants_cmd(*args: str) -> list[dict]:
     import subprocess
     cmd = ["jquants", "-o", "json"] + list(args)
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if result.returncode != 0 or not result.stdout.strip():
-        return []
-    return json.loads(result.stdout)
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "(no stderr)"
+        raise RuntimeError(f"jquants command failed rc={result.returncode}: {' '.join(cmd)}: {stderr}")
+    if not result.stdout.strip():
+        raise RuntimeError(f"jquants command returned empty stdout: {' '.join(cmd)}")
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"jquants command returned invalid JSON: {' '.join(cmd)}: {exc}") from exc
 
 
 def _jquants_master_map() -> dict[str, dict]:
@@ -1111,14 +1124,30 @@ def main(target_date: str | None = None) -> int:
         web_search.append("公表仲値（USD/JPY）")
     result["web_search_required"] = web_search
 
-    # 出力
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = OUTPUT_DIR / f"report_data_{date}.json"
-    output_path.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
-    print(f"\n  [OK] Saved: {output_path}")
+    quality_sections = [
+        "market_summary",
+        "n225_topix_divergence",
+        "sectors",
+        "foreign_markets",
+        "commodities",
+        "rates",
+        "grok",
+        "calendar_anomaly",
+        "jquants_volume_leaders",
+        "jquants_investor_types",
+        "jquants_short_ratio",
+        "jquants_margin",
+        "jquants_breadth",
+    ]
+    missing_sections = [
+        key for key in quality_sections
+        if result.get(key) is None
+        or (isinstance(result.get(key), dict) and result[key].get("error"))
+    ]
+    result["data_quality"] = {
+        "missing_sections": missing_sections,
+        "manual_followup_required": sorted(set(web_search + missing_sections)),
+    }
 
     # セクション別ステータス
     for key in ["market_summary", "n225_topix_divergence", "sectors", "foreign_markets",
@@ -1133,6 +1162,15 @@ def main(target_date: str | None = None) -> int:
         else:
             status = "OK"
         print(f"  {key}: {status}")
+
+    # 出力
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = OUTPUT_DIR / f"report_data_{date}.json"
+    output_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    print(f"\n  [OK] Saved: {output_path}")
 
     print("=" * 60)
     return 0
