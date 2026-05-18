@@ -2,7 +2,7 @@
 開発用: カスタム分析API
 
 grok_trending_archive.parquetを使用
-方向別(SHORT/LONG)プール分離、閾値3区分(SHORT/DISC/LONG)、4seg/11seg切替
+方向別(SHORT/LONG)プール分離、閾値区分(SHORT/SKIP)、4seg/11seg切替
 - GET /dev/analysis-custom/summary: カスタム分析サマリー
 - GET /dev/analysis-custom/details: 詳細データ
 - GET /dev/analysis-custom/lending-ratio-pf: 貸借倍率×bucket別PF
@@ -31,7 +31,14 @@ WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"
 
 # 閾値定義
 PROB_SHORT_THRESHOLD = 0.45
-PROB_LONG_THRESHOLD = 0.70
+BUCKET_LABELS = ["SHORT", "SKIP"]
+
+
+def assign_bucket(prob: float | None) -> str | None:
+    """ML prob_up: 0.45未満はSHORT、それ以外はショート回避(SKIP)。"""
+    if prob is None or pd.isna(prob):
+        return None
+    return "SHORT" if float(prob) < PROB_SHORT_THRESHOLD else "SKIP"
 
 # 11時間区分定義
 TIME_SEGMENTS_11 = [
@@ -161,13 +168,9 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
         df = df[(df["margin_type"] == "制度信用") | ((df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True))].copy()
     # long: 全部通す
 
-    # 閾値3区分(ml_probがある行のみ)
+    # ML閾値区分(ml_probがある行のみ): SHORT/SKIP
     if "ml_prob" in df.columns:
-        df["bucket"] = pd.cut(
-            df["ml_prob"],
-            bins=[-0.01, PROB_SHORT_THRESHOLD, PROB_LONG_THRESHOLD, 1.01],
-            labels=["SHORT", "DISC", "LONG"]
-        )
+        df["bucket"] = df["ml_prob"].apply(assign_bucket)
     else:
         df["bucket"] = None
 
@@ -323,7 +326,7 @@ async def get_custom_summary(
     - exclude_extreme: 異常日除外
     - price_min/price_max/price_step: 価格帯
     - direction: "short" or "long" (プール＋符号切替)
-    - buckets: カンマ区切りの閾値区分フィルター (例: "SHORT", "SHORT,DISC")
+    - buckets: カンマ区切りの閾値区分フィルター (例: "SHORT", "SHORT,SKIP")
     """
     if direction not in ("short", "long"):
         raise HTTPException(status_code=400, detail="directionはshort/longのいずれかを指定")
@@ -409,7 +412,6 @@ async def get_custom_summary(
             "buckets": available_buckets,
             "thresholds": {
                 "short": PROB_SHORT_THRESHOLD,
-                "long": PROB_LONG_THRESHOLD,
             },
         },
     })
@@ -506,13 +508,9 @@ def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short")
     if direction == "short":
         df = df[(df["margin_type"] == "制度信用") | ((df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True))].copy()
 
-    # 閾値3区分
+    # ML閾値区分: SHORT/SKIP
     if "ml_prob" in df.columns:
-        df["bucket"] = pd.cut(
-            df["ml_prob"],
-            bins=[-0.01, PROB_SHORT_THRESHOLD, PROB_LONG_THRESHOLD, 1.01],
-            labels=["SHORT", "DISC", "LONG"]
-        )
+        df["bucket"] = df["ml_prob"].apply(assign_bucket)
 
     return df
 
@@ -540,7 +538,7 @@ def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", d
 def _build_bucket_row(bin_data: pd.DataFrame, label: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
     """1ビン分のbucket別行データを構築"""
     row = {"label": label}
-    for bucket in ["SHORT", "DISC", "LONG"]:
+    for bucket in BUCKET_LABELS:
         b_sub = bin_data[bin_data["bucket"] == bucket] if "bucket" in bin_data.columns else pd.DataFrame()
         if len(b_sub) > 0:
             row[bucket] = _calc_bucket_pf(b_sub, bucket, seg_col, direction)
@@ -838,7 +836,7 @@ async def get_weekday_panels(
 
     # --- #2 流動性・ポジションサイズ ---
     liquidity = {}
-    for bucket in ["SHORT", "DISC", "LONG"]:
+    for bucket in BUCKET_LABELS:
         b_df = df[df["bucket"] == bucket] if "bucket" in df.columns else pd.DataFrame()
         if len(b_df) == 0:
             liquidity[bucket] = {"n": 0, "volume_median": None, "shares_median": None,

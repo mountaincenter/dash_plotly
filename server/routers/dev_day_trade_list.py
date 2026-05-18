@@ -351,7 +351,6 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 
 
 PROB_SHORT_THRESHOLD = 0.45
-PROB_LONG_THRESHOLD = 0.70
 EXPECTED_PF_MIN_N = 30
 
 PROB_BINS = [0.0, 0.20, 0.32, 0.45, 0.50, 0.60, 0.70, 1.000001]
@@ -408,12 +407,10 @@ def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
 
 
 def get_bucket(prob: float) -> str:
-    """prob_upから閾値区分 (SHORT/DISC/LONG) を返す"""
+    """prob_upから実行判定区分 (SHORT/SKIP) を返す"""
     if prob < PROB_SHORT_THRESHOLD:
         return "SHORT"
-    elif prob > PROB_LONG_THRESHOLD:
-        return "LONG"
-    return "DISC"
+    return "SKIP"
 
 
 def get_prob_bin(prob: float | None) -> str | None:

@@ -638,18 +638,15 @@ def _short_category(row: pd.Series | dict) -> str:
 
 # --- Bucket 閾値 (dev_day_trade_list.py と同一) ---
 PROB_SHORT_THRESHOLD = 0.45
-PROB_LONG_THRESHOLD = 0.70
 
 
 def _get_bucket(prob: float | None) -> str:
-    """prob_up / ml_prob から Bucket (SHORT/DISC/LONG) を返す"""
+    """prob_up / ml_prob から Bucket (SHORT/SKIP) を返す"""
     if prob is None or pd.isna(prob):
         return ""
     if prob < PROB_SHORT_THRESHOLD:
         return "SHORT"
-    if prob > PROB_LONG_THRESHOLD:
-        return "LONG"
-    return "DISC"
+    return "SKIP"
 
 
 def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]:
@@ -677,7 +674,7 @@ def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]
 
     # Bucket 分布
     buckets = [d["bucket"] for d in details if d["bucket"]]
-    bucket_dist = {b: buckets.count(b) for b in ["SHORT", "DISC", "LONG"]}
+    bucket_dist = {b: buckets.count(b) for b in ["SHORT", "SKIP"]}
 
     # SHORT bucket サマリー
     short_bucket = [d for d in details if d["bucket"] == "SHORT"]
@@ -729,7 +726,7 @@ def build_grok(date: str) -> dict[str, Any] | None:
         prob = row.get("prob_up")
         prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
         bucket_list.append(_get_bucket(prob_val))
-    bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "DISC", "LONG"]}
+    bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "SKIP"]}
 
     # Archive から P2 + daily_close + buy_price 結合
     arc = _read_parquet("backtest/grok_trending_archive.parquet")

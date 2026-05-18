@@ -845,7 +845,7 @@ def _build_grok(data: dict) -> str:
 
     lines.append('  <h3>バケット別 分布</h3>')
     lines.append('  <div class="grid-3">')
-    for bname, blabel, eval_type in [("SHORT", "SHORTバケット（ショート評価）", "short"), ("DISC", "DISCバケット（参考・ショート）", "short"), ("LONG", "LONGバケット（ロング評価）", "long")]:
+    for bname, blabel, eval_type in [("SHORT", "SHORT（ショート評価）", "short"), ("SKIP", "SKIP（ショート回避）", "short")]:
         b = buckets.get(bname, {"total": 0, "win": 0, "lose": 0, "draw": 0, "pl": 0})
         pl_cls = _css_class(b["pl"])
         record = f'{b["total"]}銘柄 {b["win"]}勝{b["lose"]}敗'
@@ -871,7 +871,7 @@ def _build_grok(data: dict) -> str:
             if bucket == "SHORT":
                 color = "var(--rose)"
                 bg_rgb = "251,113,133"
-            elif bucket == "DISC":
+            elif bucket == "SKIP":
                 color = "var(--amber)"
                 bg_rgb = "251,191,36"
             else:

@@ -17,8 +17,7 @@ LightGBMで騰落確率予測モデルを学習（26特徴量 / bucket方式）
 
 【bucket方式（ショート視点）】
 - SHORT (prob_up ≤ 0.45): ショート推奨
-- DISC  (0.45 < prob_up ≤ 0.70): 裁量判断
-- LONG  (prob_up > 0.70): ショート回避
+- SKIP  (prob_up > 0.45): ショート回避
 """
 
 from __future__ import annotations
@@ -64,15 +63,12 @@ FEATURE_COLUMNS = [
 TARGET_COLUMN = 'phase2_win'
 
 BUCKET_SHORT_THRESHOLD = 0.45
-BUCKET_LONG_THRESHOLD = 0.70
 
 
 def _assign_bucket(prob: float) -> str:
     if prob <= BUCKET_SHORT_THRESHOLD:
         return 'SHORT'
-    elif prob <= BUCKET_LONG_THRESHOLD:
-        return 'DISC'
-    return 'LONG'
+    return 'SKIP'
 
 
 def load_data() -> pd.DataFrame:
@@ -214,10 +210,10 @@ def train_and_evaluate(
 
     bucket_results = []
     print(f"\n[Bucket分析（ショート視点）]")
-    print(f"  SHORT ≤{BUCKET_SHORT_THRESHOLD}, DISC ≤{BUCKET_LONG_THRESHOLD}, LONG >{BUCKET_LONG_THRESHOLD}")
+    print(f"  SHORT ≤{BUCKET_SHORT_THRESHOLD}, SKIP >{BUCKET_SHORT_THRESHOLD}")
     print(f"  {'Bucket':<8} {'件数':<8} {'SHORT勝率':<12} {'SHORT損益(¥)':<15} {'PF':<8}")
 
-    for bk in ['SHORT', 'DISC', 'LONG']:
+    for bk in ['SHORT', 'SKIP']:
         mask = buckets == bk
         if mask.sum() > 0:
             count = int(mask.sum())
@@ -310,11 +306,10 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
         'n_features': len(feature_names),
         'bucket_thresholds': {
             'short': BUCKET_SHORT_THRESHOLD,
-            'long': BUCKET_LONG_THRESHOLD,
         },
         'notes': {
             'strategy': 'SHORT_BUCKET',
-            'interpretation': 'SHORT=prob_up≤0.45, DISC=0.45-0.70, LONG=>0.70',
+            'interpretation': 'SHORT=prob_up≤0.45, SKIP=>0.45',
             'stuck_excluded': True,
             'zero_return_excluded': True,
             'removed_features': ['grok_rank', 'selection_score'],
