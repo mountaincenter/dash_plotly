@@ -663,13 +663,24 @@ async def get_prob_bin_pf(
     price_min: int = 0,
     price_max: int = 999999,
     margin_type: str = "",
+    prob_source: str = "live",
 ):
-    """prob 0.1区切り × 日別/週別/月別/曜日別パフォーマンス"""
+    """prob 0.1区切り × 日別/週別/月別/曜日別パフォーマンス
+
+    prob_source:
+    - live: 22:00本番選定時のprob（ml_prob_live）を使用。/dev/recommendationsの既定。
+    - wfcv: WFCV検証用prob（ml_prob）を使用。
+    """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれか")
+    if prob_source not in ("live", "wfcv"):
+        raise HTTPException(status_code=400, detail="prob_sourceはlive/wfcvのいずれか")
 
     df = _load_analysis_base(exclude_extreme=False, direction="short")
-    df = df[df["ml_prob"].notna()].copy()
+    prob_col = "ml_prob_live" if prob_source == "live" else "ml_prob"
+    if prob_col not in df.columns:
+        df[prob_col] = np.nan
+    df = df[df[prob_col].notna()].copy()
 
     if price_min > 0 or price_max < 999999:
         df = df[(df["buy_price"] >= price_min) & (df["buy_price"] < price_max)]
@@ -681,7 +692,7 @@ async def get_prob_bin_pf(
     prob_bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     prob_labels = ["0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5",
                    "0.5-0.6", "0.6-0.7", "0.7-0.8", "0.8-0.9", "0.9-1.0"]
-    df["prob_bin"] = pd.cut(df["ml_prob"], bins=prob_bins, labels=prob_labels, right=True, include_lowest=True)
+    df["prob_bin"] = pd.cut(df[prob_col], bins=prob_bins, labels=prob_labels, right=True, include_lowest=True)
 
     if view == "weekly":
         df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
@@ -741,6 +752,8 @@ async def get_prob_bin_pf(
 
     return JSONResponse(content={
         "view": view,
+        "probSource": prob_source,
+        "probColumn": prob_col,
         "probLabels": prob_labels,
         "dataRange": _make_date_range(df),
         "total": len(df),
