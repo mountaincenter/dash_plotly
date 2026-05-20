@@ -701,6 +701,18 @@ async def get_prob_bin_pf(
     prob_bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     prob_labels = ["0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5",
                    "0.5-0.6", "0.6-0.7", "0.7-0.8", "0.8-0.9", "0.9-1.0"]
+    prob_decisions = {
+        "0.0-0.1": "SHORT",
+        "0.1-0.2": "SHORT",
+        "0.2-0.3": "SHORT",
+        "0.3-0.4": "SHORT",
+        "0.4-0.5": "MIX",
+        "0.5-0.6": "SKIP",
+        "0.6-0.7": "SKIP",
+        "0.7-0.8": "SKIP",
+        "0.8-0.9": "SKIP",
+        "0.9-1.0": "SKIP",
+    }
     df["prob_bin"] = pd.cut(df[prob_col], bins=prob_bins, labels=prob_labels, right=True, include_lowest=True)
 
     if view == "weekly":
@@ -727,11 +739,11 @@ async def get_prob_bin_pf(
             sub = gdf[gdf["prob_bin"] == label]
             n = len(sub)
             if n == 0:
-                bins_data.append({"label": label, "n": 0, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
+                bins_data.append({"label": label, "decision": prob_decisions.get(label), "n": 0, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
                 continue
             vals = sub[seg_col].dropna() * sign
             if len(vals) == 0:
-                bins_data.append({"label": label, "n": n, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
+                bins_data.append({"label": label, "decision": prob_decisions.get(label), "n": n, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
                 continue
             gp = float(vals[vals > 0].sum())
             gl = float(abs(vals[vals <= 0].sum()))
@@ -742,7 +754,7 @@ async def get_prob_bin_pf(
             bp = sub["buy_price"].dropna()
             pct_vals = sub[seg_col].dropna() / (bp[sub[seg_col].notna()].values * 100) * 100 if len(bp) > 0 else pd.Series(dtype=float)
             avg_ret = round(float(pct_vals.mean()), 2) if len(pct_vals) > 0 else None
-            bins_data.append({"label": label, "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total, "avgReturn": avg_ret})
+            bins_data.append({"label": label, "decision": prob_decisions.get(label), "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total, "avgReturn": avg_ret})
         # 合計
         all_vals = gdf[seg_col].dropna() * sign
         gp_all = float(all_vals[all_vals > 0].sum()) if len(all_vals) > 0 else 0

@@ -353,8 +353,19 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 PROB_SHORT_THRESHOLD = 0.45
 EXPECTED_PF_MIN_N = 30
 
-PROB_BINS = [0.0, 0.20, 0.32, 0.45, 0.50, 0.60, 0.70, 1.000001]
-PROB_LABELS = ["<.20", ".20-.32", ".32-.45", ".45-.50", ".50-.60", ".60-.70", ">=.70"]
+PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.000001]
+PROB_LABELS = [
+    "0.0-0.1",
+    "0.1-0.2",
+    "0.2-0.3",
+    "0.3-0.4",
+    "0.4-0.5",
+    "0.5-0.6",
+    "0.6-0.7",
+    "0.7-0.8",
+    "0.8-0.9",
+    "0.9-1.0",
+]
 PRICE_BINS = [0, 500, 1000, 3000, float("inf")]
 PRICE_LABELS = ["<500", "500-1000", "1000-3000", ">=3000"]
 
@@ -465,11 +476,28 @@ def _pf_metrics(group: pd.DataFrame) -> dict:
     }
 
 
-def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
-    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。
+def get_pf_confidence(n: int | None) -> str:
+    """PF母集団の件数ラベル。PFの見た目より件数を優先して判断するために返す。"""
+    if not n:
+        return "不足"
+    if n >= 100:
+        return "厚い"
+    if n >= 50:
+        return "標準"
+    if n >= 30:
+        return "参考"
+    if n >= 10:
+        return "少"
+    return "極薄"
 
-    細かい粒度ほど優先するが、サンプルが少ない場合は呼び出し側で粗い粒度へfallbackする。
-    """
+
+def is_tradable_credit_bucket(credit_bucket: str) -> bool:
+    """実際に発注可能な信用区分かを返す。残0やNGはPF表示対象から外す。"""
+    return credit_bucket in ("制度信用", "いちにち信用_除株数0")
+
+
+def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
+    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。"""
     if archive_df.empty or "ml_prob" not in archive_df.columns:
         return {}
 
@@ -513,6 +541,8 @@ def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
     group_levels = [
         ("weekday+credit+price+prob", ["weekday_jp", "credit_bucket", "price_band", "prob_bin"]),
         ("weekday+credit+prob", ["weekday_jp", "credit_bucket", "prob_bin"]),
+        ("weekday+credit+price", ["weekday_jp", "credit_bucket", "price_band"]),
+        ("weekday+credit", ["weekday_jp", "credit_bucket"]),
         ("weekday+price+prob", ["weekday_jp", "price_band", "prob_bin"]),
         ("weekday+prob", ["weekday_jp", "prob_bin"]),
         ("credit+prob", ["credit_bucket", "prob_bin"]),
@@ -540,7 +570,11 @@ def estimate_grok_expected_pf(
     price_band: str | None,
     prob_bin: str | None,
 ) -> dict:
-    """今日の候補に最も近い実測PFを返す。件数不足なら粗い条件へfallback。"""
+    """今日の候補に近い実測PFを返す。
+
+    主表示は実運用で効きやすい weekday x credit x prob を優先する。
+    件数が薄い場合でも粗いPFで上書きせず、件数バッジでリスクを見せる。
+    """
     if not lookup or not weekday_jp or not prob_bin:
         return {
             "expected_pf": None,
@@ -548,42 +582,57 @@ def estimate_grok_expected_pf(
             "expected_pf_n": 0,
             "expected_pnl_avg": None,
             "expected_wr": None,
+            "expected_pf_confidence": "不足",
+            "expected_pf_detail_basis": None,
+            "expected_pf_detail_n": 0,
+            "expected_pf_detail": None,
+            "expected_pnl_detail_avg": None,
         }
 
-    candidates = [
-        ("weekday+credit+price+prob", (weekday_jp, credit_bucket, price_band, prob_bin)),
+    primary_candidates = [
         ("weekday+credit+prob", (weekday_jp, credit_bucket, prob_bin)),
-        ("weekday+price+prob", (weekday_jp, price_band, prob_bin)),
+        ("weekday+credit", (weekday_jp, credit_bucket)),
         ("weekday+prob", (weekday_jp, prob_bin)),
         ("credit+prob", (credit_bucket, prob_bin)),
         ("prob", (prob_bin,)),
         ("weekday", (weekday_jp,)),
         ("all", tuple()),
     ]
-    fallback = None
-    for basis, key in candidates:
+
+    primary = None
+    for basis, key in primary_candidates:
         metrics = lookup.get((basis, key))
         if not metrics:
             continue
-        if fallback is None:
-            fallback = (basis, metrics)
-        if metrics["n"] >= EXPECTED_PF_MIN_N:
-            return {
-                "expected_pf": metrics["pf"],
-                "expected_pf_basis": basis,
-                "expected_pf_n": metrics["n"],
-                "expected_pnl_avg": metrics["avg_pnl"],
-                "expected_wr": metrics["wr"],
-            }
+        primary = (basis, metrics)
+        break
 
-    if fallback:
-        basis, metrics = fallback
+    detail = None
+    if price_band:
+        for basis, key in [
+            ("weekday+credit+price+prob", (weekday_jp, credit_bucket, price_band, prob_bin)),
+            ("weekday+credit+price", (weekday_jp, credit_bucket, price_band)),
+            ("weekday+price+prob", (weekday_jp, price_band, prob_bin)),
+        ]:
+            metrics = lookup.get((basis, key))
+            if metrics:
+                detail = (basis, metrics)
+                break
+
+    if primary:
+        basis, metrics = primary
+        detail_basis, detail_metrics = detail if detail else (None, None)
         return {
             "expected_pf": metrics["pf"],
-            "expected_pf_basis": f"{basis}_low_n",
+            "expected_pf_basis": basis,
             "expected_pf_n": metrics["n"],
             "expected_pnl_avg": metrics["avg_pnl"],
             "expected_wr": metrics["wr"],
+            "expected_pf_confidence": get_pf_confidence(metrics["n"]),
+            "expected_pf_detail_basis": detail_basis,
+            "expected_pf_detail_n": detail_metrics["n"] if detail_metrics else 0,
+            "expected_pf_detail": detail_metrics["pf"] if detail_metrics else None,
+            "expected_pnl_detail_avg": detail_metrics["avg_pnl"] if detail_metrics else None,
         }
 
     return {
@@ -592,6 +641,11 @@ def estimate_grok_expected_pf(
         "expected_pf_n": 0,
         "expected_pnl_avg": None,
         "expected_wr": None,
+        "expected_pf_confidence": "不足",
+        "expected_pf_detail_basis": None,
+        "expected_pf_detail_n": 0,
+        "expected_pf_detail": None,
+        "expected_pnl_detail_avg": None,
     }
 
 
@@ -919,6 +973,16 @@ async def get_day_trade_list():
             price_band,
             prob_bin,
         )
+        tradable = is_tradable_credit_bucket(credit_bucket)
+        pf_display = expected if tradable else {
+            **expected,
+            "expected_pf": None,
+            "expected_pf_basis": "取扱なし" if credit_bucket == "その他/不可" else "残0",
+            "expected_pf_n": 0,
+            "expected_pnl_avg": None,
+            "expected_wr": None,
+            "expected_pf_confidence": None,
+        }
 
         stocks.append({
             "ticker": ticker,
@@ -933,6 +997,7 @@ async def get_day_trade_list():
             "price_band": price_band,
             "bucket": bucket,
             "credit_bucket": credit_bucket,
+            "tradable": tradable,
             "is_system_shortable": is_system_shortable,
             "shortable": shortable,
             "day_trade": day_trade,
@@ -944,15 +1009,17 @@ async def get_day_trade_list():
             "max_cost_100": int(max_cost_100) if max_cost_100 is not None else None,
             "short_recommended": bool(row.get("short_recommended")) if pd.notna(row.get("short_recommended")) else False,
             "reason_category": row.get("reason_category") if pd.notna(row.get("reason_category")) else None,
-            **expected,
+            **pf_display,
         })
 
-    # ソート: expected_pf → 平均損益 → 実行可能性 → grok_rank
-    # 目的はGrok候補内で「過去WFCV上、最もお金が増えた条件に近い順」に並べること。
+    # ソート: 実行判定 → 実行可能性 → expected_pf → 平均損益 → grok_rank
+    # PFが高いSKIPを上位表示すると誤発注につながるため、Actionを最優先にする。
+    bucket_order = {"SHORT": 0, "SKIP": 1}
     stocks.sort(key=lambda s: (
+        bucket_order.get(s.get("bucket"), 9),
+        0 if s.get("tradable") else 1,
         -(s["expected_pf"] if s.get("expected_pf") is not None else -1),
         -(s["expected_pnl_avg"] if s.get("expected_pnl_avg") is not None else -10**9),
-        0 if not s["ng"] and s["credit_bucket"] != "その他/不可" else 1,
         s.get("grok_rank") or 999
     ))
 
