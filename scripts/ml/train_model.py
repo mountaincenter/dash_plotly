@@ -253,7 +253,6 @@ def train_and_evaluate(
         'cv_method': 'time_series_walk_forward',
         'bucket_thresholds': {
             'short': BUCKET_SHORT_THRESHOLD,
-            'long': BUCKET_LONG_THRESHOLD,
         },
         'bucket_analysis': bucket_results,
     }

@@ -663,23 +663,32 @@ async def get_prob_bin_pf(
     price_min: int = 0,
     price_max: int = 999999,
     margin_type: str = "",
-    prob_source: str = "live",
+    prob_source: str = "hybrid",
 ):
     """prob 0.1区切り × 日別/週別/月別/曜日別パフォーマンス
 
     prob_source:
-    - live: 22:00本番選定時のprob（ml_prob_live）を使用。/dev/recommendationsの既定。
+    - hybrid: 再学習/WFCVのml_probを優先し、未付与期間のみml_prob_liveで補完。/dev/recommendationsの既定。
+    - live: 22:00本番選定時のprob（ml_prob_live）を使用。
     - wfcv: WFCV検証用prob（ml_prob）を使用。
     """
     if view not in ("daily", "weekly", "monthly", "weekday"):
         raise HTTPException(status_code=400, detail="viewはdaily/weekly/monthly/weekdayのいずれか")
-    if prob_source not in ("live", "wfcv"):
-        raise HTTPException(status_code=400, detail="prob_sourceはlive/wfcvのいずれか")
+    if prob_source not in ("hybrid", "live", "wfcv"):
+        raise HTTPException(status_code=400, detail="prob_sourceはhybrid/live/wfcvのいずれか")
 
     df = _load_analysis_base(exclude_extreme=False, direction="short")
-    prob_col = "ml_prob_live" if prob_source == "live" else "ml_prob"
-    if prob_col not in df.columns:
-        df[prob_col] = np.nan
+    if prob_source == "hybrid":
+        if "ml_prob" not in df.columns:
+            df["ml_prob"] = np.nan
+        if "ml_prob_live" not in df.columns:
+            df["ml_prob_live"] = np.nan
+        prob_col = "ml_prob_effective"
+        df[prob_col] = df["ml_prob"].combine_first(df["ml_prob_live"])
+    else:
+        prob_col = "ml_prob_live" if prob_source == "live" else "ml_prob"
+        if prob_col not in df.columns:
+            df[prob_col] = np.nan
     df = df[df[prob_col].notna()].copy()
 
     if price_min > 0 or price_max < 999999:
