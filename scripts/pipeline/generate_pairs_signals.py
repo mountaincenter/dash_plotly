@@ -45,6 +45,7 @@ PF_MIN = 1.5       # walk-forward 実測PF下限。|z|≥Z_ENTRY かつ PF≥PF_
 CAPITAL = 2_000_000
 MAX_RECOMMEND = 3  # |z|上位の推奨ペア数（PFフィルタ後の|z|順で繰上げ選抜）
 BUFFER_COUNT = 3   # entry次点のバッファペア数（6種類足取得対象）
+RISK_RET1_SPREAD_MAX = 0.08  # 前日リターン差が大きい日は収束より個別材料を優先して除外
 
 # 運用除外セクター（V2_PAIRS定義は161ペアのまま保持、ここで運用時のみ除外）
 # 陸運(9000-9099): 2024+ PF=0.87 の地雷。詳細は strategy_verification/chapters/76_pairs_exit/
@@ -75,6 +76,81 @@ TEMP_EXCLUDED = {
     ("4187.T", "4401.T"),
     ("4187.T", "4203.T"),
 }
+
+
+def classify_pair_validity(full_n: int) -> dict[str, object]:
+    """Classify pair reliability by walk-forward sample size."""
+    if full_n >= 150:
+        return {
+            "pair_validity": "principle_strong",
+            "pair_validity_label": "原則・厚め",
+            "pair_validity_rank": 1,
+            "pair_validity_reason": "walk-forward実測N>=150。サンプル厚めの原則候補。",
+        }
+    if full_n >= 120:
+        return {
+            "pair_validity": "principle",
+            "pair_validity_label": "原則",
+            "pair_validity_rank": 2,
+            "pair_validity_reason": "walk-forward実測N>=120。原則候補。",
+        }
+    return {
+        "pair_validity": "exception_caution",
+        "pair_validity_label": "例外注意",
+        "pair_validity_rank": 3,
+        "pair_validity_reason": "walk-forward実測N<120。機会は残すがサイズ縮小または見送り候補。",
+    }
+
+
+def load_earnings_dates() -> dict[str, set[pd.Timestamp]]:
+    """決算発表日を ticker -> date set で返す。
+
+    過去実績は fins_summary.parquet、予定は announcements.parquet を使う。
+    J-Quants の Code は 5桁なので先頭4桁を ticker に戻す。
+    """
+    dates: dict[str, set[pd.Timestamp]] = {}
+
+    fins_path = PARQUET_DIR / "fins_summary.parquet"
+    if fins_path.exists():
+        fins = pd.read_parquet(fins_path)
+        if {"Code", "DiscDate"}.issubset(fins.columns):
+            fins = fins.copy()
+            fins["date"] = pd.to_datetime(fins["DiscDate"], errors="coerce").dt.normalize()
+            for _, row in fins.dropna(subset=["date"]).iterrows():
+                code = str(row.get("Code", "")).replace(".T", "")[:4].zfill(4)
+                dates.setdefault(f"{code}.T", set()).add(row["date"])
+
+    announcements_path = PARQUET_DIR / "announcements.parquet"
+    if announcements_path.exists():
+        ann = pd.read_parquet(announcements_path)
+        if "announcementDate" in ann.columns:
+            ann = ann.copy()
+            ann["date"] = pd.to_datetime(ann["announcementDate"], errors="coerce").dt.normalize()
+            for _, row in ann.dropna(subset=["date"]).iterrows():
+                raw = str(row.get("ticker", row.get("code", ""))).replace(".T", "")
+                if not raw:
+                    continue
+                dates.setdefault(f"{raw[:4].zfill(4)}.T", set()).add(row["date"])
+
+    return dates
+
+
+def has_near_earnings(
+    earnings_dates: dict[str, set[pd.Timestamp]],
+    ticker: str,
+    signal_date: pd.Timestamp,
+    trade_date: pd.Timestamp,
+) -> bool:
+    dates = earnings_dates.get(ticker)
+    if not dates:
+        return False
+    signal_date = pd.Timestamp(signal_date).normalize()
+    trade_date = pd.Timestamp(trade_date).normalize()
+    for base_date in (signal_date, trade_date):
+        for delta in (-1, 0, 1):
+            if base_date + pd.Timedelta(days=delta) in dates:
+                return True
+    return False
 
 # Phase 70-71 共和分ベースペア (tk1, tk2, optimal_lookback, actual_pf, actual_n, revert_1d)
 # PF/N は 2020-01 〜 2026-04 walk-forward 実測値（In-Sample バイアス除去）
@@ -268,18 +344,29 @@ def load_prices(max_lookback: int) -> pd.DataFrame:
 
 
 def calc_shares_min_lot(c1: float, c2: float) -> tuple[int, int]:
-    """最小100株単位ペアサイジング（PF差なし確認済み、不均衡+1.5%程度）"""
-    if c1 <= c2:
-        s1 = max(1, round(c2 / c1)) * 100
-        s2 = 100
-    else:
-        s1 = 100
-        s2 = max(1, round(c1 / c2)) * 100
-    return s1, s2
+    """Choose the best 100-share lot ratio with total lots <= 5."""
+    base_ratios = [(1, 1), (1, 2), (1, 3), (2, 3), (1, 4)]
+    candidates = {(a, b) for a, b in base_ratios}
+    candidates.update((b, a) for a, b in base_ratios)
+
+    def imbalance(lots: tuple[int, int]) -> tuple[float, int]:
+        l1, l2 = lots
+        n1 = c1 * l1 * 100
+        n2 = c2 * l2 * 100
+        pct = abs(n1 - n2) / max(n1, n2) * 100
+        total_lots = l1 + l2
+        return pct, total_lots
+
+    lot1, lot2 = min(candidates, key=imbalance)
+    return lot1 * 100, lot2 * 100
 
 
 def calc_pair_signal(
-    ps: pd.DataFrame, tk1: str, tk2: str, lookback: int,
+    ps: pd.DataFrame,
+    tk1: str,
+    tk2: str,
+    lookback: int,
+    earnings_dates: dict[str, set[pd.Timestamp]],
 ) -> dict | None:
     """1ペアのz-score・閾値・ポジションサイズを計算"""
     d1 = ps[ps["ticker"] == tk1].set_index("date").sort_index()
@@ -306,6 +393,24 @@ def calc_pair_signal(
 
     c1_last = float(d1["Close"].iloc[-1])
     c2_last = float(d2["Close"].iloc[-1])
+    signal_date = pd.Timestamp(common[-1]).normalize()
+    trade_date = (signal_date + pd.offsets.BDay(1)).normalize()
+
+    ret1_tk1 = float(d1["Close"].pct_change(fill_method=None).iloc[-1])
+    ret1_tk2 = float(d2["Close"].pct_change(fill_method=None).iloc[-1])
+    ret1_spread_abs = abs(ret1_tk1 - ret1_tk2)
+    if math.isnan(ret1_spread_abs):
+        ret1_spread_abs = 0.0
+
+    earnings_near = has_near_earnings(earnings_dates, tk1, signal_date, trade_date) or has_near_earnings(
+        earnings_dates, tk2, signal_date, trade_date
+    )
+    risk_reasons: list[str] = []
+    if ret1_spread_abs >= RISK_RET1_SPREAD_MAX:
+        risk_reasons.append("ret1_spread>=8%")
+    if earnings_near:
+        risk_reasons.append("earnings_near")
+    risk_ok = not risk_reasons
 
     ratio_upper = np.exp(spread_entry_long)
     ratio_lower = np.exp(spread_entry_short)
@@ -320,7 +425,7 @@ def calc_pair_signal(
     imbalance_pct = abs(notional1 - notional2) / max(notional1, notional2) * 100
 
     return {
-        "signal_date": common[-1],
+        "signal_date": signal_date,
         "ticker": tk1,
         "strategy": "pairs",
         "pair_id": f"{tk1}|{tk2}",
@@ -340,6 +445,13 @@ def calc_pair_signal(
         "notional1": round(notional1),
         "notional2": round(notional2),
         "imbalance_pct": round(imbalance_pct, 1),
+        "ret1_tk1": round(ret1_tk1, 5),
+        "ret1_tk2": round(ret1_tk2, 5),
+        "ret1_spread_abs": round(ret1_spread_abs, 5),
+        "earnings_near": earnings_near,
+        "risk_ok": risk_ok,
+        "risk_model": "ret1_spread<8% & no_earnings_near",
+        "risk_skip_reason": ",".join(risk_reasons),
         "z_hit": abs(z_latest) >= Z_ENTRY,  # 生の|z|閾値判定。最終is_entryはmain()でPFと合わせて確定
         "direction": "short_tk1" if z_latest > 0 else "long_tk1",
     }
@@ -370,6 +482,8 @@ def main() -> int:
         return 1
 
     names = load_names()
+    earnings_dates = load_earnings_dates()
+    print(f"  Earnings dates loaded: {sum(len(v) for v in earnings_dates.values()):,}")
 
     print("\n[2/3] Calculating pair signals...")
     rows: list[dict] = []
@@ -384,7 +498,7 @@ def main() -> int:
         if (tk1, tk2) in EXCLUDE_PAIRS:
             excluded_pair += 1
             continue
-        r = calc_pair_signal(ps, tk1, tk2, lookback)
+        r = calc_pair_signal(ps, tk1, tk2, lookback, earnings_dates)
         if r:
             r["name1"] = names.get(tk1, tk1)
             r["name2"] = names.get(tk2, tk2)
@@ -392,6 +506,7 @@ def main() -> int:
             r["expected_pf"] = full_pf
             r["full_n"] = full_n
             r["revert_1d"] = revert_1d
+            r.update(classify_pair_validity(full_n))
             rows.append(r)
         else:
             skip_count += 1
@@ -401,9 +516,9 @@ def main() -> int:
 
     if rows:
         df = pd.DataFrame(rows)
-        # 最終エントリー判定: |z|≥Z_ENTRY かつ walk-forward PF≥PF_MIN
-        # Top3 は |z| 降順で is_entry=True から取るので、PF<PF_MIN のペアは自動スキップされ下位から繰上げ
-        df["is_entry"] = df["z_hit"] & (df["full_pf"] >= PF_MIN)
+        # 最終エントリー判定: |z|≥Z_ENTRY かつ walk-forward PF≥PF_MIN かつリスクモデル通過。
+        # Top3 は |z| 降順で is_entry=True から取るので、除外条件に該当するペアは下位から繰上げ。
+        df["is_entry"] = df["z_hit"] & (df["full_pf"] >= PF_MIN) & (df["risk_ok"] == True)
         df = df.sort_values("z_abs", ascending=False)
         # entry次点のバッファ（6種類足取得対象、is_entry=Falseの|z|上位）
         non_entry = df[~df["is_entry"]].head(BUFFER_COUNT).index
@@ -428,8 +543,10 @@ def main() -> int:
 
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
+    risk_block_count = int((df["z_hit"] & (df["full_pf"] >= PF_MIN) & (df["risk_ok"] == False)).sum()) if not df.empty else 0
     print(f"\n  Computed: {len(df)}, Skipped: {skip_count}, Excluded(sector): {excluded_sector}, Excluded(pair): {excluded_pair}")
     print(f"  Entry signals (|z|>={Z_ENTRY} & PF>={PF_MIN}): {entry_count}, Buffer: {buffer_count}")
+    print(f"  Risk-filtered candidates: {risk_block_count} (ret1_spread>={RISK_RET1_SPREAD_MAX:.0%} or earnings_near)")
 
     # 推奨ペア表示（|z|上位）
     if not df.empty:

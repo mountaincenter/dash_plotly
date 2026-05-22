@@ -15,7 +15,6 @@ generate_strategy_matrix.py
 from __future__ import annotations
 
 import json
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -28,10 +27,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from common_cfg.paths import PARQUET_DIR
+from scripts.pipeline.generate_pairs_signals import (
+    EXCLUDE_PAIRS as PAIR_EXCLUDE_PAIRS,
+    EXCLUDE_SECTORS as PAIR_EXCLUDE_SECTORS,
+    PF_MIN as PAIR_PF_MIN,
+    V2_PAIRS as PAIR_DEFS,
+    Z_ENTRY as PAIR_Z_ENTRY,
+    calc_shares_min_lot,
+)
 
 GROK_ARCHIVE = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
 PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
+FINS_SUMMARY = PARQUET_DIR / "fins_summary.parquet"
 ANALYSIS_DIR = ROOT / "data" / "analysis"
 WEEKDAY_EDGE_JSON = ANALYSIS_DIR / "weekday_edge_trades.json"
 SQ4_JSON = ANALYSIS_DIR / "sq4_trades.json"
@@ -39,22 +47,9 @@ SQ_PLUS1_JSON = ANALYSIS_DIR / "sq_plus1_trades.json"
 QE_JSON = ANALYSIS_DIR / "quarter_end_effect.json"
 OUTPUT_PATH = ANALYSIS_DIR / "strategy_matrix.json"
 
-PAIRS_PIPELINE = ROOT / "scripts" / "pipeline" / "generate_pairs_signals.py"
-
 DOW_LABELS = ["月", "火", "水", "木", "金"]
 
-# ── Pairs 設定 ──
-Z_ENTRY = 2.0
-PF_MIN = 1.5
-EXCLUDE_SECTORS = [(9000, 9099)]
-EXCLUDE_PAIRS = {
-    ("2768.T", "8020.T"), ("6103.T", "6305.T"), ("6103.T", "6473.T"),
-    ("7167.T", "8411.T"), ("7272.T", "7313.T"), ("8031.T", "8058.T"),
-    ("8306.T", "8316.T"), ("8338.T", "8399.T"), ("8354.T", "8381.T"),
-    ("8360.T", "8386.T"), ("8386.T", "8392.T"), ("8411.T", "8524.T"),
-    ("6995.T", "7282.T"), ("4088.T", "4401.T"),
-    ("4187.T", "4401.T"), ("4187.T", "4203.T"),
-}
+PAIR_RISK_RET1_SPREAD_MAX = 0.08
 
 
 def _calc_pf(pnl_series: pd.Series) -> float | None:
@@ -167,47 +162,81 @@ def compute_weekday_edge() -> dict:
     return result
 
 
-# ── 3. Pairs (V2_PAIRS Top3) ──
-def _load_v2_pairs() -> list[tuple[str, str, int, float]]:
-    text = PAIRS_PIPELINE.read_text()
-    pairs = []
-    for m in re.finditer(r'\("(\d+\.T)",\s*"(\d+\.T)",\s*(\d+),\s*([\d.]+)', text):
-        pairs.append((m.group(1), m.group(2), int(m.group(3)), float(m.group(4))))
-    return pairs
-
-
 def _filter_pairs(pairs: list[tuple]) -> list[tuple]:
     active = []
-    for tk1, tk2, lb, pf in pairs:
+    for tk1, tk2, lb, pf, full_n, revert_1d in pairs:
         n1, n2 = int(tk1[:4]), int(tk2[:4])
-        if any(lo <= n1 <= hi and lo <= n2 <= hi for lo, hi in EXCLUDE_SECTORS):
+        if any(lo <= n1 <= hi and lo <= n2 <= hi for lo, hi in PAIR_EXCLUDE_SECTORS):
             continue
-        if (tk1, tk2) in EXCLUDE_PAIRS:
+        if (tk1, tk2) in PAIR_EXCLUDE_PAIRS:
             continue
-        active.append((tk1, tk2, lb, pf))
+        if pf < PAIR_PF_MIN:
+            continue
+        active.append((tk1, tk2, lb, pf, full_n, revert_1d))
     return active
 
 
+def _load_earnings_dates() -> dict[str, set[pd.Timestamp]]:
+    dates: dict[str, set[pd.Timestamp]] = {}
+    if FINS_SUMMARY.exists():
+        fins = pd.read_parquet(FINS_SUMMARY)
+        if {"Code", "DiscDate"}.issubset(fins.columns):
+            fins = fins.copy()
+            fins["date"] = pd.to_datetime(fins["DiscDate"], errors="coerce").dt.normalize()
+            for _, row in fins.dropna(subset=["date"]).iterrows():
+                code = str(row.get("Code", "")).replace(".T", "")[:4].zfill(4)
+                ticker = f"{code}.T"
+                dates.setdefault(ticker, set()).add(row["date"])
+
+    announcements_path = PARQUET_DIR / "announcements.parquet"
+    if announcements_path.exists():
+        ann = pd.read_parquet(announcements_path)
+        if "announcementDate" in ann.columns:
+            ann = ann.copy()
+            ann["date"] = pd.to_datetime(ann["announcementDate"], errors="coerce").dt.normalize()
+            for _, row in ann.dropna(subset=["date"]).iterrows():
+                ticker = str(row.get("ticker", row.get("code", ""))).replace(".T", "")
+                if not ticker:
+                    continue
+                dates.setdefault(f"{ticker[:4]}.T", set()).add(row["date"])
+    return dates
+
+
+def _has_near_earnings(
+    earnings_dates: dict[str, set[pd.Timestamp]],
+    ticker: str,
+    signal_date: pd.Timestamp,
+    trade_date: pd.Timestamp,
+) -> bool:
+    dates = earnings_dates.get(ticker)
+    if not dates:
+        return False
+    signal_date = pd.Timestamp(signal_date).normalize()
+    trade_date = pd.Timestamp(trade_date).normalize()
+    for base_date in (signal_date, trade_date):
+        for delta in (-1, 0, 1):
+            if base_date + pd.Timedelta(days=delta) in dates:
+                return True
+    return False
+
+
 def compute_pairs_weekday() -> dict:
-    print("\n[3] Pairs Top3 (V2_PAIRS)")
-    pairs = _filter_pairs(_load_v2_pairs())
+    print("\n[3] Pairs Top3 (risk filtered)")
+    pairs = _filter_pairs(PAIR_DEFS)
     print(f"  アクティブペア: {len(pairs)}")
 
     prices = pd.read_parquet(PRICES_TOPIX)
     prices = prices.sort_values(["ticker", "date"])
     prices["date"] = pd.to_datetime(prices["date"])
 
-    meta = pd.read_parquet(META_PATH)
-    sector_map = {}
-    if "sectors" in meta.columns:
-        for _, row in meta.iterrows():
-            sector_map[str(row.get("ticker", ""))] = str(row.get("sectors", ""))
+    earnings_dates = _load_earnings_dates()
 
     tickers_needed = sorted({t for tk1, tk2, *_ in pairs for t in (tk1, tk2)})
     prices = prices[prices["ticker"].isin(tickers_needed)]
 
     pivot_close = prices.pivot_table(index="date", columns="ticker", values="Close")
     pivot_open = prices.pivot_table(index="date", columns="ticker", values="Open")
+    pivot_ret1 = pivot_close.pct_change(fill_method=None)
 
     all_dates = pivot_close.index
     # 2020年以降
@@ -215,45 +244,79 @@ def compute_pairs_weekday() -> dict:
 
     print("  z-score算出中...")
     rows = []
-    for tk1, tk2, lb, pf in pairs:
+    skipped_ret1 = 0
+    skipped_earnings = 0
+    for tk1, tk2, lb, pf, full_n, revert_1d in pairs:
         if tk1 not in pivot_close.columns or tk2 not in pivot_close.columns:
             continue
         c1 = pivot_close[tk1]
         c2 = pivot_close[tk2]
         o1 = pivot_open[tk1]
         o2 = pivot_open[tk2]
+        r1 = pivot_ret1[tk1]
+        r2 = pivot_ret1[tk2]
         valid = c1.notna() & c2.notna() & (c1 > 0) & (c2 > 0)
         spread = np.log(c1 / c2)
 
-        for i in range(max(start_idx, lb + 1), len(all_dates) - 1):
+        for i in range(max(start_idx, lb), len(all_dates) - 1):
             if not valid.iloc[i]:
                 continue
-            window = spread.iloc[max(0, i - lb):i].dropna()
-            if len(window) < lb * 0.8:
+            window = spread.iloc[i - lb:i].dropna()
+            if len(window) < lb:
                 continue
             mu = window.mean()
             sigma = window.std()
-            if sigma == 0:
+            if sigma == 0 or pd.isna(sigma):
                 continue
             z = float((spread.iloc[i] - mu) / sigma)
-            if abs(z) < Z_ENTRY:
-                continue
-            if pf < PF_MIN:
+            if abs(z) < PAIR_Z_ENTRY:
                 continue
 
+            signal_date = all_dates[i]
+            trade_date = all_dates[i + 1]
             o1_next = float(o1.iloc[i + 1]) if pd.notna(o1.iloc[i + 1]) else np.nan
             c1_next = float(c1.iloc[i + 1]) if pd.notna(c1.iloc[i + 1]) else np.nan
             o2_next = float(o2.iloc[i + 1]) if pd.notna(o2.iloc[i + 1]) else np.nan
             c2_next = float(c2.iloc[i + 1]) if pd.notna(c2.iloc[i + 1]) else np.nan
+            if pd.isna(o1_next) or pd.isna(c1_next) or pd.isna(o2_next) or pd.isna(c2_next):
+                continue
+            if o1_next <= 0 or o2_next <= 0:
+                continue
+
+            ret1_spread_abs = abs(float(r1.iloc[i]) - float(r2.iloc[i]))
+            if pd.isna(ret1_spread_abs):
+                ret1_spread_abs = 0.0
+            if ret1_spread_abs >= PAIR_RISK_RET1_SPREAD_MAX:
+                skipped_ret1 += 1
+                continue
+
+            earnings_near = _has_near_earnings(earnings_dates, tk1, signal_date, trade_date) or _has_near_earnings(
+                earnings_dates, tk2, signal_date, trade_date
+            )
+            if earnings_near:
+                skipped_earnings += 1
+                continue
+
+            shares1, shares2 = calc_shares_min_lot(o1_next, o2_next)
+            if shares1 <= 0 or shares2 <= 0:
+                continue
+
+            if z > 0:
+                pnl = (o1_next - c1_next) * shares1 + (c2_next - o2_next) * shares2
+            else:
+                pnl = (c1_next - o1_next) * shares1 + (o2_next - c2_next) * shares2
 
             rows.append({
-                "date": all_dates[i],
-                "trade_date": all_dates[i + 1],
+                "date": signal_date,
+                "trade_date": trade_date,
                 "tk1": tk1, "tk2": tk2,
                 "z": z, "abs_z": abs(z),
-                "pf": pf,
+                "pf": pf, "full_n": full_n, "revert_1d": revert_1d,
                 "o1": o1_next, "c1": c1_next,
                 "o2": o2_next, "c2": c2_next,
+                "shares1": shares1, "shares2": shares2,
+                "ret1_spread_abs": ret1_spread_abs,
+                "pnl": pnl,
             })
 
     if not rows:
@@ -262,43 +325,16 @@ def compute_pairs_weekday() -> dict:
 
     sig = pd.DataFrame(rows)
     print(f"  シグナル: {len(sig)}件 ({sig['date'].nunique()}日)")
+    print(f"  除外: ret1 spread>=8% {skipped_ret1}件, 決算近接 {skipped_earnings}件")
 
-    # Top3選定（セクター非重複）
+    # Top3選定（実運用dashboardと同じく |z| 降順）
     daily_trades = []
     for dt, day_df in sig.groupby("date"):
-        sorted_df = day_df.sort_values("abs_z", ascending=False)
-        selected = []
-        used_sectors: set[str] = set()
-        for _, row in sorted_df.iterrows():
-            s1 = sector_map.get(row["tk1"], "")
-            s2 = sector_map.get(row["tk2"], "")
-            if s1 in used_sectors or s2 in used_sectors:
-                continue
-            selected.append(row)
-            if s1:
-                used_sectors.add(s1)
-            if s2:
-                used_sectors.add(s2)
-            if len(selected) == 3:
-                break
-        daily_trades.extend(selected)
+        daily_trades.extend(day_df.sort_values("abs_z", ascending=False).head(3).to_dict("records"))
 
     trades = pd.DataFrame(daily_trades)
     print(f"  Top3トレード: {len(trades)}件")
 
-    # PnL算出 (固定比率: z>0 → sell tk1 100, buy tk2 200)
-    def calc_pnl(row):
-        o1, c1, o2, c2, z = row["o1"], row["c1"], row["o2"], row["c2"], row["z"]
-        if pd.isna(o1) or pd.isna(c1) or pd.isna(o2) or pd.isna(c2):
-            return 0.0
-        if o1 == 0 or o2 == 0:
-            return 0.0
-        if z > 0:
-            return (o1 - c1) * 100 + (c2 - o2) * 200
-        else:
-            return (c1 - o1) * 200 + (o2 - c2) * 100
-
-    trades["pnl"] = trades.apply(calc_pnl, axis=1)
     trades["trade_dow"] = pd.to_datetime(trades["trade_date"]).dt.weekday
 
     result = {}
@@ -313,6 +349,14 @@ def compute_pairs_weekday() -> dict:
         print(f"  {DOW_LABELS[dow]}: N={stats['n']}, WR={stats['wr']}%, {pf_str}")
 
     result["overall"] = _calc_stats(trades["pnl"])
+    result["_meta"] = {
+        "rule": "V2_PAIRS Top3 by abs_z, correct lots, ret1_spread_abs<0.08, no earnings near signal/trade date",
+        "ret1_spread_max": PAIR_RISK_RET1_SPREAD_MAX,
+        "z_entry": PAIR_Z_ENTRY,
+        "pf_min": PAIR_PF_MIN,
+        "skipped_ret1_spread": skipped_ret1,
+        "skipped_earnings_near": skipped_earnings,
+    }
     return result
 
 
@@ -394,8 +438,8 @@ def main() -> int:
                 "by_weekday": weekday_edge,
             },
             "pairs": {
-                "label": "ペアトレード",
-                "description": "V2_PAIRS Top3",
+                "label": "リスク回避Pair Top3",
+                "description": "V2_PAIRS Top3 / 正ロット / ret1差<8% / 決算近接除外",
                 "by_weekday": pairs,
             },
             "calendar": {
