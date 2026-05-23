@@ -22,6 +22,8 @@ SEMICON_OUT = ROOT / "scripts" / "analysis" / "semiconductor" / "output"
 PRICES_PATH = SEMICON_OUT / "prices_raw.parquet"
 FUNDAMENTALS_PATH = SEMICON_OUT / "yfinance_fundamentals_summary.csv"
 REPORT_PATH = SEMICON_OUT / "ai_semiconductor_yf_entry_risk_report.html"
+BACKTEST_SUMMARY_PATH = SEMICON_OUT / "semicon_trend_backtest_summary.csv"
+BACKTEST_REPORT_PATH = SEMICON_OUT / "semicon_trend_backtest_report.html"
 
 router = APIRouter()
 
@@ -306,6 +308,54 @@ def _entry_trigger_price(rule: object) -> float | None:
     return None
 
 
+def _load_backtest_summary() -> dict[str, Any]:
+    if not BACKTEST_SUMMARY_PATH.exists():
+        return {
+            "available": False,
+            "rows": [],
+            "report_url": None,
+            "takeaway": "未検証",
+        }
+
+    df = pd.read_csv(BACKTEST_SUMMARY_PATH)
+    rows: list[dict[str, Any]] = []
+    for _, row in df.iterrows():
+        rows.append(
+            {
+                "variant": str(row.get("variant", "")),
+                "n": int(row.get("n", 0)),
+                "days": int(row.get("days", 0)),
+                "pf": _safe_float(row.get("pf")),
+                "win_rate": _safe_float(row.get("win_rate")),
+                "sum_pnl_100": _safe_float(row.get("sum_pnl_100")),
+                "avg_pnl_100": _safe_float(row.get("avg_pnl_100")),
+                "max_dd_100": _safe_float(row.get("max_dd_100")),
+                "worst_trade_100": _safe_float(row.get("worst_trade_100")),
+                "q05_100": _safe_float(row.get("q05_100")),
+                "cvar05_100": _safe_float(row.get("cvar05_100")),
+                "from": str(row.get("from", "")),
+                "to": str(row.get("to", "")),
+            }
+        )
+
+    by_variant = {r["variant"]: r for r in rows}
+    top1 = by_variant.get("market_momentum_guard_top1") or by_variant.get("market_momentum_top1")
+    top3 = by_variant.get("market_momentum_top3")
+    if top1 and top3:
+        takeaway = "市場モメンタム通過時もTop3は弱い。実運用候補はTop1限定"
+    elif top1:
+        takeaway = "実運用候補は市場モメンタム通過時のTop1限定"
+    else:
+        takeaway = "検証サマリー要確認"
+
+    return {
+        "available": True,
+        "rows": rows,
+        "report_url": "/api/dev/semicon/backtest-report" if BACKTEST_REPORT_PATH.exists() else None,
+        "takeaway": takeaway,
+    }
+
+
 def _build_payload_from_report() -> dict[str, Any] | None:
     if not REPORT_PATH.exists():
         return None
@@ -416,6 +466,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "左尾高なのに通常ロットで入る",
             ],
         },
+        "backtest": _load_backtest_summary(),
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
             "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
@@ -483,6 +534,7 @@ def build_payload() -> dict[str, Any]:
         "overseas": overseas_rows,
         "report_available": REPORT_PATH.exists(),
         "report_url": "/api/dev/semicon/report",
+        "backtest": _load_backtest_summary(),
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
             "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
@@ -502,3 +554,10 @@ async def get_semicon_report():
     if not REPORT_PATH.exists():
         return JSONResponse(status_code=404, content={"detail": "semiconductor report not found"})
     return HTMLResponse(content=REPORT_PATH.read_text(encoding="utf-8"), media_type="text/html")
+
+
+@router.get("/api/dev/semicon/backtest-report")
+async def get_semicon_backtest_report():
+    if not BACKTEST_REPORT_PATH.exists():
+        return JSONResponse(status_code=404, content={"detail": "semiconductor backtest report not found"})
+    return HTMLResponse(content=BACKTEST_REPORT_PATH.read_text(encoding="utf-8"), media_type="text/html")
