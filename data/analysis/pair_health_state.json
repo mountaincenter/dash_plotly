@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-05-23",
+  "policy": {
+    "ACTIVE": "通常候補に出す",
+    "WATCH": "表示は残すがエントリー候補にはしない。手動確認またはロット縮小対象",
+    "SUSPENDED": "候補生成から除外する",
+    "review_cycle": "月次または20営業日ごとにpair_health_checkで再評価",
+    "watch_restore_conditions": [
+      "rolling PF(直近20件) >= 1.2",
+      "直近20件損益 > 0",
+      "直近10件の最大損失が許容範囲内",
+      "同じ負け方が再発していない"
+    ],
+    "active_restore_conditions": [
+      "WATCH期間中に追加10件を通過",
+      "追加10件PF >= 1.2",
+      "DDが許容範囲内",
+      "pair同質性が説明可能"
+    ]
+  },
+  "pairs": {
+    "6971.T/6981.T": {
+      "state": "SUSPENDED",
+      "reason": "2026年 5件 -67,600円。Murata FY2026資料でdata center/AI server向けMLCC需要増を確認。Kyoceraも半導体関連はあるが、足元でpair同質性が崩れている疑い。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "8804.T/8850.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.542、2026損益 -62,400円、rollingPF直近 0.768。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "8345.T/8399.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.496、2026損益 -46,650円、rollingPF直近 0.548。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "8345.T/8387.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.572、2026損益 -32,550円、rollingPF直近 0.601。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "8346.T/8600.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.686、rollingPF直近 0.686。損失額は小さいが劣化条件を複数満たす。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "7189.T/8341.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.852、直近PF 0.765、rollingPF直近 0.765。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    },
+    "8012.T/9934.T": {
+      "state": "SUSPENDED",
+      "reason": "pair health check停止候補。2026PF 0.865、直近PF 0.869、rollingPF直近 0.869。",
+      "reviewed_at": "2026-05-23",
+      "recheck_after": "2026-06-22"
+    }
+  }
+}

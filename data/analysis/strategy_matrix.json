@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-23T02:37:55.774620",
+  "generated_at": "2026-05-23T12:03:55.060838",
   "weekdays": [
     "月",
     "火",
@@ -113,54 +113,54 @@
       "description": "V2_PAIRS Top3 / 正ロット / ret1差<8% / 決算近接除外",
       "by_weekday": {
         "月": {
-          "n": 787,
-          "wins": 453,
-          "wr": 57.6,
-          "pf": 1.47,
-          "total_pnl": 500668
+          "n": 733,
+          "wins": 414,
+          "wr": 56.5,
+          "pf": 1.42,
+          "total_pnl": 451097
         },
         "火": {
-          "n": 871,
-          "wins": 485,
-          "wr": 55.7,
-          "pf": 1.56,
-          "total_pnl": 702936
+          "n": 805,
+          "wins": 451,
+          "wr": 56.0,
+          "pf": 1.59,
+          "total_pnl": 696374
         },
         "水": {
-          "n": 892,
-          "wins": 503,
-          "wr": 56.4,
-          "pf": 1.77,
-          "total_pnl": 869853
+          "n": 827,
+          "wins": 460,
+          "wr": 55.6,
+          "pf": 1.67,
+          "total_pnl": 778847
         },
         "木": {
-          "n": 864,
-          "wins": 490,
-          "wr": 56.7,
-          "pf": 1.34,
-          "total_pnl": 457566
+          "n": 811,
+          "wins": 442,
+          "wr": 54.5,
+          "pf": 1.27,
+          "total_pnl": 368931
         },
         "金": {
-          "n": 865,
-          "wins": 495,
-          "wr": 57.2,
-          "pf": 1.98,
-          "total_pnl": 980125
+          "n": 799,
+          "wins": 462,
+          "wr": 57.8,
+          "pf": 2.02,
+          "total_pnl": 963275
         },
         "overall": {
-          "n": 4279,
-          "wins": 2426,
-          "wr": 56.7,
-          "pf": 1.61,
-          "total_pnl": 3511151
+          "n": 3975,
+          "wins": 2229,
+          "wr": 56.1,
+          "pf": 1.57,
+          "total_pnl": 3258526
         },
         "_meta": {
           "rule": "V2_PAIRS Top3 by abs_z, correct lots, ret1_spread_abs<0.08, no earnings near signal/trade date",
           "ret1_spread_max": 0.08,
           "z_entry": 2.0,
           "pf_min": 1.5,
-          "skipped_ret1_spread": 118,
-          "skipped_earnings_near": 81
+          "skipped_ret1_spread": 102,
+          "skipped_earnings_near": 64
         }
       }
     },

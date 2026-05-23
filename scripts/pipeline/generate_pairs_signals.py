@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import sys
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +40,7 @@ PAIRS_DIR = PARQUET_DIR / "pairs"
 PRICES_TOPIX = PARQUET_DIR / "granville" / "prices_topix.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+PAIR_HEALTH_STATE_PATH = ROOT / "data" / "analysis" / "pair_health_state.json"
 
 Z_ENTRY = 2.0
 PF_MIN = 1.5       # walk-forward 実測PF下限。|z|≥Z_ENTRY かつ PF≥PF_MIN で is_entry
@@ -70,16 +72,39 @@ EXCLUDE_PAIRS = {
     ("4088.T", "4401.T"),  # [PERM] 特別注意銘柄指定 2026-05-01 (不正会計)
     ("4187.T", "4401.T"),  # [TEMP:2026-05-08] 4187ファンダ主導spread拡大(20日超一方向)
     ("4187.T", "4203.T"),  # [TEMP:2026-05-08] 同上 + 4203減益で逆方向乖離
-    # [TEMP:2026-05-23] 2026年 5件 -67,600円 / PF0.22相当の劣化。
-    # Murata FY2026資料でdata center/AI server向けMLCC需要増を確認済み。
-    # Kyoceraも半導体関連はあるが、6971/6981の同質性は足元で崩れているため停止。
-    ("6971.T", "6981.T"),
 }
 
 TEMP_EXCLUDED = {
     ("4187.T", "4401.T"),
     ("4187.T", "4203.T"),
 }
+
+
+def load_pair_health_state() -> dict[str, dict[str, object]]:
+    """Load pair health state.
+
+    ACTIVE: normal
+    WATCH: included in table but never promoted to entry
+    SUSPENDED: skipped from signal generation
+    """
+    if not PAIR_HEALTH_STATE_PATH.exists():
+        return {}
+    with PAIR_HEALTH_STATE_PATH.open(encoding="utf-8") as f:
+        data = json.load(f)
+    pairs = data.get("pairs", {})
+    return {str(k): dict(v) for k, v in pairs.items() if isinstance(v, dict)}
+
+
+def get_pair_health(health: dict[str, dict[str, object]], tk1: str, tk2: str) -> dict[str, object]:
+    key = f"{tk1}/{tk2}"
+    reverse_key = f"{tk2}/{tk1}"
+    item = health.get(key) or health.get(reverse_key) or {}
+    return {
+        "pair_health_state": str(item.get("state", "ACTIVE")).upper(),
+        "pair_health_reason": str(item.get("reason", "")),
+        "pair_health_reviewed_at": str(item.get("reviewed_at", "")),
+        "pair_health_recheck_after": str(item.get("recheck_after", "")),
+    }
 
 
 def classify_pair_validity(full_n: int) -> dict[str, object]:
@@ -487,13 +512,16 @@ def main() -> int:
 
     names = load_names()
     earnings_dates = load_earnings_dates()
+    pair_health = load_pair_health_state()
     print(f"  Earnings dates loaded: {sum(len(v) for v in earnings_dates.values()):,}")
+    print(f"  Pair health states loaded: {len(pair_health):,}")
 
     print("\n[2/3] Calculating pair signals...")
     rows: list[dict] = []
     skip_count = 0
     excluded_sector = 0
     excluded_pair = 0
+    suspended_pair = 0
     for tk1, tk2, lookback, full_pf, full_n, revert_1d in V2_PAIRS:
         n1, n2 = int(tk1[:4]), int(tk2[:4])
         if any(lo <= n1 <= hi and lo <= n2 <= hi for lo, hi in EXCLUDE_SECTORS):
@@ -501,6 +529,10 @@ def main() -> int:
             continue
         if (tk1, tk2) in EXCLUDE_PAIRS:
             excluded_pair += 1
+            continue
+        health = get_pair_health(pair_health, tk1, tk2)
+        if health["pair_health_state"] == "SUSPENDED":
+            suspended_pair += 1
             continue
         r = calc_pair_signal(ps, tk1, tk2, lookback, earnings_dates)
         if r:
@@ -511,6 +543,7 @@ def main() -> int:
             r["full_n"] = full_n
             r["revert_1d"] = revert_1d
             r.update(classify_pair_validity(full_n))
+            r.update(health)
             rows.append(r)
         else:
             skip_count += 1
@@ -522,7 +555,14 @@ def main() -> int:
         df = pd.DataFrame(rows)
         # 最終エントリー判定: |z|≥Z_ENTRY かつ walk-forward PF≥PF_MIN かつリスクモデル通過。
         # Top3 は |z| 降順で is_entry=True から取るので、除外条件に該当するペアは下位から繰上げ。
-        df["is_entry"] = df["z_hit"] & (df["full_pf"] >= PF_MIN) & (df["risk_ok"] == True)
+        if "pair_health_state" not in df.columns:
+            df["pair_health_state"] = "ACTIVE"
+        df["is_entry"] = (
+            df["z_hit"]
+            & (df["full_pf"] >= PF_MIN)
+            & (df["risk_ok"] == True)
+            & (df["pair_health_state"] == "ACTIVE")
+        )
         df = df.sort_values("z_abs", ascending=False)
         # entry次点のバッファ（6種類足取得対象、is_entry=Falseの|z|上位）
         non_entry = df[~df["is_entry"]].head(BUFFER_COUNT).index
@@ -548,7 +588,11 @@ def main() -> int:
     entry_count = int(df["is_entry"].sum()) if not df.empty else 0
     buffer_count = int(df["is_buffer"].sum()) if not df.empty and "is_buffer" in df.columns else 0
     risk_block_count = int((df["z_hit"] & (df["full_pf"] >= PF_MIN) & (df["risk_ok"] == False)).sum()) if not df.empty else 0
-    print(f"\n  Computed: {len(df)}, Skipped: {skip_count}, Excluded(sector): {excluded_sector}, Excluded(pair): {excluded_pair}")
+    print(
+        f"\n  Computed: {len(df)}, Skipped: {skip_count}, "
+        f"Excluded(sector): {excluded_sector}, Excluded(pair): {excluded_pair}, "
+        f"Suspended(health): {suspended_pair}"
+    )
     print(f"  Entry signals (|z|>={Z_ENTRY} & PF>={PF_MIN}): {entry_count}, Buffer: {buffer_count}")
     print(f"  Risk-filtered candidates: {risk_block_count} (ret1_spread>={RISK_RET1_SPREAD_MAX:.0%} or earnings_near)")
 

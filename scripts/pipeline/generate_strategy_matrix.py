@@ -34,6 +34,8 @@ from scripts.pipeline.generate_pairs_signals import (
     V2_PAIRS as PAIR_DEFS,
     Z_ENTRY as PAIR_Z_ENTRY,
     calc_shares_min_lot,
+    get_pair_health,
+    load_pair_health_state,
 )
 
 GROK_ARCHIVE = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
@@ -164,11 +166,14 @@ def compute_weekday_edge() -> dict:
 
 def _filter_pairs(pairs: list[tuple]) -> list[tuple]:
     active = []
+    pair_health = load_pair_health_state()
     for tk1, tk2, lb, pf, full_n, revert_1d in pairs:
         n1, n2 = int(tk1[:4]), int(tk2[:4])
         if any(lo <= n1 <= hi and lo <= n2 <= hi for lo, hi in PAIR_EXCLUDE_SECTORS):
             continue
         if (tk1, tk2) in PAIR_EXCLUDE_PAIRS:
+            continue
+        if get_pair_health(pair_health, tk1, tk2)["pair_health_state"] == "SUSPENDED":
             continue
         if pf < PAIR_PF_MIN:
             continue
