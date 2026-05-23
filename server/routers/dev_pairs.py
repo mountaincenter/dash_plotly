@@ -3,13 +3,16 @@
 ペアトレードAPI
 /api/dev/pairs/* — シグナル・ステータス
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from pathlib import Path
+import io
+import json
 import numpy as np
 import pandas as pd
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Any, Optional
 import sys
 import os
 
@@ -24,6 +27,8 @@ router = APIRouter()
 
 PAIRS_DIR = PARQUET_DIR / "pairs"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+ANALYSIS_DIR = ROOT / "data" / "analysis"
+PAIR_HEALTH_STATE_PATH = ANALYSIS_DIR / "pair_health_state.json"
 
 # S3設定
 S3_BUCKET = os.getenv("S3_BUCKET", os.getenv("DATA_BUCKET", "stock-api-data"))
@@ -36,6 +41,18 @@ _cache: dict[str, tuple[datetime, object]] = {}
 CACHE_TTL = 120
 
 
+class PairHealthUpdate(BaseModel):
+    pair: str
+    state: str
+    reason: str = ""
+    recheck_after: str | None = None
+
+
+class PairHealthStateRequest(BaseModel):
+    updates: list[PairHealthUpdate] = Field(default_factory=list)
+    note: str = ""
+
+
 def _cached(key: str) -> Optional[object]:
     if key in _cache:
         ts, data = _cache[key]
@@ -46,6 +63,11 @@ def _cached(key: str) -> Optional[object]:
 
 def _set_cache(key: str, data: object) -> None:
     _cache[key] = (datetime.now(), data)
+
+
+def _s3_client():
+    import boto3
+    return boto3.client("s3", region_name=AWS_REGION)
 
 
 def _latest_file(directory: Path, prefix: str) -> Optional[Path]:
@@ -103,13 +125,108 @@ def _load_latest(directory: Path, prefix: str, s3_prefix: str) -> pd.DataFrame:
 def _s3_download(filename: str, dest: Path) -> None:
     """S3 の top-level parquet を dest にダウンロード"""
     try:
-        import boto3
-        s3 = boto3.client("s3", region_name=AWS_REGION)
+        s3 = _s3_client()
         key = f"{S3_PREFIX}/{filename}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         s3.download_file(S3_BUCKET, key, str(dest))
     except Exception:
         pass
+
+
+def _read_analysis_text(filename: str) -> str | None:
+    path = ANALYSIS_DIR / filename
+    if _IS_LOCAL and path.exists():
+        return path.read_text(encoding="utf-8")
+    try:
+        obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=f"analysis/{filename}")
+        return obj["Body"].read().decode("utf-8")
+    except Exception:
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    return None
+
+
+def _read_analysis_bytes(filename: str) -> bytes | None:
+    path = ANALYSIS_DIR / filename
+    if _IS_LOCAL and path.exists():
+        return path.read_bytes()
+    try:
+        obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=f"analysis/{filename}")
+        return obj["Body"].read()
+    except Exception:
+        if path.exists():
+            return path.read_bytes()
+    return None
+
+
+def _load_analysis_json(filename: str) -> dict[str, Any]:
+    text = _read_analysis_text(filename)
+    if not text:
+        return {"generated_at": None, "count": 0, "rows": []}
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return {"generated_at": None, "count": 0, "rows": []}
+    return data if isinstance(data, dict) else {"generated_at": None, "count": 0, "rows": []}
+
+
+def _load_pair_health_state() -> dict[str, Any]:
+    text = _read_analysis_text("pair_health_state.json")
+    if text:
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                data.setdefault("pairs", {})
+                return data
+        except json.JSONDecodeError:
+            pass
+    return {
+        "generated_at": datetime.now().date().isoformat(),
+        "policy": {},
+        "pairs": {},
+    }
+
+
+def _write_pair_health_state(state: dict[str, Any]) -> None:
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(state, ensure_ascii=False, indent=2)
+    PAIR_HEALTH_STATE_PATH.write_text(payload + "\n", encoding="utf-8")
+    if S3_BUCKET:
+        _s3_client().put_object(
+            Bucket=S3_BUCKET,
+            Key="analysis/pair_health_state.json",
+            Body=(payload + "\n").encode("utf-8"),
+            ContentType="application/json; charset=utf-8",
+        )
+
+
+def _pair_health_for(pair_health: dict[str, Any], tk1: str, tk2: str) -> dict[str, str]:
+    pairs = pair_health.get("pairs", {})
+    item = {}
+    if isinstance(pairs, dict):
+        item = pairs.get(f"{tk1}/{tk2}") or pairs.get(f"{tk2}/{tk1}") or {}
+    if not isinstance(item, dict):
+        item = {}
+    return {
+        "pair_health_state": str(item.get("state", "ACTIVE")).upper(),
+        "pair_health_reason": str(item.get("reason", "")),
+        "pair_health_reviewed_at": str(item.get("reviewed_at", "")),
+        "pair_health_recheck_after": str(item.get("recheck_after", "")),
+    }
+
+
+def _json_safe(v: object) -> object:
+    if isinstance(v, float) and np.isnan(v):
+        return None
+    if pd.isna(v):
+        return None
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.floating,)):
+        return float(v)
+    if isinstance(v, pd.Timestamp):
+        return v.strftime("%Y-%m-%d")
+    return v
 
 
 def _load_unified(filename: str, cache_key: str) -> pd.DataFrame:
@@ -198,6 +315,7 @@ async def get_pairs_signals():
     if not stocks_df.empty and "ticker" in stocks_df.columns and "sectors" in stocks_df.columns:
         sector_map = dict(zip(stocks_df["ticker"].astype(str), stocks_df["sectors"].astype(str)))
 
+    pair_health = _load_pair_health_state()
     pairs = []
     entry = []
     for _, r in df.iterrows():
@@ -206,6 +324,7 @@ async def get_pairs_signals():
             pair_date = pd.to_datetime(r["signal_date"]).strftime("%Y-%m-%d")
         tk1 = r.get("tk1", "")
         tk2 = r.get("tk2", "")
+        health = _pair_health_for(pair_health, str(tk1), str(tk2))
         full_n = _safe_int(r.get("full_n", 0))
         validity = _pair_validity_from_full_n(full_n)
         item = {
@@ -243,10 +362,10 @@ async def get_pairs_signals():
             "pair_validity_label": _value_or_default(r.get("pair_validity_label"), validity["pair_validity_label"]),
             "pair_validity_rank": _safe_int(_value_or_default(r.get("pair_validity_rank"), validity["pair_validity_rank"])),
             "pair_validity_reason": _value_or_default(r.get("pair_validity_reason"), validity["pair_validity_reason"]),
-            "pair_health_state": _value_or_default(r.get("pair_health_state"), "ACTIVE"),
-            "pair_health_reason": _value_or_default(r.get("pair_health_reason"), ""),
-            "pair_health_reviewed_at": _value_or_default(r.get("pair_health_reviewed_at"), ""),
-            "pair_health_recheck_after": _value_or_default(r.get("pair_health_recheck_after"), ""),
+            "pair_health_state": health["pair_health_state"],
+            "pair_health_reason": health["pair_health_reason"],
+            "pair_health_reviewed_at": health["pair_health_reviewed_at"],
+            "pair_health_recheck_after": health["pair_health_recheck_after"],
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
@@ -284,9 +403,11 @@ async def get_pairs_status():
     entry_col = "is_entry" if "is_entry" in df.columns else "is_hot"
     entry_df = df[df[entry_col] == True] if entry_col in df.columns else pd.DataFrame()
     entry_pairs = []
+    pair_health = _load_pair_health_state()
     for _, r in entry_df.iterrows():
         full_n = _safe_int(r.get("full_n", 0))
         validity = _pair_validity_from_full_n(full_n)
+        health = _pair_health_for(pair_health, str(r.get("tk1", "")), str(r.get("tk2", "")))
         entry_pairs.append({
             "pair": f"{r.get('name1', r.get('tk1', ''))} / {r.get('name2', r.get('tk2', ''))}",
             "z": _safe_float(r.get("z_latest", 0), 2),
@@ -297,9 +418,9 @@ async def get_pairs_status():
             "pair_validity_label": _value_or_default(r.get("pair_validity_label"), validity["pair_validity_label"]),
             "pair_validity_rank": _safe_int(_value_or_default(r.get("pair_validity_rank"), validity["pair_validity_rank"])),
             "pair_validity_reason": _value_or_default(r.get("pair_validity_reason"), validity["pair_validity_reason"]),
-            "pair_health_state": _value_or_default(r.get("pair_health_state"), "ACTIVE"),
-            "pair_health_reason": _value_or_default(r.get("pair_health_reason"), ""),
-            "pair_health_recheck_after": _value_or_default(r.get("pair_health_recheck_after"), ""),
+            "pair_health_state": health["pair_health_state"],
+            "pair_health_reason": health["pair_health_reason"],
+            "pair_health_recheck_after": health["pair_health_recheck_after"],
             "shares1": _safe_int(r.get("shares1", 100)),
             "shares2": _safe_int(r.get("shares2", 100)),
         })
@@ -309,6 +430,91 @@ async def get_pairs_status():
         "total_pairs": len(df),
         "entry_count": len(entry_pairs),
         "entry_pairs": entry_pairs,
+    }
+
+
+@router.get("/api/dev/pairs/health")
+async def get_pair_health():
+    """Pair health report and current manual state."""
+    state = _load_pair_health_state()
+    summary_bytes = _read_analysis_bytes("pair_health_check_summary_latest.csv")
+    summary_rows: list[dict[str, object]] = []
+    if summary_bytes:
+        try:
+            df = pd.read_csv(io.BytesIO(summary_bytes))
+            summary_rows = [
+                {str(k): _json_safe(v) for k, v in row.items()}
+                for row in df.to_dict(orient="records")
+            ]
+        except Exception:
+            summary_rows = []
+
+    stop = _load_analysis_json("pair_health_stop_candidates_latest.json")
+    suspended_to_watch = _load_analysis_json("pair_health_suspended_to_watch_candidates_latest.json")
+    restore = _load_analysis_json("pair_health_restore_candidates_latest.json")
+    return {
+        "state": state,
+        "summary": summary_rows,
+        "candidates": {
+            "stop": stop,
+            "suspended_to_watch": suspended_to_watch,
+            "restore": restore,
+        },
+        "counts": {
+            "summary": len(summary_rows),
+            "stop": len(stop.get("rows", [])) if isinstance(stop, dict) else 0,
+            "suspended_to_watch": len(suspended_to_watch.get("rows", [])) if isinstance(suspended_to_watch, dict) else 0,
+            "restore": len(restore.get("rows", [])) if isinstance(restore, dict) else 0,
+            "suspended": len([p for p in state.get("pairs", {}).values() if isinstance(p, dict) and p.get("state") == "SUSPENDED"]),
+            "watch": len([p for p in state.get("pairs", {}).values() if isinstance(p, dict) and p.get("state") == "WATCH"]),
+        },
+    }
+
+
+@router.post("/api/dev/pairs/health/state")
+async def update_pair_health_state(req: PairHealthStateRequest):
+    """Manual pair health state update. Writes local JSON and uploads to S3."""
+    allowed = {"ACTIVE", "WATCH", "SUSPENDED"}
+    if not req.updates:
+        raise HTTPException(status_code=400, detail="updates is empty")
+
+    state = _load_pair_health_state()
+    pairs = state.setdefault("pairs", {})
+    if not isinstance(pairs, dict):
+        pairs = {}
+        state["pairs"] = pairs
+
+    today = datetime.now().date()
+    default_recheck = (today + timedelta(days=30)).isoformat()
+    updated = []
+    for update in req.updates:
+        next_state = update.state.upper()
+        if next_state not in allowed:
+            raise HTTPException(status_code=400, detail=f"invalid state: {update.state}")
+        pair = update.pair.strip()
+        if "/" not in pair:
+            raise HTTPException(status_code=400, detail=f"invalid pair: {pair}")
+        reason_parts = [p for p in [update.reason.strip(), req.note.strip()] if p]
+        prev = pairs.get(pair, {}) if isinstance(pairs.get(pair, {}), dict) else {}
+        if next_state == "ACTIVE":
+            if pair in pairs:
+                pairs.pop(pair, None)
+        else:
+            pairs[pair] = {
+                "state": next_state,
+                "reason": " / ".join(reason_parts) or str(prev.get("reason", "manual update")),
+                "reviewed_at": today.isoformat(),
+                "recheck_after": update.recheck_after or default_recheck,
+            }
+        updated.append({"pair": pair, "state": next_state})
+
+    state["generated_at"] = today.isoformat()
+    _write_pair_health_state(state)
+    _cache.clear()
+    return {
+        "status": "success",
+        "updated": updated,
+        "updated_at": datetime.now().isoformat(),
     }
 
 

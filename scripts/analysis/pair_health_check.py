@@ -7,8 +7,12 @@ each pair by full history, 2026, recent trades, rolling PF, drawdown and tail.
 """
 from __future__ import annotations
 
+import argparse
+import json
 import sys
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -18,12 +22,22 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.pipeline.generate_pairs_signals import EXCLUDE_PAIRS, EXCLUDE_SECTORS, PF_MIN, V2_PAIRS  # noqa: E402
+from scripts.analysis.pair_mece_leg_momentum import (  # noqa: E402
+    add_sector_features,
+    build_raw_signals,
+    classify_state,
+)
 
 OUT_DIR = ROOT / "data" / "analysis"
-RAW_PATH = OUT_DIR / "pair_mece_leg_momentum_raw_20260523.parquet"
+HEALTH_STATE_PATH = OUT_DIR / "pair_health_state.json"
+LATEST_RAW_PATH = OUT_DIR / "pair_health_check_raw_latest.parquet"
 
 RECENT_N = 20
 ROLL_N = 20
+WATCH_MIN_RECENT_N = 10
+WATCH_MIN_PF = 1.2
+WATCH_MIN_PNL = 0
+WATCH_MAX_LOSS_FLOOR = -25000
 
 
 def stats(pnls: pd.Series) -> dict[str, float | int | None]:
@@ -80,6 +94,34 @@ def pair_meta() -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def load_health_state() -> dict[str, Any]:
+    if not HEALTH_STATE_PATH.exists():
+        return {"pairs": {}}
+    with HEALTH_STATE_PATH.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        return {"pairs": {}}
+    pairs = data.get("pairs")
+    if not isinstance(pairs, dict):
+        data["pairs"] = {}
+    return data
+
+
+def build_or_load_raw(rebuild: bool) -> pd.DataFrame:
+    if not rebuild and LATEST_RAW_PATH.exists():
+        raw = pd.read_parquet(LATEST_RAW_PATH)
+    else:
+        raw = add_sector_features(build_raw_signals())
+        raw["long_state"] = raw.apply(lambda r: classify_state(r.long_ret1, r.long_ret5), axis=1)
+        raw["short_state"] = raw.apply(lambda r: classify_state(r.short_ret1, r.short_ret5), axis=1)
+        raw["long_sector_state"] = raw.apply(lambda r: classify_state(r.long_sector_ret1, r.long_sector_ret5), axis=1)
+        raw["short_sector_state"] = raw.apply(lambda r: classify_state(r.short_sector_ret1, r.short_sector_ret5), axis=1)
+        raw["leg_grid"] = raw["long_state"] + "/" + raw["short_state"]
+        raw["sector_grid"] = raw["long_sector_state"] + "/" + raw["short_sector_state"]
+        raw.to_parquet(LATEST_RAW_PATH, index=False)
+    return raw
 
 
 def label(row: pd.Series) -> str:
@@ -140,14 +182,15 @@ def table(df: pd.DataFrame, limit: int | None = None) -> str:
     return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
 
 
-def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
-    raw = pd.read_parquet(RAW_PATH)
+def build_summary(rebuild: bool) -> tuple[pd.DataFrame, pd.DataFrame]:
+    raw = build_or_load_raw(rebuild)
     raw["signal_date"] = pd.to_datetime(raw["signal_date"])
     raw["trade_date"] = pd.to_datetime(raw["trade_date"])
     raw["pair"] = raw["tk1"] + "/" + raw["tk2"]
     raw["same_sector"] = raw["long_sector"].eq(raw["short_sector"])
 
     meta = pair_meta()
+    health = load_health_state().get("pairs", {})
     rows = []
     details = []
     for pair, g in raw.sort_values("trade_date").groupby("pair"):
@@ -186,6 +229,11 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
             "short_strong_loss_pnl": round(float(short_strong_loss["pnl"].sum())) if len(short_strong_loss) else 0,
             "worst3": " / ".join(f"{r.trade_date:%Y-%m-%d}:{r.pnl:,.0f}" for r in worst.itertuples()),
         }
+        pair_health = health.get(pair, {}) if isinstance(health, dict) else {}
+        row["health_state"] = pair_health.get("state", "ACTIVE") if isinstance(pair_health, dict) else "ACTIVE"
+        row["health_reason"] = pair_health.get("reason", "") if isinstance(pair_health, dict) else ""
+        row["health_reviewed_at"] = pair_health.get("reviewed_at", "") if isinstance(pair_health, dict) else ""
+        row["health_recheck_after"] = pair_health.get("recheck_after", "") if isinstance(pair_health, dict) else ""
         rows.append(row)
         details.append(g.assign(health_pair=pair))
 
@@ -200,9 +248,101 @@ def build_summary() -> tuple[pd.DataFrame, pd.DataFrame]:
     return summary, pd.concat(details, ignore_index=True)
 
 
+def to_jsonable(value: object) -> object:
+    if pd.isna(value):
+        return None
+    if isinstance(value, (pd.Timestamp,)):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    return value
+
+
+def candidate_record(row: pd.Series, candidate_type: str, reason: str) -> dict[str, object]:
+    keys = [
+        "pair",
+        "long/short例",
+        "業種",
+        "判定",
+        "health_state",
+        "full_n",
+        "full_pf",
+        "full_pnl",
+        "n_2026",
+        "pf_2026",
+        "pnl_2026",
+        "max_loss_2026",
+        "recent_n",
+        "recent_pf",
+        "recent_pnl",
+        "rolling_pf_last",
+        "rolling_pf_min",
+        "max_loss",
+        "p05",
+        "worst3",
+    ]
+    out = {key: to_jsonable(row[key]) for key in keys if key in row}
+    out["candidate_type"] = candidate_type
+    out["candidate_reason"] = reason
+    return out
+
+
+def build_candidate_outputs(summary: pd.DataFrame) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    stop_candidates = []
+    watch_candidates = []
+    restore_candidates = []
+
+    for _, row in summary.iterrows():
+        state = str(row.get("health_state", "ACTIVE") or "ACTIVE")
+        recent_n = int(row.get("recent_n") or 0)
+        recent_pf = row.get("recent_pf")
+        recent_pnl = float(row.get("recent_pnl") or 0)
+        rolling_pf_last = row.get("rolling_pf_last")
+        max_loss_2026 = float(row.get("max_loss_2026") or 0)
+        recent_ok = (
+            recent_n >= WATCH_MIN_RECENT_N
+            and pd.notna(recent_pf)
+            and float(recent_pf) >= WATCH_MIN_PF
+            and pd.notna(rolling_pf_last)
+            and float(rolling_pf_last) >= WATCH_MIN_PF
+            and recent_pnl > WATCH_MIN_PNL
+            and max_loss_2026 >= WATCH_MAX_LOSS_FLOOR
+        )
+
+        if state == "ACTIVE" and row.get("判定") == "停止候補":
+            stop_candidates.append(
+                candidate_record(
+                    row,
+                    "ACTIVE_TO_SUSPEND_CANDIDATE",
+                    "ACTIVEだが劣化条件を複数満たす。手動確認後にSUSPENDED候補。",
+                )
+            )
+        elif state == "SUSPENDED" and recent_ok:
+            watch_candidates.append(
+                candidate_record(
+                    row,
+                    "SUSPENDED_TO_WATCH_CANDIDATE",
+                    "停止中だが直近PF/rollingPF/損益が復調。いきなりACTIVEではなくWATCH候補。",
+                )
+            )
+        elif state == "WATCH" and recent_ok:
+            restore_candidates.append(
+                candidate_record(
+                    row,
+                    "WATCH_TO_ACTIVE_CANDIDATE",
+                    "WATCH中で直近PF/rollingPF/損益が復調。手動確認後にACTIVE候補。",
+                )
+            )
+
+    return stop_candidates, watch_candidates, restore_candidates
+
+
 def display(df: pd.DataFrame) -> pd.DataFrame:
     cols = [
         "判定",
+        "health_state",
         "運用状態",
         "pair",
         "long/short例",
@@ -227,6 +367,7 @@ def display(df: pd.DataFrame) -> pd.DataFrame:
     ]
     labels = {
         "pair": "ペア",
+        "health_state": "Health",
         "long/short例": "直近L/S",
         "full_n": "全件数",
         "full_pf": "全PF",
@@ -248,11 +389,13 @@ def display(df: pd.DataFrame) -> pd.DataFrame:
     return df[[c for c in cols if c in df.columns]].rename(columns=labels)
 
 
-def write_html(path: Path, summary: pd.DataFrame) -> None:
+def write_html(path: Path, summary: pd.DataFrame, stop_candidates: list[dict[str, object]], watch_candidates: list[dict[str, object]], restore_candidates: list[dict[str, object]]) -> None:
     stop = summary[summary["判定"] == "停止候補"]
     warn = summary[summary["判定"] == "警告"]
     size_warn = summary[summary["判定"] == "ロット注意"]
     excluded = summary[summary["運用状態"] == "除外"]
+    suspended = summary[summary["health_state"] == "SUSPENDED"]
+    watch = summary[summary["health_state"] == "WATCH"]
     html = f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -267,7 +410,7 @@ def write_html(path: Path, summary: pd.DataFrame) -> None:
     h1 {{ margin:0 0 8px; font-size:30px; }}
     h2 {{ margin:28px 0 12px; font-size:20px; }}
     p {{ color:var(--muted); line-height:1.6; }}
-    .cards {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:20px 0; }}
+    .cards {{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin:20px 0; }}
     .card {{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }}
     .label {{ color:var(--muted); font-size:13px; }}
     .value {{ font-size:26px; font-weight:700; margin-top:6px; }}
@@ -279,31 +422,45 @@ def write_html(path: Path, summary: pd.DataFrame) -> None:
     th {{ text-align:left; color:var(--muted); background:var(--panel2); position:sticky; top:0; }}
     td.num {{ text-align:right; font-variant-numeric:tabular-nums; }}
     tr:last-child td {{ border-bottom:0; }}
-    @media (max-width:980px) {{ main {{ width:calc(100vw - 24px); }} .cards {{ grid-template-columns:1fr 1fr; }} }}
+    @media (max-width:1200px) {{ main {{ width:calc(100vw - 24px); }} .cards {{ grid-template-columns:1fr 1fr; }} }}
   </style>
 </head>
 <body>
 <main>
   <h1>Pair Health Check</h1>
-  <p>pair universeを同じ物差しで見て、停止候補・警告・継続を分けます。目的は「負け始めたpairを止める」ことです。</p>
+  <p>pair universeを同じ物差しで見て、停止候補・警告・継続・復活候補を分けます。目的は「負け始めたpairを止める」ことと「止めたpairを減る一方にしない」ことです。</p>
   <div class="cards">
     <section class="card"><div class="label">停止候補</div><div class="value">{len(stop)}</div></section>
     <section class="card"><div class="label">警告</div><div class="value">{len(warn)}</div></section>
     <section class="card"><div class="label">ロット注意</div><div class="value">{len(size_warn)}</div></section>
     <section class="card"><div class="label">除外済</div><div class="value">{len(excluded)}</div></section>
+    <section class="card"><div class="label">停止中</div><div class="value">{len(suspended)}</div></section>
+    <section class="card"><div class="label">復活候補</div><div class="value">{len(watch_candidates) + len(restore_candidates)}</div></section>
   </div>
-  <div class="callout"><strong>判定ロジック:</strong> 停止候補は「2026損益悪化、2026PF&lt;1、直近損益悪化、rollingPF&lt;1」の劣化条件を複数満たすもの。大損失や同業種short強い悪化は、損益がまだ良い場合は停止ではなくロット注意に分けます。</div>
+  <div class="callout"><strong>判定ロジック:</strong> 停止候補は「2026損益悪化、2026PF&lt;1、直近損益悪化、rollingPF&lt;1」の劣化条件を複数満たすもの。復活候補は停止中またはWATCH中で、直近件数・直近PF・rollingPF・損益・最大損失が最低条件を満たしたもの。stateはこのレポートでは更新せず、手動判断の候補だけ出します。</div>
 
-  <h2>1. 停止候補</h2>
+  <h2>1. ACTIVE停止候補</h2>
   <div class="table-wrap">{table(display(stop), limit=80)}</div>
 
-  <h2>2. 警告</h2>
+  <h2>2. SUSPENDED→WATCH候補</h2>
+  <div class="table-wrap">{table(pd.DataFrame(watch_candidates), limit=80)}</div>
+
+  <h2>3. WATCH→ACTIVE候補</h2>
+  <div class="table-wrap">{table(pd.DataFrame(restore_candidates), limit=80)}</div>
+
+  <h2>4. 停止中pair</h2>
+  <div class="table-wrap">{table(display(suspended), limit=120)}</div>
+
+  <h2>5. WATCH pair</h2>
+  <div class="table-wrap">{table(display(watch), limit=120)}</div>
+
+  <h2>6. 警告</h2>
   <div class="table-wrap">{table(display(warn), limit=120)}</div>
 
-  <h2>3. ロット注意</h2>
+  <h2>7. ロット注意</h2>
   <div class="table-wrap">{table(display(size_warn), limit=120)}</div>
 
-  <h2>4. 全pair</h2>
+  <h2>8. 全pair</h2>
   <div class="table-wrap">{table(display(summary), limit=250)}</div>
 </main>
 </body>
@@ -312,17 +469,42 @@ def write_html(path: Path, summary: pd.DataFrame) -> None:
     path.write_text(html, encoding="utf-8")
 
 
-def main() -> int:
+def write_json(path: Path, rows: list[dict[str, object]]) -> None:
+    payload = {
+        "generated_at": date.today().isoformat(),
+        "count": len(rows),
+        "rows": rows,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Pair health check")
+    parser.add_argument("--rebuild", action="store_true", help="Rebuild pair health raw rows from current parquet data")
+    parser.add_argument("--daily", action="store_true", help="Daily pipeline mode: write latest artifacts and candidate JSON")
+    args = parser.parse_args(argv)
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    summary, details = build_summary()
-    summary_path = OUT_DIR / "pair_health_check_summary_20260523.csv"
-    details_path = OUT_DIR / "pair_health_check_details_20260523.parquet"
-    html_path = OUT_DIR / "pair_health_check_20260523.html"
+    summary, details = build_summary(rebuild=args.rebuild or args.daily)
+    stop_candidates, watch_candidates, restore_candidates = build_candidate_outputs(summary)
+
+    summary_path = OUT_DIR / "pair_health_check_summary_latest.csv"
+    details_path = OUT_DIR / "pair_health_check_details_latest.parquet"
+    html_path = OUT_DIR / "pair_health_check_latest.html"
     summary.to_csv(summary_path, index=False)
     details.to_parquet(details_path, index=False)
-    write_html(html_path, summary)
+    write_html(html_path, summary, stop_candidates, watch_candidates, restore_candidates)
+    write_json(OUT_DIR / "pair_health_stop_candidates_latest.json", stop_candidates)
+    write_json(OUT_DIR / "pair_health_suspended_to_watch_candidates_latest.json", watch_candidates)
+    write_json(OUT_DIR / "pair_health_restore_candidates_latest.json", restore_candidates)
+
     print("STOP CANDIDATES")
-    print(display(summary[summary["判定"] == "停止候補"]).to_string(index=False))
+    stop_display = display(summary[(summary["判定"] == "停止候補") & (summary["health_state"] == "ACTIVE")])
+    print(stop_display.to_string(index=False) if not stop_display.empty else "(none)")
+    print("\nSUSPENDED TO WATCH CANDIDATES")
+    print(pd.DataFrame(watch_candidates).to_string(index=False) if watch_candidates else "(none)")
+    print("\nWATCH TO ACTIVE CANDIDATES")
+    print(pd.DataFrame(restore_candidates).to_string(index=False) if restore_candidates else "(none)")
     print("WROTE", summary_path)
     print("WROTE", details_path)
     print("WROTE", html_path)

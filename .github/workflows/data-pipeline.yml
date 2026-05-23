@@ -903,6 +903,25 @@ jobs:
             [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
           done
 
+      - name: Generate pair health check candidates
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "🩺 Generating pair health stop/restore candidates..."
+          mkdir -p data/analysis
+          if python3 scripts/analysis/pair_health_check.py --daily --rebuild; then
+            for f in \
+              pair_health_check_summary_latest.csv \
+              pair_health_check_details_latest.parquet \
+              pair_health_check_latest.html \
+              pair_health_stop_candidates_latest.json \
+              pair_health_suspended_to_watch_candidates_latest.json \
+              pair_health_restore_candidates_latest.json; do
+              [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
+            done
+          else
+            echo "⚠️ Pair health check failed (non-fatal); skipped upload to avoid stale artifacts"
+          fi
+
       - name: Generate strategy weekday matrix
         if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
