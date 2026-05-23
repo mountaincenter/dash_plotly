@@ -6,6 +6,7 @@ BUY/WATCH/AVOID dashboard for /dev/semicon.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -297,6 +298,14 @@ def _decision_from_report(value: object) -> str:
     return "WATCH"
 
 
+def _entry_trigger_price(rule: object) -> float | None:
+    text = str(rule)
+    match = re.search(r"前日高値([0-9,]+(?:\.[0-9]+)?)超え", text)
+    if match:
+        return _parse_number(match.group(1))
+    return None
+
+
 def _build_payload_from_report() -> dict[str, Any] | None:
     if not REPORT_PATH.exists():
         return None
@@ -338,6 +347,8 @@ def _build_payload_from_report() -> dict[str, Any] | None:
     signals = []
     for _, row in ranking.iterrows():
         decision = _decision_from_report(row.get("判定"))
+        entry_rule = str(row.get("翌日条件", ""))
+        entry_trigger = _entry_trigger_price(entry_rule)
         reasons = []
         warnings = []
         label = str(row.get("根拠", ""))
@@ -358,7 +369,8 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "score": _parse_number(row.get("統合点")) or 0,
                 "reasons": reasons,
                 "warnings": warnings,
-                "entry_rule": str(row.get("翌日条件", "")),
+                "entry_rule": entry_rule,
+                "entry_trigger_price": entry_trigger,
                 "date": str(row.get("日足基準日", "")),
                 "close": _parse_number(row.get("公式終値")),
                 "ret5": _parse_percent(row.get("5日")),
@@ -388,6 +400,22 @@ def _build_payload_from_report() -> dict[str, Any] | None:
         "report_available": True,
         "report_url": "/api/dev/semicon/report",
         "source": "ai_semiconductor_yf_entry_risk_report.html",
+        "operation": {
+            "headline": "無条件買いなし。条件付き監視",
+            "primary_action": "寄り後条件を満たす銘柄だけ小さく候補化",
+            "morning_checks": [
+                "SOX/NVIDIA/Micron/TSMC/NASDAQ先物/CMEを確認",
+                "寄付差が過大なら待つ",
+                "前日高値超えまたはVWAP上維持を確認",
+                "左尾高の銘柄はロットを落とす",
+            ],
+            "avoid_rules": [
+                "SOX/NVIDIA/Micronが同時に崩れる",
+                "寄りで飛びすぎて前日高値超え後にVWAPを割る",
+                "決算・材料・地政学でボラが読みにくい",
+                "左尾高なのに通常ロットで入る",
+            ],
+        },
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
             "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
