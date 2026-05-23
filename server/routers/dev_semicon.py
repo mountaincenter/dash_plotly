@@ -87,6 +87,30 @@ def _safe_float(v: object) -> float | None:
         return None
 
 
+def _parse_percent(v: object) -> float | None:
+    if v is None or pd.isna(v):
+        return None
+    text = str(v).replace("%", "").replace("+", "").replace(",", "").strip()
+    if text in {"", "-", "nan"}:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _parse_number(v: object) -> float | None:
+    if v is None or pd.isna(v):
+        return None
+    text = str(v).replace(",", "").strip()
+    if text in {"", "-", "nan"}:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def _pct(now: float, before: float) -> float | None:
     if before == 0 or pd.isna(now) or pd.isna(before):
         return None
@@ -266,7 +290,118 @@ def _load_fundamentals() -> dict[str, dict[str, Any]]:
     return rows
 
 
+def _decision_from_report(value: object) -> str:
+    text = str(value)
+    if "見送り" in text:
+        return "AVOID"
+    return "WATCH"
+
+
+def _build_payload_from_report() -> dict[str, Any] | None:
+    if not REPORT_PATH.exists():
+        return None
+    try:
+        tables = pd.read_html(REPORT_PATH)
+    except ValueError:
+        return None
+    if len(tables) < 3:
+        return None
+
+    coverage = tables[0]
+    overseas_table = tables[1]
+    ranking = tables[2]
+
+    data_date = None
+    if {"データ", "最新日"}.issubset(coverage.columns):
+        daily = coverage[coverage["データ"].astype(str).str.contains("J-Quants 公式日足", na=False)]
+        if not daily.empty:
+            data_date = str(daily.iloc[0]["最新日"])
+    if not data_date and "日足基準日" in ranking.columns and not ranking.empty:
+        data_date = str(ranking["日足基準日"].max())
+
+    overseas_rows = []
+    for _, row in overseas_table.iterrows():
+        ticker = str(row.get("指標", "")).strip()
+        overseas_rows.append(
+            {
+                "ticker": ticker,
+                "name": OVERSEAS.get(ticker, ticker),
+                "date": str(row.get("日付", "")),
+                "close": _parse_number(row.get("終値")),
+                "ret1": _parse_percent(row.get("1日%")),
+                "ret5": _parse_percent(row.get("5日%")),
+                "ret20": _parse_percent(row.get("20日%")),
+            }
+        )
+    market = _market_regime(overseas_rows)
+
+    signals = []
+    for _, row in ranking.iterrows():
+        decision = _decision_from_report(row.get("判定"))
+        reasons = []
+        warnings = []
+        label = str(row.get("根拠", ""))
+        if str(row.get("判定", "")) == "寄り後条件付き":
+            reasons.append("HTML統合ランキング: 寄り後条件付き")
+        if str(row.get("判定", "")) == "押し目/回復待ち":
+            reasons.append("HTML統合ランキング: 押し目/回復待ち")
+        if str(row.get("左尾", "")) == "高":
+            warnings.append("左尾高")
+        signals.append(
+            {
+                "code": str(row.get("コード", "")),
+                "ticker": f"{row.get('コード')}.T",
+                "name": str(row.get("銘柄", "")),
+                "label": label,
+                "segment": str(row.get("分類", "")),
+                "decision": decision,
+                "score": _parse_number(row.get("統合点")) or 0,
+                "reasons": reasons,
+                "warnings": warnings,
+                "entry_rule": str(row.get("翌日条件", "")),
+                "date": str(row.get("日足基準日", "")),
+                "close": _parse_number(row.get("公式終値")),
+                "ret5": _parse_percent(row.get("5日")),
+                "ret20": _parse_percent(row.get("20日")),
+                "vs25": _parse_percent(row.get("25日線比")),
+                "dist20hi": _parse_percent(row.get("20日高値比")),
+                "max_dd_60d": None,
+                "cvar05": _parse_percent(row.get("CVaR5")),
+                "revenue_growth": _parse_percent(row.get("営業益YoY")),
+                "op_margin": None,
+                "left_tail": str(row.get("左尾", "")),
+                "judgement": str(row.get("判定", "")),
+            }
+        )
+    signals = sorted(signals, key=lambda r: (r["decision"] != "AVOID", r["score"]), reverse=True)
+
+    parsed_date = pd.to_datetime(data_date, errors="coerce")
+    stale_days = (date.today() - parsed_date.date()).days if not pd.isna(parsed_date) else None
+    return {
+        "generated_at": pd.Timestamp.fromtimestamp(REPORT_PATH.stat().st_mtime, tz="Asia/Tokyo").isoformat(),
+        "data_date": data_date,
+        "data_stale": stale_days is not None and stale_days >= 3,
+        "stale_days": stale_days,
+        "market": market,
+        "signals": signals,
+        "overseas": overseas_rows,
+        "report_available": True,
+        "report_url": "/api/dev/semicon/report",
+        "source": "ai_semiconductor_yf_entry_risk_report.html",
+        "counts": {
+            "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
+            "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
+            "avoid": sum(1 for s in signals if s["decision"] == "AVOID"),
+            "total": len(signals),
+        },
+    }
+
+
 def build_payload() -> dict[str, Any]:
+    report_payload = _build_payload_from_report()
+    if report_payload is not None:
+        return report_payload
+
     if not PRICES_PATH.exists():
         return {
             "generated_at": None,
