@@ -678,6 +678,8 @@ async def get_prob_bin_pf(
         raise HTTPException(status_code=400, detail="prob_sourceはhybrid/live/wfcvのいずれか")
 
     df = _load_analysis_base(exclude_extreme=False, direction="short")
+    # /dev/recommendations の期待PF lookup と同じ母集団に揃える。
+    df = df[df["date"] >= pd.Timestamp("2025-12-01")].copy()
     if prob_source == "hybrid":
         if "ml_prob" not in df.columns:
             df["ml_prob"] = np.nan
@@ -696,7 +698,7 @@ async def get_prob_bin_pf(
     if margin_type == "制度":
         df = df[df["margin_type"] == "制度信用"]
     elif margin_type == "いちにち":
-        df = df[df["margin_type"] == "いちにち信用"]
+        df = df[(df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True)]
 
     prob_bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     prob_labels = ["0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5",
