@@ -39,6 +39,7 @@ CURRENCY_PRICES_PATH = BASE_DIR / "data" / "parquet" / "currency_prices_max_1d.p
 
 # 曜日名
 WEEKDAY_NAMES = ['月', '火', '水', '木', '金', '土', '日']
+PF_WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"]
 
 
 def calc_price_limit(price: float) -> int:
@@ -463,16 +464,16 @@ def get_credit_bucket(
 
 
 def _pf_metrics(group: pd.DataFrame) -> dict:
-    pnl = pd.to_numeric(group["profit_per_100_shares_phase2"], errors="coerce").fillna(0)
+    pnl_col = "expected_pnl_for_pf" if "expected_pnl_for_pf" in group.columns else "profit_per_100_shares_phase2"
+    pnl = pd.to_numeric(group[pnl_col], errors="coerce").fillna(0)
     wins = pnl[pnl > 0]
     losses = pnl[pnl < 0]
     pf = float(wins.sum() / abs(losses.sum())) if abs(losses.sum()) > 0 else None
-    trade_count = int((pnl != 0).sum())
     return {
         "n": int(len(group)),
         "pf": round(pf, 2) if pf is not None else None,
         "avg_pnl": round(float(pnl.mean()), 1) if len(pnl) else None,
-        "wr": round(float(len(wins) / trade_count * 100), 1) if trade_count else None,
+        "wr": round(float((pnl > 0).mean() * 100), 1) if len(pnl) else None,
     }
 
 
@@ -497,29 +498,42 @@ def is_tradable_credit_bucket(credit_bucket: str) -> bool:
 
 
 def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
-    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。"""
-    if archive_df.empty or "ml_prob" not in archive_df.columns:
+    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。
+
+    /dev/recommendations 下部のprob別パフォーマンスと同じ母集団に寄せる。
+    """
+    if archive_df.empty:
         return {}
 
     df = archive_df.copy()
     df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
+    if "ml_prob" not in df.columns:
+        df["ml_prob"] = np.nan
+    if "ml_prob_live" not in df.columns:
+        df["ml_prob_live"] = np.nan
+    df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
+
+    pnl_source = "seg_1530" if "seg_1530" in df.columns else "profit_per_100_shares_phase2"
+    if pnl_source not in df.columns:
+        return {}
+    df["expected_pnl_for_pf"] = pd.to_numeric(df[pnl_source], errors="coerce")
+
     df = df[
-        (df["backtest_date"] >= pd.Timestamp("2026-01-01"))
-        & df["ml_prob"].notna()
-        & df["phase2_return"].notna()
+        (df["backtest_date"] >= pd.Timestamp("2025-12-01"))
+        & df["ml_prob_effective"].notna()
+        & df["expected_pnl_for_pf"].notna()
     ].copy()
-    df = df[df["phase2_return"].abs() >= 1e-12]
     if df.empty:
         return {}
 
-    df["weekday_jp"] = df["backtest_date"].dt.dayofweek.map(lambda x: WEEKDAY_NAMES[x])
-    df["prob_bin"] = df["ml_prob"].apply(get_prob_bin)
+    df["weekday_jp"] = df["backtest_date"].dt.dayofweek.map(lambda x: PF_WEEKDAY_NAMES[x] if x < 5 else None)
+    df["prob_bin"] = df["ml_prob_effective"].apply(get_prob_bin)
     df["price_band"] = df["buy_price"].apply(get_price_band)
     shares = pd.to_numeric(
         df.get("day_trade_available_shares", pd.Series(pd.NA, index=df.index)),
         errors="coerce",
     )
-    is_system_shortable_values = df.get("is_shortable", pd.Series(False, index=df.index))
+    is_system_shortable_values = df.get("shortable", pd.Series(False, index=df.index))
     day_trade_values = df.get("day_trade", pd.Series(False, index=df.index))
     ng_values = df.get("ng", pd.Series(False, index=df.index))
     df["credit_bucket"] = [
@@ -959,7 +973,7 @@ async def get_day_trade_list():
         bucket = get_bucket(prob_up) if prob_up is not None else None
         prob_bin = get_prob_bin(prob_up)
         price_band = get_price_band(row.get("Close"))
-        weekday_jp = WEEKDAY_NAMES[trade_date.weekday()] if trade_date is not None else None
+        weekday_jp = PF_WEEKDAY_NAMES[trade_date.weekday()] if trade_date is not None and trade_date.weekday() < 5 else None
         credit_bucket = get_credit_bucket(
             is_system_shortable,
             day_trade,
