@@ -903,6 +903,39 @@ jobs:
             [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
           done
 
+      - name: Generate semicon domestic candidates
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          echo "============================================================"
+          echo "Generating semicon domestic candidates (16:45)"
+          echo "============================================================"
+
+          python3 scripts/analysis/semiconductor/backtest_semicon_trend.py || echo "⚠️ Semicon backtest generation failed (non-fatal)"
+          python3 scripts/analysis/semiconductor/generate_yf_entry_risk_report.py
+          python3 scripts/pipeline/generate_semicon_api_artifacts.py --mode domestic
+
+          aws s3 cp \
+            data/analysis/semicon_domestic_candidates.json \
+            "s3://${{ env.S3_BUCKET }}/analysis/semicon_domestic_candidates.json" \
+            --only-show-errors
+          echo "✅ semicon_domestic_candidates.json uploaded to S3"
+
+          if [ -f "scripts/analysis/semiconductor/output/ai_semiconductor_yf_entry_risk_report.html" ]; then
+            aws s3 cp \
+              scripts/analysis/semiconductor/output/ai_semiconductor_yf_entry_risk_report.html \
+              "s3://${{ env.S3_BUCKET }}/analysis/semicon_entry_risk_report.html" \
+              --only-show-errors
+            echo "✅ semicon_entry_risk_report.html uploaded to S3"
+          fi
+          if [ -f "scripts/analysis/semiconductor/output/semicon_trend_backtest_report.html" ]; then
+            aws s3 cp \
+              scripts/analysis/semiconductor/output/semicon_trend_backtest_report.html \
+              "s3://${{ env.S3_BUCKET }}/analysis/semicon_trend_backtest_report.html" \
+              --only-show-errors
+            echo "✅ semicon_trend_backtest_report.html uploaded to S3"
+          fi
+        timeout-minutes: 45
+
       - name: Generate pair health check candidates
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
@@ -1001,6 +1034,42 @@ jobs:
             echo "✅ Uploaded updated futures_prices_max_1d.parquet to S3"
           fi
         timeout-minutes: 5
+
+      - name: "[CME] Generate semicon entry decisions"
+        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        run: |
+          echo "============================================================"
+          echo "Generating semicon entry decisions (07:00)"
+          echo "============================================================"
+
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}prices_topix500_oc.parquet" "data/parquet/prices_topix500_oc.parquet" --only-show-errors || true
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors || true
+
+          python3 scripts/analysis/semiconductor/backtest_semicon_trend.py || echo "⚠️ Semicon backtest generation failed (non-fatal)"
+          python3 scripts/analysis/semiconductor/generate_yf_entry_risk_report.py
+          python3 scripts/pipeline/generate_semicon_api_artifacts.py --mode entry
+
+          aws s3 cp \
+            data/analysis/semicon_entry_decisions.json \
+            "s3://${S3_BUCKET}/analysis/semicon_entry_decisions.json" \
+            --only-show-errors
+          echo "✅ semicon_entry_decisions.json uploaded to S3"
+
+          if [ -f "scripts/analysis/semiconductor/output/ai_semiconductor_yf_entry_risk_report.html" ]; then
+            aws s3 cp \
+              scripts/analysis/semiconductor/output/ai_semiconductor_yf_entry_risk_report.html \
+              "s3://${S3_BUCKET}/analysis/semicon_entry_risk_report.html" \
+              --only-show-errors
+            echo "✅ semicon_entry_risk_report.html uploaded to S3"
+          fi
+          if [ -f "scripts/analysis/semiconductor/output/semicon_trend_backtest_report.html" ]; then
+            aws s3 cp \
+              scripts/analysis/semiconductor/output/semicon_trend_backtest_report.html \
+              "s3://${S3_BUCKET}/analysis/semicon_trend_backtest_report.html" \
+              --only-show-errors
+            echo "✅ semicon_trend_backtest_report.html uploaded to S3"
+          fi
+        timeout-minutes: 45
 
       - name: Generate market anomaly data (last trading day of week)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
