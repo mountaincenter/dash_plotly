@@ -80,6 +80,19 @@ OVERSEAS = {
     "JPY=X": "USDJPY",
 }
 
+SEGMENT_GROUPS = {
+    "半導体主力": {"NAND", "成膜装置", "テスタ/検査", "後工程装置", "エッチング/成膜/塗布", "EUVマスク検査", "洗浄装置"},
+    "AIインフラ": {"光通信/高密度配線", "光通信/電力ケーブル/冷却", "MLCC/電源部品/EMI", "パッケージ基板", "マイコン/アナログ", "成膜装置"},
+    "電力": {"検査装置/電力", "パワー半導体/重電", "パワー半導体", "光通信/電線", "電線/電力ケーブル"},
+    "光通信": {"光通信/高密度配線", "光通信/電力ケーブル/冷却", "光通信/電線", "電線/電力ケーブル"},
+    "冷却/空調": {"冷却/空調", "空調/クリーンルーム"},
+    "材料/基板": {"パッケージ基板", "フォトレジスト", "パッケージ/CMP材料", "シリコンウエハ"},
+    "DC建設/不動産": {"建設", "建設/不動産", "不動産/DC", "設備/EPC"},
+}
+
+INDICATOR_CODES = {"6857", "6146", "8035", "6920", "7735", "285A"}
+HEAVY_WATCH_CODES = {"4062", "5801"}
+
 
 def _safe_float(v: object) -> float | None:
     try:
@@ -308,6 +321,129 @@ def _entry_trigger_price(rule: object) -> float | None:
     return None
 
 
+def _segment_name(raw_segment: object) -> list[str]:
+    segment = str(raw_segment)
+    groups = [name for name, members in SEGMENT_GROUPS.items() if segment in members]
+    return groups or ["その他"]
+
+
+def _build_segment_strength(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    expanded = []
+    for signal in signals:
+        for group in _segment_name(signal.get("segment")):
+            expanded.append(
+                {
+                    "segment": group,
+                    "code": signal.get("code"),
+                    "name": signal.get("name"),
+                    "ret5": signal.get("ret5"),
+                    "ret20": signal.get("ret20"),
+                    "vs25": signal.get("vs25"),
+                    "score": signal.get("score"),
+                    "decision": signal.get("decision"),
+                }
+            )
+    if not expanded:
+        return []
+
+    df = pd.DataFrame(expanded)
+    rows = []
+    for segment, g in df.groupby("segment", sort=False):
+        ret5 = pd.to_numeric(g["ret5"], errors="coerce")
+        ret20 = pd.to_numeric(g["ret20"], errors="coerce")
+        vs25 = pd.to_numeric(g["vs25"], errors="coerce")
+        score = pd.to_numeric(g["score"], errors="coerce")
+        leader_row = g.loc[score.fillna(-999).idxmax()] if not g.empty else None
+        rows.append(
+            {
+                "segment": segment,
+                "count": int(len(g)),
+                "avg_ret5": _safe_float(ret5.mean()),
+                "avg_ret20": _safe_float(ret20.mean()),
+                "avg_vs25": _safe_float(vs25.mean()),
+                "breadth5": _safe_float((ret5 > 0).mean() * 100.0),
+                "breadth20": _safe_float((ret20 > 0).mean() * 100.0),
+                "watch_count": int((g["decision"] != "AVOID").sum()),
+                "leader_code": str(leader_row["code"]) if leader_row is not None else "",
+                "leader_name": str(leader_row["name"]) if leader_row is not None else "",
+                "leader_score": _safe_float(leader_row["score"]) if leader_row is not None else None,
+            }
+        )
+    return sorted(rows, key=lambda r: ((r["avg_ret5"] or -999), (r["avg_ret20"] or -999)), reverse=True)
+
+
+def _trade_bucket(signal: dict[str, Any]) -> tuple[str, list[str]]:
+    code = str(signal.get("code", ""))
+    decision = str(signal.get("decision", ""))
+    close = _safe_float(signal.get("close"))
+    ret5 = _safe_float(signal.get("ret5"))
+    vs25 = _safe_float(signal.get("vs25"))
+    cvar = _safe_float(signal.get("cvar05"))
+    left_tail = str(signal.get("left_tail", ""))
+    judgement = str(signal.get("judgement", ""))
+    reasons: list[str] = []
+
+    if code in INDICATOR_CODES:
+        reasons.append("値嵩/主力の温度計")
+        return "指標銘柄", reasons
+
+    if decision == "AVOID" or "見送り" in judgement:
+        reasons.append("判定が見送り")
+        return "見送り", reasons
+
+    if close is not None and close >= 20000:
+        reasons.append("株価2万円以上")
+        return "過熱注意", reasons
+
+    if code in HEAVY_WATCH_CODES:
+        reasons.append("値嵩寄りの監視銘柄")
+        return "過熱注意", reasons
+
+    if (vs25 is not None and vs25 >= 25) or (ret5 is not None and ret5 >= 18):
+        reasons.append("短期過熱")
+        return "過熱注意", reasons
+
+    if left_tail == "高" or (cvar is not None and cvar <= -6):
+        reasons.append("左尾高")
+        return "過熱注意", reasons
+
+    if "寄り後条件付き" in judgement or decision == "WATCH":
+        reasons.append("寄り後条件付き")
+        return "実弾候補", reasons
+
+    reasons.append("条件未分類")
+    return "見送り", reasons
+
+
+def _attach_trade_buckets(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for signal in signals:
+        bucket, reasons = _trade_bucket(signal)
+        enriched = dict(signal)
+        enriched["trade_bucket"] = bucket
+        enriched["trade_bucket_reasons"] = reasons
+        rows.append(enriched)
+    return rows
+
+
+def _bucket_summary(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    order = ["実弾候補", "指標銘柄", "過熱注意", "見送り"]
+    rows = []
+    for bucket in order:
+        items = [s for s in signals if s.get("trade_bucket") == bucket]
+        rows.append(
+            {
+                "bucket": bucket,
+                "count": len(items),
+                "leaders": [
+                    {"code": s.get("code"), "name": s.get("name"), "score": s.get("score")}
+                    for s in sorted(items, key=lambda x: _safe_float(x.get("score")) or 0, reverse=True)[:3]
+                ],
+            }
+        )
+    return rows
+
+
 def _load_backtest_summary() -> dict[str, Any]:
     if not BACKTEST_SUMMARY_PATH.exists():
         return {
@@ -435,7 +571,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "judgement": str(row.get("判定", "")),
             }
         )
-    signals = sorted(signals, key=lambda r: (r["decision"] != "AVOID", r["score"]), reverse=True)
+    signals = sorted(_attach_trade_buckets(signals), key=lambda r: (r["decision"] != "AVOID", r["score"]), reverse=True)
 
     parsed_date = pd.to_datetime(data_date, errors="coerce")
     stale_days = (date.today() - parsed_date.date()).days if not pd.isna(parsed_date) else None
@@ -446,6 +582,8 @@ def _build_payload_from_report() -> dict[str, Any] | None:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "segment_strength": _build_segment_strength(signals),
+        "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,
         "report_available": True,
         "report_url": "/api/dev/semicon/report",
@@ -521,7 +659,7 @@ def build_payload() -> dict[str, Any]:
         if metrics.get("missing"):
             continue
         signals.append(_score_stock(stock, metrics, market["state"], fundamentals.get(stock.code, {})))
-    signals = sorted(signals, key=lambda r: (r["decision"] == "BUY_CANDIDATE", r["score"]), reverse=True)
+    signals = sorted(_attach_trade_buckets(signals), key=lambda r: (r["decision"] == "BUY_CANDIDATE", r["score"]), reverse=True)
     data_date = str(prices.index.max().date()) if not prices.empty and hasattr(prices.index.max(), "date") else None
     stale_days = (date.today() - prices.index.max().date()).days if data_date and hasattr(prices.index.max(), "date") else None
     return {
@@ -531,6 +669,8 @@ def build_payload() -> dict[str, Any]:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "segment_strength": _build_segment_strength(signals),
+        "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,
         "report_available": REPORT_PATH.exists(),
         "report_url": "/api/dev/semicon/report",
