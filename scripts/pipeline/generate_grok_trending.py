@@ -319,12 +319,15 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     chat.append(system(
         "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
         "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
-        "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+        "【絶対条件】最終出力は必ずJSON配列のみです。原則20〜25銘柄を目標にしてください。"
+        "ただし一次情報で確認できる候補が20銘柄未満の場合は水増しせず、確認できた候補だけをJSON配列で返してください。"
+        "候補が0件の場合は空配列[]を返してください。自然文のみの回答は禁止です。"
     ))
     chat.append(user(
         prompt
-        + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
-        "5〜10銘柄では不十分です。"
+        + "\n\n【最終確認・絶対遵守】原則20〜25銘柄を目標にしてください。"
+        "ただし確認できる候補が少ない場合は5〜10銘柄でも正常です。"
+        "水増しは禁止です。出力は必ずJSON配列のみ。候補0件なら[]を返してください。"
     ))
 
     # ストリーミング処理（切断リトライ付き）
@@ -366,12 +369,15 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
             chat.append(system(
                 "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
                 "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
-                "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+                "【絶対条件】最終出力は必ずJSON配列のみです。原則20〜25銘柄を目標にしてください。"
+                "ただし一次情報で確認できる候補が20銘柄未満の場合は水増しせず、確認できた候補だけをJSON配列で返してください。"
+                "候補が0件の場合は空配列[]を返してください。自然文のみの回答は禁止です。"
             ))
             chat.append(user(
                 prompt
-                + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
-                "5〜10銘柄では不十分です。"
+                + "\n\n【最終確認・絶対遵守】原則20〜25銘柄を目標にしてください。"
+                "ただし確認できる候補が少ない場合は5〜10銘柄でも正常です。"
+                "水増しは禁止です。出力は必ずJSON配列のみ。候補0件なら[]を返してください。"
             ))
         else:
             print(f"[ERROR] All {MAX_RETRIES} attempts returned short response. Proceeding with partial data.")
@@ -489,6 +495,10 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
 
     # 最後の"]"を探す（配列の終端）
     last_array_end = json_str.rfind("]")
+    if last_array_end == -1:
+        print("[WARN] Grok response did not contain a JSON array terminator. Treating as 0 stocks.")
+        print(f"[DEBUG] Non-JSON response head:\n{json_str[:500]}...")
+        return []
 
     # その後に"{" があるか確認（verification_summaryが続く場合）
     remaining = json_str[last_array_end + 1:].strip()
@@ -541,7 +551,7 @@ def parse_grok_response(response: str) -> list[dict[str, Any]]:
             print(f"[ERROR] All JSON parse methods failed")
             print(f"[DEBUG] Original JSON:\n{first_json[:500]}...")
             print(f"[DEBUG] Repaired JSON:\n{repaired_json[:500]}...")
-            raise
+            return []
 
 
 def calculate_selection_score(item: dict[str, Any]) -> float:
@@ -1163,9 +1173,10 @@ def main() -> int:
             if attempt < MAX_RETRIES:
                 print(f"[WARN] 0 stocks returned on attempt {attempt}, retrying...")
             else:
-                print(f"[ERROR] 0 stocks returned after {MAX_RETRIES} attempts")
-                print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
-                return 1
+                print(f"[WARN] 0 stocks returned after {MAX_RETRIES} attempts")
+                print(f"[WARN] Last response ({len(response)} chars): {response[:500]}")
+                print("[WARN] Continuing pipeline with empty grok_trending.parquet.")
+                break
 
         # 6. Convert to DataFrame (prompt_versionを追加)
         selected_date = context['next_trading_day_raw']
