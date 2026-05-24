@@ -6,6 +6,8 @@ BUY/WATCH/AVOID dashboard for /dev/semicon.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -19,11 +21,42 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 ROOT = Path(__file__).resolve().parents[2]
 SEMICON_OUT = ROOT / "scripts" / "analysis" / "semiconductor" / "output"
+ANALYSIS_DIR = ROOT / "data" / "analysis"
 PRICES_PATH = SEMICON_OUT / "prices_raw.parquet"
 FUNDAMENTALS_PATH = SEMICON_OUT / "yfinance_fundamentals_summary.csv"
 REPORT_PATH = SEMICON_OUT / "ai_semiconductor_yf_entry_risk_report.html"
 BACKTEST_SUMMARY_PATH = SEMICON_OUT / "semicon_trend_backtest_summary.csv"
 BACKTEST_REPORT_PATH = SEMICON_OUT / "semicon_trend_backtest_report.html"
+
+SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
+SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
+
+S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
+APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("STAGE") or "local").strip().lower()
+RAW_SEMICON_DATA_SOURCE = (os.getenv("SEMICON_DATA_SOURCE") or "").strip().lower()
+if RAW_SEMICON_DATA_SOURCE in {"local", "s3"}:
+    SEMICON_DATA_SOURCE = RAW_SEMICON_DATA_SOURCE
+    SEMICON_DATA_SOURCE_REASON = "SEMICON_DATA_SOURCE"
+    SEMICON_DATA_SOURCE_ERROR = None
+elif RAW_SEMICON_DATA_SOURCE:
+    SEMICON_DATA_SOURCE = "local"
+    SEMICON_DATA_SOURCE_REASON = "invalid_SEMICON_DATA_SOURCE"
+    SEMICON_DATA_SOURCE_ERROR = f"invalid SEMICON_DATA_SOURCE={RAW_SEMICON_DATA_SOURCE!r}; expected local or s3"
+elif APP_ENV in {"production", "prod"}:
+    SEMICON_DATA_SOURCE = "s3"
+    SEMICON_DATA_SOURCE_REASON = "APP_ENV"
+    SEMICON_DATA_SOURCE_ERROR = None
+else:
+    SEMICON_DATA_SOURCE = "local"
+    SEMICON_DATA_SOURCE_REASON = "default_local"
+    SEMICON_DATA_SOURCE_ERROR = None
+USE_S3_DATA_SOURCE = SEMICON_DATA_SOURCE == "s3"
+
+S3_ENTRY_KEY = "analysis/semicon_entry_decisions.json"
+S3_DOMESTIC_KEY = "analysis/semicon_domestic_candidates.json"
+S3_REPORT_KEY = "analysis/semicon_entry_risk_report.html"
+S3_BACKTEST_REPORT_KEY = "analysis/semicon_trend_backtest_report.html"
 
 router = APIRouter()
 
@@ -92,6 +125,53 @@ SEGMENT_GROUPS = {
 
 INDICATOR_CODES = {"6857", "6146", "8035", "6920", "7735", "285A"}
 HEAVY_WATCH_CODES = {"4062", "5801"}
+
+
+def _s3_client():
+    import boto3
+
+    return boto3.client("s3", region_name=AWS_REGION)
+
+
+def _read_local_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _read_s3_json(key: str) -> dict[str, Any] | None:
+    if not S3_BUCKET:
+        return None
+    try:
+        obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=key)
+        data = json.loads(obj["Body"].read().decode("utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _read_semicon_json(local_path: Path, s3_key: str) -> dict[str, Any] | None:
+    if USE_S3_DATA_SOURCE:
+        return _read_s3_json(s3_key)
+    return _read_local_json(local_path)
+
+
+def _read_semicon_html(local_path: Path, s3_key: str) -> str | None:
+    if USE_S3_DATA_SOURCE:
+        if not S3_BUCKET:
+            return None
+        try:
+            obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=s3_key)
+            return obj["Body"].read().decode("utf-8")
+        except Exception:
+            return None
+    if not local_path.exists():
+        return None
+    return local_path.read_text(encoding="utf-8")
 
 
 def _safe_float(v: object) -> float | None:
@@ -697,9 +777,94 @@ def _build_payload_from_report() -> dict[str, Any] | None:
     }
 
 
+def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bool = False) -> dict[str, Any]:
+    signals = data.get("signals")
+    if signals is None:
+        signals = data.get("rows") or data.get("candidates") or []
+    if not isinstance(signals, list):
+        signals = []
+
+    market = data.get("market")
+    if not isinstance(market, dict):
+        market = {
+            "state": "US_PENDING" if us_pending else "NO_DATA",
+            "label": "米国判定待ち" if us_pending else "データ未取得",
+        }
+
+    payload = dict(data)
+    payload.update(
+        {
+            "generated_at": data.get("generated_at"),
+            "data_date": data.get("data_date") or data.get("as_of") or data.get("date"),
+            "market": market,
+            "signals": signals,
+            "segment_strength": data.get("segment_strength") or _build_segment_strength(signals),
+            "bucket_summary": data.get("bucket_summary") or _bucket_summary(signals),
+            "overseas": data.get("overseas") or [],
+            "report_available": bool(data.get("report_available")),
+            "report_url": data.get("report_url"),
+            "backtest": data.get("backtest") or _load_backtest_summary(),
+            "source": source,
+            "source_environment": APP_ENV,
+            "source_data_mode": SEMICON_DATA_SOURCE,
+            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
+            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+            "us_pending": us_pending,
+            "counts": data.get("counts")
+            or {
+                "buy": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "BUY_CANDIDATE"),
+                "watch": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "WATCH"),
+                "avoid": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "AVOID"),
+                "total": len(signals),
+            },
+        }
+    )
+    return payload
+
+
+def _build_payload_from_environment_json() -> dict[str, Any] | None:
+    entry = _read_semicon_json(SEMICON_ENTRY_JSON, S3_ENTRY_KEY)
+    if entry is not None:
+        source = S3_ENTRY_KEY if USE_S3_DATA_SOURCE else SEMICON_ENTRY_JSON.name
+        return _normalize_semicon_payload(entry, source)
+
+    domestic = _read_semicon_json(SEMICON_DOMESTIC_JSON, S3_DOMESTIC_KEY)
+    if domestic is not None:
+        source = S3_DOMESTIC_KEY if USE_S3_DATA_SOURCE else SEMICON_DOMESTIC_JSON.name
+        return _normalize_semicon_payload(domestic, source, us_pending=True)
+
+    return None
+
+
 def build_payload() -> dict[str, Any]:
+    env_payload = _build_payload_from_environment_json()
+    if env_payload is not None:
+        return env_payload
+
+    if USE_S3_DATA_SOURCE:
+        return {
+            "generated_at": None,
+            "data_date": None,
+            "market": {"state": "NO_DATA", "label": "semicon S3 artifact not found"},
+            "signals": [],
+            "segment_strength": [],
+            "bucket_summary": [],
+            "overseas": [],
+            "report_available": False,
+            "source": "s3_json_missing",
+            "source_environment": APP_ENV,
+            "source_data_mode": SEMICON_DATA_SOURCE,
+            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
+            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+            "counts": {"buy": 0, "watch": 0, "avoid": 0, "total": 0},
+        }
+
     report_payload = _build_payload_from_report()
     if report_payload is not None:
+        report_payload["source_environment"] = APP_ENV
+        report_payload["source_data_mode"] = SEMICON_DATA_SOURCE
+        report_payload["source_data_mode_reason"] = SEMICON_DATA_SOURCE_REASON
+        report_payload["source_data_mode_error"] = SEMICON_DATA_SOURCE_ERROR
         return report_payload
 
     if not PRICES_PATH.exists():
@@ -710,6 +875,10 @@ def build_payload() -> dict[str, Any]:
             "signals": [],
             "overseas": [],
             "report_available": REPORT_PATH.exists(),
+            "source_environment": APP_ENV,
+            "source_data_mode": SEMICON_DATA_SOURCE,
+            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
+            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
         }
 
     prices = pd.read_parquet(PRICES_PATH).sort_index()
@@ -757,6 +926,11 @@ def build_payload() -> dict[str, Any]:
         "overseas": overseas_rows,
         "report_available": REPORT_PATH.exists(),
         "report_url": "/api/dev/semicon/report",
+        "source": "prices_raw.parquet",
+        "source_environment": APP_ENV,
+        "source_data_mode": SEMICON_DATA_SOURCE,
+        "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
+        "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
         "backtest": _load_backtest_summary(),
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
@@ -774,13 +948,15 @@ async def get_semicon_signals():
 
 @router.get("/api/dev/semicon/report")
 async def get_semicon_report():
-    if not REPORT_PATH.exists():
+    html = _read_semicon_html(REPORT_PATH, S3_REPORT_KEY)
+    if html is None:
         return JSONResponse(status_code=404, content={"detail": "semiconductor report not found"})
-    return HTMLResponse(content=REPORT_PATH.read_text(encoding="utf-8"), media_type="text/html")
+    return HTMLResponse(content=html, media_type="text/html")
 
 
 @router.get("/api/dev/semicon/backtest-report")
 async def get_semicon_backtest_report():
-    if not BACKTEST_REPORT_PATH.exists():
+    html = _read_semicon_html(BACKTEST_REPORT_PATH, S3_BACKTEST_REPORT_KEY)
+    if html is None:
         return JSONResponse(status_code=404, content={"detail": "semiconductor backtest report not found"})
-    return HTMLResponse(content=BACKTEST_REPORT_PATH.read_text(encoding="utf-8"), media_type="text/html")
+    return HTMLResponse(content=html, media_type="text/html")
