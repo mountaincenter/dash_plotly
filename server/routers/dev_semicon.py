@@ -444,6 +444,89 @@ def _bucket_summary(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def _attach_entry_decisions(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    segment_lookup = {r["segment"]: r for r in _build_segment_strength(signals)}
+    rows = []
+    for signal in signals:
+        bucket = str(signal.get("trade_bucket", ""))
+        ret5 = _safe_float(signal.get("ret5"))
+        ret20 = _safe_float(signal.get("ret20"))
+        vs25 = _safe_float(signal.get("vs25"))
+        score = _safe_float(signal.get("score")) or 0.0
+        cvar = _safe_float(signal.get("cvar05"))
+        left_tail = str(signal.get("left_tail", ""))
+        groups = _segment_name(signal.get("segment"))
+        group_stats = [segment_lookup[g] for g in groups if g in segment_lookup]
+        segment_strong = any((g.get("avg_ret5") or 0) > 0 and (g.get("breadth5") or 0) >= 50 for g in group_stats)
+        segment_hot = any((g.get("avg_ret5") or 0) >= 6 or (g.get("avg_ret20") or 0) >= 30 for g in group_stats)
+
+        priority = score
+        reasons: list[str] = []
+        status = "WAIT"
+
+        if bucket == "実弾候補":
+            priority += 4
+            reasons.append("実弾候補")
+            status = "READY"
+        elif bucket == "過熱注意":
+            priority -= 1
+            reasons.append("過熱注意")
+            status = "WAIT"
+        elif bucket == "指標銘柄":
+            priority -= 2
+            reasons.append("指標銘柄")
+            status = "WAIT"
+        else:
+            priority -= 5
+            reasons.append("見送り区分")
+            status = "AVOID"
+
+        if segment_strong:
+            priority += 2
+            reasons.append("セグメント強い")
+        else:
+            priority -= 2
+            reasons.append("セグメント弱い")
+            if status == "READY":
+                status = "WAIT"
+
+        if segment_hot:
+            reasons.append("テーマ過熱")
+            if bucket != "実弾候補":
+                priority -= 1
+
+        if ret5 is not None and ret5 > 0:
+            priority += 1
+            reasons.append("5日上昇")
+        if ret20 is not None and ret20 > 0:
+            priority += 0.5
+            reasons.append("20日上昇")
+        if vs25 is not None and vs25 > 0:
+            priority += 0.5
+            reasons.append("25日線上")
+
+        if vs25 is not None and vs25 >= 25:
+            priority -= 3
+            reasons.append("25日線乖離過大")
+            status = "WAIT" if status == "READY" else status
+        if ret5 is not None and ret5 >= 18:
+            priority -= 2
+            reasons.append("5日急騰")
+            status = "WAIT" if status == "READY" else status
+        if left_tail == "高" or (cvar is not None and cvar <= -6):
+            priority -= 2
+            reasons.append("左尾注意")
+            status = "WAIT" if status == "READY" else status
+
+        enriched = dict(signal)
+        enriched["entry_status"] = status
+        enriched["entry_priority"] = round(priority, 2)
+        enriched["entry_reasons"] = reasons
+        rows.append(enriched)
+
+    return sorted(rows, key=lambda r: (_safe_float(r.get("entry_priority")) or -999), reverse=True)
+
+
 def _load_backtest_summary() -> dict[str, Any]:
     if not BACKTEST_SUMMARY_PATH.exists():
         return {
@@ -571,7 +654,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "judgement": str(row.get("判定", "")),
             }
         )
-    signals = sorted(_attach_trade_buckets(signals), key=lambda r: (r["decision"] != "AVOID", r["score"]), reverse=True)
+    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
 
     parsed_date = pd.to_datetime(data_date, errors="coerce")
     stale_days = (date.today() - parsed_date.date()).days if not pd.isna(parsed_date) else None
@@ -659,7 +742,7 @@ def build_payload() -> dict[str, Any]:
         if metrics.get("missing"):
             continue
         signals.append(_score_stock(stock, metrics, market["state"], fundamentals.get(stock.code, {})))
-    signals = sorted(_attach_trade_buckets(signals), key=lambda r: (r["decision"] == "BUY_CANDIDATE", r["score"]), reverse=True)
+    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
     data_date = str(prices.index.max().date()) if not prices.empty and hasattr(prices.index.max(), "date") else None
     stale_days = (date.today() - prices.index.max().date()).days if data_date and hasattr(prices.index.max(), "date") else None
     return {
