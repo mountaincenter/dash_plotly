@@ -34,7 +34,7 @@ SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
-APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("STAGE") or "local").strip().lower()
+APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("STAGE") or "").strip().lower()
 RAW_SEMICON_DATA_SOURCE = (os.getenv("SEMICON_DATA_SOURCE") or "").strip().lower()
 if RAW_SEMICON_DATA_SOURCE in {"local", "s3"}:
     SEMICON_DATA_SOURCE = RAW_SEMICON_DATA_SOURCE
@@ -44,13 +44,13 @@ elif RAW_SEMICON_DATA_SOURCE:
     SEMICON_DATA_SOURCE = "local"
     SEMICON_DATA_SOURCE_REASON = "invalid_SEMICON_DATA_SOURCE"
     SEMICON_DATA_SOURCE_ERROR = f"invalid SEMICON_DATA_SOURCE={RAW_SEMICON_DATA_SOURCE!r}; expected local or s3"
-elif APP_ENV in {"production", "prod"}:
-    SEMICON_DATA_SOURCE = "s3"
-    SEMICON_DATA_SOURCE_REASON = "APP_ENV"
+elif APP_ENV in {"local", "development", "dev", "test"}:
+    SEMICON_DATA_SOURCE = "local"
+    SEMICON_DATA_SOURCE_REASON = "APP_ENV_local"
     SEMICON_DATA_SOURCE_ERROR = None
 else:
-    SEMICON_DATA_SOURCE = "local"
-    SEMICON_DATA_SOURCE_REASON = "default_local"
+    SEMICON_DATA_SOURCE = "s3"
+    SEMICON_DATA_SOURCE_REASON = "default_s3"
     SEMICON_DATA_SOURCE_ERROR = None
 USE_S3_DATA_SOURCE = SEMICON_DATA_SOURCE == "s3"
 
