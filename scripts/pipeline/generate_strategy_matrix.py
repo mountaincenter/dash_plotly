@@ -50,8 +50,9 @@ QE_JSON = ANALYSIS_DIR / "quarter_end_effect.json"
 OUTPUT_PATH = ANALYSIS_DIR / "strategy_matrix.json"
 
 DOW_LABELS = ["月", "火", "水", "木", "金"]
-
 PAIR_RISK_RET1_SPREAD_MAX = 0.08
+GROK_PROB_SHORT_THRESHOLD = 0.45
+GROK_PF_START_DATE = pd.Timestamp("2025-12-01")
 
 
 def _calc_pf(pnl_series: pd.Series) -> float | None:
@@ -74,59 +75,96 @@ def _calc_stats(pnl_series: pd.Series) -> dict:
     }
 
 
-# ── 1. Grok SHORT ──
-def _detect_prob_direction(df: pd.DataFrame) -> str:
-    """archiveのml_prob方向を自動検出。
-    4/25以前: y=phase2_win → HIGH prob = SHORT有利
-    4/25以降: y=1-phase2_win → LOW prob = SHORT有利
-    """
-    valid = df.dropna(subset=["ml_prob", "phase2_win"])
-    win_mean = valid[valid["phase2_win"] == True]["ml_prob"].mean()
-    lose_mean = valid[valid["phase2_win"] == False]["ml_prob"].mean()
-    if win_mean > lose_mean:
-        return "high"  # HIGH prob = SHORT wins (pre-fix)
-    return "low"  # LOW prob = SHORT wins (post-fix)
+def _bool_series(df: pd.DataFrame, column: str, default: bool = False) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(default, index=df.index)
+    return df[column].fillna(default).astype(bool)
+
+
+def _numeric_series(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(np.nan, index=df.index)
+    return pd.to_numeric(df[column], errors="coerce")
 
 
 def compute_grok_weekday() -> dict:
     print("\n[1] Grok SHORT")
     df = pd.read_parquet(GROK_ARCHIVE)
 
-    # shortable: 制度 or いちにち(残0除外)
-    shortable = df[
-        (df["is_shortable"] == True)
-        | ((df["day_trade"] == True) & (df["day_trade_available_shares"] > 0))
+    date_col = "backtest_date" if "backtest_date" in df.columns else "selection_date"
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+    if "ml_prob" not in df.columns:
+        df["ml_prob"] = np.nan
+    if "ml_prob_live" not in df.columns:
+        df["ml_prob_live"] = np.nan
+    df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
+
+    pnl_source = "seg_1530" if "seg_1530" in df.columns else "profit_per_100_shares_phase2"
+    df["expected_pnl_for_pf"] = _numeric_series(df, pnl_source)
+
+    shortable_col = "shortable" if "shortable" in df.columns else "is_shortable"
+    shortable = _bool_series(df, shortable_col)
+    day_trade = _bool_series(df, "day_trade")
+    ng = _bool_series(df, "ng")
+    available_shares = _numeric_series(df, "day_trade_available_shares")
+
+    executable_short = (
+        ~ng
+        & (
+            shortable
+            | (day_trade & ~shortable & (available_shares > 0))
+        )
+    )
+
+    tdf = df[
+        (df[date_col] >= GROK_PF_START_DATE)
+        & df["ml_prob_effective"].notna()
+        & df["expected_pnl_for_pf"].notna()
+        & executable_short
+        & (df["ml_prob_effective"] < GROK_PROB_SHORT_THRESHOLD)
     ].copy()
+    tdf["credit_bucket"] = np.where(shortable.loc[tdf.index], "制度", "いちにち除0")
 
-    # prob方向の自動検出
-    prob_dir = _detect_prob_direction(shortable)
-    print(f"  prob方向: {prob_dir} ({'HIGH prob=SHORT有利' if prob_dir == 'high' else 'LOW prob=SHORT有利'})")
-    print(f"  shortable銘柄: {len(shortable)}件, {shortable['selection_date'].nunique()}日")
+    print(
+        "  ".join(
+            [
+                f"母集団: {GROK_PF_START_DATE.date()}以降",
+                f"pnl={pnl_source}",
+                f"SHORT=prob<{GROK_PROB_SHORT_THRESHOLD}",
+                "制度+いちにち残あり",
+                f"trades={len(tdf)}",
+            ]
+        )
+    )
 
-    # 日次Top3選定
-    trades = []
-    for date, grp in shortable.groupby("selection_date"):
-        if prob_dir == "high":
-            top = grp.nlargest(3, "ml_prob")
-        else:
-            top = grp.nsmallest(3, "ml_prob")
-        trades.append(top)
-    tdf = pd.concat(trades)
-    print(f"  Top3トレード: {len(tdf)}件")
+    def build_result(subset: pd.DataFrame, label: str) -> dict:
+        result = {}
+        print(f"  [{label}]")
+        for dow in range(5):
+            sub = subset[subset[date_col].dt.weekday == dow]
+            pnl = sub["expected_pnl_for_pf"]
+            stats = _calc_stats(pnl)
+            result[DOW_LABELS[dow]] = stats
+            pf_str = f"PF{stats['pf']}" if stats["pf"] else "N/A"
+            print(f"    {DOW_LABELS[dow]}: N={stats['n']}, WR={stats['wr']}%, {pf_str}, 累計{stats['total_pnl']:+,}円")
 
-    result = {}
-    for dow in range(5):
-        sub = tdf[pd.to_datetime(tdf["selection_date"]).dt.weekday == dow]
-        pnl = sub["profit_per_100_shares_phase2"]
-        stats = _calc_stats(pnl)
-        result[DOW_LABELS[dow]] = stats
-        pf_str = f"PF{stats['pf']}" if stats["pf"] else "N/A"
-        print(f"  {DOW_LABELS[dow]}: N={stats['n']}, WR={stats['wr']}%, {pf_str}, 累計{stats['total_pnl']:+,}円")
+        overall = _calc_stats(subset["expected_pnl_for_pf"])
+        result["overall"] = overall
+        result["_meta"] = {
+            "definition": "recommendations_aligned_short",
+            "period_start": GROK_PF_START_DATE.date().isoformat(),
+            "pnl_source": pnl_source,
+            "prob_threshold": GROK_PROB_SHORT_THRESHOLD,
+            "credit_filter": label,
+            "total_trades": len(subset),
+        }
+        return result
 
-    overall = _calc_stats(tdf["profit_per_100_shares_phase2"])
-    result["overall"] = overall
-    result["_meta"] = {"prob_direction": prob_dir, "total_trades": len(tdf)}
-    return result
+    return {
+        "all": build_result(tdf, "制度 + いちにち残あり（NG除外）"),
+        "seido": build_result(tdf[tdf["credit_bucket"] == "制度"], "制度"),
+        "daytrade": build_result(tdf[tdf["credit_bucket"] == "いちにち除0"], "いちにち除0"),
+    }
 
 
 # ── 2. Weekday Edge 20銘柄 ──
@@ -411,7 +449,10 @@ def main() -> int:
     print("Generate Strategy × Weekday Matrix")
     print("=" * 60)
 
-    grok = compute_grok_weekday()
+    grok_parts = compute_grok_weekday()
+    grok = grok_parts["all"]
+    grok_seido = grok_parts["seido"]
+    grok_daytrade = grok_parts["daytrade"]
     weekday_edge = compute_weekday_edge()
     pairs = compute_pairs_weekday()
     calendar = compute_calendar()
@@ -434,8 +475,18 @@ def main() -> int:
         "strategies": {
             "grok_short": {
                 "label": "grok SHORT",
-                "description": "prob<0.35 制度/いちにち",
+                "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / 制度+いちにち残あり",
                 "by_weekday": grok,
+            },
+            "grok_short_seido": {
+                "label": "Grok 制度",
+                "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / 制度信用",
+                "by_weekday": grok_seido,
+            },
+            "grok_short_daytrade": {
+                "label": "Grok いちにち除0",
+                "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / いちにち信用 残あり",
+                "by_weekday": grok_daytrade,
             },
             "weekday_edge": {
                 "label": "曜日アノマリー",
@@ -466,14 +517,20 @@ def main() -> int:
 
     for dow_label in DOW_LABELS:
         g = grok.get(dow_label, {})
+        gs = grok_seido.get(dow_label, {})
+        gd = grok_daytrade.get(dow_label, {})
         w = weekday_edge.get(dow_label, {})
         p = pairs.get(dow_label, {})
         g_pf = g.get("pf")
+        gs_pf = gs.get("pf")
+        gd_pf = gd.get("pf")
         w_pf = w.get("pf")
         p_pf = p.get("pf")
 
         matrix["ratings"][dow_label] = {
             "grok_short": rating(g_pf),
+            "grok_short_seido": rating(gs_pf),
+            "grok_short_daytrade": rating(gd_pf),
             "weekday_edge": rating(w_pf),
             "pairs": rating(p_pf),
         }
