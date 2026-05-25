@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-23T12:03:55.060838",
+  "generated_at": "2026-05-25T10:11:10.480668",
   "weekdays": [
     "月",
     "火",
@@ -10,53 +10,169 @@
   "strategies": {
     "grok_short": {
       "label": "grok SHORT",
-      "description": "prob<0.35 制度/いちにち",
+      "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / 制度+いちにち残あり",
       "by_weekday": {
         "月": {
-          "n": 59,
-          "wins": 36,
-          "wr": 61.0,
-          "pf": 0.46,
-          "total_pnl": -110300
+          "n": 124,
+          "wins": 59,
+          "wr": 47.6,
+          "pf": 1.07,
+          "total_pnl": 17650
         },
         "火": {
-          "n": 67,
-          "wins": 49,
-          "wr": 73.1,
-          "pf": 5.38,
-          "total_pnl": 325100
+          "n": 120,
+          "wins": 77,
+          "wr": 64.2,
+          "pf": 8.85,
+          "total_pnl": 1066550
         },
         "水": {
-          "n": 61,
-          "wins": 28,
-          "wr": 45.9,
-          "pf": 1.76,
-          "total_pnl": 104400
+          "n": 107,
+          "wins": 53,
+          "wr": 49.5,
+          "pf": 1.9,
+          "total_pnl": 175300
         },
         "木": {
-          "n": 72,
-          "wins": 42,
-          "wr": 58.3,
-          "pf": 1.5,
-          "total_pnl": 85300
+          "n": 127,
+          "wins": 72,
+          "wr": 56.7,
+          "pf": 2.1,
+          "total_pnl": 236629
         },
         "金": {
-          "n": 62,
-          "wins": 33,
-          "wr": 53.2,
-          "pf": 0.75,
-          "total_pnl": -67900
+          "n": 125,
+          "wins": 53,
+          "wr": 42.4,
+          "pf": 0.67,
+          "total_pnl": -167300
         },
         "overall": {
-          "n": 321,
-          "wins": 188,
-          "wr": 58.6,
-          "pf": 1.39,
-          "total_pnl": 336600
+          "n": 603,
+          "wins": 314,
+          "wr": 52.1,
+          "pf": 2.01,
+          "total_pnl": 1328829
         },
         "_meta": {
-          "prob_direction": "low",
-          "total_trades": 321
+          "definition": "recommendations_aligned_short",
+          "period_start": "2025-12-01",
+          "pnl_source": "seg_1530",
+          "prob_threshold": 0.45,
+          "credit_filter": "制度 + いちにち残あり（NG除外）",
+          "total_trades": 603
+        }
+      }
+    },
+    "grok_short_seido": {
+      "label": "Grok 制度",
+      "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / 制度信用",
+      "by_weekday": {
+        "月": {
+          "n": 70,
+          "wins": 33,
+          "wr": 47.1,
+          "pf": 1.63,
+          "total_pnl": 88550
+        },
+        "火": {
+          "n": 54,
+          "wins": 33,
+          "wr": 61.1,
+          "pf": 8.5,
+          "total_pnl": 624650
+        },
+        "水": {
+          "n": 44,
+          "wins": 22,
+          "wr": 50.0,
+          "pf": 1.37,
+          "total_pnl": 25500
+        },
+        "木": {
+          "n": 67,
+          "wins": 38,
+          "wr": 56.7,
+          "pf": 2.76,
+          "total_pnl": 199329
+        },
+        "金": {
+          "n": 65,
+          "wins": 25,
+          "wr": 38.5,
+          "pf": 0.8,
+          "total_pnl": -52100
+        },
+        "overall": {
+          "n": 300,
+          "wins": 151,
+          "wr": 50.3,
+          "pf": 2.33,
+          "total_pnl": 885929
+        },
+        "_meta": {
+          "definition": "recommendations_aligned_short",
+          "period_start": "2025-12-01",
+          "pnl_source": "seg_1530",
+          "prob_threshold": 0.45,
+          "credit_filter": "制度",
+          "total_trades": 300
+        }
+      }
+    },
+    "grok_short_daytrade": {
+      "label": "Grok いちにち除0",
+      "description": "recommendations準拠: prob<0.45 / 2025-12-01以降 / いちにち信用 残あり",
+      "by_weekday": {
+        "月": {
+          "n": 54,
+          "wins": 26,
+          "wr": 48.1,
+          "pf": 0.44,
+          "total_pnl": -70900
+        },
+        "火": {
+          "n": 66,
+          "wins": 44,
+          "wr": 66.7,
+          "pf": 9.4,
+          "total_pnl": 441900
+        },
+        "水": {
+          "n": 63,
+          "wins": 31,
+          "wr": 49.2,
+          "pf": 2.19,
+          "total_pnl": 149800
+        },
+        "木": {
+          "n": 60,
+          "wins": 34,
+          "wr": 56.7,
+          "pf": 1.36,
+          "total_pnl": 37300
+        },
+        "金": {
+          "n": 60,
+          "wins": 28,
+          "wr": 46.7,
+          "pf": 0.53,
+          "total_pnl": -115200
+        },
+        "overall": {
+          "n": 303,
+          "wins": 163,
+          "wr": 53.8,
+          "pf": 1.68,
+          "total_pnl": 442900
+        },
+        "_meta": {
+          "definition": "recommendations_aligned_short",
+          "period_start": "2025-12-01",
+          "pnl_source": "seg_1530",
+          "prob_threshold": 0.45,
+          "credit_filter": "いちにち除0",
+          "total_trades": 303
         }
       }
     },
@@ -196,27 +312,37 @@
   },
   "ratings": {
     "月": {
-      "grok_short": "×",
+      "grok_short": "△",
+      "grok_short_seido": "○",
+      "grok_short_daytrade": "×",
       "weekday_edge": "○",
       "pairs": "△"
     },
     "火": {
       "grok_short": "◎",
+      "grok_short_seido": "◎",
+      "grok_short_daytrade": "◎",
       "weekday_edge": "-",
       "pairs": "○"
     },
     "水": {
       "grok_short": "○",
+      "grok_short_seido": "△",
+      "grok_short_daytrade": "○",
       "weekday_edge": "○",
       "pairs": "○"
     },
     "木": {
       "grok_short": "○",
+      "grok_short_seido": "○",
+      "grok_short_daytrade": "△",
       "weekday_edge": "-",
       "pairs": "△"
     },
     "金": {
       "grok_short": "×",
+      "grok_short_seido": "×",
+      "grok_short_daytrade": "×",
       "weekday_edge": "-",
       "pairs": "○"
     }
