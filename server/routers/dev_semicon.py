@@ -27,6 +27,7 @@ FUNDAMENTALS_PATH = SEMICON_OUT / "yfinance_fundamentals_summary.csv"
 REPORT_PATH = SEMICON_OUT / "ai_semiconductor_yf_entry_risk_report.html"
 BACKTEST_SUMMARY_PATH = SEMICON_OUT / "semicon_trend_backtest_summary.csv"
 BACKTEST_REPORT_PATH = SEMICON_OUT / "semicon_trend_backtest_report.html"
+HOLD_STOCKS_PATH = ROOT / "data" / "csv" / "hold_stocks.csv"
 
 SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
 SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
@@ -125,6 +126,11 @@ SEGMENT_GROUPS = {
 
 INDICATOR_CODES = {"6857", "6146", "8035", "6920", "7735", "285A"}
 HEAVY_WATCH_CODES = {"4062", "5801"}
+UNIVERSE_BY_CODE = {stock.code: stock for stock in UNIVERSE}
+HOLD_EXPOSURE_EXTRA_BY_CODE = {
+    "6055": SemiconStock("6055", "ジャパンマテリアル", "B", "特殊ガス/半導体材料"),
+    "6323": SemiconStock("6323", "ローツェ", "A", "搬送装置/半導体装置"),
+}
 
 
 def _s3_client():
@@ -655,6 +661,49 @@ def _load_backtest_summary() -> dict[str, Any]:
     }
 
 
+def _load_hold_short_exposures() -> list[dict[str, Any]]:
+    if not HOLD_STOCKS_PATH.exists():
+        return []
+    try:
+        df = pd.read_csv(HOLD_STOCKS_PATH)
+    except Exception:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for _, row in df.iterrows():
+        code = str(row.get("コード", "")).strip()
+        side = str(row.get("売買", "")).strip()
+        stock = UNIVERSE_BY_CODE.get(code) or HOLD_EXPOSURE_EXTRA_BY_CODE.get(code)
+        if stock is None or side != "売建":
+            continue
+
+        pnl = _parse_number(row.get("評価損益額合計(円)"))
+        pnl_pct = _parse_number(row.get("評価損益率(%)"))
+        qty = _parse_number(row.get("建玉数量合計(株/口)"))
+        current_price = _parse_number(row.get("時価(円)"))
+        entry_value = _parse_number(row.get("建玉金額合計(円)"))
+        risk_level = "高" if (pnl_pct is not None and pnl_pct <= -20) else "中" if (pnl_pct is not None and pnl_pct <= -10) else "低"
+        note = "AI/半導体周辺テーマの売建。踏み上げ警戒" if risk_level in {"高", "中"} else "テーマ該当売建"
+        rows.append(
+            {
+                "code": code,
+                "ticker": f"{code}.T",
+                "name": str(row.get("銘柄名", stock.name)).strip(),
+                "segment": stock.segment,
+                "label": stock.label,
+                "side": side,
+                "quantity": qty,
+                "current_price": current_price,
+                "entry_value": entry_value,
+                "pnl": pnl,
+                "pnl_pct": pnl_pct,
+                "risk_level": risk_level,
+                "note": note,
+            }
+        )
+    return sorted(rows, key=lambda r: (_safe_float(r.get("pnl")) or 0.0))
+
+
 def _build_payload_from_report() -> dict[str, Any] | None:
     if not REPORT_PATH.exists():
         return None
@@ -768,6 +817,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
             ],
         },
         "backtest": _load_backtest_summary(),
+        "hold_short_exposures": _load_hold_short_exposures(),
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
             "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
@@ -804,6 +854,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "report_available": bool(data.get("report_available")),
             "report_url": data.get("report_url"),
             "backtest": data.get("backtest") or _load_backtest_summary(),
+            "hold_short_exposures": data.get("hold_short_exposures") or _load_hold_short_exposures(),
             "source": source,
             "source_environment": APP_ENV,
             "source_data_mode": SEMICON_DATA_SOURCE,
@@ -932,6 +983,7 @@ def build_payload() -> dict[str, Any]:
         "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
         "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
         "backtest": _load_backtest_summary(),
+        "hold_short_exposures": _load_hold_short_exposures(),
         "counts": {
             "buy": sum(1 for s in signals if s["decision"] == "BUY_CANDIDATE"),
             "watch": sum(1 for s in signals if s["decision"] == "WATCH"),
