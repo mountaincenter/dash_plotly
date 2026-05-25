@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from io import BytesIO
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -31,6 +32,7 @@ HOLD_STOCKS_PATH = ROOT / "data" / "csv" / "hold_stocks.csv"
 
 SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
 SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
+SEMICON_PRICE_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
 
 S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -58,6 +60,7 @@ S3_ENTRY_KEY = "analysis/semicon_entry_decisions.json"
 S3_DOMESTIC_KEY = "analysis/semicon_domestic_candidates.json"
 S3_REPORT_KEY = "analysis/semicon_entry_risk_report.html"
 S3_BACKTEST_REPORT_KEY = "analysis/semicon_trend_backtest_report.html"
+S3_SEMICON_PRICE_KEY = "parquet/granville/prices_topix.parquet"
 
 router = APIRouter()
 
@@ -178,6 +181,95 @@ def _read_semicon_html(local_path: Path, s3_key: str) -> str | None:
     if not local_path.exists():
         return None
     return local_path.read_text(encoding="utf-8")
+
+
+def _read_semicon_price_source() -> pd.DataFrame | None:
+    if USE_S3_DATA_SOURCE:
+        try:
+            obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=S3_SEMICON_PRICE_KEY)
+            return pd.read_parquet(BytesIO(obj["Body"].read()))
+        except Exception:
+            return None
+    if SEMICON_PRICE_PATH.exists():
+        try:
+            return pd.read_parquet(SEMICON_PRICE_PATH)
+        except Exception:
+            return None
+    return None
+
+
+def _latest_price_metrics_from_price_source() -> tuple[dict[str, dict[str, Any]], str | None]:
+    df = _read_semicon_price_source()
+    if df is None or df.empty:
+        return {}, None
+    required = {"date", "ticker", "Open", "High", "Low", "Close"}
+    if not required.issubset(df.columns):
+        return {}, None
+
+    prices = df[list(required)].copy()
+    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
+    prices = prices.dropna(subset=["date", "ticker", "Close"])
+    if prices.empty:
+        return {}, None
+    prices["code"] = prices["ticker"].astype(str).str.replace(".T", "", regex=False).str[:4]
+    prices = prices.sort_values(["code", "date"])
+
+    metrics: dict[str, dict[str, Any]] = {}
+    for code, g in prices.groupby("code", sort=False):
+        g = g.dropna(subset=["Close"]).sort_values("date")
+        if g.empty:
+            continue
+        latest = g.iloc[-1]
+        close = _safe_float(latest.get("Close"))
+        if close is None:
+            continue
+        open_price = _safe_float(latest.get("Open"))
+        high_price = _safe_float(latest.get("High"))
+        low_price = _safe_float(latest.get("Low"))
+
+        def pct_ago(days: int) -> float | None:
+            if len(g) <= days:
+                return None
+            prev = _safe_float(g.iloc[-1 - days].get("Close"))
+            return _pct(close, prev) if prev else None
+
+        ma25 = _safe_float(g["Close"].tail(25).mean()) if len(g) >= 25 else None
+        hi20 = _safe_float(g["High"].tail(20).max()) if len(g) >= 20 else None
+        prev_high = _safe_float(g.iloc[-2].get("High")) if len(g) >= 2 else None
+        metrics[code] = {
+            "date": latest["date"].strftime("%Y-%m-%d"),
+            "open": open_price,
+            "high": high_price,
+            "low": low_price,
+            "close": close,
+            "ret5": pct_ago(5),
+            "ret20": pct_ago(20),
+            "vs25": _pct(close, ma25) if ma25 else None,
+            "dist20hi": _pct(close, hi20) if hi20 else None,
+            "entry_trigger_price": prev_high,
+        }
+
+    max_date = prices["date"].max()
+    data_date = max_date.strftime("%Y-%m-%d") if pd.notna(max_date) else None
+    return metrics, data_date
+
+
+def _enrich_signals_with_price_source(signals: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str | None]:
+    price_metrics, data_date = _latest_price_metrics_from_price_source()
+    if not price_metrics:
+        return signals, None
+
+    enriched: list[dict[str, Any]] = []
+    for signal in signals:
+        if not isinstance(signal, dict):
+            continue
+        row = dict(signal)
+        code = str(row.get("code") or "").strip()
+        metrics = price_metrics.get(code)
+        if metrics:
+            row.update(metrics)
+        enriched.append(row)
+    return enriched, data_date
 
 
 def _safe_float(v: object) -> float | None:
@@ -833,6 +925,8 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
         signals = data.get("rows") or data.get("candidates") or []
     if not isinstance(signals, list):
         signals = []
+    signals, price_data_date = _enrich_signals_with_price_source(signals)
+    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
 
     market = data.get("market")
     if not isinstance(market, dict):
@@ -845,11 +939,13 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
     payload.update(
         {
             "generated_at": data.get("generated_at"),
-            "data_date": data.get("data_date") or data.get("as_of") or data.get("date"),
+            "data_date": price_data_date or data.get("data_date") or data.get("as_of") or data.get("date"),
+            "price_data_date": price_data_date,
+            "price_source": S3_SEMICON_PRICE_KEY if USE_S3_DATA_SOURCE else str(SEMICON_PRICE_PATH.relative_to(ROOT)),
             "market": market,
             "signals": signals,
-            "segment_strength": data.get("segment_strength") or _build_segment_strength(signals),
-            "bucket_summary": data.get("bucket_summary") or _bucket_summary(signals),
+            "segment_strength": _build_segment_strength(signals),
+            "bucket_summary": _bucket_summary(signals),
             "overseas": data.get("overseas") or [],
             "report_available": bool(data.get("report_available")),
             "report_url": data.get("report_url"),
@@ -861,8 +957,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
             "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
             "us_pending": us_pending,
-            "counts": data.get("counts")
-            or {
+            "counts": {
                 "buy": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "BUY_CANDIDATE"),
                 "watch": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "WATCH"),
                 "avoid": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "AVOID"),
