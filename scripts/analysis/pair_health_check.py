@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.pipeline.generate_pairs_signals import EXCLUDE_PAIRS, EXCLUDE_SECTORS, PF_MIN, V2_PAIRS  # noqa: E402
+from scripts.pipeline.generate_pairs_signals import EXCLUDE_PAIRS, EXCLUDE_SECTORS, PF_MIN, V2_PAIRS, load_names  # noqa: E402
 from scripts.analysis.pair_mece_leg_momentum import (  # noqa: E402
     add_sector_features,
     build_raw_signals,
@@ -189,12 +189,14 @@ def build_summary(rebuild: bool) -> tuple[pd.DataFrame, pd.DataFrame]:
     raw["pair"] = raw["tk1"] + "/" + raw["tk2"]
     raw["same_sector"] = raw["long_sector"].eq(raw["short_sector"])
 
-    meta = pair_meta()
+    meta = pair_meta().drop(columns=["tk1", "tk2"], errors="ignore")
+    names = load_names()
     health = load_health_state().get("pairs", {})
     rows = []
     details = []
     for pair, g in raw.sort_values("trade_date").groupby("pair"):
         g = g.copy()
+        tk1, tk2 = pair.split("/", 1)
         full = stats(g["pnl"])
         y2026 = g[g["trade_date"].dt.year == 2026]
         s2026 = stats(y2026["pnl"])
@@ -207,6 +209,10 @@ def build_summary(rebuild: bool) -> tuple[pd.DataFrame, pd.DataFrame]:
 
         row = {
             "pair": pair,
+            "tk1": tk1,
+            "tk2": tk2,
+            "name1": names.get(tk1, tk1),
+            "name2": names.get(tk2, tk2),
             "long/short例": f"{g.iloc[-1]['long_tk']} / {g.iloc[-1]['short_tk']}",
             "業種": f"{g.iloc[-1]['long_sector']} / {g.iloc[-1]['short_sector']}",
             "same_sector": bool(g["same_sector"].iloc[-1]),
@@ -263,6 +269,10 @@ def to_jsonable(value: object) -> object:
 def candidate_record(row: pd.Series, candidate_type: str, reason: str) -> dict[str, object]:
     keys = [
         "pair",
+        "tk1",
+        "tk2",
+        "name1",
+        "name2",
         "long/short例",
         "業種",
         "判定",
