@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from io import BytesIO
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -32,35 +31,16 @@ HOLD_STOCKS_PATH = ROOT / "data" / "csv" / "hold_stocks.csv"
 
 SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
 SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
-SEMICON_PRICE_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
 
 S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("STAGE") or "local").strip().lower()
-RAW_SEMICON_DATA_SOURCE = (os.getenv("SEMICON_DATA_SOURCE") or "").strip().lower()
-if RAW_SEMICON_DATA_SOURCE in {"local", "s3"}:
-    SEMICON_DATA_SOURCE = RAW_SEMICON_DATA_SOURCE
-    SEMICON_DATA_SOURCE_REASON = "SEMICON_DATA_SOURCE"
-    SEMICON_DATA_SOURCE_ERROR = None
-elif RAW_SEMICON_DATA_SOURCE:
-    SEMICON_DATA_SOURCE = "local"
-    SEMICON_DATA_SOURCE_REASON = "invalid_SEMICON_DATA_SOURCE"
-    SEMICON_DATA_SOURCE_ERROR = f"invalid SEMICON_DATA_SOURCE={RAW_SEMICON_DATA_SOURCE!r}; expected local or s3"
-elif APP_ENV in {"production", "prod"}:
-    SEMICON_DATA_SOURCE = "s3"
-    SEMICON_DATA_SOURCE_REASON = "APP_ENV"
-    SEMICON_DATA_SOURCE_ERROR = None
-else:
-    SEMICON_DATA_SOURCE = "local"
-    SEMICON_DATA_SOURCE_REASON = "default_local"
-    SEMICON_DATA_SOURCE_ERROR = None
-USE_S3_DATA_SOURCE = SEMICON_DATA_SOURCE == "s3"
+USE_S3_ARTIFACTS = APP_ENV in {"production", "prod"}
 
 S3_ENTRY_KEY = "analysis/semicon_entry_decisions.json"
 S3_DOMESTIC_KEY = "analysis/semicon_domestic_candidates.json"
 S3_REPORT_KEY = "analysis/semicon_entry_risk_report.html"
 S3_BACKTEST_REPORT_KEY = "analysis/semicon_trend_backtest_report.html"
-S3_SEMICON_PRICE_KEY = "parquet/granville/prices_topix.parquet"
 
 router = APIRouter()
 
@@ -164,13 +144,13 @@ def _read_s3_json(key: str) -> dict[str, Any] | None:
 
 
 def _read_semicon_json(local_path: Path, s3_key: str) -> dict[str, Any] | None:
-    if USE_S3_DATA_SOURCE:
+    if USE_S3_ARTIFACTS:
         return _read_s3_json(s3_key)
     return _read_local_json(local_path)
 
 
 def _read_semicon_html(local_path: Path, s3_key: str) -> str | None:
-    if USE_S3_DATA_SOURCE:
+    if USE_S3_ARTIFACTS:
         if not S3_BUCKET:
             return None
         try:
@@ -181,95 +161,6 @@ def _read_semicon_html(local_path: Path, s3_key: str) -> str | None:
     if not local_path.exists():
         return None
     return local_path.read_text(encoding="utf-8")
-
-
-def _read_semicon_price_source() -> pd.DataFrame | None:
-    if USE_S3_DATA_SOURCE:
-        try:
-            obj = _s3_client().get_object(Bucket=S3_BUCKET, Key=S3_SEMICON_PRICE_KEY)
-            return pd.read_parquet(BytesIO(obj["Body"].read()))
-        except Exception:
-            return None
-    if SEMICON_PRICE_PATH.exists():
-        try:
-            return pd.read_parquet(SEMICON_PRICE_PATH)
-        except Exception:
-            return None
-    return None
-
-
-def _latest_price_metrics_from_price_source() -> tuple[dict[str, dict[str, Any]], str | None]:
-    df = _read_semicon_price_source()
-    if df is None or df.empty:
-        return {}, None
-    required = {"date", "ticker", "Open", "High", "Low", "Close"}
-    if not required.issubset(df.columns):
-        return {}, None
-
-    prices = df[list(required)].copy()
-    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
-    prices = prices.dropna(subset=["date", "ticker", "Close"])
-    if prices.empty:
-        return {}, None
-    prices["code"] = prices["ticker"].astype(str).str.replace(".T", "", regex=False).str[:4]
-    prices = prices.sort_values(["code", "date"])
-
-    metrics: dict[str, dict[str, Any]] = {}
-    for code, g in prices.groupby("code", sort=False):
-        g = g.dropna(subset=["Close"]).sort_values("date")
-        if g.empty:
-            continue
-        latest = g.iloc[-1]
-        close = _safe_float(latest.get("Close"))
-        if close is None:
-            continue
-        open_price = _safe_float(latest.get("Open"))
-        high_price = _safe_float(latest.get("High"))
-        low_price = _safe_float(latest.get("Low"))
-
-        def pct_ago(days: int) -> float | None:
-            if len(g) <= days:
-                return None
-            prev = _safe_float(g.iloc[-1 - days].get("Close"))
-            return _pct(close, prev) if prev else None
-
-        ma25 = _safe_float(g["Close"].tail(25).mean()) if len(g) >= 25 else None
-        hi20 = _safe_float(g["High"].tail(20).max()) if len(g) >= 20 else None
-        prev_high = _safe_float(g.iloc[-2].get("High")) if len(g) >= 2 else None
-        metrics[code] = {
-            "date": latest["date"].strftime("%Y-%m-%d"),
-            "open": open_price,
-            "high": high_price,
-            "low": low_price,
-            "close": close,
-            "ret5": pct_ago(5),
-            "ret20": pct_ago(20),
-            "vs25": _pct(close, ma25) if ma25 else None,
-            "dist20hi": _pct(close, hi20) if hi20 else None,
-            "entry_trigger_price": prev_high,
-        }
-
-    max_date = prices["date"].max()
-    data_date = max_date.strftime("%Y-%m-%d") if pd.notna(max_date) else None
-    return metrics, data_date
-
-
-def _enrich_signals_with_price_source(signals: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str | None]:
-    price_metrics, data_date = _latest_price_metrics_from_price_source()
-    if not price_metrics:
-        return signals, None
-
-    enriched: list[dict[str, Any]] = []
-    for signal in signals:
-        if not isinstance(signal, dict):
-            continue
-        row = dict(signal)
-        code = str(row.get("code") or "").strip()
-        metrics = price_metrics.get(code)
-        if metrics:
-            row.update(metrics)
-        enriched.append(row)
-    return enriched, data_date
 
 
 def _safe_float(v: object) -> float | None:
@@ -925,7 +816,6 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
         signals = data.get("rows") or data.get("candidates") or []
     if not isinstance(signals, list):
         signals = []
-    signals, price_data_date = _enrich_signals_with_price_source(signals)
     signals = _attach_entry_decisions(_attach_trade_buckets(signals))
 
     market = data.get("market")
@@ -939,9 +829,9 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
     payload.update(
         {
             "generated_at": data.get("generated_at"),
-            "data_date": price_data_date or data.get("data_date") or data.get("as_of") or data.get("date"),
-            "price_data_date": price_data_date,
-            "price_source": S3_SEMICON_PRICE_KEY if USE_S3_DATA_SOURCE else str(SEMICON_PRICE_PATH.relative_to(ROOT)),
+            "data_date": data.get("data_date") or data.get("price_data_date") or data.get("as_of") or data.get("date"),
+            "price_data_date": data.get("price_data_date"),
+            "price_source": data.get("price_source"),
             "market": market,
             "signals": signals,
             "segment_strength": _build_segment_strength(signals),
@@ -953,9 +843,9 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "hold_short_exposures": data.get("hold_short_exposures") or _load_hold_short_exposures(),
             "source": source,
             "source_environment": APP_ENV,
-            "source_data_mode": SEMICON_DATA_SOURCE,
-            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
-            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+            "source_data_mode": "s3" if USE_S3_ARTIFACTS else "local",
+            "source_data_mode_reason": "APP_ENV",
+            "source_data_mode_error": None,
             "us_pending": us_pending,
             "counts": {
                 "buy": sum(1 for s in signals if isinstance(s, dict) and s.get("decision") == "BUY_CANDIDATE"),
@@ -969,17 +859,34 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
 
 
 def _build_payload_from_environment_json() -> dict[str, Any] | None:
+    candidates: list[tuple[pd.Timestamp, pd.Timestamp, str, bool, dict[str, Any]]] = []
+
     entry = _read_semicon_json(SEMICON_ENTRY_JSON, S3_ENTRY_KEY)
     if entry is not None:
-        source = S3_ENTRY_KEY if USE_S3_DATA_SOURCE else SEMICON_ENTRY_JSON.name
-        return _normalize_semicon_payload(entry, source)
+        source = S3_ENTRY_KEY if USE_S3_ARTIFACTS else SEMICON_ENTRY_JSON.name
+        data_ts = pd.to_datetime(entry.get("price_data_date") or entry.get("data_date") or entry.get("as_of") or entry.get("date"), errors="coerce")
+        gen_ts = pd.to_datetime(entry.get("artifact_generated_at") or entry.get("generated_at"), errors="coerce")
+        candidates.append((data_ts, gen_ts, source, False, entry))
 
     domestic = _read_semicon_json(SEMICON_DOMESTIC_JSON, S3_DOMESTIC_KEY)
     if domestic is not None:
-        source = S3_DOMESTIC_KEY if USE_S3_DATA_SOURCE else SEMICON_DOMESTIC_JSON.name
-        return _normalize_semicon_payload(domestic, source, us_pending=True)
+        source = S3_DOMESTIC_KEY if USE_S3_ARTIFACTS else SEMICON_DOMESTIC_JSON.name
+        data_ts = pd.to_datetime(domestic.get("price_data_date") or domestic.get("data_date") or domestic.get("as_of") or domestic.get("date"), errors="coerce")
+        gen_ts = pd.to_datetime(domestic.get("artifact_generated_at") or domestic.get("generated_at"), errors="coerce")
+        candidates.append((data_ts, gen_ts, source, True, domestic))
 
-    return None
+    if not candidates:
+        return None
+
+    def sort_key(item: tuple[pd.Timestamp, pd.Timestamp, str, bool, dict[str, Any]]) -> tuple[pd.Timestamp, pd.Timestamp, int]:
+        data_ts, gen_ts, _, us_pending, _ = item
+        safe_data = data_ts if not pd.isna(data_ts) else pd.Timestamp.min
+        safe_gen = gen_ts if not pd.isna(gen_ts) else pd.Timestamp.min
+        entry_tie_breaker = 0 if us_pending else 1
+        return safe_data, safe_gen, entry_tie_breaker
+
+    _, _, source, us_pending, data = max(candidates, key=sort_key)
+    return _normalize_semicon_payload(data, source, us_pending=us_pending)
 
 
 def build_payload() -> dict[str, Any]:
@@ -987,7 +894,7 @@ def build_payload() -> dict[str, Any]:
     if env_payload is not None:
         return env_payload
 
-    if USE_S3_DATA_SOURCE:
+    if USE_S3_ARTIFACTS:
         return {
             "generated_at": None,
             "data_date": None,
@@ -999,18 +906,18 @@ def build_payload() -> dict[str, Any]:
             "report_available": False,
             "source": "s3_json_missing",
             "source_environment": APP_ENV,
-            "source_data_mode": SEMICON_DATA_SOURCE,
-            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
-            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+            "source_data_mode": "s3",
+            "source_data_mode_reason": "APP_ENV",
+            "source_data_mode_error": None,
             "counts": {"buy": 0, "watch": 0, "avoid": 0, "total": 0},
         }
 
     report_payload = _build_payload_from_report()
     if report_payload is not None:
         report_payload["source_environment"] = APP_ENV
-        report_payload["source_data_mode"] = SEMICON_DATA_SOURCE
-        report_payload["source_data_mode_reason"] = SEMICON_DATA_SOURCE_REASON
-        report_payload["source_data_mode_error"] = SEMICON_DATA_SOURCE_ERROR
+        report_payload["source_data_mode"] = "local"
+        report_payload["source_data_mode_reason"] = "APP_ENV"
+        report_payload["source_data_mode_error"] = None
         return report_payload
 
     if not PRICES_PATH.exists():
@@ -1022,9 +929,9 @@ def build_payload() -> dict[str, Any]:
             "overseas": [],
             "report_available": REPORT_PATH.exists(),
             "source_environment": APP_ENV,
-            "source_data_mode": SEMICON_DATA_SOURCE,
-            "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
-            "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+            "source_data_mode": "local",
+            "source_data_mode_reason": "APP_ENV",
+            "source_data_mode_error": None,
         }
 
     prices = pd.read_parquet(PRICES_PATH).sort_index()
@@ -1074,9 +981,9 @@ def build_payload() -> dict[str, Any]:
         "report_url": "/api/dev/semicon/report",
         "source": "prices_raw.parquet",
         "source_environment": APP_ENV,
-        "source_data_mode": SEMICON_DATA_SOURCE,
-        "source_data_mode_reason": SEMICON_DATA_SOURCE_REASON,
-        "source_data_mode_error": SEMICON_DATA_SOURCE_ERROR,
+        "source_data_mode": "local",
+        "source_data_mode_reason": "APP_ENV",
+        "source_data_mode_error": None,
         "backtest": _load_backtest_summary(),
         "hold_short_exposures": _load_hold_short_exposures(),
         "counts": {
