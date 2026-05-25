@@ -1043,6 +1043,8 @@ jobs:
           echo "============================================================"
 
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}prices_topix500_oc.parquet" "data/parquet/prices_topix500_oc.parquet" --only-show-errors || true
+          mkdir -p data/parquet/granville
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}granville/prices_topix.parquet" "data/parquet/granville/prices_topix.parquet" --only-show-errors
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors || true
 
           python3 scripts/analysis/semiconductor/backtest_semicon_trend.py || echo "⚠️ Semicon backtest generation failed (non-fatal)"
