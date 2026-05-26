@@ -38,7 +38,7 @@ CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 ETF_CODE = "13060"
 TOPIX500_CLASSES = ["TOPIX Core30", "TOPIX Large70", "TOPIX Mid400"]
 BACKTEST_START = "2022-04-01"
-TOPIX500_PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjV"]
+TOPIX500_PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC"]
 
 
 def is_pre_sq4() -> bool:

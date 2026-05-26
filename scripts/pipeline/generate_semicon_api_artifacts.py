@@ -21,7 +21,7 @@ from server.routers import dev_semicon  # noqa: E402
 OUT_DIR = ROOT / "data" / "analysis"
 PRICE_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
 PRICE_SOURCE_LABEL = "data/parquet/prices_topix500_oc.parquet"
-PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjV"]
+PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC"]
 
 
 def safe_float(value: Any) -> float | None:
