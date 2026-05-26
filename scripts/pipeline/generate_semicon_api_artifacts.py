@@ -19,8 +19,9 @@ from server.routers import dev_semicon  # noqa: E402
 
 
 OUT_DIR = ROOT / "data" / "analysis"
-PRICE_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
-PRICE_SOURCE_LABEL = "data/parquet/granville/prices_topix.parquet"
+PRICE_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
+PRICE_SOURCE_LABEL = "data/parquet/prices_topix500_oc.parquet"
+PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjV"]
 
 
 def safe_float(value: Any) -> float | None:
@@ -62,14 +63,18 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
 
     codes = {str(s.get("code") or "").strip() for s in signals if isinstance(s, dict)}
     codes = {c for c in codes if c}
-    tickers = {f"{c}.T" for c in codes}
-    prices = pd.read_parquet(PRICE_PATH, columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
-    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
-    prices = prices[prices["ticker"].astype(str).isin(tickers)].dropna(subset=["date", "Close"]).copy()
-    if prices.empty:
-        raise RuntimeError(f"no semicon tickers found in {PRICE_PATH}")
+    raw = pd.read_parquet(PRICE_PATH)
+    missing_cols = [c for c in PRICE_COLUMNS if c not in raw.columns]
+    if missing_cols:
+        raise RuntimeError(f"{PRICE_PATH} is missing required columns: {missing_cols}")
 
-    prices["code"] = prices["ticker"].astype(str).str.replace(".T", "", regex=False)
+    prices = raw[PRICE_COLUMNS].copy()
+    prices["date"] = pd.to_datetime(prices["Date"], errors="coerce")
+    prices["code"] = prices["Code"].astype(str).str[:4]
+    prices = prices[prices["code"].isin(codes)].dropna(subset=["date", "AdjC"]).copy()
+    if prices.empty:
+        raise RuntimeError(f"no semicon codes found in {PRICE_PATH}")
+
     prices = prices.sort_values(["code", "date"])
     metrics: dict[str, dict[str, Any]] = {}
     for code, g in prices.groupby("code", sort=False):
@@ -77,28 +82,28 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
         if len(g) < 25:
             continue
         latest = g.iloc[-1]
-        close = safe_float(latest.get("Close"))
+        close = safe_float(latest.get("AdjC"))
         if close is None:
             continue
-        prev_close = safe_float(g.iloc[-2].get("Close")) if len(g) >= 2 else None
-        close_5 = safe_float(g.iloc[-6].get("Close")) if len(g) >= 6 else None
-        close_20 = safe_float(g.iloc[-21].get("Close")) if len(g) >= 21 else None
-        ma25 = safe_float(g["Close"].tail(25).mean())
-        high20 = safe_float(g["High"].tail(20).max()) if len(g) >= 20 else None
-        latest_high = safe_float(latest.get("High"))
-        cvar = cvar05(g["Close"])
+        prev_close = safe_float(g.iloc[-2].get("AdjC")) if len(g) >= 2 else None
+        close_5 = safe_float(g.iloc[-6].get("AdjC")) if len(g) >= 6 else None
+        close_20 = safe_float(g.iloc[-21].get("AdjC")) if len(g) >= 21 else None
+        ma25 = safe_float(g["AdjC"].tail(25).mean())
+        high20 = safe_float(g["AdjH"].tail(20).max()) if len(g) >= 20 else None
+        latest_high = safe_float(latest.get("AdjH"))
+        cvar = cvar05(g["AdjC"])
         metrics[code] = {
             "date": latest["date"].strftime("%Y-%m-%d"),
-            "open": safe_float(latest.get("Open")),
+            "open": safe_float(latest.get("AdjO")),
             "high": latest_high,
-            "low": safe_float(latest.get("Low")),
+            "low": safe_float(latest.get("AdjL")),
             "close": close,
             "ret1": pct(close, prev_close),
             "ret5": pct(close, close_5),
             "ret20": pct(close, close_20),
             "vs25": pct(close, ma25),
             "dist20hi": pct(close, high20),
-            "max_dd_60d": max_dd(g["Close"].tail(60)),
+            "max_dd_60d": max_dd(g["AdjC"].tail(60)),
             "cvar05": cvar,
             "entry_trigger_price": latest_high,
             "left_tail": "高" if cvar is not None and cvar <= -6 else "中" if cvar is not None and cvar <= -4 else "低",
@@ -120,10 +125,11 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
         row = dict(signal)
         code = str(row.get("code") or "").strip()
         m = metrics.get(code)
-        if m:
-            row.update(m)
-            if row.get("decision") != "AVOID" and m.get("entry_trigger_price") is not None:
-                row["entry_rule"] = f"公式日足の前日高値{m['entry_trigger_price']:.0f}超え確認。分足はVWAP上維持のみ参考"
+        if not m:
+            continue
+        row.update(m)
+        if row.get("decision") != "AVOID" and m.get("entry_trigger_price") is not None:
+            row["entry_rule"] = f"公式日足の前日高値{m['entry_trigger_price']:.0f}超え確認。分足はVWAP上維持のみ参考"
         enriched.append(row)
 
     enriched = dev_semicon._attach_entry_decisions(dev_semicon._attach_trade_buckets(enriched))

@@ -38,6 +38,7 @@ CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 ETF_CODE = "13060"
 TOPIX500_CLASSES = ["TOPIX Core30", "TOPIX Large70", "TOPIX Mid400"]
 BACKTEST_START = "2022-04-01"
+TOPIX500_PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjV"]
 
 
 def is_pre_sq4() -> bool:
@@ -48,6 +49,14 @@ def is_pre_sq4() -> bool:
     cal["date"] = pd.to_datetime(cal["date"])
     tomorrow = pd.Timestamp(date.today() + timedelta(days=1))
     return bool(cal[cal["date"] == tomorrow]["sq4_entry"].any())
+
+
+def topix500_needs_schema_refresh() -> bool:
+    """既存TOPIX500価格がOHLCV拡張前なら全量更新する。"""
+    if not TOPIX500_OUTPUT.exists():
+        return False
+    existing_cols = set(pd.read_parquet(TOPIX500_OUTPUT).columns)
+    return not set(TOPIX500_PRICE_COLUMNS).issubset(existing_cols)
 
 
 def subscription_start() -> str:
@@ -118,7 +127,7 @@ def fetch_topix500_differential(codes: set[str]) -> tuple[pd.DataFrame, int]:
         existing["Date"] = pd.to_datetime(existing["Date"])
         last_date = existing["Date"].max().date()
     else:
-        existing = pd.DataFrame(columns=["Date", "Code", "AdjO", "AdjC"])
+        existing = pd.DataFrame(columns=TOPIX500_PRICE_COLUMNS)
         last_date = date.fromisoformat(BACKTEST_START) - timedelta(days=1)
 
     today = date.today()
@@ -135,7 +144,7 @@ def fetch_topix500_differential(codes: set[str]) -> tuple[pd.DataFrame, int]:
         if stdout.strip():
             df = pd.read_csv(io.StringIO(stdout))
             df["Code"] = df["Code"].astype(str)
-            filtered = df[df["Code"].isin(codes)][["Date", "Code", "AdjO", "AdjC"]].copy()
+            filtered = df[df["Code"].isin(codes)][TOPIX500_PRICE_COLUMNS].copy()
             if not filtered.empty:
                 new_frames.append(filtered)
                 fetched += 1
@@ -167,7 +176,7 @@ def fetch_topix500_full(codes: set[str]) -> pd.DataFrame:
             ["eq", "daily", "--code", code, "--from", from_date]
         )
         if stdout.strip() and "Date" in stdout:
-            df = pd.read_csv(io.StringIO(stdout), usecols=["Date", "Code", "AdjO", "AdjC"])
+            df = pd.read_csv(io.StringIO(stdout), usecols=TOPIX500_PRICE_COLUMNS)
             df["Code"] = df["Code"].astype(str)
             if not df.empty:
                 all_frames.append(df)
@@ -177,7 +186,7 @@ def fetch_topix500_full(codes: set[str]) -> pd.DataFrame:
         time.sleep(0.3)
 
     if not all_frames:
-        return pd.DataFrame(columns=["Date", "Code", "AdjO", "AdjC"])
+        return pd.DataFrame(columns=TOPIX500_PRICE_COLUMNS)
 
     combined = pd.concat(all_frames, ignore_index=True)
     combined["Date"] = pd.to_datetime(combined["Date"])
@@ -188,11 +197,12 @@ def fetch_topix500_full(codes: set[str]) -> pd.DataFrame:
 def main() -> int:
     force_full = "--full" in sys.argv
     pre_sq4 = is_pre_sq4()
-    full_mode = force_full or pre_sq4
+    schema_refresh = topix500_needs_schema_refresh()
+    full_mode = force_full or pre_sq4 or schema_refresh
 
     print("=" * 60)
     print("Fetch Calendar Prices (1306 + TOPIX 500)")
-    mode_reason = "--full flag" if force_full else "SQ-4前日" if pre_sq4 else "differential"
+    mode_reason = "--full flag" if force_full else "SQ-4前日" if pre_sq4 else "schema refresh" if schema_refresh else "differential"
     print(f"  Mode: {'FULL REFRESH' if full_mode else 'DIFFERENTIAL'} ({mode_reason})")
     print("=" * 60)
 
