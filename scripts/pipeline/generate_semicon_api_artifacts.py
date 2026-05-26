@@ -118,16 +118,22 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(signals, list):
         signals = []
     metrics, data_date = price_metrics_by_code(signals)
+    market_state = str((payload.get("market") or {}).get("state") or "NEUTRAL")
+    fundamentals = dev_semicon._load_fundamentals()
     enriched = []
     for signal in signals:
         if not isinstance(signal, dict):
             continue
-        row = dict(signal)
-        code = str(row.get("code") or "").strip()
+        code = str(signal.get("code") or "").strip()
         m = metrics.get(code)
         if not m:
             continue
-        row.update(m)
+        stock = dev_semicon.UNIVERSE_BY_CODE.get(code)
+        if stock is not None:
+            row = dev_semicon._score_stock(stock, m, market_state, fundamentals.get(code, {}))
+        else:
+            row = dict(signal)
+            row.update(m)
         if row.get("decision") != "AVOID" and m.get("entry_trigger_price") is not None:
             row["entry_rule"] = f"公式日足の前日高値{m['entry_trigger_price']:.0f}超え確認。分足はVWAP上維持のみ参考"
         enriched.append(row)
@@ -165,6 +171,17 @@ def json_default(value: Any) -> Any:
 
 def build_payload(mode: str) -> dict[str, Any]:
     payload = dev_semicon._build_payload_from_report() or dev_semicon.build_payload()
+    payload = dict(payload)
+    payload["signals"] = [
+        {
+            "code": stock.code,
+            "ticker": f"{stock.code}.T",
+            "name": stock.name,
+            "label": stock.label,
+            "segment": stock.segment,
+        }
+        for stock in dev_semicon.UNIVERSE
+    ]
     payload = enrich_payload_prices(dict(payload))
     payload["artifact_mode"] = mode
     payload["artifact_generated_at"] = datetime.now().astimezone().isoformat()
