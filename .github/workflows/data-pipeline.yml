@@ -35,6 +35,10 @@ on:
         description: "CME更新モードを強制（07:00相当）"
         type: boolean
         default: false
+      generate_market_report_html:
+        description: "マーケットレポートHTMLを自動生成してS3へアップロードする（手仕上げ版を上書きするため通常はfalse）"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -1425,7 +1429,7 @@ jobs:
           fi
 
       - name: Generate market report HTML (auto-data sections only)
-        if: success() && (steps.exec_mode.outputs.mode == 'stock_data' || steps.exec_mode.outputs.mode == 'stock_data_forced')
+        if: success() && (steps.exec_mode.outputs.mode == 'stock_data' || steps.exec_mode.outputs.mode == 'stock_data_forced') && github.event.inputs.generate_market_report_html == 'true'
         continue-on-error: true
         run: |
           echo "============================================================"
