@@ -981,7 +981,7 @@ jobs:
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
         run: |
-          python scripts/check_trading_day.py
+          python scripts/check_today_trading.py
         continue-on-error: true
 
       - name: "[CME] Update CME close and futures prices"
