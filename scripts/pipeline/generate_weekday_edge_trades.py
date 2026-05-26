@@ -149,8 +149,8 @@ def main() -> int:
     print("Generate Weekday Edge Trades JSON")
     print("=" * 60)
 
-    prices = pd.read_parquet(PRICES_PATH)
-    prices.columns = ["date", "code", "adj_open", "adj_close"]
+    prices = pd.read_parquet(PRICES_PATH, columns=["Date", "Code", "AdjO", "AdjC"])
+    prices = prices.rename(columns={"Date": "date", "Code": "code", "AdjO": "adj_open", "AdjC": "adj_close"})
     prices["date"] = pd.to_datetime(prices["date"])
     prices["dow"] = prices["date"].dt.dayofweek
     prices = prices.sort_values(["code", "date"])

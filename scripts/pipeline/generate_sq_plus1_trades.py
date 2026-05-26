@@ -89,8 +89,8 @@ def main() -> int:
 
     master = _load_master()
 
-    prices = pd.read_parquet(PRICES_PATH)
-    prices.columns = ["date", "code", "adj_open", "adj_close"]
+    prices = pd.read_parquet(PRICES_PATH, columns=["Date", "Code", "AdjO", "AdjC"])
+    prices = prices.rename(columns={"Date": "date", "Code": "code", "AdjO": "adj_open", "AdjC": "adj_close"})
     prices["date"] = pd.to_datetime(prices["date"]).dt.date
     prices["code"] = prices["code"].astype(str).str.zfill(5)
     prices = prices.sort_values(["code", "date"])
