@@ -302,18 +302,22 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     Returns:
         tuple: (response_content, tool_usage_stats)
     """
-    print("[INFO] Querying Grok API with xAI SDK + web_search + x_search tools...")
+    disable_tools = os.getenv("GROK_DISABLE_TOOLS", "1") == "1"
+    tool_label = "without tools" if disable_tools else "with xAI SDK + web_search + x_search tools"
+    print(f"[INFO] Querying Grok API {tool_label}...")
 
     client = Client(api_key=api_key)
 
     # chat.create()でセッション作成
     # non-reasoning: reasoning_tokens=0 → max_tokensが全てcompletion出力に使える
     # このタスクは検索→JSON整形なのでreasoning不要
-    chat = client.chat.create(
-        model="grok-4-1-fast-non-reasoning",
-        tools=[web_search(), x_search()],
-        max_tokens=16000,
-    )
+    chat_kwargs = {
+        "model": "grok-4-1-fast-non-reasoning",
+        "max_tokens": 16000,
+    }
+    if not disable_tools:
+        chat_kwargs["tools"] = [web_search(), x_search()]
+    chat = client.chat.create(**chat_kwargs)
 
     # システムメッセージとユーザープロンプトを追加
     chat.append(system(
@@ -358,11 +362,7 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
         if attempt < MAX_RETRIES:
             print(f"[WARN] Response too short ({len(full_response)} chars < {MIN_RESPONSE_CHARS}). Retrying...")
             # 新しいchatセッションを作成して再試行
-            chat = client.chat.create(
-                model="grok-4-1-fast-non-reasoning",
-                tools=[web_search(), x_search()],
-                max_tokens=16000,
-            )
+            chat = client.chat.create(**chat_kwargs)
             chat.append(system(
                 "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
                 "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
@@ -1144,26 +1144,42 @@ def main() -> int:
         print(f"[OK] Loaded XAI_API_KEY from {ENV_XAI_PATH}")
         print()
 
-        # 4. Query Grok with xAI SDK + web_search + x_search (0件時リトライ)
+        # 4. Query Grok. Historical successful runs often produced 10+ stocks
+        # with 0 tool calls; keep 20-25 as target but reject thin 1-9 stock outputs.
         MAX_RETRIES = 3
+        MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "10"))
+        MIN_COMPLETION_TOKENS = int(os.getenv("GROK_MIN_COMPLETION_TOKENS", "1500"))
         grok_data = []
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"[INFO] Grok API attempt {attempt}/{MAX_RETRIES}")
             response, tool_stats = query_grok(api_key, prompt)
             print()
+            completion_tokens = int(tool_stats.get("usage", {}).get("completion_tokens", 0) or 0)
 
             # 5. Parse response
-            grok_data = parse_grok_response(response)
+            try:
+                grok_data = parse_grok_response(response)
+            except Exception as e:
+                print(f"[WARN] Failed to parse Grok response on attempt {attempt}: {e}")
+                grok_data = []
             print()
 
-            if len(grok_data) >= 20:
+            if len(grok_data) >= MIN_STOCKS_REQUIRED and completion_tokens >= MIN_COMPLETION_TOKENS:
                 print(f"[OK] Got {len(grok_data)} stocks on attempt {attempt}")
                 break
 
             if attempt < MAX_RETRIES:
-                print(f"[WARN] Only {len(grok_data)} stocks returned on attempt {attempt}; 20 stocks required. Retrying...")
+                print(
+                    f"[WARN] Attempt {attempt} did not meet Grok quality floor: "
+                    f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
+                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}. Retrying..."
+                )
             else:
-                print(f"[ERROR] Only {len(grok_data)} stocks returned after {MAX_RETRIES} attempts; 20 stocks required")
+                print(
+                    f"[ERROR] Grok quality floor not met after {MAX_RETRIES} attempts: "
+                    f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
+                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}"
+                )
                 print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
                 return 1
 
@@ -1181,8 +1197,8 @@ def main() -> int:
         df = filter_and_enrich_with_meta_jquants(df)
         print()
 
-        if len(df) < 20:
-            print(f"[ERROR] Only {len(df)} stocks remained after filtering; 20 stocks required.")
+        if len(df) < MIN_STOCKS_REQUIRED:
+            print(f"[ERROR] Only {len(df)} stocks remained after filtering; {MIN_STOCKS_REQUIRED} stocks required.")
             print("[ERROR] Refusing to save incomplete grok_trending.parquet.")
             return 1
 
