@@ -82,6 +82,26 @@ def _max_dd(pnl_list: list[float]) -> dict:
     return {"amount": int(round(dd.min())), "pct": round(float(dd.min()), 2)}
 
 
+def _load_prices() -> pd.DataFrame:
+    prices = pd.read_parquet(PRICES_PATH)
+    required = {"Date", "Code", "AdjO", "AdjC"}
+    missing = required - set(prices.columns)
+    if missing:
+        raise ValueError(f"{PRICES_PATH.name} missing columns: {sorted(missing)}")
+
+    prices = prices[["Date", "Code", "AdjO", "AdjC"]].rename(
+        columns={
+            "Date": "date",
+            "Code": "code",
+            "AdjO": "adj_open",
+            "AdjC": "adj_close",
+        }
+    )
+    prices["date"] = pd.to_datetime(prices["date"]).dt.date
+    prices["code"] = prices["code"].astype(str).str.zfill(5)
+    return prices.sort_values(["code", "date"])
+
+
 def main() -> int:
     print("=" * 60)
     print("Generate SQ+1d Short Trades JSON")
@@ -89,11 +109,7 @@ def main() -> int:
 
     master = _load_master()
 
-    prices = pd.read_parquet(PRICES_PATH)
-    prices.columns = ["date", "code", "adj_open", "adj_close"]
-    prices["date"] = pd.to_datetime(prices["date"]).dt.date
-    prices["code"] = prices["code"].astype(str).str.zfill(5)
-    prices = prices.sort_values(["code", "date"])
+    prices = _load_prices()
 
     prices["prev_close"] = prices.groupby("code")["adj_close"].shift(1)
     prices = prices.dropna(subset=["prev_close"])

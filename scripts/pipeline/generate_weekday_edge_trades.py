@@ -144,16 +144,33 @@ def _max_dd_from_daily(daily_records: list[dict]) -> dict:
     return {"amount": int(round(dd_pnl)), "pct": round(float(dd_ret), 2)}
 
 
+def _load_prices() -> pd.DataFrame:
+    prices = pd.read_parquet(PRICES_PATH)
+    required = {"Date", "Code", "AdjO", "AdjC"}
+    missing = required - set(prices.columns)
+    if missing:
+        raise ValueError(f"{PRICES_PATH.name} missing columns: {sorted(missing)}")
+
+    prices = prices[["Date", "Code", "AdjO", "AdjC"]].rename(
+        columns={
+            "Date": "date",
+            "Code": "code",
+            "AdjO": "adj_open",
+            "AdjC": "adj_close",
+        }
+    )
+    prices["date"] = pd.to_datetime(prices["date"])
+    prices["code"] = prices["code"].astype(str).str.zfill(5)
+    return prices.sort_values(["code", "date"])
+
+
 def main() -> int:
     print("=" * 60)
     print("Generate Weekday Edge Trades JSON")
     print("=" * 60)
 
-    prices = pd.read_parquet(PRICES_PATH)
-    prices.columns = ["date", "code", "adj_open", "adj_close"]
-    prices["date"] = pd.to_datetime(prices["date"])
+    prices = _load_prices()
     prices["dow"] = prices["date"].dt.dayofweek
-    prices = prices.sort_values(["code", "date"])
 
     print("\n[1] S&P500 リターン取得")
     sp_ret = _fetch_sp500()
