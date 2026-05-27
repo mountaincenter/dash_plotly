@@ -21,6 +21,15 @@ from server.routers import dev_semicon  # noqa: E402
 OUT_DIR = ROOT / "data" / "analysis"
 PRICE_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
 PRICE_SOURCE_LABEL = "data/parquet/granville/prices_topix.parquet"
+FUTURES_PATH = ROOT / "data" / "parquet" / "futures_prices_max_1d.parquet"
+FUTURES_SOURCE_LABEL = "data/parquet/futures_prices_max_1d.parquet"
+
+MARKET_INDICATORS = [
+    ("CL=F", "WTI原油", "地政学・インフレ圧力", "上昇は日本株のコスト増。半導体ロングは寄り天警戒", "down"),
+    ("GC=F", "Gold", "安全資産・有事警戒", "上昇継続はリスクオフ警戒。株高と同時なら混在", "down"),
+    ("HG=F", "Copper", "景気・電力/インフラ需要", "上昇は景気敏感・電力周辺に追い風。ただし原油高と併発なら混在", "up"),
+    ("NKD=F", "日経CME", "日本寄付前の指数地合い", "強くても寄り天あり。寄り後30分の維持を確認", "up"),
+]
 
 
 def safe_float(value: Any) -> float | None:
@@ -108,11 +117,66 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
     return metrics, data_date
 
 
+def market_indicator_rows() -> tuple[list[dict[str, Any]], str | None]:
+    if not FUTURES_PATH.exists():
+        raise FileNotFoundError(f"required futures parquet not found: {FUTURES_PATH}")
+
+    tickers = [ticker for ticker, *_ in MARKET_INDICATORS]
+    raw = pd.read_parquet(FUTURES_PATH, columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
+    raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
+    raw = raw[raw["ticker"].astype(str).isin(tickers)].dropna(subset=["date", "Close"]).copy()
+    if raw.empty:
+        raise RuntimeError(f"no market indicators found in {FUTURES_PATH}")
+
+    raw = raw.sort_values(["ticker", "date"])
+    latest_date = raw["date"].max().strftime("%Y-%m-%d")
+    rows: list[dict[str, Any]] = []
+    for ticker, name, role, risk_note, good_when in MARKET_INDICATORS:
+        g = raw[raw["ticker"].astype(str) == ticker].sort_values("date").reset_index(drop=True)
+        if g.empty:
+            rows.append(
+                {
+                    "ticker": ticker,
+                    "name": name,
+                    "role": role,
+                    "risk_note": risk_note,
+                    "good_when": good_when,
+                    "source": FUTURES_SOURCE_LABEL,
+                    "missing": True,
+                }
+            )
+            continue
+        latest = g.iloc[-1]
+        close = safe_float(latest.get("Close"))
+        rows.append(
+            {
+                "ticker": ticker,
+                "name": name,
+                "role": role,
+                "risk_note": risk_note,
+                "good_when": good_when,
+                "date": latest["date"].strftime("%Y-%m-%d"),
+                "open": safe_float(latest.get("Open")),
+                "high": safe_float(latest.get("High")),
+                "low": safe_float(latest.get("Low")),
+                "close": close,
+                "volume": safe_float(latest.get("Volume")),
+                "ret1": pct(close, safe_float(g.iloc[-2].get("Close")) if len(g) >= 2 else None),
+                "ret5": pct(close, safe_float(g.iloc[-6].get("Close")) if len(g) >= 6 else None),
+                "ret20": pct(close, safe_float(g.iloc[-21].get("Close")) if len(g) >= 21 else None),
+                "source": FUTURES_SOURCE_LABEL,
+                "missing": False,
+            }
+        )
+    return rows, latest_date
+
+
 def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
     signals = payload.get("signals") or []
     if not isinstance(signals, list):
         signals = []
     metrics, data_date = price_metrics_by_code(signals)
+    market_indicators, market_indicator_date = market_indicator_rows()
     enriched = []
     for signal in signals:
         if not isinstance(signal, dict):
@@ -133,6 +197,9 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
             "data_date": data_date,
             "price_data_date": data_date,
             "price_source": PRICE_SOURCE_LABEL,
+            "market_indicator_date": market_indicator_date,
+            "market_indicator_source": FUTURES_SOURCE_LABEL,
+            "market_indicators": market_indicators,
             "signals": enriched,
             "segment_strength": dev_semicon._build_segment_strength(enriched),
             "bucket_summary": dev_semicon._bucket_summary(enriched),
