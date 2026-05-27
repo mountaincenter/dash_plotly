@@ -1156,14 +1156,14 @@ def main() -> int:
             grok_data = parse_grok_response(response)
             print()
 
-            if len(grok_data) > 0:
+            if len(grok_data) >= 20:
                 print(f"[OK] Got {len(grok_data)} stocks on attempt {attempt}")
                 break
 
             if attempt < MAX_RETRIES:
-                print(f"[WARN] 0 stocks returned on attempt {attempt}, retrying...")
+                print(f"[WARN] Only {len(grok_data)} stocks returned on attempt {attempt}; 20 stocks required. Retrying...")
             else:
-                print(f"[ERROR] 0 stocks returned after {MAX_RETRIES} attempts")
+                print(f"[ERROR] Only {len(grok_data)} stocks returned after {MAX_RETRIES} attempts; 20 stocks required")
                 print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
                 return 1
 
@@ -1173,15 +1173,18 @@ def main() -> int:
         print()
 
         if df.empty:
-            print("[WARN] Grok returned 0 stocks. Saving empty parquet and continuing pipeline.")
-            save_grok_trending(df, selected_time, should_merge=should_merge)
-            print(f"[OK] Saved empty: {GROK_TRENDING_PATH}")
-            return 0
+            print("[ERROR] Grok returned 0 stocks after conversion. Refusing to save empty parquet.")
+            return 1
 
         # 7. Filter and enrich with meta_jquants (ETF除外、stock_name正式名称化)
         print("[INFO] Filtering and enriching with meta_jquants...")
         df = filter_and_enrich_with_meta_jquants(df)
         print()
+
+        if len(df) < 20:
+            print(f"[ERROR] Only {len(df)} stocks remained after filtering; 20 stocks required.")
+            print("[ERROR] Refusing to save incomplete grok_trending.parquet.")
+            return 1
 
         # 8. Preview
         print("[INFO] Preview (first 5 stocks):")
@@ -1206,42 +1209,14 @@ def main() -> int:
         # .env.xai が存在しない場合は空のファイルを作成して終了
         if ".env.xai" in str(e):
             print(f"\n[WARN] {e}")
-            print("[WARN] Creating empty grok_trending.parquet (XAI API key not configured)")
-
-            # 空のDataFrameを作成
-            empty_df = pd.DataFrame(columns=[
-                "ticker", "code", "stock_name", "market", "sectors", "series",
-                "topixnewindexseries", "categories", "tags", "reason",
-                "date", "Close", "price_diff", "Volume", "vol_ratio",
-                "atr14_pct", "rsi9", "weekday", "score", "key_signal",
-                "source", "selected_time", "updated_at"
-            ])
-
-            PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-            empty_df.to_parquet(GROK_TRENDING_PATH, index=False)
-            print(f"[OK] Saved empty: {GROK_TRENDING_PATH}")
-
-            return 0
+            print("[ERROR] XAI API key is required for Grok selection. Refusing to save empty parquet.")
+            return 1
 
     except Exception as e:
         print(f"\n[ERROR] {e}")
         import traceback
         traceback.print_exc()
-
-        # エラー時も空のファイルを作成（パイプライン継続のため）
-        print("[WARN] Creating empty grok_trending.parquet due to error")
-        empty_df = pd.DataFrame(columns=[
-            "ticker", "code", "stock_name", "market", "sectors", "series",
-            "topixnewindexseries", "categories", "tags", "reason",
-            "date", "Close", "price_diff", "Volume", "vol_ratio",
-            "atr14_pct", "rsi9", "weekday", "score", "key_signal",
-            "source", "selected_time", "updated_at"
-        ])
-
-        PARQUET_DIR.mkdir(parents=True, exist_ok=True)
-        empty_df.to_parquet(GROK_TRENDING_PATH, index=False)
-        print(f"[OK] Saved empty: {GROK_TRENDING_PATH}")
-
+        print("[ERROR] Grok selection failed. Refusing to save empty parquet.")
         return 1
 
 
