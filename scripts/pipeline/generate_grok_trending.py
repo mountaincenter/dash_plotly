@@ -44,6 +44,8 @@ import os
 import io
 import json
 import argparse
+import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Any
@@ -302,7 +304,7 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     Returns:
         tuple: (response_content, tool_usage_stats)
     """
-    disable_tools = os.getenv("GROK_DISABLE_TOOLS", "1") == "1"
+    disable_tools = os.getenv("GROK_DISABLE_TOOLS", "0") == "1"
     tool_label = "without tools" if disable_tools else "with xAI SDK + web_search + x_search tools"
     print(f"[INFO] Querying Grok API {tool_label}...")
 
@@ -752,7 +754,12 @@ def filter_and_enrich_with_meta_jquants(df: pd.DataFrame) -> pd.DataFrame:
     # stock_nameを正式名称で上書き & メタ情報付与
     meta_dict = meta_df.set_index('ticker').to_dict('index')
 
+    def normalize_name(value: object) -> str:
+        normalized = unicodedata.normalize("NFKC", str(value or ""))
+        return re.sub(r"\s+", "", normalized).lower()
+
     corrected_names = []
+    material_name_mismatches = []
     for idx, row in df_filtered.iterrows():
         ticker = row['ticker']
         if ticker in meta_dict:
@@ -771,11 +778,19 @@ def filter_and_enrich_with_meta_jquants(df: pd.DataFrame) -> pd.DataFrame:
 
             if original_name != correct_name:
                 corrected_names.append((ticker, original_name, correct_name))
+                original_norm = normalize_name(original_name)
+                correct_norm = normalize_name(correct_name)
+                if original_norm and correct_norm and original_norm not in correct_norm and correct_norm not in original_norm:
+                    material_name_mismatches.append((ticker, original_name, correct_name))
 
     if corrected_names:
         print(f"[INFO] Corrected {len(corrected_names)} stock names:")
         for ticker, orig, correct in corrected_names:
             print(f"       - {ticker}: '{orig}' → '{correct}'")
+    if material_name_mismatches:
+        print(f"[ERROR] Material ticker/name mismatches detected: {len(material_name_mismatches)}")
+        for ticker, orig, correct in material_name_mismatches:
+            print(f"       - {ticker}: '{orig}' != '{correct}'")
 
     # grok_rank を再計算（フィルタリング後の順位）
     df_filtered = df_filtered.reset_index(drop=True)
@@ -802,6 +817,9 @@ def filter_and_enrich_with_meta_jquants(df: pd.DataFrame) -> pd.DataFrame:
 
     after_count = len(df_filtered)
     print(f"[OK] Filtered: {before_count} → {after_count} stocks")
+    df_filtered.attrs["excluded_ticker_count"] = len(excluded_tickers)
+    df_filtered.attrs["corrected_name_count"] = len(corrected_names)
+    df_filtered.attrs["material_name_mismatch_count"] = len(material_name_mismatches)
 
     return df_filtered
 
@@ -1144,17 +1162,23 @@ def main() -> int:
         print(f"[OK] Loaded XAI_API_KEY from {ENV_XAI_PATH}")
         print()
 
-        # 4. Query Grok. Historical successful runs often produced 10+ stocks
-        # with 0 tool calls; keep 20-25 as target but reject thin 1-9 stock outputs.
+        # 4. Query Grok with xAI SDK + web_search + x_search.
+        # Existing Grok PF is tied to this tool-backed selection contract.
         MAX_RETRIES = 3
-        MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "10"))
+        MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "20"))
         MIN_COMPLETION_TOKENS = int(os.getenv("GROK_MIN_COMPLETION_TOKENS", "1500"))
+        MIN_TOOL_CALLS_REQUIRED = int(os.getenv("GROK_MIN_TOOL_CALLS", "1"))
         grok_data = []
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"[INFO] Grok API attempt {attempt}/{MAX_RETRIES}")
             response, tool_stats = query_grok(api_key, prompt)
             print()
             completion_tokens = int(tool_stats.get("usage", {}).get("completion_tokens", 0) or 0)
+            tool_calls = int(tool_stats.get("total_tool_calls", 0) or 0)
+            fake_source_without_tools = (
+                tool_calls == 0
+                and ("[web_search:" in response or "[x_search:" in response)
+            )
 
             # 5. Parse response
             try:
@@ -1164,7 +1188,12 @@ def main() -> int:
                 grok_data = []
             print()
 
-            if len(grok_data) >= MIN_STOCKS_REQUIRED and completion_tokens >= MIN_COMPLETION_TOKENS:
+            if (
+                len(grok_data) >= MIN_STOCKS_REQUIRED
+                and completion_tokens >= MIN_COMPLETION_TOKENS
+                and tool_calls >= MIN_TOOL_CALLS_REQUIRED
+                and not fake_source_without_tools
+            ):
                 print(f"[OK] Got {len(grok_data)} stocks on attempt {attempt}")
                 break
 
@@ -1172,13 +1201,17 @@ def main() -> int:
                 print(
                     f"[WARN] Attempt {attempt} did not meet Grok quality floor: "
                     f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
-                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}. Retrying..."
+                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}, "
+                    f"tool_calls={tool_calls}/{MIN_TOOL_CALLS_REQUIRED}, "
+                    f"fake_source_without_tools={fake_source_without_tools}. Retrying..."
                 )
             else:
                 print(
                     f"[ERROR] Grok quality floor not met after {MAX_RETRIES} attempts: "
                     f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
-                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}"
+                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}, "
+                    f"tool_calls={tool_calls}/{MIN_TOOL_CALLS_REQUIRED}, "
+                    f"fake_source_without_tools={fake_source_without_tools}"
                 )
                 print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
                 return 1
@@ -1200,6 +1233,12 @@ def main() -> int:
         if len(df) < MIN_STOCKS_REQUIRED:
             print(f"[ERROR] Only {len(df)} stocks remained after filtering; {MIN_STOCKS_REQUIRED} stocks required.")
             print("[ERROR] Refusing to save incomplete grok_trending.parquet.")
+            return 1
+
+        material_name_mismatch_count = int(df.attrs.get("material_name_mismatch_count", 0) or 0)
+        if material_name_mismatch_count > 0:
+            print(f"[ERROR] {material_name_mismatch_count} material ticker/name mismatches remained after meta_jquants check.")
+            print("[ERROR] Refusing to save unreliable grok_trending.parquet.")
             return 1
 
         # 8. Preview
