@@ -7,7 +7,7 @@ on:
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
     - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 (当日) - Grok選定 + 株価データ更新
+    - cron: "15 13 * * *"  # UTC 13:15 = JST 22:15 (当日) - Grok選定 + 株価データ更新
     - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
@@ -137,12 +137,12 @@ jobs:
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
           # --- schedule (cron) --- github.event.schedule で判定、壁時計はfallback
-          # 22:00 JST cron (UTC 13:00) → GHA遅延で23:xx JSTになっても日付跨ぎ回避
-          elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+          # 22:15 JST cron (UTC 13:15) → GHA遅延で23:xx JSTになっても日付跨ぎ回避
+          elif [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
-            echo "📊 GROK Daily Mode (scheduled 22:00 JST, actual hour: $CURRENT_HOUR)"
+            echo "📊 GROK Daily Mode (scheduled 22:15 JST, actual hour: $CURRENT_HOUR)"
           # 07:00 JST cron (UTC 22:00) → CME更新モード
           elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
@@ -817,8 +817,8 @@ jobs:
             # cron判定
             if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
               RUN_TIME="16:45"
-            elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
-              RUN_TIME="22:00"
+            elif [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
+              RUN_TIME="22:15"
             else
               RUN_TIME="manual"
             fi
@@ -1564,8 +1564,8 @@ jobs:
         run: |
           TRIGGER_TIME="Manual Run"
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
-              TRIGGER_TIME="22:00 JST"
+            if [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
+              TRIGGER_TIME="22:15 JST"
             elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
               TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
@@ -1601,7 +1601,7 @@ jobs:
           fi
 
           # 22:00 または force_grok=true → GROK銘柄を表示
-          if [ "${{ github.event.schedule }}" = "0 13 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
+          if [ "${{ github.event.schedule }}" = "15 13 * * *" ] || [ "${{ github.event.inputs.force_grok }}" = "true" ]; then
             GROK_INFO='${{ steps.grok-info.outputs.grok_info }}'
 
             if [ -n "$GROK_INFO" ] && [ "$GROK_INFO" != "null" ]; then
@@ -1670,8 +1670,8 @@ jobs:
         run: |
           TRIGGER_TIME="Manual Run"
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
-              TRIGGER_TIME="22:00 JST"
+            if [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
+              TRIGGER_TIME="22:15 JST"
             elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
               TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
