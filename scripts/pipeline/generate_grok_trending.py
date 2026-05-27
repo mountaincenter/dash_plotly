@@ -302,22 +302,18 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     Returns:
         tuple: (response_content, tool_usage_stats)
     """
-    disable_tools = os.getenv("GROK_DISABLE_TOOLS", "0") == "1"
-    tool_label = "without tools" if disable_tools else "with xAI SDK + web_search + x_search tools"
-    print(f"[INFO] Querying Grok API {tool_label}...")
+    print("[INFO] Querying Grok API with xAI SDK + web_search + x_search tools...")
 
     client = Client(api_key=api_key)
 
     # chat.create()でセッション作成
     # non-reasoning: reasoning_tokens=0 → max_tokensが全てcompletion出力に使える
     # このタスクは検索→JSON整形なのでreasoning不要
-    chat_kwargs = {
-        "model": "grok-4-1-fast-non-reasoning",
-        "max_tokens": 16000,
-    }
-    if not disable_tools:
-        chat_kwargs["tools"] = [web_search(), x_search()]
-    chat = client.chat.create(**chat_kwargs)
+    chat = client.chat.create(
+        model="grok-4-1-fast-non-reasoning",
+        tools=[web_search(), x_search()],
+        max_tokens=16000,
+    )
 
     # システムメッセージとユーザープロンプトを追加
     chat.append(system(
@@ -362,7 +358,11 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
         if attempt < MAX_RETRIES:
             print(f"[WARN] Response too short ({len(full_response)} chars < {MIN_RESPONSE_CHARS}). Retrying...")
             # 新しいchatセッションを作成して再試行
-            chat = client.chat.create(**chat_kwargs)
+            chat = client.chat.create(
+                model="grok-4-1-fast-non-reasoning",
+                tools=[web_search(), x_search()],
+                max_tokens=16000,
+            )
             chat.append(system(
                 "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
                 "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
@@ -1147,22 +1147,14 @@ def main() -> int:
         print()
 
         # 4. Query Grok with xAI SDK + web_search + x_search.
-        # Existing Grok PF is tied to this tool-backed selection contract.
+        # 日曜事故の再発防止は「空/少数を保存しない」に限定し、選定契約は旧Grok理論へ戻す。
         MAX_RETRIES = 3
         MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "20"))
-        MIN_COMPLETION_TOKENS = int(os.getenv("GROK_MIN_COMPLETION_TOKENS", "1500"))
-        MIN_TOOL_CALLS_REQUIRED = int(os.getenv("GROK_MIN_TOOL_CALLS", "1"))
         grok_data = []
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"[INFO] Grok API attempt {attempt}/{MAX_RETRIES}")
             response, tool_stats = query_grok(api_key, prompt)
             print()
-            completion_tokens = int(tool_stats.get("usage", {}).get("completion_tokens", 0) or 0)
-            tool_calls = int(tool_stats.get("total_tool_calls", 0) or 0)
-            fake_source_without_tools = (
-                tool_calls == 0
-                and ("[web_search:" in response or "[x_search:" in response)
-            )
 
             # 5. Parse response
             try:
@@ -1172,30 +1164,19 @@ def main() -> int:
                 grok_data = []
             print()
 
-            if (
-                len(grok_data) >= MIN_STOCKS_REQUIRED
-                and completion_tokens >= MIN_COMPLETION_TOKENS
-                and tool_calls >= MIN_TOOL_CALLS_REQUIRED
-                and not fake_source_without_tools
-            ):
+            if len(grok_data) >= MIN_STOCKS_REQUIRED:
                 print(f"[OK] Got {len(grok_data)} stocks on attempt {attempt}")
                 break
 
             if attempt < MAX_RETRIES:
                 print(
-                    f"[WARN] Attempt {attempt} did not meet Grok quality floor: "
-                    f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
-                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}, "
-                    f"tool_calls={tool_calls}/{MIN_TOOL_CALLS_REQUIRED}, "
-                    f"fake_source_without_tools={fake_source_without_tools}. Retrying..."
+                    f"[WARN] Only {len(grok_data)} stocks returned on attempt {attempt}; "
+                    f"{MIN_STOCKS_REQUIRED}+ required. Retrying..."
                 )
             else:
                 print(
-                    f"[ERROR] Grok quality floor not met after {MAX_RETRIES} attempts: "
-                    f"stocks={len(grok_data)}/{MIN_STOCKS_REQUIRED}, "
-                    f"completion_tokens={completion_tokens}/{MIN_COMPLETION_TOKENS}, "
-                    f"tool_calls={tool_calls}/{MIN_TOOL_CALLS_REQUIRED}, "
-                    f"fake_source_without_tools={fake_source_without_tools}"
+                    f"[ERROR] Only {len(grok_data)} stocks returned after {MAX_RETRIES} attempts; "
+                    f"{MIN_STOCKS_REQUIRED}+ required."
                 )
                 print(f"[ERROR] Last response ({len(response)} chars): {response[:500]}")
                 return 1
