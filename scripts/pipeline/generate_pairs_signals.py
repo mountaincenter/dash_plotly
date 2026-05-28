@@ -131,6 +131,70 @@ def classify_pair_validity(full_n: int) -> dict[str, object]:
     }
 
 
+def trade_weekday_label(trade_date: pd.Timestamp) -> str:
+    return ["月", "火", "水", "木", "金", "土", "日"][trade_date.weekday()]
+
+
+def pair_operational_labels(item: dict[str, object]) -> dict[str, str]:
+    """運用ラベルを生成側にも保存する。
+
+    /dev/pairs API と同じ判定にして、画面だけの後付け判断にしない。
+    """
+    reasons: list[str] = []
+    health_state = str(item.get("pair_health_state", "ACTIVE")).upper()
+    risk_ok = bool(item.get("risk_ok", True))
+    validity_rank = int(item.get("pair_validity_rank", 3) or 3)
+    z_abs = float(item.get("z_abs", 0) or 0)
+    ret1_spread_abs = float(item.get("ret1_spread_abs", 0) or 0)
+    imbalance_pct = float(item.get("imbalance_pct", 0) or 0)
+    trade_weekday = str(item.get("trade_weekday", ""))
+
+    if health_state != "ACTIVE":
+        reasons.append(f"health={health_state}")
+    if not risk_ok:
+        reasons.append("risk除外")
+    if z_abs >= 5:
+        reasons.append("|z|過大")
+    if validity_rank >= 3:
+        reasons.append("例外注意")
+    if ret1_spread_abs >= 0.04:
+        reasons.append("ret1差注意")
+    if imbalance_pct >= 15:
+        reasons.append("不均衡注意")
+
+    if health_state != "ACTIVE" or not risk_ok:
+        return {
+            "risk_label": "blocked",
+            "operation_label": "見送り",
+            "operation_reason": " / ".join(reasons) or "healthまたはriskで除外",
+            "top3_permission": "不可",
+        }
+
+    risk_count = len(reasons)
+    risk_label = "clean" if risk_count == 0 else "watch" if risk_count == 1 else "high_risk"
+
+    if trade_weekday in {"月", "木"}:
+        return {
+            "risk_label": risk_label,
+            "operation_label": "Top1限定",
+            "operation_reason": "月木は損益が薄くDDが出やすいためTop3抑制" + (f" / {' / '.join(reasons)}" if reasons else ""),
+            "top3_permission": "抑制",
+        }
+    if trade_weekday in {"火", "水", "金"} and risk_label == "clean":
+        return {
+            "risk_label": risk_label,
+            "operation_label": "Top3可",
+            "operation_reason": "火水金かつrisk label clean",
+            "top3_permission": "可",
+        }
+    return {
+        "risk_label": risk_label,
+        "operation_label": "Top1限定",
+        "operation_reason": "risk labelありのためTop1まで" + (f" / {' / '.join(reasons)}" if reasons else ""),
+        "top3_permission": "不可",
+    }
+
+
 def load_earnings_dates() -> dict[str, set[pd.Timestamp]]:
     """決算発表日を ticker -> date set で返す。
 
@@ -483,6 +547,8 @@ def calc_pair_signal(
         "risk_skip_reason": ",".join(risk_reasons),
         "z_hit": abs(z_latest) >= Z_ENTRY,  # 生の|z|閾値判定。最終is_entryはmain()でPFと合わせて確定
         "direction": "short_tk1" if z_latest > 0 else "long_tk1",
+        "trade_date": trade_date,
+        "trade_weekday": trade_weekday_label(trade_date),
     }
 
 
@@ -544,6 +610,7 @@ def main() -> int:
             r["revert_1d"] = revert_1d
             r.update(classify_pair_validity(full_n))
             r.update(health)
+            r.update(pair_operational_labels(r))
             rows.append(r)
         else:
             skip_count += 1
@@ -607,7 +674,8 @@ def main() -> int:
                     f"  {r['name1']}/{r['name2']}  "
                     f"z={r['z_latest']:+.2f}  {arrow} tk1  "
                     f"LB={r['lookback']}  PF={r['full_pf']:.2f}  "
-                    f"{r['shares1']}株/{r['shares2']}株"
+                    f"{r['shares1']}株/{r['shares2']}株  "
+                    f"{r.get('operation_label', '-')}"
                 )
         else:
             print("\n  No entry signals today")
