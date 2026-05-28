@@ -1,11 +1,6 @@
 name: Data Pipeline (Staging - Granville v2)
 
 on:
-  schedule:
-    # staging: production(16:45/23:00)と被らない時間帯
-    - cron: "0 9 * * *"   # UTC 09:00 = JST 18:00 - 振り返り（日足更新 + シグナル生成）
-    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 - 明日の準備（推奨生成 + 価格取得 + デプロイ）
-    - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 - CME終値確定 + 判定更新
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
@@ -252,7 +247,7 @@ jobs:
 
       # ===== App Runner デプロイ（22:00のみ） =====
       - name: "[Prepare] Resume App Runner if paused"
-        if: steps.exec_mode.outputs.phase == 'prepare'
+        if: ${{ false }}
         run: |
           STATUS=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --query 'Service.Status' --output text)
           echo "App Runner status: $STATUS"
@@ -274,7 +269,7 @@ jobs:
           fi
 
       - name: "[Prepare] Deploy App Runner"
-        if: steps.exec_mode.outputs.phase == 'prepare'
+        if: ${{ false }}
         run: |
           echo "🚀 Starting App Runner deployment..."
           aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN"
