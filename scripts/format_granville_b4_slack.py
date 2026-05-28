@@ -24,6 +24,7 @@ from common_cfg.nikkei_vi import load_vi_latest
 from common_cfg.paths import PARQUET_DIR
 
 GRANVILLE_DIR = PARQUET_DIR / "granville"
+SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
 OUTPUT_PATH = Path("/tmp/granville_b4_section.txt")
 
 
@@ -74,13 +75,22 @@ def _load_cme_gap() -> tuple[float | None, float | None]:
 
 
 def main():
-    # B4シグナル読み込み
-    signals_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
-    if not signals_files:
+    # B4シグナル読み込み: 統合 signals.parquet を優先し、旧日付ファイルにフォールバック
+    latest = pd.DataFrame()
+    if SIGNALS_PATH.exists():
+        latest = pd.read_parquet(SIGNALS_PATH)
+        if "strategy" in latest.columns:
+            latest = latest[latest["strategy"] == "granville"].copy()
+
+    if latest.empty:
+        signals_files = sorted(GRANVILLE_DIR.glob("signals_*.parquet"))
+        if signals_files:
+            latest = pd.read_parquet(signals_files[-1])
+
+    if latest.empty:
         print("No signals files found")
         return
 
-    latest = pd.read_parquet(signals_files[-1])
     b4 = latest[latest["rule"] == "B4"] if "rule" in latest.columns else pd.DataFrame()
     sig_date = pd.to_datetime(latest["signal_date"].iloc[0]).strftime("%Y-%m-%d") if "signal_date" in latest.columns else "?"
     weekday = pd.to_datetime(sig_date).strftime("%a") if sig_date != "?" else ""

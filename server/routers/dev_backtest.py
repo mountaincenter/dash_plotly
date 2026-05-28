@@ -656,5 +656,5 @@ def _load_strategy_matrix() -> dict:
 async def get_strategy_weekday_matrix():
     data = _load_strategy_matrix()
     if not data:
-        raise HTTPException(status_code=404, detail="strategy_matrix.json not found")
+        return {"generated_at": None, "weekdays": [], "strategies": {}}
     return data

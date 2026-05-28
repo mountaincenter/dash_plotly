@@ -349,6 +349,19 @@ def _build_flags(row) -> list[str]:
     if row.get("sq_plus1_short"):
         flags.append("SQ+1 売り")
 
+    if row.get("b4_etf_signal"):
+        count = int(row["b4_etf_signal_count"]) if pd.notna(row.get("b4_etf_signal_count")) else 0
+        if row.get("b4_etf_signal_panic"):
+            flags.append(f"B4 ETF 発火 強 {count}")
+        elif row.get("b4_etf_signal_strong"):
+            flags.append(f"B4 ETF 発火 {count}")
+        else:
+            flags.append(f"B4 ETF 発火 {count}")
+    if row.get("b4_etf_buy_no_overlap"):
+        flags.append("B4 ETF 買い")
+    if row.get("b4_etf_sell_10d_no_overlap"):
+        flags.append("B4 ETF 決済")
+
     qe_remain = int(row["qe_remain"]) if pd.notna(row.get("qe_remain")) else None
     if qe_remain is not None:
         q = f"{row['date'].month // 3}Q"
@@ -510,6 +523,11 @@ async def get_calendar_data():
         },
         "weekday_edge": {
             "params": weekday_edge_data.get("params", {}),
+            "next_market_date": weekday_edge_data.get("next_market_date"),
+            "next_trading_date": weekday_edge_data.get("next_trading_date"),
+            "is_weekday_entry_day": weekday_edge_data.get("is_weekday_entry_day"),
+            "weekday_no_entry_reason": weekday_edge_data.get("weekday_no_entry_reason"),
+            "next_weekday_signal_date": weekday_edge_data.get("next_weekday_signal_date"),
             "stats_filtered": weekday_edge_data.get("stats_filtered", {}),
             "stats_all": weekday_edge_data.get("stats_all", {}),
             "max_dd_filtered": weekday_edge_data.get("max_dd_filtered", {}),

@@ -92,9 +92,10 @@ class PipelineRunner:
         # バックテストアーカイブ保存（16:00 JST実行時のみ）
         # 昨日23:00選定のGROK銘柄 + 今日の価格データ → Phase1バックテスト
         if skip_grok:
-            self.steps.append(
-                ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
-            )
+            self.steps.extend([
+                ("pipeline.generate_b4_etf_calendar_signals", "B4 ETFカレンダー発火フラグ生成"),
+                ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）"),
+            ])
 
         # グランビルバックテスト（16:45 JST実行時のみ）
         if skip_grok:

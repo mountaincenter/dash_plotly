@@ -269,16 +269,36 @@ def get_next_sq4(calendar_path: Path) -> dict | None:
 
     future_sq3 = cal[(cal["sq3_exit"] == True) & (cal["date"] > next_date)]
     exit_date = future_sq3.iloc[0]["date"] if not future_sq3.empty else None
+    prev_days = cal[cal["date"] < next_date].sort_values("date")
+    prev_date = prev_days.iloc[-1]["date"] if not prev_days.empty else None
 
     return {
         "entry_date": next_date.strftime("%Y-%m-%d"),
+        "prev_date": prev_date.strftime("%Y-%m-%d") if prev_date is not None else None,
         "exit_date": exit_date.strftime("%Y-%m-%d") if exit_date else None,
     }
 
 
-def get_candidates(ps: pd.DataFrame, gaishu_codes: set[str], name_map: dict[str, str] | None = None) -> dict:
+def get_candidates(
+    ps: pd.DataFrame,
+    gaishu_codes: set[str],
+    name_map: dict[str, str] | None = None,
+    prev_date: str | None = None,
+) -> dict:
     latest_date = ps["Date"].max()
-    latest = ps[ps["Date"] == latest_date][["Code", "AdjC", "ret_5d"]].copy()
+    target_date = pd.Timestamp(prev_date) if prev_date else latest_date
+    is_actionable = latest_date >= target_date
+    if not is_actionable:
+        return {
+            "as_of": latest_date.strftime("%Y-%m-%d"),
+            "required_as_of": target_date.strftime("%Y-%m-%d"),
+            "actionable": False,
+            "count": 0,
+            "sector": "外需",
+            "picks": [],
+        }
+
+    latest = ps[ps["Date"] == target_date][["Code", "AdjC", "ret_5d"]].copy()
     latest = latest[
         (latest["AdjC"] >= PRICE_MIN)
         & (latest["AdjC"] <= PRICE_MAX)
@@ -297,7 +317,9 @@ def get_candidates(ps: pd.DataFrame, gaishu_codes: set[str], name_map: dict[str,
             "ret_5d": round(float(row["ret_5d"] * 100), 2),
         })
     return {
-        "as_of": latest_date.strftime("%Y-%m-%d"),
+        "as_of": target_date.strftime("%Y-%m-%d"),
+        "required_as_of": target_date.strftime("%Y-%m-%d"),
+        "actionable": True,
         "count": len(latest),
         "sector": "外需",
         "picks": picks,
@@ -410,10 +432,16 @@ def main() -> int:
 
     print(f"\n[7] Next SQ-4...")
     next_sq4 = get_next_sq4(CALENDAR_PATH)
-    candidates = get_candidates(ps, gaishu_codes, name_map)
+    candidates = get_candidates(ps, gaishu_codes, name_map, next_sq4.get("prev_date") if next_sq4 else None)
     if next_sq4:
-        print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']}")
-    print(f"  Candidates: {candidates['count']} stocks (外需×{PRICE_MIN}-{PRICE_MAX}円)")
+        print(f"  Next: {next_sq4['entry_date']} → {next_sq4['exit_date']} (prev={next_sq4.get('prev_date')})")
+    if candidates.get("actionable"):
+        print(f"  Candidates: {candidates['count']} stocks (外需×{PRICE_MIN}-{PRICE_MAX}円)")
+    else:
+        print(
+            "  Candidates: not actionable "
+            f"(latest={candidates.get('as_of')}, required={candidates.get('required_as_of')})"
+        )
 
     max_dd = calc_max_dd(monthly_results)
     # CME下落時のみのMaxDD
@@ -446,8 +474,14 @@ def main() -> int:
 
     print(f"  {OUTPUT_PATH} ({OUTPUT_PATH.stat().st_size:,} bytes)")
 
-    # signals.parquet に当日シグナル行を merge
-    if next_sq4 and candidates and candidates.get("picks"):
+    # signals.parquet に当日シグナル行を merge。
+    # まだ前営業日データが揃っていない未来SQ-4候補は、既存のsq4行も消して stale 表示を防ぐ。
+    existing_without_sq4 = None
+    if SIGNALS_PATH.exists():
+        existing = pd.read_parquet(SIGNALS_PATH)
+        existing_without_sq4 = existing[existing["strategy"] != "sq4"] if "strategy" in existing.columns else existing
+
+    if next_sq4 and candidates and candidates.get("actionable") and candidates.get("picks"):
         sig_rows = []
         for p in candidates["picks"]:
             code = str(p["code"])
@@ -464,17 +498,17 @@ def main() -> int:
             })
         if sig_rows:
             new_sigs = pd.DataFrame(sig_rows)
-            if SIGNALS_PATH.exists():
-                existing = pd.read_parquet(SIGNALS_PATH)
-                other = existing[existing["strategy"] != "sq4"] if "strategy" in existing.columns else existing
-                merged = pd.concat([new_sigs, other], ignore_index=True)
-            else:
-                merged = new_sigs
+            merged = pd.concat([new_sigs, existing_without_sq4], ignore_index=True) if existing_without_sq4 is not None else new_sigs
             SIGNALS_PATH.parent.mkdir(parents=True, exist_ok=True)
             tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
             merged.to_parquet(tmp, index=False)
             tmp.replace(SIGNALS_PATH)
             print(f"[OK] signals.parquet merged: {len(new_sigs)} rows (strategy=sq4 / total={len(merged)})")
+    elif existing_without_sq4 is not None:
+        tmp = SIGNALS_PATH.parent / f"{SIGNALS_PATH.name}.tmp"
+        existing_without_sq4.to_parquet(tmp, index=False)
+        tmp.replace(SIGNALS_PATH)
+        print(f"[OK] signals.parquet stale sq4 rows removed (total={len(existing_without_sq4)})")
 
     print("\n[OK] Done")
     return 0

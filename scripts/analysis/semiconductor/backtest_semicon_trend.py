@@ -10,8 +10,21 @@ import yfinance as yf
 ROOT = Path(__file__).resolve().parents[3]
 OUT_DIR = Path(__file__).resolve().parent / "output"
 PRICE_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
+FUTURES_PATH = ROOT / "data" / "parquet" / "futures_prices_max_1d.parquet"
 MARKET_PATH = OUT_DIR / "semicon_market_momentum.parquet"
 MARKET_TICKERS = ["^SOX", "MU", "NVDA"]
+MARKET_REQUIRED_COLUMNS = {
+    "date",
+    "sox_ret1",
+    "sox_ret5",
+    "mu_ret1",
+    "mu_ret5",
+    "nvda_ret1",
+    "nvda_ret5",
+    "cme_ret1",
+    "semicon_market_up",
+    "chimp_up",
+}
 
 UNIVERSE = {
     "6857": ("アドバンテスト", "A", "テスタ/検査", "indicator"),
@@ -135,7 +148,8 @@ def build_market_momentum() -> pd.DataFrame:
     if MARKET_PATH.exists():
         market = pd.read_parquet(MARKET_PATH)
         market["date"] = pd.to_datetime(market["date"], errors="coerce")
-        return market
+        if MARKET_REQUIRED_COLUMNS.issubset(market.columns):
+            return market
 
     raw = yf.download(
         MARKET_TICKERS,
@@ -160,10 +174,23 @@ def build_market_momentum() -> pd.DataFrame:
         raise RuntimeError("SOX/MU/NVDA market momentum data is unavailable")
 
     long = pd.concat(rows, ignore_index=True).sort_values(["ticker", "date"])
+    long["ret1"] = long.groupby("ticker")["close"].pct_change(1) * 100.0
     long["ret5"] = long.groupby("ticker")["close"].pct_change(5) * 100.0
-    wide = long.pivot(index="date", columns="ticker", values="ret5").reset_index()
-    wide["semicon_market_up"] = (wide.get("^SOX", np.nan) > 0) & ((wide.get("MU", np.nan) > 0) | (wide.get("NVDA", np.nan) > 0))
-    wide = wide.rename(columns={"^SOX": "sox_ret5", "MU": "mu_ret5", "NVDA": "nvda_ret5"})
+    wide = long.pivot(index="date", columns="ticker", values=["ret1", "ret5"])
+    wide.columns = [f"{ticker.lower().replace('^', '')}_{metric}" for metric, ticker in wide.columns]
+    wide = wide.reset_index().rename(columns={"sox_ret1": "sox_ret1", "sox_ret5": "sox_ret5"})
+
+    if FUTURES_PATH.exists():
+        futures = pd.read_parquet(FUTURES_PATH)
+        futures["date"] = pd.to_datetime(futures["date"], errors="coerce")
+        cme = futures[futures["ticker"] == "NKD=F"].dropna(subset=["Close"]).sort_values("date").copy()
+        cme["cme_ret1"] = cme["Close"].astype(float).pct_change(1) * 100.0
+        wide = wide.merge(cme[["date", "cme_ret1"]], on="date", how="left")
+    else:
+        wide["cme_ret1"] = np.nan
+
+    wide["semicon_market_up"] = (wide.get("sox_ret5", np.nan) > 0) & ((wide.get("mu_ret5", np.nan) > 0) | (wide.get("nvda_ret5", np.nan) > 0))
+    wide["chimp_up"] = (wide.get("sox_ret1", np.nan) > 0) & (wide.get("cme_ret1", np.nan) > 0)
     MARKET_PATH.parent.mkdir(parents=True, exist_ok=True)
     wide.to_parquet(MARKET_PATH, index=False)
     return wide
@@ -175,7 +202,7 @@ def attach_market(signals: pd.DataFrame) -> pd.DataFrame:
     out["signal_date"] = pd.to_datetime(out["signal_date"], errors="coerce")
     market["date"] = pd.to_datetime(market["date"], errors="coerce")
     out = out.merge(
-        market[["date", "sox_ret5", "mu_ret5", "nvda_ret5", "semicon_market_up"]],
+        market[["date", "sox_ret1", "sox_ret5", "mu_ret1", "mu_ret5", "nvda_ret1", "nvda_ret5", "cme_ret1", "semicon_market_up", "chimp_up"]],
         left_on="signal_date",
         right_on="date",
         how="left",
@@ -185,6 +212,19 @@ def attach_market(signals: pd.DataFrame) -> pd.DataFrame:
 
 def choose(df: pd.DataFrame, variant: str) -> pd.DataFrame:
     d = df[df["signal_date"] >= pd.Timestamp("2022-07-01")].copy()
+    if variant.startswith("chimp_"):
+        d = d[(d["role"] == "tradable") & (d["chimp_up"] == True)].copy()
+        if variant == "chimp_all_tradable":
+            return d
+        if variant == "chimp_label_a_all":
+            return d[d["label"].isin(["A", "A/B"])]
+        if variant == "chimp_top1_score":
+            return d.sort_values(["signal_date", "score"], ascending=[True, False]).groupby("signal_date").head(1)
+        if variant == "chimp_top3_score":
+            return d.sort_values(["signal_date", "score"], ascending=[True, False]).groupby("signal_date").head(3)
+        if variant == "chimp_top3_low_price":
+            d = d[d["next_open"] <= 20000]
+            return d.sort_values(["signal_date", "score"], ascending=[True, False]).groupby("signal_date").head(3)
     d = d[d["action"].isin(["BUY", "WATCH"])].copy()
     if variant == "all_top3":
         return d.sort_values(["signal_date", "score"], ascending=[True, False]).groupby("signal_date").head(3)
@@ -265,7 +305,7 @@ def write_html(summary: pd.DataFrame, trades: pd.DataFrame) -> None:
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>半導体順張りバックテスト</title>
 <style>body{{background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans JP',sans-serif;padding:24px;max-width:1500px;margin:auto}}section{{background:#18181b;border:1px solid #27272a;border-radius:10px;padding:18px;margin:16px 0;overflow:auto}}table{{border-collapse:collapse;width:100%;font-size:14px}}th,td{{border-bottom:1px solid #27272a;padding:8px 10px;white-space:nowrap}}th{{color:#a1a1aa;text-align:left}}.r{{text-align:right;font-variant-numeric:tabular-nums}}p{{color:#a1a1aa;line-height:1.7}}</style></head><body>
 <h1>AI/半導体 順張りバックテスト</h1>
-<p>指標専用の値嵩株は地合い判定に残し、実弾候補から外す前提で比較。検証は前日シグナル、翌営業日寄付買い、大引け売り。市場モメンタムは SOX 5日&gt;0 かつ MU 5日&gt;0 または NVDA 5日&gt;0。High/VWAPはこのローカルOCデータに無いため未反映。</p>
+<p>指標専用の値嵩株は地合い判定に残し、実弾候補から外す前提で比較。検証は前日シグナル、翌営業日寄付買い、大引け売り。chimp系は SOX 1日&gt;0 かつ CME(NKD=F) 1日&gt;0 だけで判定。market_momentum系は SOX 5日&gt;0 かつ MU 5日&gt;0 または NVDA 5日&gt;0。High/VWAPはこのローカルOCデータに無いため未反映。</p>
 <section><h2>サマリー</h2><table><thead><tr><th>variant</th><th class='r'>n</th><th class='r'>days</th><th class='r'>PF</th><th class='r'>勝率</th><th class='r'>損益/100株</th><th class='r'>最大DD</th><th class='r'>最大損失</th><th class='r'>CVaR5</th><th>期間</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>ワーストトレード</h2><table><thead><tr><th>日付</th><th>code</th><th>銘柄</th><th>role</th><th class='r'>score</th><th class='r'>寄付</th><th class='r'>大引</th><th class='r'>%</th><th class='r'>損益/100株</th></tr></thead><tbody>{''.join(worst_rows)}</tbody></table></section>
 </body></html>"""
@@ -283,6 +323,11 @@ def main() -> None:
         "tradable_top3",
         "tradable_left_tail_guard",
         "tradable_price_guard",
+        "chimp_all_tradable",
+        "chimp_label_a_all",
+        "chimp_top1_score",
+        "chimp_top3_score",
+        "chimp_top3_low_price",
         "market_momentum_top1",
         "market_momentum_top3",
         "market_momentum_guard_top1",

@@ -296,6 +296,78 @@ def _pair_validity_from_full_n(full_n: int) -> dict[str, object]:
     }
 
 
+def _next_business_day_label(signal_date: str) -> tuple[str, str]:
+    if not signal_date:
+        return "", ""
+    try:
+        trade_date = pd.Timestamp(signal_date) + pd.tseries.offsets.BDay(1)
+    except Exception:
+        return "", ""
+    weekday = ["月", "火", "水", "木", "金", "土", "日"][trade_date.weekday()]
+    return trade_date.strftime("%Y-%m-%d"), weekday
+
+
+def _pair_operational_labels(item: dict[str, Any]) -> dict[str, str]:
+    """Practical operation labels.
+
+    These are not hard-entry rules. They expose the post-diagnostic operation
+    policy on the screen while preserving the existing pair signal logic.
+    """
+    reasons: list[str] = []
+    health_state = str(item.get("pair_health_state", "ACTIVE")).upper()
+    risk_ok = bool(item.get("risk_ok", True))
+    validity_rank = _safe_int(item.get("pair_validity_rank", 3))
+    z_abs = _safe_float(item.get("z_abs", 0), 3)
+    ret1_spread_abs = _safe_float(item.get("ret1_spread_abs", 0), 5)
+    imbalance_pct = _safe_float(item.get("imbalance_pct", 0), 1)
+    trade_weekday = str(item.get("trade_weekday", ""))
+
+    if health_state != "ACTIVE":
+        reasons.append(f"health={health_state}")
+    if not risk_ok:
+        reasons.append("risk除外")
+    if z_abs >= 5:
+        reasons.append("|z|過大")
+    if validity_rank >= 3:
+        reasons.append("例外注意")
+    if ret1_spread_abs >= 0.04:
+        reasons.append("ret1差注意")
+    if imbalance_pct >= 15:
+        reasons.append("不均衡注意")
+
+    if health_state != "ACTIVE" or not risk_ok:
+        return {
+            "risk_label": "blocked",
+            "operation_label": "見送り",
+            "operation_reason": " / ".join(reasons) or "healthまたはriskで除外",
+            "top3_permission": "不可",
+        }
+
+    risk_count = len(reasons)
+    risk_label = "clean" if risk_count == 0 else "watch" if risk_count == 1 else "high_risk"
+
+    if trade_weekday in {"月", "木"}:
+        return {
+            "risk_label": risk_label,
+            "operation_label": "Top1限定",
+            "operation_reason": "月木は損益が薄くDDが出やすいためTop3抑制" + (f" / {' / '.join(reasons)}" if reasons else ""),
+            "top3_permission": "抑制",
+        }
+    if trade_weekday in {"火", "水", "金"} and risk_label == "clean":
+        return {
+            "risk_label": risk_label,
+            "operation_label": "Top3可",
+            "operation_reason": "火水金かつrisk label clean",
+            "top3_permission": "可",
+        }
+    return {
+        "risk_label": risk_label,
+        "operation_label": "Top1限定",
+        "operation_reason": "risk labelありのためTop1まで" + (f" / {' / '.join(reasons)}" if reasons else ""),
+        "top3_permission": "不可",
+    }
+
+
 @router.get("/api/dev/pairs/signals")
 async def get_pairs_signals():
     """全ペアのシグナル（z-score, 閾値, 直近成績）"""
@@ -322,6 +394,7 @@ async def get_pairs_signals():
         pair_date = ""
         if "signal_date" in r.index and pd.notna(r.get("signal_date")):
             pair_date = pd.to_datetime(r["signal_date"]).strftime("%Y-%m-%d")
+        trade_date, trade_weekday = _next_business_day_label(pair_date)
         tk1 = r.get("tk1", "")
         tk2 = r.get("tk2", "")
         health = _pair_health_for(pair_health, str(tk1), str(tk2))
@@ -369,7 +442,10 @@ async def get_pairs_signals():
             "is_entry": bool(r.get("is_entry", r.get("is_hot", False))),
             "direction": r.get("direction", ""),
             "signal_date": pair_date,
+            "trade_date": trade_date,
+            "trade_weekday": trade_weekday,
         }
+        item.update(_pair_operational_labels(item))
         pairs.append(item)
         if item["is_entry"]:
             entry.append(item)

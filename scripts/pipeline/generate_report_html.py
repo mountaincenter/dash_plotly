@@ -452,7 +452,7 @@ def _build_volume_leaders(data: dict) -> str:
 
     # 売買代金TOP10
     lines.append('  <h3>売買代金TOP10</h3>')
-    lines.append('  <table><thead><tr><th>コード</th><th>銘柄</th><th>市場</th><th>セクター</th><th class="r">終値</th><th class="r">変化率</th><th class="r">売買代金</th></tr></thead><tbody>')
+    lines.append('  <table><thead><tr><th>コード</th><th>銘柄</th><th>市場</th><th>セクター</th><th class="r">終値</th><th class="r">当日始値比</th><th class="r">売買代金</th></tr></thead><tbody>')
     for item in vl.get("volume_leaders", [])[:10]:
         name = _short_name(item.get("name", ""))
         code = item.get("code", "")[:4]

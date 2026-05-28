@@ -22,6 +22,13 @@ from common_cfg.paths import REPORTS_DIR
 
 router = APIRouter()
 
+LOCAL_REPORT_DIRS = [REPORTS_DIR]
+MARKET_REPORT_PATTERNS = [
+    "market_analysis*.html",
+    "market_review*.html",
+    "daily_report*.html",
+]
+
 # 環境判定: ローカルにディレクトリがあれば開発、なければ本番（S3）
 _IS_LOCAL = REPORTS_DIR.exists()
 
@@ -66,6 +73,13 @@ def _resolve_html_name(filename: str) -> str:
     return filename.replace(".pdf", ".html") if filename.endswith(".pdf") else filename
 
 
+def _canonical_report_filename(name: str) -> str:
+    """Normalize nested S3/local report paths to a slash-free API filename."""
+    if name.startswith("trade_review/"):
+        return f"trade_review_{Path(name).name}"
+    return name
+
+
 @router.get("/api/dev/reports")
 def list_reports():
     """レポート一覧。開発=ローカル、本番=S3。完全分離。"""
@@ -76,20 +90,31 @@ def list_reports():
 
 def _list_local() -> list[dict]:
     reports = []
-    for f in REPORTS_DIR.glob("market_analysis*.html"):
-        reports.append({
-            "filename": f.name,
-            "date": _extract_date(f.name),
-            "title": _extract_title_from_html(
-                f.read_text(encoding="utf-8", errors="ignore"), f.name
-            ),
-            "size_bytes": f.stat().st_size,
-            "report_type": "market_report",
-        })
+    seen: set[str] = set()
+    for report_dir in LOCAL_REPORT_DIRS:
+        if not report_dir.exists():
+            continue
+        for pattern in MARKET_REPORT_PATTERNS:
+            for f in report_dir.glob(pattern):
+                if f.name in seen:
+                    continue
+                seen.add(f.name)
+                reports.append({
+                    "filename": f.name,
+                    "date": _extract_date(f.name),
+                    "title": _extract_title_from_html(
+                        f.read_text(encoding="utf-8", errors="ignore"), f.name
+                    ),
+                    "size_bytes": f.stat().st_size,
+                    "report_type": "market_report",
+                })
     trade_dir = REPORTS_DIR / "trade_review"
     if trade_dir.exists():
         for f in trade_dir.glob("*.html"):
-            canonical = f"trade_review_{f.name}" if not f.name.startswith("trade_review") else f.name
+            canonical = _canonical_report_filename(f"trade_review/{f.name}")
+            if canonical in seen:
+                continue
+            seen.add(canonical)
             reports.append({
                 "filename": canonical,
                 "date": _extract_date(f.name),
@@ -99,8 +124,34 @@ def _list_local() -> list[dict]:
                 "size_bytes": f.stat().st_size,
                 "report_type": "results_report",
             })
+    for f in REPORTS_DIR.glob("trade_review_*.html"):
+        if f.name in seen:
+            continue
+        seen.add(f.name)
+        reports.append({
+            "filename": f.name,
+            "date": _extract_date(f.name),
+            "title": _extract_title_from_html(
+                f.read_text(encoding="utf-8", errors="ignore"), f.name
+            ),
+            "size_bytes": f.stat().st_size,
+            "report_type": "results_report",
+        })
     reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     return reports
+
+
+def _resolve_local_report_path(html_name: str) -> Path | None:
+    for report_dir in LOCAL_REPORT_DIRS:
+        local_path = report_dir / html_name
+        if local_path.exists():
+            return local_path
+    if html_name.startswith("trade_review_"):
+        sub_name = html_name.removeprefix("trade_review_")
+        local_path = REPORTS_DIR / "trade_review" / sub_name
+        if local_path.exists():
+            return local_path
+    return None
 
 
 def _list_s3() -> list[dict]:
@@ -108,11 +159,16 @@ def _list_s3() -> list[dict]:
     try:
         s3 = _s3_client()
         resp = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=REPORTS_PREFIX)
+        seen: set[str] = set()
         for obj in resp.get("Contents", []):
             key = obj["Key"]
             name = key.removeprefix(REPORTS_PREFIX)
             if not name.endswith(".html"):
                 continue
+            canonical = _canonical_report_filename(name)
+            if canonical in seen:
+                continue
+            seen.add(canonical)
             title = name
             try:
                 head = s3.get_object(
@@ -124,11 +180,11 @@ def _list_s3() -> list[dict]:
             except Exception:
                 pass
             reports.append({
-                "filename": name,
-                "date": _extract_date(name),
+                "filename": canonical,
+                "date": _extract_date(canonical),
                 "title": title,
                 "size_bytes": obj["Size"],
-                "report_type": _classify_report_type(name),
+                "report_type": _classify_report_type(canonical),
             })
         reports.sort(key=lambda r: r.get("date", ""), reverse=True)
     except Exception as exc:
@@ -142,11 +198,8 @@ def view_report(filename: str):
     html_name = _resolve_html_name(filename)
 
     if _IS_LOCAL:
-        local_path = REPORTS_DIR / html_name
-        if not local_path.exists() and html_name.startswith("trade_review_"):
-            sub_name = html_name.removeprefix("trade_review_")
-            local_path = REPORTS_DIR / "trade_review" / sub_name
-        if not local_path.exists():
+        local_path = _resolve_local_report_path(html_name)
+        if local_path is None:
             raise HTTPException(status_code=404, detail=f"Not found: {html_name}")
         return HTMLResponse(
             content=local_path.read_text(encoding="utf-8"),
@@ -155,12 +208,20 @@ def view_report(filename: str):
 
     try:
         s3 = _s3_client()
-        resp = s3.get_object(
-            Bucket=S3_BUCKET, Key=f"{REPORTS_PREFIX}{html_name}"
-        )
-        html = resp["Body"].read().decode("utf-8")
-        return HTMLResponse(content=html, media_type="text/html")
+        keys = [f"{REPORTS_PREFIX}{html_name}"]
+        if html_name.startswith("trade_review_"):
+            sub_name = html_name.removeprefix("trade_review_")
+            keys.append(f"{REPORTS_PREFIX}trade_review/{sub_name}")
+
+        last_exc: Exception | None = None
+        for key in keys:
+            try:
+                resp = s3.get_object(Bucket=S3_BUCKET, Key=key)
+                html = resp["Body"].read().decode("utf-8")
+                return HTMLResponse(content=html, media_type="text/html")
+            except Exception as exc:
+                last_exc = exc
+                continue
+        raise last_exc or FileNotFoundError(html_name)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Not found: {exc}")
-
-
