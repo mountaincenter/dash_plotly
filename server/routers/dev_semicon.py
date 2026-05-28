@@ -921,10 +921,6 @@ def _trade_bucket(signal: dict[str, Any]) -> tuple[str, list[str]]:
         reasons.append("値嵩/主力の温度計")
         return "指標銘柄", reasons
 
-    if decision == "AVOID" or "見送り" in judgement:
-        reasons.append("判定が見送り")
-        return "見送り", reasons
-
     if close is not None and close >= 20000:
         reasons.append("株価2万円以上")
         return "過熱注意", reasons
@@ -937,9 +933,17 @@ def _trade_bucket(signal: dict[str, Any]) -> tuple[str, list[str]]:
         reasons.append("短期過熱")
         return "過熱注意", reasons
 
+    if vs25 is not None and vs25 >= 12:
+        reasons.append("25日線乖離注意")
+        return "過熱注意", reasons
+
     if left_tail == "高" or (cvar is not None and cvar <= -6):
         reasons.append("左尾高")
         return "過熱注意", reasons
+
+    if decision == "AVOID" or "見送り" in judgement:
+        reasons.append("判定が見送り")
+        return "見送り", reasons
 
     if "寄り後条件付き" in judgement or decision == "WATCH":
         reasons.append("寄り後条件付き")
@@ -1467,12 +1471,13 @@ def _build_payload_from_environment_json() -> dict[str, Any] | None:
     return _normalize_semicon_payload(data, source, us_pending=us_pending)
 
 
-def build_payload() -> dict[str, Any]:
-    env_payload = _build_payload_from_environment_json()
-    if env_payload is not None:
-        return env_payload
+def build_payload(*, skip_environment: bool = False, skip_report: bool = False) -> dict[str, Any]:
+    if not skip_environment:
+        env_payload = _build_payload_from_environment_json()
+        if env_payload is not None:
+            return env_payload
 
-    if USE_S3_ARTIFACTS:
+    if USE_S3_ARTIFACTS and not skip_environment:
         return {
             "generated_at": None,
             "data_date": None,
@@ -1493,13 +1498,14 @@ def build_payload() -> dict[str, Any]:
             "counts": {"buy": 0, "watch": 0, "avoid": 0, "total": 0},
         }
 
-    report_payload = _build_payload_from_report()
-    if report_payload is not None:
-        report_payload["source_environment"] = APP_ENV
-        report_payload["source_data_mode"] = "local"
-        report_payload["source_data_mode_reason"] = "APP_ENV"
-        report_payload["source_data_mode_error"] = None
-        return report_payload
+    if not skip_report:
+        report_payload = _build_payload_from_report()
+        if report_payload is not None:
+            report_payload["source_environment"] = APP_ENV
+            report_payload["source_data_mode"] = "local"
+            report_payload["source_data_mode_reason"] = "APP_ENV"
+            report_payload["source_data_mode_error"] = None
+            return report_payload
 
     if not PRICES_PATH.exists():
         return {

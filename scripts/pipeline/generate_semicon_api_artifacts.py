@@ -190,7 +190,10 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
                 row["entry_rule"] = f"公式日足の前日高値{m['entry_trigger_price']:.0f}超え確認。分足はVWAP上維持のみ参考"
         enriched.append(row)
 
+    enriched = dev_semicon._attach_classification_meta(enriched)
     enriched = dev_semicon._attach_entry_decisions(dev_semicon._attach_trade_buckets(enriched))
+    flow_analysis = dev_semicon._build_flow_analysis(enriched)
+    morning_pilot = payload.get("morning_pilot") or dev_semicon._load_morning_pilot()
     payload = dict(payload)
     payload.update(
         {
@@ -201,6 +204,8 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
             "market_indicator_source": FUTURES_SOURCE_LABEL,
             "market_indicators": market_indicators,
             "signals": enriched,
+            "flow_analysis": flow_analysis,
+            "morning_pilot": morning_pilot,
             "segment_strength": dev_semicon._build_segment_strength(enriched),
             "bucket_summary": dev_semicon._bucket_summary(enriched),
             "counts": {
@@ -224,8 +229,52 @@ def json_default(value: Any) -> Any:
     return str(value)
 
 
+def build_universe_payload() -> dict[str, Any]:
+    seed_signals = [{"code": stock.code} for stock in dev_semicon.UNIVERSE]
+    metrics, data_date = price_metrics_by_code(seed_signals)
+    market_indicators, market_indicator_date = market_indicator_rows()
+    fundamentals = dev_semicon._load_fundamentals()
+    signals = []
+    for stock in dev_semicon.UNIVERSE:
+        metric = metrics.get(stock.code)
+        if not metric:
+            continue
+        signals.append(dev_semicon._score_stock(stock, metric, "NEUTRAL", fundamentals.get(stock.code, {})))
+
+    signals = dev_semicon._attach_classification_meta(signals)
+    signals = dev_semicon._attach_entry_decisions(dev_semicon._attach_trade_buckets(signals))
+    return {
+        "generated_at": datetime.now().astimezone().isoformat(),
+        "data_date": data_date,
+        "price_data_date": data_date,
+        "price_source": PRICE_SOURCE_LABEL,
+        "market": {"state": "US_PENDING", "label": "米国判定待ち"},
+        "signals": signals,
+        "classification_basis": dev_semicon.CLASSIFICATION_BASIS,
+        "segment_strength": dev_semicon._build_segment_strength(signals),
+        "flow_analysis": dev_semicon._build_flow_analysis(signals),
+        "bucket_summary": dev_semicon._bucket_summary(signals),
+        "market_indicators": market_indicators,
+        "market_indicator_date": market_indicator_date,
+        "market_indicator_source": FUTURES_SOURCE_LABEL,
+        "overseas": [],
+        "report_available": dev_semicon.REPORT_PATH.exists(),
+        "report_url": "/api/dev/semicon/report" if dev_semicon.REPORT_PATH.exists() else None,
+        "source": PRICE_SOURCE_LABEL,
+        "backtest": dev_semicon._load_backtest_summary(),
+        "morning_pilot": dev_semicon._load_morning_pilot(),
+        "hold_short_exposures": dev_semicon._load_hold_short_exposures(),
+        "counts": {
+            "buy": sum(1 for s in signals if s.get("decision") == "BUY_CANDIDATE"),
+            "watch": sum(1 for s in signals if s.get("decision") == "WATCH"),
+            "avoid": sum(1 for s in signals if s.get("decision") == "AVOID"),
+            "total": len(signals),
+        },
+    }
+
+
 def build_payload(mode: str) -> dict[str, Any]:
-    payload = dev_semicon._build_payload_from_report() or dev_semicon.build_payload()
+    payload = build_universe_payload()
     payload = enrich_payload_prices(dict(payload))
     payload["artifact_mode"] = mode
     payload["artifact_generated_at"] = datetime.now().astimezone().isoformat()
