@@ -96,12 +96,61 @@ UNIVERSE = [
 OVERSEAS = {
     "NVDA": "NVIDIA",
     "^SOX": "SOX",
+    "AVGO": "Broadcom",
     "MU": "Micron",
     "TSM": "TSMC",
     "^IXIC": "NASDAQ",
     "NQ=F": "NASDAQ先物",
     "NKD=F": "日経先物CME",
     "JPY=X": "USDJPY",
+}
+
+OVERSEAS_INDICATOR_META = {
+    "^SOX": {
+        "role": "米半導体指数",
+        "risk_note": "SOXが弱い日は半導体コア全体の寄り天を警戒。強い日は主力と周辺の維持を確認する。",
+        "good_when": "up",
+    },
+    "NVDA": {
+        "role": "AIサーバー本流",
+        "risk_note": "NVIDIAが弱い日はAIインフラ順張りの前提が弱い。強くても国内は寄り後維持を確認する。",
+        "good_when": "up",
+    },
+    "AVGO": {
+        "role": "ASIC/ネットワーク",
+        "risk_note": "Broadcomが強い日はASIC、光通信、パッケージ基板、MLCC周辺の物色継続を確認する。",
+        "good_when": "up",
+    },
+    "MU": {
+        "role": "メモリ/SSD",
+        "risk_note": "Micronが強い日はNAND、メモリ、MLCC周辺に追い風。急騰後は高値掴みを避ける。",
+        "good_when": "up",
+    },
+    "TSM": {
+        "role": "ファウンドリ",
+        "risk_note": "TSMCが強い日は前工程装置と材料に追い風。弱い日は装置ど真ん中の買いを抑える。",
+        "good_when": "up",
+    },
+    "^IXIC": {
+        "role": "米グロース地合い",
+        "risk_note": "NASDAQが弱い日は半導体材料が良くてもリスク許容度を下げる。",
+        "good_when": "up",
+    },
+    "NQ=F": {
+        "role": "NASDAQ先物",
+        "risk_note": "寄付前の米グロース先物。強くても日本の寄り後30分で維持できるかを見る。",
+        "good_when": "up",
+    },
+    "NKD=F": {
+        "role": "日経CME",
+        "risk_note": "日本寄付前の指数地合い。強い日は寄り天、弱い日は押し目待ちを優先する。",
+        "good_when": "up",
+    },
+    "JPY=X": {
+        "role": "USDJPY",
+        "risk_note": "円安は輸出株に追い風だが、原油高と同時なら日本株には質が悪い。",
+        "good_when": "mixed",
+    },
 }
 
 SEGMENT_GROUPS = {
@@ -257,7 +306,7 @@ def _metric_row(code: str, series: pd.Series) -> dict[str, float | str | None]:
 
 def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
     lookup = {r["ticker"]: r for r in rows}
-    keys = ["^SOX", "NVDA", "MU", "TSM", "^IXIC", "NQ=F"]
+    keys = ["^SOX", "NVDA", "AVGO", "MU", "TSM", "^IXIC", "NQ=F"]
     positives = sum(1 for k in keys if (lookup.get(k, {}).get("ret5") or 0) > 0)
     negatives_1d = sum(1 for k in ["^SOX", "NVDA", "MU", "^IXIC"] if (lookup.get(k, {}).get("ret1") or 0) < -1.5)
     sox_ret5 = lookup.get("^SOX", {}).get("ret5")
@@ -268,6 +317,9 @@ def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
     elif positives >= 4 and (sox_ret5 or 0) > 0 and (nvda_ret5 or 0) > 0:
         state = "RISK_ON"
         label = "米半導体が追い風"
+    elif positives >= 4 and (sox_ret5 or 0) > 0:
+        state = "SELECTIVE_RISK_ON"
+        label = "半導体周辺は追い風 / NVDA逆風"
     else:
         state = "NEUTRAL"
         label = "米地合いは中立"
@@ -279,6 +331,39 @@ def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "sox_ret5": sox_ret5,
         "nvda_ret5": nvda_ret5,
     }
+
+
+def _market_indicators_from_overseas(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    indicators: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ticker = str(row.get("ticker") or "").strip()
+        meta = OVERSEAS_INDICATOR_META.get(ticker)
+        if not ticker or not meta:
+            continue
+        indicators.append(
+            {
+                "ticker": ticker,
+                "name": row.get("name") or OVERSEAS.get(ticker, ticker),
+                "role": meta["role"],
+                "risk_note": meta["risk_note"],
+                "good_when": meta["good_when"],
+                "date": row.get("date"),
+                "close": row.get("close"),
+                "ret1": row.get("ret1"),
+                "ret5": row.get("ret5"),
+                "ret20": row.get("ret20"),
+                "source": "overseas",
+                "missing": False,
+            }
+        )
+    return indicators
+
+
+def _market_indicator_date(rows: list[dict[str, Any]]) -> str | None:
+    dates = [str(row.get("date")) for row in rows if isinstance(row, dict) and row.get("date")]
+    return max(dates) if dates else None
 
 
 def _score_stock(stock: SemiconStock, metrics: dict[str, Any], market_state: str, fundamentals: dict[str, Any]) -> dict[str, Any]:
@@ -832,6 +917,14 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "state": "US_PENDING" if us_pending else "NO_DATA",
             "label": "米国判定待ち" if us_pending else "データ未取得",
         }
+    overseas_rows = data.get("overseas") or []
+    if not isinstance(overseas_rows, list):
+        overseas_rows = []
+    if overseas_rows and not us_pending:
+        market = _market_regime(overseas_rows)
+    market_indicators = data.get("market_indicators") or _market_indicators_from_overseas(overseas_rows)
+    if not isinstance(market_indicators, list):
+        market_indicators = []
 
     payload = dict(data)
     payload.update(
@@ -844,7 +937,10 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "signals": signals,
             "segment_strength": _build_segment_strength(signals),
             "bucket_summary": _bucket_summary(signals),
-            "overseas": data.get("overseas") or [],
+            "market_indicators": market_indicators,
+            "market_indicator_date": data.get("market_indicator_date") or _market_indicator_date(market_indicators),
+            "market_indicator_source": data.get("market_indicator_source") or ("overseas" if market_indicators else None),
+            "overseas": overseas_rows,
             "report_available": bool(data.get("report_available")),
             "report_url": data.get("report_url"),
             "backtest": data.get("backtest") or _load_backtest_summary(),
