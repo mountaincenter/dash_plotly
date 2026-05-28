@@ -367,6 +367,9 @@ def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
     elif positives >= 4 and (sox_ret5 or 0) > 0 and (nvda_ret5 or 0) > 0:
         state = "RISK_ON"
         label = "米半導体が追い風"
+    elif positives >= 4 and (sox_ret5 or 0) > 0:
+        state = "SELECTIVE_RISK_ON"
+        label = "半導体周辺は追い風 / NVDA逆風"
     else:
         state = "NEUTRAL"
         label = "米地合いは中立"
@@ -973,6 +976,8 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
     overseas_rows = data.get("overseas") or []
     if not isinstance(overseas_rows, list):
         overseas_rows = []
+    if overseas_rows and not us_pending:
+        market = _market_regime(overseas_rows)
     market_indicators = data.get("market_indicators") or _market_indicators_from_overseas(overseas_rows)
     if not isinstance(market_indicators, list):
         market_indicators = []
