@@ -65,7 +65,7 @@ UNIVERSE = [
     Stock("8802", "三菱地所", "D", "不動産/DC"),
 ]
 
-OVERSEAS = ["NVDA", "^SOX", "MU", "TSM", "^IXIC", "NQ=F", "NKD=F", "JPY=X"]
+OVERSEAS = ["NVDA", "^SOX", "AVGO", "MU", "TSM", "^IXIC", "NQ=F", "NKD=F", "JPY=X"]
 LABEL_SCORE = {"A": 3.0, "A/B": 2.5, "B": 2.0, "C": 0.0, "D": -1.0}
 
 
@@ -820,7 +820,7 @@ def coverage_rows(
         [
             {"dataset": "J-Quants 公式日足", "coverage": f"{len(daily)}/29", "latest": daily["daily_date"].max() if not daily.empty else "-", "usage": "日足OHLCV・移動平均・DD・左尾"},
             {"dataset": "yfinance 5分足", "coverage": f"{len(intraday)}/29", "latest": intraday["m5_date"].max() if not intraday.empty else "-", "usage": "翌日寄り後のVWAP/寄り天確認。日足代替には使わない"},
-            {"dataset": "yfinance 海外/先物/為替", "coverage": f"{len(overseas)}/8", "latest": overseas["date"].max() if not overseas.empty else "-", "usage": "NVDA/SOX/MU/TSM/NASDAQ/先物/為替の地合い"},
+            {"dataset": "yfinance 海外/先物/為替", "coverage": f"{len(overseas)}/{len(OVERSEAS)}", "latest": overseas["date"].max() if not overseas.empty else "-", "usage": "NVDA/SOX/AVGO/MU/TSM/NASDAQ/先物/為替の地合い"},
             {"dataset": "J-Quants 信用残", "coverage": f"{len(margin)}/29", "latest": margin["margin_date"].max() if not margin.empty else "-", "usage": "信用買残・売残・需給悪化確認"},
             {"dataset": "J-Quants 空売り残高報告", "coverage": f"{len(shorts)}/29", "latest": shorts["short_calc_date"].max() if not shorts.empty else "-", "usage": "大口空売り残の確認"},
             {"dataset": "J-Quants 日々公表", "coverage": f"{len(alerts)}/29", "latest": alerts["alert_pub_date"].max() if not alerts.empty else "-", "usage": "該当銘柄だけ表示"},
@@ -855,7 +855,7 @@ def build_html(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI/半導体 翌日エントリー・リスク測定</title>
+<title>AIインフラ順張り 翌日エントリー・リスク測定</title>
 <style>
 :root {{
   --bg: #09090b;
@@ -932,7 +932,7 @@ footer {{ text-align: center; color: var(--text-muted); font-size: 0.7rem; margi
 </head>
 <body>
 <header>
-<h1>AI/半導体 翌日エントリー・リスク測定</h1>
+<h1>AIインフラ順張り 翌日エントリー・リスク測定</h1>
 <div class="subtitle">生成: {datetime.now().strftime("%Y-%m-%d %H:%M")} / 公式日足: J-Quants / 分足・海外: yfinance / 対象: 29銘柄</div>
 </header>
 <div class="grid-4">

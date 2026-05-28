@@ -51,50 +51,103 @@ class SemiconStock:
     name: str
     label: str
     segment: str
+    core_segment: str
+    sub_segment: str
+    theme_driver: str
+    classification_basis: str
     market: str = "JP"
 
 
 UNIVERSE = [
-    SemiconStock("6857", "アドバンテスト", "A", "テスタ/検査"),
-    SemiconStock("6146", "ディスコ", "A", "後工程装置"),
-    SemiconStock("8035", "東京エレクトロン", "A", "エッチング/成膜/塗布"),
-    SemiconStock("6920", "レーザーテック", "A", "EUVマスク検査"),
-    SemiconStock("7735", "SCREEN", "A", "洗浄装置"),
-    SemiconStock("6525", "KOKUSAI ELECTRIC", "A", "成膜装置"),
-    SemiconStock("4062", "イビデン", "A", "パッケージ基板"),
-    SemiconStock("4186", "東京応化工業", "A", "フォトレジスト"),
-    SemiconStock("4004", "レゾナック", "A", "パッケージ/CMP材料"),
-    SemiconStock("3436", "SUMCO", "A", "シリコンウエハ"),
-    SemiconStock("4063", "信越化学工業", "A", "シリコンウエハ"),
-    SemiconStock("6723", "ルネサス", "A", "マイコン/アナログ"),
-    SemiconStock("285A", "キオクシア", "A", "NAND"),
-    SemiconStock("6503", "三菱電機", "A", "パワー半導体/重電"),
-    SemiconStock("6504", "富士電機", "A", "パワー半導体"),
-    SemiconStock("6501", "日立製作所", "A/B", "検査装置/電力"),
-    SemiconStock("5801", "古河電工", "B", "光通信/電力ケーブル/冷却"),
-    SemiconStock("5803", "フジクラ", "B", "光通信/高密度配線"),
-    SemiconStock("6981", "村田製作所", "B", "MLCC/電源部品/EMI"),
-    SemiconStock("6367", "ダイキン工業", "B", "冷却/空調"),
-    SemiconStock("5802", "住友電工", "C", "光通信/電線"),
-    SemiconStock("5805", "SWCC", "C", "電線/電力ケーブル"),
-    SemiconStock("6645", "オムロン", "C", "電源/制御"),
-    SemiconStock("1963", "日揮HD", "C", "設備/EPC"),
-    SemiconStock("1979", "大気社", "C", "空調/クリーンルーム"),
-    SemiconStock("1802", "大林組", "D", "建設"),
-    SemiconStock("1925", "大和ハウス", "D", "建設/不動産"),
-    SemiconStock("8801", "三井不動産", "D", "不動産/DC"),
-    SemiconStock("8802", "三菱地所", "D", "不動産/DC"),
+    SemiconStock("6857", "アドバンテスト", "A", "テスタ/検査", "半導体コア", "後工程/検査", "AI半導体検査需要", "経産省: 製造装置・後工程 / 半導体製造装置分類"),
+    SemiconStock("6146", "ディスコ", "A", "後工程装置", "半導体コア", "後工程装置", "AI半導体後工程投資", "経産省: 後工程高度化 / 半導体製造装置分類"),
+    SemiconStock("8035", "東京エレクトロン", "A", "エッチング/成膜/塗布", "半導体コア", "前工程装置", "ロジック/DRAM投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    SemiconStock("6920", "レーザーテック", "A", "EUVマスク検査", "半導体コア", "前工程検査装置", "EUV/先端ロジック投資", "経産省: 製造装置 / 先端半導体サプライチェーン"),
+    SemiconStock("7735", "SCREEN", "A", "洗浄装置", "半導体コア", "前工程装置", "先端工程投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    SemiconStock("6525", "KOKUSAI ELECTRIC", "A", "成膜装置", "半導体コア", "前工程装置", "メモリ/ロジック成膜投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    SemiconStock("4062", "イビデン", "A", "パッケージ基板", "半導体コア", "後工程/パッケージ基板", "AI/HBM/高性能PKG", "経産省: 後工程高度化 / AIサーバー基板需要"),
+    SemiconStock("4186", "東京応化工業", "A", "フォトレジスト", "半導体コア", "半導体材料", "先端露光材料", "経産省: 部素材 / 半導体材料分類"),
+    SemiconStock("4004", "レゾナック", "A", "パッケージ/CMP材料", "半導体コア", "半導体材料/パッケージ材料", "AI半導体材料需要", "経産省: 部素材 / 後工程材料"),
+    SemiconStock("3436", "SUMCO", "A", "シリコンウエハ", "半導体コア", "半導体材料", "ウエハ市況", "経産省: 部素材 / 半導体材料分類"),
+    SemiconStock("4063", "信越化学工業", "A", "シリコンウエハ", "半導体コア", "半導体材料", "ウエハ/材料市況", "経産省: 部素材 / 半導体材料分類"),
+    SemiconStock("6723", "ルネサス", "A", "マイコン/アナログ", "半導体コア", "半導体デバイス", "車載/産業/AI周辺制御", "経産省: 半導体デバイス / AIインフラ制御需要"),
+    SemiconStock("285A", "キオクシア", "A", "NAND", "半導体コア", "メモリ", "NAND/SSD/データセンター", "経産省: メモリ / AIデータセンター・SSD需要"),
+    SemiconStock("6503", "三菱電機", "A", "パワー半導体/重電", "電力/冷却", "パワー半導体/重電", "DC電力・省エネ投資", "経産省: パワー半導体 / DC電力制約"),
+    SemiconStock("6504", "富士電機", "A", "パワー半導体", "電力/冷却", "パワー半導体", "DC電力・電源効率", "経産省: パワー半導体 / DC電力制約"),
+    SemiconStock("6501", "日立製作所", "A/B", "検査装置/電力", "電力/冷却", "電力/制御/検査", "DC電力・制御インフラ", "経産省: 電力/制御波及 / DC設備投資"),
+    SemiconStock("5801", "古河電工", "B", "光通信/電力ケーブル/冷却", "光/通信", "光通信/電力ケーブル", "AIデータセンター接続・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
+    SemiconStock("5803", "フジクラ", "B", "光通信/高密度配線", "光/通信", "光通信/高密度配線", "AIデータセンター接続", "富士経済: 光通信市場 / DC光接続需要"),
+    SemiconStock("6981", "村田製作所", "B", "MLCC/電源部品/EMI", "AIサーバー部品", "MLCC/受動部品", "AIサーバーMLCC需給", "TrendForce: AI server MLCC逼迫 / 受動部品"),
+    SemiconStock("6367", "ダイキン工業", "B", "冷却/空調", "電力/冷却", "冷却/空調", "AIデータセンター熱対策", "矢野経済: DC冷却/液浸冷却 / 高負荷計算需要"),
+    SemiconStock("5802", "住友電工", "C", "光通信/電線", "光/通信", "光通信/電線", "DC光・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
+    SemiconStock("5805", "SWCC", "C", "電線/電力ケーブル", "光/通信", "電線/電力ケーブル", "DC電力配線", "DC電力制約 / 電線・ケーブル需要"),
+    SemiconStock("6645", "オムロン", "C", "電源/制御", "AIサーバー部品", "電源/制御部品", "工場/電源制御", "AIインフラ周辺 / 制御部品"),
+    SemiconStock("1963", "日揮HD", "C", "設備/EPC", "DC建設/設備", "設備/EPC", "DC/工場設備投資", "矢野経済: DC新設・増設 / 設備投資"),
+    SemiconStock("1979", "大気社", "C", "空調/クリーンルーム", "DC建設/設備", "空調/クリーンルーム", "DC/半導体工場設備", "矢野経済: DC冷却 / クリーンルーム設備"),
+    SemiconStock("1802", "大林組", "D", "建設", "DC建設/設備", "建設", "DC建設", "矢野経済: DC新設・増設 / 建設波及"),
+    SemiconStock("1925", "大和ハウス", "D", "建設/不動産", "DC建設/設備", "建設/不動産", "DC建設/用地", "矢野経済: DC新設・増設 / 用地・建設"),
+    SemiconStock("8801", "三井不動産", "D", "不動産/DC", "DC建設/設備", "不動産/DC", "DC用地・不動産", "矢野経済: DC新設・増設 / 用地制約"),
+    SemiconStock("8802", "三菱地所", "D", "不動産/DC", "DC建設/設備", "不動産/DC", "DC用地・不動産", "矢野経済: DC新設・増設 / 用地制約"),
 ]
 
 OVERSEAS = {
     "NVDA": "NVIDIA",
     "^SOX": "SOX",
+    "AVGO": "Broadcom",
     "MU": "Micron",
     "TSM": "TSMC",
     "^IXIC": "NASDAQ",
     "NQ=F": "NASDAQ先物",
     "NKD=F": "日経先物CME",
     "JPY=X": "USDJPY",
+}
+
+OVERSEAS_INDICATOR_META = {
+    "^SOX": {
+        "role": "米半導体指数",
+        "risk_note": "SOXが弱い日は半導体コア全体の寄り天を警戒。強い日は主力と周辺の維持を確認する。",
+        "good_when": "up",
+    },
+    "NVDA": {
+        "role": "AIサーバー本流",
+        "risk_note": "NVIDIAが弱い日はAIインフラ順張りの前提が弱い。強くても国内は寄り後維持を確認する。",
+        "good_when": "up",
+    },
+    "AVGO": {
+        "role": "ASIC/ネットワーク",
+        "risk_note": "Broadcomが強い日はASIC、光通信、パッケージ基板、MLCC周辺の物色継続を確認する。",
+        "good_when": "up",
+    },
+    "MU": {
+        "role": "メモリ/SSD",
+        "risk_note": "Micronが強い日はNAND、メモリ、MLCC周辺に追い風。急騰後は高値掴みを避ける。",
+        "good_when": "up",
+    },
+    "TSM": {
+        "role": "ファウンドリ",
+        "risk_note": "TSMCが強い日は前工程装置と材料に追い風。弱い日は装置ど真ん中の買いを抑える。",
+        "good_when": "up",
+    },
+    "^IXIC": {
+        "role": "米グロース地合い",
+        "risk_note": "NASDAQが弱い日は半導体材料が良くてもリスク許容度を下げる。",
+        "good_when": "up",
+    },
+    "NQ=F": {
+        "role": "NASDAQ先物",
+        "risk_note": "寄付前の米グロース先物。強くても日本の寄り後30分で維持できるかを見る。",
+        "good_when": "up",
+    },
+    "NKD=F": {
+        "role": "日経CME",
+        "risk_note": "日本寄付前の指数地合い。強い日は寄り天、弱い日は押し目待ちを優先する。",
+        "good_when": "up",
+    },
+    "JPY=X": {
+        "role": "USDJPY",
+        "risk_note": "円安は輸出株に追い風だが、原油高と同時なら日本株には質が悪い。",
+        "good_when": "mixed",
+    },
 }
 
 SEGMENT_GROUPS = {
@@ -111,9 +164,63 @@ INDICATOR_CODES = {"6857", "6146", "8035", "6920", "7735", "285A"}
 HEAVY_WATCH_CODES = {"4062", "5801"}
 UNIVERSE_BY_CODE = {stock.code: stock for stock in UNIVERSE}
 HOLD_EXPOSURE_EXTRA_BY_CODE = {
-    "6055": SemiconStock("6055", "ジャパンマテリアル", "B", "特殊ガス/半導体材料"),
-    "6323": SemiconStock("6323", "ローツェ", "A", "搬送装置/半導体装置"),
+    "6055": SemiconStock("6055", "ジャパンマテリアル", "B", "特殊ガス/半導体材料", "半導体コア", "半導体材料", "半導体工場材料", "経産省: 部素材 / 半導体材料分類"),
+    "6323": SemiconStock("6323", "ローツェ", "A", "搬送装置/半導体装置", "半導体コア", "前工程/搬送装置", "半導体設備投資", "経産省: 製造装置 / 半導体製造装置分類"),
 }
+
+CLASSIFICATION_BASIS = [
+    {
+        "layer": "半導体コア",
+        "basis": "経産省の半導体・デジタル産業戦略を骨格に、デバイス、製造装置、部素材、後工程/パッケージへ分解。",
+        "use": "SOX/NVDA/MUに最も近い温度計。値嵩や左尾が大きい銘柄は指標扱いも多い。",
+    },
+    {
+        "layer": "AIサーバー部品",
+        "basis": "TrendForce等のMLCC/受動部品需給資料を根拠に、AIサーバーの部品逼迫を別枠化。",
+        "use": "装置ど真ん中から資金が移る時の実弾候補。村田、太陽誘電、TDK、京セラ系の扱い。",
+    },
+    {
+        "layer": "電力/冷却",
+        "basis": "矢野経済のデータセンター/液浸冷却市場資料を根拠に、電力制約と発熱対策を別枠化。",
+        "use": "原油・金利・地政学と絡む。半導体主力が高すぎる時の二段目候補。",
+    },
+    {
+        "layer": "光/通信",
+        "basis": "富士経済の光通信市場調査、DC向け光/ケーブル需要を根拠に分類。",
+        "use": "AIデータセンター接続需要。急騰しやすく寄り天確認が必須。",
+    },
+    {
+        "layer": "DC建設/設備",
+        "basis": "矢野経済のDC新設・増設、用地・電力制約の整理を根拠に分類。",
+        "use": "テーマ末端波及。短期では主役にしにくく、資金流入確認用。",
+    },
+]
+
+
+def _classification_meta(stock: SemiconStock) -> dict[str, str]:
+    return {
+        "core_segment": stock.core_segment,
+        "sub_segment": stock.sub_segment,
+        "theme_driver": stock.theme_driver,
+        "classification_basis": stock.classification_basis,
+    }
+
+
+def _attach_classification_meta(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for signal in signals:
+        row = dict(signal)
+        code = str(row.get("code", "")).strip()
+        stock = UNIVERSE_BY_CODE.get(code) or HOLD_EXPOSURE_EXTRA_BY_CODE.get(code)
+        if stock is not None:
+            row.update(_classification_meta(stock))
+        else:
+            row.setdefault("core_segment", "未分類")
+            row.setdefault("sub_segment", str(row.get("segment", "")) or "未分類")
+            row.setdefault("theme_driver", "要確認")
+            row.setdefault("classification_basis", "UNIVERSE未登録")
+        rows.append(row)
+    return rows
 
 
 def _s3_client():
@@ -249,7 +356,7 @@ def _metric_row(code: str, series: pd.Series) -> dict[str, float | str | None]:
 
 def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
     lookup = {r["ticker"]: r for r in rows}
-    keys = ["^SOX", "NVDA", "MU", "TSM", "^IXIC", "NQ=F"]
+    keys = ["^SOX", "NVDA", "AVGO", "MU", "TSM", "^IXIC", "NQ=F"]
     positives = sum(1 for k in keys if (lookup.get(k, {}).get("ret5") or 0) > 0)
     negatives_1d = sum(1 for k in ["^SOX", "NVDA", "MU", "^IXIC"] if (lookup.get(k, {}).get("ret1") or 0) < -1.5)
     sox_ret5 = lookup.get("^SOX", {}).get("ret5")
@@ -271,6 +378,39 @@ def _market_regime(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "sox_ret5": sox_ret5,
         "nvda_ret5": nvda_ret5,
     }
+
+
+def _market_indicators_from_overseas(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    indicators: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ticker = str(row.get("ticker") or "").strip()
+        meta = OVERSEAS_INDICATOR_META.get(ticker)
+        if not ticker or not meta:
+            continue
+        indicators.append(
+            {
+                "ticker": ticker,
+                "name": row.get("name") or OVERSEAS.get(ticker, ticker),
+                "role": meta["role"],
+                "risk_note": meta["risk_note"],
+                "good_when": meta["good_when"],
+                "date": row.get("date"),
+                "close": row.get("close"),
+                "ret1": row.get("ret1"),
+                "ret5": row.get("ret5"),
+                "ret20": row.get("ret20"),
+                "source": "overseas",
+                "missing": False,
+            }
+        )
+    return indicators
+
+
+def _market_indicator_date(rows: list[dict[str, Any]]) -> str | None:
+    dates = [str(row.get("date")) for row in rows if isinstance(row, dict) and row.get("date")]
+    return max(dates) if dates else None
 
 
 def _score_stock(stock: SemiconStock, metrics: dict[str, Any], market_state: str, fundamentals: dict[str, Any]) -> dict[str, Any]:
@@ -350,6 +490,7 @@ def _score_stock(stock: SemiconStock, metrics: dict[str, Any], market_state: str
         "name": stock.name,
         "label": stock.label,
         "segment": stock.segment,
+        **_classification_meta(stock),
         "decision": decision,
         "score": round(score, 2),
         "reasons": reasons,
@@ -724,6 +865,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
             }
         )
     market = _market_regime(overseas_rows)
+    market_indicators = _market_indicators_from_overseas(overseas_rows)
 
     signals = []
     for _, row in ranking.iterrows():
@@ -766,7 +908,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "judgement": str(row.get("判定", "")),
             }
         )
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
 
     parsed_date = pd.to_datetime(data_date, errors="coerce")
     stale_days = (date.today() - parsed_date.date()).days if not pd.isna(parsed_date) else None
@@ -777,8 +919,12 @@ def _build_payload_from_report() -> dict[str, Any] | None:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "bucket_summary": _bucket_summary(signals),
+        "market_indicators": market_indicators,
+        "market_indicator_date": _market_indicator_date(market_indicators),
+        "market_indicator_source": "ai_semiconductor_yf_entry_risk_report.html:overseas",
         "overseas": overseas_rows,
         "report_available": True,
         "report_url": "/api/dev/semicon/report",
@@ -816,7 +962,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
         signals = data.get("rows") or data.get("candidates") or []
     if not isinstance(signals, list):
         signals = []
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
 
     market = data.get("market")
     if not isinstance(market, dict):
@@ -824,6 +970,12 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "state": "US_PENDING" if us_pending else "NO_DATA",
             "label": "米国判定待ち" if us_pending else "データ未取得",
         }
+    overseas_rows = data.get("overseas") or []
+    if not isinstance(overseas_rows, list):
+        overseas_rows = []
+    market_indicators = data.get("market_indicators") or _market_indicators_from_overseas(overseas_rows)
+    if not isinstance(market_indicators, list):
+        market_indicators = []
 
     payload = dict(data)
     payload.update(
@@ -834,9 +986,13 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "price_source": data.get("price_source"),
             "market": market,
             "signals": signals,
+            "classification_basis": data.get("classification_basis") or CLASSIFICATION_BASIS,
             "segment_strength": _build_segment_strength(signals),
             "bucket_summary": _bucket_summary(signals),
-            "overseas": data.get("overseas") or [],
+            "market_indicators": market_indicators,
+            "market_indicator_date": data.get("market_indicator_date") or _market_indicator_date(market_indicators),
+            "market_indicator_source": data.get("market_indicator_source") or ("overseas" if market_indicators else None),
+            "overseas": overseas_rows,
             "report_available": bool(data.get("report_available")),
             "report_url": data.get("report_url"),
             "backtest": data.get("backtest") or _load_backtest_summary(),
@@ -900,6 +1056,7 @@ def build_payload() -> dict[str, Any]:
             "data_date": None,
             "market": {"state": "NO_DATA", "label": "semicon S3 artifact not found"},
             "signals": [],
+            "classification_basis": CLASSIFICATION_BASIS,
             "segment_strength": [],
             "bucket_summary": [],
             "overseas": [],
@@ -926,6 +1083,7 @@ def build_payload() -> dict[str, Any]:
             "data_date": None,
             "market": {"state": "NO_DATA", "label": "データ未取得"},
             "signals": [],
+            "classification_basis": CLASSIFICATION_BASIS,
             "overseas": [],
             "report_available": REPORT_PATH.exists(),
             "source_environment": APP_ENV,
@@ -964,7 +1122,7 @@ def build_payload() -> dict[str, Any]:
         if metrics.get("missing"):
             continue
         signals.append(_score_stock(stock, metrics, market["state"], fundamentals.get(stock.code, {})))
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
     data_date = str(prices.index.max().date()) if not prices.empty and hasattr(prices.index.max(), "date") else None
     stale_days = (date.today() - prices.index.max().date()).days if data_date and hasattr(prices.index.max(), "date") else None
     return {
@@ -974,6 +1132,7 @@ def build_payload() -> dict[str, Any]:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,

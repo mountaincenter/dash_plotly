@@ -40,6 +40,12 @@ from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import download_file, list_s3_files
 from common_cfg.s3cfg import load_s3_config
 
+ANALYSIS_DIR = ROOT / "data" / "analysis"
+SEMICON_ANALYSIS_FILES = (
+    "semicon_entry_decisions.json",
+    "semicon_domestic_candidates.json",
+)
+
 
 def extract_date_from_filename(filename: str) -> Optional[datetime]:
     """
@@ -416,6 +422,64 @@ def download_all_from_s3(
     return success_count, fail_count
 
 
+def download_semicon_analysis_artifacts(dry_run: bool = False, file_filter: List[str] = None) -> tuple[int, int]:
+    """Download semicon decision artifacts stored outside the parquet/ prefix."""
+    print("\n[STEP 3] Downloading semicon analysis artifacts...")
+    try:
+        cfg = load_s3_config()
+    except Exception as e:
+        print(f"  ✗ Failed to load S3 config: {e}")
+        return 0, 0
+
+    if not cfg.bucket:
+        print("  ℹ S3 bucket is not set, skipping semicon artifacts")
+        return 0, 0
+
+    try:
+        import boto3
+    except Exception as exc:
+        print(f"  ✗ boto3 import failed: {exc}")
+        return 0, len(SEMICON_ANALYSIS_FILES)
+
+    session_kwargs = {"profile_name": cfg.profile} if cfg.profile else {}
+    client_kwargs = {}
+    if cfg.region:
+        client_kwargs["region_name"] = cfg.region
+    if cfg.endpoint_url:
+        client_kwargs["endpoint_url"] = cfg.endpoint_url
+
+    try:
+        session = boto3.Session(**session_kwargs) if session_kwargs else boto3.Session()
+        s3 = session.client("s3", **client_kwargs)
+    except Exception as exc:
+        print(f"  ✗ S3 client init failed: {exc}")
+        return 0, len(SEMICON_ANALYSIS_FILES)
+
+    wanted = list(SEMICON_ANALYSIS_FILES)
+    if file_filter:
+        wanted = [name for name in wanted if name in file_filter or f"analysis/{name}" in file_filter]
+
+    if dry_run:
+        for name in wanted:
+            print(f"  [DRY] Would download: s3://{cfg.bucket}/analysis/{name} -> {ANALYSIS_DIR / name}")
+        return len(wanted), 0
+
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    success_count = 0
+    fail_count = 0
+    for name in wanted:
+        key = f"analysis/{name}"
+        dest = ANALYSIS_DIR / name
+        try:
+            s3.download_file(cfg.bucket, key, str(dest))
+            print(f"  ✓ Downloaded: s3://{cfg.bucket}/{key} -> {dest}")
+            success_count += 1
+        except Exception as exc:
+            print(f"  ✗ Failed: s3://{cfg.bucket}/{key} : {exc}")
+            fail_count += 1
+    return success_count, fail_count
+
+
 def main() -> int:
     """メイン処理"""
     parser = argparse.ArgumentParser(
@@ -470,24 +534,28 @@ Examples:
         clean=args.clean,
         days=args.days
     )
+    semicon_success, semicon_fail = download_semicon_analysis_artifacts(
+        dry_run=args.dry_run,
+        file_filter=args.files if args.files else None,
+    )
 
     # サマリー表示
     print("\n" + "=" * 60)
     print("Summary")
     print("=" * 60)
-    print(f"Success: {success_count}")
-    print(f"Failed:  {fail_count}")
+    print(f"Success: {success_count + semicon_success} (parquet={success_count}, semicon_analysis={semicon_success})")
+    print(f"Failed:  {fail_count + semicon_fail} (parquet={fail_count}, semicon_analysis={semicon_fail})")
     print("=" * 60)
 
     if not args.dry_run:
-        if fail_count == 0 and success_count > 0:
+        if fail_count + semicon_fail == 0 and success_count + semicon_success > 0:
             print("\n✅ All files downloaded successfully!")
-        elif success_count > 0:
-            print(f"\n⚠️  Partial success: {fail_count} file(s) failed")
+        elif success_count + semicon_success > 0:
+            print(f"\n⚠️  Partial success: {fail_count + semicon_fail} file(s) failed")
         else:
             print("\n❌ No files downloaded")
 
-    return 0 if fail_count == 0 else 1
+    return 0 if fail_count + semicon_fail == 0 else 1
 
 
 if __name__ == "__main__":
