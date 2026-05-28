@@ -31,7 +31,7 @@ WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"
 
 # 閾値定義
 PROB_SHORT_THRESHOLD = 0.45
-BUCKET_LABELS = ["SHORT", "SKIP"]
+BUCKET_LABELS = ["SHORT", "MIX", "SKIP"]
 
 # 2025-12-22以降は信用区分・いちにち残数・NG判定が揃っている実運用分析対象。
 LEGACY_START_DATE = pd.Timestamp("2025-11-04")
@@ -39,10 +39,10 @@ CREDIT_VERIFIED_START_DATE = pd.Timestamp("2025-12-22")
 
 
 def assign_bucket(prob: float | None) -> str | None:
-    """ML prob_up: 0.45未満はSHORT、それ以外はショート回避(SKIP)。"""
+    """ML prob_upを実務分析向けにSHORT/MIX/SKIPへ分類する。"""
     if prob is None or pd.isna(prob):
         return None
-    return "SHORT" if float(prob) < PROB_SHORT_THRESHOLD else "SKIP"
+    return _assign_prob_group(prob)
 
 # 11時間区分定義
 TIME_SEGMENTS_11 = [
@@ -339,6 +339,75 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
     return result
 
 
+def calc_strategy_candidates(df: pd.DataFrame) -> list:
+    """曜日×信用区分×bucketの戦略候補を4segで集計する。"""
+    result = []
+    margin_groups = [
+        ("seido", "制度信用", df[df["margin_type"] == "制度信用"]),
+        ("ichinichi_ex0", "いちにち除0", df[(df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True)]),
+    ]
+
+    for wd in range(5):
+        for margin_key, margin_label, margin_df in margin_groups:
+            wd_df = margin_df[margin_df["weekday"] == wd]
+            for bucket in BUCKET_LABELS:
+                sub = wd_df[wd_df["bucket"] == bucket] if "bucket" in wd_df.columns else pd.DataFrame()
+                segs = calc_segment_stats(sub, TIME_SEGMENTS_4)
+                segment_rows = []
+                for seg in TIME_SEGMENTS_4:
+                    stats = segs.get(seg["key"], {})
+                    segment_rows.append({
+                        "key": seg["key"],
+                        "label": seg["label"],
+                        "time": seg["time"],
+                        "profit": stats.get("profit", 0),
+                        "winRate": stats.get("winRate"),
+                        "count": stats.get("count", 0),
+                        "mean": stats.get("mean"),
+                        "pf": stats.get("pf"),
+                    })
+
+                valid_segments = [s for s in segment_rows if s["pf"] is not None]
+                best = max(valid_segments, key=lambda s: (s["pf"], s["profit"])) if valid_segments else None
+                close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
+                best_pf = best["pf"] if best else None
+                close_pf = close["pf"] if close else None
+                total = best["profit"] if best else 0
+                pf_delta = best_pf - close_pf if best_pf is not None and close_pf is not None else None
+
+                if best_pf is not None and best_pf >= 1.5 and close_pf is not None and close_pf >= 1.0 and total > 0 and best["key"] == "seg_1530":
+                    decision = "GO"
+                    reason = "大引けでも期待値あり"
+                elif best_pf is not None and best_pf >= 1.2 and total > 0:
+                    decision = "CONDITIONAL"
+                    if close_pf is not None and close_pf < 1.0:
+                        reason = "大引けPF<1"
+                    elif pf_delta is not None and pf_delta >= 0.3:
+                        reason = f"PF差 +{pf_delta:.2f}"
+                    else:
+                        reason = "条件確認"
+                else:
+                    decision = "SKIP"
+                    reason = "期待値不足"
+
+                result.append({
+                    "weekday": WEEKDAY_NAMES[wd],
+                    "weekdayIndex": wd,
+                    "marginKey": margin_key,
+                    "marginLabel": margin_label,
+                    "bucket": bucket,
+                    "count": int(len(sub)),
+                    "decision": decision,
+                    "reason": reason,
+                    "bestSegment": best,
+                    "closeSegment": close,
+                    "pfDelta": round(float(pf_delta), 2) if pf_delta is not None else None,
+                    "segments": segment_rows,
+                })
+
+    return result
+
+
 @router.get("/dev/analysis-custom/summary")
 async def get_custom_summary(
     exclude_extreme: bool = False,
@@ -406,6 +475,7 @@ async def get_custom_summary(
 
     # 曜日別
     weekdays = calc_weekday_data(df, price_ranges)
+    strategy_candidates = calc_strategy_candidates(df)
 
     # 期間
     date_range = {
@@ -430,6 +500,7 @@ async def get_custom_summary(
         "dataScope": _build_data_scope(df_raw, df, include_legacy=include_legacy),
         "overall": overall,
         "weekdays": weekdays,
+        "strategyCandidates": strategy_candidates,
         "excludeExtreme": exclude_extreme,
         "direction": direction,
         "filters": {
