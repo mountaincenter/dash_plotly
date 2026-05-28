@@ -172,6 +172,110 @@ HOLD_EXPOSURE_EXTRA_BY_CODE = {
     "6323": SemiconStock("6323", "ローツェ", "A", "搬送装置/半導体装置"),
 }
 
+SEGMENT_CLASSIFICATION = {
+    "テスタ/検査": ("半導体コア", "後工程/検査", "AI半導体検査需要", "経産省: 製造装置・後工程 / 半導体製造装置分類"),
+    "後工程装置": ("半導体コア", "後工程装置", "AI半導体後工程投資", "経産省: 後工程高度化 / 半導体製造装置分類"),
+    "エッチング/成膜/塗布": ("半導体コア", "前工程装置", "ロジック/DRAM投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    "EUVマスク検査": ("半導体コア", "前工程検査装置", "EUV/先端ロジック投資", "経産省: 製造装置 / 先端半導体サプライチェーン"),
+    "洗浄装置": ("半導体コア", "前工程装置", "先端工程投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    "成膜装置": ("半導体コア", "前工程装置", "メモリ/ロジック成膜投資", "経産省: 製造装置 / 半導体製造装置分類"),
+    "パッケージ基板": ("半導体コア", "後工程/パッケージ基板", "AI/HBM/高性能PKG", "経産省: 後工程高度化 / AIサーバー基板需要"),
+    "フォトレジスト": ("半導体コア", "半導体材料", "先端露光材料", "経産省: 部素材 / 半導体材料分類"),
+    "パッケージ/CMP材料": ("半導体コア", "半導体材料/パッケージ材料", "AI半導体材料需要", "経産省: 部素材 / 後工程材料"),
+    "シリコンウエハ": ("半導体コア", "半導体材料", "ウエハ/材料市況", "経産省: 部素材 / 半導体材料分類"),
+    "ASIC/SoC設計": ("半導体コア", "半導体デバイス", "AI/車載SoC需要", "経産省: 半導体デバイス / 設計・ファブレス"),
+    "マイコン/アナログ": ("半導体コア", "半導体デバイス", "車載/産業/AI周辺制御", "経産省: 半導体デバイス / AIインフラ制御需要"),
+    "NAND": ("半導体コア", "メモリ", "NAND/SSD/データセンター", "経産省: メモリ / AIデータセンター・SSD需要"),
+    "SiC/パワー半導体": ("電力/冷却", "パワー半導体", "電力効率/EV/産業電源", "経産省: パワー半導体 / 省エネ・電力制約"),
+    "パワー半導体/重電": ("電力/冷却", "パワー半導体/重電", "DC電力・省エネ投資", "経産省: パワー半導体 / DC電力制約"),
+    "パワー半導体": ("電力/冷却", "パワー半導体", "DC電力・電源効率", "経産省: パワー半導体 / DC電力制約"),
+    "検査装置/電力": ("電力/冷却", "電力/制御/検査", "DC電力・制御インフラ", "経産省: 電力/制御波及 / DC設備投資"),
+    "パッケージ/電子部品": ("AIサーバー部品", "パッケージ/電子部品", "AIサーバー周辺部品需要", "TrendForce等: AI server 部品需給 / 受動部品"),
+    "電子部品/受動部品": ("AIサーバー部品", "受動部品", "AIサーバー受動部品需給", "TrendForce等: AI server 部品需給 / 受動部品"),
+    "ABF/パッケージ材料": ("半導体コア", "パッケージ材料", "AI/HBM/高性能PKG材料", "経産省: 後工程高度化 / パッケージ材料"),
+    "半導体パッケージ/フォトマスク": ("半導体コア", "パッケージ/フォトマスク", "先端PKG/マスク需要", "経産省: 後工程・部素材 / フォトマスク"),
+    "フォトマスク/電子材料": ("半導体コア", "フォトマスク/電子材料", "先端露光・電子材料", "経産省: 部素材 / フォトマスク"),
+    "超純水/工場インフラ": ("DC建設/設備", "半導体工場インフラ", "半導体工場/超純水投資", "経産省: 工場インフラ / 半導体設備投資"),
+    "産業ガス/水素": ("DC建設/設備", "半導体工場材料", "半導体工場ガス需要", "経産省: 部素材・工場インフラ / 産業ガス"),
+    "光通信/電力ケーブル/冷却": ("光/通信", "光通信/電力ケーブル", "AIデータセンター接続・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
+    "光通信/高密度配線": ("光/通信", "光通信/高密度配線", "AIデータセンター接続", "富士経済: 光通信市場 / DC光接続需要"),
+    "MLCC/電源部品/EMI": ("AIサーバー部品", "MLCC/受動部品", "AIサーバーMLCC需給", "TrendForce: AI server MLCC逼迫 / 受動部品"),
+    "冷却/空調": ("電力/冷却", "冷却/空調", "AIデータセンター熱対策", "矢野経済: DC冷却/液浸冷却 / 高負荷計算需要"),
+    "光通信/電線": ("光/通信", "光通信/電線", "DC光・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
+    "電線/電力ケーブル": ("光/通信", "電線/電力ケーブル", "DC電力配線", "DC電力制約 / 電線・ケーブル需要"),
+    "電源/制御": ("AIサーバー部品", "電源/制御部品", "工場/電源制御", "AIインフラ周辺 / 制御部品"),
+    "設備/EPC": ("DC建設/設備", "設備/EPC", "DC/工場設備投資", "矢野経済: DC新設・増設 / 設備投資"),
+    "空調/クリーンルーム": ("DC建設/設備", "空調/クリーンルーム", "DC/半導体工場設備", "矢野経済: DC冷却 / クリーンルーム設備"),
+    "建設": ("DC建設/設備", "建設", "DC建設", "矢野経済: DC新設・増設 / 建設波及"),
+    "建設/不動産": ("DC建設/設備", "建設/不動産", "DC建設/用地", "矢野経済: DC新設・増設 / 用地・建設"),
+    "不動産/DC": ("DC建設/設備", "不動産/DC", "DC用地・不動産", "矢野経済: DC新設・増設 / 用地制約"),
+    "特殊ガス/半導体材料": ("半導体コア", "半導体材料", "半導体工場材料", "経産省: 部素材 / 半導体材料分類"),
+    "搬送装置/半導体装置": ("半導体コア", "前工程/搬送装置", "半導体設備投資", "経産省: 製造装置 / 半導体製造装置分類"),
+}
+
+CLASSIFICATION_BASIS = [
+    {
+        "layer": "半導体コア",
+        "basis": "経産省の半導体・デジタル産業戦略を骨格に、デバイス、製造装置、部素材、後工程/パッケージへ分解。",
+        "use": "SOX/NVDA/MUに最も近い温度計。値嵩や左尾が大きい銘柄は指標扱いも多い。",
+    },
+    {
+        "layer": "AIサーバー部品",
+        "basis": "TrendForce等のMLCC/受動部品需給資料を根拠に、AIサーバーの部品逼迫を別枠化。",
+        "use": "装置ど真ん中から資金が移る時の実弾候補。村田、太陽誘電、TDK、京セラ系の扱い。",
+    },
+    {
+        "layer": "電力/冷却",
+        "basis": "矢野経済のデータセンター/液浸冷却市場資料を根拠に、電力制約と発熱対策を別枠化。",
+        "use": "原油・金利・地政学と絡む。半導体主力が高すぎる時の二段目候補。",
+    },
+    {
+        "layer": "光/通信",
+        "basis": "富士経済の光通信市場調査、DC向け光/ケーブル需要を根拠に分類。",
+        "use": "AIデータセンター接続需要。急騰しやすく寄り天確認が必須。",
+    },
+    {
+        "layer": "DC建設/設備",
+        "basis": "矢野経済のDC新設・増設、用地・電力制約の整理を根拠に分類。",
+        "use": "テーマ末端波及。短期では主役にしにくく、資金流入確認用。",
+    },
+]
+
+
+def _classification_meta(stock: SemiconStock) -> dict[str, str]:
+    core, sub, driver, basis = SEGMENT_CLASSIFICATION.get(
+        stock.segment,
+        ("未分類", stock.segment or "未分類", "要確認", "UNIVERSE未登録"),
+    )
+    return {
+        "core_segment": core,
+        "sub_segment": sub,
+        "theme_driver": driver,
+        "classification_basis": basis,
+    }
+
+
+def _attach_classification_meta(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for signal in signals:
+        row = dict(signal)
+        code = str(row.get("code", "")).strip()
+        stock = UNIVERSE_BY_CODE.get(code) or HOLD_EXPOSURE_EXTRA_BY_CODE.get(code)
+        if stock is not None:
+            row.update(_classification_meta(stock))
+        else:
+            segment = str(row.get("segment", "")).strip()
+            core, sub, driver, basis = SEGMENT_CLASSIFICATION.get(
+                segment,
+                ("未分類", segment or "未分類", "要確認", "UNIVERSE未登録"),
+            )
+            row.setdefault("core_segment", core)
+            row.setdefault("sub_segment", sub)
+            row.setdefault("theme_driver", driver)
+            row.setdefault("classification_basis", basis)
+        rows.append(row)
+    return rows
+
 
 def _s3_client():
     import boto3
@@ -859,7 +963,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
                 "judgement": str(row.get("判定", "")),
             }
         )
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
 
     parsed_date = pd.to_datetime(data_date, errors="coerce")
     stale_days = (date.today() - parsed_date.date()).days if not pd.isna(parsed_date) else None
@@ -870,6 +974,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,
@@ -909,7 +1014,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
         signals = data.get("rows") or data.get("candidates") or []
     if not isinstance(signals, list):
         signals = []
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
 
     market = data.get("market")
     if not isinstance(market, dict):
@@ -935,6 +1040,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "price_source": data.get("price_source"),
             "market": market,
             "signals": signals,
+            "classification_basis": data.get("classification_basis") or CLASSIFICATION_BASIS,
             "segment_strength": _build_segment_strength(signals),
             "bucket_summary": _bucket_summary(signals),
             "market_indicators": market_indicators,
@@ -1068,7 +1174,7 @@ def build_payload() -> dict[str, Any]:
         if metrics.get("missing"):
             continue
         signals.append(_score_stock(stock, metrics, market["state"], fundamentals.get(stock.code, {})))
-    signals = _attach_entry_decisions(_attach_trade_buckets(signals))
+    signals = _attach_entry_decisions(_attach_trade_buckets(_attach_classification_meta(signals)))
     data_date = str(prices.index.max().date()) if not prices.empty and hasattr(prices.index.max(), "date") else None
     stale_days = (date.today() - prices.index.max().date()).days if data_date and hasattr(prices.index.max(), "date") else None
     return {
@@ -1078,6 +1184,7 @@ def build_payload() -> dict[str, Any]:
         "stale_days": stale_days,
         "market": market,
         "signals": signals,
+        "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,
