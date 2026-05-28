@@ -33,6 +33,10 @@ WEEKDAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"
 PROB_SHORT_THRESHOLD = 0.45
 BUCKET_LABELS = ["SHORT", "SKIP"]
 
+# 2025-12-22以降は信用区分・いちにち残数・NG判定が揃っている実運用分析対象。
+LEGACY_START_DATE = pd.Timestamp("2025-11-04")
+CREDIT_VERIFIED_START_DATE = pd.Timestamp("2025-12-22")
+
 
 def assign_bucket(prob: float | None) -> str | None:
     """ML prob_up: 0.45未満はSHORT、それ以外はショート回避(SKIP)。"""
@@ -125,7 +129,33 @@ def generate_price_ranges(price_min: int, price_max: int, price_step: int) -> li
     return ranges
 
 
-def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short") -> pd.DataFrame:
+def _apply_analysis_scope(df: pd.DataFrame, include_legacy: bool = False) -> pd.DataFrame:
+    """分析対象期間を適用する。デフォルトは信用区分が揃う2025-12-22以降。"""
+    start_date = LEGACY_START_DATE if include_legacy else CREDIT_VERIFIED_START_DATE
+    return df[df["date"] >= start_date].copy()
+
+
+def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bool = False) -> dict:
+    """レスポンスに分析対象スコープを明示する。"""
+    raw = df_raw.copy()
+    if "backtest_date" in raw.columns:
+        raw["date"] = pd.to_datetime(raw["backtest_date"])
+    elif "selection_date" in raw.columns:
+        raw["date"] = pd.to_datetime(raw["selection_date"])
+    elif "date" in raw.columns:
+        raw["date"] = pd.to_datetime(raw["date"])
+    legacy_mask = (raw["date"] >= LEGACY_START_DATE) & (raw["date"] < CREDIT_VERIFIED_START_DATE)
+    return {
+        "scope": "legacy_included" if include_legacy else "credit_verified",
+        "analysisStartDate": (LEGACY_START_DATE if include_legacy else CREDIT_VERIFIED_START_DATE).strftime("%Y-%m-%d"),
+        "creditVerifiedStartDate": CREDIT_VERIFIED_START_DATE.strftime("%Y-%m-%d"),
+        "includeLegacy": include_legacy,
+        "excludedLegacyRows": 0 if include_legacy else int(legacy_mask.sum()),
+        "rows": int(len(df)),
+    }
+
+
+def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short", include_legacy: bool = False) -> pd.DataFrame:
     """データ前処理
 
     direction: "short" or "long"
@@ -141,8 +171,7 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short")
     else:
         raise HTTPException(status_code=500, detail="日付カラムが見つかりません")
 
-    # 2025-11-04以降のみ
-    df = df[df["date"] >= "2025-11-04"]
+    df = _apply_analysis_scope(df, include_legacy=include_legacy)
 
     # 信用区分フィルター（全方向共通: 制度 or いちにち）
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
@@ -318,6 +347,7 @@ async def get_custom_summary(
     price_step: int = 0,
     direction: str = "short",
     buckets: str = "",
+    include_legacy: bool = False,
 ):
     """
     カスタム分析サマリーAPI
@@ -354,7 +384,7 @@ async def get_custom_summary(
     if price_min > 0 or price_max < 999999:
         df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges, direction=direction)
+    df = prepare_data(df_raw.copy(), price_ranges, direction=direction, include_legacy=include_legacy)
 
     # 閾値区分フィルター
     if bucket_filter and "bucket" in df.columns:
@@ -397,6 +427,7 @@ async def get_custom_summary(
         "priceRanges": price_range_labels,
         "priceRangeDetails": price_ranges,
         "dateRange": date_range,
+        "dataScope": _build_data_scope(df_raw, df, include_legacy=include_legacy),
         "overall": overall,
         "weekdays": weekdays,
         "excludeExtreme": exclude_extreme,
@@ -406,6 +437,7 @@ async def get_custom_summary(
             "priceMax": price_max,
             "priceStep": price_step,
             "buckets": bucket_filter,
+            "includeLegacy": include_legacy,
         },
         "bucketInfo": {
             "available": len(available_buckets) > 0,
@@ -484,15 +516,15 @@ def calc_grouped_details(df: pd.DataFrame, view: str) -> list:
     return result
 
 
-def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short") -> pd.DataFrame:
+def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short", include_legacy: bool = False) -> pd.DataFrame:
     """分析用の共通データ前処理"""
-    df = load_archive(exclude_extreme=exclude_extreme)
+    df_raw = load_archive(exclude_extreme=exclude_extreme)
+    df = df_raw.copy()
     if "backtest_date" in df.columns:
         df["date"] = pd.to_datetime(df["backtest_date"])
     elif "selection_date" in df.columns:
         df["date"] = pd.to_datetime(df["selection_date"])
-    df = df[df["date"] >= "2025-11-04"]
-    df = df[~((df["date"] >= "2025-10-29") & (df["date"] <= "2025-11-21"))]
+    df = _apply_analysis_scope(df, include_legacy=include_legacy)
     df = df[(df["shortable"] == True) | ((df["day_trade"] == True) & (df["shortable"] == False))]
 
     # 信用区分
@@ -512,6 +544,7 @@ def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short")
     if "ml_prob" in df.columns:
         df["bucket"] = df["ml_prob"].apply(assign_bucket)
 
+    df.attrs["data_scope"] = _build_data_scope(df_raw, df, include_legacy=include_legacy)
     return df
 
 
@@ -555,10 +588,75 @@ def _make_date_range(df: pd.DataFrame) -> dict:
     }
 
 
+def _max_drawdown(pnl: pd.Series) -> float | None:
+    vals = pnl.dropna().astype(float)
+    if vals.empty:
+        return None
+    curve = vals.cumsum()
+    return round(float((curve - curve.cummax()).min()), 2)
+
+
+def _cvar05(pnl: pd.Series) -> float | None:
+    vals = pnl.dropna().astype(float)
+    if vals.empty:
+        return None
+    q05 = vals.quantile(0.05)
+    tail = vals[vals <= q05]
+    return round(float(tail.mean()), 2) if not tail.empty else None
+
+
+def _risk_metrics(vals: pd.Series, dates: pd.Series | None = None) -> dict:
+    valid = vals.dropna().astype(float)
+    n = len(valid)
+    if n == 0:
+        return {
+            "n": 0, "total": 0, "avg": None, "pf": None, "winRate": None,
+            "q05": None, "cvar05": None, "worstTrade": None, "dailyMaxDD": None,
+            "worstDay": None, "dailyPlusRate": None,
+        }
+
+    wins = valid[valid > 0].sum()
+    losses = abs(valid[valid <= 0].sum())
+    daily = pd.Series(dtype=float)
+    if dates is not None:
+        aligned_dates = dates.loc[valid.index]
+        daily = valid.groupby(aligned_dates.dt.date).sum().sort_index()
+
+    return {
+        "n": n,
+        "total": round(float(valid.sum()), 2),
+        "avg": round(float(valid.mean()), 2),
+        "pf": round(float(wins / losses), 2) if losses > 0 else None,
+        "winRate": round(float((valid > 0).mean() * 100), 1),
+        "q05": round(float(valid.quantile(0.05)), 2),
+        "cvar05": _cvar05(valid),
+        "worstTrade": round(float(valid.min()), 2),
+        "dailyMaxDD": _max_drawdown(daily) if not daily.empty else None,
+        "worstDay": round(float(daily.min()), 2) if not daily.empty else None,
+        "dailyPlusRate": round(float((daily > 0).mean() * 100), 1) if not daily.empty else None,
+    }
+
+
+def _assign_prob_group(prob: float | None) -> str | None:
+    if prob is None or pd.isna(prob):
+        return None
+    p = float(prob)
+    if p < 0.4:
+        return "SHORT"
+    if p < 0.5:
+        return "MIX"
+    return "SKIP"
+
+
+def _direction_multiplier(direction: str) -> int:
+    # grok_trending_archive.parquet のseg列はSHORT基準。LONGは反転する。
+    return 1 if direction == "short" else -1
+
+
 @router.get("/dev/analysis-custom/lending-ratio-pf")
-async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1, include_legacy: bool = False):
     """貸借倍率(買残/売残)×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
-    df = _load_analysis_base(exclude_extreme, direction=direction)
+    df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
     if weekday >= 0:
         df = df[df["date"].dt.weekday == weekday]
     df["lending_ratio"] = np.where(
@@ -586,6 +684,7 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "
     return JSONResponse(content={
         "rows": rows,
         "dataRange": _make_date_range(valid),
+        "dataScope": df.attrs.get("data_scope"),
         "totalWithBalance": len(valid),
         "totalAll": len(df),
         "direction": direction,
@@ -593,9 +692,9 @@ async def get_lending_ratio_pf(exclude_extreme: bool = False, direction: str = "
 
 
 @router.get("/dev/analysis-custom/futures-gap-pf")
-async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1, include_legacy: bool = False):
     """先物gap帯×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
-    df = _load_analysis_base(exclude_extreme, direction=direction)
+    df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
     if weekday >= 0:
         df = df[df["date"].dt.weekday == weekday]
 
@@ -619,15 +718,16 @@ async def get_futures_gap_pf(exclude_extreme: bool = False, direction: str = "sh
     return JSONResponse(content={
         "rows": rows,
         "dataRange": _make_date_range(valid),
+        "dataScope": df.attrs.get("data_scope"),
         "total": len(valid),
         "direction": direction,
     })
 
 
 @router.get("/dev/analysis-custom/nikkei-change-pf")
-async def get_nikkei_change_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1):
+async def get_nikkei_change_pf(exclude_extreme: bool = False, direction: str = "short", weekday: int = -1, include_legacy: bool = False):
     """N225変化率帯×bucket別PFテーブル（weekday: 0=月〜4=金, -1=全体）"""
-    df = _load_analysis_base(exclude_extreme, direction=direction)
+    df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
     if weekday >= 0:
         df = df[df["date"].dt.weekday == weekday]
 
@@ -652,6 +752,7 @@ async def get_nikkei_change_pf(exclude_extreme: bool = False, direction: str = "
     return JSONResponse(content={
         "rows": rows,
         "dataRange": _make_date_range(valid),
+        "dataScope": df.attrs.get("data_scope"),
         "total": len(valid),
         "direction": direction,
     })
@@ -664,6 +765,7 @@ async def get_prob_bin_pf(
     price_max: int = 999999,
     margin_type: str = "",
     prob_source: str = "hybrid",
+    include_legacy: bool = False,
 ):
     """prob 0.1区切り × 日別/週別/月別/曜日別パフォーマンス
 
@@ -677,9 +779,7 @@ async def get_prob_bin_pf(
     if prob_source not in ("hybrid", "live", "wfcv"):
         raise HTTPException(status_code=400, detail="prob_sourceはhybrid/live/wfcvのいずれか")
 
-    df = _load_analysis_base(exclude_extreme=False, direction="short")
-    # /dev/recommendations の期待PF lookup と同じ母集団に揃える。
-    df = df[df["date"] >= pd.Timestamp("2025-12-01")].copy()
+    df = _load_analysis_base(exclude_extreme=False, direction="short", include_legacy=include_legacy)
     if prob_source == "hybrid":
         if "ml_prob" not in df.columns:
             df["ml_prob"] = np.nan
@@ -779,6 +879,7 @@ async def get_prob_bin_pf(
         "probColumn": prob_col,
         "probLabels": prob_labels,
         "dataRange": _make_date_range(df),
+        "dataScope": df.attrs.get("data_scope"),
         "total": len(df),
         "results": results,
     })
@@ -793,6 +894,7 @@ async def get_custom_details(
     price_step: int = 0,
     direction: str = "short",
     buckets: str = "",
+    include_legacy: bool = False,
 ):
     """
     カスタム分析詳細API
@@ -829,7 +931,7 @@ async def get_custom_details(
     if price_min > 0 or price_max < 999999:
         df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges, direction=direction)
+    df = prepare_data(df_raw.copy(), price_ranges, direction=direction, include_legacy=include_legacy)
 
     # 閾値区分フィルター
     if bucket_filter and "bucket" in df.columns:
@@ -844,8 +946,106 @@ async def get_custom_details(
         "view": view,
         "excludeExtreme": exclude_extreme,
         "direction": direction,
+        "dataScope": _build_data_scope(df_raw, df, include_legacy=include_legacy),
         "timeSegments": TIME_SEGMENTS_11,
         "results": details,
+    })
+
+
+@router.get("/dev/analysis-custom/weekday-risk-matrix")
+async def get_weekday_risk_matrix(
+    weekday: int = 0,
+    direction: str = "short",
+    segment_mode: str = "4seg",
+    exclude_extreme: bool = False,
+    include_legacy: bool = False,
+):
+    """曜日別の実務向けリスク行列。
+
+    曜日×信用区分×prob分類×時間帯ごとに、100株損益・%損益・PF・左尾・日次DDを返す。
+    segment_mode: "4seg" | "11seg"
+    """
+    if weekday < 0 or weekday > 4:
+        raise HTTPException(status_code=400, detail="weekdayは0-4")
+    if direction not in ("short", "long"):
+        raise HTTPException(status_code=400, detail="directionはshort/longのいずれか")
+    if segment_mode not in ("4seg", "11seg"):
+        raise HTTPException(status_code=400, detail="segment_modeは4seg/11segのいずれか")
+
+    df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
+    df = df[df["date"].dt.weekday == weekday].copy()
+    sign = _direction_multiplier(direction)
+    segments = TIME_SEGMENTS_4 if segment_mode == "4seg" else TIME_SEGMENTS_11
+
+    if "ml_prob" in df.columns:
+        df["prob_group"] = df["ml_prob"].apply(_assign_prob_group)
+    else:
+        df["prob_group"] = None
+
+    margin_groups = [
+        {"key": "all", "label": "全体", "filter": lambda d: d},
+        {"key": "seido", "label": "制度信用", "filter": lambda d: d[d["margin_type"] == "制度信用"]},
+        {"key": "ichinichi_ex0", "label": "いちにち除0", "filter": lambda d: d[(d["margin_type"] == "いちにち信用") & (d["is_ex0"] == True)]},
+    ]
+    prob_groups = [
+        {"key": "all", "label": "全体", "filter": lambda d: d},
+        {"key": "short", "label": "SHORT", "filter": lambda d: d[d["prob_group"] == "SHORT"]},
+        {"key": "mix", "label": "MIX", "filter": lambda d: d[d["prob_group"] == "MIX"]},
+        {"key": "skip", "label": "SKIP", "filter": lambda d: d[d["prob_group"] == "SKIP"]},
+    ]
+
+    rows = []
+    for mg in margin_groups:
+        mg_df = mg["filter"](df)
+        for pg in prob_groups:
+            sub = pg["filter"](mg_df)
+            segment_rows = []
+            for seg in segments:
+                key = seg["key"]
+                if key not in sub.columns:
+                    amount_metrics = _risk_metrics(pd.Series(dtype=float))
+                    pct_metrics = _risk_metrics(pd.Series(dtype=float))
+                else:
+                    amount_vals = sub[key] * sign
+                    pct_vals = amount_vals / (sub["buy_price"] * 100) * 100
+                    amount_metrics = _risk_metrics(amount_vals, sub["date"])
+                    pct_metrics = _risk_metrics(pct_vals, sub["date"])
+                segment_rows.append({
+                    "key": key,
+                    "label": seg["label"],
+                    "time": seg["time"],
+                    "amount": amount_metrics,
+                    "pct": pct_metrics,
+                })
+
+            candidates = [s for s in segment_rows if s["amount"]["n"] >= MIN_N_THRESHOLD and s["amount"]["pf"] is not None]
+            best = max(candidates, key=lambda s: (s["amount"]["pf"], s["amount"]["total"])) if candidates else None
+            rows.append({
+                "marginKey": mg["key"],
+                "marginLabel": mg["label"],
+                "probKey": pg["key"],
+                "probLabel": pg["label"],
+                "count": int(len(sub)),
+                "bestSegment": {
+                    "key": best["key"],
+                    "label": best["label"],
+                    "pf": best["amount"]["pf"],
+                    "total": best["amount"]["total"],
+                    "dailyMaxDD": best["amount"]["dailyMaxDD"],
+                    "cvar05": best["amount"]["cvar05"],
+                } if best else None,
+                "segments": segment_rows,
+            })
+
+    return JSONResponse(content={
+        "weekday": weekday,
+        "weekdayName": WEEKDAY_NAMES[weekday],
+        "direction": direction,
+        "segmentMode": segment_mode,
+        "timeSegments": segments,
+        "dataRange": _make_date_range(df),
+        "dataScope": df.attrs.get("data_scope"),
+        "rows": rows,
     })
 
 
@@ -854,6 +1054,7 @@ async def get_weekday_panels(
     weekday: int = 0,
     direction: str = "short",
     exclude_extreme: bool = False,
+    include_legacy: bool = False,
 ):
     """曜日別分析パネル一括API（#2〜#6のデータを1リクエストで返す）
 
@@ -864,7 +1065,7 @@ async def get_weekday_panels(
     if direction not in ("short", "long"):
         raise HTTPException(status_code=400, detail="directionはshort/longのいずれか")
 
-    df = _load_analysis_base(exclude_extreme, direction=direction)
+    df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
     df = df[df["date"].dt.weekday == weekday]
     sign = -1 if direction == "short" else 1
 
@@ -1013,5 +1214,6 @@ async def get_weekday_panels(
     result["direction"] = direction
     result["n_total"] = len(df)
     result["dataRange"] = _make_date_range(df)
+    result["dataScope"] = df.attrs.get("data_scope")
 
     return JSONResponse(content=result)
