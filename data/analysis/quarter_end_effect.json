@@ -1,0 +1,273 @@
+{
+  "generated": "2026-05-15T08:45:35.866369",
+  "trades": [
+    {
+      "entry_date": "2022-06-27",
+      "exit_date": "2022-06-28",
+      "strategy": "remain4",
+      "year": 2022,
+      "quarter": "2Q",
+      "ret_pct": 0.9036
+    },
+    {
+      "entry_date": "2022-06-28",
+      "exit_date": "2022-06-29",
+      "strategy": "remain3",
+      "year": 2022,
+      "quarter": "2Q",
+      "ret_pct": -0.6965
+    },
+    {
+      "entry_date": "2022-09-27",
+      "exit_date": "2022-09-28",
+      "strategy": "remain4",
+      "year": 2022,
+      "quarter": "3Q",
+      "ret_pct": -0.9839
+    },
+    {
+      "entry_date": "2022-09-28",
+      "exit_date": "2022-09-29",
+      "strategy": "remain3",
+      "year": 2022,
+      "quarter": "3Q",
+      "ret_pct": 2.0397
+    },
+    {
+      "entry_date": "2022-12-27",
+      "exit_date": "2022-12-28",
+      "strategy": "remain4",
+      "year": 2022,
+      "quarter": "4Q",
+      "ret_pct": -0.2007
+    },
+    {
+      "entry_date": "2022-12-28",
+      "exit_date": "2022-12-29",
+      "strategy": "remain3",
+      "year": 2022,
+      "quarter": "4Q",
+      "ret_pct": -0.6033
+    },
+    {
+      "entry_date": "2023-03-28",
+      "exit_date": "2023-03-29",
+      "strategy": "remain4",
+      "year": 2023,
+      "quarter": "1Q",
+      "ret_pct": 1.3619
+    },
+    {
+      "entry_date": "2023-03-29",
+      "exit_date": "2023-03-30",
+      "strategy": "remain3",
+      "year": 2023,
+      "quarter": "1Q",
+      "ret_pct": 0.4798
+    },
+    {
+      "entry_date": "2023-06-27",
+      "exit_date": "2023-06-28",
+      "strategy": "remain4",
+      "year": 2023,
+      "quarter": "2Q",
+      "ret_pct": 2.0588
+    },
+    {
+      "entry_date": "2023-06-28",
+      "exit_date": "2023-06-29",
+      "strategy": "remain3",
+      "year": 2023,
+      "quarter": "2Q",
+      "ret_pct": -0.0412
+    },
+    {
+      "entry_date": "2023-09-26",
+      "exit_date": "2023-09-27",
+      "strategy": "remain4",
+      "year": 2023,
+      "quarter": "3Q",
+      "ret_pct": 0.1627
+    },
+    {
+      "entry_date": "2023-09-27",
+      "exit_date": "2023-09-28",
+      "strategy": "remain3",
+      "year": 2023,
+      "quarter": "3Q",
+      "ret_pct": -0.4062
+    },
+    {
+      "entry_date": "2023-12-26",
+      "exit_date": "2023-12-27",
+      "strategy": "remain4",
+      "year": 2023,
+      "quarter": "4Q",
+      "ret_pct": 1.1461
+    },
+    {
+      "entry_date": "2023-12-27",
+      "exit_date": "2023-12-28",
+      "strategy": "remain3",
+      "year": 2023,
+      "quarter": "4Q",
+      "ret_pct": -0.0405
+    },
+    {
+      "entry_date": "2024-03-26",
+      "exit_date": "2024-03-27",
+      "strategy": "remain4",
+      "year": 2024,
+      "quarter": "1Q",
+      "ret_pct": 0.5148
+    },
+    {
+      "entry_date": "2024-03-27",
+      "exit_date": "2024-03-28",
+      "strategy": "remain3",
+      "year": 2024,
+      "quarter": "1Q",
+      "ret_pct": -0.6828
+    },
+    {
+      "entry_date": "2024-06-25",
+      "exit_date": "2024-06-26",
+      "strategy": "remain4",
+      "year": 2024,
+      "quarter": "2Q",
+      "ret_pct": 0.4071
+    },
+    {
+      "entry_date": "2024-06-26",
+      "exit_date": "2024-06-27",
+      "strategy": "remain3",
+      "year": 2024,
+      "quarter": "2Q",
+      "ret_pct": -0.3041
+    },
+    {
+      "entry_date": "2024-09-25",
+      "exit_date": "2024-09-26",
+      "strategy": "remain4",
+      "year": 2024,
+      "quarter": "3Q",
+      "ret_pct": 2.4346
+    },
+    {
+      "entry_date": "2024-09-26",
+      "exit_date": "2024-09-27",
+      "strategy": "remain3",
+      "year": 2024,
+      "quarter": "3Q",
+      "ret_pct": 1.5254
+    },
+    {
+      "entry_date": "2024-12-25",
+      "exit_date": "2024-12-26",
+      "strategy": "remain4",
+      "year": 2024,
+      "quarter": "4Q",
+      "ret_pct": 1.3976
+    },
+    {
+      "entry_date": "2024-12-26",
+      "exit_date": "2024-12-27",
+      "strategy": "remain3",
+      "year": 2024,
+      "quarter": "4Q",
+      "ret_pct": 1.4128
+    },
+    {
+      "entry_date": "2025-03-26",
+      "exit_date": "2025-03-27",
+      "strategy": "remain4",
+      "year": 2025,
+      "quarter": "1Q",
+      "ret_pct": -0.1353
+    },
+    {
+      "entry_date": "2025-03-27",
+      "exit_date": "2025-03-28",
+      "strategy": "remain3",
+      "year": 2025,
+      "quarter": "1Q",
+      "ret_pct": -0.8469
+    },
+    {
+      "entry_date": "2025-06-25",
+      "exit_date": "2025-06-26",
+      "strategy": "remain4",
+      "year": 2025,
+      "quarter": "2Q",
+      "ret_pct": 0.8463
+    },
+    {
+      "entry_date": "2025-06-26",
+      "exit_date": "2025-06-27",
+      "strategy": "remain3",
+      "year": 2025,
+      "quarter": "2Q",
+      "ret_pct": 1.4099
+    },
+    {
+      "entry_date": "2025-09-25",
+      "exit_date": "2025-09-26",
+      "strategy": "remain4",
+      "year": 2025,
+      "quarter": "3Q",
+      "ret_pct": -0.1812
+    },
+    {
+      "entry_date": "2025-09-26",
+      "exit_date": "2025-09-29",
+      "strategy": "remain3",
+      "year": 2025,
+      "quarter": "3Q",
+      "ret_pct": -0.6352
+    },
+    {
+      "entry_date": "2025-12-25",
+      "exit_date": "2025-12-26",
+      "strategy": "remain4",
+      "year": 2025,
+      "quarter": "4Q",
+      "ret_pct": 0.0558
+    },
+    {
+      "entry_date": "2025-12-26",
+      "exit_date": "2025-12-29",
+      "strategy": "remain3",
+      "year": 2025,
+      "quarter": "4Q",
+      "ret_pct": 0.3066
+    },
+    {
+      "entry_date": "2026-03-26",
+      "exit_date": "2026-03-27",
+      "strategy": "remain4",
+      "year": 2026,
+      "quarter": "1Q",
+      "ret_pct": 0.0261
+    },
+    {
+      "entry_date": "2026-03-27",
+      "exit_date": "2026-03-30",
+      "strategy": "remain3",
+      "year": 2026,
+      "quarter": "1Q",
+      "ret_pct": -1.6462
+    }
+  ],
+  "stats": {
+    "total": 32,
+    "wins": 18,
+    "losses": 14,
+    "wr": 56.2,
+    "avg": 0.3464,
+    "median": 0.1093,
+    "max": 2.4346,
+    "min": -1.6462,
+    "pf": 2.5,
+    "total_ret": 11.0856
+  }
+}
