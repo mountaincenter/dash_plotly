@@ -979,17 +979,9 @@ jobs:
           fi
 
       # ===== 07:00 CME更新フェーズ =====
-      - name: "[CME] Check trading day"
-        id: check_trading_cme
-        if: steps.exec_mode.outputs.mode == 'cme_update' && github.event.inputs.skip_trading_day_check != 'true'
-        env:
-          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
-        run: |
-          python scripts/check_trading_day.py
-        continue-on-error: true
-
+      # 米国市場・先物・為替は日本営業日に依存せず更新する。
       - name: "[CME] Update CME close and futures prices"
-        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        if: steps.exec_mode.outputs.mode == 'cme_update'
         run: |
           echo "🌅 Updating CME close and futures prices..."
           mkdir -p data/parquet
@@ -1040,7 +1032,7 @@ jobs:
         timeout-minutes: 5
 
       - name: "[CME] Generate semicon entry decisions"
-        if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        if: steps.exec_mode.outputs.mode == 'cme_update'
         run: |
           echo "============================================================"
           echo "Generating semicon entry decisions (07:00)"

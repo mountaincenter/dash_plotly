@@ -19,10 +19,12 @@ from server.routers import dev_semicon  # noqa: E402
 
 
 OUT_DIR = ROOT / "data" / "analysis"
-PRICE_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
-PRICE_SOURCE_LABEL = "data/parquet/granville/prices_topix.parquet"
+PRICE_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
+PRICE_SOURCE_LABEL = "data/parquet/prices_topix500_oc.parquet"
 FUTURES_PATH = ROOT / "data" / "parquet" / "futures_prices_max_1d.parquet"
 FUTURES_SOURCE_LABEL = "data/parquet/futures_prices_max_1d.parquet"
+OVERSEAS_SOURCE_LABEL = "yfinance:semicon_overseas_daily"
+OVERSEAS_TICKERS = list(dev_semicon.OVERSEAS.keys())
 
 MARKET_INDICATORS = [
     ("CL=F", "WTI原油", "地政学・インフレ圧力", "上昇は日本株のコスト増。半導体ロングは寄り天警戒", "down"),
@@ -30,6 +32,19 @@ MARKET_INDICATORS = [
     ("HG=F", "Copper", "景気・電力/インフラ需要", "上昇は景気敏感・電力周辺に追い風。ただし原油高と併発なら混在", "up"),
     ("NKD=F", "日経CME", "日本寄付前の指数地合い", "強くても寄り天あり。寄り後30分の維持を確認", "up"),
 ]
+
+
+def _ticker_frame(data: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    if data.empty:
+        return pd.DataFrame()
+    if isinstance(data.columns, pd.MultiIndex):
+        level0 = data.columns.get_level_values(0)
+        if ticker in level0:
+            return data[ticker].copy()
+        level1 = data.columns.get_level_values(-1)
+        if ticker in level1:
+            return data.xs(ticker, axis=1, level=-1).copy()
+    return data.copy()
 
 
 def safe_float(value: Any) -> float | None:
@@ -71,14 +86,27 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
 
     codes = {str(s.get("code") or "").strip() for s in signals if isinstance(s, dict)}
     codes = {c for c in codes if c}
-    tickers = {f"{c}.T" for c in codes}
-    prices = pd.read_parquet(PRICE_PATH, columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
-    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
-    prices = prices[prices["ticker"].astype(str).isin(tickers)].dropna(subset=["date", "Close"]).copy()
+    prices = pd.read_parquet(PRICE_PATH)
+    if {"Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC"}.issubset(prices.columns):
+        prices = prices.copy()
+        prices["date"] = pd.to_datetime(prices["Date"], errors="coerce")
+        prices["code"] = prices["Code"].astype(str).str[:4]
+        prices["Open"] = pd.to_numeric(prices["AdjO"], errors="coerce")
+        prices["High"] = pd.to_numeric(prices["AdjH"], errors="coerce")
+        prices["Low"] = pd.to_numeric(prices["AdjL"], errors="coerce")
+        prices["Close"] = pd.to_numeric(prices["AdjC"], errors="coerce")
+        prices["Volume"] = pd.to_numeric(prices.get("AdjVo"), errors="coerce") if "AdjVo" in prices.columns else pd.NA
+        prices["TurnoverValue"] = pd.to_numeric(prices.get("Va"), errors="coerce") if "Va" in prices.columns else prices["Close"] * prices["Volume"]
+        prices = prices[prices["code"].isin(codes)].dropna(subset=["date", "Close"]).copy()
+    else:
+        tickers = {f"{c}.T" for c in codes}
+        prices = pd.read_parquet(PRICE_PATH, columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
+        prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
+        prices = prices[prices["ticker"].astype(str).isin(tickers)].dropna(subset=["date", "Close"]).copy()
+        prices["code"] = prices["ticker"].astype(str).str.replace(".T", "", regex=False)
     if prices.empty:
         raise RuntimeError(f"no semicon tickers found in {PRICE_PATH}")
 
-    prices["code"] = prices["ticker"].astype(str).str.replace(".T", "", regex=False)
     prices = prices.sort_values(["code", "date"])
     metrics: dict[str, dict[str, Any]] = {}
     for code, g in prices.groupby("code", sort=False):
@@ -102,6 +130,8 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
             "high": latest_high,
             "low": safe_float(latest.get("Low")),
             "close": close,
+            "volume": safe_float(latest.get("Volume")),
+            "turnover_value": safe_float(latest.get("TurnoverValue")),
             "ret1": pct(close, prev_close),
             "ret5": pct(close, close_5),
             "ret20": pct(close, close_20),
@@ -169,6 +199,75 @@ def market_indicator_rows() -> tuple[list[dict[str, Any]], str | None]:
             }
         )
     return rows, latest_date
+
+
+def overseas_market_rows() -> list[dict[str, Any]]:
+    try:
+        import yfinance as yf
+    except Exception as exc:
+        print(f"[WARN] yfinance import failed for overseas indicators: {exc}")
+        return []
+
+    try:
+        daily = yf.download(
+            OVERSEAS_TICKERS,
+            period="3mo",
+            interval="1d",
+            group_by="ticker",
+            auto_adjust=False,
+            progress=False,
+            threads=True,
+        )
+    except Exception as exc:
+        print(f"[WARN] yfinance overseas download failed: {exc}")
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for ticker in OVERSEAS_TICKERS:
+        g = _ticker_frame(daily, ticker)
+        if g.empty or "Close" not in g.columns:
+            continue
+        g = g.dropna(subset=["Close"]).sort_index()
+        if len(g) < 2:
+            continue
+        latest = g.iloc[-1]
+        latest_date = pd.to_datetime(g.index[-1], errors="coerce")
+        close = safe_float(latest.get("Close"))
+        if close is None or pd.isna(latest_date):
+            continue
+        rows.append(
+            {
+                "ticker": ticker,
+                "name": dev_semicon.OVERSEAS.get(ticker, ticker),
+                "date": latest_date.strftime("%Y-%m-%d"),
+                "close": close,
+                "ret1": pct(close, safe_float(g.iloc[-2].get("Close")) if len(g) >= 2 else None),
+                "ret5": pct(close, safe_float(g.iloc[-6].get("Close")) if len(g) >= 6 else None),
+                "ret20": pct(close, safe_float(g.iloc[-21].get("Close")) if len(g) >= 21 else None),
+                "source": OVERSEAS_SOURCE_LABEL,
+            }
+        )
+    return rows
+
+
+def attach_overseas_market(payload: dict[str, Any]) -> dict[str, Any]:
+    overseas = overseas_market_rows()
+    if not overseas:
+        print("[WARN] overseas indicators unavailable; keeping futures-based market indicators")
+        return payload
+
+    market_indicators = dev_semicon._market_indicators_from_overseas(overseas)
+    payload = dict(payload)
+    payload.update(
+        {
+            "market": dev_semicon._market_regime(overseas),
+            "market_indicators": market_indicators,
+            "market_indicator_date": dev_semicon._market_indicator_date(market_indicators),
+            "market_indicator_source": OVERSEAS_SOURCE_LABEL,
+            "overseas": overseas,
+        }
+    )
+    return payload
 
 
 def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
@@ -288,6 +387,7 @@ def build_payload(mode: str) -> dict[str, Any]:
         }
     else:
         payload["us_pending"] = False
+        payload = attach_overseas_market(payload)
 
     return payload
 
