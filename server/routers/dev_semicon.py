@@ -29,8 +29,11 @@ REPORT_PATH = SEMICON_OUT / "ai_semiconductor_yf_entry_risk_report.html"
 BACKTEST_SUMMARY_PATH = SEMICON_OUT / "semicon_trend_backtest_summary.csv"
 BACKTEST_REPORT_PATH = SEMICON_OUT / "semicon_trend_backtest_report.html"
 INTRADAY_GRID_PATH = SEMICON_OUT / "semicon_intraday_long_short_grid.csv"
+THEME_FLOW_LEADS_PATH = SEMICON_OUT / "semicon_theme_flow_leads.csv"
+THEME_FLOW_LEAD_SUMMARY_PATH = SEMICON_OUT / "semicon_theme_flow_lead_summary.csv"
 HOLD_STOCKS_PATH = ROOT / "data" / "csv" / "hold_stocks.csv"
-TOPIX_PRICES_PATH = ROOT / "data" / "parquet" / "granville" / "prices_topix.parquet"
+TOPIX_PRICES_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
+SEMICON_WEEKLY_MEMOS_PATH = ANALYSIS_DIR / "semicon_weekly_theme_memos.json"
 
 SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
 SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
@@ -364,6 +367,201 @@ def _safe_float(v: object) -> float | None:
         return None
 
 
+def _jsonable_value(v: object) -> object:
+    if v is None:
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.floating,)):
+        return float(v) if np.isfinite(v) else None
+    if isinstance(v, pd.Timestamp):
+        return v.date().isoformat()
+    return v
+
+
+def _jsonable_records(df: pd.DataFrame, columns: list[str], limit: int | None = None) -> list[dict[str, Any]]:
+    if df.empty:
+        return []
+    sub = df[[c for c in columns if c in df.columns]].copy()
+    if limit is not None:
+        sub = sub.head(limit)
+    rows: list[dict[str, Any]] = []
+    for record in sub.to_dict(orient="records"):
+        rows.append({key: _jsonable_value(value) for key, value in record.items()})
+    return rows
+
+
+def _latest_weekly_theme_memo() -> dict[str, Any] | None:
+    if not SEMICON_WEEKLY_MEMOS_PATH.exists():
+        return None
+    try:
+        data = json.loads(SEMICON_WEEKLY_MEMOS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    memos = data.get("memos")
+    if not isinstance(memos, list) or not memos:
+        return None
+    latest = max(
+        (m for m in memos if isinstance(m, dict) and m.get("date")),
+        key=lambda m: str(m.get("date")),
+        default=None,
+    )
+    if not latest:
+        return None
+    return {
+        "memo_date": latest.get("date"),
+        "issue": latest.get("issue"),
+        "source_url": latest.get("source_url"),
+        "theme_tags": latest.get("theme_tags") or [],
+        "related_codes": latest.get("related_codes") or [],
+        "related_overseas": latest.get("related_overseas") or [],
+        "rotation_stage": latest.get("rotation_stage"),
+        "my_thesis": latest.get("my_thesis"),
+    }
+
+
+def _load_theme_flow_leads() -> dict[str, Any]:
+    latest_memo = _latest_weekly_theme_memo()
+    base = {
+        "available": False,
+        "source": THEME_FLOW_LEADS_PATH.name,
+        "source_policy": "電子デバイス産業新聞の本文は保持・表示せず、ローカルの圧縮メモと売買代金検証だけを使う。",
+        "latest_memo": latest_memo,
+        "reason": None,
+    }
+    if not THEME_FLOW_LEADS_PATH.exists():
+        base["reason"] = "semicon_theme_flow_leads.csv missing"
+        return base
+    try:
+        leads = pd.read_csv(THEME_FLOW_LEADS_PATH)
+    except Exception as exc:
+        base["reason"] = f"failed_to_load_leads: {type(exc).__name__}"
+        return base
+    if leads.empty:
+        base["reason"] = "semicon_theme_flow_leads.csv empty"
+        return base
+
+    leads["signal_dt"] = pd.to_datetime(leads.get("signal_date"), errors="coerce")
+    leads["memo_dt"] = pd.to_datetime(leads.get("memo_date"), errors="coerce")
+    leads = leads.dropna(subset=["signal_dt"]).copy()
+    if leads.empty:
+        base["reason"] = "signal_date missing"
+        return base
+
+    latest_signal_dt = leads["signal_dt"].max()
+    latest_signal_date = latest_signal_dt.date().isoformat()
+    latest_rows = leads[leads["signal_dt"].eq(latest_signal_dt)].sort_values(
+        ["lead_score", "flow_turnover_oku"],
+        ascending=[False, False],
+    )
+    strong_rows = leads[leads["stage"].isin(["active_rotation", "theme_flow_seed"])].sort_values(
+        ["signal_dt", "lead_score", "flow_turnover_oku"],
+        ascending=[False, False, False],
+    )
+    recent_rows = leads.sort_values(
+        ["signal_dt", "lead_score", "flow_turnover_oku"],
+        ascending=[False, False, False],
+    )
+    primary = latest_rows.iloc[0].to_dict() if not latest_rows.empty else {}
+    analyzed_memo_dt = leads["memo_dt"].max()
+    analyzed_memo_date = analyzed_memo_dt.date().isoformat() if not pd.isna(analyzed_memo_dt) else None
+
+    pending_memo = None
+    if latest_memo and latest_memo.get("memo_date") and analyzed_memo_date:
+        memo_dt = pd.to_datetime(latest_memo.get("memo_date"), errors="coerce")
+        if not pd.isna(memo_dt) and memo_dt.date().isoformat() > analyzed_memo_date:
+            pending_memo = {
+                **latest_memo,
+                "status": "awaiting_next_trading_day_price",
+                "reason": "memo翌営業日の終値データがまだ無いため端緒検証は未生成",
+            }
+
+    lead_columns = [
+        "memo_date",
+        "signal_date",
+        "issue",
+        "flow_group",
+        "stage",
+        "lead_score",
+        "theme_hits",
+        "direct_count",
+        "expanded_count",
+        "direct_names",
+        "flow_turnover_oku",
+        "flow_tv5",
+        "flow_tv20",
+        "flow_tv60",
+        "flow_ret1",
+        "flow_ret5",
+        "flow_up_ratio",
+        "top_code",
+        "top_name",
+        "top_share",
+        "laggard_code",
+        "laggard_name",
+        "laggard_ret5",
+        "laggard_vs25",
+        "laggard_va20",
+        "flow_next_ret5",
+        "flow_partial_days",
+        "flow_partial_ret",
+        "direct_next_ret5",
+        "direct_partial_ret",
+        "expanded_next_ret5",
+        "my_thesis",
+    ]
+    summary_rows: list[dict[str, Any]] = []
+    if THEME_FLOW_LEAD_SUMMARY_PATH.exists():
+        try:
+            summary = pd.read_csv(THEME_FLOW_LEAD_SUMMARY_PATH).sort_values(
+                ["stage", "avg_next5"],
+                ascending=[True, False],
+            )
+            summary_rows = _jsonable_records(
+                summary,
+                [
+                    "stage",
+                    "flow_group",
+                    "n",
+                    "avg_score",
+                    "win_next5",
+                    "avg_next5",
+                    "med_next5",
+                    "avg_tv20",
+                    "avg_up",
+                    "avg_top_share",
+                ],
+                24,
+            )
+        except Exception:
+            summary_rows = []
+
+    return {
+        **base,
+        "available": True,
+        "reason": None,
+        "latest_signal_date": latest_signal_date,
+        "latest_analyzed_memo_date": analyzed_memo_date,
+        "latest_memo": latest_memo,
+        "pending_memo": pending_memo,
+        "primary": {key: _jsonable_value(value) for key, value in primary.items() if key not in {"signal_dt", "memo_dt"}},
+        "latest_rows": _jsonable_records(latest_rows, lead_columns, 14),
+        "recent_strong_rows": _jsonable_records(strong_rows, lead_columns, 14),
+        "recent_rows": _jsonable_records(recent_rows, lead_columns, 24),
+        "summary_rows": summary_rows,
+        "notes": [
+            "headline memoは見るテーマの候補化だけに使い、売買判断は価格・売買代金・breadthで確認する。",
+            "active_rotation/theme_flow_seedは調査優先度であり、単独の買いシグナルではない。",
+            "latest_memoがpendingの場合、翌営業日の価格データ更新後にCSVを再生成する。",
+        ],
+    }
+
+
 def _parse_percent(v: object) -> float | None:
     if v is None or pd.isna(v):
         return None
@@ -673,13 +871,26 @@ def _build_segment_strength(signals: list[dict[str, Any]]) -> list[dict[str, Any
 @lru_cache(maxsize=4)
 def _load_turnover_prices(path_str: str, mtime_ns: int) -> pd.DataFrame:
     _ = mtime_ns
-    df = pd.read_parquet(path_str, columns=["date", "Close", "Volume", "ticker"])
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["code_key"] = df["ticker"].astype(str).str.replace(".T", "", regex=False)
-    df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
-    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
-    df["turnover_yen"] = df["Close"] * df["Volume"]
-    return df.dropna(subset=["date", "Close", "Volume", "turnover_yen"])
+    df = pd.read_parquet(path_str)
+    if {"Date", "Code", "AdjC"}.issubset(df.columns):
+        df = df.copy()
+        df["date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df["code_key"] = df["Code"].astype(str).str[:4]
+        df["ticker"] = df["code_key"] + ".T"
+        df["Close"] = pd.to_numeric(df["AdjC"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df.get("AdjVo"), errors="coerce") if "AdjVo" in df.columns else pd.NA
+        if "Va" in df.columns:
+            df["turnover_yen"] = pd.to_numeric(df["Va"], errors="coerce")
+        else:
+            df["turnover_yen"] = df["Close"] * pd.to_numeric(df["Volume"], errors="coerce")
+    else:
+        df = pd.read_parquet(path_str, columns=["date", "Close", "Volume", "ticker"])
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df["code_key"] = df["ticker"].astype(str).str.replace(".T", "", regex=False)
+        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+        df["turnover_yen"] = df["Close"] * df["Volume"]
+    return df.dropna(subset=["date", "Close", "turnover_yen"])
 
 
 def _flow_hint(
@@ -713,7 +924,7 @@ def _flow_hint(
 
 def _build_flow_analysis(signals: list[dict[str, Any]]) -> dict[str, Any]:
     if not TOPIX_PRICES_PATH.exists() or not signals:
-        return {"available": False, "reason": "prices_topix.parquet or signals missing"}
+        return {"available": False, "reason": "prices_topix500_oc.parquet or signals missing"}
 
     try:
         prices = _load_turnover_prices(str(TOPIX_PRICES_PATH), TOPIX_PRICES_PATH.stat().st_mtime_ns)
@@ -1342,6 +1553,7 @@ def _build_payload_from_report() -> dict[str, Any] | None:
         "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "flow_analysis": _build_flow_analysis(signals),
+        "theme_flow_leads": _load_theme_flow_leads(),
         "bucket_summary": _bucket_summary(signals),
         "market_indicators": market_indicators,
         "market_indicator_date": _market_indicator_date(market_indicators),
@@ -1413,6 +1625,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "classification_basis": data.get("classification_basis") or CLASSIFICATION_BASIS,
             "segment_strength": _build_segment_strength(signals),
             "flow_analysis": _build_flow_analysis(signals),
+            "theme_flow_leads": data.get("theme_flow_leads") or _load_theme_flow_leads(),
             "bucket_summary": _bucket_summary(signals),
             "market_indicators": market_indicators,
             "market_indicator_date": data.get("market_indicator_date") or _market_indicator_date(market_indicators),
@@ -1486,6 +1699,7 @@ def build_payload(*, skip_environment: bool = False, skip_report: bool = False) 
             "classification_basis": CLASSIFICATION_BASIS,
             "segment_strength": [],
             "flow_analysis": {"available": False, "reason": "s3_json_missing"},
+            "theme_flow_leads": _load_theme_flow_leads(),
             "bucket_summary": [],
             "overseas": [],
             "report_available": False,
@@ -1515,6 +1729,7 @@ def build_payload(*, skip_environment: bool = False, skip_report: bool = False) 
             "signals": [],
             "classification_basis": CLASSIFICATION_BASIS,
             "flow_analysis": {"available": False, "reason": "prices_raw_missing"},
+            "theme_flow_leads": _load_theme_flow_leads(),
             "overseas": [],
             "morning_pilot": _load_morning_pilot(),
             "report_available": REPORT_PATH.exists(),
@@ -1567,6 +1782,7 @@ def build_payload(*, skip_environment: bool = False, skip_report: bool = False) 
         "classification_basis": CLASSIFICATION_BASIS,
         "segment_strength": _build_segment_strength(signals),
         "flow_analysis": _build_flow_analysis(signals),
+        "theme_flow_leads": _load_theme_flow_leads(),
         "bucket_summary": _bucket_summary(signals),
         "overseas": overseas_rows,
         "report_available": REPORT_PATH.exists(),
