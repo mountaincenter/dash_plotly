@@ -11,6 +11,7 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ REPORT_PATH = SEMICON_OUT / "ai_semiconductor_yf_entry_risk_report.html"
 BACKTEST_SUMMARY_PATH = SEMICON_OUT / "semicon_trend_backtest_summary.csv"
 BACKTEST_REPORT_PATH = SEMICON_OUT / "semicon_trend_backtest_report.html"
 HOLD_STOCKS_PATH = ROOT / "data" / "csv" / "hold_stocks.csv"
+TOPIX_PRICES_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
 
 SEMICON_ENTRY_JSON = ANALYSIS_DIR / "semicon_entry_decisions.json"
 SEMICON_DOMESTIC_JSON = ANALYSIS_DIR / "semicon_domestic_candidates.json"
@@ -83,6 +85,7 @@ UNIVERSE = [
     SemiconStock("5801", "古河電工", "B", "光通信/電力ケーブル/冷却"),
     SemiconStock("5803", "フジクラ", "B", "光通信/高密度配線"),
     SemiconStock("6981", "村田製作所", "B", "MLCC/電源部品/EMI"),
+    SemiconStock("6976", "太陽誘電", "B", "MLCC/受動部品"),
     SemiconStock("6367", "ダイキン工業", "B", "冷却/空調"),
     SemiconStock("5802", "住友電工", "C", "光通信/電線"),
     SemiconStock("6645", "オムロン", "C", "電源/制御"),
@@ -200,6 +203,7 @@ SEGMENT_CLASSIFICATION = {
     "光通信/電力ケーブル/冷却": ("光/通信", "光通信/電力ケーブル", "AIデータセンター接続・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
     "光通信/高密度配線": ("光/通信", "光通信/高密度配線", "AIデータセンター接続", "富士経済: 光通信市場 / DC光接続需要"),
     "MLCC/電源部品/EMI": ("AIサーバー部品", "MLCC/受動部品", "AIサーバーMLCC需給", "TrendForce: AI server MLCC逼迫 / 受動部品"),
+    "MLCC/受動部品": ("AIサーバー部品", "MLCC/受動部品", "AIサーバーMLCC需給", "TrendForce: AI server MLCC逼迫 / 受動部品"),
     "冷却/空調": ("電力/冷却", "冷却/空調", "AIデータセンター熱対策", "矢野経済: DC冷却/液浸冷却 / 高負荷計算需要"),
     "光通信/電線": ("光/通信", "光通信/電線", "DC光・電力配線", "富士経済: 光通信市場 / DCケーブル需要"),
     "電線/電力ケーブル": ("光/通信", "電線/電力ケーブル", "DC電力配線", "DC電力制約 / 電線・ケーブル需要"),
@@ -638,6 +642,217 @@ def _build_segment_strength(signals: list[dict[str, Any]]) -> list[dict[str, Any
     return sorted(rows, key=lambda r: ((r["avg_ret5"] or -999), (r["avg_ret20"] or -999)), reverse=True)
 
 
+@lru_cache(maxsize=4)
+def _load_turnover_prices(path_str: str, mtime_ns: int) -> pd.DataFrame:
+    _ = mtime_ns
+    df = pd.read_parquet(path_str)
+    if not {"Date", "Code", "AdjC"}.issubset(df.columns):
+        return pd.DataFrame()
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df["code_key"] = df["Code"].astype(str).str[:4]
+    df["Close"] = pd.to_numeric(df["AdjC"], errors="coerce")
+    if "Va" in df.columns:
+        df["turnover_yen"] = pd.to_numeric(df["Va"], errors="coerce")
+    elif "AdjVo" in df.columns:
+        df["turnover_yen"] = df["Close"] * pd.to_numeric(df["AdjVo"], errors="coerce")
+    else:
+        df["turnover_yen"] = pd.NA
+    return df.dropna(subset=["date", "Close", "turnover_yen"])
+
+
+def _flow_hint(
+    vs5: float | None,
+    vs20: float | None,
+    vs60: float | None,
+    avg_ret1: float | None,
+    up_ratio: float | None,
+    top_share: float | None,
+) -> str:
+    vs5 = vs5 or 0.0
+    vs20 = vs20 or 0.0
+    vs60 = vs60 or 0.0
+    avg_ret1 = avg_ret1 or 0.0
+    up_ratio = up_ratio or 0.0
+    top_share = top_share or 0.0
+    if vs20 >= 1.5 and top_share >= 70 and avg_ret1 > 0:
+        return "リーダー集中"
+    if vs60 >= 3.0 and vs20 >= 1.5 and avg_ret1 > 0 and up_ratio >= 50:
+        return "長期異常値+資金流入"
+    if vs20 >= 1.5 and avg_ret1 > 0 and up_ratio >= 50:
+        return "資金流入候補"
+    if vs20 >= 1.5 and (avg_ret1 < 0 or up_ratio < 50):
+        return "売買活発だが利確/逆風"
+    if vs5 >= 1.5 and vs20 < 1.2:
+        return "短期反応"
+    if avg_ret1 > 0 and up_ratio >= 60:
+        return "広がりあり"
+    return "様子見"
+
+
+def _action_hint_from_flow(hint: str) -> str:
+    if hint in {"資金流入候補", "広がりあり"}:
+        return "乗る候補"
+    if hint in {"長期異常値+資金流入", "リーダー集中", "短期反応"}:
+        return "待つ/押し目"
+    if hint == "売買活発だが利確/逆風":
+        return "触らない"
+    return "温度計/監視"
+
+
+def _build_flow_analysis(signals: list[dict[str, Any]]) -> dict[str, Any]:
+    if not TOPIX_PRICES_PATH.exists() or not signals:
+        return {"available": False, "reason": "prices_topix500_oc.parquet or signals missing"}
+
+    try:
+        prices = _load_turnover_prices(str(TOPIX_PRICES_PATH), TOPIX_PRICES_PATH.stat().st_mtime_ns)
+    except Exception as exc:
+        return {"available": False, "reason": f"failed_to_load_prices: {type(exc).__name__}"}
+
+    if prices.empty:
+        return {"available": False, "reason": "prices_empty"}
+
+    latest = prices["date"].max()
+    all_daily = prices.groupby("date", sort=True).agg(
+        turnover_yen=("turnover_yen", "sum"),
+        n=("code_key", "nunique"),
+    )
+    if latest not in all_daily.index:
+        return {"available": False, "reason": "latest_market_missing"}
+
+    sig_df = pd.DataFrame(signals)
+    if "code" not in sig_df.columns:
+        return {"available": False, "reason": "signal_code_missing"}
+    sig_df["code_key"] = sig_df["code"].astype(str).str.replace(".T", "", regex=False)
+    sig_df["core_segment"] = (
+        sig_df["core_segment"].fillna("未分類")
+        if "core_segment" in sig_df.columns
+        else "未分類"
+    )
+    sig_df["sub_segment"] = (
+        sig_df["sub_segment"].fillna("未分類")
+        if "sub_segment" in sig_df.columns
+        else sig_df["segment"].fillna("未分類")
+        if "segment" in sig_df.columns
+        else "未分類"
+    )
+    sig_df["name"] = sig_df["name"].fillna(sig_df["code_key"]) if "name" in sig_df.columns else sig_df["code_key"]
+
+    hist = prices[prices["code_key"].isin(sig_df["code_key"])].merge(
+        sig_df[["code_key", "code", "name", "core_segment", "sub_segment"]],
+        on="code_key",
+        how="left",
+    )
+    if hist.empty:
+        return {"available": False, "reason": "flow_history_empty"}
+
+    hist = hist.sort_values(["code_key", "date"])
+    hist["ret1"] = hist.groupby("code_key")["Close"].pct_change() * 100.0
+    latest_hist = hist[hist["date"].eq(latest)].copy()
+    if latest_hist.empty:
+        return {"available": False, "reason": "latest_signal_prices_missing"}
+
+    sem_daily = hist.groupby("date", sort=True).agg(
+        turnover_yen=("turnover_yen", "sum"),
+        avg_ret1=("ret1", "mean"),
+        up_ratio=("ret1", lambda x: float((x > 0).mean() * 100.0)),
+        n=("code_key", "nunique"),
+    )
+    sem_latest = sem_daily.loc[latest]
+    all_latest = all_daily.loc[latest]
+
+    def ratio(latest_value: float, series: pd.Series, window: int) -> float | None:
+        avg = series.tail(window).mean()
+        if pd.isna(avg) or avg == 0:
+            return None
+        return _safe_float(latest_value / avg)
+
+    def top1_ex(series_df: pd.DataFrame) -> tuple[float | None, float | None, str, str]:
+        if series_df.empty:
+            return None, None, "", ""
+        top = series_df.sort_values("turnover_yen", ascending=False).iloc[0]
+        total = float(series_df["turnover_yen"].sum())
+        top_turnover = float(top["turnover_yen"])
+        top_share = top_turnover / total * 100.0 if total else None
+        return _safe_float((total - top_turnover) / 1e9), _safe_float(top_share), str(top.get("code") or top.get("code_key")), str(top.get("name") or "")
+
+    universe_ex_top1_bil, universe_top1_share, universe_top_code, universe_top_name = top1_ex(latest_hist)
+
+    def summarize(level: str) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for name, g in hist.groupby(level, sort=False):
+            daily = g.groupby("date", sort=True).agg(
+                turnover_yen=("turnover_yen", "sum"),
+                avg_ret1=("ret1", "mean"),
+                up_ratio=("ret1", lambda x: float((x > 0).mean() * 100.0)),
+                n=("code_key", "nunique"),
+            )
+            if latest not in daily.index:
+                continue
+            current = daily.loc[latest]
+            members = g[g["date"].eq(latest)].copy()
+            ex_top1_bil, top_share, top_code, top_name = top1_ex(members)
+            turnover_bil = float(current["turnover_yen"]) / 1e9
+            vs5 = ratio(float(current["turnover_yen"]), daily["turnover_yen"], 5)
+            vs20 = ratio(float(current["turnover_yen"]), daily["turnover_yen"], 20)
+            vs60 = ratio(float(current["turnover_yen"]), daily["turnover_yen"], 60)
+            avg_ret1 = _safe_float(current["avg_ret1"])
+            up_ratio = _safe_float(current["up_ratio"])
+            hint = _flow_hint(vs5, vs20, vs60, avg_ret1, up_ratio, top_share)
+            rows.append(
+                {
+                    "segment": str(name),
+                    "n": int(current["n"]),
+                    "turnover_bil": _safe_float(turnover_bil),
+                    "turnover_ex_top1_bil": ex_top1_bil,
+                    "turnover_vs5": vs5,
+                    "turnover_vs20": vs20,
+                    "turnover_vs60": vs60,
+                    "avg_ret1": avg_ret1,
+                    "up_ratio": up_ratio,
+                    "top_code": top_code,
+                    "top_name": top_name,
+                    "top_share": top_share,
+                    "hint": hint,
+                    "action_hint": _action_hint_from_flow(hint),
+                }
+            )
+        return sorted(rows, key=lambda r: r.get("turnover_bil") or 0, reverse=True)
+
+    return {
+        "available": True,
+        "date": latest.date().isoformat(),
+        "market": {
+            "turnover_bil": _safe_float(float(all_latest["turnover_yen"]) / 1e9),
+            "turnover_vs5": ratio(float(all_latest["turnover_yen"]), all_daily["turnover_yen"], 5),
+            "turnover_vs20": ratio(float(all_latest["turnover_yen"]), all_daily["turnover_yen"], 20),
+            "turnover_vs60": ratio(float(all_latest["turnover_yen"]), all_daily["turnover_yen"], 60),
+            "n": int(all_latest["n"]),
+        },
+        "universe": {
+            "turnover_bil": _safe_float(float(sem_latest["turnover_yen"]) / 1e9),
+            "turnover_ex_top1_bil": universe_ex_top1_bil,
+            "turnover_vs5": ratio(float(sem_latest["turnover_yen"]), sem_daily["turnover_yen"], 5),
+            "turnover_vs20": ratio(float(sem_latest["turnover_yen"]), sem_daily["turnover_yen"], 20),
+            "turnover_vs60": ratio(float(sem_latest["turnover_yen"]), sem_daily["turnover_yen"], 60),
+            "market_share": _safe_float(float(sem_latest["turnover_yen"]) / float(all_latest["turnover_yen"]) * 100.0),
+            "avg_ret1": _safe_float(sem_latest["avg_ret1"]),
+            "up_ratio": _safe_float(sem_latest["up_ratio"]),
+            "n": int(sem_latest["n"]),
+            "top_code": universe_top_code,
+            "top_name": universe_top_name,
+            "top_share": universe_top1_share,
+        },
+        "core_segments": summarize("core_segment"),
+        "sub_segments": summarize("sub_segment"),
+        "notes": [
+            "売買代金は prices_topix500_oc.parquet の Va を優先し、なければ AdjC×AdjVo で概算する。",
+            "top1占有率が高い日は、テーマ全体ではなくリーダー集中として分離する。",
+            "これは観測レイヤーであり、単独では売買シグナルにしない。",
+        ],
+    }
+
+
 def _trade_bucket(signal: dict[str, Any]) -> tuple[str, list[str]]:
     code = str(signal.get("code", ""))
     decision = str(signal.get("decision", ""))
@@ -1042,6 +1257,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "signals": signals,
             "classification_basis": data.get("classification_basis") or CLASSIFICATION_BASIS,
             "segment_strength": _build_segment_strength(signals),
+            "flow_analysis": data.get("flow_analysis") or _build_flow_analysis(signals),
             "bucket_summary": _bucket_summary(signals),
             "market_indicators": market_indicators,
             "market_indicator_date": data.get("market_indicator_date") or _market_indicator_date(market_indicators),
@@ -1050,6 +1266,7 @@ def _normalize_semicon_payload(data: dict[str, Any], source: str, us_pending: bo
             "report_available": bool(data.get("report_available")),
             "report_url": data.get("report_url"),
             "backtest": data.get("backtest") or _load_backtest_summary(),
+            "morning_pilot": data.get("morning_pilot"),
             "hold_short_exposures": data.get("hold_short_exposures") or _load_hold_short_exposures(),
             "source": source,
             "source_environment": APP_ENV,

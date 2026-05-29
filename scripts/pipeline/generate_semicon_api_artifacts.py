@@ -21,7 +21,7 @@ from server.routers import dev_semicon  # noqa: E402
 OUT_DIR = ROOT / "data" / "analysis"
 PRICE_PATH = ROOT / "data" / "parquet" / "prices_topix500_oc.parquet"
 PRICE_SOURCE_LABEL = "data/parquet/prices_topix500_oc.parquet"
-PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC"]
+PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjVo", "Va"]
 
 
 def safe_float(value: Any) -> float | None:
@@ -71,6 +71,8 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
     prices = raw[PRICE_COLUMNS].copy()
     prices["date"] = pd.to_datetime(prices["Date"], errors="coerce")
     prices["code"] = prices["Code"].astype(str).str[:4]
+    prices["Volume"] = pd.to_numeric(prices["AdjVo"], errors="coerce")
+    prices["TurnoverValue"] = pd.to_numeric(prices["Va"], errors="coerce")
     prices = prices[prices["code"].isin(codes)].dropna(subset=["date", "AdjC"]).copy()
     if prices.empty:
         raise RuntimeError(f"no semicon codes found in {PRICE_PATH}")
@@ -98,6 +100,8 @@ def price_metrics_by_code(signals: list[dict[str, Any]]) -> tuple[dict[str, dict
             "high": latest_high,
             "low": safe_float(latest.get("AdjL")),
             "close": close,
+            "volume": safe_float(latest.get("Volume")),
+            "turnover_value": safe_float(latest.get("TurnoverValue")),
             "ret1": pct(close, prev_close),
             "ret5": pct(close, close_5),
             "ret20": pct(close, close_20),
@@ -138,6 +142,7 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
             row["entry_rule"] = f"公式日足の前日高値{m['entry_trigger_price']:.0f}超え確認。分足はVWAP上維持のみ参考"
         enriched.append(row)
 
+    enriched = dev_semicon._attach_classification_meta(enriched)
     enriched = dev_semicon._attach_entry_decisions(dev_semicon._attach_trade_buckets(enriched))
     payload = dict(payload)
     payload.update(
@@ -147,6 +152,7 @@ def enrich_payload_prices(payload: dict[str, Any]) -> dict[str, Any]:
             "price_source": PRICE_SOURCE_LABEL,
             "signals": enriched,
             "segment_strength": dev_semicon._build_segment_strength(enriched),
+            "flow_analysis": dev_semicon._build_flow_analysis(enriched),
             "bucket_summary": dev_semicon._bucket_summary(enriched),
             "counts": {
                 "buy": sum(1 for s in enriched if s.get("decision") == "BUY_CANDIDATE"),
