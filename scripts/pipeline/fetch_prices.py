@@ -70,6 +70,15 @@ def fetch_and_save_prices(tickers: List[str], period: str, interval: str, output
         if df.empty:
             print(f"  ⚠ No data retrieved, creating empty file")
             df = pd.DataFrame(columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
+        elif "Close" in df.columns:
+            before = len(df)
+            # yfinance can expose a new daily row after midnight JST with Volume
+            # but without a confirmed Close. Such rows break downstream
+            # enrichment by looking "latest" while being unusable.
+            df = df.dropna(subset=["Close"]).copy()
+            dropped = before - len(df)
+            if dropped:
+                print(f"  ⚠ Dropped {dropped} row(s) with missing Close before saving")
 
         # 保存
         PARQUET_DIR.mkdir(parents=True, exist_ok=True)

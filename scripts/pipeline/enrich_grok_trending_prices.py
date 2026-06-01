@@ -201,6 +201,47 @@ def calc_extreme_market_info() -> dict:
     return result
 
 
+def _rows_from_jquants(
+    missing_tickers: List[str],
+    target_date: pd.Timestamp,
+) -> pd.DataFrame:
+    """Fetch target-date daily bars from J-Quants for missing tickers."""
+
+    try:
+        from scripts.lib.jquants_fetcher import JQuantsFetcher
+    except Exception as e:
+        print(f"  ⚠ J-Quants fetcher unavailable: {e}")
+        return pd.DataFrame()
+
+    codes = [t.replace(".T", "") for t in missing_tickers]
+    target = target_date.strftime("%Y-%m-%d")
+    print(f"[INFO] Backfilling {len(codes)} ticker(s) from J-Quants for {target}")
+
+    try:
+        fetched_df = JQuantsFetcher().get_prices_daily_batch(
+            codes,
+            from_date=target,
+            to_date=target,
+            batch_delay=0.0,
+        )
+    except Exception as e:
+        print(f"  ⚠ J-Quants backfill failed: {e}")
+        return pd.DataFrame()
+
+    if fetched_df.empty or "Close" not in fetched_df.columns:
+        print("  ⚠ J-Quants returned no usable rows")
+        return pd.DataFrame()
+
+    rows = fetched_df.dropna(subset=["Close"]).copy()
+    if rows.empty:
+        print("  ⚠ J-Quants rows had no confirmed Close")
+        return pd.DataFrame()
+
+    rows["ticker"] = rows["Code"].astype(str).str[:4] + ".T"
+    rows["date"] = pd.to_datetime(rows["Date"])
+    return rows[["date", "Open", "High", "Low", "Close", "Volume", "ticker"]]
+
+
 def _backfill_missing_latest_prices(
     prices_df: pd.DataFrame,
     target_date: pd.Timestamp,
@@ -211,25 +252,31 @@ def _backfill_missing_latest_prices(
     if not missing_tickers:
         return prices_df, pd.DataFrame()
 
-    print(f"[INFO] Backfilling {len(missing_tickers)} ticker(s) from yfinance (1d)")
-    fetched_df = fetch_prices_for_tickers(missing_tickers, period="10d", interval="1d")
-
-    if fetched_df.empty:
-        print("  ✗ yfinance returned no rows for missing tickers")
-        return prices_df, pd.DataFrame()
-
-    fetched_df = fetched_df.copy()
-    fetched_df["date"] = pd.to_datetime(fetched_df["date"])
-
-    target_rows = fetched_df[fetched_df["date"] == target_date].copy()
+    target_rows = _rows_from_jquants(missing_tickers, target_date)
 
     if target_rows.empty:
+        print(f"[INFO] Backfilling {len(missing_tickers)} ticker(s) from yfinance (1d)")
+        fetched_df = fetch_prices_for_tickers(missing_tickers, period="10d", interval="1d")
+
+        if fetched_df.empty:
+            print("  ✗ yfinance returned no rows for missing tickers")
+            return prices_df, pd.DataFrame()
+
+        fetched_df = fetched_df.copy()
+        fetched_df["date"] = pd.to_datetime(fetched_df["date"])
+        fetched_df = fetched_df.dropna(subset=["Close"])
+        target_rows = fetched_df[fetched_df["date"] <= target_date].copy()
+
+        if target_rows.empty:
+            print("  ✗ No yfinance rows with confirmed Close at or before target date")
+            return prices_df, pd.DataFrame()
+
         target_rows = (
-            fetched_df.sort_values("date")
+            target_rows.sort_values("date")
             .groupby("ticker", as_index=False)
             .tail(1)
         )
-        print("  ⚠ No rows matched target date; using latest available per ticker")
+        print("  ⚠ Using latest yfinance row at or before target date per ticker")
 
     updated_prices = prices_df.copy()
     appended_rows = []
@@ -256,69 +303,186 @@ def _backfill_missing_latest_prices(
     return updated_prices, target_rows
 
 
-def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
+def _infer_price_asof_date(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.Timestamp:
+    """Resolve the trading day whose Close should enrich the selected Grok list."""
+
+    if "price_asof_date" in df.columns:
+        asof = pd.to_datetime(df["price_asof_date"], errors="coerce").dropna()
+        if not asof.empty:
+            return pd.Timestamp(asof.max()).normalize()
+
+    if "date" in df.columns:
+        selected = pd.to_datetime(df["date"], errors="coerce").dropna()
+        if not selected.empty:
+            return (pd.Timestamp(selected.max()).normalize() - pd.tseries.offsets.BDay(1)).normalize()
+
+    return pd.Timestamp(prices_df["date"].max()).normalize()
+
+
+def _latest_valid_prices(
+    prices_df: pd.DataFrame,
+    tickers: List[str],
+    price_asof_date: pd.Timestamp,
+) -> pd.DataFrame:
+    """Get each ticker's latest confirmed Close at or before price_asof_date."""
+
+    subset = prices_df[
+        prices_df["ticker"].isin(tickers)
+        & (prices_df["date"] <= price_asof_date)
+    ].dropna(subset=["Close"]).copy()
+
+    if subset.empty:
+        return subset
+
+    return (
+        subset.sort_values(["ticker", "date"])
+        .groupby("ticker", as_index=False)
+        .tail(1)
+        .reset_index(drop=True)
+    )
+
+
+def _attach_prev_close(prices_df: pd.DataFrame, latest_prices: pd.DataFrame) -> pd.DataFrame:
+    """Attach previous confirmed Close per ticker relative to that ticker's source date."""
+
+    prev_rows = []
+    for _, row in latest_prices[["ticker", "date"]].iterrows():
+        hist = prices_df[
+            (prices_df["ticker"] == row["ticker"])
+            & (prices_df["date"] < row["date"])
+        ].dropna(subset=["Close"]).sort_values("date")
+        if hist.empty:
+            continue
+        prev = hist.iloc[-1]
+        prev_rows.append({"ticker": row["ticker"], "prev_close": prev["Close"]})
+
+    if not prev_rows:
+        latest_prices["prev_close"] = pd.NA
+        return latest_prices
+
+    return latest_prices.merge(pd.DataFrame(prev_rows), on="ticker", how="left")
+
+
+def save_prices(prices_df: pd.DataFrame) -> None:
+    """Persist repaired prices_max_1d locally and to S3."""
+
+    prices_df.to_parquet(PRICES_PATH, index=False)
+    print(f"[OK] Saved repaired prices locally: {PRICES_PATH}")
+
+    bucket = os.getenv("S3_BUCKET", "stock-api-data")
+    key = "parquet/prices_max_1d.parquet"
+    s3_client = boto3.client("s3")
+    buffer = BytesIO()
+    prices_df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    s3_client.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=buffer.getvalue(),
+        ContentType="application/octet-stream",
+        CacheControl="max-age=60",
+        ServerSideEncryption="AES256",
+    )
+    print(f"[OK] Uploaded repaired prices to S3: s3://{bucket}/{key}")
+
+
+def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, bool]:
     """価格データをマージ"""
     if df.empty:
-        return df
+        return df, prices_df, False
 
-    # 最新日付のデータ
-    latest_date = prices_df["date"].max()
-    latest_prices = prices_df[prices_df["date"] == latest_date].copy()
-    print(f"[INFO] Latest price date: {latest_date}, {len(latest_prices)} stocks")
+    prices_df = prices_df.copy()
+    prices_df["date"] = pd.to_datetime(prices_df["date"])
+    tickers_in_grok = df["ticker"].unique().tolist()
+    price_asof_date = _infer_price_asof_date(df, prices_df)
 
-    # Backfill Close for tickers missing from latest snapshot
-    latest_with_close = latest_prices.dropna(subset=["Close"])
-    valid_tickers = set(latest_with_close["ticker"].unique())
-    missing_tickers = sorted(set(df["ticker"].unique()) - valid_tickers)
+    latest_prices = _latest_valid_prices(prices_df, tickers_in_grok, price_asof_date)
+    print(
+        f"[INFO] Price as-of date: {price_asof_date.date()}, "
+        f"valid rows: {len(latest_prices)}/{len(tickers_in_grok)}"
+    )
 
-    if missing_tickers:
-        prices_df, recovered_rows = _backfill_missing_latest_prices(prices_df, latest_date, missing_tickers)
+    valid_tickers = set(latest_prices["ticker"].unique()) if not latest_prices.empty else set()
+    missing_tickers = sorted(set(tickers_in_grok) - valid_tickers)
+    stale_tickers = []
+    if not latest_prices.empty:
+        source_dates = latest_prices.set_index("ticker")["date"].to_dict()
+        stale_tickers = sorted(
+            ticker for ticker in tickers_in_grok
+            if ticker in source_dates and pd.Timestamp(source_dates[ticker]).normalize() < price_asof_date
+        )
+        if stale_tickers:
+            print(
+                f"[INFO] {len(stale_tickers)} ticker(s) only have confirmed Close before "
+                f"{price_asof_date.date()}; attempting target-date repair"
+            )
+    prices_updated = False
+
+    backfill_tickers = sorted(set(missing_tickers) | set(stale_tickers))
+    if backfill_tickers:
+        prices_df, recovered_rows = _backfill_missing_latest_prices(prices_df, price_asof_date, backfill_tickers)
         if not recovered_rows.empty:
-            latest_prices = prices_df[prices_df["date"] == latest_date].copy()
-            latest_with_close = latest_prices.dropna(subset=["Close"])
-            still_missing = set(df["ticker"].unique()) - set(latest_with_close["ticker"].unique())
+            prices_updated = True
+            latest_prices = _latest_valid_prices(prices_df, tickers_in_grok, price_asof_date)
+            still_missing = set(tickers_in_grok) - set(latest_prices["ticker"].unique())
             recovered_count = len(set(recovered_rows["ticker"].unique()) - still_missing)
-            print(f"[INFO] Backfilled latest Close for {recovered_count} ticker(s)")
+            print(f"[INFO] Backfilled confirmed Close for {recovered_count} ticker(s)")
             if still_missing:
                 print(f"[WARN] Still missing Close for: {sorted(still_missing)}")
         else:
-            print("[WARN] Failed to backfill missing tickers from yfinance")
+            print("[WARN] Failed to backfill missing tickers")
 
-    # 前日データ取得（price_diff計算用）
-    prev_date = prices_df[prices_df["date"] < latest_date]["date"].max()
-    prev_prices = prices_df[prices_df["date"] == prev_date][["ticker", "Close"]].copy()
-    prev_prices.columns = ["ticker", "prev_close"]
+    if latest_prices.empty:
+        raise RuntimeError("No confirmed Close rows were available for Grok tickers")
 
     # price_diff計算（前日差の実額）
-    latest_prices = latest_prices.merge(prev_prices, on="ticker", how="left")
+    latest_prices = _attach_prev_close(prices_df, latest_prices)
     latest_prices["price_diff"] = (
         latest_prices["Close"] - latest_prices["prev_close"]
     ).round(0)
+    latest_prices["price_source_date"] = latest_prices["date"].dt.strftime("%Y-%m-%d")
 
     # ATR14%を計算
-    tickers_in_grok = df["ticker"].unique()
     atr_data = {}
     for ticker in tickers_in_grok:
-        ticker_prices = prices_df[prices_df["ticker"] == ticker].copy()
+        source_date = latest_prices.loc[latest_prices["ticker"] == ticker, "date"]
+        if source_date.empty:
+            continue
+        ticker_prices = prices_df[
+            (prices_df["ticker"] == ticker)
+            & (prices_df["date"] <= source_date.iloc[0])
+        ].dropna(subset=["Close"]).copy()
         if len(ticker_prices) >= 14:
             atr_data[ticker] = calc_atr14(ticker_prices)
 
     # rsi9 を計算
     rsi_data = {}
     for ticker in tickers_in_grok:
-        ticker_prices = prices_df[prices_df["ticker"] == ticker].copy()
+        source_date = latest_prices.loc[latest_prices["ticker"] == ticker, "date"]
+        if source_date.empty:
+            continue
+        ticker_prices = prices_df[
+            (prices_df["ticker"] == ticker)
+            & (prices_df["date"] <= source_date.iloc[0])
+        ].dropna(subset=["Close"]).copy()
         if len(ticker_prices) >= 10:
             rsi_data[ticker] = calc_rsi9(ticker_prices)
 
     # vol_ratio を計算（10日移動平均）
     vol_data = {}
     for ticker in tickers_in_grok:
-        ticker_prices = prices_df[prices_df["ticker"] == ticker].copy()
+        source_date = latest_prices.loc[latest_prices["ticker"] == ticker, "date"]
+        if source_date.empty:
+            continue
+        ticker_prices = prices_df[
+            (prices_df["ticker"] == ticker)
+            & (prices_df["date"] <= source_date.iloc[0])
+        ].dropna(subset=["Close"]).copy()
         if len(ticker_prices) >= 10:
             vol_data[ticker] = calc_vol_ratio(ticker_prices)
 
     # マージ用マップ
-    price_map = latest_prices.set_index("ticker")[["Close", "price_diff", "Volume"]].to_dict("index")
+    price_map = latest_prices.set_index("ticker")[["Close", "price_diff", "Volume", "price_source_date"]].to_dict("index")
 
     # マージ
     df = df.copy()
@@ -329,6 +493,8 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
             df.at[idx, "Close"] = p.get("Close")
             df.at[idx, "price_diff"] = p.get("price_diff")
             df.at[idx, "Volume"] = p.get("Volume")
+            df.at[idx, "price_source_date"] = p.get("price_source_date")
+            df.at[idx, "price_asof_date"] = price_asof_date.strftime("%Y-%m-%d")
         if ticker in atr_data:
             df.at[idx, "atr14_pct"] = atr_data[ticker]
         if ticker in rsi_data:
@@ -364,6 +530,13 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
     print(f"       futures_change_pct: {extreme_info['futures_change_pct']}")
     print(f"       is_extreme_market: {extreme_info['is_extreme_market']}")
 
+    min_close_required = int(os.getenv("GROK_PRICE_MIN_CLOSE", str(len(df))))
+    if has_close < min_close_required:
+        raise RuntimeError(
+            f"Close coverage {has_close}/{len(df)} is below required {min_close_required}; "
+            "refusing to publish incomplete grok_trending.parquet"
+        )
+
     # SHORT推奨フラグ: grade廃止済み、暫定False
     df["short_recommended"] = False
 
@@ -373,7 +546,7 @@ def enrich_prices(df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
         cats = df["reason_category"].value_counts().to_dict()
         print(f"       reason_category: {cats}")
 
-    return df
+    return df, prices_df, prices_updated
 
 
 def _classify_reason(reason: str) -> str:
@@ -427,7 +600,9 @@ def main() -> int:
         print(f"[INFO] Loaded prices_max_1d: {len(prices_df)} rows")
 
         # 価格マージ
-        df = enrich_prices(df, prices_df)
+        df, prices_df, prices_updated = enrich_prices(df, prices_df)
+        if prices_updated:
+            save_prices(prices_df)
 
         # 保存
         save_grok_trending(df)

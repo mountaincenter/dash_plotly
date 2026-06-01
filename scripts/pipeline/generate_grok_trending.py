@@ -574,7 +574,13 @@ def calculate_selection_score(item: dict[str, Any]) -> float:
     return score
 
 
-def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, selected_time: str, prompt_version: str) -> pd.DataFrame:
+def convert_to_all_stocks_schema(
+    grok_data: list[dict],
+    selected_date: str,
+    selected_time: str,
+    prompt_version: str,
+    price_asof_date: str | None = None,
+) -> pd.DataFrame:
     """
     Convert Grok data to all_stocks.parquet compatible schema
 
@@ -628,6 +634,7 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
             "tags": categories_val,  # Grokのcategoriesをtagsに格納
             "reason": reason,  # 新規カラム: Grokの選定理由
             "date": selected_date,
+            "price_asof_date": price_asof_date,
             "Close": None,
             "price_diff": None,
             "Volume": None,
@@ -655,7 +662,7 @@ def convert_to_all_stocks_schema(grok_data: list[dict], selected_date: str, sele
         return pd.DataFrame(columns=[
             "ticker", "code", "stock_name", "market", "sectors", "series",
             "topixnewindexseries", "categories", "tags", "reason",
-            "date", "Close", "price_diff", "Volume", "vol_ratio",
+            "date", "price_asof_date", "Close", "price_diff", "Volume", "vol_ratio",
             "atr14_pct", "rsi9", "weekday", "score", "key_signal",
             "source", "selected_time", "updated_at",
             "sentiment_score", "policy_link", "has_mention", "mentioned_by",
@@ -1184,7 +1191,13 @@ def main() -> int:
 
         # 6. Convert to DataFrame (prompt_versionを追加)
         selected_date = context['next_trading_day_raw']
-        df = convert_to_all_stocks_schema(grok_data, selected_date, selected_time, prompt_version)
+        df = convert_to_all_stocks_schema(
+            grok_data,
+            selected_date,
+            selected_time,
+            prompt_version,
+            price_asof_date=context.get("latest_trading_day_raw"),
+        )
         print()
 
         if df.empty:
