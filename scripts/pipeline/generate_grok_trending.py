@@ -319,12 +319,12 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
     chat.append(system(
         "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
         "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
-        "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+        "【絶対条件】最終出力はできるだけ20〜25銘柄、最低10銘柄以上のJSON配列にしてください。"
     ))
     chat.append(user(
         prompt
-        + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
-        "5〜10銘柄では不十分です。"
+        + "\n\n【最終確認・絶対遵守】出力するJSON配列はできるだけ20〜25銘柄にしてください。"
+        "ただし厳選した10銘柄以上であれば有効です。"
     ))
 
     # ストリーミング処理（切断リトライ付き）
@@ -366,12 +366,12 @@ def query_grok(api_key: str, prompt: str) -> tuple[str, dict]:
             chat.append(system(
                 "あなたは日本株市場のデイトレード専門家です。銘柄選定の際は具体的な数値と根拠を示してください。"
                 "web_searchツールとx_searchツールを使用して、一次情報に基づいた事実のみを出力してください。"
-                "【絶対条件】最終出力は必ず20〜25銘柄のJSON配列にしてください。20銘柄未満は不合格です。"
+                "【絶対条件】最終出力はできるだけ20〜25銘柄、最低10銘柄以上のJSON配列にしてください。"
             ))
             chat.append(user(
                 prompt
-                + "\n\n【最終確認・絶対遵守】出力するJSON配列は必ず20〜25銘柄にしてください。"
-                "5〜10銘柄では不十分です。"
+                + "\n\n【最終確認・絶対遵守】出力するJSON配列はできるだけ20〜25銘柄にしてください。"
+                "ただし厳選した10銘柄以上であれば有効です。"
             ))
         else:
             print(f"[ERROR] All {MAX_RETRIES} attempts returned short response. Proceeding with partial data.")
@@ -1147,9 +1147,10 @@ def main() -> int:
         print()
 
         # 4. Query Grok with xAI SDK + web_search + x_search.
-        # 日曜事故の再発防止は「空/少数を保存しない」に限定し、選定契約は旧Grok理論へ戻す。
+        # 日曜事故の再発防止は「空/極端な少数を保存しない」に限定する。
+        # 20件未満を理由に有料APIを叩き直すと、課金だけ増えて成果が捨てられる。
         MAX_RETRIES = 3
-        MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "20"))
+        MIN_STOCKS_REQUIRED = int(os.getenv("GROK_MIN_STOCKS", "10"))
         grok_data = []
         for attempt in range(1, MAX_RETRIES + 1):
             print(f"[INFO] Grok API attempt {attempt}/{MAX_RETRIES}")
@@ -1171,7 +1172,7 @@ def main() -> int:
             if attempt < MAX_RETRIES:
                 print(
                     f"[WARN] Only {len(grok_data)} stocks returned on attempt {attempt}; "
-                    f"{MIN_STOCKS_REQUIRED}+ required. Retrying..."
+                    f"{MIN_STOCKS_REQUIRED}+ required. Retrying because the result is below the minimum publishable count..."
                 )
             else:
                 print(

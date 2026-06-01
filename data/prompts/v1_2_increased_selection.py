@@ -1,6 +1,6 @@
 """
 Grok Prompt v1.2 - Increased Selection Edition
-選定数拡大版: 20〜25銘柄選定 → Pythonフィルタで貸借銘柄に絞り込み
+選定数拡大版: 目標20〜25銘柄、最低10銘柄選定 → Pythonフィルタで貸借銘柄に絞り込み
 
 Created: 2025-11-30
 Based on: v1_1_web_search.py
@@ -106,7 +106,7 @@ since:{context['latest_trading_day_raw']}
 最新営業日は{context['latest_trading_day']}、翌営業日は{context['next_trading_day']}です。
 
 **あなたは20年デイトレ専業の株アナリストです。**
-**{context['next_trading_day']}の寄付〜前場でデイスキャルピング買い注文する銘柄**を20〜25銘柄選定し、JSON形式で出力してください。
+**{context['next_trading_day']}の寄付〜前場でデイスキャルピング買い注文する銘柄**を目標20〜25銘柄、最低10銘柄選定し、JSON形式で出力してください。
 
 **【重要】web_searchツールとx_searchツールを積極的に使用して、一次情報を取得してください。**
 - x_search: X(旧Twitter)のリアルタイム投稿・バズ確認
@@ -350,7 +350,7 @@ since:{context['latest_trading_day_raw']}
 - ✅ 重複: ticker_symbol重複なし
 - ✅ 除外: Core30/高配当大型/時価総額非該当/上場廃止を全確認
 - ✅ 上場廃止確認: 全銘柄でweb_search実行済み
-- ✅ 銘柄数: 20〜25銘柄
+- ✅ 銘柄数: 目標20〜25銘柄、最低10銘柄
 - ✅ プレミアム言及銘柄数: 記録（必須ではない）
 - ✅ 一次情報比率: ≧50%（TDnet/公式X確認済み）
 - ✅ reason品質: 数値/材料/センチメント/上場廃止確認/除外確認全含む
