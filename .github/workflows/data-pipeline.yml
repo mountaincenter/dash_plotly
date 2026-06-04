@@ -1474,9 +1474,7 @@ jobs:
           pip install requests 2>/dev/null || true
 
           # Run billing check script (outputs to /tmp/billing_section.txt)
-          python3 scripts/check_xai_billing.py
-
-          if [ $? -eq 0 ]; then
+          if python3 scripts/check_xai_billing.py; then
             echo "  ✅ xAI billing check completed"
           else
             echo "  ⚠️  xAI billing check failed (non-critical)"
