@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from io import BytesIO
 from pathlib import Path
@@ -15,6 +16,7 @@ HOLDINGS_PARQUET = ROOT / "data" / "parquet" / "hold_stocks.parquet"
 RESULTS_PARQUET = ROOT / "data" / "parquet" / "stock_results.parquet"
 DAILY_PARQUET = ROOT / "data" / "parquet" / "prices_max_1d.parquet"
 INTRADAY_PARQUET = ROOT / "data" / "parquet" / "prices_60d_5m.parquet"
+PLAYBOOK_DIR = ROOT / "data" / "analysis" / "hedge_playbooks"
 
 S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -22,6 +24,7 @@ AWS_ENDPOINT = os.getenv("AWS_ENDPOINT_URL")
 APP_ENV = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("STAGE") or "local").strip().lower()
 USE_S3_DATA = APP_ENV in {"production", "prod"}
 S3_PREFIX = (os.getenv("PARQUET_PREFIX") or "parquet").strip("/")
+ANALYSIS_PREFIX = (os.getenv("ANALYSIS_PREFIX") or "analysis").strip("/")
 
 WATCHLIST = {
     "6323.T": {
@@ -92,22 +95,31 @@ def _s3_key(filename: str) -> str:
     return f"{S3_PREFIX}/{filename}" if S3_PREFIX else filename
 
 
+def _analysis_s3_key(relative_key: str) -> str:
+    relative_key = relative_key.lstrip("/")
+    return f"{ANALYSIS_PREFIX}/{relative_key}" if ANALYSIS_PREFIX else relative_key
+
+
 def _source_label(path: Path) -> str:
     if USE_S3_DATA:
         return f"s3://{S3_BUCKET}/{_s3_key(path.name)}"
     return str(path.relative_to(ROOT))
 
 
-def _read_s3_parquet_required(filename: str) -> pd.DataFrame:
+def _s3_client():
     if not S3_BUCKET:
-        raise HTTPException(status_code=500, detail=f"S3 bucket is not configured for {filename}")
-    try:
-        import boto3
+        raise HTTPException(status_code=500, detail="S3 bucket is not configured")
+    import boto3
 
-        client_kwargs: dict[str, Any] = {"region_name": AWS_REGION}
-        if AWS_ENDPOINT:
-            client_kwargs["endpoint_url"] = AWS_ENDPOINT
-        s3 = boto3.client("s3", **client_kwargs)
+    client_kwargs: dict[str, Any] = {"region_name": AWS_REGION}
+    if AWS_ENDPOINT:
+        client_kwargs["endpoint_url"] = AWS_ENDPOINT
+    return boto3.client("s3", **client_kwargs)
+
+
+def _read_s3_parquet_required(filename: str) -> pd.DataFrame:
+    try:
+        s3 = _s3_client()
         key = _s3_key(filename)
         obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
         return pd.read_parquet(BytesIO(obj["Body"].read()))
@@ -130,6 +142,40 @@ def _read_data_parquet(path: Path) -> pd.DataFrame:
     if USE_S3_DATA:
         return _read_s3_parquet_required(path.name)
     return _read_parquet(path)
+
+
+def _load_local_playbook() -> tuple[dict[str, Any] | None, str | None]:
+    files = sorted(PLAYBOOK_DIR.glob("*.json"))
+    if not files:
+        return None, None
+    path = files[-1]
+    return json.loads(path.read_text(encoding="utf-8")), str(path.relative_to(ROOT))
+
+
+def _load_s3_playbook() -> tuple[dict[str, Any] | None, str | None]:
+    prefix = _analysis_s3_key("hedge_playbooks/")
+    try:
+        s3 = _s3_client()
+        response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
+        keys = sorted(
+            obj["Key"]
+            for obj in response.get("Contents", [])
+            if obj.get("Key", "").endswith(".json")
+        )
+        if not keys:
+            return None, None
+        key = keys[-1]
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        payload = json.loads(obj["Body"].read().decode("utf-8"))
+        return payload, f"s3://{S3_BUCKET}/{key}"
+    except Exception as exc:
+        return None, f"s3://{S3_BUCKET}/{prefix} read_error={exc}"
+
+
+def _load_latest_playbook() -> tuple[dict[str, Any] | None, str | None]:
+    if USE_S3_DATA:
+        return _load_s3_playbook()
+    return _load_local_playbook()
 
 
 def _price_rows_from_df(df: pd.DataFrame, ticker: str, rows: int) -> list[dict[str, Any]]:
@@ -270,6 +316,7 @@ async def get_hedge_positions() -> dict[str, Any]:
     results_df = _read_data_parquet(RESULTS_PARQUET)
     daily_df = _read_data_parquet(DAILY_PARQUET)
     intraday_df = _read_data_parquet(INTRADAY_PARQUET)
+    playbook, playbook_source = _load_latest_playbook()
     positions: list[dict[str, Any]] = []
 
     portfolio_unrealized = 0.0
@@ -312,6 +359,7 @@ async def get_hedge_positions() -> dict[str, Any]:
             "results": _source_label(RESULTS_PARQUET),
             "daily": _source_label(DAILY_PARQUET),
             "intraday": _source_label(INTRADAY_PARQUET),
+            "playbook": playbook_source,
         },
         "portfolio": {
             "watch_count": len(positions),
@@ -324,5 +372,6 @@ async def get_hedge_positions() -> dict[str, Any]:
             "真水は別枠。ヘッジの損失を取り返す目的では入れない。",
             "急騰実業テーマ株は、参加条件より撤退条件を先に決める。",
         ],
+        "playbook": playbook,
         "positions": positions,
     }
