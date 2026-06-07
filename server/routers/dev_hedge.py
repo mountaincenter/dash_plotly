@@ -220,33 +220,90 @@ def _snapshot_signature(snapshot_positions: dict[str, dict[str, Any]]) -> str:
     return json.dumps(snapshot_positions, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def _attach_total_pnl_changes(positions: list[dict[str, Any]]) -> None:
+def _trading_dates_from_df(df: pd.DataFrame, tickers: set[str]) -> list[pd.Timestamp]:
+    if df.empty or "date" not in df.columns or "ticker" not in df.columns:
+        return []
+    dates = pd.to_datetime(
+        df[df["ticker"].astype(str).isin(tickers)]["date"],
+        errors="coerce",
+    ).dropna()
+    if dates.empty:
+        return []
+    return sorted({pd.Timestamp(value).normalize() for value in dates})
+
+
+def _holdings_basis_date(holdings: pd.DataFrame) -> pd.Timestamp:
+    if not holdings.empty and "as_of" in holdings.columns:
+        dates = pd.to_datetime(holdings["as_of"], errors="coerce").dropna()
+        if not dates.empty:
+            return pd.Timestamp(dates.max()).normalize()
+    return pd.Timestamp.now(tz="Asia/Tokyo").tz_localize(None).normalize()
+
+
+def _current_and_previous_trading_date(
+    holdings: pd.DataFrame,
+    daily: pd.DataFrame,
+) -> tuple[str, str | None]:
+    basis_date = _holdings_basis_date(holdings)
+    trading_dates = _trading_dates_from_df(daily, set(WATCHLIST))
+    current_candidates = [date for date in trading_dates if date <= basis_date]
+    current_date = current_candidates[-1] if current_candidates else basis_date
+    previous_candidates = [date for date in trading_dates if date < current_date]
+    previous_date = previous_candidates[-1] if previous_candidates else None
+    return current_date.date().isoformat(), previous_date.date().isoformat() if previous_date is not None else None
+
+
+def _change_label(previous_date: str | None) -> str:
+    if not previous_date:
+        return "前営業日比"
+    dt = pd.Timestamp(previous_date)
+    return f"前営業日({dt.month}/{dt.day})比"
+
+
+def _snapshot_history(snapshot: dict[str, Any], current_date: str) -> dict[str, dict[str, Any]]:
+    dates = snapshot.get("dates")
+    if isinstance(dates, dict):
+        return {
+            str(date): item
+            for date, item in dates.items()
+            if isinstance(item, dict)
+        }
+
+    positions = snapshot.get("positions")
+    if not isinstance(positions, dict):
+        return {}
+
+    return {
+        str(snapshot.get("current_date") or current_date): {
+            "generated_at": snapshot.get("generated_at"),
+            "source_signature": snapshot.get("source_signature"),
+            "positions": positions,
+        }
+    }
+
+
+def _attach_total_pnl_changes(
+    positions: list[dict[str, Any]],
+    current_date: str,
+    previous_date: str | None,
+) -> None:
     current_positions = _summary_snapshot_positions(positions)
     current_signature = _snapshot_signature(current_positions)
     snapshot = _load_summary_snapshot() or {}
+    history = _snapshot_history(snapshot, current_date)
 
-    stored_positions = snapshot.get("positions")
-    if not isinstance(stored_positions, dict):
-        stored_positions = {}
-    stored_changes = snapshot.get("changes")
-    if not isinstance(stored_changes, dict):
-        stored_changes = {}
-
-    if snapshot.get("source_signature") == current_signature:
-        for position in positions:
-            ticker = str(position.get("ticker") or "")
-            change_item = stored_changes.get(ticker)
-            if not isinstance(change_item, dict):
-                change_item = {}
-            position["summary"]["total_pnl_change"] = _snapshot_number(change_item.get("total_pnl_change"))
-        return
+    previous_entry = history.get(previous_date or "")
+    previous_positions = previous_entry.get("positions") if isinstance(previous_entry, dict) else {}
+    if not isinstance(previous_positions, dict):
+        previous_positions = {}
 
     changes: dict[str, dict[str, float | None]] = {}
+    change_label = _change_label(previous_date)
     for position in positions:
         ticker = str(position.get("ticker") or "")
         summary = position["summary"]
         current_total = _snapshot_number(summary.get("total_pnl"))
-        previous_item = stored_positions.get(ticker)
+        previous_item = previous_positions.get(ticker)
         if not isinstance(previous_item, dict):
             previous_item = {}
         previous_total = _snapshot_number(previous_item.get("total_pnl"))
@@ -256,14 +313,24 @@ def _attach_total_pnl_changes(positions: list[dict[str, Any]]) -> None:
             else None
         )
         summary["total_pnl_change"] = total_pnl_change
+        summary["total_pnl_change_label"] = change_label
+        summary["total_pnl_change_basis_date"] = previous_date
         changes[ticker] = {"total_pnl_change": total_pnl_change}
+
+    history[current_date] = {
+        "generated_at": pd.Timestamp.now(tz="Asia/Tokyo").isoformat(),
+        "source_signature": current_signature,
+        "positions": current_positions,
+        "changes": changes,
+    }
 
     _write_summary_snapshot(
         {
+            "schema_version": 2,
             "generated_at": pd.Timestamp.now(tz="Asia/Tokyo").isoformat(),
-            "source_signature": current_signature,
-            "positions": current_positions,
-            "changes": changes,
+            "current_date": current_date,
+            "previous_date": previous_date,
+            "dates": history,
         }
     )
 
@@ -472,7 +539,8 @@ async def get_hedge_positions() -> dict[str, Any]:
             }
         )
 
-    _attach_total_pnl_changes(positions)
+    current_date, previous_date = _current_and_previous_trading_date(holdings_df, daily_df)
+    _attach_total_pnl_changes(positions, current_date, previous_date)
 
     return {
         "as_of": pd.Timestamp.now(tz="Asia/Tokyo").isoformat(),
