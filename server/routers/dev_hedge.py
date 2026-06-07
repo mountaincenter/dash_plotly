@@ -16,7 +16,10 @@ HOLDINGS_PARQUET = ROOT / "data" / "parquet" / "hold_stocks.parquet"
 RESULTS_PARQUET = ROOT / "data" / "parquet" / "stock_results.parquet"
 DAILY_PARQUET = ROOT / "data" / "parquet" / "prices_max_1d.parquet"
 INTRADAY_PARQUET = ROOT / "data" / "parquet" / "prices_60d_5m.parquet"
-PLAYBOOK_DIR = ROOT / "data" / "analysis" / "hedge_playbooks"
+ANALYSIS_DIR = ROOT / "data" / "analysis"
+PLAYBOOK_DIR = ANALYSIS_DIR / "hedge_playbooks"
+SUMMARY_SNAPSHOT_PATH = ANALYSIS_DIR / "hedge_monitor_summary_snapshot.json"
+SUMMARY_SNAPSHOT_FILENAME = "hedge_monitor_summary_snapshot.json"
 
 S3_BUCKET = os.getenv("S3_BUCKET") or os.getenv("DATA_BUCKET") or "stock-api-data"
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -142,6 +145,127 @@ def _read_data_parquet(path: Path) -> pd.DataFrame:
     if USE_S3_DATA:
         return _read_s3_parquet_required(path.name)
     return _read_parquet(path)
+
+
+def _load_summary_snapshot() -> dict[str, Any] | None:
+    if USE_S3_DATA:
+        try:
+            obj = _s3_client().get_object(
+                Bucket=S3_BUCKET,
+                Key=_analysis_s3_key(SUMMARY_SNAPSHOT_FILENAME),
+            )
+            data = json.loads(obj["Body"].read().decode("utf-8"))
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    if not SUMMARY_SNAPSHOT_PATH.exists():
+        return None
+    try:
+        data = json.loads(SUMMARY_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _write_summary_snapshot(snapshot: dict[str, Any]) -> None:
+    payload = json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if USE_S3_DATA:
+        try:
+            _s3_client().put_object(
+                Bucket=S3_BUCKET,
+                Key=_analysis_s3_key(SUMMARY_SNAPSHOT_FILENAME),
+                Body=payload.encode("utf-8"),
+                ContentType="application/json; charset=utf-8",
+            )
+        except Exception:
+            pass
+        return
+
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    SUMMARY_SNAPSHOT_PATH.write_text(payload, encoding="utf-8")
+
+
+def _snapshot_number(value: Any) -> float | None:
+    num = _num(value)
+    if num is None:
+        return None
+    return round(float(num), 4)
+
+
+def _summary_snapshot_positions(positions: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    snapshot: dict[str, dict[str, Any]] = {}
+    for position in positions:
+        summary = position.get("summary") if isinstance(position, dict) else {}
+        if not isinstance(summary, dict):
+            summary = {}
+        ticker = str(position.get("ticker") or "")
+        if not ticker:
+            continue
+        snapshot[ticker] = {
+            "code": position.get("code"),
+            "name": position.get("name"),
+            "long_qty": _snapshot_number(summary.get("long_qty")),
+            "short_qty": _snapshot_number(summary.get("short_qty")),
+            "long_unrealized": _snapshot_number(summary.get("long_unrealized")),
+            "short_unrealized": _snapshot_number(summary.get("short_unrealized")),
+            "net_unrealized": _snapshot_number(summary.get("net_unrealized")),
+            "realized_total": _snapshot_number(summary.get("realized_total")),
+            "total_pnl": _snapshot_number(summary.get("total_pnl")),
+        }
+    return snapshot
+
+
+def _snapshot_signature(snapshot_positions: dict[str, dict[str, Any]]) -> str:
+    return json.dumps(snapshot_positions, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _attach_total_pnl_changes(positions: list[dict[str, Any]]) -> None:
+    current_positions = _summary_snapshot_positions(positions)
+    current_signature = _snapshot_signature(current_positions)
+    snapshot = _load_summary_snapshot() or {}
+
+    stored_positions = snapshot.get("positions")
+    if not isinstance(stored_positions, dict):
+        stored_positions = {}
+    stored_changes = snapshot.get("changes")
+    if not isinstance(stored_changes, dict):
+        stored_changes = {}
+
+    if snapshot.get("source_signature") == current_signature:
+        for position in positions:
+            ticker = str(position.get("ticker") or "")
+            change_item = stored_changes.get(ticker)
+            if not isinstance(change_item, dict):
+                change_item = {}
+            position["summary"]["total_pnl_change"] = _snapshot_number(change_item.get("total_pnl_change"))
+        return
+
+    changes: dict[str, dict[str, float | None]] = {}
+    for position in positions:
+        ticker = str(position.get("ticker") or "")
+        summary = position["summary"]
+        current_total = _snapshot_number(summary.get("total_pnl"))
+        previous_item = stored_positions.get(ticker)
+        if not isinstance(previous_item, dict):
+            previous_item = {}
+        previous_total = _snapshot_number(previous_item.get("total_pnl"))
+        total_pnl_change = (
+            round(current_total - previous_total, 4)
+            if current_total is not None and previous_total is not None
+            else None
+        )
+        summary["total_pnl_change"] = total_pnl_change
+        changes[ticker] = {"total_pnl_change": total_pnl_change}
+
+    _write_summary_snapshot(
+        {
+            "generated_at": pd.Timestamp.now(tz="Asia/Tokyo").isoformat(),
+            "source_signature": current_signature,
+            "positions": current_positions,
+            "changes": changes,
+        }
+    )
 
 
 def _load_local_playbook() -> tuple[dict[str, Any] | None, str | None]:
@@ -347,6 +471,8 @@ async def get_hedge_positions() -> dict[str, Any]:
                 "intraday_rows": intraday_rows,
             }
         )
+
+    _attach_total_pnl_changes(positions)
 
     return {
         "as_of": pd.Timestamp.now(tz="Asia/Tokyo").isoformat(),
