@@ -7,7 +7,7 @@ on:
     # GitHub Actions cron は常にUTC時刻で指定
     # JST = UTC + 9時間 の変換を厳守
     - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "0 13 * * *"  # UTC 13:00 = JST 22:00 (当日) - Grok選定 + 株価データ更新
+    - cron: "15 13 * * *"  # UTC 13:15 = JST 22:15 (当日) - Grok選定 + 株価データ更新
     - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       force_grok_skip:
-        description: "22:00モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
+        description: "22:15モードでGrok選定だけスキップ（既存grok_trending.parquetを使用）"
         type: boolean
         default: false
       force_cme_mode:
@@ -114,7 +114,7 @@ jobs:
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
             echo "🌅 FORCED CME Update Mode (07:00相当)"
-          # force_grok_skip: 22:00モードでGrok選定だけスキップ
+          # force_grok_skip: 22:15モードでGrok選定だけスキップ
           elif [ "${{ github.event.inputs.force_grok_skip }}" = "true" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
@@ -133,12 +133,12 @@ jobs:
             echo "skip_grok=false" >> $GITHUB_OUTPUT
             echo "🚀 FORCED GROK Mode - Manual GROK selection execution"
           # --- schedule (cron) --- github.event.schedule で判定、壁時計はfallback
-          # 22:00 JST cron (UTC 13:00) → GHA遅延で23:xx JSTになっても日付跨ぎ回避
-          elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+          # 22:15 JST cron (UTC 13:15) → GHA遅延で23:xx JSTになっても日付跨ぎ回避
+          elif [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
             echo "mode=grok_daily" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=false" >> $GITHUB_OUTPUT
-            echo "📊 GROK Daily Mode (scheduled 22:00 JST, actual hour: $CURRENT_HOUR)"
+            echo "📊 GROK Daily Mode (scheduled 22:15 JST, actual hour: $CURRENT_HOUR)"
           # 07:00 JST cron (UTC 22:00) → CME更新モード
           elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
@@ -538,14 +538,14 @@ jobs:
 
           echo "============================================================"
 
-      - name: Update day trade list (22:00 only)
+      - name: Update day trade list (22:15 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
           S3_PREFIX: ${{ env.S3_PREFIX }}
         run: |
           echo "============================================================"
-          echo "Updating grok_day_trade_list.parquet (22:00 Grok selection)"
+          echo "Updating grok_day_trade_list.parquet (22:15 Grok selection)"
           echo "============================================================"
 
           # grok_trending.parquet は前のステップでダウンロード済み
@@ -566,6 +566,74 @@ jobs:
             echo "⚠️ Day trade list update failed (non-critical)"
           fi
 
+          echo "============================================================"
+
+      - name: Fetch Grok pretrade minute context (22:15 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
+        run: |
+          echo "============================================================"
+          echo "Fetching Grok pretrade minute context (22:15 only)"
+          echo "============================================================"
+
+          if [ ! -f "data/parquet/grok_trending.parquet" ]; then
+            echo "❌ ERROR: grok_trending.parquet not found"
+            exit 1
+          fi
+          if [ ! -f "data/parquet/grok_prices_max_1d.parquet" ]; then
+            echo "❌ ERROR: grok_prices_max_1d.parquet not found"
+            exit 1
+          fi
+
+          mkdir -p data/parquet/jquants data/jquants_csv/grok_pretrade_minute_context
+
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_pretrade_minute_context.parquet" \
+            data/parquet/jquants/grok_pretrade_minute_context.parquet \
+            --only-show-errors 2>/dev/null; then
+            echo "✅ Existing pretrade minute context downloaded"
+          else
+            echo "ℹ️  No existing pretrade minute context on S3"
+          fi
+
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_pretrade_minute_context_targets.parquet" \
+            data/parquet/jquants/grok_pretrade_minute_context_targets.parquet \
+            --only-show-errors 2>/dev/null; then
+            echo "✅ Existing pretrade minute context targets downloaded"
+          else
+            echo "ℹ️  No existing pretrade minute context targets on S3"
+          fi
+
+          python3 scripts/data/fetch_grok_archive_minute_context_jquants.py \
+            --source-kind trending \
+            --archive-path data/parquet/grok_trending.parquet \
+            --calendar-path data/parquet/grok_prices_max_1d.parquet \
+            --output data/parquet/jquants/grok_pretrade_minute_context.parquet \
+            --target-map-output data/parquet/jquants/grok_pretrade_minute_context_targets.parquet \
+            --raw-dir data/jquants_csv/grok_pretrade_minute_context \
+            --lags 1 2 3 4 5 \
+            --requests-per-minute 30 \
+            --quiet \
+            --progress-every 20
+
+          if [ -f "data/parquet/jquants/grok_pretrade_minute_context.parquet" ]; then
+            aws s3 cp \
+              data/parquet/jquants/grok_pretrade_minute_context.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_pretrade_minute_context.parquet" \
+              --only-show-errors
+          else
+            echo "⚠️  pretrade minute context parquet was not created"
+          fi
+          if [ -f "data/parquet/jquants/grok_pretrade_minute_context_targets.parquet" ]; then
+            aws s3 cp \
+              data/parquet/jquants/grok_pretrade_minute_context_targets.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_pretrade_minute_context_targets.parquet" \
+              --only-show-errors
+          else
+            echo "⚠️  pretrade minute context target map was not created"
+          fi
+
+          echo "✅ Grok pretrade minute context uploaded to S3"
           echo "============================================================"
 
       - name: Run backtest and archive
@@ -675,6 +743,74 @@ jobs:
           # d1-d5保持リターンをアーカイブに追記
           echo "Updating archive with d1-d5 holding returns..."
           python scripts/pipeline/update_archive_holding_returns.py
+
+          if [ -f "data/parquet/backtest/$ARCHIVE_FILE" ]; then
+            echo "📥 Preparing J-Quants minute/daily caches..."
+            mkdir -p data/parquet/jquants data/jquants_csv/grok_archive_minute data/jquants_csv/grok_daily
+
+            if aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+              data/parquet/jquants/grok_archive_minute.parquet \
+              --only-show-errors 2>/dev/null; then
+              echo "✅ Existing archive minute parquet downloaded"
+            else
+              echo "ℹ️  No existing archive minute parquet on S3"
+            fi
+
+            if aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+              data/parquet/jquants/grok_jquants_daily.parquet \
+              --only-show-errors 2>/dev/null; then
+              echo "✅ Existing J-Quants daily parquet downloaded"
+            else
+              echo "ℹ️  No existing J-Quants daily parquet on S3"
+            fi
+
+            echo "📊 Fetching latest archive-day minute bars..."
+            python3 scripts/data/fetch_grok_archive_minute_jquants.py \
+              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
+              --output data/parquet/jquants/grok_archive_minute.parquet \
+              --raw-dir data/jquants_csv/grok_archive_minute \
+              --requests-per-minute 30 \
+              --checkpoint-every 20
+
+            echo "📊 Backfilling archive daily fields from J-Quants..."
+            python3 scripts/data/fetch_grok_archive_daily_jquants.py \
+              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
+              --output data/parquet/jquants/grok_jquants_daily.parquet \
+              --raw-dir data/jquants_csv/grok_daily \
+              --backfill-archive \
+              --backfill-path data/parquet/backtest/$ARCHIVE_FILE \
+              --overwrite-daily-fields \
+              --requests-per-minute 30 \
+              --quiet \
+              --progress-every 5
+
+            echo "📤 Uploading enriched archive and J-Quants parquet files..."
+            aws s3 cp \
+              data/parquet/backtest/$ARCHIVE_FILE \
+              "$S3_ARCHIVE_PATH" \
+              --only-show-errors
+            if [ -f "data/parquet/jquants/grok_archive_minute.parquet" ]; then
+              aws s3 cp \
+                data/parquet/jquants/grok_archive_minute.parquet \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+                --only-show-errors
+            else
+              echo "⚠️  archive minute parquet was not created"
+            fi
+            if [ -f "data/parquet/jquants/grok_jquants_daily.parquet" ]; then
+              aws s3 cp \
+                data/parquet/jquants/grok_jquants_daily.parquet \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+                --only-show-errors
+            else
+              echo "⚠️  J-Quants daily parquet was not created"
+            fi
+            echo "✅ Enriched archive and J-Quants parquet files uploaded"
+          else
+            echo "⚠️  Archive file not found after backtest; skipping J-Quants archive enrichment"
+          fi
 
           echo "============================================================"
 
@@ -813,8 +949,8 @@ jobs:
             # cron判定
             if [ "${{ github.event.schedule }}" = "45 7 * * *" ]; then
               RUN_TIME="16:45"
-            elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
-              RUN_TIME="22:00"
+            elif [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
+              RUN_TIME="22:15"
             else
               RUN_TIME="manual"
             fi
@@ -1558,8 +1694,8 @@ jobs:
         run: |
           TRIGGER_TIME="Manual Run"
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
-              TRIGGER_TIME="22:00 JST"
+            if [ "${{ github.event.schedule }}" = "15 13 * * *" ]; then
+              TRIGGER_TIME="22:15 JST"
             elif [ "${{ github.event.schedule }}" = "0 22 * * *" ]; then
               TRIGGER_TIME="07:00 JST (CME)"
             elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
