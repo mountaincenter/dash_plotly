@@ -680,6 +680,79 @@ jobs:
           echo "Updating archive with d1-d5 holding returns..."
           python scripts/pipeline/update_archive_holding_returns.py
 
+          if [ -f "data/parquet/backtest/$ARCHIVE_FILE" ]; then
+            echo "📥 Preparing J-Quants minute/daily caches..."
+            mkdir -p data/parquet/jquants data/jquants_csv/grok_archive_minute data/jquants_csv/grok_daily
+
+            if aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+              data/parquet/jquants/grok_archive_minute.parquet \
+              --only-show-errors 2>/dev/null; then
+              echo "✅ Existing archive minute parquet downloaded"
+            else
+              echo "ℹ️  No existing archive minute parquet on S3"
+            fi
+
+            if aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+              data/parquet/jquants/grok_jquants_daily.parquet \
+              --only-show-errors 2>/dev/null; then
+              echo "✅ Existing J-Quants daily parquet downloaded"
+            else
+              echo "ℹ️  No existing J-Quants daily parquet on S3"
+            fi
+
+            echo "📊 Fetching latest archive-day minute bars..."
+            python3 scripts/data/fetch_grok_archive_minute_jquants.py \
+              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
+              --output data/parquet/jquants/grok_archive_minute.parquet \
+              --raw-dir data/jquants_csv/grok_archive_minute \
+              --requests-per-minute 30 \
+              --checkpoint-every 20
+
+            echo "📊 Fetching archive daily fields from J-Quants..."
+            python3 scripts/data/fetch_grok_archive_daily_jquants.py \
+              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
+              --output data/parquet/jquants/grok_jquants_daily.parquet \
+              --raw-dir data/jquants_csv/grok_daily \
+              --requests-per-minute 30 \
+              --quiet \
+              --progress-every 5
+
+            echo "📊 Building J-Quants based Grok master files..."
+            python3 scripts/analysis/build_grok_master_price_alignment.py
+            python3 scripts/analysis/build_grok_master_jquants_segments.py
+
+            echo "📤 Uploading J-Quants parquet and master files..."
+            if [ -f "data/parquet/jquants/grok_archive_minute.parquet" ]; then
+              aws s3 cp \
+                data/parquet/jquants/grok_archive_minute.parquet \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+                --only-show-errors
+            else
+              echo "⚠️  archive minute parquet was not created"
+            fi
+            if [ -f "data/parquet/jquants/grok_jquants_daily.parquet" ]; then
+              aws s3 cp \
+                data/parquet/jquants/grok_jquants_daily.parquet \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+                --only-show-errors
+            else
+              echo "⚠️  J-Quants daily parquet was not created"
+            fi
+            if [ -f "data/parquet/backtest/grok_master_jquants_segments.parquet" ]; then
+              aws s3 cp \
+                data/parquet/backtest/grok_master_jquants_segments.parquet \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.parquet" \
+                --only-show-errors
+            else
+              echo "⚠️  J-Quants Grok master parquet was not created"
+            fi
+            echo "✅ J-Quants parquet and master files uploaded"
+          else
+            echo "⚠️  Archive file not found after backtest; skipping J-Quants archive enrichment"
+          fi
+
           echo "============================================================"
 
       - name: Extract data statistics

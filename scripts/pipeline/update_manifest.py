@@ -32,6 +32,7 @@ UPLOAD_FILES = [
     "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
+    "backtest/grok_master_jquants_segments.parquet",  # Grok分析用J-Quants基準master（archiveは不変）
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_5d_1m.parquet",
@@ -343,6 +344,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
+        keep_keys.add(prefix + "backtest/grok_master_jquants_segments.parquet")  # J-Quants基準masterも保持
         keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB1-B4バックテストアーカイブ
         keep_keys.add(prefix + "positions.parquet")  # グランビルポジション管理（generate_granville_signalsで生成）
         keep_keys.add(prefix + "hold_stocks.parquet")  # MarketSpeed実保有ポジション（generate_stock_results_html.pyで管理）
