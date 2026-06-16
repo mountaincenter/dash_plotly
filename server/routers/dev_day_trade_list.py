@@ -351,7 +351,8 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     return features
 
 
-PROB_SHORT_THRESHOLD = 0.45
+PROB_REGIME_LOW_THRESHOLD = 0.40
+PROB_REGIME_HIGH_THRESHOLD = 0.50
 EXPECTED_PF_MIN_N = 30
 
 PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.000001]
@@ -375,37 +376,37 @@ WEEKDAY_RULES = {
     0: {  # 月曜
         "weekday": "月",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
+        "rule": "保守運用 — サイズ縮小/厳選",
+        "pf": 1.22,
+        "note": "曜日エッジ弱め。prob_regime単独では入らない",
     },
     1: {  # 火曜
         "weekday": "火",
         "direction": "short",
-        "rule": "SHORT (prob<0.45) — 最強日",
-        "pf": 3.38,
-        "note": "火曜SHORTが全戦略の基盤",
+        "rule": "主戦場 — 全prob_regime候補",
+        "pf": 5.33,
+        "note": "曜日エッジ最強。信用区分とVWAPで継続/撤退を決める",
     },
     2: {  # 水曜
         "weekday": "水",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
+        "rule": "LOW_PROB_HEAT中心",
+        "pf": 2.46,
+        "note": "LOWが強い。HIGHは信用区分で警戒",
     },
     3: {  # 木曜
         "weekday": "木",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.84,
-        "note": "通常ルール適用。Gap-and-Fade傾向あり（寄付後に下落）",
+        "rule": "LOW/MID_PROB_HEAT中心",
+        "pf": 2.66,
+        "note": "LOW/MIDが強い。制度信用HIGHは警戒",
     },
     4: {  # 金曜
         "weekday": "金",
         "direction": "excluded",
-        "rule": "見送り推奨 (PF 1.09 — コスト負け)",
-        "pf": 1.09,
-        "note": "SHORT PF=1.09でコスト込みマイナス。エントリー非推奨",
+        "rule": "原則見送り",
+        "pf": 0.90,
+        "note": "曜日エッジ棄却寄り。寄りショートは抑制",
     },
 }
 
@@ -419,10 +420,12 @@ def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
 
 
 def get_bucket(prob: float) -> str:
-    """prob_upから実行判定区分 (SHORT/SKIP) を返す"""
-    if prob < PROB_SHORT_THRESHOLD:
-        return "SHORT"
-    return "SKIP"
+    """prob_upからGrok熱量レジームを返す。JSON互換のためbucketキーに格納する。"""
+    if prob < PROB_REGIME_LOW_THRESHOLD:
+        return "LOW_PROB_HEAT"
+    if prob < PROB_REGIME_HIGH_THRESHOLD:
+        return "MID_PROB_HEAT"
+    return "HIGH_PROB_HEAT"
 
 
 def get_prob_bin(prob: float | None) -> str | None:
@@ -998,18 +1001,28 @@ async def get_day_trade_list():
             "expected_pf_confidence": None,
         }
 
+        close_value = row.get("Close")
+        volume_value = row.get("Volume")
+        turnover_value = row.get("Value")
+        if pd.isna(turnover_value) and pd.notna(close_value) and pd.notna(volume_value):
+            turnover_value = close_value * volume_value
+
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
             "grok_rank": row.get("grok_rank") if pd.notna(row.get("grok_rank")) else None,
-            "close": row.get("Close") if pd.notna(row.get("Close")) else None,
+            "close": close_value if pd.notna(close_value) else None,
             "price_diff": price_diff,
+            "volume": int(volume_value) if pd.notna(volume_value) else None,
+            "turnover": int(turnover_value) if pd.notna(turnover_value) else None,
+            "vol_ratio": round(float(row.get("vol_ratio")), 2) if pd.notna(row.get("vol_ratio")) else None,
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "prob_up": prob_up,
             "prob_bin": prob_bin,
             "price_band": price_band,
             "bucket": bucket,
+            "prob_regime": bucket,
             "credit_bucket": credit_bucket,
             "tradable": tradable,
             "is_system_shortable": is_system_shortable,
@@ -1026,14 +1039,14 @@ async def get_day_trade_list():
             **pf_display,
         })
 
-    # ソート: 実行判定 → 実行可能性 → expected_pf → 平均損益 → grok_rank
-    # PFが高いSKIPを上位表示すると誤発注につながるため、Actionを最優先にする。
-    bucket_order = {"SHORT": 0, "SKIP": 1}
+    # ソート: 実行可能性 → 曜日×信用×prob実測PF → 平均損益 → prob_regime → grok_rank。
+    # prob_regimeは補助変数で、LOW/HIGHを売買方向の絶対判定には使わない。
+    regime_order = {"LOW_PROB_HEAT": 0, "MID_PROB_HEAT": 1, "HIGH_PROB_HEAT": 2}
     stocks.sort(key=lambda s: (
-        bucket_order.get(s.get("bucket"), 9),
         0 if s.get("tradable") else 1,
         -(s["expected_pf"] if s.get("expected_pf") is not None else -1),
         -(s["expected_pnl_avg"] if s.get("expected_pnl_avg") is not None else -10**9),
+        regime_order.get(s.get("bucket"), 9),
         s.get("grok_rank") or 999
     ))
 
