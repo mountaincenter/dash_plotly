@@ -2,9 +2,9 @@
 """
 Fetch J-Quants daily bars for grok_trending_archive rows via the jquants CLI.
 
-The script keeps raw date-level CSV files, writes a normalized daily parquet for
-analysis, and can backfill missing Close/Volume fields in archive parquet files.
-It intentionally invokes the jquants CLI instead of calling the API directly.
+The script keeps raw date-level CSV files and writes a normalized daily parquet
+for analysis. It intentionally invokes the jquants CLI instead of calling the
+API directly. The archive parquet is treated as read-only input.
 """
 
 from __future__ import annotations
@@ -23,10 +23,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ARCHIVE = ROOT / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
 DEFAULT_ANALYSIS_DIR = ROOT / "data" / "analysis" / "grok_intraday_jquants"
-DEFAULT_ANALYSIS_ARCHIVE = DEFAULT_ANALYSIS_DIR / "grok_trending_archive.parquet"
 DEFAULT_OUTPUT = DEFAULT_ANALYSIS_DIR / "grok_jquants_daily.parquet"
 DEFAULT_RAW_DIR = ROOT / "data" / "jquants_csv" / "grok_daily"
-DEFAULT_BACKUP_DIR = DEFAULT_ANALYSIS_DIR / "backups"
 DEFAULT_ENV_FILE = ROOT / ".env.jquants"
 
 PLAN_RPM = {
@@ -63,16 +61,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--keep-empty-csv", action="store_true", help="Keep empty CSV files for failed/empty fetches.")
     parser.add_argument("--quiet", action="store_true", help="Reduce per-date stdout for long backfills.")
     parser.add_argument("--progress-every", type=int, default=10, help="Print compact progress every N dates when --quiet is used.")
-    parser.add_argument("--backfill-archive", action="store_true", help="Fill missing Close/Volume in archive parquet files.")
-    parser.add_argument(
-        "--backfill-path",
-        type=Path,
-        action="append",
-        default=[],
-        help="Archive parquet to backfill. Defaults to main archive and analysis archive when present.",
-    )
-    parser.add_argument("--backup-dir", type=Path, default=DEFAULT_BACKUP_DIR)
-    parser.add_argument("--overwrite-daily-fields", action="store_true", help="Overwrite existing Close/Volume/Value fields.")
     return parser.parse_args()
 
 
@@ -323,90 +311,6 @@ def filter_to_pairs(daily: pd.DataFrame, pairs: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def backfill_archive(path: Path, daily_pairs: pd.DataFrame, args: argparse.Namespace) -> dict[str, object]:
-    if not path.exists():
-        return {"path": str(path), "exists": False}
-
-    archive = pd.read_parquet(path)
-    before_close_na = int(archive["Close"].isna().sum()) if "Close" in archive.columns else len(archive)
-    before_volume_na = int(archive["Volume"].isna().sum()) if "Volume" in archive.columns else len(archive)
-
-    work = archive.copy()
-    work["_row_id"] = range(len(work))
-    work["_trading_date"] = work["backtest_date"].map(normalize_date)
-    code_series = work["code"] if "code" in work.columns else pd.Series([None] * len(work), index=work.index)
-    work["_query_code"] = [ticker_to_code(ticker, code) for ticker, code in zip(work["ticker"], code_series)]
-
-    merge_cols = ["ticker", "query_code", "trading_date", "close", "volume", "value", "jquants_code", "fetched_at"]
-    available = [col for col in merge_cols if col in daily_pairs.columns]
-    daily = daily_pairs[available].copy()
-    daily = daily.rename(columns={"query_code": "_query_code", "trading_date": "_trading_date"})
-    daily = daily.drop_duplicates(["ticker", "_query_code", "_trading_date"], keep="last")
-    merged = work.merge(daily, on=["ticker", "_query_code", "_trading_date"], how="left", suffixes=("", "_jq"))
-
-    for col in ["Close", "Volume", "Value"]:
-        if col not in merged.columns:
-            merged[col] = pd.NA
-
-    if args.overwrite_daily_fields:
-        merged["Close"] = merged["close"].where(merged["close"].notna(), merged["Close"])
-        merged["Volume"] = merged["volume_jq"].where(merged["volume_jq"].notna(), merged["Volume"])
-        merged["Value"] = merged["value"].where(merged["value"].notna(), merged["Value"])
-    else:
-        merged["Close"] = merged["Close"].where(merged["Close"].notna(), merged["close"])
-        merged["Volume"] = merged["Volume"].where(merged["Volume"].notna(), merged["volume_jq"])
-        merged["Value"] = merged["Value"].where(merged["Value"].notna(), merged["value"])
-
-    merged["jquants_daily_code"] = merged["jquants_code"].where(merged["jquants_code"].notna(), merged.get("jquants_daily_code"))
-    merged["jquants_daily_fetched_at"] = merged["fetched_at"].where(
-        merged["fetched_at"].notna(),
-        merged.get("jquants_daily_fetched_at"),
-    )
-
-    drop_cols = [
-        "_row_id",
-        "_trading_date",
-        "_query_code",
-        "query_code",
-        "trading_date",
-        "close",
-        "volume_jq",
-        "value",
-        "jquants_code",
-        "fetched_at",
-    ]
-    output = merged.drop(columns=[col for col in drop_cols if col in merged.columns])
-
-    args.backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_path = "_".join(path.resolve().relative_to(ROOT).parts) if path.resolve().is_relative_to(ROOT) else path.name
-    backup_path = args.backup_dir / f"{safe_path}.{stamp}.bak.parquet"
-    archive.to_parquet(backup_path, engine="pyarrow", index=False)
-    output.to_parquet(path, engine="pyarrow", index=False)
-
-    after_close_na = int(output["Close"].isna().sum())
-    after_volume_na = int(output["Volume"].isna().sum())
-    return {
-        "path": str(path),
-        "exists": True,
-        "backup": str(backup_path),
-        "rows": len(output),
-        "close_filled": before_close_na - after_close_na,
-        "volume_filled": before_volume_na - after_volume_na,
-        "close_missing_after": after_close_na,
-        "volume_missing_after": after_volume_na,
-    }
-
-
-def default_backfill_paths(args: argparse.Namespace) -> list[Path]:
-    if args.backfill_path:
-        return args.backfill_path
-    paths = [args.archive_path]
-    if DEFAULT_ANALYSIS_ARCHIVE.exists() and DEFAULT_ANALYSIS_ARCHIVE != args.archive_path:
-        paths.append(DEFAULT_ANALYSIS_ARCHIVE)
-    return paths
-
-
 def main() -> int:
     args = parse_args()
     pairs, dates_df = load_archive_targets(args)
@@ -515,12 +419,6 @@ def main() -> int:
     if failures:
         print(f"failures         : {len(failures)}")
         print("\n".join(failures[:20]))
-
-    if args.backfill_archive:
-        print("=== backfill archive ===")
-        for path in default_backfill_paths(args):
-            summary = backfill_archive(path, daily_pairs, args)
-            print(summary)
 
     return 1 if failures else 0
 
