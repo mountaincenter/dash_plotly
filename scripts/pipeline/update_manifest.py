@@ -32,7 +32,9 @@ UPLOAD_FILES = [
     "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
+    "jquants/grok_archive_minute.parquet",  # Grok対象日のJ-Quants累積分足cache
     "backtest/grok_master_jquants_segments.parquet",  # Grok分析用J-Quants基準master（archiveは不変）
+    "backtest/grok_master_jquants_segments.validation.json",  # master公開前validation結果
     "scalping_entry.parquet",
     "scalping_active.parquet",
     "prices_5d_1m.parquet",
@@ -238,13 +240,13 @@ def upload_files_to_s3() -> bool:
         else:
             print(f"  [WARN] {filename} not found, skipping")
 
-    # backtest/ ディレクトリのアーカイブファイルを追加
+    # backtest/ ディレクトリの不変archiveは自動アップロードしない。
+    # grok_trending_archive.parquet は復元不能な正本であり、update_manifest の出力対象にしない。
     backtest_dir = PARQUET_DIR / "backtest"
     archive_file = backtest_dir / "grok_trending_archive.parquet"
 
     if archive_file.exists():
-        upload_targets.append(archive_file)
-        print(f"  [INFO] Added backtest archive: grok_trending_archive.parquet")
+        print(f"  [INFO] Protected immutable archive (not uploaded): grok_trending_archive.parquet")
     else:
         print(f"  [INFO] No backtest archive found (expected after first 16:00 run)")
 
@@ -344,7 +346,9 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys = {prefix + f for f in keep_files}
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
+        keep_keys.add(prefix + "jquants/grok_archive_minute.parquet")  # Grok J-Quants累積分足cacheも保持
         keep_keys.add(prefix + "backtest/grok_master_jquants_segments.parquet")  # J-Quants基準masterも保持
+        keep_keys.add(prefix + "backtest/grok_master_jquants_segments.validation.json")  # master validationも保持
         keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB1-B4バックテストアーカイブ
         keep_keys.add(prefix + "positions.parquet")  # グランビルポジション管理（generate_granville_signalsで生成）
         keep_keys.add(prefix + "hold_stocks.parquet")  # MarketSpeed実保有ポジション（generate_stock_results_html.pyで管理）

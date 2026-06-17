@@ -132,7 +132,11 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
     }
     for source_col, target_col in preferred_cols.items():
         if source_col in out.columns:
-            out[target_col] = out[source_col]
+            source = out[source_col]
+            if target_col in out.columns:
+                out[target_col] = source.combine_first(out[target_col])
+            else:
+                out[target_col] = source
 
     for seg in TIME_SEGMENTS_11:
         seg_col = seg["key"]
@@ -141,10 +145,20 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
             continue
         if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
             out[f"archive_{seg_col}"] = out[seg_col]
-        out[seg_col] = out[jq_col]
+        if seg_col in out.columns:
+            out[seg_col] = out[jq_col].combine_first(out[seg_col])
+        else:
+            out[seg_col] = out[jq_col]
 
     out.attrs["analysis_source"] = "grok_master_jquants_segments"
     out.attrs["price_basis"] = "jquants_minute"
+    total_rows = len(out)
+    out.attrs["jq_buy_price_coverage"] = (
+        round(float(out["jq_buy_price"].notna().mean()), 6) if total_rows and "jq_buy_price" in out.columns else None
+    )
+    out.attrs["jq_seg_1530_coverage"] = (
+        round(float(out["jq_seg_1530"].notna().mean()), 6) if total_rows and "jq_seg_1530" in out.columns else None
+    )
     return out
 
 
@@ -211,6 +225,8 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
         str(df_raw["analysis_source"].dropna().iloc[0]) if "analysis_source" in df_raw.columns and df_raw["analysis_source"].notna().any() else "unknown"
     )
     price_basis = df_raw.attrs.get("price_basis") or ("jquants_minute" if analysis_source == "grok_master_jquants_segments" else "archive_seg")
+    jq_buy_price_coverage = df_raw.attrs.get("jq_buy_price_coverage")
+    jq_seg_1530_coverage = df_raw.attrs.get("jq_seg_1530_coverage")
     raw = df_raw.copy()
     if "backtest_date" in raw.columns:
         raw["date"] = pd.to_datetime(raw["backtest_date"])
@@ -228,6 +244,8 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
         "rows": int(len(df)),
         "analysisSource": analysis_source,
         "priceBasis": price_basis,
+        "jqBuyPriceCoverage": jq_buy_price_coverage,
+        "jqSeg1530Coverage": jq_seg_1530_coverage,
     }
 
 

@@ -784,17 +784,59 @@ jobs:
               --progress-every 5
 
             echo "📊 Building J-Quants based Grok master files..."
-            python3 scripts/analysis/build_grok_master_price_alignment.py
+            python3 scripts/analysis/build_grok_master_price_alignment.py \
+              --minute-path data/parquet/jquants/grok_archive_minute.parquet
             python3 scripts/analysis/build_grok_master_jquants_segments.py
 
+            echo "🔎 Validating J-Quants minute cache and Grok master..."
+            MASTER_VALIDATION_JSON="data/parquet/backtest/grok_master_jquants_segments.validation.json"
+            set +e
+            python3 scripts/analysis/validate_grok_jquants_outputs.py \
+              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
+              --minute-path data/parquet/jquants/grok_archive_minute.parquet \
+              --master-path data/parquet/backtest/grok_master_jquants_segments.parquet \
+              --output-json "$MASTER_VALIDATION_JSON"
+            MASTER_VALIDATION_EXIT=$?
+            set -e
+
+            if [ -f "$MASTER_VALIDATION_JSON" ]; then
+              echo "### Grok J-Quants master validation" >> "$GITHUB_STEP_SUMMARY"
+              python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+              import json
+              from pathlib import Path
+
+              p = Path("data/parquet/backtest/grok_master_jquants_segments.validation.json")
+              d = json.loads(p.read_text(encoding="utf-8"))
+              print(f"- status: `{d.get('status')}`")
+              print(f"- archive rows: `{d.get('archive', {}).get('rows')}`")
+              print(f"- minute coverage: `{d.get('minute', {}).get('keys_in_archive')}/{d.get('archive', {}).get('keys')}`")
+              print(f"- master jq_buy_price non-null: `{d.get('master', {}).get('jq_buy_price_non_null')}`")
+              print(f"- master jq_seg_1530 non-null: `{d.get('master', {}).get('jq_seg_1530_non_null')}`")
+              for failure in d.get("failures", []):
+                  print(f"- failure: `{failure}`")
+              for warning in d.get("warnings", []):
+                  print(f"- warning: `{warning}`")
+              PY
+            fi
+
             echo "📤 Uploading J-Quants parquet and master files..."
-            if [ -f "data/parquet/jquants/grok_archive_minute.parquet" ]; then
+            if [ -f "$MASTER_VALIDATION_JSON" ]; then
               aws s3 cp \
-                data/parquet/jquants/grok_archive_minute.parquet \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+                "$MASTER_VALIDATION_JSON" \
+                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.validation.json" \
                 --only-show-errors
+            fi
+            if [ "$MASTER_VALIDATION_EXIT" -eq 0 ]; then
+              if [ -f "data/parquet/jquants/grok_archive_minute.parquet" ]; then
+                aws s3 cp \
+                  data/parquet/jquants/grok_archive_minute.parquet \
+                  "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+                  --only-show-errors
+              else
+                echo "⚠️  archive minute parquet was not created"
+              fi
             else
-              echo "⚠️  archive minute parquet was not created"
+              echo "::error::Grok J-Quants master validation failed; keeping existing S3 minute cache and master"
             fi
             if [ -f "data/parquet/jquants/grok_jquants_daily.parquet" ]; then
               aws s3 cp \
@@ -804,13 +846,20 @@ jobs:
             else
               echo "⚠️  J-Quants daily parquet was not created"
             fi
-            if [ -f "data/parquet/backtest/grok_master_jquants_segments.parquet" ]; then
+            if [ "$MASTER_VALIDATION_EXIT" -eq 0 ] && [ -f "data/parquet/backtest/grok_master_jquants_segments.parquet" ]; then
               aws s3 cp \
                 data/parquet/backtest/grok_master_jquants_segments.parquet \
                 "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.parquet" \
                 --only-show-errors
+              echo "✅ J-Quants Grok master parquet uploaded"
+            elif [ "$MASTER_VALIDATION_EXIT" -ne 0 ]; then
+              echo "⚠️  J-Quants Grok master parquet was not uploaded because validation failed"
             else
               echo "⚠️  J-Quants Grok master parquet was not created"
+            fi
+            if [ "$MASTER_VALIDATION_EXIT" -ne 0 ]; then
+              echo "❌ J-Quants Grok master validation failed. Existing S3 master/cache were preserved."
+              exit "$MASTER_VALIDATION_EXIT"
             fi
             echo "✅ J-Quants parquet and master files uploaded"
           else
