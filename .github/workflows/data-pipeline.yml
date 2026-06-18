@@ -801,22 +801,9 @@ jobs:
 
             if [ -f "$MASTER_VALIDATION_JSON" ]; then
               echo "### Grok J-Quants master validation" >> "$GITHUB_STEP_SUMMARY"
-              python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-              import json
-              from pathlib import Path
-
-              p = Path("data/parquet/backtest/grok_master_jquants_segments.validation.json")
-              d = json.loads(p.read_text(encoding="utf-8"))
-              print(f"- status: `{d.get('status')}`")
-              print(f"- archive rows: `{d.get('archive', {}).get('rows')}`")
-              print(f"- minute coverage: `{d.get('minute', {}).get('keys_in_archive')}/{d.get('archive', {}).get('keys')}`")
-              print(f"- master jq_buy_price non-null: `{d.get('master', {}).get('jq_buy_price_non_null')}`")
-              print(f"- master jq_seg_1530 non-null: `{d.get('master', {}).get('jq_seg_1530_non_null')}`")
-              for failure in d.get("failures", []):
-                  print(f"- failure: `{failure}`")
-              for warning in d.get("warnings", []):
-                  print(f"- warning: `{warning}`")
-              PY
+              echo '```json' >> "$GITHUB_STEP_SUMMARY"
+              cat "$MASTER_VALIDATION_JSON" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
             fi
 
             echo "📤 Uploading J-Quants parquet and master files..."
