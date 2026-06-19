@@ -32,6 +32,10 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 # グローバルキャッシュ（起動時に一度だけロード）
 _archive_cache = None
 
+PERFORMANCE_SCOPE_START_DATE = pd.Timestamp("2025-12-22")
+TRADABLE_CREDIT_BUCKETS = ("制度信用", "いちにち信用_除株数0")
+VALID_PERFORMANCE_SCOPES = ("tradable", "all")
+
 
 def load_archive_data() -> pd.DataFrame:
     """
@@ -93,6 +97,114 @@ def load_archive_data() -> pd.DataFrame:
     # どちらも失敗
     print(f"[WARNING] Backtest archive not found in local or S3")
     return pd.DataFrame()
+
+
+def _to_bool(value: Any) -> bool:
+    if pd.isna(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes", "y")
+    return bool(value)
+
+
+def _to_optional_int(value: Any) -> int | None:
+    if pd.isna(value):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_credit_bucket(
+    is_system_shortable: bool,
+    day_trade: bool,
+    ng: bool,
+    day_trade_available_shares: int | None,
+) -> str:
+    """実運用向けの信用区分。重複時は制度信用を優先する。"""
+    if ng:
+        return "その他/不可"
+    if is_system_shortable:
+        return "制度信用"
+    if day_trade:
+        if day_trade_available_shares is not None and day_trade_available_shares > 0:
+            return "いちにち信用_除株数0"
+        return "いちにち信用_株数0"
+    return "その他/不可"
+
+
+def add_credit_bucket_columns(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+    shares = pd.to_numeric(
+        result.get("day_trade_available_shares", pd.Series(pd.NA, index=result.index)),
+        errors="coerce",
+    )
+    shortable_values = result.get("shortable", pd.Series(False, index=result.index))
+    day_trade_values = result.get("day_trade", pd.Series(False, index=result.index))
+    ng_values = result.get("ng", pd.Series(False, index=result.index))
+
+    result["credit_bucket"] = [
+        get_credit_bucket(
+            _to_bool(shortable),
+            _to_bool(day_trade),
+            _to_bool(ng),
+            _to_optional_int(share),
+        )
+        for shortable, day_trade, ng, share in zip(
+            shortable_values,
+            day_trade_values,
+            ng_values,
+            shares,
+        )
+    ]
+    result["tradable"] = result["credit_bucket"].isin(TRADABLE_CREDIT_BUCKETS)
+    return result
+
+
+def _credit_bucket_counts(df: pd.DataFrame) -> dict[str, int]:
+    if "credit_bucket" not in df.columns:
+        return {}
+    counts = df["credit_bucket"].value_counts(dropna=False).to_dict()
+    return {str(k): int(v) for k, v in counts.items()}
+
+
+def apply_performance_scope(df: pd.DataFrame, scope: str) -> tuple[pd.DataFrame, dict[str, Any]]:
+    if scope not in VALID_PERFORMANCE_SCOPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid scope: {scope}. Must be one of: {list(VALID_PERFORMANCE_SCOPES)}",
+        )
+
+    source = add_credit_bucket_columns(df)
+    date_series = pd.to_datetime(source["backtest_date"], errors="coerce")
+    after_start = source[date_series >= PERFORMANCE_SCOPE_START_DATE].copy()
+
+    if scope == "tradable":
+        scoped = after_start[after_start["tradable"]].copy()
+        label = "2025-12-22以降・残0除外"
+    else:
+        scoped = source.copy()
+        label = "全データ"
+
+    metadata = {
+        "scope": scope,
+        "label": label,
+        "filter_start_date": PERFORMANCE_SCOPE_START_DATE.date().isoformat() if scope == "tradable" else None,
+        "tradable_credit_buckets": list(TRADABLE_CREDIT_BUCKETS),
+        "source_count": int(len(source)),
+        "source_date_count": int(date_series.dt.date.nunique()),
+        "after_start_count": int(len(after_start)),
+        "after_start_date_count": int(pd.to_datetime(after_start["backtest_date"], errors="coerce").dt.date.nunique()),
+        "display_count": int(len(scoped)),
+        "display_date_count": int(pd.to_datetime(scoped["backtest_date"], errors="coerce").dt.date.nunique()) if not scoped.empty else 0,
+        "source_credit_bucket_counts": _credit_bucket_counts(source),
+        "after_start_credit_bucket_counts": _credit_bucket_counts(after_start),
+        "display_credit_bucket_counts": _credit_bucket_counts(scoped),
+    }
+    return scoped, metadata
 
 
 def calculate_daily_stats(df: pd.DataFrame, phase: str, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -185,7 +297,8 @@ def calculate_daily_stats(df: pd.DataFrame, phase: str, config: Dict[str, Any]) 
 @router.get("/api/dev/backtest/summary")
 async def get_backtest_summary(
     prompt_version: str | None = None,
-    phase: str = "phase1"
+    phase: str = "phase2",
+    scope: str = "tradable",
 ):
     """
     バックテスト全体サマリー（ダッシュボード用の完全なデータ）
@@ -197,6 +310,9 @@ async def get_backtest_summary(
                - phase1: 前場引け売り（11:30売却）
                - phase2: 大引け売り（15:30売却）
                - phase3: +3%利確/-3%損切り
+        scope: 集計対象 (tradable, all)
+               - tradable: 2025-12-22以降の制度信用/いちにち信用_除株数0
+               - all: 全期間・全銘柄
     """
     df_all = load_archive_data()
 
@@ -248,6 +364,10 @@ async def get_backtest_summary(
                 status_code=404,
                 detail=f"No data found for version: {prompt_version}"
             )
+
+    df_all, scope_metadata = apply_performance_scope(df_all, scope)
+    if df_all.empty:
+        raise HTTPException(status_code=404, detail=f"No backtest data found for scope: {scope}")
 
     # 全体の有効なレコード（選択されたPhaseのデータがあるもの）
     df_valid = df_all[df_all[return_col].notna()].copy()
@@ -458,13 +578,15 @@ async def get_backtest_summary(
         "alerts": alerts,
         "available_versions": available_versions,
         "current_version": current_version,
+        "scope_metadata": scope_metadata,
     }
 
 
 @router.get("/api/dev/backtest/daily/{date}")
 async def get_daily_backtest(
     date: str,
-    phase: str = "phase2"
+    phase: str = "phase2",
+    scope: str = "tradable",
 ):
     """
     特定日のバックテスト詳細
@@ -475,6 +597,7 @@ async def get_daily_backtest(
                - phase1: 前場引け売り（11:30売却）
                - phase2: 大引け売り（15:30売却）
                - phase3: +3%利確/-3%損切り
+        scope: 集計対象 (tradable, all)
     """
     df_all = load_archive_data()
 
@@ -486,6 +609,10 @@ async def get_daily_backtest(
 
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No backtest data for {date}")
+
+    df, scope_metadata = apply_performance_scope(df, scope)
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No backtest data for {date} and scope: {scope}")
 
     # Phaseに応じたカラムマッピング
     phase_config = {
@@ -582,6 +709,8 @@ async def get_daily_backtest(
             "daily_max_gain_pct": float(row["daily_max_gain_pct"]) if "daily_max_gain_pct" in df.columns and pd.notna(row.get("daily_max_gain_pct")) else None,
             "daily_max_drawdown_pct": float(row["daily_max_drawdown_pct"]) if "daily_max_drawdown_pct" in df.columns and pd.notna(row.get("daily_max_drawdown_pct")) else None,
             "morning_volume": int(row["morning_volume"]) if "morning_volume" in df.columns and pd.notna(row.get("morning_volume")) else None,
+            "credit_bucket": row.get("credit_bucket"),
+            "tradable": bool(row.get("tradable")) if pd.notna(row.get("tradable")) else False,
         }
         records.append(record)
 
@@ -589,6 +718,7 @@ async def get_daily_backtest(
         "date": date,
         "stats": stats,
         "results": records,
+        "scope_metadata": scope_metadata,
     }
 
 
