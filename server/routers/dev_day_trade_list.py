@@ -29,6 +29,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DAY_TRADE_LIST_PATH = BASE_DIR / "data" / "parquet" / "grok_day_trade_list.parquet"
 GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 GROK_ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+GROK_MASTER_JQUANTS_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquants_segments.parquet"
 GROK_PRICES_PATH = BASE_DIR / "data" / "parquet" / "grok_prices_max_1d.parquet"
 PRICES_FALLBACK_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
 ML_MODEL_PATH = BASE_DIR / "models" / "grok_lgbm_model.pkl"
@@ -351,10 +352,12 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     return features
 
 
-PROB_SHORT_THRESHOLD = 0.45
+PROB_REGIME_LOW_THRESHOLD = 0.40
+PROB_REGIME_HIGH_THRESHOLD = 0.50
 EXPECTED_PF_MIN_N = 30
+EXPECTED_PF_START_DATE = pd.Timestamp("2025-12-22")
 
-PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.000001]
+PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
 PROB_LABELS = [
     "0.0-0.1",
     "0.1-0.2",
@@ -375,37 +378,37 @@ WEEKDAY_RULES = {
     0: {  # 月曜
         "weekday": "月",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
+        "rule": "保守運用 — サイズ縮小/厳選",
+        "pf": 1.22,
+        "note": "曜日エッジ弱め。prob_regime単独では入らない",
     },
     1: {  # 火曜
         "weekday": "火",
         "direction": "short",
-        "rule": "SHORT (prob<0.45) — 最強日",
-        "pf": 3.38,
-        "note": "火曜SHORTが全戦略の基盤",
+        "rule": "主戦場 — 全prob_regime候補",
+        "pf": 5.33,
+        "note": "曜日エッジ最強。信用区分とVWAPで継続/撤退を決める",
     },
     2: {  # 水曜
         "weekday": "水",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.59,
-        "note": "通常ルール適用",
+        "rule": "LOW_PROB_HEAT中心",
+        "pf": 2.46,
+        "note": "LOWが強い。HIGHは信用区分で警戒",
     },
     3: {  # 木曜
         "weekday": "木",
         "direction": "short",
-        "rule": "SHORT (prob<0.45)",
-        "pf": 1.84,
-        "note": "通常ルール適用。Gap-and-Fade傾向あり（寄付後に下落）",
+        "rule": "LOW/MID_PROB_HEAT中心",
+        "pf": 2.66,
+        "note": "LOW/MIDが強い。制度信用HIGHは警戒",
     },
     4: {  # 金曜
         "weekday": "金",
         "direction": "excluded",
-        "rule": "見送り推奨 (PF 1.09 — コスト負け)",
-        "pf": 1.09,
-        "note": "SHORT PF=1.09でコスト込みマイナス。エントリー非推奨",
+        "rule": "原則見送り",
+        "pf": 0.90,
+        "note": "曜日エッジ棄却寄り。寄りショートは抑制",
     },
 }
 
@@ -419,18 +422,24 @@ def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
 
 
 def get_bucket(prob: float) -> str:
-    """prob_upから実行判定区分 (SHORT/SKIP) を返す"""
-    if prob < PROB_SHORT_THRESHOLD:
-        return "SHORT"
-    return "SKIP"
+    """prob_upからGrok熱量レジームを返す。JSON互換のためbucketキーに格納する。"""
+    if prob < PROB_REGIME_LOW_THRESHOLD:
+        return "LOW_PROB_HEAT"
+    if prob < PROB_REGIME_HIGH_THRESHOLD:
+        return "MID_PROB_HEAT"
+    return "HIGH_PROB_HEAT"
 
 
 def get_prob_bin(prob: float | None) -> str | None:
-    """prob_upを検証用の実測PF binへ変換"""
+    """prob_upをprob別パフォーマンス表と同じ右閉じbinへ変換"""
     if prob is None or pd.isna(prob):
         return None
+    p = float(prob)
     for i in range(len(PROB_BINS) - 1):
-        if PROB_BINS[i] <= float(prob) < PROB_BINS[i + 1]:
+        if i == 0:
+            if PROB_BINS[i] <= p <= PROB_BINS[i + 1]:
+                return PROB_LABELS[i]
+        elif PROB_BINS[i] < p <= PROB_BINS[i + 1]:
             return PROB_LABELS[i]
     return None
 
@@ -497,15 +506,15 @@ def is_tradable_credit_bucket(credit_bucket: str) -> bool:
     return credit_bucket in ("制度信用", "いちにち信用_除株数0")
 
 
-def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
-    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。
+def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
+    """Grok SHORT用のexpected_pf lookupを作る。
 
-    /dev/recommendations 下部のprob別パフォーマンスと同じ母集団に寄せる。
+    /dev/recommendations 下部のprob別パフォーマンスと同じJ-Quants master母集団に寄せる。
     """
-    if archive_df.empty:
+    if history_df.empty:
         return {}
 
-    df = archive_df.copy()
+    df = history_df.copy()
     df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
     if "ml_prob" not in df.columns:
         df["ml_prob"] = np.nan
@@ -519,7 +528,7 @@ def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
     df["expected_pnl_for_pf"] = pd.to_numeric(df[pnl_source], errors="coerce")
 
     df = df[
-        (df["backtest_date"] >= pd.Timestamp("2025-12-01"))
+        (df["backtest_date"] >= EXPECTED_PF_START_DATE)
         & df["ml_prob_effective"].notna()
         & df["expected_pnl_for_pf"].notna()
     ].copy()
@@ -550,6 +559,9 @@ def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
             shares,
         )
     ]
+    df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
+    if df.empty:
+        return {}
 
     lookup = {}
     group_levels = [
@@ -836,6 +848,55 @@ def load_grok_archive() -> pd.DataFrame:
         raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
 
 
+def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
+    """期待PF用にJ-Quants masterの実行価格をprob別表と同じ列へ寄せる。"""
+    out = df.copy()
+    if "jq_buy_price" in out.columns:
+        if "buy_price" in out.columns:
+            out["buy_price"] = out["jq_buy_price"].combine_first(out["buy_price"])
+        else:
+            out["buy_price"] = out["jq_buy_price"]
+    if "jq_seg_1530" in out.columns:
+        if "seg_1530" in out.columns:
+            out["seg_1530"] = out["jq_seg_1530"].combine_first(out["seg_1530"])
+        else:
+            out["seg_1530"] = out["jq_seg_1530"]
+    return out
+
+
+def load_grok_expected_pf_history() -> pd.DataFrame:
+    """期待PF用履歴。prob別パフォーマンスと同じJ-Quants masterを優先する。"""
+    if GROK_MASTER_JQUANTS_PATH.exists():
+        return _normalize_expected_pf_history(pd.read_parquet(GROK_MASTER_JQUANTS_PATH))
+
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+
+        bucket = os.getenv("S3_BUCKET", "stock-api-data")
+        region = os.getenv("AWS_REGION", "ap-northeast-1")
+        s3_client = boto3.client("s3", region_name=region)
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+            s3_client.download_fileobj(
+                bucket,
+                "parquet/backtest/grok_master_jquants_segments.parquet",
+                tmp_file,
+            )
+            tmp_path = tmp_file.name
+
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return _normalize_expected_pf_history(df)
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "NoSuchKey":
+            raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+
+    return load_grok_archive()
+
+
 def save_grok_trending(df: pd.DataFrame) -> None:
     """ローカルとS3にgrok_trending.parquetを保存"""
     import boto3
@@ -888,12 +949,15 @@ async def get_day_trade_list():
         if not archive_df.empty:
             archive_df = archive_df[archive_df['selection_date'] >= '2025-11-04']
             appearance_counts = archive_df['ticker'].value_counts().to_dict()
-            expected_pf_lookup = build_grok_expected_pf_lookup(archive_df)
         else:
             appearance_counts = {}
-            expected_pf_lookup = {}
     except Exception:
         appearance_counts = {}
+
+    # 期待PFはprob別パフォーマンスと同じJ-Quants masterベースで作る。
+    try:
+        expected_pf_lookup = build_grok_expected_pf_lookup(load_grok_expected_pf_history())
+    except Exception:
         expected_pf_lookup = {}
 
     # ストップ高/安フラグを計算
@@ -998,18 +1062,28 @@ async def get_day_trade_list():
             "expected_pf_confidence": None,
         }
 
+        close_value = row.get("Close")
+        volume_value = row.get("Volume")
+        turnover_value = row.get("Value")
+        if pd.isna(turnover_value) and pd.notna(close_value) and pd.notna(volume_value):
+            turnover_value = close_value * volume_value
+
         stocks.append({
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
             "grok_rank": row.get("grok_rank") if pd.notna(row.get("grok_rank")) else None,
-            "close": row.get("Close") if pd.notna(row.get("Close")) else None,
+            "close": close_value if pd.notna(close_value) else None,
             "price_diff": price_diff,
+            "volume": int(volume_value) if pd.notna(volume_value) else None,
+            "turnover": int(turnover_value) if pd.notna(turnover_value) else None,
+            "vol_ratio": round(float(row.get("vol_ratio")), 2) if pd.notna(row.get("vol_ratio")) else None,
             "rsi9": round(row.get("rsi9"), 1) if pd.notna(row.get("rsi9")) else None,
             "atr_pct": round(row.get("atr14_pct"), 1) if pd.notna(row.get("atr14_pct")) else None,
             "prob_up": prob_up,
             "prob_bin": prob_bin,
             "price_band": price_band,
             "bucket": bucket,
+            "prob_regime": bucket,
             "credit_bucket": credit_bucket,
             "tradable": tradable,
             "is_system_shortable": is_system_shortable,
@@ -1026,14 +1100,14 @@ async def get_day_trade_list():
             **pf_display,
         })
 
-    # ソート: 実行判定 → 実行可能性 → expected_pf → 平均損益 → grok_rank
-    # PFが高いSKIPを上位表示すると誤発注につながるため、Actionを最優先にする。
-    bucket_order = {"SHORT": 0, "SKIP": 1}
+    # ソート: 実行可能性 → 曜日×信用×prob実測PF → 平均損益 → prob_regime → grok_rank。
+    # prob_regimeは補助変数で、LOW/HIGHを売買方向の絶対判定には使わない。
+    regime_order = {"LOW_PROB_HEAT": 0, "MID_PROB_HEAT": 1, "HIGH_PROB_HEAT": 2}
     stocks.sort(key=lambda s: (
-        bucket_order.get(s.get("bucket"), 9),
         0 if s.get("tradable") else 1,
         -(s["expected_pf"] if s.get("expected_pf") is not None else -1),
         -(s["expected_pnl_avg"] if s.get("expected_pnl_avg") is not None else -10**9),
+        regime_order.get(s.get("bucket"), 9),
         s.get("grok_rank") or 999
     ))
 
