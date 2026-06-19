@@ -23,79 +23,158 @@ router = APIRouter()
 
 BACKTEST_DIR = PARQUET_DIR / "backtest"
 ARCHIVE_FILE = BACKTEST_DIR / "grok_trending_archive.parquet"
+MASTER_FILE = BACKTEST_DIR / "grok_master_jquants_segments.parquet"
 
 # S3設定（環境変数から取得）
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 S3_PREFIX = os.getenv("S3_PREFIX", "parquet/")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 
-# グローバルキャッシュ（起動時に一度だけロード）
-_archive_cache = None
-
 PERFORMANCE_SCOPE_START_DATE = pd.Timestamp("2025-12-22")
 TRADABLE_CREDIT_BUCKETS = ("制度信用", "いちにち信用_除株数0")
 VALID_PERFORMANCE_SCOPES = ("tradable", "all")
 
 
-def load_archive_data() -> pd.DataFrame:
-    """
-    アーカイブファイルを読み込み
-    - ローカルファイルを最優先（開発環境）
-    - ローカルがなければS3から読み込み（本番環境）
-    """
-    # ローカルファイルを最優先
-    if ARCHIVE_FILE.exists():
-        print(f"[INFO] Loading backtest archive from local file: {ARCHIVE_FILE}")
+def _read_local_parquet(path: Path, label: str) -> pd.DataFrame | None:
+    if not path.exists():
+        return None
 
-        # Docker volume deadlock回避: 直接 /tmp にコピーしてから読み込む
+    print(f"[INFO] Loading {label} from local file: {path}")
+
+    # Docker volume deadlock回避: archiveだけ直接 /tmp にコピーしてから読み込む
+    if path == ARCHIVE_FILE:
         import subprocess
-        tmp_file = f"/tmp/{ARCHIVE_FILE.name}"
+        tmp_file = f"/tmp/{path.name}"
         try:
             result = subprocess.run(
-                ["dd", f"if={ARCHIVE_FILE}", f"of={tmp_file}", "bs=1M"],
+                ["dd", f"if={path}", f"of={tmp_file}", "bs=1M"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
             if result.returncode == 0:
                 df = pd.read_parquet(tmp_file)
-                if 'backtest_date' in df.columns:
-                    df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
-                print(f"[INFO] Successfully loaded {len(df)} records from local file via dd")
+                print(f"[INFO] Successfully loaded {len(df)} records from local {label} via dd")
                 return df
         except Exception as e:
-            print(f"[ERROR] Failed to load via dd: {e}")
+            print(f"[ERROR] Failed to load {label} via dd: {e}")
 
-        # dd失敗時は直接読み込みを試行
-        try:
-            df = pd.read_parquet(ARCHIVE_FILE)
-            if 'backtest_date' in df.columns:
-                df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
-            return df
-        except Exception as e:
-            print(f"[ERROR] Failed to load directly: {e}")
-
-    # ローカルがなければS3から読み込み
     try:
-        s3_key = f"{S3_PREFIX}backtest/grok_trending_archive.parquet"
-        s3_url = f"s3://{S3_BUCKET}/{s3_key}"
+        df = pd.read_parquet(path)
+        print(f"[INFO] Successfully loaded {len(df)} records from local {label}")
+        return df
+    except Exception as e:
+        print(f"[ERROR] Failed to load local {label}: {e}")
+        return None
 
-        print(f"[INFO] Loading backtest archive from S3: {s3_url}")
 
+def _read_s3_parquet(key: str, label: str) -> pd.DataFrame | None:
+    try:
+        s3_url = f"s3://{S3_BUCKET}/{key}"
+        print(f"[INFO] Loading {label} from S3: {s3_url}")
         df = pd.read_parquet(s3_url, storage_options={
             "client_kwargs": {"region_name": AWS_REGION}
         })
-
-        if 'backtest_date' in df.columns:
-            df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
-
-        print(f"[INFO] Successfully loaded {len(df)} records from S3")
+        print(f"[INFO] Successfully loaded {len(df)} records from S3 {label}")
         return df
-
     except Exception as e:
-        print(f"[WARNING] Could not load backtest archive from S3: {type(e).__name__}: {e}")
+        print(f"[WARNING] Could not load {label} from S3: {type(e).__name__}: {e}")
+        return None
 
-    # どちらも失敗
-    print(f"[WARNING] Backtest archive not found in local or S3")
+
+def _coerce_backtest_dates(df: pd.DataFrame) -> pd.DataFrame:
+    if 'backtest_date' in df.columns:
+        df['backtest_date'] = pd.to_datetime(df['backtest_date'], format='mixed')
+    if 'selection_date' in df.columns:
+        df['selection_date'] = pd.to_datetime(df['selection_date'], format='mixed')
+    return df
+
+
+def _prefer_column(out: pd.DataFrame, source_col: str, target_col: str) -> None:
+    if source_col not in out.columns:
+        return
+    if target_col in out.columns and f"archive_{target_col}" not in out.columns:
+        out[f"archive_{target_col}"] = out[target_col]
+    if target_col in out.columns:
+        out[target_col] = out[source_col].combine_first(out[target_col])
+    else:
+        out[target_col] = out[source_col]
+
+
+def _recompute_win_from_profit(out: pd.DataFrame, phase: str) -> None:
+    profit_col = f"profit_per_100_shares_{phase}"
+    win_col = f"{phase}_win"
+    if profit_col in out.columns:
+        profit = pd.to_numeric(out[profit_col], errors="coerce")
+        out[win_col] = profit > 0
+
+
+def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["analysis_source"] = "grok_master_jquants_segments"
+
+    preferred_cols = {
+        "jq_buy_price": "buy_price",
+        "jq_sell_price": "sell_price",
+        "jq_daily_close": "daily_close",
+        "jq_high": "high",
+        "jq_low": "low",
+        "jq_total_volume": "volume",
+        "jq_profit_per_100_shares_phase1": "profit_per_100_shares_phase1",
+        "jq_profit_per_100_shares_phase2": "profit_per_100_shares_phase2",
+        "jq_phase1_return": "phase1_return",
+        "jq_phase2_return": "phase2_return",
+        "jq_phase1_win": "phase1_win",
+        "jq_phase2_win": "phase2_win",
+    }
+    for source_col, target_col in preferred_cols.items():
+        _prefer_column(out, source_col, target_col)
+
+    for seg_col in (
+        "seg_0930", "seg_1000", "seg_1030", "seg_1100", "seg_1130",
+        "seg_1300", "seg_1330", "seg_1400", "seg_1430", "seg_1500", "seg_1530",
+    ):
+        _prefer_column(out, f"jq_{seg_col}", seg_col)
+
+    _recompute_win_from_profit(out, "phase1")
+    _recompute_win_from_profit(out, "phase2")
+
+    out.attrs["analysis_source"] = "grok_master_jquants_segments"
+    out.attrs["price_basis"] = "jquants_minute"
+    total_rows = len(out)
+    out.attrs["jq_buy_price_coverage"] = (
+        round(float(out["jq_buy_price"].notna().mean()), 6) if total_rows and "jq_buy_price" in out.columns else None
+    )
+    out.attrs["jq_profit_phase2_coverage"] = (
+        round(float(out["jq_profit_per_100_shares_phase2"].notna().mean()), 6) if total_rows and "jq_profit_per_100_shares_phase2" in out.columns else None
+    )
+    return _coerce_backtest_dates(out)
+
+
+def _normalize_archive_data(df: pd.DataFrame) -> pd.DataFrame:
+    out = _coerce_backtest_dates(df.copy())
+    out["analysis_source"] = "grok_trending_archive"
+    _recompute_win_from_profit(out, "phase1")
+    _recompute_win_from_profit(out, "phase2")
+    out.attrs["analysis_source"] = "grok_trending_archive"
+    out.attrs["price_basis"] = "archive_price"
+    return out
+
+
+def load_backtest_data() -> pd.DataFrame:
+    """実績表示用データ。J-Quants masterを優先し、なければarchiveへフォールバックする。"""
+    master_df = _read_local_parquet(MASTER_FILE, "J-Quants master")
+    if master_df is None:
+        master_df = _read_s3_parquet(f"{S3_PREFIX}backtest/grok_master_jquants_segments.parquet", "J-Quants master")
+    if master_df is not None:
+        return _normalize_jquants_master(master_df)
+
+    archive_df = _read_local_parquet(ARCHIVE_FILE, "backtest archive")
+    if archive_df is None:
+        archive_df = _read_s3_parquet(f"{S3_PREFIX}backtest/grok_trending_archive.parquet", "backtest archive")
+    if archive_df is not None:
+        return _normalize_archive_data(archive_df)
+
+    print("[WARNING] Backtest data not found in local or S3")
     return pd.DataFrame()
 
 
@@ -171,6 +250,17 @@ def _credit_bucket_counts(df: pd.DataFrame) -> dict[str, int]:
     return {str(k): int(v) for k, v in counts.items()}
 
 
+def calculate_profit_factor_components(profits: list[float]) -> dict[str, float | None]:
+    gross_profit = float(sum(p for p in profits if pd.notna(p) and p > 0))
+    gross_loss = float(abs(sum(p for p in profits if pd.notna(p) and p < 0)))
+    profit_factor = float(gross_profit / gross_loss) if gross_loss > 0 else None
+    return {
+        "gross_profit": gross_profit,
+        "gross_loss": gross_loss,
+        "profit_factor": profit_factor,
+    }
+
+
 def apply_performance_scope(df: pd.DataFrame, scope: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     if scope not in VALID_PERFORMANCE_SCOPES:
         raise HTTPException(
@@ -204,6 +294,10 @@ def apply_performance_scope(df: pd.DataFrame, scope: str) -> tuple[pd.DataFrame,
         "after_start_credit_bucket_counts": _credit_bucket_counts(after_start),
         "display_credit_bucket_counts": _credit_bucket_counts(scoped),
     }
+    for key in ("analysis_source", "price_basis", "jq_buy_price_coverage", "jq_profit_phase2_coverage"):
+        value = source.attrs.get(key, df.attrs.get(key))
+        if value is not None:
+            metadata[key] = value
     return scoped, metadata
 
 
@@ -307,14 +401,14 @@ async def get_backtest_summary(
         prompt_version: フィルタするプロンプトバージョン (例: "v1_0_baseline")
                        指定しない場合は全バージョンのデータを表示
         phase: 表示するPhase (phase1, phase2, phase3)
-               - phase1: 前場引け売り（11:30売却）
-               - phase2: 大引け売り（15:30売却）
+               - phase1: 前場引け買戻し（11:30）
+               - phase2: 大引け買戻し（15:30）
                - phase3: +3%利確/-3%損切り
         scope: 集計対象 (tradable, all)
                - tradable: 2025-12-22以降の制度信用/いちにち信用_除株数0
                - all: 全期間・全銘柄
     """
-    df_all = load_archive_data()
+    df_all = load_backtest_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
@@ -325,19 +419,19 @@ async def get_backtest_summary(
             "return_col": "phase1_return",
             "win_col": "phase1_win",
             "profit_col": "profit_per_100_shares_phase1",
-            "description": "前場引け売り（11:30売却）"
+            "description": "前場引け買戻し（11:30）"
         },
         "phase2": {
             "return_col": "phase2_return",
             "win_col": "phase2_win",
             "profit_col": "profit_per_100_shares_phase2",
-            "description": "大引け売り（15:30売却）"
+            "description": "大引け買戻し（15:30）"
         },
         "phase3": {
             "return_col": "phase3_3pct_return",
             "win_col": "phase3_3pct_win",
             "profit_col": "profit_per_100_shares_phase3_3pct",
-            "description": "+3%利確/-3%損切り"
+            "description": "売建 +3%利確/-3%損切り"
         }
     }
 
@@ -378,6 +472,7 @@ async def get_backtest_summary(
     # === 全体統計 ===
     all_returns = df_valid[return_col].tolist()
     all_profits = df_valid[profit_col].tolist() if profit_col in df_valid.columns else ((df_valid['sell_price'] - df_valid['buy_price']) * 100).tolist()
+    all_profit_factor = calculate_profit_factor_components(all_profits)
 
     overall_stats = {
         "total_count": len(df_all),
@@ -394,6 +489,9 @@ async def get_backtest_summary(
         "total_profit_per_100_shares": float(sum(all_profits)),
         "best_profit_per_100_shares": float(max(all_profits)),
         "worst_profit_per_100_shares": float(min(all_profits)),
+        "gross_profit_per_100_shares": all_profit_factor["gross_profit"],
+        "gross_loss_per_100_shares": all_profit_factor["gross_loss"],
+        "trade_profit_factor": all_profit_factor["profit_factor"],
         "total_days": int(df_all['backtest_date'].nunique()),
         "phase": phase,
         "phase_description": config["description"],
@@ -406,6 +504,7 @@ async def get_backtest_summary(
     if len(df_top5_valid) > 0:
         top5_returns = df_top5_valid[return_col].tolist()
         top5_profits = df_top5_valid[profit_col].tolist() if profit_col in df_top5_valid.columns else ((df_top5_valid['sell_price'] - df_top5_valid['buy_price']) * 100).tolist()
+        top5_profit_factor = calculate_profit_factor_components(top5_profits)
 
         top5_stats = {
             "total_count": len(df_top5),
@@ -422,6 +521,9 @@ async def get_backtest_summary(
             "total_profit_per_100_shares": float(sum(top5_profits)),
             "best_profit_per_100_shares": float(max(top5_profits)),
             "worst_profit_per_100_shares": float(min(top5_profits)),
+            "gross_profit_per_100_shares": top5_profit_factor["gross_profit"],
+            "gross_loss_per_100_shares": top5_profit_factor["gross_loss"],
+            "trade_profit_factor": top5_profit_factor["profit_factor"],
             "outperformance": float((sum(top5_returns) / len(top5_returns) - sum(all_returns) / len(all_returns)) * 100),
             "outperformance_profit_per_100_shares": float(sum(top5_profits) / len(top5_profits) - sum(all_profits) / len(all_profits)),
         }
@@ -441,6 +543,9 @@ async def get_backtest_summary(
             "total_profit_per_100_shares": 0,
             "best_profit_per_100_shares": 0,
             "worst_profit_per_100_shares": 0,
+            "gross_profit_per_100_shares": 0,
+            "gross_loss_per_100_shares": 0,
+            "trade_profit_factor": None,
             "outperformance": 0,
             "outperformance_profit_per_100_shares": 0,
         }
@@ -455,6 +560,7 @@ async def get_backtest_summary(
         if len(df_day_valid) > 0:
             win_count = (df_day_valid[win_col] == True).sum()
             day_profits = df_day_valid[profit_col].tolist() if profit_col in df_day_valid.columns else ((df_day_valid['sell_price'] - df_day_valid['buy_price']) * 100).tolist()
+            day_profit_factor = calculate_profit_factor_components(day_profits)
 
             # Top5のデータを計算
             df_day_top5 = df_day_valid.nsmallest(5, 'grok_rank') if len(df_day_valid) >= 5 else df_day_valid
@@ -467,6 +573,9 @@ async def get_backtest_summary(
                 "avg_return": float(df_day_valid[return_col].mean() * 100),
                 "count": len(df_day_valid),
                 "total_profit_per_100": float(sum(day_profits)),
+                "gross_profit_per_100": day_profit_factor["gross_profit"],
+                "gross_loss_per_100": day_profit_factor["gross_loss"],
+                "trade_profit_factor": day_profit_factor["profit_factor"],
                 "top5_total_profit_per_100": float(sum(top5_profits)),
                 "top5_avg_return": float(df_day_top5[return_col].mean() * 100),
                 "top5_win_rate": float(top5_win_count / len(df_day_top5) * 100),
@@ -594,12 +703,12 @@ async def get_daily_backtest(
     Args:
         date: バックテスト日付 (YYYY-MM-DD)
         phase: 表示するPhase (phase1, phase2, phase3)
-               - phase1: 前場引け売り（11:30売却）
-               - phase2: 大引け売り（15:30売却）
+               - phase1: 前場引け買戻し（11:30）
+               - phase2: 大引け買戻し（15:30）
                - phase3: +3%利確/-3%損切り
         scope: 集計対象 (tradable, all)
     """
-    df_all = load_archive_data()
+    df_all = load_backtest_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
@@ -621,21 +730,21 @@ async def get_daily_backtest(
             "win_col": "phase1_win",
             "profit_col": "profit_per_100_shares_phase1",
             "sell_col": "sell_price",  # 前場引け値
-            "description": "前場引け売り（11:30売却）"
+            "description": "前場引け買戻し（11:30）"
         },
         "phase2": {
             "return_col": "phase2_return",
             "win_col": "phase2_win",
             "profit_col": "profit_per_100_shares_phase2",
             "sell_col": "daily_close",  # 大引け値
-            "description": "大引け売り（15:30売却）"
+            "description": "大引け買戻し（15:30）"
         },
         "phase3": {
             "return_col": "phase3_3pct_return",
             "win_col": "phase3_3pct_win",
             "profit_col": "profit_per_100_shares_phase3_3pct",
             "sell_col": None,  # Phase3は動的に決まるため個別計算
-            "description": "+3%利確/-3%損切り"
+            "description": "売建 +3%利確/-3%損切り"
         }
     }
 
@@ -725,7 +834,7 @@ async def get_daily_backtest(
 @router.get("/api/dev/backtest/latest")
 async def get_latest_backtest():
     """最新のバックテスト結果"""
-    df_all = load_archive_data()
+    df_all = load_backtest_data()
 
     if df_all.empty:
         raise HTTPException(status_code=404, detail="No backtest data found")
@@ -738,7 +847,7 @@ async def get_latest_backtest():
 @router.get("/api/dev/backtest/dates")
 async def get_available_dates():
     """利用可能な日付一覧"""
-    df_all = load_archive_data()
+    df_all = load_backtest_data()
 
     if df_all.empty:
         return {"dates": []}

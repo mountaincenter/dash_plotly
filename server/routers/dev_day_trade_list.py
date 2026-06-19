@@ -29,6 +29,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DAY_TRADE_LIST_PATH = BASE_DIR / "data" / "parquet" / "grok_day_trade_list.parquet"
 GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 GROK_ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
+GROK_MASTER_JQUANTS_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquants_segments.parquet"
 GROK_PRICES_PATH = BASE_DIR / "data" / "parquet" / "grok_prices_max_1d.parquet"
 PRICES_FALLBACK_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
 ML_MODEL_PATH = BASE_DIR / "models" / "grok_lgbm_model.pkl"
@@ -354,6 +355,7 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 PROB_REGIME_LOW_THRESHOLD = 0.40
 PROB_REGIME_HIGH_THRESHOLD = 0.50
 EXPECTED_PF_MIN_N = 30
+EXPECTED_PF_START_DATE = pd.Timestamp("2025-12-22")
 
 PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.000001]
 PROB_LABELS = [
@@ -500,15 +502,15 @@ def is_tradable_credit_bucket(credit_bucket: str) -> bool:
     return credit_bucket in ("制度信用", "いちにち信用_除株数0")
 
 
-def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
-    """WFCV実績からGrok SHORT用のexpected_pf lookupを作る。
+def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
+    """Grok SHORT用のexpected_pf lookupを作る。
 
-    /dev/recommendations 下部のprob別パフォーマンスと同じ母集団に寄せる。
+    /dev/recommendations 下部のprob別パフォーマンスと同じJ-Quants master母集団に寄せる。
     """
-    if archive_df.empty:
+    if history_df.empty:
         return {}
 
-    df = archive_df.copy()
+    df = history_df.copy()
     df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
     if "ml_prob" not in df.columns:
         df["ml_prob"] = np.nan
@@ -522,7 +524,7 @@ def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
     df["expected_pnl_for_pf"] = pd.to_numeric(df[pnl_source], errors="coerce")
 
     df = df[
-        (df["backtest_date"] >= pd.Timestamp("2025-12-01"))
+        (df["backtest_date"] >= EXPECTED_PF_START_DATE)
         & df["ml_prob_effective"].notna()
         & df["expected_pnl_for_pf"].notna()
     ].copy()
@@ -553,6 +555,9 @@ def build_grok_expected_pf_lookup(archive_df: pd.DataFrame) -> dict:
             shares,
         )
     ]
+    df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
+    if df.empty:
+        return {}
 
     lookup = {}
     group_levels = [
@@ -839,6 +844,82 @@ def load_grok_archive() -> pd.DataFrame:
         raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
 
 
+def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
+    """J-Quants masterの実行価格をrecommendations系APIの既存列へ寄せる。"""
+    out = df.copy()
+    out["analysis_source"] = "grok_master_jquants_segments" if "jq_buy_price" in out.columns else "grok_trending_archive"
+
+    preferred_cols = {
+        "jq_buy_price": "buy_price",
+        "jq_sell_price": "sell_price",
+        "jq_daily_close": "daily_close",
+        "jq_high": "high",
+        "jq_low": "low",
+        "jq_total_volume": "volume",
+        "jq_profit_per_100_shares_phase1": "profit_per_100_shares_phase1",
+        "jq_profit_per_100_shares_phase2": "profit_per_100_shares_phase2",
+        "jq_phase1_return": "phase1_return",
+        "jq_phase2_return": "phase2_return",
+        "jq_phase1_win": "phase1_win",
+        "jq_phase2_win": "phase2_win",
+        "jq_seg_1530": "seg_1530",
+    }
+    for source_col, target_col in preferred_cols.items():
+        if source_col not in out.columns:
+            continue
+        if target_col in out.columns:
+            out[target_col] = out[source_col].combine_first(out[target_col])
+        else:
+            out[target_col] = out[source_col]
+
+    for phase in ("phase1", "phase2"):
+        profit_col = f"profit_per_100_shares_{phase}"
+        win_col = f"{phase}_win"
+        if profit_col in out.columns:
+            out[win_col] = pd.to_numeric(out[profit_col], errors="coerce") > 0
+
+    out.attrs["analysis_source"] = (
+        str(out["analysis_source"].dropna().iloc[0])
+        if "analysis_source" in out.columns and out["analysis_source"].notna().any()
+        else "unknown"
+    )
+    out.attrs["price_basis"] = "jquants_minute" if out.attrs["analysis_source"] == "grok_master_jquants_segments" else "archive_price"
+    return out
+
+
+def load_grok_expected_pf_history() -> pd.DataFrame:
+    """期待PF用履歴。prob別パフォーマンスと同じJ-Quants masterを優先する。"""
+    if GROK_MASTER_JQUANTS_PATH.exists():
+        return _normalize_expected_pf_history(pd.read_parquet(GROK_MASTER_JQUANTS_PATH))
+
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+
+        bucket = os.getenv("S3_BUCKET", "stock-api-data")
+        region = os.getenv("AWS_REGION", "ap-northeast-1")
+        s3_client = boto3.client("s3", region_name=region)
+
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
+            s3_client.download_fileobj(
+                bucket,
+                "parquet/backtest/grok_master_jquants_segments.parquet",
+                tmp_file,
+            )
+            tmp_path = tmp_file.name
+
+        df = pd.read_parquet(tmp_path)
+        os.unlink(tmp_path)
+        return _normalize_expected_pf_history(df)
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "NoSuchKey":
+            raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
+
+    return _normalize_expected_pf_history(load_grok_archive())
+
+
 def save_grok_trending(df: pd.DataFrame) -> None:
     """ローカルとS3にgrok_trending.parquetを保存"""
     import boto3
@@ -891,12 +972,15 @@ async def get_day_trade_list():
         if not archive_df.empty:
             archive_df = archive_df[archive_df['selection_date'] >= '2025-11-04']
             appearance_counts = archive_df['ticker'].value_counts().to_dict()
-            expected_pf_lookup = build_grok_expected_pf_lookup(archive_df)
         else:
             appearance_counts = {}
-            expected_pf_lookup = {}
     except Exception:
         appearance_counts = {}
+
+    # 期待PFはprob別パフォーマンスと同じJ-Quants masterベースで作る。
+    try:
+        expected_pf_lookup = build_grok_expected_pf_lookup(load_grok_expected_pf_history())
+    except Exception:
         expected_pf_lookup = {}
 
     # ストップ高/安フラグを計算
@@ -1284,7 +1368,7 @@ async def bulk_update_day_trade_list(updates: list[dict]):
 @router.get("/dev/day-trade-list/history/{ticker}")
 async def get_day_trade_history(ticker: str):
     """
-    銘柄の過去登場履歴を取得（grok_trending_archive.parquetから）
+    銘柄の過去登場履歴を取得。J-Quants masterがあれば実行価格を優先する。
 
     Parameters:
     - ticker: ティッカーシンボル (例: 6993.T)
@@ -1302,21 +1386,23 @@ async def get_day_trade_history(ticker: str):
         - sell_price: 前場終値
         - daily_close: 大引け終値
         - volume: 出来高
-        - profit_phase1_short: 前場損益（ショート基準）
-        - profit_phase2_short: 大引損益（ショート基準）
-        - profit_phase1_long: 前場損益（ロング基準）
-        - profit_phase2_long: 大引損益（ロング基準）
+        - profit_phase1: 前場損益（ショート基準）
+        - profit_phase2: 大引損益（ショート基準）
     """
+    def rounded_int(value):
+        return int(round(float(value))) if pd.notna(value) else None
+
     try:
-        archive_df = load_grok_archive()
-        if archive_df.empty:
+        history_df = load_grok_expected_pf_history()
+        if history_df.empty:
             raise HTTPException(status_code=404, detail="アーカイブデータがありません")
 
         # 2025-11-04以降のみ
-        archive_df = archive_df[archive_df['selection_date'] >= '2025-11-04']
+        history_df["selection_date"] = pd.to_datetime(history_df["selection_date"], errors="coerce")
+        history_df = history_df[history_df['selection_date'] >= pd.Timestamp('2025-11-04')]
 
         # 指定銘柄のデータを抽出
-        ticker_df = archive_df[archive_df['ticker'] == ticker].copy()
+        ticker_df = history_df[history_df['ticker'] == ticker].copy()
 
         if ticker_df.empty:
             raise HTTPException(status_code=404, detail=f"ティッカー {ticker} の履歴がありません")
@@ -1332,34 +1418,34 @@ async def get_day_trade_history(ticker: str):
             selection_date = pd.to_datetime(row['selection_date'])
             weekday = WEEKDAY_NAMES[selection_date.weekday()]
 
-            # 損益計算（ロング基準のデータを取得）
-            profit_p1_long = row.get('profit_per_100_shares_phase1')
-            profit_p2_long = row.get('profit_per_100_shares_phase2')
-
-            # ショート基準は符号反転
-            profit_p1_short = -profit_p1_long if pd.notna(profit_p1_long) else None
-            profit_p2_short = -profit_p2_long if pd.notna(profit_p2_long) else None
+            # profit_per_100_shares_* はショート基準（寄り売建→買い戻し）の損益。
+            profit_p1_short = row.get('profit_per_100_shares_phase1')
+            profit_p2_short = row.get('profit_per_100_shares_phase2')
 
             # 前日終値（アーカイブから取得）
-            prev_close = int(row.get('prev_close')) if pd.notna(row.get('prev_close')) else None
+            prev_close = rounded_int(row.get('prev_close'))
 
             history.append({
                 "date": selection_date.strftime('%Y-%m-%d'),
                 "weekday": weekday,
                 "prev_close": prev_close,
-                "open": int(row.get('buy_price')) if pd.notna(row.get('buy_price')) else None,
-                "high": int(row.get('high')) if pd.notna(row.get('high')) else None,
-                "low": int(row.get('low')) if pd.notna(row.get('low')) else None,
-                "close": int(row.get('daily_close')) if pd.notna(row.get('daily_close')) else None,
-                "volume": int(row.get('volume')) if pd.notna(row.get('volume')) else None,
-                "profit_phase1": int(profit_p1_short) if profit_p1_short is not None else None,
-                "profit_phase2": int(profit_p2_short) if profit_p2_short is not None else None,
+                "open": rounded_int(row.get('buy_price')),
+                "high": rounded_int(row.get('high')),
+                "low": rounded_int(row.get('low')),
+                "close": rounded_int(row.get('daily_close')),
+                "volume": rounded_int(row.get('volume')),
+                "profit_phase1": rounded_int(profit_p1_short),
+                "profit_phase2": rounded_int(profit_p2_short),
             })
 
         return JSONResponse(content={
             "ticker": ticker,
             "stock_name": stock_name,
             "appearance_count": len(history),
+            "data_scope": {
+                "analysisSource": history_df.attrs.get("analysis_source", "unknown"),
+                "priceBasis": history_df.attrs.get("price_basis", "unknown"),
+            },
             "history": history
         })
 
