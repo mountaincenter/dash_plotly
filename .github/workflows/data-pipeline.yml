@@ -1,14 +1,6 @@
 name: Data Pipeline
 
 on:
-  schedule:
-    # 毎日23時（JST）に実行（土日祝含む）
-    # Grok選定は材料の鮮度が重要なため、毎日実行
-    # GitHub Actions cron は常にUTC時刻で指定
-    # JST = UTC + 9時間 の変換を厳守
-    - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "15 13 * * *"  # UTC 13:15 = JST 22:15 (当日) - Grok選定 + 株価データ更新
-    - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
