@@ -27,17 +27,180 @@ SCALPING_ENTRY_PATH = PARQUET_DIR / "scalping_entry.parquet"
 SCALPING_ACTIVE_PATH = PARQUET_DIR / "scalping_active.parquet"
 ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 SIGNALS_PATH = PARQUET_DIR / "signals.parquet"
+TRADING_VALUE_TOP100_PATH = PARQUET_DIR / "trading_value_top100.parquet"
+SEMICON_WATCH_PATH = PARQUET_DIR / "semicon_watch_universe.parquet"
 
 ALL_STOCKS_COLS = [
     "ticker", "code", "stock_name", "market", "sectors", "series",
     "topixnewindexseries", "categories", "tags", "date", "Close",
     "price_diff", "Volume", "vol_ratio", "atr14_pct", "rsi14", "score", "key_signal",
+    "priority", "display_order", "instrument_type",
 ]
 
 TOPIX_SEGMENTS = [
     "TOPIX Core30", "TOPIX Large70", "TOPIX Mid400",
     "TOPIX Small 1", "TOPIX Small 2",
 ]
+
+
+def _empty_all_stocks() -> pd.DataFrame:
+    return pd.DataFrame(columns=ALL_STOCKS_COLS)
+
+
+def _as_str_list(value) -> list[str]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return []
+    if isinstance(value, np.ndarray):
+        return [str(v) for v in value if v is not None and not (isinstance(v, float) and pd.isna(v))]
+    if isinstance(value, list):
+        return [str(v) for v in value if v is not None and not (isinstance(v, float) and pd.isna(v))]
+    if isinstance(value, tuple):
+        return [str(v) for v in value if v is not None]
+    if isinstance(value, str):
+        return [value] if value else []
+    return []
+
+
+def _append_unique(items: list[str], value: str) -> None:
+    if value and value not in items:
+        items.append(value)
+
+
+def _ensure_all_stocks_columns(df: pd.DataFrame, category: str, key_signal: str) -> pd.DataFrame:
+    if df.empty:
+        return _empty_all_stocks()
+
+    out = df.copy()
+    if "ticker" not in out.columns and "code" in out.columns:
+        out["ticker"] = out["code"].astype(str).str.removesuffix(".0") + ".T"
+    if "code" not in out.columns:
+        out["code"] = out["ticker"].astype(str).str.replace(".T", "", regex=False)
+
+    out["categories"] = out.get("categories", pd.Series([None] * len(out))).apply(_as_str_list)
+    out["tags"] = out.get("tags", pd.Series([None] * len(out))).apply(_as_str_list)
+    out["categories"] = out["categories"].apply(lambda cats: cats if category in cats else cats + [category])
+    out["key_signal"] = out.get("key_signal", key_signal)
+
+    defaults = {
+        "stock_name": None,
+        "market": None,
+        "sectors": None,
+        "series": None,
+        "topixnewindexseries": None,
+        "date": None,
+        "Close": None,
+        "price_diff": None,
+        "Volume": None,
+        "vol_ratio": None,
+        "atr14_pct": None,
+        "rsi14": None,
+        "score": None,
+        "priority": None,
+        "display_order": None,
+        "instrument_type": None,
+    }
+    for col, default in defaults.items():
+        if col not in out.columns:
+            out[col] = default
+
+    return out[ALL_STOCKS_COLS].copy()
+
+
+def load_grok_trending_source() -> pd.DataFrame:
+    local_grok_path = PARQUET_DIR / "grok_trending.parquet"
+    if local_grok_path.exists():
+        grok = pd.read_parquet(local_grok_path)
+        print(f"  ✓ Loaded grok_trending.parquet: {len(grok)} stocks")
+        return grok
+
+    print("  [WARN] grok_trending.parquet not found locally, trying S3...")
+    temp_dir = PARQUET_DIR / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_grok_path = temp_dir / "grok_trending_temp.parquet"
+    s3_success = download_from_s3_if_exists("grok_trending.parquet", temp_grok_path)
+    if s3_success and temp_grok_path.exists():
+        grok = pd.read_parquet(temp_grok_path)
+        temp_grok_path.unlink(missing_ok=True)
+        print(f"  ✓ Loaded grok_trending.parquet from S3: {len(grok)} stocks")
+        return grok
+
+    print("  [WARN] grok_trending.parquet not found, using empty DataFrame")
+    return pd.DataFrame()
+
+
+def load_top100_source() -> pd.DataFrame:
+    if not TRADING_VALUE_TOP100_PATH.exists():
+        print(f"  [WARN] trading_value_top100.parquet not found: {TRADING_VALUE_TOP100_PATH}")
+        return _empty_all_stocks()
+    top100 = pd.read_parquet(TRADING_VALUE_TOP100_PATH)
+    print(f"  ✓ Loaded trading_value_top100.parquet: {len(top100)} stocks")
+    return _ensure_all_stocks_columns(top100, "TOP100", "trading_value_top100")
+
+
+def load_semicon_source() -> pd.DataFrame:
+    if not SEMICON_WATCH_PATH.exists():
+        print(f"  [WARN] semicon_watch_universe.parquet not found: {SEMICON_WATCH_PATH}")
+        return _empty_all_stocks()
+    semicon = pd.read_parquet(SEMICON_WATCH_PATH)
+    print(f"  ✓ Loaded semicon_watch_universe.parquet: {len(semicon)} stocks")
+    semicon = _ensure_all_stocks_columns(semicon, "SEMICON", "semicon_watch")
+    return semicon
+
+
+def merge_watch_sources(grok_trending: pd.DataFrame, top100: pd.DataFrame, semicon: pd.DataFrame) -> pd.DataFrame:
+    print("[INFO] Merging watch sources (Grok + TOP100 + SEMICON)...")
+    # For overlaps, prefer hand-curated semicon metadata names over J-Quants
+    # daily rows that may not contain ETF names, while still taking daily price
+    # fields from TOP100 because semicon rows have those as null.
+    frames = [df for df in [grok_trending, semicon, top100] if df is not None and not df.empty]
+    if not frames:
+        return _empty_all_stocks()
+    all_stocks = pd.concat(frames, ignore_index=True)
+    for col in ALL_STOCKS_COLS:
+        if col not in all_stocks.columns:
+            all_stocks[col] = None
+
+    def _union_list(series: pd.Series) -> list[str]:
+        merged: list[str] = []
+        for value in series:
+            for item in _as_str_list(value):
+                _append_unique(merged, item)
+        return merged
+
+    def _first_non_null(series: pd.Series):
+        for value in series:
+            if value is None:
+                continue
+            if isinstance(value, float) and pd.isna(value):
+                continue
+            return value
+        return None
+
+    agg_funcs = {}
+    for col in all_stocks.columns:
+        if col == "ticker":
+            continue
+        if col in ("categories", "tags"):
+            agg_funcs[col] = _union_list
+        else:
+            agg_funcs[col] = _first_non_null
+    merged = all_stocks.groupby("ticker", as_index=False, sort=False).agg(agg_funcs)
+
+    def _add_cross_category(cats: list[str]) -> list[str]:
+        cats = _as_str_list(cats)
+        if "TOP100" in cats and "SEMICON" in cats and "TOP100_SEMICON" not in cats:
+            cats.append("TOP100_SEMICON")
+        return cats
+
+    merged["categories"] = merged["categories"].apply(_add_cross_category)
+    merged["date"] = merged["date"].apply(lambda x: str(x) if pd.notna(x) and x is not None else None)
+    merged = merged[ALL_STOCKS_COLS].copy()
+    print(
+        "[OK] Merged watch universe: "
+        f"total={len(merged)}, grok={len(grok_trending)}, top100={len(top100)}, semicon={len(semicon)}, "
+        f"top100_semicon={merged['categories'].apply(lambda cats: 'TOP100_SEMICON' in cats).sum()}"
+    )
+    return merged
 
 
 def download_from_s3_if_exists(filename: str, local_path: Path) -> bool:
@@ -407,7 +570,8 @@ def _build_rows_from_signals() -> dict[str, pd.DataFrame]:
         df["categories"] = df.apply(lambda _: np.array([category]), axis=1)
         df["tags"] = df.apply(lambda _: np.array([]), axis=1)
         for c in ["date", "Close", "price_diff", "Volume", "vol_ratio",
-                  "atr14_pct", "rsi14", "score", "key_signal"]:
+                  "atr14_pct", "rsi14", "score", "key_signal",
+                  "priority", "display_order", "instrument_type"]:
             df[c] = None
         return df[ALL_STOCKS_COLS].copy()
 
@@ -604,49 +768,40 @@ def merge_stocks(meta: pd.DataFrame, scalping_entry: pd.DataFrame, scalping_acti
 
 def main() -> int:
     print("=" * 60)
-    print("Generate all_stocks.parquet (Grok + signals.parquet + Hold)")
+    print("Generate all_stocks.parquet (Grok + TOP100 + SEMICON)")
     print("=" * 60)
 
-    # [STEP 1] J-Quantsクライアント初期化
-    print("\n[STEP 1] Initializing J-Quants client...")
+    # [STEP 1] Grok
+    print("\n[STEP 1] Loading grok_trending...")
     try:
-        client = JQuantsClient()
-        print(f"  ✓ Plan: {client.plan}")
+        grok_raw = load_grok_trending_source()
+        grok_trending_18col = process_grok_trending(grok_raw, None)
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # [STEP 2] 必要なファイルを読み込み（S3優先）
-    print("\n[STEP 2] Loading required files (S3 priority)...")
+    # [STEP 2] Top100
+    print("\n[STEP 2] Loading trading value Top100...")
     try:
-        meta, scalping_entry, scalping_active, grok_trending = load_required_files()
+        top100_18col = load_top100_source()
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
 
-    # [STEP 3] meta.parquetにテクニカル指標カラムを追加
-    print("\n[STEP 3] Adding technical columns to meta...")
-    meta_18col = add_technical_columns_to_meta(meta)
-    print(f"  ✓ Expanded to 18 columns")
+    # [STEP 3] Semicon static
+    print("\n[STEP 3] Loading semicon watch universe...")
+    try:
+        semicon_18col = load_semicon_source()
+    except Exception as e:
+        print(f"  ✗ Failed: {e}")
+        return 1
 
-    # [STEP 4] scalping_entry.parquetに欠落カラムを追加
-    print("\n[STEP 4] Processing scalping_entry...")
-    scalping_entry_18col = add_missing_columns_to_scalping(scalping_entry, "SCALPING_ENTRY", client)
+    # [STEP 4] マージ
+    print("\n[STEP 4] Merging all stocks...")
+    all_stocks = merge_watch_sources(grok_trending_18col, top100_18col, semicon_18col)
 
-    # [STEP 5] scalping_active.parquetに欠落カラムを追加
-    print("\n[STEP 5] Processing scalping_active...")
-    scalping_active_18col = add_missing_columns_to_scalping(scalping_active, "SCALPING_ACTIVE", client)
-
-    # [STEP 6] grok_trending.parquetを処理
-    print("\n[STEP 6] Processing grok_trending...")
-    grok_trending_18col = process_grok_trending(grok_trending, client)
-
-    # [STEP 7] マージ
-    print("\n[STEP 7] Merging all stocks...")
-    all_stocks = merge_stocks(meta_18col, scalping_entry_18col, scalping_active_18col, grok_trending_18col)
-
-    # [STEP 8] 保存
-    print("\n[STEP 8] Saving all_stocks.parquet...")
+    # [STEP 5] 保存
+    print("\n[STEP 5] Saving all_stocks.parquet...")
     import numpy as np
 
     def _to_str_list(x):
@@ -673,10 +828,10 @@ def main() -> int:
     print("Summary")
     print("=" * 60)
     print(f"Total stocks: {len(all_stocks)}")
-    print(f"  - Meta (static): {len(meta_18col)}")
-    print(f"  - Scalping Entry: {len(scalping_entry_18col)}")
-    print(f"  - Scalping Active: {len(scalping_active_18col)}")
     print(f"  - Grok Trending: {len(grok_trending_18col)}")
+    print(f"  - Trading Value Top100: {len(top100_18col)}")
+    print(f"  - Semicon Watch: {len(semicon_18col)}")
+    print(f"  - TOP100 and SEMICON: {all_stocks['categories'].apply(lambda cats: 'TOP100_SEMICON' in cats).sum()}")
     print("=" * 60)
 
     print("\n✅ all_stocks.parquet generated successfully!")

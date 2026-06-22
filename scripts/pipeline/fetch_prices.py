@@ -9,6 +9,7 @@ GitHub Actions対応: all_stocks.parquetをローカルから読み込み
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 from typing import List
 
@@ -32,6 +33,10 @@ PRICE_CONFIGS = [
     {"period": "max", "interval": "1d", "filename": "prices_max_1d.parquet"},
     {"period": "max", "interval": "1mo", "filename": "prices_max_1mo.parquet"},
 ]
+
+
+def truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def load_all_stocks() -> pd.DataFrame:
@@ -197,23 +202,33 @@ def main() -> int:
     # [STEP 2] 価格データ取得（複数パターン）
     print("\n[STEP 2] Fetching prices from yfinance...")
     success_count = 0
+    skip_daily = truthy(os.getenv("FETCH_PRICES_SKIP_DAILY"))
+    price_configs = [
+        config
+        for config in PRICE_CONFIGS
+        if not (skip_daily and config["filename"] == "prices_max_1d.parquet")
+    ]
+    if skip_daily:
+        print("  [INFO] Skipping prices_max_1d.parquet; J-Quants daily step owns it in pipeline")
 
-    for i, config in enumerate(PRICE_CONFIGS, 1):
-        print(f"\n  [{i}/{len(PRICE_CONFIGS)}] {config['filename']}")
+    for i, config in enumerate(price_configs, 1):
+        print(f"\n  [{i}/{len(price_configs)}] {config['filename']}")
         output_path = PARQUET_DIR / config["filename"]
         fallback = config.get("fallback_period")
 
         if fetch_and_save_prices(tickers, config["period"], config["interval"], output_path, fallback):
             success_count += 1
 
-    print(f"\n  ✓ Successfully fetched {success_count}/{len(PRICE_CONFIGS)} price datasets")
+    print(f"\n  ✓ Successfully fetched {success_count}/{len(price_configs)} price datasets")
 
     # [STEP 3] テクニカルスナップショット生成（1日足データから）
     print("\n[STEP 3] Generating technical snapshot...")
     prices_1d_path = PARQUET_DIR / "prices_max_1d.parquet"
     tech_snapshot_path = PARQUET_DIR / "tech_snapshot_1d.parquet"
 
-    if generate_tech_snapshot(prices_1d_path, tech_snapshot_path):
+    if skip_daily:
+        print("  [INFO] Skipping tech_snapshot_1d.parquet; J-Quants daily step owns it in pipeline")
+    elif generate_tech_snapshot(prices_1d_path, tech_snapshot_path):
         print("  ✓ Technical snapshot generated")
     else:
         print("  ⚠ Technical snapshot generation had issues")
@@ -223,7 +238,7 @@ def main() -> int:
     print("Summary")
     print("=" * 60)
     print(f"Total tickers: {len(tickers)}")
-    print(f"Price datasets: {success_count}/{len(PRICE_CONFIGS)} successful")
+    print(f"Price datasets: {success_count}/{len(price_configs)} successful")
     print(f"Tech snapshot: {'✓' if tech_snapshot_path.exists() else '✗'}")
     print("=" * 60)
     print("  ℹ S3アップロードは update_manifest.py で一括実行されます")

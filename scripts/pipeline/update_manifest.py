@@ -27,6 +27,11 @@ UPLOAD_FILES = [
     "meta_jquants.parquet",
     "margin_code_master.parquet",  # 取引制限マスタ（信用取引制限コード）
     "all_stocks.parquet",
+    "trading_value_top100.parquet",  # J-Quants日足売買代金Top100
+    "semicon_watch_universe.parquet",  # 半導体/AI/DC静的監視 universe
+    "watch_minute_universe.parquet",  # grok + top100 + semicon の分足取得 universe
+    "jquants_minute_watch.parquet",  # watch universe J-Quants分足
+    "jquants_minute_watch_features.parquet",  # VWAP等の分足特徴量
     "financials.parquet",  # J-Quants財務データ
     "announcements.parquet",  # J-Quants決算発表日推定
     "grok_trending.parquet",
