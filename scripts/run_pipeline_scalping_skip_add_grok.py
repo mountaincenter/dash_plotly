@@ -8,10 +8,11 @@ GitHub Actionsとローカル開発の両方で使用
   1. create_meta_jquants     - J-Quants APIから全銘柄メタ情報取得
   2. generate_grok_trending  - xAI Grok APIでトレンド銘柄選定
   3. create_all_stocks       - meta + grok統合
-  4. fetch_prices            - yfinanceでall_stocks.parquetの価格データ取得
-  5. fetch_index_prices      - yfinanceで指数・ETF・先物の価格データ取得
-  6. fetch_currency_prices   - yfinanceで為替レートデータ取得
-  7. generate_fins_data      - J-Quants /fins/summaryから財務データ＋決算発表日を一括取得
+  4. fetch_prices            - yfinanceでall_stocks.parquetの分足/補助価格データ取得
+  5. fetch_watch_daily_jquants - J-Quantsでwatch universeの日足/tech_snapshot生成
+  6. fetch_index_prices      - yfinanceで指数・ETF・先物の価格データ取得
+  7. fetch_currency_prices   - yfinanceで為替レートデータ取得
+  8. generate_fins_data      - J-Quants /fins/summaryから財務データ＋決算発表日を一括取得
   8. update_manifest         - manifest.json生成・S3一括アップロード
 
 注意:
@@ -39,6 +40,7 @@ class PipelineRunner:
     def __init__(self):
         # 環境変数でGrok生成をスキップするか判定
         skip_grok = os.getenv("SKIP_GROK_GENERATION", "false").lower() == "true"
+        os.environ.setdefault("FETCH_PRICES_SKIP_DAILY", "true")
 
         # 基本ステップ
         self.steps = [
@@ -59,6 +61,10 @@ class PipelineRunner:
                 ("pipeline.update_granville_prices", "グランビルTOPIX価格更新")
             )
 
+        self.steps.append(
+            ("pipeline.generate_trading_value_top100", "売買代金Top100生成/補完（J-Quants eq daily）")
+        )
+
         # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
         self.steps.extend([
             ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
@@ -72,8 +78,12 @@ class PipelineRunner:
 
         # 共通ステップ
         self.steps.extend([
-            ("pipeline.create_all_stocks", "銘柄統合（Grok + signals.parquet全戦略）"),
+            ("pipeline.create_semicon_watch_universe", "半導体/AI/DC監視universe生成"),
+            ("pipeline.create_all_stocks", "銘柄統合（Grok + TOP100 + SEMICON）"),
+            ("pipeline.create_watch_minute_universe", "分足取得universe生成（Grok + TOP100 + SEMICON）"),
+            ("pipeline.fetch_watch_minute_jquants", "J-Quants分足取得（watch universe / cache skip）"),
             ("pipeline.fetch_prices", "価格データ取得（yfinance - 株価）"),
+            ("pipeline.fetch_watch_daily_jquants", "J-Quants日足/テクニカル取得（watch universe）"),
             ("pipeline.fetch_index_prices", "マーケット指標取得（yfinance - 指数/ETF/先物）"),
             ("pipeline.fetch_currency_prices", "為替レート取得（yfinance - FX）"),
             ("pipeline.update_topix_prices", "TOPIX系指数データ取得（J-Quants Standard）"),
