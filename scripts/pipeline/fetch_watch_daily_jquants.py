@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -136,6 +137,15 @@ def load_existing(path: Path, tickers: set[str]) -> pd.DataFrame:
     df = df[df["ticker"].isin(tickers)]
     df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.tz_localize(None)
     return df.dropna(subset=["date", "ticker"]).reset_index(drop=True)
+
+
+def latest_date_str(df: pd.DataFrame) -> str | None:
+    if df.empty or "date" not in df.columns:
+        return None
+    latest = pd.to_datetime(df["date"], errors="coerce").max()
+    if pd.isna(latest):
+        return None
+    return latest.strftime("%Y-%m-%d")
 
 
 def pick_numeric(df: pd.DataFrame, preferred: str, fallback: str) -> pd.Series:
@@ -307,17 +317,48 @@ def main() -> int:
     print(f"existing rows: {len(existing):,}, tickers={len(existing_tickers)}")
     print(f"missing history tickers: {len(missing_tickers)}")
 
-    latest = fetch_market_date(fetcher, target_date, tickers)
+    effective_target_date = target_date
+    target_daily_available = True
+    try:
+        latest = fetch_market_date(fetcher, target_date, tickers)
+    except requests.HTTPError as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        existing_latest_date = latest_date_str(existing)
+        if status_code == 400 and existing_latest_date:
+            print(
+                "[WARN] target daily bars are not available from J-Quants yet; "
+                f"target={target_date}, fallback={existing_latest_date}"
+            )
+            latest = pd.DataFrame(columns=["date", "Open", "High", "Low", "Close", "Volume", "ticker"])
+            effective_target_date = existing_latest_date
+            target_daily_available = False
+        else:
+            raise
+
+    if latest.empty:
+        existing_latest_date = latest_date_str(existing)
+        if existing_latest_date and existing_latest_date < target_date:
+            print(
+                "[WARN] target daily bars returned no rows; "
+                f"target={target_date}, fallback={existing_latest_date}"
+            )
+            effective_target_date = existing_latest_date
+            target_daily_available = False
+
     print(f"latest rows: {len(latest):,}, tickers={latest['ticker'].nunique() if not latest.empty else 0}")
+    print(f"effective_target_date: {effective_target_date}")
 
     if args.bootstrap_missing:
-        missing_tickers = missing_tickers | (tickers - set(latest["ticker"].unique()))
+        if target_daily_available:
+            missing_tickers = missing_tickers | (tickers - set(latest["ticker"].unique()))
+        else:
+            print("[WARN] skipping target-date completeness check because target daily bars are unavailable")
         bootstrap = fetch_history_for_missing(
             fetcher,
             universe,
             missing_tickers,
             args.history_start,
-            target_date,
+            effective_target_date,
             args.sleep,
         )
     else:
@@ -330,8 +371,14 @@ def main() -> int:
 
     latest_date = pd.to_datetime(combined["date"], errors="coerce").max().strftime("%Y-%m-%d")
     if latest_date < target_date:
-        print(f"[ERROR] daily prices are stale: latest={latest_date}, target={target_date}")
-        return 1
+        if not target_daily_available and latest_date >= effective_target_date:
+            print(
+                "[WARN] daily prices are behind target because same-day J-Quants daily bars "
+                f"are unavailable: latest={latest_date}, target={target_date}"
+            )
+        else:
+            print(f"[ERROR] daily prices are stale: latest={latest_date}, target={target_date}")
+            return 1
 
     args.prices_out.parent.mkdir(parents=True, exist_ok=True)
     combined.to_parquet(args.prices_out, engine="pyarrow", index=False)

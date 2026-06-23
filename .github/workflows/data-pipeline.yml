@@ -1,10 +1,6 @@
 name: Data Pipeline
 
 on:
-  schedule:
-    # GitHub Actions cron is UTC. 07:45 UTC = 16:45 JST.
-    # 16:45はGrok選定をスキップし、株価/監視universe系データだけ更新する。
-    - cron: "45 7 * * *"
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
