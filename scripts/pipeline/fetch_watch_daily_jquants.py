@@ -182,10 +182,13 @@ def fetch_daily_bars(
     params: dict[str, str] = {}
     if code:
         params["code"] = code
-    if from_date:
-        params["from"] = from_date
-    if to_date:
-        params["to"] = to_date
+    if from_date and to_date and str(from_date) == str(to_date):
+        params["date"] = str(from_date)
+    else:
+        if from_date:
+            params["from"] = from_date
+        if to_date:
+            params["to"] = to_date
 
     data = fetcher.client.request_with_pagination(
         "/equities/bars/daily",
