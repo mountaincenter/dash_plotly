@@ -1,6 +1,10 @@
 name: Data Pipeline
 
 on:
+  schedule:
+    # GitHub Actions cron is UTC. 07:45 UTC = 16:45 JST.
+    # 16:45はGrok選定をスキップし、株価/監視universe系データだけ更新する。
+    - cron: "45 7 * * *"
   workflow_dispatch:
     inputs:
       skip_trading_day_check:
@@ -629,7 +633,9 @@ jobs:
           echo "============================================================"
 
       - name: Run backtest and archive
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        # grok_trending_archive.parquet is an immutable source of truth.
+        # Do not update/archive it from the scheduled pipeline.
+        if: ${{ false }}
         run: |
           echo "============================================================"
           echo "Running backtest and archiving results (16:45 only)"
@@ -1264,7 +1270,10 @@ jobs:
           fi
 
       - name: ML Model Retraining (last trading day of week)
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        # Disabled because this legacy step writes ml_prob columns back into
+        # grok_trending_archive.parquet. Archive-derived work must write to
+        # separate derived files instead.
+        if: ${{ false }}
         run: |
           # 週の最終営業日かどうかを判定（J-Quantsカレンダー基準）
           if ! python3 scripts/check_last_trading_day_of_week.py; then
