@@ -270,6 +270,9 @@ def print_summary(master: pd.DataFrame, output_path: Path) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.output_path.resolve() == args.archive_path.resolve():
+        raise ValueError("output-path must not be grok_trending_archive.parquet")
+
     archive = load_archive(args.archive_path)
     minute = load_minute(args.minute_path)
     segments = build_segment_rows(minute)
