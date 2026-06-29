@@ -3,6 +3,10 @@ name: Data Pipeline
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "EventBridge Scheduler mode: stock_1645 / grok_2215 / cme_0700"
+        type: string
+        default: ""
       skip_trading_day_check:
         description: "営業日チェックをスキップ（スケジュールに関係なく強制実行）"
         type: boolean
@@ -97,11 +101,35 @@ jobs:
         id: exec_mode
         run: |
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
+          DISPATCH_MODE="${{ github.event.inputs.mode }}"
           echo "Current hour (JST): $CURRENT_HOUR"
+          echo "Dispatch mode input: ${DISPATCH_MODE:-none}"
+
+          # --- EventBridge Scheduler dispatch ---
+          # GitHub Actions native schedule is intentionally not the primary trigger.
+          # EventBridge Scheduler sends mode via workflow_dispatch inputs.
+          if [ "$DISPATCH_MODE" = "stock_1645" ] || [ "$DISPATCH_MODE" = "stock_data" ]; then
+            echo "mode=stock_data" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=false" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "💹 Stock Data Mode (EventBridge Scheduler 16:45 JST)"
+          elif [ "$DISPATCH_MODE" = "grok_2215" ] || [ "$DISPATCH_MODE" = "grok_daily" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=false" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (EventBridge Scheduler 22:15 JST)"
+          elif [ "$DISPATCH_MODE" = "cme_0700" ] || [ "$DISPATCH_MODE" = "cme_update" ]; then
+            echo "mode=cme_update" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=cme" >> $GITHUB_OUTPUT
+            echo "🌅 CME Update Mode (EventBridge Scheduler 07:00 JST)"
+          elif [ -n "$DISPATCH_MODE" ]; then
+            echo "❌ Unknown dispatch mode: $DISPATCH_MODE"
+            exit 1
 
           # --- dispatch (手動) ---
           # force_cme_mode が true の場合、CME更新モード
-          if [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
+          elif [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
