@@ -356,8 +356,9 @@ PROB_REGIME_LOW_THRESHOLD = 0.40
 PROB_REGIME_HIGH_THRESHOLD = 0.50
 EXPECTED_PF_MIN_N = 30
 EXPECTED_PF_START_DATE = pd.Timestamp("2025-12-22")
+RECENT_RISK_LOOKBACK_DAYS = 28
 
-PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.000001]
+PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
 PROB_LABELS = [
     "0.0-0.1",
     "0.1-0.2",
@@ -372,6 +373,27 @@ PROB_LABELS = [
 ]
 PRICE_BINS = [0, 500, 1000, 3000, float("inf")]
 PRICE_LABELS = ["<500", "500-1000", "1000-3000", ">=3000"]
+
+TIME_SEGMENTS_11 = [
+    {"key": "seg_0930", "label": "-9:30", "time": "9:30"},
+    {"key": "seg_1000", "label": "9:30-10:00", "time": "10:00"},
+    {"key": "seg_1030", "label": "10:00-10:30", "time": "10:30"},
+    {"key": "seg_1100", "label": "10:30-11:00", "time": "11:00"},
+    {"key": "seg_1130", "label": "11:00-11:30", "time": "11:30"},
+    {"key": "seg_1300", "label": "12:30-13:00", "time": "13:00"},
+    {"key": "seg_1330", "label": "13:00-13:30", "time": "13:30"},
+    {"key": "seg_1400", "label": "13:30-14:00", "time": "14:00"},
+    {"key": "seg_1430", "label": "14:00-14:30", "time": "14:30"},
+    {"key": "seg_1500", "label": "14:30-15:00", "time": "15:00"},
+    {"key": "seg_1530", "label": "15:00-15:30", "time": "15:30"},
+]
+
+TIME_SEGMENTS_4 = [
+    {"key": "seg_1030", "label": "前場前半", "time": "10:30"},
+    {"key": "seg_1130", "label": "前場引け", "time": "11:30"},
+    {"key": "seg_1400", "label": "後場前半", "time": "14:00"},
+    {"key": "seg_1530", "label": "大引け", "time": "15:30"},
+]
 
 
 WEEKDAY_RULES = {
@@ -431,11 +453,15 @@ def get_bucket(prob: float) -> str:
 
 
 def get_prob_bin(prob: float | None) -> str | None:
-    """prob_upを検証用の実測PF binへ変換"""
+    """prob_upをprob別パフォーマンス表と同じ右閉じbinへ変換"""
     if prob is None or pd.isna(prob):
         return None
+    p = float(prob)
     for i in range(len(PROB_BINS) - 1):
-        if PROB_BINS[i] <= float(prob) < PROB_BINS[i + 1]:
+        if i == 0:
+            if PROB_BINS[i] <= p <= PROB_BINS[i + 1]:
+                return PROB_LABELS[i]
+        elif PROB_BINS[i] < p <= PROB_BINS[i + 1]:
             return PROB_LABELS[i]
     return None
 
@@ -479,6 +505,22 @@ def _pf_metrics(group: pd.DataFrame) -> dict:
         "pf": round(pf, 2) if pf is not None else None,
         "avg_pnl": round(float(pnl.mean()), 1) if len(pnl) else None,
         "wr": round(float((pnl > 0).mean() * 100), 1) if len(pnl) else None,
+    }
+
+
+def _pnl_metrics(vals: pd.Series) -> dict:
+    pnl = pd.to_numeric(vals, errors="coerce").dropna().astype(float)
+    wins = pnl[pnl > 0]
+    losses = pnl[pnl < 0]
+    pf = float(wins.sum() / abs(losses.sum())) if abs(losses.sum()) > 0 else None
+    return {
+        "n": int(len(pnl)),
+        "total": round(float(pnl.sum()), 2) if len(pnl) else 0,
+        "pf": round(pf, 2) if pf is not None else None,
+        "avg": round(float(pnl.mean()), 1) if len(pnl) else None,
+        "win_rate": round(float((pnl > 0).mean() * 100), 1) if len(pnl) else None,
+        "worst": round(float(pnl.min()), 2) if len(pnl) else None,
+        "loss_10k_count": int((pnl <= -10000).sum()) if len(pnl) else 0,
     }
 
 
@@ -585,6 +627,219 @@ def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
     return lookup
 
 
+def _prepare_grok_expected_history(history_df: pd.DataFrame) -> pd.DataFrame:
+    """期待PF用にJ-Quants master履歴を共通整形する。"""
+    if history_df.empty:
+        return pd.DataFrame()
+
+    df = history_df.copy()
+    df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
+    if "ml_prob" not in df.columns:
+        df["ml_prob"] = np.nan
+    if "ml_prob_live" not in df.columns:
+        df["ml_prob_live"] = np.nan
+    df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
+
+    df = df[
+        (df["backtest_date"] >= EXPECTED_PF_START_DATE)
+        & df["ml_prob_effective"].notna()
+    ].copy()
+    if df.empty:
+        return df
+
+    df["weekday_jp"] = df["backtest_date"].dt.dayofweek.map(lambda x: PF_WEEKDAY_NAMES[x] if x < 5 else None)
+    df["prob_bin"] = df["ml_prob_effective"].apply(get_prob_bin)
+    df["price_band"] = df["buy_price"].apply(get_price_band)
+    shares = pd.to_numeric(
+        df.get("day_trade_available_shares", pd.Series(pd.NA, index=df.index)),
+        errors="coerce",
+    )
+    is_system_shortable_values = df.get("shortable", pd.Series(False, index=df.index))
+    day_trade_values = df.get("day_trade", pd.Series(False, index=df.index))
+    ng_values = df.get("ng", pd.Series(False, index=df.index))
+    df["credit_bucket"] = [
+        get_credit_bucket(
+            bool(is_system_shortable) if pd.notna(is_system_shortable) else False,
+            bool(day_trade) if pd.notna(day_trade) else False,
+            bool(ng) if pd.notna(ng) else False,
+            int(share) if pd.notna(share) else None,
+        )
+        for is_system_shortable, day_trade, ng, share in zip(
+            is_system_shortable_values,
+            day_trade_values,
+            ng_values,
+            shares,
+        )
+    ]
+    df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
+    return df
+
+
+def _prepare_grok_operational_history(history_df: pd.DataFrame) -> pd.DataFrame:
+    """運用PF用に履歴を整形する。ml_probのみを使い、live補完はしない。"""
+    if history_df.empty:
+        return pd.DataFrame()
+
+    df = history_df.copy()
+    df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
+    if "ml_prob" not in df.columns:
+        return pd.DataFrame()
+    df["ml_prob_operation"] = pd.to_numeric(df["ml_prob"], errors="coerce")
+
+    df = df[
+        (df["backtest_date"] >= EXPECTED_PF_START_DATE)
+        & df["ml_prob_operation"].notna()
+    ].copy()
+    if df.empty:
+        return df
+
+    df["weekday_jp"] = df["backtest_date"].dt.dayofweek.map(lambda x: PF_WEEKDAY_NAMES[x] if x < 5 else None)
+    df["prob_regime"] = df["ml_prob_operation"].apply(get_bucket)
+    shares = pd.to_numeric(
+        df.get("day_trade_available_shares", pd.Series(pd.NA, index=df.index)),
+        errors="coerce",
+    )
+    is_system_shortable_values = df.get("shortable", pd.Series(False, index=df.index))
+    day_trade_values = df.get("day_trade", pd.Series(False, index=df.index))
+    ng_values = df.get("ng", pd.Series(False, index=df.index))
+    df["credit_bucket"] = [
+        get_credit_bucket(
+            bool(is_system_shortable) if pd.notna(is_system_shortable) else False,
+            bool(day_trade) if pd.notna(day_trade) else False,
+            bool(ng) if pd.notna(ng) else False,
+            int(share) if pd.notna(share) else None,
+        )
+        for is_system_shortable, day_trade, ng, share in zip(
+            is_system_shortable_values,
+            day_trade_values,
+            ng_values,
+            shares,
+        )
+    ]
+    df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
+    return df
+
+
+def build_grok_expected_exit_lookup(history_df: pd.DataFrame) -> dict:
+    """曜日×信用区分×prob_binごとの11seg最大PF/大引PF lookupを作る。"""
+    df = _prepare_grok_expected_history(history_df)
+    if df.empty:
+        return {}
+
+    lookup = {}
+    grouped = df.dropna(subset=["weekday_jp", "credit_bucket", "prob_bin"]).groupby(
+        ["weekday_jp", "credit_bucket", "prob_bin"],
+        dropna=False,
+    )
+    for key, group in grouped:
+        segment_rows = []
+        for seg in TIME_SEGMENTS_11:
+            seg_col = seg["key"]
+            if seg_col not in group.columns:
+                metrics = _pf_metrics(pd.DataFrame({"expected_pnl_for_pf": []}))
+            else:
+                vals = pd.to_numeric(group[seg_col], errors="coerce")
+                seg_group = pd.DataFrame({"expected_pnl_for_pf": vals.dropna()})
+                metrics = _pf_metrics(seg_group)
+            segment_rows.append({
+                "key": seg_col,
+                "label": seg["label"],
+                "time": seg["time"],
+                **metrics,
+            })
+
+        candidates = [s for s in segment_rows if s["n"] >= 10 and s["pf"] is not None]
+        best = max(candidates, key=lambda s: (s["pf"], s["avg_pnl"] if s["avg_pnl"] is not None else -10**9)) if candidates else None
+        close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
+        lookup[key if isinstance(key, tuple) else (key,)] = {
+            "best": best,
+            "close": close,
+            "segments": segment_rows,
+        }
+    return lookup
+
+
+def build_grok_operational_exit_lookup(history_df: pd.DataFrame) -> dict:
+    """曜日×信用区分×prob_regimeごとの4seg運用PF lookupを作る。"""
+    df = _prepare_grok_operational_history(history_df)
+    if df.empty:
+        return {}
+
+    lookup = {}
+    grouped = df.dropna(subset=["weekday_jp", "credit_bucket", "prob_regime"]).groupby(
+        ["weekday_jp", "credit_bucket", "prob_regime"],
+        dropna=False,
+    )
+    for key, group in grouped:
+        segment_rows = []
+        for seg in TIME_SEGMENTS_4:
+            seg_col = seg["key"]
+            if seg_col not in group.columns:
+                metrics = _pf_metrics(pd.DataFrame({"expected_pnl_for_pf": []}))
+            else:
+                vals = pd.to_numeric(group[seg_col], errors="coerce")
+                seg_group = pd.DataFrame({"expected_pnl_for_pf": vals.dropna()})
+                metrics = _pf_metrics(seg_group)
+            segment_rows.append({
+                "key": seg_col,
+                "label": seg["label"],
+                "time": seg["time"],
+                **metrics,
+            })
+
+        candidates = [s for s in segment_rows if s["n"] >= 10 and s["pf"] is not None]
+        best = max(candidates, key=lambda s: (s["pf"], s["avg_pnl"] if s["avg_pnl"] is not None else -10**9)) if candidates else None
+        close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
+        lookup[key if isinstance(key, tuple) else (key,)] = {
+            "best": best,
+            "close": close,
+            "segments": segment_rows,
+        }
+    return lookup
+
+
+def build_grok_recent_risk_lookup(history_df: pd.DataFrame) -> dict:
+    """直近4週間の曜日/セル劣化をリスク係数として返す。PF自体は上書きしない。"""
+    df = _prepare_grok_expected_history(history_df)
+    if df.empty or "seg_1530" not in df.columns:
+        return {}
+
+    latest = pd.to_datetime(df["backtest_date"], errors="coerce").max()
+    if pd.isna(latest):
+        return {}
+    cutoff = latest - pd.Timedelta(days=RECENT_RISK_LOOKBACK_DAYS)
+    recent = df[df["backtest_date"] >= cutoff].copy()
+    if recent.empty:
+        return {}
+
+    recent["close_pnl"] = pd.to_numeric(recent["seg_1530"], errors="coerce")
+    recent = recent[recent["close_pnl"].notna()].copy()
+    if recent.empty:
+        return {}
+
+    lookup: dict[tuple, dict] = {}
+
+    for weekday_jp, group in recent.groupby("weekday_jp", dropna=False):
+        if pd.isna(weekday_jp):
+            continue
+        metrics = _pnl_metrics(group["close_pnl"])
+        lookup[("weekday", weekday_jp)] = metrics
+
+    grouped = recent.dropna(subset=["weekday_jp", "credit_bucket", "prob_bin"]).groupby(
+        ["weekday_jp", "credit_bucket", "prob_bin"],
+        dropna=False,
+    )
+    for key, group in grouped:
+        lookup[("cell", *(key if isinstance(key, tuple) else (key,)))] = _pnl_metrics(group["close_pnl"])
+
+    lookup[("meta",)] = {
+        "latest": latest.strftime("%Y-%m-%d"),
+        "cutoff": cutoff.strftime("%Y-%m-%d"),
+        "lookback_days": RECENT_RISK_LOOKBACK_DAYS,
+    }
+    return lookup
+
+
 def estimate_grok_expected_pf(
     lookup: dict,
     weekday_jp: str | None,
@@ -668,6 +923,164 @@ def estimate_grok_expected_pf(
         "expected_pf_detail_n": 0,
         "expected_pf_detail": None,
         "expected_pnl_detail_avg": None,
+    }
+
+
+def estimate_grok_expected_exit(
+    lookup: dict,
+    weekday_jp: str | None,
+    credit_bucket: str,
+    prob_bin: str | None,
+) -> dict:
+    if not lookup or not weekday_jp or not prob_bin:
+        return {
+            "expected_exit_basis": None,
+            "expected_max_pf": None,
+            "expected_max_pf_n": 0,
+            "expected_max_pf_time": None,
+            "expected_max_pf_label": None,
+            "expected_max_pf_segment": None,
+            "expected_close_pf": None,
+            "expected_close_pf_n": 0,
+        }
+
+    row = lookup.get((weekday_jp, credit_bucket, prob_bin))
+    if not row:
+        return {
+            "expected_exit_basis": "weekday+credit+prob",
+            "expected_max_pf": None,
+            "expected_max_pf_n": 0,
+            "expected_max_pf_time": None,
+            "expected_max_pf_label": None,
+            "expected_max_pf_segment": None,
+            "expected_close_pf": None,
+            "expected_close_pf_n": 0,
+        }
+
+    best = row.get("best")
+    close = row.get("close")
+    return {
+        "expected_exit_basis": "weekday+credit+prob",
+        "expected_max_pf": best.get("pf") if best else None,
+        "expected_max_pf_n": best.get("n", 0) if best else 0,
+        "expected_max_pf_time": best.get("time") if best else None,
+        "expected_max_pf_label": best.get("label") if best else None,
+        "expected_max_pf_segment": best.get("key") if best else None,
+        "expected_close_pf": close.get("pf") if close else None,
+        "expected_close_pf_n": close.get("n", 0) if close else 0,
+    }
+
+
+def estimate_grok_operational_exit(
+    lookup: dict,
+    weekday_jp: str | None,
+    credit_bucket: str,
+    prob_regime: str | None,
+) -> dict:
+    empty = {
+        "operational_pf_basis": None,
+        "operational_max_pf": None,
+        "operational_max_pf_n": 0,
+        "operational_max_pf_time": None,
+        "operational_max_pf_label": None,
+        "operational_max_pf_segment": None,
+        "operational_close_pf": None,
+        "operational_close_pf_n": 0,
+    }
+    if not lookup or not weekday_jp or not prob_regime:
+        return empty
+
+    row = lookup.get((weekday_jp, credit_bucket, prob_regime))
+    if not row:
+        return {
+            **empty,
+            "operational_pf_basis": "weekday+credit+regime",
+        }
+
+    best = row.get("best")
+    close = row.get("close")
+    return {
+        "operational_pf_basis": "weekday+credit+regime",
+        "operational_max_pf": best.get("pf") if best else None,
+        "operational_max_pf_n": best.get("n", 0) if best else 0,
+        "operational_max_pf_time": best.get("time") if best else None,
+        "operational_max_pf_label": best.get("label") if best else None,
+        "operational_max_pf_segment": best.get("key") if best else None,
+        "operational_close_pf": close.get("pf") if close else None,
+        "operational_close_pf_n": close.get("n", 0) if close else 0,
+    }
+
+
+def estimate_grok_recent_risk(
+    lookup: dict,
+    weekday_jp: str | None,
+    credit_bucket: str,
+    prob_bin: str | None,
+) -> dict:
+    empty = {
+        "recent_risk_level": "none",
+        "recent_risk_reason": None,
+        "recent_risk_lookback_days": RECENT_RISK_LOOKBACK_DAYS,
+        "recent_weekday_pf": None,
+        "recent_weekday_n": 0,
+        "recent_weekday_total": 0,
+        "recent_cell_pf": None,
+        "recent_cell_n": 0,
+        "recent_cell_total": 0,
+        "recent_cell_worst": None,
+        "recent_cell_loss_10k_count": 0,
+    }
+    if not lookup or not weekday_jp:
+        return empty
+
+    weekday_metrics = lookup.get(("weekday", weekday_jp), {})
+    cell_metrics = lookup.get(("cell", weekday_jp, credit_bucket, prob_bin), {}) if prob_bin else {}
+
+    weekday_pf = weekday_metrics.get("pf")
+    weekday_n = int(weekday_metrics.get("n", 0) or 0)
+    weekday_total = float(weekday_metrics.get("total", 0) or 0)
+    cell_pf = cell_metrics.get("pf")
+    cell_n = int(cell_metrics.get("n", 0) or 0)
+    cell_total = float(cell_metrics.get("total", 0) or 0)
+    cell_worst = cell_metrics.get("worst")
+    cell_loss_10k = int(cell_metrics.get("loss_10k_count", 0) or 0)
+
+    reasons: list[str] = []
+    level = "none"
+    if weekday_n >= 20 and weekday_total < 0 and (weekday_pf is None or weekday_pf < 1.0):
+        level = "high"
+        reasons.append("曜日直近PF<1")
+    elif weekday_n >= 20 and weekday_pf is not None and weekday_pf < 1.2:
+        level = "watch"
+        reasons.append("曜日直近PF弱め")
+
+    if cell_n >= 5:
+        if cell_total < 0 and (cell_pf is None or cell_pf < 1.0):
+            level = "high"
+            reasons.append("同セル直近PF<1")
+        elif cell_loss_10k >= 1 and cell_total <= 0:
+            level = "high"
+            reasons.append("同セル左尾")
+        elif cell_pf is not None and cell_pf < 1.2:
+            if level == "none":
+                level = "watch"
+            reasons.append("同セル直近PF弱め")
+    elif cell_n > 0 and cell_total < 0 and level == "none":
+        level = "watch"
+        reasons.append("同セル直近少数負け")
+
+    return {
+        "recent_risk_level": level,
+        "recent_risk_reason": " / ".join(dict.fromkeys(reasons)) if reasons else None,
+        "recent_risk_lookback_days": RECENT_RISK_LOOKBACK_DAYS,
+        "recent_weekday_pf": weekday_pf,
+        "recent_weekday_n": weekday_n,
+        "recent_weekday_total": int(round(weekday_total)),
+        "recent_cell_pf": cell_pf,
+        "recent_cell_n": cell_n,
+        "recent_cell_total": int(round(cell_total)),
+        "recent_cell_worst": cell_worst,
+        "recent_cell_loss_10k_count": cell_loss_10k,
     }
 
 
@@ -862,7 +1275,6 @@ def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
         "jq_phase2_return": "phase2_return",
         "jq_phase1_win": "phase1_win",
         "jq_phase2_win": "phase2_win",
-        "jq_seg_1530": "seg_1530",
     }
     for source_col, target_col in preferred_cols.items():
         if source_col not in out.columns:
@@ -872,17 +1284,25 @@ def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
         else:
             out[target_col] = out[source_col]
 
+    for seg in TIME_SEGMENTS_11:
+        seg_col = seg["key"]
+        jq_col = f"jq_{seg_col}"
+        if jq_col not in out.columns:
+            continue
+        if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
+            out[f"archive_{seg_col}"] = out[seg_col]
+        if seg_col in out.columns:
+            out[seg_col] = out[jq_col].combine_first(out[seg_col])
+        else:
+            out[seg_col] = out[jq_col]
+
     for phase in ("phase1", "phase2"):
         profit_col = f"profit_per_100_shares_{phase}"
         win_col = f"{phase}_win"
         if profit_col in out.columns:
             out[win_col] = pd.to_numeric(out[profit_col], errors="coerce") > 0
 
-    out.attrs["analysis_source"] = (
-        str(out["analysis_source"].dropna().iloc[0])
-        if "analysis_source" in out.columns and out["analysis_source"].notna().any()
-        else "unknown"
-    )
+    out.attrs["analysis_source"] = str(out["analysis_source"].dropna().iloc[0]) if "analysis_source" in out.columns and out["analysis_source"].notna().any() else "unknown"
     out.attrs["price_basis"] = "jquants_minute" if out.attrs["analysis_source"] == "grok_master_jquants_segments" else "archive_price"
     return out
 
@@ -917,7 +1337,7 @@ def load_grok_expected_pf_history() -> pd.DataFrame:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
 
-    return _normalize_expected_pf_history(load_grok_archive())
+    return load_grok_archive()
 
 
 def save_grok_trending(df: pd.DataFrame) -> None:
@@ -979,9 +1399,16 @@ async def get_day_trade_list():
 
     # 期待PFはprob別パフォーマンスと同じJ-Quants masterベースで作る。
     try:
-        expected_pf_lookup = build_grok_expected_pf_lookup(load_grok_expected_pf_history())
+        expected_history_df = load_grok_expected_pf_history()
+        expected_pf_lookup = build_grok_expected_pf_lookup(expected_history_df)
+        expected_exit_lookup = build_grok_expected_exit_lookup(expected_history_df)
+        operational_exit_lookup = build_grok_operational_exit_lookup(expected_history_df)
+        recent_risk_lookup = build_grok_recent_risk_lookup(expected_history_df)
     except Exception:
         expected_pf_lookup = {}
+        expected_exit_lookup = {}
+        operational_exit_lookup = {}
+        recent_risk_lookup = {}
 
     # ストップ高/安フラグを計算
     try:
@@ -1074,6 +1501,24 @@ async def get_day_trade_list():
             price_band,
             prob_bin,
         )
+        expected_exit = estimate_grok_expected_exit(
+            expected_exit_lookup,
+            weekday_jp,
+            credit_bucket,
+            prob_bin,
+        )
+        operational_exit = estimate_grok_operational_exit(
+            operational_exit_lookup,
+            weekday_jp,
+            credit_bucket,
+            bucket,
+        )
+        recent_risk = estimate_grok_recent_risk(
+            recent_risk_lookup,
+            weekday_jp,
+            credit_bucket,
+            prob_bin,
+        )
         tradable = is_tradable_credit_bucket(credit_bucket)
         pf_display = expected if tradable else {
             **expected,
@@ -1083,6 +1528,26 @@ async def get_day_trade_list():
             "expected_pnl_avg": None,
             "expected_wr": None,
             "expected_pf_confidence": None,
+        }
+        exit_display = expected_exit if tradable else {
+            **expected_exit,
+            "expected_max_pf": None,
+            "expected_max_pf_n": 0,
+            "expected_max_pf_time": None,
+            "expected_max_pf_label": None,
+            "expected_max_pf_segment": None,
+            "expected_close_pf": None,
+            "expected_close_pf_n": 0,
+        }
+        operational_display = operational_exit if tradable else {
+            **operational_exit,
+            "operational_max_pf": None,
+            "operational_max_pf_n": 0,
+            "operational_max_pf_time": None,
+            "operational_max_pf_label": None,
+            "operational_max_pf_segment": None,
+            "operational_close_pf": None,
+            "operational_close_pf_n": 0,
         }
 
         close_value = row.get("Close")
@@ -1121,6 +1586,9 @@ async def get_day_trade_list():
             "short_recommended": bool(row.get("short_recommended")) if pd.notna(row.get("short_recommended")) else False,
             "reason_category": row.get("reason_category") if pd.notna(row.get("reason_category")) else None,
             **pf_display,
+            **exit_display,
+            **operational_display,
+            **recent_risk,
         })
 
     # ソート: 実行可能性 → 曜日×信用×prob実測PF → 平均損益 → prob_regime → grok_rank。
@@ -1128,7 +1596,7 @@ async def get_day_trade_list():
     regime_order = {"LOW_PROB_HEAT": 0, "MID_PROB_HEAT": 1, "HIGH_PROB_HEAT": 2}
     stocks.sort(key=lambda s: (
         0 if s.get("tradable") else 1,
-        -(s["expected_pf"] if s.get("expected_pf") is not None else -1),
+        -(s["operational_close_pf"] if s.get("operational_close_pf") is not None else (s["expected_close_pf"] if s.get("expected_close_pf") is not None else (s["expected_pf"] if s.get("expected_pf") is not None else -1))),
         -(s["expected_pnl_avg"] if s.get("expected_pnl_avg") is not None else -10**9),
         regime_order.get(s.get("bucket"), 9),
         s.get("grok_rank") or 999
