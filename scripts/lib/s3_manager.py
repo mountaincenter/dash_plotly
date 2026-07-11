@@ -47,7 +47,10 @@ def upload_to_s3(files: List[Path], base_dir: Path | None = None) -> bool:
             return False
 
         print(f"[PROGRESS] Uploading to s3://{bucket}/{prefix}...")
-        upload_files(s3_cfg, files, base_dir=base_dir)
+        success = upload_files(s3_cfg, files, base_dir=base_dir)
+        if not success:
+            print("[ERROR] One or more S3 uploads failed")
+            return False
         print(f"[OK] Uploaded {len(files)} files to S3")
         return True
 

@@ -7,10 +7,11 @@ GitHub Actions対応: 最終ステップ、update_flag削除も実行
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+import argparse
 import json
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import List, Dict
 
 ROOT = Path(__file__).resolve().parents[2]  # scripts/pipeline/ から2階層上 = プロジェクトルート
@@ -20,6 +21,12 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 from scripts.lib.s3_manager import upload_to_s3
 from common_cfg.paths import PARQUET_DIR
+from common_cfg.s3cfg import load_s3_config
+from scripts.lib.protected_archive_s3 import (
+    file_sha256,
+    read_remote_manifest,
+    verify_publish_state,
+)
 
 # S3にアップロードするファイル
 UPLOAD_FILES = [
@@ -38,6 +45,7 @@ UPLOAD_FILES = [
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
     "jquants/grok_archive_minute.parquet",  # Grok対象日のJ-Quants累積分足cache
+    "jquants/grok_jquants_daily.parquet",  # Grok対象日のJ-Quants累積日足cache
     "backtest/grok_master_jquants_segments.parquet",  # Grok分析用J-Quants基準master（archiveは不変）
     "backtest/grok_master_jquants_segments.validation.json",  # master公開前validation結果
     "scalping_entry.parquet",
@@ -88,7 +96,16 @@ UPLOAD_FILES = [
     "prices_topix500_oc.parquet",
 ]
 
+# Canonical files are recorded in manifest.json but are not part of the generic
+# upload list. Publishing them requires an explicit or separately guarded path.
+PROTECTED_FILES = [
+    "backtest/grok_trending_archive.parquet",
+]
+
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
+ARCHIVE_PUBLISH_STATE_PATH = (
+    PARQUET_DIR / "backtest" / "grok_trending_archive.publish.json"
+)
 
 
 def get_file_stats(file_path: Path) -> Dict[str, any]:
@@ -129,6 +146,114 @@ def get_file_stats(file_path: Path) -> Dict[str, any]:
             "row_count": 0,
             "columns": [],
         }
+
+
+def load_existing_manifest() -> Dict[str, any]:
+    """Load S3 manifest first, with the local copy only as an offline fallback."""
+    try:
+        remote = read_remote_manifest(load_s3_config())
+        print("  [INFO] Existing manifest loaded from S3")
+        return remote
+    except Exception as error:
+        print(f"  [WARN] Existing S3 manifest unavailable: {error}")
+
+    if MANIFEST_PATH.exists():
+        try:
+            local = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+            if isinstance(local, dict) and isinstance(local.get("files"), dict):
+                print("  [INFO] Existing manifest loaded from local fallback")
+                return local
+        except Exception as error:
+            print(f"  [WARN] Existing local manifest is invalid: {error}")
+    return {"files": {}}
+
+
+def load_archive_publish_state() -> Dict[str, any] | None:
+    if not ARCHIVE_PUBLISH_STATE_PATH.exists():
+        return None
+    try:
+        state = json.loads(ARCHIVE_PUBLISH_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception as error:
+        raise RuntimeError(f"Invalid archive publish receipt: {error}") from error
+    if not isinstance(state, dict):
+        raise RuntimeError("Archive publish receipt is not a JSON object")
+    return state
+
+
+def get_protected_file_entry(
+    filename: str,
+    existing_entry: Dict[str, any] | None = None,
+) -> Dict[str, any]:
+    """Build or preserve a checksum-pinned canonical manifest entry."""
+    file_path = PARQUET_DIR / filename
+    stats = get_file_stats(file_path)
+    if not file_path.exists():
+        if (
+            isinstance(existing_entry, dict)
+            and existing_entry.get("protected") is True
+            and existing_entry.get("canonical") is True
+            and existing_entry.get("sha256")
+        ):
+            print(f"  [INFO] Preserving remote protected entry: {filename}")
+            return dict(existing_entry)
+        raise RuntimeError(
+            f"Protected file is absent and has no valid existing manifest entry: {filename}"
+        )
+
+    entry = {
+        "exists": True,
+        "size_bytes": stats["size_bytes"],
+        "row_count": stats["row_count"],
+        "columns": stats["columns"],
+        "updated_at": (
+            datetime.fromtimestamp(file_path.stat().st_mtime).isoformat()
+            if file_path.exists()
+            else None
+        ),
+        "protected": True,
+        "canonical": True,
+        "upload_policy": "explicit_or_guarded_pipeline",
+        "automatic_bulk_upload": False,
+        "protection_reason": "canonical archive; checksum verification required",
+    }
+    entry["sha256"] = file_sha256(file_path)
+
+    if file_path.suffix == ".parquet":
+        frame = pd.read_parquet(file_path, columns=["backtest_date", "ticker"])
+        dates = pd.to_datetime(frame["backtest_date"], errors="coerce")
+        entry["date_min"] = dates.min().date().isoformat()
+        entry["date_max"] = dates.max().date().isoformat()
+        entry["unique_ticker_date_keys"] = int(
+            frame[["ticker", "backtest_date"]].drop_duplicates().shape[0]
+        )
+
+    existing_sha = existing_entry.get("sha256") if existing_entry else None
+    if existing_sha == entry["sha256"]:
+        return {**existing_entry, **entry} if existing_entry else entry
+
+    state = load_archive_publish_state()
+    if not state or state.get("sha256") != entry["sha256"]:
+        raise RuntimeError(
+            "Protected archive checksum changed without a matching guarded publish receipt"
+        )
+    verify_publish_state(load_s3_config(), state)
+    entry.update(
+        {
+            "s3_key": state.get("s3_key"),
+            "s3_etag": state.get("s3_etag"),
+            "s3_version_id": state.get("s3_version_id"),
+            "s3_checksum_sha256_base64": state.get(
+                "s3_checksum_sha256_base64"
+            ),
+            "s3_verified_at": state.get("verified_at"),
+            "s3_sync_status": state.get("status"),
+            "source_s3_etag": state.get("source_s3_etag"),
+            "source_s3_version_id": state.get("source_s3_version_id"),
+            "data_source": state.get("data_source"),
+            "segment_definition": state.get("segment_definition"),
+        }
+    )
+    return {**(existing_entry or {}), **entry}
 
 
 def get_grok_metadata() -> Dict[str, any]:
@@ -186,7 +311,11 @@ def get_grok_metadata() -> Dict[str, any]:
         }
 
 
-def generate_manifest() -> Dict[str, any]:
+def generate_manifest(
+    existing_manifest: Dict[str, any] | None = None,
+    *,
+    preserve_missing: bool = False,
+) -> Dict[str, any]:
     """manifest.jsonを生成"""
     print("[INFO] Generating manifest.json...")
 
@@ -206,6 +335,12 @@ def generate_manifest() -> Dict[str, any]:
         file_path = PARQUET_DIR / filename
         stats = get_file_stats(file_path)
 
+        existing_entry = (existing_manifest or {}).get("files", {}).get(filename)
+        if preserve_missing and not stats["exists"] and isinstance(existing_entry, dict):
+            manifest["files"][filename] = dict(existing_entry)
+            print(f"  ↻ {filename}: preserving existing remote entry")
+            continue
+
         manifest["files"][filename] = {
             "exists": stats["exists"],
             "size_bytes": stats["size_bytes"],
@@ -216,6 +351,20 @@ def generate_manifest() -> Dict[str, any]:
 
         status = "✓" if stats["exists"] else "✗"
         print(f"  {status} {filename}: {stats['row_count']} rows, {stats['size_bytes']:,} bytes")
+
+    for filename in PROTECTED_FILES:
+        existing_entry = (
+            (existing_manifest or {}).get("files", {}).get(filename)
+            if isinstance((existing_manifest or {}).get("files", {}), dict)
+            else None
+        )
+        entry = get_protected_file_entry(filename, existing_entry)
+        manifest["files"][filename] = entry
+        status = "✓" if entry["exists"] else "✗"
+        print(
+            f"  {status} {filename}: protected canonical, "
+            f"{entry['row_count']} rows, sha256={entry['sha256']}"
+        )
 
     print(f"  ✓ update_flag: {manifest['update_flag']}")
     return manifest
@@ -245,8 +394,8 @@ def upload_files_to_s3() -> bool:
         else:
             print(f"  [WARN] {filename} not found, skipping")
 
-    # backtest/ ディレクトリの不変archiveは自動アップロードしない。
-    # grok_trending_archive.parquet は復元不能な正本であり、update_manifest の出力対象にしない。
+    # 正本archiveはmanifestにchecksum付きで記録するが、一括アップロードはしない。
+    # 更新は明示操作または別のguarded pipelineだけに限定する。
     backtest_dir = PARQUET_DIR / "backtest"
     archive_file = backtest_dir / "grok_trending_archive.parquet"
 
@@ -316,6 +465,14 @@ def upload_files_to_s3() -> bool:
         print(f"  ✗ S3 upload failed")
 
     return success
+
+
+def upload_manifest_only() -> bool:
+    """Upload manifest after derived artifacts were published by a guarded step."""
+    if not MANIFEST_PATH.exists():
+        print("  [ERROR] manifest.json does not exist")
+        return False
+    return upload_to_s3([MANIFEST_PATH], base_dir=PARQUET_DIR)
 
 
 def cleanup_s3_old_files(keep_files: List[str]) -> None:
@@ -433,7 +590,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         print(f"  [WARN] S3 cleanup failed: {e}")
 
 
-def main() -> int:
+def main(*, manifest_only: bool = False) -> int:
     print("=" * 60)
     print("Update Manifest and Upload to S3")
     print("=" * 60)
@@ -441,7 +598,11 @@ def main() -> int:
     # [STEP 1] manifest.json生成
     print("\n[STEP 1] Generating manifest.json...")
     try:
-        manifest = generate_manifest()
+        existing_manifest = load_existing_manifest()
+        manifest = generate_manifest(
+            existing_manifest,
+            preserve_missing=manifest_only,
+        )
         save_manifest(manifest)
     except Exception as e:
         print(f"  ✗ Failed: {e}")
@@ -450,19 +611,23 @@ def main() -> int:
     # [STEP 2] S3アップロード
     print("\n[STEP 2] Uploading to S3...")
     try:
-        upload_success = upload_files_to_s3()
+        upload_success = (
+            upload_manifest_only() if manifest_only else upload_files_to_s3()
+        )
         if not upload_success:
-            print("  ⚠ S3 upload had issues (check configuration)")
+            print("  ✗ S3 upload failed; manifest was not safely published")
+            return 1
     except Exception as e:
         print(f"  ✗ Failed: {e}")
         return 1
 
     # [STEP 3] S3上の不要ファイルを削除（manifest.jsonに記載されたファイルのみ保持）
-    print("\n[STEP 3] Cleaning up old files from S3...")
-    try:
-        cleanup_s3_old_files(UPLOAD_FILES)
-    except Exception as e:
-        print(f"  ⚠ S3 cleanup failed: {e}")
+    if not manifest_only:
+        print("\n[STEP 3] Cleaning up old files from S3...")
+        try:
+            cleanup_s3_old_files(UPLOAD_FILES)
+        except Exception as e:
+            print(f"  ⚠ S3 cleanup failed: {e}")
 
     # サマリー
     print("\n" + "=" * 60)
@@ -473,9 +638,17 @@ def main() -> int:
     print(f"S3 upload: {'✓ Success' if upload_success else '⚠ Failed or skipped'}")
     print("=" * 60)
 
-    print("\n✅ Manifest update and S3 upload completed!")
+    mode = "manifest-only" if manifest_only else "full"
+    print(f"\n✅ Manifest update and S3 upload completed ({mode})!")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description="Generate and publish manifest.json")
+    parser.add_argument(
+        "--manifest-only",
+        action="store_true",
+        help="Publish only manifest.json and preserve entries for missing local files",
+    )
+    args = parser.parse_args()
+    raise SystemExit(main(manifest_only=args.manifest_only))

@@ -116,6 +116,7 @@ def build_segment_rows(minute: pd.DataFrame) -> pd.DataFrame:
         last = bars.iloc[-1]
         entry_price = float(first["analysis_open"]) if pd.notna(first["analysis_open"]) else np.nan
         close_price = float(last["analysis_close"]) if pd.notna(last["analysis_close"]) else np.nan
+        close_executable = bool(last["datetime"] > first["datetime"])
 
         row: dict[str, object] = {
             "_key_backtest_date": date,
@@ -142,7 +143,14 @@ def build_segment_rows(minute: pd.DataFrame) -> pd.DataFrame:
             "jq_phase2_return": (entry_price - close_price) / entry_price
             if pd.notna(entry_price) and entry_price != 0 and pd.notna(close_price)
             else np.nan,
-            "jq_phase2_win": bool(entry_price > close_price) if pd.notna(entry_price) and pd.notna(close_price) else pd.NA,
+            "jq_phase2_win": (
+                bool(entry_price > close_price)
+                if pd.notna(entry_price) and pd.notna(close_price)
+                else pd.NA
+            ),
+            "jq_close_execution_status": (
+                "executable" if close_executable else "mark_only_no_round_trip"
+            ),
         }
 
         times = bars["time"].astype(str)
@@ -270,6 +278,9 @@ def print_summary(master: pd.DataFrame, output_path: Path) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.output_path.resolve() == args.archive_path.resolve():
+        raise ValueError("output-path must not be grok_trending_archive.parquet")
+
     archive = load_archive(args.archive_path)
     minute = load_minute(args.minute_path)
     segments = build_segment_rows(minute)

@@ -11,6 +11,7 @@ grok_master_jquants_segments.parquetを優先使用
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pathlib import Path
+from collections.abc import Callable
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -103,6 +104,8 @@ MANUAL_EXCLUDE_DATES = [
 
 # 最小件数閾値: これ未満のセルは統計値をnull
 MIN_N_THRESHOLD = 10
+CLOSE_EXECUTABLE_STATUS = "executable"
+CLOSE_MARK_ONLY_STATUS = "mark_only_no_round_trip"
 
 
 def _download_parquet_from_s3(key: str, label: str) -> pd.DataFrame:
@@ -157,11 +160,7 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
     }
     for source_col, target_col in preferred_cols.items():
         if source_col in out.columns:
-            source = out[source_col]
-            if target_col in out.columns:
-                out[target_col] = source.combine_first(out[target_col])
-            else:
-                out[target_col] = source
+            out[target_col] = out[source_col]
 
     for seg in TIME_SEGMENTS_11:
         seg_col = seg["key"]
@@ -170,10 +169,10 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
             continue
         if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
             out[f"archive_{seg_col}"] = out[seg_col]
-        if seg_col in out.columns:
-            out[seg_col] = out[jq_col].combine_first(out[seg_col])
-        else:
-            out[seg_col] = out[jq_col]
+        out[seg_col] = out[jq_col]
+
+    if "jq_close_execution_status" in out.columns:
+        out["close_execution_status"] = out["jq_close_execution_status"]
 
     out.attrs["analysis_source"] = "grok_master_jquants_segments"
     out.attrs["price_basis"] = "jquants_minute"
@@ -184,6 +183,11 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
     out.attrs["jq_seg_1530_coverage"] = (
         round(float(out["jq_seg_1530"].notna().mean()), 6) if total_rows and "jq_seg_1530" in out.columns else None
     )
+    if total_rows and "jq_close_execution_status" in out.columns:
+        executable = out["jq_close_execution_status"].eq("executable")
+        out.attrs["close_execution_rate"] = round(float(executable.mean()), 6)
+        out.attrs["close_executable_rows"] = int(executable.sum())
+        out.attrs["close_mark_only_rows"] = int((~executable).sum())
     return out
 
 
@@ -252,6 +256,25 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
     price_basis = df_raw.attrs.get("price_basis") or ("jquants_minute" if analysis_source == "grok_master_jquants_segments" else "archive_seg")
     jq_buy_price_coverage = df_raw.attrs.get("jq_buy_price_coverage")
     jq_seg_1530_coverage = df_raw.attrs.get("jq_seg_1530_coverage")
+    close_execution_rate = df_raw.attrs.get("close_execution_rate")
+    close_executable_rows = df_raw.attrs.get("close_executable_rows")
+    close_mark_only_rows = df_raw.attrs.get("close_mark_only_rows")
+    close_unknown_rows = None
+    close_status_available = False
+    if "close_execution_status" in df.columns:
+        status = df["close_execution_status"]
+        executable = status.eq(CLOSE_EXECUTABLE_STATUS)
+        mark_only = status.eq(CLOSE_MARK_ONLY_STATUS)
+        known_count = int((executable | mark_only).sum())
+        close_status_available = True
+        close_executable_rows = int(executable.sum())
+        close_mark_only_rows = int(mark_only.sum())
+        close_unknown_rows = int(len(status) - known_count)
+        close_execution_rate = (
+            round(float(close_executable_rows / known_count), 6)
+            if known_count > 0
+            else None
+        )
     raw = df_raw.copy()
     if "backtest_date" in raw.columns:
         raw["date"] = pd.to_datetime(raw["backtest_date"])
@@ -271,6 +294,11 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
         "priceBasis": price_basis,
         "jqBuyPriceCoverage": jq_buy_price_coverage,
         "jqSeg1530Coverage": jq_seg_1530_coverage,
+        "closeExecutionStatusAvailable": close_status_available,
+        "closeExecutionRate": close_execution_rate,
+        "closeExecutableRows": close_executable_rows,
+        "closeMarkOnlyRows": close_mark_only_rows,
+        "closeUnknownRows": close_unknown_rows,
     }
 
 
@@ -344,9 +372,59 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short",
     return df
 
 
-def _calc_seg_stats(series: pd.Series) -> dict:
+def _execution_context(
+    valid_index: pd.Index,
+    execution_status: pd.Series | None,
+) -> tuple[dict, pd.Index]:
+    """終値評価の全母集団と、往復売買可能な母集団を分離する。"""
+    if execution_status is None:
+        return {
+            "executionStatusAvailable": False,
+            "executableCount": None,
+            "markOnlyCount": None,
+            "unknownExecutionCount": None,
+            "executionRate": None,
+        }, pd.Index([])
+
+    aligned = execution_status.reindex(valid_index)
+    executable = aligned.eq(CLOSE_EXECUTABLE_STATUS)
+    mark_only = aligned.eq(CLOSE_MARK_ONLY_STATUS)
+    known_count = int((executable | mark_only).sum())
+    executable_count = int(executable.sum())
+    return {
+        "executionStatusAvailable": True,
+        "executableCount": executable_count,
+        "markOnlyCount": int(mark_only.sum()),
+        "unknownExecutionCount": int(len(aligned) - known_count),
+        "executionRate": (
+            round(float(executable_count / known_count), 6)
+            if known_count > 0
+            else None
+        ),
+    }, aligned.index[executable]
+
+
+def _attach_executable_metrics(
+    metrics: dict,
+    valid: pd.Series,
+    execution_status: pd.Series | None,
+    calculator: Callable[[pd.Series], dict],
+) -> dict:
+    execution_meta, executable_index = _execution_context(
+        valid.index,
+        execution_status,
+    )
+    metrics.update(execution_meta)
+    metrics["executable"] = (
+        calculator(valid.loc[executable_index])
+        if execution_meta["executionStatusAvailable"]
+        else None
+    )
+    return metrics
+
+
+def _calc_seg_stats_core(valid: pd.Series) -> dict:
     """1つのseg列の統計計算（実額）。n < MIN_N_THRESHOLD ならnull"""
-    valid = series.dropna()
     n = len(valid)
     if n == 0:
         return {"profit": 0, "winRate": 0, "count": 0, "mean": 0, "pf": None}
@@ -364,15 +442,23 @@ def _calc_seg_stats(series: pd.Series) -> dict:
     }
 
 
-def _calc_seg_stats_pct(seg_series: pd.Series, buy_price_series: pd.Series) -> dict:
-    """1つのseg列の%リターン統計。buy_price * 100 で統一"""
-    mask = seg_series.notna() & (buy_price_series > 0)
-    seg_valid = seg_series[mask]
-    bp_valid = buy_price_series[mask]
-    n = len(seg_valid)
+def _calc_seg_stats(
+    series: pd.Series,
+    execution_status: pd.Series | None = None,
+) -> dict:
+    valid = pd.to_numeric(series, errors="coerce").dropna()
+    return _attach_executable_metrics(
+        _calc_seg_stats_core(valid),
+        valid,
+        execution_status,
+        _calc_seg_stats_core,
+    )
+
+
+def _calc_seg_stats_pct_core(pct_returns: pd.Series) -> dict:
+    n = len(pct_returns)
     if n == 0:
         return {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0, "pf": None}
-    pct_returns = seg_valid / (bp_valid * 100) * 100
     if n < MIN_N_THRESHOLD:
         return {"pctReturn": round(float(pct_returns.sum()), 2), "winRate": None, "count": n, "meanPct": None, "pf": None}
     wins = pct_returns[pct_returns > 0].sum()
@@ -380,21 +466,59 @@ def _calc_seg_stats_pct(seg_series: pd.Series, buy_price_series: pd.Series) -> d
     pf = round(float(wins / losses), 2) if losses > 0 else None
     return {
         "pctReturn": round(float(pct_returns.sum()), 2),
-        "winRate": round(float((seg_valid > 0).mean() * 100), 1),
+        "winRate": round(float((pct_returns > 0).mean() * 100), 1),
         "count": n,
         "meanPct": round(float(pct_returns.mean()), 3),
         "pf": pf,
     }
 
 
+def _calc_seg_stats_pct(
+    seg_series: pd.Series,
+    buy_price_series: pd.Series,
+    execution_status: pd.Series | None = None,
+) -> dict:
+    """1つのseg列の%リターン統計。buy_price * 100 で統一"""
+    seg_numeric = pd.to_numeric(seg_series, errors="coerce")
+    buy_numeric = pd.to_numeric(buy_price_series, errors="coerce")
+    mask = seg_numeric.notna() & (buy_numeric > 0)
+    pct_returns = seg_numeric[mask] / (buy_numeric[mask] * 100) * 100
+    return _attach_executable_metrics(
+        _calc_seg_stats_pct_core(pct_returns),
+        pct_returns,
+        execution_status,
+        _calc_seg_stats_pct_core,
+    )
+
+
 def calc_segment_stats(df: pd.DataFrame, segments: list) -> dict:
     """指定セグメント定義で統計計算（実額）"""
-    return {seg["key"]: _calc_seg_stats(df[seg["key"]]) if seg["key"] in df.columns else {"profit": 0, "winRate": 0, "count": 0, "mean": 0, "pf": None} for seg in segments}
+    execution_status = df.get("close_execution_status")
+    return {
+        seg["key"]: _calc_seg_stats(df[seg["key"]], execution_status)
+        if seg["key"] in df.columns
+        else _calc_seg_stats(pd.Series(dtype=float), execution_status)
+        for seg in segments
+    }
 
 
 def calc_segment_stats_pct(df: pd.DataFrame, segments: list) -> dict:
     """指定セグメント定義で統計計算（%リターン）"""
-    return {seg["key"]: _calc_seg_stats_pct(df[seg["key"]], df["buy_price"]) if seg["key"] in df.columns else {"pctReturn": 0.0, "winRate": 0, "count": 0, "meanPct": 0.0, "pf": None} for seg in segments}
+    execution_status = df.get("close_execution_status")
+    return {
+        seg["key"]: _calc_seg_stats_pct(
+            df[seg["key"]],
+            df["buy_price"],
+            execution_status,
+        )
+        if seg["key"] in df.columns
+        else _calc_seg_stats_pct(
+            pd.Series(dtype=float),
+            pd.Series(dtype=float),
+            execution_status,
+        )
+        for seg in segments
+    }
 
 
 def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
@@ -761,13 +885,7 @@ def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short",
     return df
 
 
-def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
-    """prob_regime別PF計算"""
-    s = sub.copy()
-    # 符号はprepare_dataで方向処理済みなので、ここでは元のseg値を使う
-    # _load_analysis_baseでは符号未処理なので、ここで処理
-    sign = -1 if direction == "short" else 1
-    vals = s[seg_col] * sign
+def _calc_bucket_pf_core(vals: pd.Series) -> dict:
     n = len(vals)
     if n == 0:
         return {"pf": None, "n": 0, "avg": 0, "winRate": 0}
@@ -781,15 +899,29 @@ def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", d
     return {"pf": pf, "n": n, "avg": avg, "winRate": wr}
 
 
+def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
+    """prob_regime別PF計算。既存値は終値評価、executableは往復可能行のみ。"""
+    del bucket
+    if seg_col not in sub.columns:
+        vals = pd.Series(dtype=float)
+    else:
+        # _load_analysis_baseでは符号未処理なので、ここで方向を処理する。
+        sign = -1 if direction == "short" else 1
+        vals = pd.to_numeric(sub[seg_col], errors="coerce").dropna() * sign
+    return _attach_executable_metrics(
+        _calc_bucket_pf_core(vals),
+        vals,
+        sub.get("close_execution_status"),
+        _calc_bucket_pf_core,
+    )
+
+
 def _build_bucket_row(bin_data: pd.DataFrame, label: str, seg_col: str = "seg_1530", direction: str = "short") -> dict:
     """1ビン分のprob_regime別行データを構築"""
     row = {"label": label}
     for bucket in BUCKET_LABELS:
         b_sub = bin_data[bin_data["bucket"] == bucket] if "bucket" in bin_data.columns else pd.DataFrame()
-        if len(b_sub) > 0:
-            row[bucket] = _calc_bucket_pf(b_sub, bucket, seg_col, direction)
-        else:
-            row[bucket] = {"pf": None, "n": 0, "avg": 0, "winRate": 0}
+        row[bucket] = _calc_bucket_pf(b_sub, bucket, seg_col, direction)
     return row
 
 
@@ -818,7 +950,7 @@ def _cvar05(pnl: pd.Series) -> float | None:
     return round(float(tail.mean()), 2) if not tail.empty else None
 
 
-def _risk_metrics(vals: pd.Series, dates: pd.Series | None = None) -> dict:
+def _risk_metrics_core(vals: pd.Series, dates: pd.Series | None = None) -> dict:
     valid = vals.dropna().astype(float)
     n = len(valid)
     if n == 0:
@@ -847,6 +979,80 @@ def _risk_metrics(vals: pd.Series, dates: pd.Series | None = None) -> dict:
         "dailyMaxDD": _max_drawdown(daily) if not daily.empty else None,
         "worstDay": round(float(daily.min()), 2) if not daily.empty else None,
         "dailyPlusRate": round(float((daily > 0).mean() * 100), 1) if not daily.empty else None,
+    }
+
+
+def _risk_metrics(
+    vals: pd.Series,
+    dates: pd.Series | None = None,
+    execution_status: pd.Series | None = None,
+) -> dict:
+    numeric = pd.to_numeric(vals, errors="coerce")
+    valid = numeric.dropna()
+    metrics = _risk_metrics_core(valid, dates)
+    execution_meta, executable_index = _execution_context(
+        valid.index,
+        execution_status,
+    )
+    metrics.update(execution_meta)
+    metrics["executable"] = (
+        _risk_metrics_core(valid.loc[executable_index], dates)
+        if execution_meta["executionStatusAvailable"]
+        else None
+    )
+    return metrics
+
+
+def _prob_performance_metrics(
+    sub: pd.DataFrame,
+    seg_col: str,
+    sign: int,
+) -> dict:
+    """prob区間の終値評価と往復売買可能行を同じ定義で集計する。"""
+    selected_n = int(len(sub))
+    if seg_col not in sub.columns:
+        vals = pd.Series(dtype=float)
+    else:
+        vals = pd.to_numeric(sub[seg_col], errors="coerce") * sign
+
+    execution_status = sub.get("close_execution_status")
+    amount = _risk_metrics(vals, execution_status=execution_status)
+    buy_price = pd.to_numeric(
+        sub.get("buy_price", pd.Series(index=sub.index, dtype=float)),
+        errors="coerce",
+    )
+    pct_vals = vals / (buy_price * 100) * 100
+    pct = _risk_metrics(pct_vals, execution_status=execution_status)
+
+    executable = None
+    if amount["executable"] is not None:
+        executable = {
+            "n": amount["executable"]["n"],
+            "total": amount["executable"]["total"],
+            "pf": amount["executable"]["pf"],
+            "winRate": amount["executable"]["winRate"],
+            "avg": amount["executable"]["avg"],
+            "avgReturn": (
+                pct["executable"]["avg"]
+                if pct["executable"] is not None
+                else None
+            ),
+        }
+
+    return {
+        "n": selected_n,
+        "validN": amount["n"],
+        "pf": amount["pf"],
+        "winRate": amount["winRate"],
+        "avg": round(float(amount["avg"])) if amount["avg"] is not None else None,
+        "total": int(amount["total"]) if amount["n"] > 0 else None,
+        "avgReturn": pct["avg"],
+        "executionStatusAvailable": amount["executionStatusAvailable"],
+        "executableCount": amount["executableCount"],
+        "markOnlyCount": amount["markOnlyCount"],
+        "unknownExecutionCount": amount["unknownExecutionCount"],
+        "executionRate": amount["executionRate"],
+        "executable": executable,
     }
 
 
@@ -1037,37 +1243,28 @@ async def get_prob_bin_pf(
         bins_data = []
         for label in PROB_BIN_LABELS:
             sub = gdf[gdf["prob_bin"] == label]
-            n = len(sub)
-            if n == 0:
-                bins_data.append({"label": label, "decision": PROB_BIN_DECISIONS.get(label), "n": 0, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
-                continue
-            vals = sub[seg_col].dropna() * sign
-            if len(vals) == 0:
-                bins_data.append({"label": label, "decision": PROB_BIN_DECISIONS.get(label), "n": n, "pf": None, "winRate": None, "avg": None, "total": None, "avgReturn": None})
-                continue
-            gp = float(vals[vals > 0].sum())
-            gl = float(abs(vals[vals <= 0].sum()))
-            pf = round(gp / gl, 2) if gl > 0 else None
-            wr = round(float((vals > 0).mean() * 100), 1)
-            avg = round(float(vals.mean()))
-            total = int(vals.sum())
-            bp = sub["buy_price"].dropna()
-            pct_vals = sub[seg_col].dropna() / (bp[sub[seg_col].notna()].values * 100) * 100 if len(bp) > 0 else pd.Series(dtype=float)
-            avg_ret = round(float(pct_vals.mean()), 2) if len(pct_vals) > 0 else None
-            bins_data.append({"label": label, "decision": PROB_BIN_DECISIONS.get(label), "n": n, "pf": pf, "winRate": wr, "avg": avg, "total": total, "avgReturn": avg_ret})
-        # 合計
-        all_vals = gdf[seg_col].dropna() * sign
-        gp_all = float(all_vals[all_vals > 0].sum()) if len(all_vals) > 0 else 0
-        gl_all = float(abs(all_vals[all_vals <= 0].sum())) if len(all_vals) > 0 else 0
-        all_bp = gdf["buy_price"].dropna()
-        all_pct = gdf[seg_col].dropna() / (all_bp[gdf[seg_col].notna()].values * 100) * 100 if len(all_bp) > 0 else pd.Series(dtype=float)
+            metrics = _prob_performance_metrics(sub, seg_col, sign)
+            bins_data.append({
+                "label": label,
+                "decision": PROB_BIN_DECISIONS.get(label),
+                **metrics,
+            })
+
+        total_metrics = _prob_performance_metrics(gdf, seg_col, sign)
         results.append({
             "key": gk,
             "count": len(gdf),
-            "total": int(all_vals.sum()) if len(all_vals) > 0 else 0,
-            "pf": round(gp_all / gl_all, 2) if gl_all > 0 else None,
-            "winRate": round(float((all_vals > 0).mean() * 100), 1) if len(all_vals) > 0 else None,
-            "avgReturn": round(float(all_pct.mean()), 2) if len(all_pct) > 0 else None,
+            "validN": total_metrics["validN"],
+            "total": total_metrics["total"] if total_metrics["total"] is not None else 0,
+            "pf": total_metrics["pf"],
+            "winRate": total_metrics["winRate"],
+            "avgReturn": total_metrics["avgReturn"],
+            "executionStatusAvailable": total_metrics["executionStatusAvailable"],
+            "executableCount": total_metrics["executableCount"],
+            "markOnlyCount": total_metrics["markOnlyCount"],
+            "unknownExecutionCount": total_metrics["unknownExecutionCount"],
+            "executionRate": total_metrics["executionRate"],
+            "executable": total_metrics["executable"],
             "bins": bins_data,
         })
 
@@ -1219,13 +1416,28 @@ async def get_weekday_risk_matrix(
             for seg in segments:
                 key = seg["key"]
                 if key not in sub.columns:
-                    amount_metrics = _risk_metrics(pd.Series(dtype=float))
-                    pct_metrics = _risk_metrics(pd.Series(dtype=float))
+                    amount_metrics = _risk_metrics(
+                        pd.Series(dtype=float),
+                        execution_status=sub.get("close_execution_status"),
+                    )
+                    pct_metrics = _risk_metrics(
+                        pd.Series(dtype=float),
+                        execution_status=sub.get("close_execution_status"),
+                    )
                 else:
                     amount_vals = sub[key] * sign
                     pct_vals = amount_vals / (sub["buy_price"] * 100) * 100
-                    amount_metrics = _risk_metrics(amount_vals, sub["date"])
-                    pct_metrics = _risk_metrics(pct_vals, sub["date"])
+                    execution_status = sub.get("close_execution_status")
+                    amount_metrics = _risk_metrics(
+                        amount_vals,
+                        sub["date"],
+                        execution_status,
+                    )
+                    pct_metrics = _risk_metrics(
+                        pct_vals,
+                        sub["date"],
+                        execution_status,
+                    )
                 segment_rows.append({
                     "key": key,
                     "label": seg["label"],

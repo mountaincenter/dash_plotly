@@ -319,76 +319,6 @@ def save_model(model: lgb.LGBMClassifier, feature_names: list[str], metrics: dic
     print(f"✓ Meta saved: {meta_path}")
 
 
-def update_archive_with_prob():
-    archive_path = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
-    wfcv_path = MODEL_DIR / "wfcv_predictions.parquet"
-
-    if not archive_path.exists() or not wfcv_path.exists():
-        print("[WARN] archive or wfcv not found, skipping prob update")
-        return
-
-    arc = pd.read_parquet(archive_path)
-    wfcv = pd.read_parquet(wfcv_path)
-
-    original_cols = list(arc.columns)
-    original_len = len(arc)
-
-    arc["backtest_date"] = pd.to_datetime(arc["backtest_date"])
-    wfcv["backtest_date"] = pd.to_datetime(wfcv["backtest_date"])
-
-    if "ml_prob" in arc.columns and "ml_prob_legacy" not in arc.columns:
-        arc["ml_prob_legacy"] = arc["ml_prob"]
-
-    for col in ["ml_grade", "ml_prob", "ml_prob_wfcv"]:
-        if col in arc.columns:
-            arc = arc.drop(columns=[col])
-
-    wfcv_dedup = wfcv[["backtest_date", "ticker", "ml_prob"]].drop_duplicates(
-        subset=["backtest_date", "ticker"], keep="last"
-    ).rename(columns={"ml_prob": "ml_prob_wfcv"})
-
-    merged = arc.merge(
-        wfcv_dedup,
-        on=["backtest_date", "ticker"],
-        how="left",
-    )
-    if "ml_prob_live" not in merged.columns:
-        merged["ml_prob_live"] = pd.NA
-
-    legacy_available = (
-        merged["ml_prob_legacy"].notna()
-        if "ml_prob_legacy" in merged.columns
-        else pd.Series(False, index=merged.index)
-    )
-    legacy_live_mask = (
-        merged["ml_prob_wfcv"].isna()
-        & merged["ml_prob_live"].isna()
-        & legacy_available
-    )
-    merged.loc[legacy_live_mask, "ml_prob_live"] = merged.loc[legacy_live_mask, "ml_prob_legacy"]
-
-    merged["ml_prob"] = merged["ml_prob_wfcv"]
-    merged["ml_prob_source"] = np.where(merged["ml_prob_wfcv"].notna(), "wfcv", merged.get("ml_prob_source"))
-    merged.loc[legacy_live_mask, "ml_prob_source"] = "legacy_live"
-
-    if len(merged) != original_len:
-        print(f"[ERROR] Row count changed: {original_len} -> {len(merged)}. Aborting.")
-        return
-
-    for col in original_cols:
-        if col in ("ml_grade", "ml_prob", "ml_prob_wfcv"):
-            continue
-        if col not in merged.columns:
-            print(f"[ERROR] Column '{col}' lost after merge. Aborting.")
-            return
-
-    prob_matched = merged["ml_prob_wfcv"].notna().sum()
-    print(f"\n[INFO] Archive ml_prob_wfcv update: {prob_matched}/{original_len} rows matched")
-
-    merged.to_parquet(archive_path, index=False)
-    print(f"✓ Archive updated with ml_prob_wfcv/ml_prob: {archive_path}")
-
-
 def main():
     print("=" * 60)
     print("Train ML Model for Price Movement Prediction")
@@ -399,7 +329,10 @@ def main():
     best_model, metrics = train_and_evaluate(X, y, feature_names, dates, pnl_values, tickers)
     print_feature_importance(best_model, feature_names)
     save_model(best_model, feature_names, metrics)
-    update_archive_with_prob()
+    print(
+        "[INFO] WFCV probabilities remain in models/wfcv_predictions.parquet; "
+        "the canonical archive is not modified by model training."
+    )
 
     print("\n" + "=" * 60)
     print("Training completed!")

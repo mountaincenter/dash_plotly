@@ -1,16 +1,12 @@
 name: Data Pipeline
 
 on:
-  schedule:
-    # 毎日23時（JST）に実行（土日祝含む）
-    # Grok選定は材料の鮮度が重要なため、毎日実行
-    # GitHub Actions cron は常にUTC時刻で指定
-    # JST = UTC + 9時間 の変換を厳守
-    - cron: "45 7 * * *"  # UTC 07:45 = JST 16:45 (当日) - 株価データ更新のみ（TOPIX系16:30更新後）
-    - cron: "15 13 * * *"  # UTC 13:15 = JST 22:15 (当日) - Grok選定 + 株価データ更新
-    - cron: "0 22 * * *"  # UTC 22:00 = JST 07:00 (翌朝) - CME終値確定 + B4判定更新
   workflow_dispatch:
     inputs:
+      mode:
+        description: "EventBridge Scheduler mode: stock_1645 / grok_2215 / cme_0700"
+        type: string
+        default: ""
       skip_trading_day_check:
         description: "営業日チェックをスキップ（スケジュールに関係なく強制実行）"
         type: boolean
@@ -109,11 +105,35 @@ jobs:
         id: exec_mode
         run: |
           CURRENT_HOUR=$(TZ=Asia/Tokyo date +%H)
+          DISPATCH_MODE="${{ github.event.inputs.mode }}"
           echo "Current hour (JST): $CURRENT_HOUR"
+          echo "Dispatch mode input: ${DISPATCH_MODE:-none}"
+
+          # --- EventBridge Scheduler dispatch ---
+          # GitHub Actions native schedule is intentionally not the primary trigger.
+          # EventBridge Scheduler sends mode via workflow_dispatch inputs.
+          if [ "$DISPATCH_MODE" = "stock_1645" ] || [ "$DISPATCH_MODE" = "stock_data" ]; then
+            echo "mode=stock_data" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=false" >> $GITHUB_OUTPUT
+            echo "skip_grok=true" >> $GITHUB_OUTPUT
+            echo "💹 Stock Data Mode (EventBridge Scheduler 16:45 JST)"
+          elif [ "$DISPATCH_MODE" = "grok_2215" ] || [ "$DISPATCH_MODE" = "grok_daily" ]; then
+            echo "mode=grok_daily" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=false" >> $GITHUB_OUTPUT
+            echo "📊 GROK Daily Mode (EventBridge Scheduler 22:15 JST)"
+          elif [ "$DISPATCH_MODE" = "cme_0700" ] || [ "$DISPATCH_MODE" = "cme_update" ]; then
+            echo "mode=cme_update" >> $GITHUB_OUTPUT
+            echo "skip_trading_check=true" >> $GITHUB_OUTPUT
+            echo "skip_grok=cme" >> $GITHUB_OUTPUT
+            echo "🌅 CME Update Mode (EventBridge Scheduler 07:00 JST)"
+          elif [ -n "$DISPATCH_MODE" ]; then
+            echo "❌ Unknown dispatch mode: $DISPATCH_MODE"
+            exit 1
 
           # --- dispatch (手動) ---
           # force_cme_mode が true の場合、CME更新モード
-          if [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
+          elif [ "${{ github.event.inputs.force_cme_mode }}" = "true" ]; then
             echo "mode=cme_update" >> $GITHUB_OUTPUT
             echo "skip_trading_check=true" >> $GITHUB_OUTPUT
             echo "skip_grok=cme" >> $GITHUB_OUTPUT
@@ -394,6 +414,131 @@ jobs:
 
           exit $EXIT_CODE
 
+      - name: Publish Grok J-Quants master (16:45 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        run: |
+          set -euo pipefail
+          echo "============================================================"
+          echo "Publishing Grok J-Quants master (16:45 only)"
+          echo "============================================================"
+
+          ARCHIVE_FILE="data/parquet/backtest/grok_trending_archive.parquet"
+          mkdir -p data/parquet/backtest data/parquet/jquants data/jquants_csv/grok_archive_minute data/jquants_csv/grok_daily
+
+          if [ ! -f "$ARCHIVE_FILE" ]; then
+            echo "📥 Downloading latest archive from S3..."
+            aws s3 cp \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
+              "$ARCHIVE_FILE" \
+              --only-show-errors
+          fi
+          if [ ! -f "$ARCHIVE_FILE" ]; then
+            echo "❌ ERROR: archive file not found after pipeline and S3 fallback"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          import pandas as pd
+
+          p = Path("data/parquet/backtest/grok_trending_archive.parquet")
+          df = pd.read_parquet(p, columns=["backtest_date", "ticker"])
+          d = pd.to_datetime(df["backtest_date"], errors="coerce")
+          h = hashlib.sha256(p.read_bytes()).hexdigest()
+          print(f"archive rows={len(df):,} dates={d.dt.date.nunique():,} range={d.min().date()}..{d.max().date()} sha256={h}")
+          PY
+
+          echo "📥 Downloading existing J-Quants caches from S3..."
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+            data/parquet/jquants/grok_archive_minute.parquet \
+            --only-show-errors 2>/dev/null; then
+            echo "✅ Existing archive minute parquet downloaded"
+          else
+            echo "ℹ️  No existing archive minute parquet on S3"
+          fi
+
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+            data/parquet/jquants/grok_jquants_daily.parquet \
+            --only-show-errors 2>/dev/null; then
+            echo "✅ Existing J-Quants daily parquet downloaded"
+          else
+            echo "ℹ️  No existing J-Quants daily parquet on S3"
+          fi
+
+          echo "📊 Fetching latest archive-day minute bars..."
+          python3 scripts/data/fetch_grok_archive_minute_jquants.py \
+            --archive-path "$ARCHIVE_FILE" \
+            --output data/parquet/jquants/grok_archive_minute.parquet \
+            --raw-dir data/jquants_csv/grok_archive_minute \
+            --requests-per-minute 30 \
+            --checkpoint-every 20
+
+          echo "📊 Fetching latest archive-day daily fields..."
+          python3 scripts/data/fetch_grok_archive_daily_jquants.py \
+            --archive-path "$ARCHIVE_FILE" \
+            --output data/parquet/jquants/grok_jquants_daily.parquet \
+            --raw-dir data/jquants_csv/grok_daily \
+            --requests-per-minute 30 \
+            --quiet \
+            --progress-every 5
+
+          echo "📊 Building J-Quants based Grok master files..."
+          python3 scripts/analysis/build_grok_master_price_alignment.py \
+            --archive-path "$ARCHIVE_FILE" \
+            --minute-path data/parquet/jquants/grok_archive_minute.parquet
+          python3 scripts/analysis/build_grok_master_jquants_segments.py \
+            --archive-path "$ARCHIVE_FILE" \
+            --minute-path data/analysis/grok_intraday_jquants/grok_master_minute_jquants_basis.parquet \
+            --output-path data/parquet/backtest/grok_master_jquants_segments.parquet
+
+          echo "🔎 Validating J-Quants minute cache and Grok master..."
+          MASTER_VALIDATION_JSON="data/parquet/backtest/grok_master_jquants_segments.validation.json"
+          set +e
+          python3 scripts/analysis/validate_grok_jquants_outputs.py \
+            --archive-path "$ARCHIVE_FILE" \
+            --minute-path data/parquet/jquants/grok_archive_minute.parquet \
+            --master-path data/parquet/backtest/grok_master_jquants_segments.parquet \
+            --output-json "$MASTER_VALIDATION_JSON"
+          MASTER_VALIDATION_EXIT=$?
+          set -e
+
+          if [ -f "$MASTER_VALIDATION_JSON" ]; then
+            echo "### Grok J-Quants master validation" >> "$GITHUB_STEP_SUMMARY"
+            python3 -c 'import json; from pathlib import Path; d = json.loads(Path("data/parquet/backtest/grok_master_jquants_segments.validation.json").read_text(encoding="utf-8")); print("- status: `{}`".format(d.get("status"))); print("- archive rows: `{}`".format(d.get("archive", {}).get("rows"))); print("- minute coverage: `{}/{}`".format(d.get("minute", {}).get("keys_in_archive"), d.get("archive", {}).get("keys"))); print("- master jq_buy_price non-null: `{}`".format(d.get("master", {}).get("jq_buy_price_non_null"))); print("- master jq_seg_1530 non-null: `{}`".format(d.get("master", {}).get("jq_seg_1530_non_null"))); [print("- failure: `{}`".format(failure)) for failure in d.get("failures", [])]; [print("- warning: `{}`".format(warning)) for warning in d.get("warnings", [])]' >> "$GITHUB_STEP_SUMMARY"
+            aws s3 cp \
+              "$MASTER_VALIDATION_JSON" \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.validation.json" \
+              --only-show-errors
+          fi
+
+          if [ "$MASTER_VALIDATION_EXIT" -ne 0 ]; then
+            echo "❌ J-Quants Grok master validation failed. Existing S3 master/cache were preserved."
+            exit "$MASTER_VALIDATION_EXIT"
+          fi
+
+          echo "📤 Uploading validated J-Quants parquet and master files..."
+          aws s3 cp \
+            data/parquet/jquants/grok_archive_minute.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
+            --only-show-errors
+          if [ -f "data/parquet/jquants/grok_jquants_daily.parquet" ]; then
+            aws s3 cp \
+              data/parquet/jquants/grok_jquants_daily.parquet \
+              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
+              --only-show-errors
+          fi
+          aws s3 cp \
+            data/parquet/backtest/grok_master_jquants_segments.parquet \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.parquet" \
+            --only-show-errors
+          echo "📋 Finalizing manifest after J-Quants derived artifacts..."
+          python3 scripts/pipeline/update_manifest.py --manifest-only
+          echo "✅ J-Quants Grok master parquet uploaded"
+          echo "============================================================"
+
       - name: Generate trading recommendation (22:00 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'false'
         env:
@@ -573,7 +718,10 @@ jobs:
           echo "============================================================"
 
       - name: Run backtest and archive
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        # The active 16:45 path is Run Data Pipeline followed by
+        # Publish Grok J-Quants master. Keep this legacy block disabled to
+        # avoid running save_backtest_to_archive.py twice.
+        if: ${{ false }}
         run: |
           echo "============================================================"
           echo "Running backtest and archiving results (16:45 only)"
@@ -679,79 +827,6 @@ jobs:
           # d1-d5保持リターンをアーカイブに追記
           echo "Updating archive with d1-d5 holding returns..."
           python scripts/pipeline/update_archive_holding_returns.py
-
-          if [ -f "data/parquet/backtest/$ARCHIVE_FILE" ]; then
-            echo "📥 Preparing J-Quants minute/daily caches..."
-            mkdir -p data/parquet/jquants data/jquants_csv/grok_archive_minute data/jquants_csv/grok_daily
-
-            if aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
-              data/parquet/jquants/grok_archive_minute.parquet \
-              --only-show-errors 2>/dev/null; then
-              echo "✅ Existing archive minute parquet downloaded"
-            else
-              echo "ℹ️  No existing archive minute parquet on S3"
-            fi
-
-            if aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
-              data/parquet/jquants/grok_jquants_daily.parquet \
-              --only-show-errors 2>/dev/null; then
-              echo "✅ Existing J-Quants daily parquet downloaded"
-            else
-              echo "ℹ️  No existing J-Quants daily parquet on S3"
-            fi
-
-            echo "📊 Fetching latest archive-day minute bars..."
-            python3 scripts/data/fetch_grok_archive_minute_jquants.py \
-              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
-              --output data/parquet/jquants/grok_archive_minute.parquet \
-              --raw-dir data/jquants_csv/grok_archive_minute \
-              --requests-per-minute 30 \
-              --checkpoint-every 20
-
-            echo "📊 Fetching archive daily fields from J-Quants..."
-            python3 scripts/data/fetch_grok_archive_daily_jquants.py \
-              --archive-path data/parquet/backtest/$ARCHIVE_FILE \
-              --output data/parquet/jquants/grok_jquants_daily.parquet \
-              --raw-dir data/jquants_csv/grok_daily \
-              --requests-per-minute 30 \
-              --quiet \
-              --progress-every 5
-
-            echo "📊 Building J-Quants based Grok master files..."
-            python3 scripts/analysis/build_grok_master_price_alignment.py
-            python3 scripts/analysis/build_grok_master_jquants_segments.py
-
-            echo "📤 Uploading J-Quants parquet and master files..."
-            if [ -f "data/parquet/jquants/grok_archive_minute.parquet" ]; then
-              aws s3 cp \
-                data/parquet/jquants/grok_archive_minute.parquet \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
-                --only-show-errors
-            else
-              echo "⚠️  archive minute parquet was not created"
-            fi
-            if [ -f "data/parquet/jquants/grok_jquants_daily.parquet" ]; then
-              aws s3 cp \
-                data/parquet/jquants/grok_jquants_daily.parquet \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_jquants_daily.parquet" \
-                --only-show-errors
-            else
-              echo "⚠️  J-Quants daily parquet was not created"
-            fi
-            if [ -f "data/parquet/backtest/grok_master_jquants_segments.parquet" ]; then
-              aws s3 cp \
-                data/parquet/backtest/grok_master_jquants_segments.parquet \
-                "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_master_jquants_segments.parquet" \
-                --only-show-errors
-            else
-              echo "⚠️  J-Quants Grok master parquet was not created"
-            fi
-            echo "✅ J-Quants parquet and master files uploaded"
-          else
-            echo "⚠️  Archive file not found after backtest; skipping J-Quants archive enrichment"
-          fi
 
           echo "============================================================"
 
@@ -1291,12 +1366,7 @@ jobs:
             --only-show-errors
           echo "  ✅ wfcv_predictions.parquet"
 
-          # archive（ml_prob_wfcv/ml_probカラム追加済み）を再アップロード
-          aws s3 cp \
-            data/parquet/backtest/grok_trending_archive.parquet \
-            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
-            --only-show-errors
-          echo "  ✅ grok_trending_archive.parquet (with ml_prob_wfcv/ml_prob)"
+          # WFCV予測は派生ファイルとして保持する。正本archiveは再学習で変更しない。
 
           echo ""
           echo "============================================================"

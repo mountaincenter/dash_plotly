@@ -36,7 +36,13 @@ def _init_s3_client(cfg: S3Config):
         print(f"[WARN] boto3 client init failed: {exc}", file=sys.stderr)
         return None
 
-def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None) -> None:
+
+def create_s3_client(cfg: S3Config):
+    """Create an S3 client for guarded operations that need object metadata."""
+    return _init_s3_client(cfg)
+
+
+def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None) -> bool:
     """
     Upload files to S3, preserving subdirectory structure if base_dir is provided.
 
@@ -47,10 +53,10 @@ def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None)
     """
     if not cfg.bucket:
         print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
-        return
+        return False
     s3 = _init_s3_client(cfg)
     if s3 is None:
-        return
+        return False
 
     for p in files:
         # If base_dir provided, preserve subdirectory structure
@@ -70,6 +76,8 @@ def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None)
             print(f"[OK] uploaded: s3://{cfg.bucket}/{key}")
         except Exception as e:
             print(f"[WARN] upload failed: {p} → s3://{cfg.bucket}/{key} : {e}", file=sys.stderr)
+            return False
+    return True
 
 def download_file(cfg: S3Config, filename: str, dest: Path) -> bool:
     if not cfg.bucket:
