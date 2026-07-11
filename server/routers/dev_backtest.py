@@ -94,10 +94,7 @@ def _prefer_column(out: pd.DataFrame, source_col: str, target_col: str) -> None:
         return
     if target_col in out.columns and f"archive_{target_col}" not in out.columns:
         out[f"archive_{target_col}"] = out[target_col]
-    if target_col in out.columns:
-        out[target_col] = out[source_col].combine_first(out[target_col])
-    else:
-        out[target_col] = out[source_col]
+    out[target_col] = out[source_col]
 
 
 def _recompute_win_from_profit(out: pd.DataFrame, phase: str) -> None:
@@ -105,7 +102,7 @@ def _recompute_win_from_profit(out: pd.DataFrame, phase: str) -> None:
     win_col = f"{phase}_win"
     if profit_col in out.columns:
         profit = pd.to_numeric(out[profit_col], errors="coerce")
-        out[win_col] = profit > 0
+        out[win_col] = profit.gt(0).where(profit.notna(), pd.NA)
 
 
 def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
@@ -134,6 +131,9 @@ def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
         "seg_1300", "seg_1330", "seg_1400", "seg_1430", "seg_1500", "seg_1530",
     ):
         _prefer_column(out, f"jq_{seg_col}", seg_col)
+
+    if "jq_close_execution_status" in out.columns:
+        out["close_execution_status"] = out["jq_close_execution_status"]
 
     _recompute_win_from_profit(out, "phase1")
     _recompute_win_from_profit(out, "phase2")

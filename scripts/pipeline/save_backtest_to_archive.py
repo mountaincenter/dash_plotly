@@ -9,7 +9,8 @@ Grok trending銘柄のバックテスト結果をアーカイブに保存
 
 機能:
     - grok_trending.parquet を読み込み
-    - 翌営業日の株価データを取得（yfinance）
+    - 対象日のJ-Quants 1分足を取得済みファイルから読み込み
+    - J-Quants日足とOHLCVを照合し、不整合時は日次保存全体を中止
     - バックテスト結果を計算（Phase1, Phase2, Phase3）
     - 前場・全日の高値・安値・最大上昇率・最大下落率を計算
     - grok_trending_YYYYMMDD.parquet として保存
@@ -24,34 +25,56 @@ Grok trending銘柄のバックテスト結果をアーカイブに保存
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 from datetime import datetime, timedelta, time
+from tempfile import TemporaryDirectory
 from typing import Optional, Tuple, Any
 import traceback
-import time as time_module
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import pandas as pd
-import yfinance as yf
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
 from scripts.lib.jquants_client import JQuantsClient
-from scripts.lib.jquants_fetcher import JQuantsFetcher
+from scripts.lib.grok_jquants_backtest import (
+    JQuantsBacktestDataError,
+    assert_archive_history_unchanged,
+    assert_archive_target_rows_preserved,
+    calculate_segment_pnl,
+    executable_exit,
+    has_trade_after_entry,
+    merge_archive_date,
+    normalize_daily_prices,
+    normalize_minute_bars,
+    session_last_close,
+    validate_daily_alignment,
+    validate_selection_asof,
+)
+from scripts.lib.protected_archive_s3 import (
+    download_verified_archive,
+    publish_guarded_archive,
+    publish_guarded_manifest_entry,
+    write_publish_state,
+)
 
 # パス定義
 BACKTEST_DIR = PARQUET_DIR / "backtest"
 BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
+ARCHIVE_PUBLISH_STATE_PATH = BACKTEST_DIR / "grok_trending_archive.publish.json"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
-PRICES_5M_PATH = PARQUET_DIR / "prices_60d_5m.parquet"
+JQUANTS_MINUTE_WATCH_PATH = PARQUET_DIR / "jquants_minute_watch.parquet"
+JQUANTS_DAILY_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 
-# prices_60d_5m.parquetのキャッシュ
-_prices_5m_df: Optional[pd.DataFrame] = None
+# J-Quants入力のキャッシュ
+_jquants_minute_df: Optional[pd.DataFrame] = None
+_jquants_daily_df: Optional[pd.DataFrame] = None
 
 # 極端相場の閾値（±3%）
 EXTREME_MARKET_THRESHOLD = 3.0
@@ -310,64 +333,82 @@ def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optiona
         return None
 
 
-def load_prices_5m() -> Optional[pd.DataFrame]:
-    """
-    prices_60d_5m.parquetを読み込み（シングルトン）
-
-    Returns:
-        pd.DataFrame: 5分足データ、または存在しない場合はNone
-    """
-    global _prices_5m_df
-
-    if _prices_5m_df is not None:
-        return _prices_5m_df
-
-    if not PRICES_5M_PATH.exists():
-        print(f"[WARN] prices_60d_5m.parquet not found: {PRICES_5M_PATH}")
-        return None
-
-    _prices_5m_df = pd.read_parquet(PRICES_5M_PATH)
-    print(f"[INFO] prices_60d_5m.parquet loaded: {len(_prices_5m_df)} records")
-    return _prices_5m_df
+def load_jquants_minute() -> pd.DataFrame:
+    """Load the pipeline's J-Quants watch-universe minute file once."""
+    global _jquants_minute_df
+    if _jquants_minute_df is not None:
+        return _jquants_minute_df
+    if not JQUANTS_MINUTE_WATCH_PATH.exists():
+        raise FileNotFoundError(
+            f"J-Quants minute file not found: {JQUANTS_MINUTE_WATCH_PATH}"
+        )
+    _jquants_minute_df = pd.read_parquet(JQUANTS_MINUTE_WATCH_PATH)
+    print(
+        f"[INFO] J-Quants minute watch loaded: "
+        f"{len(_jquants_minute_df)} records"
+    )
+    return _jquants_minute_df
 
 
-def fetch_intraday_data(ticker: str, date: datetime) -> Optional[pd.DataFrame]:
-    """
-    prices_60d_5m.parquetから5分足の株価データを取得
+def load_jquants_daily() -> pd.DataFrame:
+    """Load and normalize the pipeline's J-Quants daily file once."""
+    global _jquants_daily_df
+    if _jquants_daily_df is not None:
+        return _jquants_daily_df
+    if not JQUANTS_DAILY_PATH.exists():
+        raise FileNotFoundError(f"J-Quants daily file not found: {JQUANTS_DAILY_PATH}")
+    _jquants_daily_df = normalize_daily_prices(pd.read_parquet(JQUANTS_DAILY_PATH))
+    print(f"[INFO] J-Quants daily prices loaded: {len(_jquants_daily_df)} records")
+    return _jquants_daily_df
 
-    Args:
-        ticker: 銘柄コード (例: "9984.T")
-        date: 取得する日付
 
-    Returns:
-        5分足データのDataFrame（indexがdatetime）、または取得失敗時はNone
-    """
-    df_all = load_prices_5m()
+def fetch_intraday_data(ticker: str, target_date: datetime) -> pd.DataFrame:
+    """Return strictly validated J-Quants one-minute bars for one ticker-day."""
+    bars = normalize_minute_bars(load_jquants_minute(), ticker, target_date)
+    print(
+        f"[DEBUG] {ticker}: got {len(bars)} J-Quants 1m records "
+        f"for {target_date.date()}"
+    )
+    return bars
 
-    if df_all is None:
-        print(f"[WARN] {ticker}: prices_60d_5m.parquet not available")
-        return None
 
-    # 銘柄でフィルタ
-    df_ticker = df_all[df_all['ticker'] == ticker].copy()
+def validate_batch_coverage(
+    grok: pd.DataFrame,
+    target_date: datetime,
+) -> None:
+    """Fail before calculation unless every selected ticker has both J-Quants inputs."""
+    if "ticker" not in grok.columns:
+        raise JQuantsBacktestDataError("grok_trending.parquet has no ticker column")
+    selected = grok["ticker"].astype(str)
+    duplicates = sorted(selected[selected.duplicated()].unique().tolist())
+    if duplicates:
+        raise JQuantsBacktestDataError(
+            f"grok_trending.parquet contains duplicate tickers: {duplicates}"
+        )
 
-    if df_ticker.empty:
-        print(f"[WARN] {ticker}: Not found in prices_60d_5m.parquet")
-        return None
+    day = target_date.date()
+    minute = load_jquants_minute()
+    minute_datetimes = pd.to_datetime(minute["datetime"], errors="coerce")
+    minute_tickers = set(
+        minute.loc[minute_datetimes.dt.date.eq(day), "ticker"].astype(str)
+    )
+    daily = load_jquants_daily()
+    daily_tickers = set(
+        daily.loc[daily["date"].dt.date.eq(day), "ticker"].astype(str)
+    )
+    selected_tickers = set(selected)
+    missing_minute = sorted(selected_tickers - minute_tickers)
+    missing_daily = sorted(selected_tickers - daily_tickers)
+    if missing_minute or missing_daily:
+        raise JQuantsBacktestDataError(
+            "Incomplete J-Quants batch coverage; archive append refused. "
+            f"missing_minute={missing_minute}, missing_daily={missing_daily}"
+        )
 
-    # 指定日のデータのみを抽出
-    target_date = pd.Timestamp(date.date())
-    df_target = df_ticker[df_ticker['date'].dt.date == target_date.date()].copy()
-
-    if df_target.empty:
-        print(f"[WARN] {ticker}: No 5m data for {date.date()} in prices_60d_5m.parquet")
-        return None
-
-    # dateをindexに設定（between_time用）
-    df_target = df_target.set_index('date')
-
-    print(f"[DEBUG] {ticker}: Got {len(df_target)} 5m records for {date.date()} from parquet")
-    return df_target
+    print(
+        f"[OK] J-Quants preflight coverage: {len(selected_tickers)}/"
+        f"{len(selected_tickers)} tickers for {day}"
+    )
 
 
 def calculate_morning_metrics(
@@ -444,112 +485,19 @@ def calculate_daily_metrics(
         return None, None, None, None
 
 
-def get_price_at_time(
-    df_5min: pd.DataFrame,
-    start_time: str,
-    end_time: str,
-    fallback_start_time: Optional[str] = None
-) -> Optional[float]:
-    """
-    指定時間帯の終値を取得。データがなければ次時間帯の最早Openを返す。
-
-    Args:
-        df_5min: 5分足データ
-        start_time: 開始時刻 (例: "09:00", "12:30")
-        end_time: 終了時刻 (例: "10:25", "13:55")
-        fallback_start_time: フォールバック開始時刻 (例: "10:30", "14:00")
-
-    Returns:
-        価格、またはデータなしの場合None
-    """
-    if df_5min is None or df_5min.empty:
-        return None
-
-    try:
-        # 指定時間帯のデータを取得
-        slot_data = df_5min.between_time(start_time, end_time)
-
-        if not slot_data.empty and pd.notna(slot_data.iloc[-1]['Close']):
-            return float(slot_data.iloc[-1]['Close'])
-
-        # フォールバック: 次時間帯の最早Open
-        if fallback_start_time:
-            next_data = df_5min.between_time(fallback_start_time, "15:30")
-            if not next_data.empty and pd.notna(next_data.iloc[0]['Open']):
-                return float(next_data.iloc[0]['Open'])
-
-        return None
-
-    except Exception as e:
-        print(f"[WARN] Failed to get price at {start_time}-{end_time}: {e}")
-        return None
-
-
-# 11セグメント時刻定義
-SEGMENT_TIMES = [
-    ("seg_0930", "09:25", "09:30"),  # 09:30時点
-    ("seg_1000", "09:55", "10:00"),  # 10:00時点
-    ("seg_1030", "10:25", "10:30"),  # 10:30時点
-    ("seg_1100", "10:55", "11:00"),  # 11:00時点
-    ("seg_1130", "11:25", "11:30"),  # 11:30時点（前場引け）
-    ("seg_1300", "12:55", "13:00"),  # 13:00時点（後場寄り）
-    ("seg_1330", "13:25", "13:30"),  # 13:30時点
-    ("seg_1400", "13:55", "14:00"),  # 14:00時点
-    ("seg_1430", "14:25", "14:30"),  # 14:30時点
-    ("seg_1500", "14:55", "15:00"),  # 15:00時点
-    ("seg_1530", "15:25", "15:30"),  # 15:30時点（大引け）
-]
-
-
 def calculate_segment_prices(
-    df_5min: pd.DataFrame,
+    minute_bars: pd.DataFrame,
     buy_price: float,
     daily_close: Optional[float] = None
 ) -> dict:
-    """
-    11セグメントの価格を計算
-
-    Args:
-        df_5min: 5分足データ
-        buy_price: 始値（買値）
-        daily_close: 日足終値（seg_1530用）
-
-    Returns:
-        dict: {seg_0930: 利益, seg_1000: 利益, ...}
-
-    Note:
-        seg_1530は5分足の15:25バーがNaNになることがあるため、
-        daily_close（日足終値）を使用する
-    """
-    segments = {}
-
-    if df_5min is None or df_5min.empty or buy_price is None or buy_price == 0:
-        for seg_name, _, _ in SEGMENT_TIMES:
-            segments[seg_name] = None
-        return segments
-
-    for seg_name, start_time, end_time in SEGMENT_TIMES:
-        try:
-            # seg_1530は日足終値を使用（5分足の15:25バーはNaNになることがある）
-            if seg_name == "seg_1530":
-                if daily_close is not None and daily_close > 0:
-                    segments[seg_name] = (buy_price - daily_close) * 100
-                else:
-                    segments[seg_name] = None
-                continue
-
-            # 指定時刻付近のデータを取得
-            slot_data = df_5min.between_time(start_time, end_time)
-
-            if not slot_data.empty and pd.notna(slot_data.iloc[-1]['Close']):
-                price = float(slot_data.iloc[-1]['Close'])
-                # 100株あたりの利益（円）— ショートベース
-                segments[seg_name] = (buy_price - price) * 100
-            else:
-                segments[seg_name] = None
-        except Exception:
-            segments[seg_name] = None
-
+    """Calculate the 11 canonical J-Quants execution segments."""
+    segments = calculate_segment_pnl(minute_bars, buy_price)
+    if daily_close is not None:
+        expected_close_pnl = (float(buy_price) - float(daily_close)) * 100.0
+        if not abs(float(segments["seg_1530"]) - expected_close_pnl) <= 0.01:
+            raise JQuantsBacktestDataError(
+                "seg_1530 differs from the validated J-Quants daily close"
+            )
     return segments
 
 
@@ -571,7 +519,11 @@ def calculate_phase3_return(
     Returns:
         Tuple of (return, win, exit_reason)
     """
-    if df_5min.empty or open_price is None or open_price == 0:
+    if (
+        df_5min.empty
+        or open_price is None
+        or open_price == 0
+    ):
         return None, None, None
 
     try:
@@ -582,15 +534,27 @@ def calculate_phase3_return(
             high_price = row['High']
             low_price = row['Low']
 
+            profit_hit = (open_price - low_price) / open_price >= profit_threshold
+            loss_hit = (open_price - high_price) / open_price <= loss_threshold
+
+            # A one-minute OHLC bar does not reveal which threshold was hit first.
+            # Use the adverse outcome so the backtest never gains from that ambiguity.
+            if profit_hit and loss_hit:
+                return (
+                    loss_threshold,
+                    False,
+                    "ambiguous_both_hit_stop_loss_conservative",
+                )
+
             # ショートベース: 株価下落で利確（安値で判定）
-            if (open_price - low_price) / open_price >= profit_threshold:
+            if profit_hit:
                 phase_return = profit_threshold
                 win = True
                 exit_reason = f"profit_take_{profit_threshold*100}%"
                 return phase_return, win, exit_reason
 
             # ショートベース: 株価上昇で損切（高値で判定）
-            if (open_price - high_price) / open_price <= loss_threshold:
+            if loss_hit:
                 phase_return = loss_threshold
                 win = False
                 exit_reason = f"stop_loss_{loss_threshold*100}%"
@@ -610,165 +574,75 @@ def calculate_phase3_return(
         return None, None, None
 
 
-def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: str | None = None) -> Optional[dict]:
-    """
-    バックテスト用の株価データを取得
-
-    Args:
-        ticker: 銘柄コード (例: "6526.T")
-        backtest_date: バックテスト日（翌営業日）
-        prev_trading_day: 前営業日（YYYY-MM-DD形式）。Noneの場合はJ-Quantsから取得
-
-    Returns:
-        dict: バックテストデータ
-    """
+def fetch_backtest_data(ticker: str, backtest_date: datetime) -> dict:
+    """Build one complete target-day row from official J-Quants inputs."""
     try:
-        # 前営業日が未指定の場合はJ-Quantsから取得
-        if prev_trading_day is None:
-            fetcher = JQuantsFetcher()
-            prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
+        minute_bars = fetch_intraday_data(ticker, backtest_date)
+        aggregate, prev_close = validate_daily_alignment(
+            minute_bars,
+            load_jquants_daily(),
+            ticker,
+            backtest_date,
+        )
 
-        # 日次データを取得（前営業日を含める）
-        if prev_trading_day:
-            start_date = prev_trading_day
+        buy_price = float(aggregate["Open"])
+        daily_close = float(aggregate["Close"])
+        high = float(aggregate["High"])
+        low = float(aggregate["Low"])
+        volume = float(aggregate["Volume"])
+        value = float(aggregate["Value"])
+
+        morning_high, morning_low, morning_max_gain_pct, morning_max_drawdown_pct = (
+            calculate_morning_metrics(minute_bars, buy_price)
+        )
+        _, _, daily_max_gain_pct, daily_max_drawdown_pct = calculate_daily_metrics(
+            minute_bars, buy_price
+        )
+
+        sell_price = session_last_close(minute_bars, "09:00", "11:30")
+        if sell_price is None:
+            phase1_return = None
+            phase1_win = None
+            profit_per_100_shares_phase1 = None
         else:
-            start_date = (backtest_date - timedelta(days=5)).strftime("%Y-%m-%d")
-        end_date = (backtest_date + timedelta(days=2)).strftime("%Y-%m-%d")
+            phase1_return = (buy_price - sell_price) / buy_price
+            phase1_win = phase1_return > 0
+            profit_per_100_shares_phase1 = (buy_price - sell_price) * 100.0
 
-        # yf.download()を使用（GitHub Actions環境でyf.Ticker().history()が失敗するため）
-        # リトライロジック（GitHub Actions環境でのAPI制限対策）
-        hist_daily = pd.DataFrame()
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                hist_daily = yf.download(
-                    ticker,
-                    start=start_date,
-                    end=end_date,
-                    interval="1d",
-                    progress=False,
-                    auto_adjust=False,
-                )
-                # MultiIndexの場合はフラット化
-                if not hist_daily.empty and isinstance(hist_daily.columns, pd.MultiIndex):
-                    hist_daily.columns = hist_daily.columns.get_level_values(0)
-                if not hist_daily.empty:
-                    break
-                if attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 2
-                    print(f"[WARN] {ticker}: Empty response, retry {attempt + 1}/{max_retries} after {wait_sec}s")
-                    time_module.sleep(wait_sec)
-            except Exception as e:
-                print(f"[WARN] {ticker}: yfinance error on attempt {attempt + 1}: {e}")
-                if attempt < max_retries - 1:
-                    time_module.sleep((attempt + 1) * 2)
-
-        # デバッグログ: yfinanceの戻り値を確認
-        print(f"[DEBUG] {ticker}: yfinance query start={start_date}, end={end_date}")
-        print(f"[DEBUG] {ticker}: hist_daily.empty={hist_daily.empty}, shape={hist_daily.shape}")
-        if not hist_daily.empty:
-            print(f"[DEBUG] {ticker}: hist_daily.index={list(hist_daily.index)}")
-
-        if hist_daily.empty:
-            print(f"[DEBUG] {ticker}: FAIL - hist_daily is empty after {max_retries} retries")
-            return None
-
-        # インデックスをdate型に変換
-        hist_daily.index = pd.to_datetime(hist_daily.index).date
-        backtest_date_obj = backtest_date.date()
-
-        print(f"[DEBUG] {ticker}: backtest_date_obj={backtest_date_obj}, index after conversion={list(hist_daily.index)}")
-
-        if backtest_date_obj not in hist_daily.index:
-            print(f"[DEBUG] {ticker}: FAIL - backtest_date_obj not in index")
-            return None
-
-        daily_row = hist_daily.loc[backtest_date_obj]
-
-        # 前営業日終値を取得（J-Quantsカレンダーベース）
-        prev_close = None
-        if prev_trading_day:
-            prev_date_obj = datetime.strptime(prev_trading_day, "%Y-%m-%d").date()
-            if prev_date_obj in hist_daily.index:
-                prev_close = float(hist_daily.loc[prev_date_obj]['Close'])
-
-        # 日足の必須フィールドがNaNなら当該銘柄をスキップ
-        if pd.isna(daily_row['Open']) or pd.isna(daily_row['Close']):
-            print(f"[WARN] {ticker}: daily Open/Close is NaN, skipping")
-            return None
-
-        buy_price = float(daily_row['Open'])
-        sell_price = float(daily_row['Close'])  # Phase1用（前場引け値として近似）
-        daily_close = float(daily_row['Close'])
-        high = float(daily_row['High']) if pd.notna(daily_row['High']) else daily_close
-        low = float(daily_row['Low']) if pd.notna(daily_row['Low']) else daily_close
-        volume = int(daily_row['Volume']) if pd.notna(daily_row['Volume']) else 0
-
-        # 5分足データを取得
-        df_5min = fetch_intraday_data(ticker, backtest_date)
-
-        # 前場メトリクス計算
-        morning_high, morning_low, morning_max_gain_pct, morning_max_drawdown_pct = calculate_morning_metrics(
-            df_5min, buy_price
-        ) if df_5min is not None else (None, None, None, None)
-
-        # 全日メトリクス計算
-        high_calc, low_calc, daily_max_gain_pct, daily_max_drawdown_pct = calculate_daily_metrics(
-            df_5min, buy_price
-        ) if df_5min is not None else (None, None, None, None)
-
-        # 時価総額を取得
-        market_cap = fetch_market_cap(ticker, daily_close, backtest_date)
-
-        # Phase1: 前場引け売り（11:30売却）
-        if df_5min is not None:
-            morning_data = df_5min.between_time("09:00", "11:30")
-            if not morning_data.empty and pd.notna(morning_data.iloc[-1]['Close']):
-                sell_price = float(morning_data.iloc[-1]['Close'])  # 11:30の終値
-        # ショートベース: 寄り付きで売建→各時点で買い戻し
-        phase1_return = (buy_price - sell_price) / buy_price
-        phase1_win = phase1_return > 0
-        profit_per_100_shares_phase1 = (buy_price - sell_price) * 100
-
-        # Phase2: 大引け買い戻し（15:30）
+        close_executable = has_trade_after_entry(minute_bars)
         phase2_return = (buy_price - daily_close) / buy_price
         phase2_win = phase2_return > 0
-        profit_per_100_shares_phase2 = (buy_price - daily_close) * 100
+        profit_per_100_shares_phase2 = (buy_price - daily_close) * 100.0
 
-        # 前場前半 (me): 10:25買い戻し (09:00-10:25) — ショートベース
-        me_price = get_price_at_time(df_5min, "09:00", "10:25", "10:30")
-        if me_price is not None and buy_price > 0:
-            profit_per_100_shares_morning_early = (buy_price - me_price) * 100
-        else:
-            profit_per_100_shares_morning_early = None
+        me_price = executable_exit(minute_bars, time(10, 25))["price"]
+        profit_per_100_shares_morning_early = (
+            (buy_price - me_price) * 100.0 if me_price is not None else None
+        )
+        ae_price = executable_exit(minute_bars, time(14, 45))["price"]
+        profit_per_100_shares_afternoon_early = (
+            (buy_price - ae_price) * 100.0 if ae_price is not None else None
+        )
 
-        # 後場前半 (ae): 14:45買い戻し (12:30-14:45) — ショートベース
-        ae_price = get_price_at_time(df_5min, "12:30", "14:45", "14:50")
-        if ae_price is not None and buy_price > 0:
-            profit_per_100_shares_afternoon_early = (buy_price - ae_price) * 100
-        else:
-            profit_per_100_shares_afternoon_early = None
-
-        # Phase3: ±1%/2%/3% 利確損切戦略
-        phase3_results = {}
+        phase3_results: dict[str, dict[str, Any]] = {}
         for threshold_pct in [1, 2, 3]:
-            threshold = threshold_pct / 100
-            if df_5min is not None:
-                phase_return, phase_win, exit_reason = calculate_phase3_return(
-                    df_5min, buy_price, threshold, -threshold
-                )
-            else:
-                phase_return, phase_win, exit_reason = None, None, None
-
+            threshold = threshold_pct / 100.0
+            phase_return, phase_win, exit_reason = calculate_phase3_return(
+                minute_bars, buy_price, threshold, -threshold
+            )
             phase3_results[f"phase3_{threshold_pct}pct"] = {
                 "return": phase_return,
                 "win": phase_win,
                 "exit_reason": exit_reason,
-                "profit_per_100_shares": (phase_return * buy_price * 100) if phase_return is not None else None
+                "profit_per_100_shares": (
+                    phase_return * buy_price * 100.0
+                    if phase_return is not None
+                    else None
+                ),
             }
 
-        # 11セグメント価格を計算（seg_1530は日足終値を使用）
-        segment_prices = calculate_segment_prices(df_5min, buy_price, daily_close)
+        segment_prices = calculate_segment_prices(
+            minute_bars, buy_price, daily_close
+        )
 
         return {
             "prev_close": prev_close,
@@ -778,6 +652,9 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             "high": high,
             "low": low,
             "volume": volume,
+            "Close": daily_close,
+            "Volume": volume,
+            "Value": value,
             "phase1_return": phase1_return,
             "phase1_win": phase1_win,
             "profit_per_100_shares_phase1": profit_per_100_shares_phase1,
@@ -802,18 +679,29 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime, prev_trading_day: 
             "morning_max_drawdown_pct": morning_max_drawdown_pct,
             "daily_max_gain_pct": daily_max_gain_pct,
             "daily_max_drawdown_pct": daily_max_drawdown_pct,
-            "market_cap": market_cap,
-            "data_source": "5min" if df_5min is not None else "1d",
+            "market_cap": fetch_market_cap(ticker, daily_close, backtest_date),
+            "data_source": "jquants_1m",
+            "phase1_mark_status": (
+                "available"
+                if sell_price is not None
+                else "no_morning_price"
+            ),
+            "close_execution_status": (
+                "executable" if close_executable else "mark_only_no_round_trip"
+            ),
+            "jquants_first_time": aggregate["first_time"],
+            "jquants_last_time": aggregate["last_time"],
+            "jquants_bar_count": aggregate["bar_count"],
+            "jquants_price_validation": "minute_daily_ohlcv_match",
+            "segment_definition": "first_executable_open_at_or_after_target_after_entry",
             "profit_per_100_shares_morning_early": profit_per_100_shares_morning_early,
             "profit_per_100_shares_afternoon_early": profit_per_100_shares_afternoon_early,
-            # 11セグメント価格（100株あたり利益）
             **segment_prices,
         }
-
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch backtest data for {ticker}: {e}")
-        traceback.print_exc()
-        return None
+    except Exception as error:
+        raise JQuantsBacktestDataError(
+            f"Failed to build J-Quants backtest row for {ticker}: {error}"
+        ) from error
 
 
 def fetch_extreme_market_info(backtest_date: datetime) -> dict:
@@ -947,36 +835,41 @@ def run_backtest() -> pd.DataFrame:
         print("[WARN] No stocks in grok_trending.parquet")
         return pd.DataFrame()
 
-    # 2. 選定日と翌営業日を取得
-    selection_date_str = df_grok['date'].iloc[0] if 'date' in df_grok.columns else None
+    # 2. dateは選定日ではなく、売買・検証の対象日
+    target_date_value = df_grok['date'].iloc[0] if 'date' in df_grok.columns else None
 
-    if not selection_date_str:
+    if target_date_value is None or pd.isna(target_date_value):
         print("[ERROR] 'date' column not found in grok_trending.parquet")
         return pd.DataFrame()
 
-    selection_date = datetime.strptime(selection_date_str, "%Y-%m-%d")
-    print(f"[INFO] Selection date: {selection_date.date()}")
+    target_dates = pd.to_datetime(df_grok["date"], errors="raise").dt.normalize()
+    if target_dates.nunique() != 1:
+        raise JQuantsBacktestDataError(
+            "grok_trending.parquet contains more than one target date"
+        )
+    target_date = target_dates.iloc[0].to_pydatetime()
+    print(f"[INFO] Target date: {target_date.date()}")
 
-    # grok_trending.parquetのdate列は既に翌営業日（next_trading_day）なのでそのまま使用
-    backtest_date = selection_date
+    backtest_date = target_date
     print(f"[INFO] Backtest date: {backtest_date.date()}")
 
-    # 3. 前営業日を取得（全銘柄共通なので1回だけ）
-    fetcher = JQuantsFetcher()
-    prev_trading_day = fetcher.get_previous_trading_day(backtest_date.date())
-    print(f"[INFO] Previous trading day: {prev_trading_day}")
+    # 3. 当日の全選定銘柄について、保存前にJ-Quants入力を一括検査
+    validate_selection_asof(df_grok, backtest_date)
+    validate_batch_coverage(df_grok, backtest_date)
 
     # 4. 各銘柄のバックテストを実行
     results = []
+    failures: list[str] = []
 
     for idx, row in df_grok.iterrows():
         ticker = row['ticker']
         print(f"[{idx+1}/{len(df_grok)}] Processing {ticker}...", end=" ", flush=True)
 
-        backtest_data = fetch_backtest_data(ticker, backtest_date, prev_trading_day)
-
-        if backtest_data is None:
-            print("SKIP (no data)")
+        try:
+            backtest_data = fetch_backtest_data(ticker, backtest_date)
+        except Exception as error:
+            failures.append(f"{ticker}: {error}")
+            print(f"FAILED ({error})")
             continue
 
         # 取引制限情報を取得
@@ -986,7 +879,10 @@ def run_backtest() -> pd.DataFrame:
         day_trade_info = get_day_trade_info(ticker)
 
         result = {
-            "selection_date": selection_date.strftime("%Y-%m-%d"),
+            # Preserve all selection-time fields used by current/future models.
+            **row.to_dict(),
+            # Historical column name retained; its value is the target date.
+            "selection_date": target_date.strftime("%Y-%m-%d"),
             "backtest_date": backtest_date.strftime("%Y-%m-%d"),
             "ticker": ticker,
             "stock_name": row.get("stock_name", ""),
@@ -1032,13 +928,40 @@ def run_backtest() -> pd.DataFrame:
 
         results.append(result)
         shortable_mark = "○" if trading_restrictions['is_shortable'] else "✗"
-        print(f"OK (Phase1: {backtest_data['phase1_return']*100:+.2f}%, Phase2: {backtest_data['phase2_return']*100:+.2f}%, Short: {shortable_mark})")
+        phase1_text = (
+            f"{backtest_data['phase1_return'] * 100:+.2f}%"
+            if backtest_data["phase1_return"] is not None
+            else "N/A"
+        )
+        phase2_text = (
+            f"{backtest_data['phase2_return'] * 100:+.2f}%"
+            if backtest_data["phase2_return"] is not None
+            else "N/A"
+        )
+        print(
+            f"OK (Phase1: {phase1_text}, "
+            f"Phase2: {phase2_text}, "
+            f"Short: {shortable_mark})"
+        )
+
+    if failures:
+        details = "\n  - ".join(failures)
+        raise JQuantsBacktestDataError(
+            "One or more selected tickers failed; no rows will be archived:\n  - "
+            + details
+        )
 
     if not results:
         print("[WARN] No backtest results generated")
         return pd.DataFrame()
 
     df_results = pd.DataFrame(results)
+    expected_tickers = set(df_grok["ticker"].astype(str))
+    actual_tickers = set(df_results["ticker"].astype(str))
+    if len(df_results) != len(df_grok) or actual_tickers != expected_tickers:
+        raise JQuantsBacktestDataError(
+            "Generated batch does not exactly match the selected ticker universe"
+        )
     print(f"\n[OK] Generated backtest results for {len(df_results)} stocks")
 
     # 4. 統計を表示
@@ -1068,104 +991,165 @@ def run_backtest() -> pd.DataFrame:
 
 
 def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
-    """
-    バックテスト結果をアーカイブに保存
-
-    Args:
-        df: バックテスト結果
-        backtest_date: バックテスト日 (YYYY-MM-DD)
-    """
-    # S3設定を読み込み
+    """Validate, conditionally publish, then install one complete J-Quants day."""
     cfg = load_s3_config()
-    if not cfg:
-        print("[WARN] S3 not configured, skipping archive")
-        return
+    if not cfg or not cfg.bucket:
+        raise RuntimeError("S3 is not configured; canonical archive publish refused")
 
-    # 1. 日付ごとのファイルとして保存
-    date_str = backtest_date.replace("-", "")
+    if df.empty:
+        raise JQuantsBacktestDataError("Cannot archive an empty result batch")
+    if df[["backtest_date", "ticker"]].duplicated().any():
+        raise JQuantsBacktestDataError("Result batch has duplicate ticker-date keys")
+    target = pd.Timestamp(backtest_date).strftime("%Y-%m-%d")
+    result_dates = pd.to_datetime(df["backtest_date"], errors="raise").dt.strftime(
+        "%Y-%m-%d"
+    )
+    if not result_dates.eq(target).all():
+        raise JQuantsBacktestDataError("Result batch contains a non-target date")
+    required_values = [
+        "buy_price",
+        "daily_close",
+        "phase1_mark_status",
+        "close_execution_status",
+    ]
+    missing_required = [
+        column
+        for column in required_values
+        if column not in df.columns or df[column].isna().any()
+    ]
+    if missing_required:
+        raise JQuantsBacktestDataError(
+            f"Result batch has missing canonical values: {missing_required}"
+        )
+    if not df["data_source"].eq("jquants_1m").all():
+        raise JQuantsBacktestDataError("Non-J-Quants result row detected")
+
+    phase1_columns = [
+        "sell_price",
+        "phase1_return",
+        "phase1_win",
+        "profit_per_100_shares_phase1",
+    ]
+    close_columns = [
+        "phase2_return",
+        "phase2_win",
+        "profit_per_100_shares_phase2",
+        "seg_1530",
+    ]
+    for threshold in ["1pct", "2pct", "3pct"]:
+        close_columns.extend(
+            [
+                f"phase3_{threshold}_return",
+                f"phase3_{threshold}_win",
+                f"phase3_{threshold}_exit_reason",
+                f"profit_per_100_shares_phase3_{threshold}",
+            ]
+        )
+
+    phase1_exec = df["phase1_mark_status"].eq("available")
+    phase1_no_trade = df["phase1_mark_status"].eq("no_morning_price")
+    close_exec = df["close_execution_status"].eq("executable")
+    close_no_trade = df["close_execution_status"].eq("mark_only_no_round_trip")
+    if not (phase1_exec | phase1_no_trade).all():
+        raise JQuantsBacktestDataError("Unknown Phase1 mark status")
+    if not (close_exec | close_no_trade).all():
+        raise JQuantsBacktestDataError("Unknown close execution status")
+    if df.loc[phase1_exec, phase1_columns].isna().any().any() or df.loc[
+        phase1_no_trade, phase1_columns
+    ].notna().any().any():
+        raise JQuantsBacktestDataError(
+            "Phase1 values are inconsistent with execution status"
+        )
+    if df[close_columns].isna().any().any():
+        raise JQuantsBacktestDataError(
+            "Hypothetical close/Phase3 values must be present for every result row"
+        )
+
+    date_str = target.replace("-", "")
     dated_file = BACKTEST_DIR / f"grok_trending_{date_str}.parquet"
     df.to_parquet(dated_file, index=False)
     print(f"[OK] Saved dated file: {dated_file}")
 
-    # 2. S3から既存のアーカイブをダウンロード
-    s3_archive_key = "backtest/grok_trending_archive.parquet"
-    print(f"[INFO] Downloading existing archive from S3: {s3_archive_key}")
-    archive_exists = download_file(cfg, s3_archive_key, BACKTEST_ARCHIVE_PATH)
+    with TemporaryDirectory(prefix="grok-archive-", dir=BACKTEST_DIR) as temp_dir:
+        temp_root = Path(temp_dir)
+        source_path = temp_root / "source.parquet"
+        candidate_path = temp_root / "candidate.parquet"
 
-    if archive_exists:
-        df_archive = pd.read_parquet(BACKTEST_ARCHIVE_PATH)
+        print("[INFO] Downloading checksum-pinned canonical archive from S3")
+        source_state = download_verified_archive(cfg, source_path)
+        source_archive = pd.read_parquet(source_path)
+        candidate = merge_archive_date(source_archive, df, target)
+        candidate.to_parquet(candidate_path, index=False)
 
-        # カラム名統一: 旧カラム名 → 新カラム名 (COLUMN_RENAME_TASKS.md準拠)
-        if 'company_name' in df_archive.columns:
-            # stock_nameが空またはNoneの場合、company_nameの値を使用
-            if 'stock_name' not in df_archive.columns:
-                df_archive['stock_name'] = df_archive['company_name']
-            else:
-                df_archive['stock_name'] = df_archive['stock_name'].fillna(df_archive['company_name'])
-                df_archive.loc[df_archive['stock_name'] == '', 'stock_name'] = df_archive.loc[df_archive['stock_name'] == '', 'company_name']
-            df_archive = df_archive.drop(columns=['company_name'])
-            print("[INFO] Migrated company_name → stock_name")
+        reloaded = pd.read_parquet(candidate_path)
+        if len(reloaded) != len(candidate):
+            raise JQuantsBacktestDataError(
+                "Candidate archive row count changed after parquet serialization"
+            )
+        if reloaded[["backtest_date", "ticker"]].duplicated().any():
+            raise JQuantsBacktestDataError(
+                "Candidate archive contains duplicate keys after serialization"
+            )
+        assert_archive_history_unchanged(source_archive, reloaded, target)
+        assert_archive_target_rows_preserved(df, reloaded, target)
+        candidate_dates = pd.to_datetime(reloaded["backtest_date"], errors="raise")
+        expected_rows = len(source_archive) - int(
+            pd.to_datetime(source_archive["backtest_date"], errors="raise")
+            .dt.strftime("%Y-%m-%d")
+            .eq(target)
+            .sum()
+        ) + len(df)
+        if len(reloaded) != expected_rows:
+            raise JQuantsBacktestDataError(
+                f"Candidate archive row count mismatch: {len(reloaded)} != {expected_rows}"
+            )
 
-        if 'category' in df_archive.columns:
-            # categoriesが空またはNoneの場合、categoryの値を使用
-            if 'categories' not in df_archive.columns:
-                df_archive['categories'] = df_archive['category']
-            else:
-                df_archive['categories'] = df_archive['categories'].fillna(df_archive['category'])
-                df_archive.loc[df_archive['categories'] == '', 'categories'] = df_archive.loc[df_archive['categories'] == '', 'category']
-            df_archive = df_archive.drop(columns=['category'])
-            print("[INFO] Migrated category → categories")
-
-        # 取引制限カラムがない場合は追加（既存アーカイブのバックフィル）
-        if 'margin_code' not in df_archive.columns or 'jsf_restricted' not in df_archive.columns:
-            print("[INFO] Backfilling trading restriction columns for existing archive...")
-            margin_code_map, margin_name_map, jsf_stop_codes = load_trading_restrictions()
-            for col in ['margin_code', 'margin_code_name', 'jsf_restricted', 'is_shortable']:
-                if col not in df_archive.columns:
-                    df_archive[col] = None
-            for idx, row in df_archive.iterrows():
-                ticker = row['ticker']
-                code = ticker.replace('.T', '')
-                df_archive.at[idx, 'margin_code'] = margin_code_map.get(ticker, '2')
-                df_archive.at[idx, 'margin_code_name'] = margin_name_map.get(ticker, '貸借')
-                df_archive.at[idx, 'jsf_restricted'] = code in jsf_stop_codes
-                df_archive.at[idx, 'is_shortable'] = (margin_code_map.get(ticker, '2') == '2') and (code not in jsf_stop_codes)
-            print(f"[INFO] Backfilled {len(df_archive)} archive records with trading restrictions")
-
-        # 同じbacktest_dateのデータを削除（上書き）
-        df_archive = df_archive[df_archive['backtest_date'] != backtest_date]
-
-        # 型を統一（selection_date, backtest_dateを文字列に）
-        for date_col in ['selection_date', 'backtest_date']:
-            if date_col in df_archive.columns:
-                df_archive[date_col] = df_archive[date_col].astype(str)
-            if date_col in df.columns:
-                df[date_col] = df[date_col].astype(str)
-
-        df_merged = pd.concat([df_archive, df], ignore_index=True)
-        print(f"[INFO] Merged with existing archive: {len(df_archive)} + {len(df)} = {len(df_merged)} records")
-    else:
-        df_merged = df
-        print("[INFO] Creating new archive file")
-
-    df_merged.to_parquet(BACKTEST_ARCHIVE_PATH, index=False)
-    print(f"[OK] Saved archive: {BACKTEST_ARCHIVE_PATH}")
-    print(f"     Total records: {len(df_merged)}")
-    print(f"     Date range: {df_merged['backtest_date'].min()} to {df_merged['backtest_date'].max()}")
-
-    # 3. S3にアップロード
-    try:
-        # 日付ごとのファイルをアップロード
+        # The dated artifact is non-canonical, but it must exist before the
+        # canonical pointer advances.
         s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
-        upload_file(cfg, dated_file, s3_key_dated)
+        if not upload_file(cfg, dated_file, s3_key_dated):
+            raise RuntimeError(f"Failed to upload dated artifact: {s3_key_dated}")
         print(f"[OK] Uploaded to S3: {s3_key_dated}")
 
-        # アーカイブファイルをアップロード
-        s3_key_archive = "backtest/grok_trending_archive.parquet"
-        upload_file(cfg, BACKTEST_ARCHIVE_PATH, s3_key_archive)
-        print(f"[OK] Uploaded to S3: {s3_key_archive}")
-    except Exception as e:
-        print(f"[ERROR] Failed to upload to S3: {e}")
+        publish_state = publish_guarded_archive(
+            cfg,
+            candidate_path,
+            source_state,
+            backtest_date=target,
+            row_count=len(reloaded),
+        )
+        publish_state.update(
+            {
+                "date_min": candidate_dates.min().date().isoformat(),
+                "date_max": candidate_dates.max().date().isoformat(),
+                "unique_ticker_date_keys": int(
+                    reloaded[["ticker", "backtest_date"]].drop_duplicates().shape[0]
+                ),
+                "columns": reloaded.columns.tolist(),
+            }
+        )
+        manifest_state = publish_guarded_manifest_entry(
+            cfg,
+            source_state,
+            publish_state,
+            columns=reloaded.columns.tolist(),
+            date_min=publish_state["date_min"],
+            date_max=publish_state["date_max"],
+            unique_ticker_date_keys=publish_state["unique_ticker_date_keys"],
+        )
+        publish_state.update(manifest_state)
+        write_publish_state(ARCHIVE_PUBLISH_STATE_PATH, publish_state)
+
+        # Install locally only after S3 has accepted and verified the guarded write.
+        os.replace(candidate_path, BACKTEST_ARCHIVE_PATH)
+
+    print(f"[OK] Guarded canonical archive publish: {BACKTEST_ARCHIVE_PATH}")
+    print(f"     Total records: {len(reloaded)}")
+    print(
+        f"     Date range: {candidate_dates.min().date()} "
+        f"to {candidate_dates.max().date()}"
+    )
+    print(f"     S3 VersionId: {publish_state.get('s3_version_id')}")
 
 
 def main() -> int:

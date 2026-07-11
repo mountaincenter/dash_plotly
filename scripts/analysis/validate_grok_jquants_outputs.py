@@ -102,9 +102,14 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     master = pd.read_parquet(args.master_path)
 
     require_columns(archive, {"backtest_date", "ticker"}, "archive", failures)
-    require_columns(minute, {"trading_date", "ticker"}, "minute", failures)
+    require_columns(minute, {"trading_date", "ticker", "datetime"}, "minute", failures)
     require_columns(master, {"backtest_date", "ticker"}, "master", failures)
-    require_columns(master, {"jq_buy_price", "jq_seg_1530"}, "master", failures)
+    require_columns(
+        master,
+        {"jq_buy_price", "jq_seg_1530", "jq_close_execution_status"},
+        "master",
+        failures,
+    )
     if failures:
         return {
             "status": "failed",
@@ -156,6 +161,54 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     if jq_seg_1530_non_null < expected_master_jq:
         failures.append(f"jq_seg_1530 coverage too low: {jq_seg_1530_non_null}/{len(minute_in_archive)}")
 
+    minute_execution = minute[["trading_date", "ticker", "datetime"]].copy()
+    minute_execution["date"] = normalize_date(minute_execution["trading_date"])
+    minute_execution["datetime"] = pd.to_datetime(
+        minute_execution["datetime"], errors="coerce"
+    )
+    minute_execution = minute_execution.dropna(subset=["date", "ticker", "datetime"])
+    minute_execution = minute_execution.groupby(
+        ["date", "ticker"], as_index=False
+    ).agg(first_datetime=("datetime", "min"), last_datetime=("datetime", "max"))
+    minute_execution["expected_close_execution_status"] = "executable"
+    minute_execution.loc[
+        minute_execution["first_datetime"].eq(minute_execution["last_datetime"]),
+        "expected_close_execution_status",
+    ] = "mark_only_no_round_trip"
+
+    master_execution = pd.DataFrame(
+        {
+            "date": normalize_date(master["backtest_date"]),
+            "ticker": master["ticker"].astype(str).str.strip(),
+            "jq_close_execution_status": master[
+                "jq_close_execution_status"
+            ].astype(str),
+        }
+    )
+    execution_check = master_execution.merge(
+        minute_execution[
+            ["date", "ticker", "expected_close_execution_status"]
+        ],
+        on=["date", "ticker"],
+        how="left",
+        validate="one_to_one",
+    )
+    execution_mismatches = int(
+        execution_check["expected_close_execution_status"]
+        .ne(execution_check["jq_close_execution_status"])
+        .sum()
+    )
+    if execution_mismatches:
+        failures.append(
+            f"close execution status mismatches: {execution_mismatches}"
+        )
+    close_execution_counts = {
+        str(key): int(value)
+        for key, value in master["jq_close_execution_status"]
+        .value_counts(dropna=False)
+        .items()
+    }
+
     if minute_set - archive_set:
         warnings.append(f"minute has non-archive keys: {len(minute_set - archive_set)}")
 
@@ -189,6 +242,8 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "jq_buy_price_non_null": jq_buy_non_null,
             "jq_seg_1530_non_null": jq_seg_1530_non_null,
             "expected_jq_non_null_min": expected_master_jq,
+            "close_execution_status": close_execution_counts,
+            "close_execution_status_mismatches": execution_mismatches,
         },
         "thresholds": {
             "min_minute_coverage": args.min_minute_coverage,

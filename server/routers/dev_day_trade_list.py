@@ -357,6 +357,8 @@ PROB_REGIME_HIGH_THRESHOLD = 0.50
 EXPECTED_PF_MIN_N = 30
 EXPECTED_PF_START_DATE = pd.Timestamp("2025-12-22")
 RECENT_RISK_LOOKBACK_DAYS = 28
+CLOSE_EXECUTABLE_STATUS = "executable"
+CLOSE_MARK_ONLY_STATUS = "mark_only_no_round_trip"
 
 PROB_BINS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
 PROB_LABELS = [
@@ -494,26 +496,67 @@ def get_credit_bucket(
     return "その他/不可"
 
 
-def _pf_metrics(group: pd.DataFrame) -> dict:
-    pnl_col = "expected_pnl_for_pf" if "expected_pnl_for_pf" in group.columns else "profit_per_100_shares_phase2"
-    pnl = pd.to_numeric(group[pnl_col], errors="coerce").fillna(0)
+def _pf_metrics_core(pnl: pd.Series) -> dict:
     wins = pnl[pnl > 0]
     losses = pnl[pnl < 0]
     pf = float(wins.sum() / abs(losses.sum())) if abs(losses.sum()) > 0 else None
     return {
-        "n": int(len(group)),
+        "n": int(len(pnl)),
         "pf": round(pf, 2) if pf is not None else None,
         "avg_pnl": round(float(pnl.mean()), 1) if len(pnl) else None,
         "wr": round(float((pnl > 0).mean() * 100), 1) if len(pnl) else None,
     }
 
 
-def _pnl_metrics(vals: pd.Series) -> dict:
+def _pf_metrics(group: pd.DataFrame) -> dict:
+    pnl_col = "expected_pnl_for_pf" if "expected_pnl_for_pf" in group.columns else "profit_per_100_shares_phase2"
+    pnl = pd.to_numeric(group[pnl_col], errors="coerce").fillna(0)
+    metrics = _pf_metrics_core(pnl)
+
+    if "close_execution_status" not in group.columns:
+        return {
+            **metrics,
+            "execution_status_available": False,
+            "executable_n": None,
+            "mark_only_n": None,
+            "unknown_execution_n": None,
+            "execution_rate": None,
+            "executable_pf": None,
+            "executable_avg_pnl": None,
+            "executable_wr": None,
+        }
+
+    status = group["close_execution_status"].reindex(pnl.index)
+    executable = status.eq(CLOSE_EXECUTABLE_STATUS)
+    mark_only = status.eq(CLOSE_MARK_ONLY_STATUS)
+    known_count = int((executable | mark_only).sum())
+    executable_metrics = _pf_metrics_core(pnl[executable])
+    return {
+        **metrics,
+        "execution_status_available": True,
+        "executable_n": executable_metrics["n"],
+        "mark_only_n": int(mark_only.sum()),
+        "unknown_execution_n": int(len(status) - known_count),
+        "execution_rate": (
+            round(float(executable_metrics["n"] / known_count), 6)
+            if known_count > 0
+            else None
+        ),
+        "executable_pf": executable_metrics["pf"],
+        "executable_avg_pnl": executable_metrics["avg_pnl"],
+        "executable_wr": executable_metrics["wr"],
+    }
+
+
+def _pnl_metrics(
+    vals: pd.Series,
+    execution_status: pd.Series | None = None,
+) -> dict:
     pnl = pd.to_numeric(vals, errors="coerce").dropna().astype(float)
     wins = pnl[pnl > 0]
     losses = pnl[pnl < 0]
     pf = float(wins.sum() / abs(losses.sum())) if abs(losses.sum()) > 0 else None
-    return {
+    metrics = {
         "n": int(len(pnl)),
         "total": round(float(pnl.sum()), 2) if len(pnl) else 0,
         "pf": round(pf, 2) if pf is not None else None,
@@ -521,6 +564,31 @@ def _pnl_metrics(vals: pd.Series) -> dict:
         "win_rate": round(float((pnl > 0).mean() * 100), 1) if len(pnl) else None,
         "worst": round(float(pnl.min()), 2) if len(pnl) else None,
         "loss_10k_count": int((pnl <= -10000).sum()) if len(pnl) else 0,
+    }
+    if execution_status is None:
+        return {
+            **metrics,
+            "execution_status_available": False,
+            "executable": None,
+        }
+
+    status = execution_status.reindex(pnl.index)
+    executable = status.eq(CLOSE_EXECUTABLE_STATUS)
+    mark_only = status.eq(CLOSE_MARK_ONLY_STATUS)
+    known_count = int((executable | mark_only).sum())
+    executable_metrics = _pnl_metrics(pnl[executable])
+    return {
+        **metrics,
+        "execution_status_available": True,
+        "executable_n": int(executable.sum()),
+        "mark_only_n": int(mark_only.sum()),
+        "unknown_execution_n": int(len(status) - known_count),
+        "execution_rate": (
+            round(float(executable.sum() / known_count), 6)
+            if known_count > 0
+            else None
+        ),
+        "executable": executable_metrics,
     }
 
 
@@ -720,6 +788,19 @@ def _prepare_grok_operational_history(history_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _segment_pf_metrics(group: pd.DataFrame, seg_col: str) -> dict:
+    if seg_col not in group.columns:
+        return _pf_metrics(pd.DataFrame({"expected_pnl_for_pf": []}))
+
+    vals = pd.to_numeric(group[seg_col], errors="coerce")
+    valid = vals.notna()
+    metric_group = group.loc[valid, [
+        col for col in ["close_execution_status"] if col in group.columns
+    ]].copy()
+    metric_group["expected_pnl_for_pf"] = vals.loc[valid]
+    return _pf_metrics(metric_group)
+
+
 def build_grok_expected_exit_lookup(history_df: pd.DataFrame) -> dict:
     """曜日×信用区分×prob_binごとの11seg最大PF/大引PF lookupを作る。"""
     df = _prepare_grok_expected_history(history_df)
@@ -735,12 +816,7 @@ def build_grok_expected_exit_lookup(history_df: pd.DataFrame) -> dict:
         segment_rows = []
         for seg in TIME_SEGMENTS_11:
             seg_col = seg["key"]
-            if seg_col not in group.columns:
-                metrics = _pf_metrics(pd.DataFrame({"expected_pnl_for_pf": []}))
-            else:
-                vals = pd.to_numeric(group[seg_col], errors="coerce")
-                seg_group = pd.DataFrame({"expected_pnl_for_pf": vals.dropna()})
-                metrics = _pf_metrics(seg_group)
+            metrics = _segment_pf_metrics(group, seg_col)
             segment_rows.append({
                 "key": seg_col,
                 "label": seg["label"],
@@ -750,9 +826,24 @@ def build_grok_expected_exit_lookup(history_df: pd.DataFrame) -> dict:
 
         candidates = [s for s in segment_rows if s["n"] >= 10 and s["pf"] is not None]
         best = max(candidates, key=lambda s: (s["pf"], s["avg_pnl"] if s["avg_pnl"] is not None else -10**9)) if candidates else None
+        executable_candidates = [
+            s for s in segment_rows
+            if (s.get("executable_n") or 0) >= 10
+            and s.get("executable_pf") is not None
+        ]
+        best_executable = max(
+            executable_candidates,
+            key=lambda s: (
+                s["executable_pf"],
+                s["executable_avg_pnl"]
+                if s["executable_avg_pnl"] is not None
+                else -10**9,
+            ),
+        ) if executable_candidates else None
         close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
         lookup[key if isinstance(key, tuple) else (key,)] = {
             "best": best,
+            "best_executable": best_executable,
             "close": close,
             "segments": segment_rows,
         }
@@ -774,12 +865,7 @@ def build_grok_operational_exit_lookup(history_df: pd.DataFrame) -> dict:
         segment_rows = []
         for seg in TIME_SEGMENTS_4:
             seg_col = seg["key"]
-            if seg_col not in group.columns:
-                metrics = _pf_metrics(pd.DataFrame({"expected_pnl_for_pf": []}))
-            else:
-                vals = pd.to_numeric(group[seg_col], errors="coerce")
-                seg_group = pd.DataFrame({"expected_pnl_for_pf": vals.dropna()})
-                metrics = _pf_metrics(seg_group)
+            metrics = _segment_pf_metrics(group, seg_col)
             segment_rows.append({
                 "key": seg_col,
                 "label": seg["label"],
@@ -789,9 +875,24 @@ def build_grok_operational_exit_lookup(history_df: pd.DataFrame) -> dict:
 
         candidates = [s for s in segment_rows if s["n"] >= 10 and s["pf"] is not None]
         best = max(candidates, key=lambda s: (s["pf"], s["avg_pnl"] if s["avg_pnl"] is not None else -10**9)) if candidates else None
+        executable_candidates = [
+            s for s in segment_rows
+            if (s.get("executable_n") or 0) >= 10
+            and s.get("executable_pf") is not None
+        ]
+        best_executable = max(
+            executable_candidates,
+            key=lambda s: (
+                s["executable_pf"],
+                s["executable_avg_pnl"]
+                if s["executable_avg_pnl"] is not None
+                else -10**9,
+            ),
+        ) if executable_candidates else None
         close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
         lookup[key if isinstance(key, tuple) else (key,)] = {
             "best": best,
+            "best_executable": best_executable,
             "close": close,
             "segments": segment_rows,
         }
@@ -822,7 +923,10 @@ def build_grok_recent_risk_lookup(history_df: pd.DataFrame) -> dict:
     for weekday_jp, group in recent.groupby("weekday_jp", dropna=False):
         if pd.isna(weekday_jp):
             continue
-        metrics = _pnl_metrics(group["close_pnl"])
+        metrics = _pnl_metrics(
+            group["close_pnl"],
+            group.get("close_execution_status"),
+        )
         lookup[("weekday", weekday_jp)] = metrics
 
     grouped = recent.dropna(subset=["weekday_jp", "credit_bucket", "prob_bin"]).groupby(
@@ -830,7 +934,10 @@ def build_grok_recent_risk_lookup(history_df: pd.DataFrame) -> dict:
         dropna=False,
     )
     for key, group in grouped:
-        lookup[("cell", *(key if isinstance(key, tuple) else (key,)))] = _pnl_metrics(group["close_pnl"])
+        lookup[("cell", *(key if isinstance(key, tuple) else (key,)))] = _pnl_metrics(
+            group["close_pnl"],
+            group.get("close_execution_status"),
+        )
 
     lookup[("meta",)] = {
         "latest": latest.strftime("%Y-%m-%d"),
@@ -860,10 +967,20 @@ def estimate_grok_expected_pf(
             "expected_pnl_avg": None,
             "expected_wr": None,
             "expected_pf_confidence": "不足",
+            "expected_execution_status_available": False,
+            "expected_executable_n": 0,
+            "expected_mark_only_n": 0,
+            "expected_unknown_execution_n": 0,
+            "expected_execution_rate": None,
+            "expected_executable_pf": None,
+            "expected_executable_pnl_avg": None,
+            "expected_executable_wr": None,
             "expected_pf_detail_basis": None,
             "expected_pf_detail_n": 0,
             "expected_pf_detail": None,
             "expected_pnl_detail_avg": None,
+            "expected_pf_detail_executable_n": 0,
+            "expected_pf_detail_executable": None,
         }
 
     primary_candidates = [
@@ -906,10 +1023,20 @@ def estimate_grok_expected_pf(
             "expected_pnl_avg": metrics["avg_pnl"],
             "expected_wr": metrics["wr"],
             "expected_pf_confidence": get_pf_confidence(metrics["n"]),
+            "expected_execution_status_available": metrics.get("execution_status_available", False),
+            "expected_executable_n": metrics.get("executable_n"),
+            "expected_mark_only_n": metrics.get("mark_only_n"),
+            "expected_unknown_execution_n": metrics.get("unknown_execution_n"),
+            "expected_execution_rate": metrics.get("execution_rate"),
+            "expected_executable_pf": metrics.get("executable_pf"),
+            "expected_executable_pnl_avg": metrics.get("executable_avg_pnl"),
+            "expected_executable_wr": metrics.get("executable_wr"),
             "expected_pf_detail_basis": detail_basis,
             "expected_pf_detail_n": detail_metrics["n"] if detail_metrics else 0,
             "expected_pf_detail": detail_metrics["pf"] if detail_metrics else None,
             "expected_pnl_detail_avg": detail_metrics["avg_pnl"] if detail_metrics else None,
+            "expected_pf_detail_executable_n": detail_metrics.get("executable_n") if detail_metrics else 0,
+            "expected_pf_detail_executable": detail_metrics.get("executable_pf") if detail_metrics else None,
         }
 
     return {
@@ -919,10 +1046,20 @@ def estimate_grok_expected_pf(
         "expected_pnl_avg": None,
         "expected_wr": None,
         "expected_pf_confidence": "不足",
+        "expected_execution_status_available": False,
+        "expected_executable_n": 0,
+        "expected_mark_only_n": 0,
+        "expected_unknown_execution_n": 0,
+        "expected_execution_rate": None,
+        "expected_executable_pf": None,
+        "expected_executable_pnl_avg": None,
+        "expected_executable_wr": None,
         "expected_pf_detail_basis": None,
         "expected_pf_detail_n": 0,
         "expected_pf_detail": None,
         "expected_pnl_detail_avg": None,
+        "expected_pf_detail_executable_n": 0,
+        "expected_pf_detail_executable": None,
     }
 
 
@@ -942,6 +1079,14 @@ def estimate_grok_expected_exit(
             "expected_max_pf_segment": None,
             "expected_close_pf": None,
             "expected_close_pf_n": 0,
+            "expected_executable_max_pf": None,
+            "expected_executable_max_pf_n": 0,
+            "expected_executable_max_pf_time": None,
+            "expected_executable_max_pf_label": None,
+            "expected_executable_max_pf_segment": None,
+            "expected_executable_close_pf": None,
+            "expected_executable_close_pf_n": 0,
+            "expected_close_execution_rate": None,
         }
 
     row = lookup.get((weekday_jp, credit_bucket, prob_bin))
@@ -955,9 +1100,18 @@ def estimate_grok_expected_exit(
             "expected_max_pf_segment": None,
             "expected_close_pf": None,
             "expected_close_pf_n": 0,
+            "expected_executable_max_pf": None,
+            "expected_executable_max_pf_n": 0,
+            "expected_executable_max_pf_time": None,
+            "expected_executable_max_pf_label": None,
+            "expected_executable_max_pf_segment": None,
+            "expected_executable_close_pf": None,
+            "expected_executable_close_pf_n": 0,
+            "expected_close_execution_rate": None,
         }
 
     best = row.get("best")
+    best_executable = row.get("best_executable")
     close = row.get("close")
     return {
         "expected_exit_basis": "weekday+credit+prob",
@@ -968,6 +1122,14 @@ def estimate_grok_expected_exit(
         "expected_max_pf_segment": best.get("key") if best else None,
         "expected_close_pf": close.get("pf") if close else None,
         "expected_close_pf_n": close.get("n", 0) if close else 0,
+        "expected_executable_max_pf": best_executable.get("executable_pf") if best_executable else None,
+        "expected_executable_max_pf_n": best_executable.get("executable_n", 0) if best_executable else 0,
+        "expected_executable_max_pf_time": best_executable.get("time") if best_executable else None,
+        "expected_executable_max_pf_label": best_executable.get("label") if best_executable else None,
+        "expected_executable_max_pf_segment": best_executable.get("key") if best_executable else None,
+        "expected_executable_close_pf": close.get("executable_pf") if close else None,
+        "expected_executable_close_pf_n": close.get("executable_n", 0) if close else 0,
+        "expected_close_execution_rate": close.get("execution_rate") if close else None,
     }
 
 
@@ -986,6 +1148,14 @@ def estimate_grok_operational_exit(
         "operational_max_pf_segment": None,
         "operational_close_pf": None,
         "operational_close_pf_n": 0,
+        "operational_executable_max_pf": None,
+        "operational_executable_max_pf_n": 0,
+        "operational_executable_max_pf_time": None,
+        "operational_executable_max_pf_label": None,
+        "operational_executable_max_pf_segment": None,
+        "operational_executable_close_pf": None,
+        "operational_executable_close_pf_n": 0,
+        "operational_close_execution_rate": None,
     }
     if not lookup or not weekday_jp or not prob_regime:
         return empty
@@ -998,6 +1168,7 @@ def estimate_grok_operational_exit(
         }
 
     best = row.get("best")
+    best_executable = row.get("best_executable")
     close = row.get("close")
     return {
         "operational_pf_basis": "weekday+credit+regime",
@@ -1008,6 +1179,14 @@ def estimate_grok_operational_exit(
         "operational_max_pf_segment": best.get("key") if best else None,
         "operational_close_pf": close.get("pf") if close else None,
         "operational_close_pf_n": close.get("n", 0) if close else 0,
+        "operational_executable_max_pf": best_executable.get("executable_pf") if best_executable else None,
+        "operational_executable_max_pf_n": best_executable.get("executable_n", 0) if best_executable else 0,
+        "operational_executable_max_pf_time": best_executable.get("time") if best_executable else None,
+        "operational_executable_max_pf_label": best_executable.get("label") if best_executable else None,
+        "operational_executable_max_pf_segment": best_executable.get("key") if best_executable else None,
+        "operational_executable_close_pf": close.get("executable_pf") if close else None,
+        "operational_executable_close_pf_n": close.get("executable_n", 0) if close else 0,
+        "operational_close_execution_rate": close.get("execution_rate") if close else None,
     }
 
 
@@ -1024,11 +1203,19 @@ def estimate_grok_recent_risk(
         "recent_weekday_pf": None,
         "recent_weekday_n": 0,
         "recent_weekday_total": 0,
+        "recent_weekday_executable_pf": None,
+        "recent_weekday_executable_n": 0,
+        "recent_weekday_executable_total": 0,
         "recent_cell_pf": None,
         "recent_cell_n": 0,
         "recent_cell_total": 0,
         "recent_cell_worst": None,
         "recent_cell_loss_10k_count": 0,
+        "recent_cell_executable_pf": None,
+        "recent_cell_executable_n": 0,
+        "recent_cell_executable_total": 0,
+        "recent_cell_executable_worst": None,
+        "recent_cell_executable_loss_10k_count": 0,
     }
     if not lookup or not weekday_jp:
         return empty
@@ -1044,6 +1231,8 @@ def estimate_grok_recent_risk(
     cell_total = float(cell_metrics.get("total", 0) or 0)
     cell_worst = cell_metrics.get("worst")
     cell_loss_10k = int(cell_metrics.get("loss_10k_count", 0) or 0)
+    weekday_executable = weekday_metrics.get("executable") or {}
+    cell_executable = cell_metrics.get("executable") or {}
 
     reasons: list[str] = []
     level = "none"
@@ -1076,11 +1265,19 @@ def estimate_grok_recent_risk(
         "recent_weekday_pf": weekday_pf,
         "recent_weekday_n": weekday_n,
         "recent_weekday_total": int(round(weekday_total)),
+        "recent_weekday_executable_pf": weekday_executable.get("pf"),
+        "recent_weekday_executable_n": int(weekday_executable.get("n", 0) or 0),
+        "recent_weekday_executable_total": int(round(float(weekday_executable.get("total", 0) or 0))),
         "recent_cell_pf": cell_pf,
         "recent_cell_n": cell_n,
         "recent_cell_total": int(round(cell_total)),
         "recent_cell_worst": cell_worst,
         "recent_cell_loss_10k_count": cell_loss_10k,
+        "recent_cell_executable_pf": cell_executable.get("pf"),
+        "recent_cell_executable_n": int(cell_executable.get("n", 0) or 0),
+        "recent_cell_executable_total": int(round(float(cell_executable.get("total", 0) or 0))),
+        "recent_cell_executable_worst": cell_executable.get("worst"),
+        "recent_cell_executable_loss_10k_count": int(cell_executable.get("loss_10k_count", 0) or 0),
     }
 
 
@@ -1279,10 +1476,7 @@ def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
     for source_col, target_col in preferred_cols.items():
         if source_col not in out.columns:
             continue
-        if target_col in out.columns:
-            out[target_col] = out[source_col].combine_first(out[target_col])
-        else:
-            out[target_col] = out[source_col]
+        out[target_col] = out[source_col]
 
     for seg in TIME_SEGMENTS_11:
         seg_col = seg["key"]
@@ -1291,16 +1485,17 @@ def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
             continue
         if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
             out[f"archive_{seg_col}"] = out[seg_col]
-        if seg_col in out.columns:
-            out[seg_col] = out[jq_col].combine_first(out[seg_col])
-        else:
-            out[seg_col] = out[jq_col]
+        out[seg_col] = out[jq_col]
+
+    if "jq_close_execution_status" in out.columns:
+        out["close_execution_status"] = out["jq_close_execution_status"]
 
     for phase in ("phase1", "phase2"):
         profit_col = f"profit_per_100_shares_{phase}"
         win_col = f"{phase}_win"
         if profit_col in out.columns:
-            out[win_col] = pd.to_numeric(out[profit_col], errors="coerce") > 0
+            profit = pd.to_numeric(out[profit_col], errors="coerce")
+            out[win_col] = profit.gt(0).where(profit.notna(), pd.NA)
 
     out.attrs["analysis_source"] = str(out["analysis_source"].dropna().iloc[0]) if "analysis_source" in out.columns and out["analysis_source"].notna().any() else "unknown"
     out.attrs["price_basis"] = "jquants_minute" if out.attrs["analysis_source"] == "grok_master_jquants_segments" else "archive_price"
@@ -1528,6 +1723,15 @@ async def get_day_trade_list():
             "expected_pnl_avg": None,
             "expected_wr": None,
             "expected_pf_confidence": None,
+            "expected_executable_n": 0,
+            "expected_mark_only_n": 0,
+            "expected_unknown_execution_n": 0,
+            "expected_execution_rate": None,
+            "expected_executable_pf": None,
+            "expected_executable_pnl_avg": None,
+            "expected_executable_wr": None,
+            "expected_pf_detail_executable_n": 0,
+            "expected_pf_detail_executable": None,
         }
         exit_display = expected_exit if tradable else {
             **expected_exit,
@@ -1538,6 +1742,14 @@ async def get_day_trade_list():
             "expected_max_pf_segment": None,
             "expected_close_pf": None,
             "expected_close_pf_n": 0,
+            "expected_executable_max_pf": None,
+            "expected_executable_max_pf_n": 0,
+            "expected_executable_max_pf_time": None,
+            "expected_executable_max_pf_label": None,
+            "expected_executable_max_pf_segment": None,
+            "expected_executable_close_pf": None,
+            "expected_executable_close_pf_n": 0,
+            "expected_close_execution_rate": None,
         }
         operational_display = operational_exit if tradable else {
             **operational_exit,
@@ -1548,6 +1760,14 @@ async def get_day_trade_list():
             "operational_max_pf_segment": None,
             "operational_close_pf": None,
             "operational_close_pf_n": 0,
+            "operational_executable_max_pf": None,
+            "operational_executable_max_pf_n": 0,
+            "operational_executable_max_pf_time": None,
+            "operational_executable_max_pf_label": None,
+            "operational_executable_max_pf_segment": None,
+            "operational_executable_close_pf": None,
+            "operational_executable_close_pf_n": 0,
+            "operational_close_execution_rate": None,
         }
 
         close_value = row.get("Close")
