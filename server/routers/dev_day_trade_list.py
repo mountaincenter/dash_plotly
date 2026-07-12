@@ -18,6 +18,12 @@ import io
 import joblib
 import json
 
+from server.services.grok_history import (
+    GrokHistoryError,
+    GrokHistoryNotFound,
+    load_grok_history,
+)
+
 router = APIRouter()
 
 # キャッシュ（モジュールレベル）
@@ -29,7 +35,6 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DAY_TRADE_LIST_PATH = BASE_DIR / "data" / "parquet" / "grok_day_trade_list.parquet"
 GROK_TRENDING_PATH = BASE_DIR / "data" / "parquet" / "grok_trending.parquet"
 GROK_ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
-GROK_MASTER_JQUANTS_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquants_segments.parquet"
 GROK_PRICES_PATH = BASE_DIR / "data" / "parquet" / "grok_prices_max_1d.parquet"
 PRICES_FALLBACK_PATH = BASE_DIR / "data" / "parquet" / "prices_max_1d.parquet"
 ML_MODEL_PATH = BASE_DIR / "models" / "grok_lgbm_model.pkl"
@@ -398,51 +403,62 @@ TIME_SEGMENTS_4 = [
 ]
 
 
-WEEKDAY_RULES = {
-    0: {  # 月曜
-        "weekday": "月",
-        "direction": "short",
-        "rule": "保守運用 — サイズ縮小/厳選",
-        "pf": 1.22,
-        "note": "曜日エッジ弱め。prob_regime単独では入らない",
-    },
-    1: {  # 火曜
-        "weekday": "火",
-        "direction": "short",
-        "rule": "主戦場 — 全prob_regime候補",
-        "pf": 5.33,
-        "note": "曜日エッジ最強。信用区分とVWAPで継続/撤退を決める",
-    },
-    2: {  # 水曜
-        "weekday": "水",
-        "direction": "short",
-        "rule": "LOW_PROB_HEAT中心",
-        "pf": 2.46,
-        "note": "LOWが強い。HIGHは信用区分で警戒",
-    },
-    3: {  # 木曜
-        "weekday": "木",
-        "direction": "short",
-        "rule": "LOW/MID_PROB_HEAT中心",
-        "pf": 2.66,
-        "note": "LOW/MIDが強い。制度信用HIGHは警戒",
-    },
-    4: {  # 金曜
-        "weekday": "金",
-        "direction": "excluded",
-        "rule": "原則見送り",
-        "pf": 0.90,
-        "note": "曜日エッジ棄却寄り。寄りショートは抑制",
-    },
-}
-
-
-def get_weekday_rule(trade_date: pd.Timestamp | None) -> dict | None:
-    """取引日の曜日ルールを返す"""
+def get_weekday_rule(
+    trade_date: pd.Timestamp | None,
+    history_df: pd.DataFrame,
+) -> dict | None:
+    """同一の往復可能母集団から取引曜日の観測PFを返す。"""
     if trade_date is None:
         return None
     wd = trade_date.weekday()
-    return WEEKDAY_RULES.get(wd)
+    if wd < 0 or wd >= len(PF_WEEKDAY_NAMES):
+        return None
+
+    result = {
+        "weekday": WEEKDAY_NAMES[wd],
+        "direction": "observational",
+        "rule": "期間内実績",
+        "pf": None,
+        "n": 0,
+        "pnl": 0,
+        "note": "2025-12-22以降の大引け往復可能行。売買判断ではない",
+    }
+    if history_df.empty or "seg_1530" not in history_df.columns:
+        return result
+
+    df = history_df.copy()
+    df["backtest_date"] = pd.to_datetime(df["backtest_date"], errors="coerce")
+    shares = pd.to_numeric(
+        df.get("day_trade_available_shares", pd.Series(pd.NA, index=df.index)),
+        errors="coerce",
+    )
+    shortable = df.get("shortable", pd.Series(False, index=df.index)).fillna(False).astype(bool)
+    day_trade = df.get("day_trade", pd.Series(False, index=df.index)).fillna(False).astype(bool)
+    ng = df.get("ng", pd.Series(False, index=df.index)).fillna(False).astype(bool)
+    tradable = (~ng) & (
+        shortable
+        | ((~shortable) & day_trade & shares.gt(0))
+    )
+    executable = (
+        df["close_execution_status"].eq(CLOSE_EXECUTABLE_STATUS)
+        if "close_execution_status" in df.columns
+        else pd.Series(True, index=df.index)
+    )
+    selected = df[
+        (df["backtest_date"] >= EXPECTED_PF_START_DATE)
+        & df["backtest_date"].dt.dayofweek.eq(wd)
+        & tradable
+        & executable
+    ]
+    metrics = _pnl_metrics(selected["seg_1530"])
+    result.update(
+        {
+            "pf": metrics["pf"],
+            "n": metrics["n"],
+            "pnl": metrics["total"],
+        }
+    )
+    return result
 
 
 def get_bucket(prob: float) -> str:
@@ -455,16 +471,17 @@ def get_bucket(prob: float) -> str:
 
 
 def get_prob_bin(prob: float | None) -> str | None:
-    """prob_upをprob別パフォーマンス表と同じ右閉じbinへ変換"""
+    """prob_upをH/M/L境界と同じ左閉じ・右開きbinへ変換する。"""
     if prob is None or pd.isna(prob):
         return None
     p = float(prob)
-    for i in range(len(PROB_BINS) - 1):
-        if i == 0:
-            if PROB_BINS[i] <= p <= PROB_BINS[i + 1]:
-                return PROB_LABELS[i]
-        elif PROB_BINS[i] < p <= PROB_BINS[i + 1]:
-            return PROB_LABELS[i]
+    if p < PROB_BINS[0] or p > PROB_BINS[-1]:
+        return None
+    for i, label in enumerate(PROB_LABELS):
+        lower = PROB_BINS[i]
+        upper = PROB_BINS[i + 1]
+        if lower <= p < upper or (i == len(PROB_LABELS) - 1 and p == upper):
+            return label
     return None
 
 
@@ -612,10 +629,17 @@ def is_tradable_credit_bucket(credit_bucket: str) -> bool:
     return credit_bucket in ("制度信用", "いちにち信用_除株数0")
 
 
+def _filter_executable_history(df: pd.DataFrame) -> pd.DataFrame:
+    """期待値集計を実際に入口と出口を持つ行へ統一する。"""
+    if "close_execution_status" not in df.columns:
+        return df.copy()
+    return df[df["close_execution_status"].eq(CLOSE_EXECUTABLE_STATUS)].copy()
+
+
 def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
     """Grok SHORT用のexpected_pf lookupを作る。
 
-    /dev/recommendations 下部のprob別パフォーマンスと同じJ-Quants master母集団に寄せる。
+    /dev/recommendations 下部のprob別パフォーマンスと同じarchive母集団に寄せる。
     """
     if history_df.empty:
         return {}
@@ -666,6 +690,7 @@ def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
         )
     ]
     df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
+    df = _filter_executable_history(df)
     if df.empty:
         return {}
 
@@ -696,7 +721,7 @@ def build_grok_expected_pf_lookup(history_df: pd.DataFrame) -> dict:
 
 
 def _prepare_grok_expected_history(history_df: pd.DataFrame) -> pd.DataFrame:
-    """期待PF用にJ-Quants master履歴を共通整形する。"""
+    """期待PF用にarchive履歴を共通整形する。"""
     if history_df.empty:
         return pd.DataFrame()
 
@@ -740,7 +765,7 @@ def _prepare_grok_expected_history(history_df: pd.DataFrame) -> pd.DataFrame:
         )
     ]
     df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
-    return df
+    return _filter_executable_history(df)
 
 
 def _prepare_grok_operational_history(history_df: pd.DataFrame) -> pd.DataFrame:
@@ -785,7 +810,7 @@ def _prepare_grok_operational_history(history_df: pd.DataFrame) -> pd.DataFrame:
         )
     ]
     df = df[df["credit_bucket"].isin(("制度信用", "いちにち信用_除株数0"))].copy()
-    return df
+    return _filter_executable_history(df)
 
 
 def _segment_pf_metrics(group: pd.DataFrame, seg_col: str) -> dict:
@@ -1423,115 +1448,21 @@ def load_grok_trending() -> pd.DataFrame:
 
 
 def load_grok_archive() -> pd.DataFrame:
-    """ローカルまたはS3からgrok_trending_archive.parquetを読み込み"""
-    if GROK_ARCHIVE_PATH.exists():
-        return pd.read_parquet(GROK_ARCHIVE_PATH)
-
-    # S3から取得
+    """ローカルまたはS3から正規化済みarchiveを読み込む。"""
     try:
-        import boto3
-        from botocore.exceptions import ClientError
-
-        bucket = os.getenv("S3_BUCKET", "stock-api-data")
-        key = "parquet/backtest/grok_trending_archive.parquet"
-        region = os.getenv("AWS_REGION", "ap-northeast-1")
-
-        s3_client = boto3.client("s3", region_name=region)
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(bucket, key, tmp_file)
-            tmp_path = tmp_file.name
-
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return df
-
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            return pd.DataFrame()  # 空のDataFrameを返す
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-
-
-def _normalize_expected_pf_history(df: pd.DataFrame) -> pd.DataFrame:
-    """J-Quants masterの実行価格をrecommendations系APIの既存列へ寄せる。"""
-    out = df.copy()
-    out["analysis_source"] = "grok_master_jquants_segments" if "jq_buy_price" in out.columns else "grok_trending_archive"
-
-    preferred_cols = {
-        "jq_buy_price": "buy_price",
-        "jq_sell_price": "sell_price",
-        "jq_daily_close": "daily_close",
-        "jq_high": "high",
-        "jq_low": "low",
-        "jq_total_volume": "volume",
-        "jq_profit_per_100_shares_phase1": "profit_per_100_shares_phase1",
-        "jq_profit_per_100_shares_phase2": "profit_per_100_shares_phase2",
-        "jq_phase1_return": "phase1_return",
-        "jq_phase2_return": "phase2_return",
-        "jq_phase1_win": "phase1_win",
-        "jq_phase2_win": "phase2_win",
-    }
-    for source_col, target_col in preferred_cols.items():
-        if source_col not in out.columns:
-            continue
-        out[target_col] = out[source_col]
-
-    for seg in TIME_SEGMENTS_11:
-        seg_col = seg["key"]
-        jq_col = f"jq_{seg_col}"
-        if jq_col not in out.columns:
-            continue
-        if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
-            out[f"archive_{seg_col}"] = out[seg_col]
-        out[seg_col] = out[jq_col]
-
-    if "jq_close_execution_status" in out.columns:
-        out["close_execution_status"] = out["jq_close_execution_status"]
-
-    for phase in ("phase1", "phase2"):
-        profit_col = f"profit_per_100_shares_{phase}"
-        win_col = f"{phase}_win"
-        if profit_col in out.columns:
-            profit = pd.to_numeric(out[profit_col], errors="coerce")
-            out[win_col] = profit.gt(0).where(profit.notna(), pd.NA)
-
-    out.attrs["analysis_source"] = str(out["analysis_source"].dropna().iloc[0]) if "analysis_source" in out.columns and out["analysis_source"].notna().any() else "unknown"
-    out.attrs["price_basis"] = "jquants_minute" if out.attrs["analysis_source"] == "grok_master_jquants_segments" else "archive_price"
-    return out
+        return load_grok_history(
+            GROK_ARCHIVE_PATH,
+            s3_bucket=os.getenv("S3_BUCKET", "stock-api-data"),
+            aws_region=os.getenv("AWS_REGION", "ap-northeast-1"),
+        )
+    except GrokHistoryNotFound:
+        return pd.DataFrame()
+    except GrokHistoryError as exc:
+        raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {exc}") from exc
 
 
 def load_grok_expected_pf_history() -> pd.DataFrame:
-    """期待PF用履歴。prob別パフォーマンスと同じJ-Quants masterを優先する。"""
-    if GROK_MASTER_JQUANTS_PATH.exists():
-        return _normalize_expected_pf_history(pd.read_parquet(GROK_MASTER_JQUANTS_PATH))
-
-    try:
-        import boto3
-        from botocore.exceptions import ClientError
-
-        bucket = os.getenv("S3_BUCKET", "stock-api-data")
-        region = os.getenv("AWS_REGION", "ap-northeast-1")
-        s3_client = boto3.client("s3", region_name=region)
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(
-                bucket,
-                "parquet/backtest/grok_master_jquants_segments.parquet",
-                tmp_file,
-            )
-            tmp_path = tmp_file.name
-
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return _normalize_expected_pf_history(df)
-    except ClientError as e:
-        if e.response["Error"]["Code"] != "NoSuchKey":
-            raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"S3読み込みエラー: {str(e)}")
-
+    """期待PF・出口・履歴表示で共通利用するarchive履歴。"""
     return load_grok_archive()
 
 
@@ -1592,7 +1523,8 @@ async def get_day_trade_list():
     except Exception:
         appearance_counts = {}
 
-    # 期待PFはprob別パフォーマンスと同じJ-Quants masterベースで作る。
+    # 期待PFはprob別パフォーマンスと同じarchiveベースで作る。
+    expected_history_df = pd.DataFrame()
     try:
         expected_history_df = load_grok_expected_pf_history()
         expected_pf_lookup = build_grok_expected_pf_lookup(expected_history_df)
@@ -1878,7 +1810,7 @@ async def get_day_trade_list():
             nikkei_change_pct = round(float(first_row["nikkei_change_pct"]), 3)
 
     # 曜日ルール
-    weekday_rule = get_weekday_rule(trade_date)
+    weekday_rule = get_weekday_rule(trade_date, expected_history_df)
 
     return JSONResponse(content={
         "total": len(stocks),
@@ -2056,7 +1988,7 @@ async def bulk_update_day_trade_list(updates: list[dict]):
 @router.get("/dev/day-trade-list/history/{ticker}")
 async def get_day_trade_history(ticker: str):
     """
-    銘柄の過去登場履歴を取得。J-Quants masterがあれば実行価格を優先する。
+    銘柄の過去登場履歴を正規化済みarchiveから取得する。
 
     Parameters:
     - ticker: ティッカーシンボル (例: 6993.T)

@@ -1,7 +1,7 @@
 """
 開発用: カスタム分析API
 
-grok_master_jquants_segments.parquetを優先使用
+grok_trending_archive.parquetを単一参照
 方向別(SHORT/LONG)プール分離、prob_regime区分、4seg/11seg切替
 - GET /dev/analysis-custom/summary: カスタム分析サマリー
 - GET /dev/analysis-custom/details: 詳細データ
@@ -16,14 +16,14 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
-import tempfile
+
+from server.services.grok_history import GrokHistoryError, load_grok_history
 
 router = APIRouter()
 
 # ファイルパス
 BASE_DIR = Path(__file__).resolve().parents[2]
 ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
-MASTER_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquants_segments.parquet"
 
 S3_BUCKET = os.getenv("S3_BUCKET", "stock-api-data")
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
@@ -72,6 +72,23 @@ def assign_bucket(prob: float | None) -> str | None:
         return None
     return _assign_prob_group(prob)
 
+
+def assign_prob_bin(prob: float | None) -> str | None:
+    """prob区間をH/M/L境界と同じ左閉じ・右開きで返す。"""
+    if prob is None or pd.isna(prob):
+        return None
+    value = float(prob)
+    if value < PROB_BIN_EDGES[0] or value > PROB_BIN_EDGES[-1]:
+        return None
+    for index, label in enumerate(PROB_BIN_LABELS):
+        lower = PROB_BIN_EDGES[index]
+        upper = PROB_BIN_EDGES[index + 1]
+        if lower <= value < upper or (
+            index == len(PROB_BIN_LABELS) - 1 and value == upper
+        ):
+            return label
+    return None
+
 # 11時間区分定義
 TIME_SEGMENTS_11 = [
     {"key": "seg_0930", "label": "-9:30", "time": "9:30"},
@@ -106,108 +123,19 @@ MANUAL_EXCLUDE_DATES = [
 MIN_N_THRESHOLD = 10
 CLOSE_EXECUTABLE_STATUS = "executable"
 CLOSE_MARK_ONLY_STATUS = "mark_only_no_round_trip"
-
-
-def _download_parquet_from_s3(key: str, label: str) -> pd.DataFrame:
-    try:
-        import boto3
-        s3_client = boto3.client("s3", region_name=AWS_REGION)
-
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp_file:
-            s3_client.download_fileobj(S3_BUCKET, key, tmp_file)
-            tmp_path = tmp_file.name
-
-        df = pd.read_parquet(tmp_path)
-        os.unlink(tmp_path)
-        return df
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"{label}読み込みエラー: {str(e)}")
-
-
-def _normalize_jquants_master(df: pd.DataFrame) -> pd.DataFrame:
-    """J-Quants masterの実行価格列を既存analysis APIのseg_*へ正規化する。"""
-    out = df.copy()
-    out["analysis_source"] = "grok_master_jquants_segments"
-
-    for col in [
-        "buy_price",
-        "sell_price",
-        "daily_close",
-        "profit_per_100_shares_phase1",
-        "profit_per_100_shares_phase2",
-        "phase1_return",
-        "phase2_return",
-        "phase1_win",
-        "phase2_win",
-        "volume",
-        "Value",
-    ]:
-        if col in out.columns and f"archive_{col}" not in out.columns:
-            out[f"archive_{col}"] = out[col]
-
-    preferred_cols = {
-        "jq_buy_price": "buy_price",
-        "jq_sell_price": "sell_price",
-        "jq_daily_close": "daily_close",
-        "jq_profit_per_100_shares_phase1": "profit_per_100_shares_phase1",
-        "jq_profit_per_100_shares_phase2": "profit_per_100_shares_phase2",
-        "jq_phase1_return": "phase1_return",
-        "jq_phase2_return": "phase2_return",
-        "jq_phase1_win": "phase1_win",
-        "jq_phase2_win": "phase2_win",
-        "jq_total_volume": "volume",
-        "jq_total_value": "Value",
-    }
-    for source_col, target_col in preferred_cols.items():
-        if source_col in out.columns:
-            out[target_col] = out[source_col]
-
-    for seg in TIME_SEGMENTS_11:
-        seg_col = seg["key"]
-        jq_col = f"jq_{seg_col}"
-        if jq_col not in out.columns:
-            continue
-        if seg_col in out.columns and f"archive_{seg_col}" not in out.columns:
-            out[f"archive_{seg_col}"] = out[seg_col]
-        out[seg_col] = out[jq_col]
-
-    if "jq_close_execution_status" in out.columns:
-        out["close_execution_status"] = out["jq_close_execution_status"]
-
-    out.attrs["analysis_source"] = "grok_master_jquants_segments"
-    out.attrs["price_basis"] = "jquants_minute"
-    total_rows = len(out)
-    out.attrs["jq_buy_price_coverage"] = (
-        round(float(out["jq_buy_price"].notna().mean()), 6) if total_rows and "jq_buy_price" in out.columns else None
-    )
-    out.attrs["jq_seg_1530_coverage"] = (
-        round(float(out["jq_seg_1530"].notna().mean()), 6) if total_rows and "jq_seg_1530" in out.columns else None
-    )
-    if total_rows and "jq_close_execution_status" in out.columns:
-        executable = out["jq_close_execution_status"].eq("executable")
-        out.attrs["close_execution_rate"] = round(float(executable.mean()), 6)
-        out.attrs["close_executable_rows"] = int(executable.sum())
-        out.attrs["close_mark_only_rows"] = int((~executable).sum())
-    return out
+PRICE_RANGE_UNKNOWN_LABEL = "価格不明"
 
 
 def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
-    """分析用データを読み込み。J-Quants masterがあれば優先し、なければarchiveへフォールバック。"""
-    if MASTER_PATH.exists():
-        df = _normalize_jquants_master(pd.read_parquet(MASTER_PATH))
-    else:
-        master_key = "parquet/backtest/grok_master_jquants_segments.parquet"
-        archive_key = "parquet/backtest/grok_trending_archive.parquet"
-        try:
-            df = _normalize_jquants_master(_download_parquet_from_s3(master_key, "master"))
-        except HTTPException:
-            if ARCHIVE_PATH.exists():
-                df = pd.read_parquet(ARCHIVE_PATH)
-            else:
-                df = _download_parquet_from_s3(archive_key, "archive")
-            df["analysis_source"] = "grok_trending_archive"
-            df.attrs["analysis_source"] = "grok_trending_archive"
-            df.attrs["price_basis"] = "archive_seg"
+    """分析用の正規化済みarchiveを読み込む。"""
+    try:
+        df = load_grok_history(
+            ARCHIVE_PATH,
+            s3_bucket=S3_BUCKET,
+            aws_region=AWS_REGION,
+        )
+    except GrokHistoryError as exc:
+        raise HTTPException(status_code=500, detail=f"archive読み込みエラー: {exc}") from exc
 
     # 極端相場除外
     if exclude_extreme:
@@ -215,10 +143,6 @@ def load_archive(exclude_extreme: bool = False) -> pd.DataFrame:
             df = df[df["is_extreme_market"] == False].copy()
         if "backtest_date" in df.columns:
             df = df[~df["backtest_date"].isin(MANUAL_EXCLUDE_DATES)].copy()
-
-    if "analysis_source" in df.columns and df["analysis_source"].notna().any():
-        df.attrs["analysis_source"] = str(df["analysis_source"].dropna().iloc[0])
-        df.attrs["price_basis"] = "jquants_minute" if df.attrs["analysis_source"] == "grok_master_jquants_segments" else "archive_seg"
 
     return df
 
@@ -242,27 +166,41 @@ def generate_price_ranges(price_min: int, price_max: int, price_step: int) -> li
     return ranges
 
 
+def _price_range_labels(price_ranges: list[dict]) -> list[str]:
+    return [pr["label"] for pr in price_ranges] + [PRICE_RANGE_UNKNOWN_LABEL]
+
+
 def _apply_analysis_scope(df: pd.DataFrame, include_legacy: bool = False) -> pd.DataFrame:
     """分析対象期間を適用する。デフォルトは信用区分が揃う2025-12-22以降。"""
     start_date = LEGACY_START_DATE if include_legacy else CREDIT_VERIFIED_START_DATE
     return df[df["date"] >= start_date].copy()
 
 
-def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bool = False) -> dict:
+def _build_data_scope(
+    df_raw: pd.DataFrame,
+    selected_df: pd.DataFrame,
+    include_legacy: bool = False,
+    analysis_df: pd.DataFrame | None = None,
+) -> dict:
     """レスポンスに分析対象スコープを明示する。"""
+    analysis = selected_df if analysis_df is None else analysis_df
     analysis_source = df_raw.attrs.get("analysis_source") or (
         str(df_raw["analysis_source"].dropna().iloc[0]) if "analysis_source" in df_raw.columns and df_raw["analysis_source"].notna().any() else "unknown"
     )
-    price_basis = df_raw.attrs.get("price_basis") or ("jquants_minute" if analysis_source == "grok_master_jquants_segments" else "archive_seg")
+    price_basis = df_raw.attrs.get("price_basis") or "jquants_minute"
     jq_buy_price_coverage = df_raw.attrs.get("jq_buy_price_coverage")
     jq_seg_1530_coverage = df_raw.attrs.get("jq_seg_1530_coverage")
     close_execution_rate = df_raw.attrs.get("close_execution_rate")
     close_executable_rows = df_raw.attrs.get("close_executable_rows")
     close_mark_only_rows = df_raw.attrs.get("close_mark_only_rows")
+    disabled_legacy_intraday_columns = df_raw.attrs.get(
+        "disabled_legacy_intraday_columns",
+        [],
+    )
     close_unknown_rows = None
     close_status_available = False
-    if "close_execution_status" in df.columns:
-        status = df["close_execution_status"]
+    if "close_execution_status" in selected_df.columns:
+        status = selected_df["close_execution_status"]
         executable = status.eq(CLOSE_EXECUTABLE_STATUS)
         mark_only = status.eq(CLOSE_MARK_ONLY_STATUS)
         known_count = int((executable | mark_only).sum())
@@ -289,9 +227,15 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
         "creditVerifiedStartDate": CREDIT_VERIFIED_START_DATE.strftime("%Y-%m-%d"),
         "includeLegacy": include_legacy,
         "excludedLegacyRows": 0 if include_legacy else int(legacy_mask.sum()),
-        "rows": int(len(df)),
+        "rows": int(len(analysis)),
+        "selectedRows": int(len(selected_df)),
+        "executableRows": int(len(analysis)) if close_status_available else None,
+        "excludedNonExecutableRows": int(len(selected_df) - len(analysis)) if close_status_available else None,
+        "analysisUniverse": "close_executable" if close_status_available else "execution_status_unavailable",
         "analysisSource": analysis_source,
         "priceBasis": price_basis,
+        "priceRangeBasis": "prev_close",
+        "probSource": "archive_hybrid_ml_prob_then_live",
         "jqBuyPriceCoverage": jq_buy_price_coverage,
         "jqSeg1530Coverage": jq_seg_1530_coverage,
         "closeExecutionStatusAvailable": close_status_available,
@@ -299,15 +243,23 @@ def _build_data_scope(df_raw: pd.DataFrame, df: pd.DataFrame, include_legacy: bo
         "closeExecutableRows": close_executable_rows,
         "closeMarkOnlyRows": close_mark_only_rows,
         "closeUnknownRows": close_unknown_rows,
+        "disabledLegacyIntradayColumns": disabled_legacy_intraday_columns,
     }
+
+
+def _filter_executable_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """往復可否がある場合は、実際に入口と出口を持つ行だけを分析対象にする。"""
+    if "close_execution_status" not in df.columns:
+        return df.copy()
+    return df[df["close_execution_status"].eq(CLOSE_EXECUTABLE_STATUS)].copy()
 
 
 def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short", include_legacy: bool = False) -> pd.DataFrame:
     """データ前処理
 
     direction: "short" or "long"
-    - short: 制度+いちにち残あり、符号反転
-    - long: 制度+いちにち全部、符号そのまま
+    - short: 制度+いちにち残あり、archiveのSHORT損益をそのまま使用
+    - long: 制度+いちにち全部、archiveのSHORT損益を反転
     """
     # フィルタ: buy_priceがあるもののみ
     df = df[df["buy_price"].notna()].copy()
@@ -351,16 +303,22 @@ def prepare_data(df: pd.DataFrame, price_ranges: list, direction: str = "short",
         df["ml_prob_live"] = np.nan
     df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
     df["bucket"] = df["ml_prob_effective"].apply(assign_bucket)
-    df["prob_bin"] = pd.cut(df["ml_prob_effective"], bins=PROB_BIN_EDGES, labels=PROB_BIN_LABELS, right=True, include_lowest=True)
+    df["prob_bin"] = df["ml_prob_effective"].apply(assign_prob_bin)
 
-    # 価格帯
+    # 寄前に利用可能な前日終値で価格帯を決める。
     def get_price_range(price):
+        if pd.isna(price):
+            return PRICE_RANGE_UNKNOWN_LABEL
         for pr in price_ranges:
             if pr["min"] <= price < pr["max"]:
                 return pr["label"]
-        return price_ranges[-1]["label"] if price_ranges else ""
+        return PRICE_RANGE_UNKNOWN_LABEL
 
-    df["price_range"] = df["buy_price"].apply(get_price_range)
+    prev_close = pd.to_numeric(
+        df.get("prev_close", pd.Series(np.nan, index=df.index)),
+        errors="coerce",
+    )
+    df["price_range"] = prev_close.apply(get_price_range)
 
     # archiveはSHORTベース: SHORT=そのまま、LONG=反転
     if direction == "long":
@@ -541,10 +499,10 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
             "priceRanges": [],
         }
 
-        for pr in price_ranges:
-            pr_df = seido_df[seido_df["price_range"] == pr["label"]]
+        for label in _price_range_labels(price_ranges):
+            pr_df = seido_df[seido_df["price_range"] == label]
             seido_data["priceRanges"].append({
-                "label": pr["label"],
+                "label": label,
                 "count": len(pr_df),
                 "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
                 "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
@@ -564,10 +522,10 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
             "priceRanges": [],
         }
 
-        for pr in price_ranges:
-            pr_df = ichinichi_df[ichinichi_df["price_range"] == pr["label"]]
+        for label in _price_range_labels(price_ranges):
+            pr_df = ichinichi_df[ichinichi_df["price_range"] == label]
             ichinichi_data["priceRanges"].append({
-                "label": pr["label"],
+                "label": label,
                 "count": len(pr_df),
                 "segments11": calc_segment_stats(pr_df, TIME_SEGMENTS_11),
                 "segments4": calc_segment_stats(pr_df, TIME_SEGMENTS_4),
@@ -581,86 +539,6 @@ def calc_weekday_data(df: pd.DataFrame, price_ranges: list) -> list:
             "ichinichi": ichinichi_data,
             "weekday_rule": None,
         })
-
-    return result
-
-
-def calc_strategy_candidates(df: pd.DataFrame) -> list:
-    """曜日×信用区分×prob 0.1区間の戦略候補を4segで集計する。"""
-    result = []
-    work = df.copy()
-    if "ml_prob" not in work.columns:
-        work["ml_prob"] = np.nan
-    if "ml_prob_live" not in work.columns:
-        work["ml_prob_live"] = np.nan
-    work["ml_prob_effective"] = work["ml_prob"].combine_first(work["ml_prob_live"])
-    work = work[work["ml_prob_effective"].notna()].copy()
-    work["prob_bin"] = pd.cut(work["ml_prob_effective"], bins=PROB_BIN_EDGES, labels=PROB_BIN_LABELS, right=True, include_lowest=True)
-
-    margin_groups = [
-        ("seido", "制度信用", work[work["margin_type"] == "制度信用"]),
-        ("ichinichi_ex0", "いちにち除0", work[(work["margin_type"] == "いちにち信用") & (work["is_ex0"] == True)]),
-    ]
-
-    for wd in range(5):
-        for margin_key, margin_label, margin_df in margin_groups:
-            wd_df = margin_df[margin_df["weekday"] == wd]
-            for prob_bin in PROB_BIN_LABELS:
-                sub = wd_df[wd_df["prob_bin"] == prob_bin] if "prob_bin" in wd_df.columns else pd.DataFrame()
-                segs = calc_segment_stats(sub, TIME_SEGMENTS_4)
-                segment_rows = []
-                for seg in TIME_SEGMENTS_4:
-                    stats = segs.get(seg["key"], {})
-                    segment_rows.append({
-                        "key": seg["key"],
-                        "label": seg["label"],
-                        "time": seg["time"],
-                        "profit": stats.get("profit", 0),
-                        "winRate": stats.get("winRate"),
-                        "count": stats.get("count", 0),
-                        "mean": stats.get("mean"),
-                        "pf": stats.get("pf"),
-                    })
-
-                valid_segments = [s for s in segment_rows if s["pf"] is not None]
-                best = max(valid_segments, key=lambda s: (s["pf"], s["profit"])) if valid_segments else None
-                close = next((s for s in segment_rows if s["key"] == "seg_1530"), None)
-                best_pf = best["pf"] if best else None
-                close_pf = close["pf"] if close else None
-                total = best["profit"] if best else 0
-                pf_delta = best_pf - close_pf if best_pf is not None and close_pf is not None else None
-
-                if best_pf is not None and best_pf >= 1.5 and close_pf is not None and close_pf >= 1.0 and total > 0 and best["key"] == "seg_1530":
-                    decision = "GO"
-                    reason = "大引けでも期待値あり"
-                elif best_pf is not None and best_pf >= 1.2 and total > 0:
-                    decision = "CONDITIONAL"
-                    if close_pf is not None and close_pf < 1.0:
-                        reason = "大引けPF<1"
-                    elif pf_delta is not None and pf_delta >= 0.3:
-                        reason = f"PF差 +{pf_delta:.2f}"
-                    else:
-                        reason = "条件確認"
-                else:
-                    decision = "SKIP"
-                    reason = "期待値不足"
-
-                result.append({
-                    "weekday": WEEKDAY_NAMES[wd],
-                    "weekdayIndex": wd,
-                    "marginKey": margin_key,
-                    "marginLabel": margin_label,
-                    "bucket": prob_bin,
-                    "bucketDecision": PROB_BIN_DECISIONS.get(prob_bin),
-                    "probMode": "bin",
-                    "count": int(len(sub)),
-                    "decision": decision,
-                    "reason": reason,
-                    "bestSegment": best,
-                    "closeSegment": close,
-                    "pfDelta": round(float(pf_delta), 2) if pf_delta is not None else None,
-                    "segments": segment_rows,
-                })
 
     return result
 
@@ -708,13 +586,21 @@ async def get_custom_summary(
 
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:
-        df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
+        prev_close = pd.to_numeric(df_raw["prev_close"], errors="coerce")
+        df_raw = df_raw[(prev_close >= price_min) & (prev_close < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges, direction=direction, include_legacy=include_legacy)
+    selected_df = prepare_data(
+        df_raw.copy(),
+        price_ranges,
+        direction=direction,
+        include_legacy=include_legacy,
+    )
 
     # prob_regimeフィルター
-    if bucket_filter and "bucket" in df.columns:
-        df = df[df["bucket"].isin(bucket_filter)].copy()
+    if bucket_filter and "bucket" in selected_df.columns:
+        selected_df = selected_df[selected_df["bucket"].isin(bucket_filter)].copy()
+
+    df = _filter_executable_rows(selected_df)
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -732,7 +618,10 @@ async def get_custom_summary(
 
     # 曜日別
     weekdays = calc_weekday_data(df, price_ranges)
-    strategy_candidates = calc_strategy_candidates(df)
+    # The exact weekday/credit/prob cells failed the fixed OOS rule.  Keep
+    # their underlying tables available, but do not emit retrospective
+    # GO/SKIP instructions.
+    strategy_candidates: list[dict] = []
 
     # 期間
     date_range = {
@@ -742,7 +631,7 @@ async def get_custom_summary(
     }
 
     # 価格帯ラベルリスト
-    price_range_labels = [pr["label"] for pr in price_ranges]
+    price_range_labels = _price_range_labels(price_ranges)
 
     # prob_regime情報。JSON互換のためbucketInfoキーは残す。
     available_buckets = sorted(df["bucket"].dropna().unique().tolist()) if "bucket" in df.columns else []
@@ -752,12 +641,21 @@ async def get_custom_summary(
         "timeSegments11": TIME_SEGMENTS_11,
         "timeSegments4": TIME_SEGMENTS_4,
         "priceRanges": price_range_labels,
-        "priceRangeDetails": price_ranges,
+        "priceRangeDetails": [
+            *price_ranges,
+            {"label": PRICE_RANGE_UNKNOWN_LABEL, "min": None, "max": None},
+        ],
         "dateRange": date_range,
-        "dataScope": _build_data_scope(df_raw, df, include_legacy=include_legacy),
+        "dataScope": _build_data_scope(
+            df_raw,
+            selected_df,
+            include_legacy=include_legacy,
+            analysis_df=df,
+        ),
         "overall": overall,
         "weekdays": weekdays,
         "strategyCandidates": strategy_candidates,
+        "strategyCandidatesMode": "disabled_failed_oos",
         "excludeExtreme": exclude_extreme,
         "direction": direction,
         "filters": {
@@ -879,10 +777,17 @@ def _load_analysis_base(exclude_extreme: bool = False, direction: str = "short",
         df["ml_prob_live"] = np.nan
     df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
     df["bucket"] = df["ml_prob_effective"].apply(assign_bucket)
-    df["prob_bin"] = pd.cut(df["ml_prob_effective"], bins=PROB_BIN_EDGES, labels=PROB_BIN_LABELS, right=True, include_lowest=True)
+    df["prob_bin"] = df["ml_prob_effective"].apply(assign_prob_bin)
 
-    df.attrs["data_scope"] = _build_data_scope(df_raw, df, include_legacy=include_legacy)
-    return df
+    selected_df = df
+    analysis_df = _filter_executable_rows(selected_df)
+    analysis_df.attrs["data_scope"] = _build_data_scope(
+        df_raw,
+        selected_df,
+        include_legacy=include_legacy,
+        analysis_df=analysis_df,
+    )
+    return analysis_df
 
 
 def _calc_bucket_pf_core(vals: pd.Series) -> dict:
@@ -906,7 +811,7 @@ def _calc_bucket_pf(sub: pd.DataFrame, bucket: str, seg_col: str = "seg_1530", d
         vals = pd.Series(dtype=float)
     else:
         # _load_analysis_baseでは符号未処理なので、ここで方向を処理する。
-        sign = -1 if direction == "short" else 1
+        sign = _direction_multiplier(direction)
         vals = pd.to_numeric(sub[seg_col], errors="coerce").dropna() * sign
     return _attach_executable_metrics(
         _calc_bucket_pf_core(vals),
@@ -937,8 +842,8 @@ def _max_drawdown(pnl: pd.Series) -> float | None:
     vals = pnl.dropna().astype(float)
     if vals.empty:
         return None
-    curve = vals.cumsum()
-    return round(float((curve - curve.cummax()).min()), 2)
+    curve = np.concatenate(([0.0], vals.cumsum().to_numpy()))
+    return round(float((curve - np.maximum.accumulate(curve)).min()), 2)
 
 
 def _cvar05(pnl: pd.Series) -> float | None:
@@ -1213,13 +1118,14 @@ async def get_prob_bin_pf(
     df = df[df[prob_col].notna()].copy()
 
     if price_min > 0 or price_max < 999999:
-        df = df[(df["buy_price"] >= price_min) & (df["buy_price"] < price_max)]
+        prev_close = pd.to_numeric(df["prev_close"], errors="coerce")
+        df = df[(prev_close >= price_min) & (prev_close < price_max)]
     if margin_type == "制度":
         df = df[df["margin_type"] == "制度信用"]
     elif margin_type == "いちにち":
         df = df[(df["margin_type"] == "いちにち信用") & (df["is_ex0"] == True)]
 
-    df["prob_bin"] = pd.cut(df[prob_col], bins=PROB_BIN_EDGES, labels=PROB_BIN_LABELS, right=True, include_lowest=True)
+    df["prob_bin"] = df[prob_col].apply(assign_prob_bin)
 
     if view == "weekly":
         df["group_key"] = df["date"].apply(lambda d: f"{d.isocalendar().year}/W{d.isocalendar().week:02d}")
@@ -1232,8 +1138,8 @@ async def get_prob_bin_pf(
 
     group_keys = WEEKDAY_NAMES if view == "weekday" else sorted(df["group_key"].unique(), reverse=True)
     seg_col = "seg_1530"
-    # archiveはSHORTベース（prepare_data L183参照）: そのまま使用
-    sign = 1
+    # archiveはSHORTベース（prepare_data参照）: そのまま使用
+    sign = _direction_multiplier("short")
 
     results = []
     for gk in group_keys:
@@ -1324,13 +1230,21 @@ async def get_custom_details(
 
     # 価格フィルタ
     if price_min > 0 or price_max < 999999:
-        df_raw = df_raw[(df_raw["buy_price"] >= price_min) & (df_raw["buy_price"] < price_max)]
+        prev_close = pd.to_numeric(df_raw["prev_close"], errors="coerce")
+        df_raw = df_raw[(prev_close >= price_min) & (prev_close < price_max)]
 
-    df = prepare_data(df_raw.copy(), price_ranges, direction=direction, include_legacy=include_legacy)
+    selected_df = prepare_data(
+        df_raw.copy(),
+        price_ranges,
+        direction=direction,
+        include_legacy=include_legacy,
+    )
 
     # 閾値区分フィルター
-    if bucket_filter and "bucket" in df.columns:
-        df = df[df["bucket"].isin(bucket_filter)].copy()
+    if bucket_filter and "bucket" in selected_df.columns:
+        selected_df = selected_df[selected_df["bucket"].isin(bucket_filter)].copy()
+
+    df = _filter_executable_rows(selected_df)
 
     if len(df) == 0:
         raise HTTPException(status_code=404, detail="分析対象データがありません")
@@ -1341,7 +1255,12 @@ async def get_custom_details(
         "view": view,
         "excludeExtreme": exclude_extreme,
         "direction": direction,
-        "dataScope": _build_data_scope(df_raw, df, include_legacy=include_legacy),
+        "dataScope": _build_data_scope(
+            df_raw,
+            selected_df,
+            include_legacy=include_legacy,
+            analysis_df=df,
+        ),
         "timeSegments": TIME_SEGMENTS_11,
         "results": details,
     })
@@ -1382,18 +1301,14 @@ async def get_weekday_risk_matrix(
         if "ml_prob_live" not in df.columns:
             df["ml_prob_live"] = np.nan
         df["ml_prob_effective"] = df["ml_prob"].combine_first(df["ml_prob_live"])
-        df = df[df["ml_prob_effective"].notna()].copy()
-        df["prob_bin"] = pd.cut(df["ml_prob_effective"], bins=PROB_BIN_EDGES, labels=PROB_BIN_LABELS, right=True, include_lowest=True)
+        df["prob_bin"] = df["ml_prob_effective"].apply(assign_prob_bin)
         prob_groups = [{"key": "all", "label": "全体", "filter": lambda d: d}]
         prob_groups += [
             {"key": label, "label": label, "decision": PROB_BIN_DECISIONS.get(label), "filter": lambda d, label=label: d[d["prob_bin"] == label]}
             for label in PROB_BIN_LABELS
         ]
     else:
-        if "ml_prob" in df.columns:
-            df["prob_group"] = df["ml_prob"].apply(_assign_prob_group)
-        else:
-            df["prob_group"] = None
+        df["prob_group"] = df["ml_prob_effective"].apply(_assign_prob_group)
         prob_groups = [
             {"key": "all", "label": "全体", "filter": lambda d: d},
             {"key": "low", "label": "LOW_PROB_HEAT", "filter": lambda d: d[d["prob_group"] == "LOW_PROB_HEAT"]},
@@ -1498,7 +1413,7 @@ async def get_weekday_panels(
 
     df = _load_analysis_base(exclude_extreme, direction=direction, include_legacy=include_legacy)
     df = df[df["date"].dt.weekday == weekday]
-    sign = -1 if direction == "short" else 1
+    sign = _direction_multiplier(direction)
 
     result = {}
 
@@ -1546,22 +1461,25 @@ async def get_weekday_panels(
 
     # --- #4 エクスカーション ---
     excursion = {}
-    exc_cols = {
-        "morning_max_gain_pct": "前場最大含み益%",
-        "morning_max_drawdown_pct": "前場最大含み損%",
-        "daily_max_gain_pct": "日中最大含み益%",
-        "daily_max_drawdown_pct": "日中最大含み損%",
-    }
+    price_return_sign = -_direction_multiplier(direction)
+    if direction == "short":
+        exc_cols = {
+            "morning_max_drawdown_pct": "前場最大含み益%",
+            "morning_max_gain_pct": "前場最大含み損%",
+            "daily_max_drawdown_pct": "日中最大含み益%",
+            "daily_max_gain_pct": "日中最大含み損%",
+        }
+    else:
+        exc_cols = {
+            "morning_max_gain_pct": "前場最大含み益%",
+            "morning_max_drawdown_pct": "前場最大含み損%",
+            "daily_max_gain_pct": "日中最大含み益%",
+            "daily_max_drawdown_pct": "日中最大含み損%",
+        }
     for col, label in exc_cols.items():
         if col not in df.columns:
             continue
-        vals = df[col].dropna()
-        # ショート方向の場合、gain/drawdownの符号を反転
-        if direction == "short":
-            if "gain" in col:
-                vals = -vals  # ショートでの含み益=株価下落
-            elif "drawdown" in col:
-                vals = -vals  # ショートでの含み損=株価上昇
+        vals = df[col].dropna() * price_return_sign
         if len(vals) == 0:
             excursion[col] = {"label": label, "n": 0, "p10": None, "p25": None, "p50": None, "p75": None, "p90": None}
             continue
@@ -1606,6 +1524,7 @@ async def get_weekday_panels(
 
     # --- #6 朝利確 vs 引けホールド ---
     hold_vs_exit = {}
+    timing_metric_count = 0
     seg_pairs = [
         ("profit_per_100_shares_morning_early", "前場早期利確"),
         ("profit_per_100_shares_afternoon_early", "後場早期利確"),
@@ -1626,20 +1545,34 @@ async def get_weekday_panels(
             "pf": round(float(wins / losses), 2) if losses > 0 else None,
             "win_rate": round(float((vals > 0).mean() * 100), 1) if n > 0 else None,
         }
-    # 吐き出し率: 引け決済 vs 前場最高値からの差
-    if "daily_max_gain_pct" in df.columns and "seg_1530" in df.columns:
-        valid_exc = df.dropna(subset=["daily_max_gain_pct", "seg_1530"])
+        timing_metric_count += 1
+    # 吐き出し率: 最大含み益から引け決済までの減少率
+    favorable_excursion_col = (
+        "daily_max_drawdown_pct"
+        if direction == "short"
+        else "daily_max_gain_pct"
+    )
+    if favorable_excursion_col in df.columns and "seg_1530" in df.columns:
+        valid_exc = df.dropna(
+            subset=[favorable_excursion_col, "seg_1530", "buy_price"]
+        )
         if len(valid_exc) > 0:
-            max_gain = valid_exc["daily_max_gain_pct"].abs()
             final_pnl = (valid_exc["seg_1530"] * sign)
             # 利益のある銘柄のうち、最大含み益から引けまでに何%吐き出したか
             profitable = valid_exc[final_pnl > 0]
             if len(profitable) > 0:
-                max_g = profitable["daily_max_gain_pct"].abs()
+                max_g = profitable[favorable_excursion_col].abs()
                 final_r = (profitable["seg_1530"] * sign) / (profitable["buy_price"] * 100) * 100
-                giveback_pct = float(((max_g - final_r.abs()) / max_g).clip(0, 1).mean() * 100)
-                hold_vs_exit["giveback_pct"] = round(giveback_pct, 1)
-    result["hold_vs_exit"] = hold_vs_exit
+                nonzero = max_g > 0
+                if nonzero.any():
+                    giveback_pct = float(
+                        ((max_g[nonzero] - final_r[nonzero]) / max_g[nonzero])
+                        .clip(0, 1)
+                        .mean()
+                        * 100
+                    )
+                    hold_vs_exit["giveback_pct"] = round(giveback_pct, 1)
+    result["hold_vs_exit"] = hold_vs_exit if timing_metric_count >= 2 else {}
 
     result["weekday"] = weekday
     result["direction"] = direction
