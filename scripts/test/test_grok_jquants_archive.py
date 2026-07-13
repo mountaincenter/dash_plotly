@@ -244,6 +244,7 @@ class FakeS3:
         self.manifest = json.dumps(manifest).encode()
         self.manifest_etag = self._etag(self.manifest)
         self.manifest_version = "m1"
+        self.get_requests: list[tuple[str, dict]] = []
 
     @staticmethod
     def _etag(payload: bytes) -> str:
@@ -264,6 +265,12 @@ class FakeS3:
         }
 
     def get_object(self, Bucket: str, Key: str, **kwargs):
+        self.get_requests.append((Key, dict(kwargs)))
+        if "VersionId" in kwargs:
+            raise PermissionError("s3:GetObjectVersion is not available")
+        expected_etag = self.etag if Key == self.archive_key else self.manifest_etag
+        if kwargs.get("IfMatch") != expected_etag:
+            raise RuntimeError("object precondition failed")
         payload = self.archive if Key == self.archive_key else self.manifest
         return {"Body": io.BytesIO(payload)}
 
@@ -343,6 +350,25 @@ class ProtectedArchiveS3Tests(unittest.TestCase):
                 "backtest/grok_trending_archive.parquet"
             ]
             self.assertEqual(entry["sha256"], state["sha256"])
+
+    def test_download_uses_etag_without_version_read_permission(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "source.parquet"
+            source = download_verified_archive(
+                self.cfg, source_path, client=self.client
+            )
+
+        self.assertEqual(source["version_id"], "v1")
+        self.assertEqual(
+            self.client.get_requests,
+            [
+                (self.client.archive_key, {"IfMatch": self.client.etag}),
+                (
+                    self.client.manifest_key,
+                    {"IfMatch": self.client.manifest_etag},
+                ),
+            ],
+        )
 
     def test_stale_source_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

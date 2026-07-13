@@ -45,6 +45,25 @@ def _require_client(cfg: S3Config, client: Any | None) -> Any:
     return resolved
 
 
+def _get_current_object_if_match(
+    s3: Any,
+    *,
+    bucket: str,
+    key: str,
+    etag: str | None,
+    label: str,
+) -> Any:
+    """Read the current object only when it still matches the preceding HEAD."""
+    if not etag:
+        raise ProtectedArchiveError(f"S3 {label} head has no ETag")
+    try:
+        return s3.get_object(Bucket=bucket, Key=key, IfMatch=etag)
+    except Exception as error:
+        raise ProtectedArchiveError(
+            f"S3 {label} changed after HEAD; conditional download refused: {error}"
+        ) from error
+
+
 def read_remote_manifest(
     cfg: S3Config,
     *,
@@ -63,10 +82,14 @@ def read_remote_manifest_snapshot(
     s3 = _require_client(cfg, client)
     key = _s3_key(cfg, MANIFEST_NAME)
     head = s3.head_object(Bucket=cfg.bucket, Key=key)
-    get_args: dict[str, Any] = {"Bucket": cfg.bucket, "Key": key}
-    if head.get("VersionId"):
-        get_args["VersionId"] = head["VersionId"]
-    response = s3.get_object(**get_args)
+    etag = head.get("ETag")
+    response = _get_current_object_if_match(
+        s3,
+        bucket=cfg.bucket,
+        key=key,
+        etag=etag,
+        label="manifest",
+    )
     try:
         payload = response["Body"].read()
         manifest = json.loads(payload.decode("utf-8"))
@@ -77,7 +100,7 @@ def read_remote_manifest_snapshot(
     return {
         "manifest": manifest,
         "key": key,
-        "etag": head.get("ETag"),
+        "etag": etag,
         "version_id": head.get("VersionId"),
     }
 
@@ -88,7 +111,7 @@ def download_verified_archive(
     *,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    """Download an exact S3 version after validating its protected manifest entry."""
+    """Conditionally download the current archive and validate its manifest entry."""
     s3 = _require_client(cfg, client)
     archive_key = _s3_key(cfg, ARCHIVE_NAME)
     head = s3.head_object(Bucket=cfg.bucket, Key=archive_key)
@@ -97,10 +120,13 @@ def download_verified_archive(
     if not etag:
         raise ProtectedArchiveError("S3 archive head has no ETag")
 
-    get_args: dict[str, Any] = {"Bucket": cfg.bucket, "Key": archive_key}
-    if version_id:
-        get_args["VersionId"] = version_id
-    response = s3.get_object(**get_args)
+    response = _get_current_object_if_match(
+        s3,
+        bucket=cfg.bucket,
+        key=archive_key,
+        etag=etag,
+        label="archive",
+    )
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("wb") as handle:
         body = response["Body"]
