@@ -307,6 +307,49 @@ def calculate_segment_pnl(bars: pd.DataFrame, entry_price: float) -> dict[str, A
     return segments
 
 
+def _assert_frame_content_equal(
+    expected: pd.DataFrame,
+    actual: pd.DataFrame,
+) -> None:
+    """Compare exact content while treating all missing sentinels as equivalent."""
+    if expected.shape != actual.shape:
+        raise AssertionError(
+            f"DataFrame shape mismatch: {expected.shape} != {actual.shape}"
+        )
+    if not expected.columns.equals(actual.columns):
+        raise AssertionError(
+            f"DataFrame columns mismatch: {list(expected.columns)} != "
+            f"{list(actual.columns)}"
+        )
+
+    for column in expected.columns:
+        expected_values = expected[column].reset_index(drop=True)
+        actual_values = actual[column].reset_index(drop=True)
+        expected_missing = expected_values.isna().to_numpy(dtype=bool)
+        actual_missing = actual_values.isna().to_numpy(dtype=bool)
+        if not np.array_equal(expected_missing, actual_missing):
+            changed_rows = np.flatnonzero(expected_missing != actual_missing)[:10]
+            raise AssertionError(
+                f"Column {column!r} missing-value positions changed at rows "
+                f"{changed_rows.tolist()}"
+            )
+
+        present_rows = np.flatnonzero(~expected_missing)
+        try:
+            pd.testing.assert_series_equal(
+                expected_values.iloc[present_rows].reset_index(drop=True),
+                actual_values.iloc[present_rows].reset_index(drop=True),
+                check_dtype=False,
+                check_exact=True,
+                check_categorical=False,
+                check_names=False,
+            )
+        except AssertionError as error:
+            raise AssertionError(
+                f"Column {column!r} non-missing values changed: {error}"
+            ) from error
+
+
 def merge_archive_date(
     archive: pd.DataFrame,
     new_rows: pd.DataFrame,
@@ -371,11 +414,9 @@ def merge_archive_date(
         raise JQuantsBacktestDataError("Merged archive contains duplicate ticker-date keys")
 
     if not unchanged.empty:
-        pd.testing.assert_frame_equal(
+        _assert_frame_content_equal(
             unchanged,
             merged.iloc[: len(unchanged)][unchanged.columns].reset_index(drop=True),
-            check_dtype=False,
-            check_exact=True,
         )
     return merged
 
@@ -397,12 +438,9 @@ def assert_archive_history_unchanged(
         drop=True
     )
     try:
-        pd.testing.assert_frame_equal(
+        _assert_frame_content_equal(
             historical,
             candidate_history,
-            check_dtype=False,
-            check_exact=True,
-            check_categorical=False,
         )
     except AssertionError as error:
         raise JQuantsBacktestDataError(
@@ -426,12 +464,9 @@ def assert_archive_target_rows_preserved(
         candidate_dates.dt.strftime("%Y-%m-%d").eq(target), expected.columns
     ].reset_index(drop=True)
     try:
-        pd.testing.assert_frame_equal(
+        _assert_frame_content_equal(
             expected,
             actual,
-            check_dtype=False,
-            check_exact=True,
-            check_categorical=False,
         )
     except AssertionError as error:
         raise JQuantsBacktestDataError(

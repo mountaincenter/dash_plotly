@@ -219,6 +219,38 @@ class JQuantsExecutionTests(unittest.TestCase):
         with self.assertRaises(JQuantsBacktestDataError):
             merge_archive_date(archive, new.assign(backtest_date="2026-07-09"), "2026-07-09")
 
+    def test_archive_guards_allow_only_missing_sentinel_round_trip(self) -> None:
+        source = pd.DataFrame(
+            {
+                "backtest_date": ["2026-07-09", "2026-07-10"],
+                "ticker": ["1111.T", "2222.T"],
+                "phase1_win": pd.Series([pd.NA, True], dtype="boolean"),
+            }
+        )
+        candidate = source.copy()
+        candidate["phase1_win"] = candidate["phase1_win"].astype(object)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "candidate.parquet"
+            candidate.to_parquet(path, index=False)
+            reloaded = pd.read_parquet(path)
+
+        self.assertIsNone(reloaded.loc[0, "phase1_win"])
+        assert_archive_history_unchanged(source, reloaded, "2026-07-11")
+        assert_archive_target_rows_preserved(
+            source.iloc[[0]].reset_index(drop=True), reloaded, "2026-07-09"
+        )
+
+        changed_missing = reloaded.copy()
+        changed_missing.loc[0, "phase1_win"] = False
+        with self.assertRaises(JQuantsBacktestDataError):
+            assert_archive_history_unchanged(source, changed_missing, "2026-07-11")
+
+        changed_value = reloaded.copy()
+        changed_value.loc[1, "phase1_win"] = False
+        with self.assertRaises(JQuantsBacktestDataError):
+            assert_archive_history_unchanged(source, changed_value, "2026-07-11")
+
 
 class FakeS3:
     def __init__(self, archive_key: str, archive: bytes, manifest_key: str) -> None:
