@@ -379,24 +379,9 @@ jobs:
             fi
           fi
 
-          # 9. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
-          JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
-          JSF_PATH="data/parquet/jsf_seigenichiran.csv"
-          echo "📥 Downloading JSF restrictions from $JSF_URL..."
-          if curl -fsSL --connect-timeout 10 --max-time 30 "$JSF_URL" -o "$JSF_PATH" 2>/dev/null; then
-            # Shift-JIS → UTF-8 変換
-            if command -v iconv &> /dev/null; then
-              iconv -f SHIFT-JIS -t UTF-8 "$JSF_PATH" > "${JSF_PATH}.tmp" && mv "${JSF_PATH}.tmp" "$JSF_PATH"
-            fi
-            echo "✅ JSF restrictions downloaded from 日証金 (latest)"
-          else
-            echo "⚠️ Failed to download from 日証金, using S3 fallback..."
-            if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jsf_seigenichiran.csv" "$JSF_PATH" --only-show-errors; then
-              echo "❌ ERROR: Failed to download jsf_seigenichiran.csv from S3 fallback"
-              exit 1
-            fi
-            echo "✅ JSF restrictions downloaded from S3 (fallback)"
-          fi
+          # 旧parserとの互換用。現行の定期実行では日証金データを判定に使用しない。
+          printf '\n\n\n\n銘柄コード,銘柄名,実施措置,実施内容,通知日・実施日\n' > data/parquet/jsf_seigenichiran.csv
+          echo "✅ JSF compatibility file created (restrictions not used)"
 
           # Run the NEW pipeline (scalping skip + Grok)
           # Old pipeline (with scalping): python scripts/run_pipeline.py
@@ -858,24 +843,9 @@ jobs:
             echo "⚠️ futures_prices_max_1d.parquet not found on S3"
           fi
 
-          # 8. jsf_seigenichiran.csv（日証金サイト→S3フォールバック）
-          JSF_URL="https://www.taisyaku.jp/data/seigenichiran.csv"
-          JSF_PATH="data/parquet/jsf_seigenichiran.csv"
-          echo "📥 Downloading JSF restrictions from $JSF_URL..."
-          if curl -fsSL --connect-timeout 10 --max-time 30 "$JSF_URL" -o "$JSF_PATH" 2>/dev/null; then
-            # Shift-JIS → UTF-8 変換
-            if command -v iconv &> /dev/null; then
-              iconv -f SHIFT-JIS -t UTF-8 "$JSF_PATH" > "${JSF_PATH}.tmp" && mv "${JSF_PATH}.tmp" "$JSF_PATH"
-            fi
-            echo "✅ JSF restrictions downloaded from 日証金 (latest)"
-          else
-            echo "⚠️ Failed to download from 日証金, using S3 fallback..."
-            if ! aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jsf_seigenichiran.csv" "$JSF_PATH" --only-show-errors; then
-              echo "❌ ERROR: Failed to download jsf_seigenichiran.csv from S3 fallback"
-              exit 1
-            fi
-            echo "✅ JSF restrictions downloaded from S3 (fallback)"
-          fi
+          # 旧parserとの互換用。現行の定期実行では日証金データを判定に使用しない。
+          printf '\n\n\n\n銘柄コード,銘柄名,実施措置,実施内容,通知日・実施日\n' > data/parquet/jsf_seigenichiran.csv
+          echo "✅ JSF compatibility file created (restrictions not used)"
 
           # バックテストを実行（S3のGROK選定結果を使用）
           echo "Running backtest from S3 grok_trending.parquet..."
