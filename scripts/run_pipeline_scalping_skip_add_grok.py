@@ -55,15 +55,24 @@ class PipelineRunner:
                 # ("pipeline.generate_trading_recommendation_v2_0_3", "売買判断生成（Improvement v2.0.3）"),
             ])
 
+        self.steps.append(
+            ("pipeline.generate_trading_value_top100", "売買代金Top100生成/補完（J-Quants eq daily）")
+        )
+
+        # 16:45のMarket Flow必須経路。既存戦略より先に当日分を確定する。
+        if skip_grok:
+            self.steps.extend([
+                ("pipeline.create_semicon_watch_universe", "半導体/AI/DC監視universe生成"),
+                ("pipeline.fetch_market_flow_minute_jquants", "Market Flow用J-Quants分足取得（半導体universe）"),
+                ("pipeline.generate_market_flow_200a_forward", "200A Market Flow forward shadow/P3ゲート更新"),
+                ("pipeline.publish_market_flow_checkpoint", "Market Flow検証・限定S3公開"),
+            ])
+
         # prices_topix更新（16:45のみ: シグナル生成が当日終値を使うため先に実行）
         if skip_grok:
             self.steps.append(
                 ("pipeline.update_granville_prices", "グランビルTOPIX価格更新")
             )
-
-        self.steps.append(
-            ("pipeline.generate_trading_value_top100", "売買代金Top100生成/補完（J-Quants eq daily）")
-        )
 
         # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
         self.steps.extend([
@@ -77,8 +86,11 @@ class PipelineRunner:
         ])
 
         # 共通ステップ
+        if not skip_grok:
+            self.steps.append(
+                ("pipeline.create_semicon_watch_universe", "半導体/AI/DC監視universe生成")
+            )
         self.steps.extend([
-            ("pipeline.create_semicon_watch_universe", "半導体/AI/DC監視universe生成"),
             ("pipeline.create_all_stocks", "銘柄統合（Grok + TOP100 + SEMICON）"),
             ("pipeline.create_watch_minute_universe", "分足取得universe生成（Grok + TOP100 + SEMICON）"),
             ("pipeline.fetch_watch_minute_jquants", "J-Quants分足取得（watch universe / cache skip）"),

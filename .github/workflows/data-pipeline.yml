@@ -42,8 +42,11 @@ jobs:
     environment: AWS_OIDC
 
     env:
+      APP_ENV: production
+      STORAGE_MODE: s3
       AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
       S3_BUCKET: ${{ vars.DATA_BUCKET || vars.S3_BUCKET }}
+      PARQUET_PREFIX: ${{ vars.PARQUET_PREFIX || 'parquet/' }}
       S3_PREFIX: ${{ vars.PARQUET_PREFIX || 'parquet/' }}
 
     steps:

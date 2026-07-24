@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -35,10 +36,15 @@ UPLOAD_FILES = [
     "margin_code_master.parquet",  # 取引制限マスタ（信用取引制限コード）
     "all_stocks.parquet",
     "trading_value_top100.parquet",  # J-Quants日足売買代金Top100
+    "trading_value_top_history.parquet",  # J-Quants日足売買代金Top150履歴
+    "market_basket_turnover.parquet",  # N225/TOPIX basket turnover series
     "semicon_watch_universe.parquet",  # 半導体/AI/DC静的監視 universe
     "watch_minute_universe.parquet",  # grok + top100 + semicon の分足取得 universe
     "jquants_minute_watch.parquet",  # watch universe J-Quants分足
     "jquants_minute_watch_features.parquet",  # VWAP等の分足特徴量
+    "market_flow_200a_forward.parquet",  # 200A固定ルールの前向きshadow記録
+    "market_flow_200a_phase_status.json",  # Phase2実績とPhase3昇格ゲート
+    "market_flow_checkpoint_validation.json",  # Market Flow先行公開の検証証跡
     "financials.parquet",  # J-Quants財務データ
     "announcements.parquet",  # J-Quants決算発表日推定
     "grok_trending.parquet",
@@ -108,6 +114,24 @@ ARCHIVE_PUBLISH_STATE_PATH = (
 )
 
 
+def resolve_storage_mode() -> tuple[str, bool]:
+    app_env = (
+        os.getenv("APP_ENV")
+        or os.getenv("ENVIRONMENT")
+        or os.getenv("STAGE")
+        or "local"
+    ).strip().lower()
+    production = app_env in {"production", "prod"}
+    expected = "s3" if production else "local"
+    configured = (os.getenv("STORAGE_MODE") or expected).strip().lower()
+    if configured != expected:
+        raise RuntimeError(
+            f"storage mode mismatch: APP_ENV={app_env} requires STORAGE_MODE={expected}, "
+            f"got {configured}"
+        )
+    return app_env, production
+
+
 def get_file_stats(file_path: Path) -> Dict[str, any]:
     """ファイルの統計情報を取得"""
     if not file_path.exists():
@@ -148,15 +172,17 @@ def get_file_stats(file_path: Path) -> Dict[str, any]:
         }
 
 
-def load_existing_manifest() -> Dict[str, any]:
-    """Load S3 manifest first, with the local copy only as an offline fallback."""
-    try:
-        remote = read_remote_manifest(load_s3_config())
-        print("  [INFO] Existing manifest loaded from S3")
-        return remote
-    except Exception as error:
-        print(f"  [WARN] Existing S3 manifest unavailable: {error}")
-
+def load_existing_manifest(*, use_s3: bool) -> Dict[str, any]:
+    """Load exactly one environment-owned manifest source."""
+    if use_s3:
+        try:
+            remote = read_remote_manifest(load_s3_config())
+            print("  [INFO] Existing manifest loaded from S3")
+            return remote
+        except Exception as error:
+            raise RuntimeError(
+                f"Production S3 manifest unavailable: {error}"
+            ) from error
     if MANIFEST_PATH.exists():
         try:
             local = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -183,6 +209,8 @@ def load_archive_publish_state() -> Dict[str, any] | None:
 def get_protected_file_entry(
     filename: str,
     existing_entry: Dict[str, any] | None = None,
+    *,
+    use_s3: bool,
 ) -> Dict[str, any]:
     """Build or preserve a checksum-pinned canonical manifest entry."""
     file_path = PARQUET_DIR / filename
@@ -235,6 +263,10 @@ def get_protected_file_entry(
     if not state or state.get("sha256") != entry["sha256"]:
         raise RuntimeError(
             "Protected archive checksum changed without a matching guarded publish receipt"
+        )
+    if not use_s3:
+        raise RuntimeError(
+            "Protected archive checksum changed in local mode; S3 verification is disabled"
         )
     verify_publish_state(load_s3_config(), state)
     entry.update(
@@ -315,6 +347,7 @@ def generate_manifest(
     existing_manifest: Dict[str, any] | None = None,
     *,
     preserve_missing: bool = False,
+    use_s3: bool = False,
 ) -> Dict[str, any]:
     """manifest.jsonを生成"""
     print("[INFO] Generating manifest.json...")
@@ -358,7 +391,11 @@ def generate_manifest(
             if isinstance((existing_manifest or {}).get("files", {}), dict)
             else None
         )
-        entry = get_protected_file_entry(filename, existing_entry)
+        entry = get_protected_file_entry(
+            filename,
+            existing_entry,
+            use_s3=use_s3,
+        )
         manifest["files"][filename] = entry
         status = "✓" if entry["exists"] else "✗"
         print(
@@ -591,17 +628,21 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
 
 
 def main(*, manifest_only: bool = False) -> int:
+    app_env, use_s3 = resolve_storage_mode()
     print("=" * 60)
-    print("Update Manifest and Upload to S3")
+    print("Update Manifest and Upload to S3" if use_s3 else "Update Local Manifest")
     print("=" * 60)
+    print(f"Environment: {app_env}")
+    print(f"Storage    : {'s3' if use_s3 else 'local'}")
 
     # [STEP 1] manifest.json生成
     print("\n[STEP 1] Generating manifest.json...")
     try:
-        existing_manifest = load_existing_manifest()
+        existing_manifest = load_existing_manifest(use_s3=use_s3)
         manifest = generate_manifest(
             existing_manifest,
             preserve_missing=manifest_only,
+            use_s3=use_s3,
         )
         save_manifest(manifest)
     except Exception as e:
@@ -610,19 +651,23 @@ def main(*, manifest_only: bool = False) -> int:
 
     # [STEP 2] S3アップロード
     print("\n[STEP 2] Uploading to S3...")
-    try:
-        upload_success = (
-            upload_manifest_only() if manifest_only else upload_files_to_s3()
-        )
-        if not upload_success:
-            print("  ✗ S3 upload failed; manifest was not safely published")
+    if not use_s3:
+        upload_success = True
+        print("  [INFO] Development/local mode: S3 upload skipped")
+    else:
+        try:
+            upload_success = (
+                upload_manifest_only() if manifest_only else upload_files_to_s3()
+            )
+            if not upload_success:
+                print("  ✗ S3 upload failed; manifest was not safely published")
+                return 1
+        except Exception as e:
+            print(f"  ✗ Failed: {e}")
             return 1
-    except Exception as e:
-        print(f"  ✗ Failed: {e}")
-        return 1
 
     # [STEP 3] S3上の不要ファイルを削除（manifest.jsonに記載されたファイルのみ保持）
-    if not manifest_only:
+    if use_s3 and not manifest_only:
         print("\n[STEP 3] Cleaning up old files from S3...")
         try:
             cleanup_s3_old_files(UPLOAD_FILES)
@@ -635,11 +680,13 @@ def main(*, manifest_only: bool = False) -> int:
     print("=" * 60)
     print(f"Manifest generated: {MANIFEST_PATH}")
     print(f"Files in manifest: {len(manifest['files'])}")
-    print(f"S3 upload: {'✓ Success' if upload_success else '⚠ Failed or skipped'}")
+    s3_status = "✓ Success" if use_s3 and upload_success else "skipped (local mode)"
+    print(f"S3 upload: {s3_status}")
     print("=" * 60)
 
     mode = "manifest-only" if manifest_only else "full"
-    print(f"\n✅ Manifest update and S3 upload completed ({mode})!")
+    completion = "Manifest update and S3 upload" if use_s3 else "Local manifest update"
+    print(f"\n✅ {completion} completed ({mode})!")
     return 0
 
 

@@ -29,6 +29,7 @@ from server.routers.dev_calendar import router as dev_calendar_router
 from server.routers.dev_allocation import router as dev_allocation_router
 from server.routers.dev_semicon import router as dev_semicon_router
 from server.routers.dev_hedge import router as dev_hedge_router
+from server.routers.dev_market_flow import router as dev_market_flow_router
 
 import os
 
@@ -122,3 +123,4 @@ app.include_router(dev_calendar_router, tags=["calendar"])
 app.include_router(dev_allocation_router, tags=["allocation"])
 app.include_router(dev_semicon_router, tags=["semicon"])
 app.include_router(dev_hedge_router, tags=["hedge"])
+app.include_router(dev_market_flow_router, tags=["market-flow"])
