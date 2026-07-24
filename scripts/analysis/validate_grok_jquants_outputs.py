@@ -25,6 +25,8 @@ DEFAULT_MASTER = BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquan
 DEFAULT_OUTPUT_JSON = (
     BASE_DIR / "data" / "parquet" / "backtest" / "grok_master_jquants_segments.validation.json"
 )
+NO_MARKET_TRADE_DATA_SOURCE = "jquants_no_market_trade"
+NO_MARKET_TRADE_VALIDATION = "daily_all_null_and_minute_empty"
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,7 +108,12 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     require_columns(master, {"backtest_date", "ticker"}, "master", failures)
     require_columns(
         master,
-        {"jq_buy_price", "jq_seg_1530", "jq_close_execution_status"},
+        {
+            "jq_bar_count",
+            "jq_buy_price",
+            "jq_seg_1530",
+            "jq_close_execution_status",
+        },
         "master",
         failures,
     )
@@ -130,7 +137,65 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     archive_date = pd.to_datetime(archive["backtest_date"], errors="coerce")
     latest_archive_date = archive_date.max().strftime("%Y-%m-%d")
     latest_archive_keys = key_set(archive_keys[archive_keys["date"].eq(latest_archive_date)])
-    latest_minute_keys = minute_set & latest_archive_keys
+
+    archive_no_market_trade = pd.Series(False, index=archive.index)
+    if {
+        "data_source",
+        "close_execution_status",
+        "jquants_price_validation",
+        "jquants_bar_count",
+    }.issubset(archive.columns):
+        archive_no_market_trade = (
+            archive["data_source"].eq(NO_MARKET_TRADE_DATA_SOURCE)
+            & archive["close_execution_status"].eq("no_market_trade")
+            & archive["jquants_price_validation"].eq(
+                NO_MARKET_TRADE_VALIDATION
+            )
+            & pd.to_numeric(
+                archive["jquants_bar_count"], errors="coerce"
+            ).eq(0)
+        )
+    archive_claimed_no_market_trade = pd.Series(
+        False, index=archive.index
+    )
+    if "close_execution_status" in archive.columns:
+        archive_claimed_no_market_trade = archive[
+            "close_execution_status"
+        ].eq("no_market_trade")
+    invalid_no_market_trade_claims = int(
+        (archive_claimed_no_market_trade & ~archive_no_market_trade).sum()
+    )
+    if invalid_no_market_trade_claims:
+        failures.append(
+            "unvalidated archive no-market-trade rows: "
+            f"{invalid_no_market_trade_claims}"
+        )
+
+    no_market_trade_execution = pd.DataFrame(
+        {
+            "date": normalize_date(
+                archive.loc[archive_no_market_trade, "backtest_date"]
+            ),
+            "ticker": archive.loc[
+                archive_no_market_trade, "ticker"
+            ].astype(str).str.strip(),
+            "expected_close_execution_status": "no_market_trade",
+        }
+    )
+    no_market_trade_keys = key_set(
+        no_market_trade_execution[["date", "ticker"]]
+    )
+    no_market_trade_with_minutes = len(no_market_trade_keys & minute_set)
+    if no_market_trade_with_minutes:
+        failures.append(
+            "no-market-trade archive rows unexpectedly have minute bars: "
+            f"{no_market_trade_with_minutes}"
+        )
+
+    expected_minute_keys = archive_set - no_market_trade_keys
+    minute_in_expected = minute_set & expected_minute_keys
+    latest_expected_minute_keys = latest_archive_keys - no_market_trade_keys
+    latest_minute_keys = minute_set & latest_expected_minute_keys
 
     if len(master) != len(archive):
         failures.append(f"master row count mismatch: master={len(master)} archive={len(archive)}")
@@ -142,15 +207,23 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     if extra_master_keys:
         failures.append(f"master has non-archive keys: {len(extra_master_keys)}")
 
-    minute_coverage = pct(len(minute_in_archive), len(archive_set))
-    if minute_coverage is None or minute_coverage < args.min_minute_coverage:
+    raw_minute_coverage = pct(len(minute_in_archive), len(archive_set))
+    expected_minute_coverage = (
+        1.0
+        if not expected_minute_keys
+        else pct(len(minute_in_expected), len(expected_minute_keys))
+    )
+    if (
+        expected_minute_coverage is None
+        or expected_minute_coverage < args.min_minute_coverage
+    ):
         failures.append(
             "minute cache coverage too low: "
-            f"{len(minute_in_archive)}/{len(archive_set)} "
-            f"({0 if minute_coverage is None else minute_coverage:.2%})"
+            f"{len(minute_in_expected)}/{len(expected_minute_keys)} "
+            f"({0 if expected_minute_coverage is None else expected_minute_coverage:.2%})"
         )
 
-    if latest_archive_keys and not latest_minute_keys:
+    if latest_expected_minute_keys and not latest_minute_keys:
         failures.append(f"latest archive date has no minute cache coverage: {latest_archive_date}")
 
     expected_master_jq = int(len(minute_in_archive) * args.min_master_coverage_of_minute)
@@ -176,6 +249,17 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         "expected_close_execution_status",
     ] = "mark_only_no_round_trip"
 
+    minute_execution_keys = list(
+        zip(minute_execution["date"], minute_execution["ticker"])
+    )
+    minute_execution = minute_execution.loc[
+        [key not in no_market_trade_keys for key in minute_execution_keys]
+    ]
+    expected_execution = pd.concat(
+        [minute_execution, no_market_trade_execution],
+        ignore_index=True,
+    )
+
     master_execution = pd.DataFrame(
         {
             "date": normalize_date(master["backtest_date"]),
@@ -185,8 +269,33 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             ].astype(str),
         }
     )
+    master_execution_keys = list(
+        zip(master_execution["date"], master_execution["ticker"])
+    )
+    master_no_market_trade = pd.Series(
+        [key in no_market_trade_keys for key in master_execution_keys],
+        index=master.index,
+    )
+    invalid_master_no_market_trade = int(
+        (
+            master_no_market_trade
+            & (
+                master["jq_close_execution_status"].ne("no_market_trade")
+                | pd.to_numeric(
+                    master["jq_bar_count"], errors="coerce"
+                ).ne(0)
+                | master["jq_buy_price"].notna()
+                | master["jq_seg_1530"].notna()
+            )
+        ).sum()
+    )
+    if invalid_master_no_market_trade:
+        failures.append(
+            "invalid derived no-market-trade rows: "
+            f"{invalid_master_no_market_trade}"
+        )
     execution_check = master_execution.merge(
-        minute_execution[
+        expected_execution[
             ["date", "ticker", "expected_close_execution_status"]
         ],
         on=["date", "ticker"],
@@ -230,9 +339,13 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "rows": int(len(minute)),
             "keys": int(len(minute_set)),
             "keys_in_archive": int(len(minute_in_archive)),
-            "coverage_of_archive_keys": minute_coverage,
+            "coverage_of_archive_keys": raw_minute_coverage,
+            "coverage_of_expected_keys": expected_minute_coverage,
             "latest_archive_date_keys": int(len(latest_archive_keys)),
             "latest_archive_date_minute_keys": int(len(latest_minute_keys)),
+            "expected_keys_excluding_no_market_trade": int(
+                len(expected_minute_keys)
+            ),
         },
         "master": {
             "path": str(args.master_path),
@@ -244,6 +357,8 @@ def build_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "expected_jq_non_null_min": expected_master_jq,
             "close_execution_status": close_execution_counts,
             "close_execution_status_mismatches": execution_mismatches,
+            "no_market_trade_rows": int(archive_no_market_trade.sum()),
+            "invalid_no_market_trade_rows": invalid_master_no_market_trade,
         },
         "thresholds": {
             "min_minute_coverage": args.min_minute_coverage,

@@ -6,11 +6,14 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
 
 from common_cfg.s3cfg import S3Config
+from scripts.analysis.build_grok_master_jquants_segments import build_master
+from scripts.analysis.validate_grok_jquants_outputs import build_report
 from scripts.lib.grok_jquants_backtest import (
     JQuantsBacktestDataError,
     assert_archive_history_unchanged,
@@ -258,6 +261,131 @@ class JQuantsExecutionTests(unittest.TestCase):
             validate_result_batch(
                 frame.assign(buy_price=3650),
                 "2026-07-10",
+            )
+
+    def test_derived_master_preserves_confirmed_no_market_trade(self) -> None:
+        archive = pd.DataFrame(
+            [
+                {
+                    "_archive_row_id": 0,
+                    "_key_backtest_date": "2026-07-24",
+                    "_key_ticker": "6898.T",
+                    "backtest_date": pd.Timestamp("2026-07-24"),
+                    "ticker": "6898.T",
+                    "data_source": "jquants_no_market_trade",
+                    "close_execution_status": "no_market_trade",
+                    "jquants_bar_count": 0,
+                    "jquants_price_validation": (
+                        "daily_all_null_and_minute_empty"
+                    ),
+                }
+            ]
+        )
+        segments = pd.DataFrame(
+            columns=[
+                "_key_backtest_date",
+                "_key_ticker",
+                "jq_bar_count",
+                "jq_buy_price",
+                "jq_seg_1530",
+                "jq_close_execution_status",
+            ]
+        )
+
+        master = build_master(archive, segments)
+
+        self.assertEqual(master.loc[0, "jq_bar_count"], 0)
+        self.assertEqual(
+            master.loc[0, "jq_open_trade_status"], "no_market_trade"
+        )
+        self.assertEqual(
+            master.loc[0, "jq_price_alignment_status"],
+            "no_market_trade",
+        )
+        self.assertEqual(
+            master.loc[0, "jq_close_execution_status"],
+            "no_market_trade",
+        )
+        self.assertTrue(pd.isna(master.loc[0, "jq_buy_price"]))
+        self.assertTrue(pd.isna(master.loc[0, "jq_seg_1530"]))
+
+    def test_derived_validation_accepts_only_evidenced_no_market_trade(
+        self,
+    ) -> None:
+        archive = pd.DataFrame(
+            [
+                {
+                    "backtest_date": pd.Timestamp("2026-07-24"),
+                    "ticker": "6898.T",
+                    "data_source": "jquants_no_market_trade",
+                    "close_execution_status": "no_market_trade",
+                    "jquants_bar_count": 0,
+                    "jquants_price_validation": (
+                        "daily_all_null_and_minute_empty"
+                    ),
+                }
+            ]
+        )
+        minute = pd.DataFrame(
+            columns=["trading_date", "ticker", "datetime"]
+        )
+        master = pd.DataFrame(
+            [
+                {
+                    "backtest_date": pd.Timestamp("2026-07-24"),
+                    "ticker": "6898.T",
+                    "jq_bar_count": 0,
+                    "jq_buy_price": None,
+                    "jq_seg_1530": None,
+                    "jq_close_execution_status": "no_market_trade",
+                }
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive_path = root / "archive.parquet"
+            minute_path = root / "minute.parquet"
+            master_path = root / "master.parquet"
+            archive.to_parquet(archive_path, index=False)
+            minute.to_parquet(minute_path, index=False)
+            master.to_parquet(master_path, index=False)
+            args = SimpleNamespace(
+                archive_path=archive_path,
+                minute_path=minute_path,
+                master_path=master_path,
+                min_minute_coverage=0.80,
+                min_master_coverage_of_minute=0.95,
+            )
+
+            report, exit_code = build_report(args)
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(report["status"], "passed")
+            self.assertEqual(
+                report["master"]["no_market_trade_rows"], 1
+            )
+
+            invalid_master = master.copy()
+            invalid_master.loc[0, "jq_buy_price"] = 3650.0
+            invalid_master.to_parquet(master_path, index=False)
+            report, exit_code = build_report(args)
+            self.assertEqual(exit_code, 1)
+            self.assertIn(
+                "invalid derived no-market-trade rows: 1",
+                report["failures"],
+            )
+
+            invalid_archive = archive.copy()
+            invalid_archive.loc[
+                0, "jquants_price_validation"
+            ] = "unverified"
+            invalid_archive.to_parquet(archive_path, index=False)
+            master.to_parquet(master_path, index=False)
+            report, exit_code = build_report(args)
+            self.assertEqual(exit_code, 1)
+            self.assertIn(
+                "unvalidated archive no-market-trade rows: 1",
+                report["failures"],
             )
 
     def test_selection_asof_must_predate_target(self) -> None:

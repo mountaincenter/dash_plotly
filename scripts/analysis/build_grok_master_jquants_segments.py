@@ -34,6 +34,8 @@ OUTPUT_PATH = (
 
 SEG_TIMES = ["0930", "1000", "1030", "1100", "1130", "1300", "1330", "1400", "1430", "1500", "1530"]
 TARGET_TIMES = {seg: f"{seg[:2]}:{seg[2:]}" for seg in SEG_TIMES}
+NO_MARKET_TRADE_DATA_SOURCE = "jquants_no_market_trade"
+NO_MARKET_TRADE_VALIDATION = "daily_all_null_and_minute_empty"
 
 
 def parse_args() -> argparse.Namespace:
@@ -218,6 +220,35 @@ def build_segment_rows(minute: pd.DataFrame) -> pd.DataFrame:
 
 def build_master(archive: pd.DataFrame, segments: pd.DataFrame) -> pd.DataFrame:
     master = archive.merge(segments, on=["_key_backtest_date", "_key_ticker"], how="left")
+
+    no_market_trade = (
+        master.get("data_source", pd.Series(index=master.index, dtype="object"))
+        .eq(NO_MARKET_TRADE_DATA_SOURCE)
+        & master.get(
+            "close_execution_status",
+            pd.Series(index=master.index, dtype="object"),
+        ).eq("no_market_trade")
+        & master.get(
+            "jquants_price_validation",
+            pd.Series(index=master.index, dtype="object"),
+        ).eq(NO_MARKET_TRADE_VALIDATION)
+        & pd.to_numeric(
+            master.get(
+                "jquants_bar_count",
+                pd.Series(index=master.index, dtype="float64"),
+            ),
+            errors="coerce",
+        ).eq(0)
+    )
+    if no_market_trade.any():
+        master.loc[no_market_trade, "jq_bar_count"] = 0
+        master.loc[no_market_trade, "jq_open_trade_status"] = "no_market_trade"
+        master.loc[
+            no_market_trade, "jq_price_alignment_status"
+        ] = "no_market_trade"
+        master.loc[
+            no_market_trade, "jq_close_execution_status"
+        ] = "no_market_trade"
 
     if "profit_per_100_shares_phase2" in master.columns:
         master["jq_minus_archive_phase2"] = (
