@@ -32,7 +32,14 @@ from scripts.lib.protected_archive_s3 import (
     verify_publish_state,
 )
 from scripts.pipeline import update_manifest
-from scripts.pipeline.save_backtest_to_archive import calculate_phase3_return
+from scripts.pipeline.save_backtest_to_archive import (
+    NO_MARKET_TRADE_DATA_SOURCE,
+    build_no_market_trade_backtest_data,
+    calculate_phase3_return,
+    confirm_no_market_trade,
+    validate_batch_coverage,
+    validate_result_batch,
+)
 
 
 def minute_frame(times: list[str], prices: list[tuple[float, float, float, float]]) -> pd.DataFrame:
@@ -55,6 +62,204 @@ def minute_frame(times: list[str], prices: list[tuple[float, float, float, float
 
 
 class JQuantsExecutionTests(unittest.TestCase):
+    def test_confirm_no_market_trade_requires_null_daily_and_empty_minute(self) -> None:
+        class Client:
+            def request(self, endpoint: str, params: dict[str, str]):
+                if endpoint == "/equities/bars/daily":
+                    return {
+                        "data": [
+                            {
+                                "Date": "2026-07-10",
+                                "Code": "68980",
+                                "O": None,
+                                "H": None,
+                                "L": None,
+                                "C": None,
+                                "Vo": None,
+                            }
+                        ]
+                    }
+                if endpoint == "/equities/bars/minute":
+                    return {"data": []}
+                raise AssertionError(endpoint)
+
+        with patch(
+            "scripts.pipeline.save_backtest_to_archive.get_jquants_client",
+            return_value=Client(),
+        ):
+            self.assertTrue(
+                confirm_no_market_trade("6898.T", pd.Timestamp("2026-07-10"))
+            )
+
+    def test_confirm_no_market_trade_rejects_valid_price_or_minute(self) -> None:
+        class Client:
+            def __init__(
+                self,
+                *,
+                daily_price: int | None,
+                minute_rows: list[dict] | None = None,
+            ) -> None:
+                self.daily_price = daily_price
+                self.minute_rows = minute_rows or []
+
+            def request(self, endpoint: str, params: dict[str, str]):
+                if endpoint == "/equities/bars/daily":
+                    return {
+                        "data": [
+                            {
+                                "Date": "2026-07-10",
+                                "Code": "68980",
+                                "O": self.daily_price,
+                                "H": self.daily_price,
+                                "L": self.daily_price,
+                                "C": self.daily_price,
+                                "Vo": (
+                                    100 if self.daily_price is not None else None
+                                ),
+                            }
+                        ]
+                    }
+                return {"data": self.minute_rows}
+
+        with patch(
+            "scripts.pipeline.save_backtest_to_archive.get_jquants_client",
+            return_value=Client(daily_price=3650),
+        ):
+            self.assertFalse(
+                confirm_no_market_trade("6898.T", pd.Timestamp("2026-07-10"))
+            )
+        with patch(
+            "scripts.pipeline.save_backtest_to_archive.get_jquants_client",
+            return_value=Client(
+                daily_price=None,
+                minute_rows=[{"Date": "2026-07-10", "Code": "68980"}],
+            ),
+        ):
+            self.assertFalse(
+                confirm_no_market_trade("6898.T", pd.Timestamp("2026-07-10"))
+            )
+
+    def test_batch_coverage_allows_only_confirmed_symmetric_gap(self) -> None:
+        selection = pd.DataFrame([{"ticker": "1234.T"}, {"ticker": "6898.T"}])
+        minute = pd.DataFrame(
+            [
+                {
+                    "ticker": "1234.T",
+                    "datetime": pd.Timestamp("2026-07-10 09:00"),
+                }
+            ]
+        )
+        daily = normalize_daily_prices(
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2026-07-10",
+                        "ticker": "1234.T",
+                        "Open": 100,
+                        "High": 100,
+                        "Low": 100,
+                        "Close": 100,
+                        "Volume": 100,
+                    }
+                ]
+            )
+        )
+        with (
+            patch(
+                "scripts.pipeline.save_backtest_to_archive.load_jquants_minute",
+                return_value=minute,
+            ),
+            patch(
+                "scripts.pipeline.save_backtest_to_archive.load_jquants_daily",
+                return_value=daily,
+            ),
+            patch(
+                "scripts.pipeline.save_backtest_to_archive.confirm_no_market_trade",
+                return_value=True,
+            ) as confirm,
+        ):
+            result = validate_batch_coverage(
+                selection,
+                pd.Timestamp("2026-07-10"),
+            )
+        self.assertEqual(result, {"6898.T"})
+        confirm.assert_called_once()
+
+        minute_with_6898 = pd.concat(
+            [
+                minute,
+                pd.DataFrame(
+                    [
+                        {
+                            "ticker": "6898.T",
+                            "datetime": pd.Timestamp("2026-07-10 15:30"),
+                        }
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
+        with (
+            patch(
+                "scripts.pipeline.save_backtest_to_archive.load_jquants_minute",
+                return_value=minute_with_6898,
+            ),
+            patch(
+                "scripts.pipeline.save_backtest_to_archive.load_jquants_daily",
+                return_value=daily,
+            ),
+            self.assertRaises(JQuantsBacktestDataError),
+        ):
+            validate_batch_coverage(selection, pd.Timestamp("2026-07-10"))
+
+    def test_no_market_trade_row_keeps_prices_and_pnl_null(self) -> None:
+        daily = normalize_daily_prices(
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2026-07-09",
+                        "ticker": "6898.T",
+                        "Open": 3600,
+                        "High": 3650,
+                        "Low": 3600,
+                        "Close": 3650,
+                        "Volume": 300,
+                    }
+                ]
+            )
+        )
+        with patch(
+            "scripts.pipeline.save_backtest_to_archive.load_jquants_daily",
+            return_value=daily,
+        ):
+            row = build_no_market_trade_backtest_data(
+                "6898.T",
+                pd.Timestamp("2026-07-10"),
+            )
+        frame = pd.DataFrame(
+            [
+                {
+                    "backtest_date": "2026-07-10",
+                    "ticker": "6898.T",
+                    **row,
+                }
+            ]
+        )
+        self.assertEqual(
+            validate_result_batch(frame, "2026-07-10"),
+            "2026-07-10",
+        )
+        self.assertEqual(frame.iloc[0]["data_source"], NO_MARKET_TRADE_DATA_SOURCE)
+        self.assertEqual(frame.iloc[0]["prev_close"], 3650)
+        self.assertIsNone(frame.iloc[0]["buy_price"])
+        self.assertIsNone(frame.iloc[0]["phase2_return"])
+
+        with self.assertRaises(JQuantsBacktestDataError):
+            validate_result_batch(
+                frame.assign(buy_price=3650),
+                "2026-07-10",
+            )
+
     def test_selection_asof_must_predate_target(self) -> None:
         selection = pd.DataFrame(
             [
