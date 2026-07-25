@@ -661,6 +661,232 @@ def _sector_weekly(recent: pd.DataFrame, latest_date: str) -> list[dict[str, Any
     return sorted(rows, key=lambda row: (row["latest_vs_avg"] or 0, row["latest_turnover_bil"]), reverse=True)
 
 
+def _sector_radar(
+    latest: pd.DataFrame,
+    history: pd.DataFrame,
+    latest_date: str,
+) -> dict[str, Any]:
+    latest_non_etf = latest[~latest["is_etf"]].copy()
+    latest_source = latest_non_etf[
+        latest_non_etf["sectors"].astype(str).ne("UNKNOWN")
+        & latest_non_etf["sectors"].astype(str).str.strip().ne("")
+    ].copy()
+    history_source = history[
+        ~history["is_etf"]
+        & history["date"].le(latest_date)
+        & history["sectors"].astype(str).ne("UNKNOWN")
+        & history["sectors"].astype(str).str.strip().ne("")
+    ].copy()
+    if latest_source.empty or history_source.empty:
+        return {
+            "available": False,
+            "reason": "sector data is not available",
+            "rows": [],
+        }
+
+    history_dates = sorted(history_source["date"].dropna().unique().tolist())
+    prior_dates = [date for date in history_dates if date < latest_date]
+    prior_5_dates = prior_dates[-5:]
+    prior_20_dates = prior_dates[-20:]
+    persistence_dates = history_dates[-20:]
+    persistence_source = history_source[history_source["date"].isin(persistence_dates)]
+    persistence = _entity_persistence(persistence_source, "sectors", persistence_dates)
+    daily_turnover = (
+        history_source.groupby(["date", "sectors"], as_index=False)["trading_value_billion"]
+        .sum()
+    )
+    latest_total = float(latest_source["trading_value_billion"].sum())
+    non_etf_total = float(latest_non_etf["trading_value_billion"].sum())
+    unclassified = latest_non_etf[
+        latest_non_etf["sectors"].astype(str).eq("UNKNOWN")
+        | latest_non_etf["sectors"].astype(str).str.strip().eq("")
+    ]
+
+    def _window_average(sector: str, dates: list[str]) -> float | None:
+        if not dates:
+            return None
+        values = daily_turnover[
+            daily_turnover["date"].isin(dates)
+            & daily_turnover["sectors"].astype(str).eq(sector)
+        ]["trading_value_billion"]
+        return float(values.sum()) / len(dates)
+
+    rows: list[dict[str, Any]] = []
+    for sector, group in latest_source.groupby("sectors", dropna=False):
+        sector_text = str(sector or "UNKNOWN")
+        group = group.sort_values("rank", kind="mergesort")
+        turnover = float(group["trading_value_billion"].sum())
+        avg_5d = _window_average(sector_text, prior_5_dates)
+        avg_20d = _window_average(sector_text, prior_20_dates)
+        persist = persistence.get(sector_text, {})
+        top_stocks = [
+            {
+                "ticker": str(row.get("ticker") or ""),
+                "code": str(row.get("code") or ""),
+                "name": str(row.get("stock_name") or ""),
+                "rank": _int_or_none(row.get("rank")),
+                "turnover_bil": _number(row.get("trading_value_billion")),
+                "open_to_close_pct": _number(row.get("open_to_close_pct")),
+            }
+            for row in group.head(3).to_dict(orient="records")
+        ]
+        rows.append({
+            "sector": sector_text,
+            "count": int(len(group)),
+            "turnover_bil": turnover,
+            "turnover_share_pct": turnover / latest_total * 100.0 if latest_total else None,
+            "avg_open_to_close_pct": _weighted_avg(
+                group["open_to_close_pct"],
+                group["trading_value_billion"],
+            ),
+            "up_rate_pct": _up_rate(group),
+            "avg_prior_5d_turnover_bil": avg_5d,
+            "avg_prior_20d_turnover_bil": avg_20d,
+            "latest_vs_prior_5d": turnover / avg_5d if avg_5d else None,
+            "latest_vs_prior_20d": turnover / avg_20d if avg_20d else None,
+            "new_count": int(group["is_new_top150"].fillna(False).sum()),
+            "rank_up_count": int(group["rank_change"].fillna(0).gt(0).sum()),
+            "positive_streak_days": int(persist.get("positive_streak_days", 0)),
+            "active_streak_days": int(persist.get("active_streak_days", 0)),
+            "top_stocks": top_stocks,
+            "top_names": [stock["name"] or stock["code"] for stock in top_stocks],
+        })
+
+    turnover_values = [float(row["turnover_bil"]) for row in rows]
+    sector_count = len(turnover_values)
+    for row in rows:
+        turnover = float(row["turnover_bil"])
+        turnover_percentile = (
+            sum(value <= turnover for value in turnover_values) / sector_count * 100.0
+            if sector_count
+            else 0.0
+        )
+        ratio_5d = _number(row.get("latest_vs_prior_5d"))
+        ratio_20d = _number(row.get("latest_vs_prior_20d"))
+        ratio_5d_score = _clamp(((ratio_5d if ratio_5d is not None else 1.0) - 0.5) * 100.0)
+        ratio_20d_score = _clamp(((ratio_20d if ratio_20d is not None else 1.0) - 0.5) * 100.0)
+        count = max(int(row["count"]), 1)
+        movement_score = _clamp(
+            (int(row["new_count"]) + int(row["rank_up_count"])) / count * 100.0
+        )
+        persistence_score = _clamp(int(row["positive_streak_days"]) * 20.0)
+        attention_score = _clamp(
+            turnover_percentile * 0.30
+            + ratio_5d_score * 0.25
+            + ratio_20d_score * 0.15
+            + movement_score * 0.15
+            + persistence_score * 0.15
+        )
+
+        oc = _number(row.get("avg_open_to_close_pct")) or 0.0
+        up_rate = _number(row.get("up_rate_pct"))
+        oc_signal = _clamp(oc * 25.0, -100.0, 100.0)
+        up_signal = _clamp(((up_rate if up_rate is not None else 50.0) - 50.0) * 2.0, -100.0, 100.0)
+        direction_score = _clamp(
+            oc_signal * 0.60 + up_signal * 0.40,
+            -100.0,
+            100.0,
+        )
+        flow_score = _clamp(
+            direction_score * (0.55 + attention_score / 100.0 * 0.45),
+            -100.0,
+            100.0,
+        )
+
+        positive_streak = int(row["positive_streak_days"])
+        change_count = int(row["new_count"]) + int(row["rank_up_count"])
+        if direction_score <= -30.0 and attention_score >= 45.0:
+            status = "risk"
+            status_label = "リスク"
+        elif direction_score < -10.0 and (
+            (ratio_5d is not None and ratio_5d < 0.90)
+            or positive_streak == 0
+        ):
+            status = "fading"
+            status_label = "失速"
+        elif (
+            direction_score >= 35.0
+            and attention_score >= 50.0
+            and positive_streak >= 2
+            and oc >= 0.50
+        ):
+            status = "leader"
+            status_label = "主役"
+        elif (
+            direction_score >= 25.0
+            and oc >= 0.50
+            and (
+                (ratio_5d is not None and ratio_5d >= 1.15)
+                or change_count >= 2
+            )
+        ):
+            status = "emerging"
+            status_label = "浮上"
+        elif direction_score >= 10.0 and attention_score >= 35.0 and oc >= 0.25:
+            status = "watch"
+            status_label = "監視"
+        else:
+            status = "neutral"
+            status_label = "中立"
+
+        evidence = [
+            f"OC {oc:+.2f}%",
+            f"上昇率 {(up_rate if up_rate is not None else 0.0):.1f}%",
+        ]
+        if ratio_5d is not None:
+            evidence.append(f"5日比 {ratio_5d:.2f}x")
+        if positive_streak:
+            evidence.append(f"陽線 {positive_streak}日")
+
+        row.update({
+            "turnover_percentile": turnover_percentile,
+            "attention_score": attention_score,
+            "direction_score": direction_score,
+            "flow_score": flow_score,
+            "status": status,
+            "status_label": status_label,
+            "evidence": evidence,
+        })
+
+    status_order = {
+        "leader": 0,
+        "emerging": 1,
+        "risk": 2,
+        "watch": 3,
+        "fading": 4,
+        "neutral": 5,
+    }
+    rows.sort(
+        key=lambda row: (
+            status_order.get(str(row["status"]), 9),
+            -abs(float(row["flow_score"])),
+            -float(row["attention_score"]),
+        )
+    )
+    counts = {
+        status: sum(row["status"] == status for row in rows)
+        for status in status_order
+    }
+    return {
+        "available": True,
+        "baseline": {
+            "prior_5d_dates": prior_5_dates,
+            "prior_20d_dates": prior_20_dates,
+        },
+        "coverage": {
+            "classified_turnover_pct": (
+                latest_total / non_etf_total * 100.0
+                if non_etf_total
+                else None
+            ),
+            "unclassified_count": int(len(unclassified)),
+            "unclassified_turnover_bil": float(unclassified["trading_value_billion"].sum()),
+        },
+        "status_counts": counts,
+        "rows": rows,
+    }
+
+
 def _bucket_sort_key(bucket: str) -> tuple[int, str]:
     try:
         return THEME_BUCKET_ORDER.index(bucket), bucket
@@ -1816,6 +2042,364 @@ def _score_index_metric(metric: dict[str, Any] | None) -> float | None:
     return _clamp(score)
 
 
+def _signed_tone(score: float) -> str:
+    if score >= 20.0:
+        return "good"
+    if score <= -20.0:
+        return "bad"
+    if score < 0:
+        return "warn"
+    return "neutral"
+
+
+def _market_direction(
+    latest: pd.DataFrame,
+    sector_radar: dict[str, Any],
+) -> dict[str, Any]:
+    top30 = latest[latest["rank"].le(30)].copy()
+    top150_up = _up_rate(latest)
+    top30_up = _up_rate(top30)
+    top150_oc = _weighted_avg(latest["open_to_close_pct"], latest["trading_value_billion"])
+    top30_oc = _weighted_avg(top30["open_to_close_pct"], top30["trading_value_billion"])
+
+    n225 = _index_metric("^N225", "日経平均")
+    topix_etf = _index_metric("1306.T", "TOPIX ETF")
+    index_values = [
+        (score - 50.0) * 2.0
+        for score in [_score_index_metric(n225), _score_index_metric(topix_etf)]
+        if score is not None
+    ]
+    index_direction = (
+        float(sum(index_values) / len(index_values))
+        if index_values
+        else 0.0
+    )
+
+    top150_up_signal = _clamp(
+        ((top150_up if top150_up is not None else 50.0) - 50.0) * 2.0,
+        -100.0,
+        100.0,
+    )
+    top30_up_signal = _clamp(
+        ((top30_up if top30_up is not None else 50.0) - 50.0) * 2.0,
+        -100.0,
+        100.0,
+    )
+    top150_oc_signal = _clamp(
+        (top150_oc if top150_oc is not None else 0.0) * 25.0,
+        -100.0,
+        100.0,
+    )
+    top30_oc_signal = _clamp(
+        (top30_oc if top30_oc is not None else 0.0) * 25.0,
+        -100.0,
+        100.0,
+    )
+    breadth_direction = _clamp(
+        top150_up_signal * 0.35
+        + top30_up_signal * 0.15
+        + top150_oc_signal * 0.30
+        + top30_oc_signal * 0.20,
+        -100.0,
+        100.0,
+    )
+
+    sector_rows = sector_radar.get("rows") if sector_radar.get("available") else []
+    sector_rows = sector_rows if isinstance(sector_rows, list) else []
+    sector_positive_rate = (
+        sum((_number(row.get("avg_open_to_close_pct")) or 0.0) > 0 for row in sector_rows)
+        / len(sector_rows)
+        * 100.0
+        if sector_rows
+        else 50.0
+    )
+    sector_equal_signal = _clamp(
+        (sector_positive_rate - 50.0) * 2.0,
+        -100.0,
+        100.0,
+    )
+    non_etf = latest[
+        ~latest["is_etf"]
+        & latest["sectors"].astype(str).ne("UNKNOWN")
+        & latest["sectors"].astype(str).str.strip().ne("")
+    ].copy()
+    non_etf_oc = _weighted_avg(
+        non_etf["open_to_close_pct"],
+        non_etf["trading_value_billion"],
+    )
+    sector_turnover_signal = _clamp(
+        (non_etf_oc if non_etf_oc is not None else 0.0) * 25.0,
+        -100.0,
+        100.0,
+    )
+    sector_direction = _clamp(
+        sector_equal_signal * 0.55 + sector_turnover_signal * 0.45,
+        -100.0,
+        100.0,
+    )
+
+    score = _clamp(
+        index_direction * 0.30
+        + breadth_direction * 0.35
+        + sector_direction * 0.35,
+        -100.0,
+        100.0,
+    )
+    if score >= 55.0:
+        label = "強気"
+    elif score >= 20.0:
+        label = "やや強気"
+    elif score <= -55.0:
+        label = "弱気"
+    elif score <= -20.0:
+        label = "やや弱気"
+    else:
+        label = "中立"
+
+    components = [
+        {
+            "key": "index",
+            "label": "指数",
+            "score": index_direction,
+            "weight": 0.30,
+            "metrics": [
+                {"label": "N225 1日", "value": _number(n225.get("ret1_pct")) if n225 else None, "format": "pct"},
+                {"label": "N225 5日", "value": _number(n225.get("ret5_pct")) if n225 else None, "format": "pct"},
+                {"label": "TOPIX 1日", "value": _number(topix_etf.get("ret1_pct")) if topix_etf else None, "format": "pct"},
+                {"label": "TOPIX 5日", "value": _number(topix_etf.get("ret5_pct")) if topix_etf else None, "format": "pct"},
+            ],
+        },
+        {
+            "key": "breadth",
+            "label": "銘柄の広がり",
+            "score": breadth_direction,
+            "weight": 0.35,
+            "metrics": [
+                {"label": "Top150上昇率", "value": top150_up, "format": "pct1"},
+                {"label": "Top30上昇率", "value": top30_up, "format": "pct1"},
+                {"label": "Top150 OC", "value": top150_oc, "format": "pct"},
+                {"label": "Top30 OC", "value": top30_oc, "format": "pct"},
+            ],
+        },
+        {
+            "key": "sector",
+            "label": "セクターの広がり",
+            "score": sector_direction,
+            "weight": 0.35,
+            "metrics": [
+                {"label": "上昇セクター率", "value": sector_positive_rate, "format": "pct1"},
+                {"label": "全業種OC", "value": non_etf_oc, "format": "pct"},
+                {"label": "業種数", "value": float(len(sector_rows)), "format": "number"},
+            ],
+        },
+    ]
+    summary = (
+        f"指数 {index_direction:+.0f} / 銘柄 {breadth_direction:+.0f} / "
+        f"業種 {sector_direction:+.0f}"
+    )
+    return {
+        "score": score,
+        "label": label,
+        "tone": _signed_tone(score),
+        "summary": summary,
+        "components": components,
+        "breadth": {
+            "top150_up_rate_pct": top150_up,
+            "top30_up_rate_pct": top30_up,
+            "top150_open_to_close_pct": top150_oc,
+            "top30_open_to_close_pct": top30_oc,
+            "positive_sector_rate_pct": sector_positive_rate,
+            "non_etf_open_to_close_pct": non_etf_oc,
+        },
+        "index_metrics": {
+            "n225": n225,
+            "topix_etf": topix_etf,
+        },
+        "method": "index 30% + breadth 35% + equal/turnover sector breadth 35%",
+        "sector_coverage": sector_radar.get("coverage"),
+    }
+
+
+def _execution_permission(
+    latest: pd.DataFrame,
+    market_direction: dict[str, Any],
+) -> dict[str, Any]:
+    direction_score = _number(market_direction.get("score")) or 0.0
+    component_scores = [
+        _number(component.get("score"))
+        for component in market_direction.get("components", [])
+        if isinstance(component, dict)
+    ]
+    component_scores = [score for score in component_scores if score is not None]
+    if component_scores:
+        mean_score = sum(component_scores) / len(component_scores)
+        spread = math.sqrt(
+            sum((score - mean_score) ** 2 for score in component_scores)
+            / len(component_scores)
+        )
+        spread_agreement = _clamp(100.0 - spread * 1.2)
+        if direction_score > 10.0:
+            same_side = sum(score > 0 for score in component_scores)
+        elif direction_score < -10.0:
+            same_side = sum(score < 0 for score in component_scores)
+        else:
+            same_side = sum(abs(score) <= 20.0 for score in component_scores)
+        side_agreement = same_side / len(component_scores) * 100.0
+        agreement_score = spread_agreement * 0.55 + side_agreement * 0.45
+    else:
+        spread = None
+        agreement_score = 0.0
+
+    breadth = market_direction.get("breadth") or {}
+    top150_up = _number(breadth.get("top150_up_rate_pct"))
+    positive_sector_rate = _number(breadth.get("positive_sector_rate_pct"))
+    breadth_conviction = sum([
+        abs((top150_up if top150_up is not None else 50.0) - 50.0) * 2.0,
+        abs((positive_sector_rate if positive_sector_rate is not None else 50.0) - 50.0) * 2.0,
+    ]) / 2.0
+    direction_clarity = _clamp(abs(direction_score) * 1.5)
+
+    total = float(latest["trading_value_billion"].sum())
+    sorted_latest = latest.sort_values("rank", kind="mergesort")
+    top1_share = (
+        float(sorted_latest.head(1)["trading_value_billion"].sum()) / total * 100.0
+        if total
+        else 0.0
+    )
+    top10_share = (
+        float(sorted_latest.head(10)["trading_value_billion"].sum()) / total * 100.0
+        if total
+        else 0.0
+    )
+    extreme_move_rate = (
+        float(latest["open_to_close_pct"].abs().ge(5.0).mean() * 100.0)
+        if not latest.empty
+        else 0.0
+    )
+    concentration_risk = 0.0
+    concentration_risk += _clamp((top1_share - 10.0) * 2.0, 0.0, 45.0)
+    concentration_risk += _clamp((top10_share - 45.0) * 1.2, 0.0, 30.0)
+    concentration_risk += _clamp(extreme_move_rate * 2.0, 0.0, 25.0)
+    concentration_risk = _clamp(concentration_risk)
+    safety_score = 100.0 - concentration_risk
+
+    score = _clamp(
+        direction_clarity * 0.35
+        + agreement_score * 0.25
+        + breadth_conviction * 0.20
+        + safety_score * 0.20
+    )
+    caps: list[str] = []
+    if abs(direction_score) < 20.0:
+        score = min(score, 39.0)
+        caps.append("市場方向が中立域")
+    if agreement_score < 45.0:
+        score = min(score, 44.0)
+        caps.append("指数・銘柄・業種が不一致")
+    if concentration_risk >= 60.0:
+        score = min(score, 44.0)
+        caps.append("売買代金の集中または急変が大きい")
+
+    if score >= 70.0:
+        label = "積極"
+        action = "方向に沿った執行可"
+    elif score >= 45.0:
+        label = "小さく可"
+        action = "小ロットで確認後に拡大"
+    else:
+        label = "静観"
+        action = "方向と広がりの一致を待つ"
+
+    return {
+        "score": score,
+        "label": label,
+        "tone": "good" if score >= 70.0 else "warn" if score >= 45.0 else "neutral",
+        "action": action,
+        "caps": caps,
+        "components": [
+            {"key": "clarity", "label": "方向明瞭度", "score": direction_clarity},
+            {"key": "agreement", "label": "指標一致度", "score": agreement_score},
+            {"key": "breadth", "label": "広がり確信度", "score": breadth_conviction},
+            {"key": "safety", "label": "集中安全度", "score": safety_score},
+        ],
+        "metrics": {
+            "component_dispersion": spread,
+            "top1_share_pct": top1_share,
+            "top10_share_pct": top10_share,
+            "extreme_move_rate_pct": extreme_move_rate,
+            "concentration_risk": concentration_risk,
+        },
+        "method": "direction clarity 35% + agreement 25% + breadth conviction 20% + concentration safety 20%",
+    }
+
+
+def _semiconductor_monitor(
+    bucket_rows: list[dict[str, Any]],
+    market_regime: dict[str, Any],
+) -> dict[str, Any]:
+    core_share = _number(market_regime.get("semicon_core_share_pct")) or 0.0
+    core_oc = _number(market_regime.get("semicon_core_open_to_close_pct")) or 0.0
+    kioxia_share = _bucket_metric(bucket_rows, "kioxia", "turnover_share_pct") or 0.0
+    kioxia_oc = _bucket_metric(bucket_rows, "kioxia", "avg_open_to_close_pct") or 0.0
+    ex_kioxia_oc = _number(market_regime.get("semicon_ex_kioxia_open_to_close_pct")) or 0.0
+    etf_oc = _bucket_weighted_oc(bucket_rows, {"semicon_etf"})
+
+    if core_share >= 30.0 and core_oc <= -1.0:
+        state = "risk_source"
+        label = "大商いの売り圧"
+        tone = "bad"
+    elif core_share >= 30.0 and core_oc >= 1.0:
+        state = "leadership"
+        label = "主役継続"
+        tone = "good"
+    elif kioxia_oc * ex_kioxia_oc < 0:
+        state = "divergence"
+        label = "内部選別"
+        tone = "warn"
+    else:
+        state = "contested"
+        label = "方向未確定"
+        tone = "neutral"
+
+    bucket_keys = [
+        "kioxia",
+        "semicon_main",
+        "electronics_parts",
+        "dc_cable_optical",
+        "semicon_etf",
+    ]
+    groups = [
+        {
+            "key": key,
+            "label": THEME_BUCKET_LABELS.get(key, key),
+            "turnover_bil": _bucket_metric(bucket_rows, key, "turnover_bil"),
+            "turnover_share_pct": _bucket_metric(bucket_rows, key, "turnover_share_pct"),
+            "open_to_close_pct": _bucket_metric(bucket_rows, key, "avg_open_to_close_pct"),
+            "up_rate_pct": _bucket_metric(bucket_rows, key, "up_rate_pct"),
+            "positive_streak_days": _bucket_metric(bucket_rows, key, "positive_streak_days"),
+        }
+        for key in bucket_keys
+    ]
+    return {
+        "state": state,
+        "label": label,
+        "tone": tone,
+        "summary": (
+            f"中核Share {core_share:.1f}% / 中核OC {core_oc:+.2f}% / "
+            f"ETF OC {(etf_oc if etf_oc is not None else 0.0):+.2f}%"
+        ),
+        "metrics": {
+            "core_share_pct": core_share,
+            "core_open_to_close_pct": core_oc,
+            "kioxia_share_pct": kioxia_share,
+            "kioxia_open_to_close_pct": kioxia_oc,
+            "ex_kioxia_open_to_close_pct": ex_kioxia_oc,
+            "semicon_etf_open_to_close_pct": etf_oc,
+        },
+        "groups": groups,
+    }
+
+
 def _temperature_tone(score: float, risk_pressure: float = 0.0) -> str:
     if risk_pressure >= 70:
         return "bad"
@@ -2189,6 +2773,10 @@ def _build_payload(days: int, top_n: int) -> dict[str, Any]:
     bucket_snapshots = _bucket_snapshots(recent, dates, display_days=5)
     market_benchmark_snapshots = _market_benchmark_snapshots(dates)
     market_regime = _market_regime(latest, previous, bucket_daily)
+    sector_radar = _sector_radar(latest, all_history, latest_date)
+    market_direction = _market_direction(latest, sector_radar)
+    execution_permission = _execution_permission(latest, market_direction)
+    semiconductor_monitor = _semiconductor_monitor(bucket_daily, market_regime)
     market_temperature = _market_temperature(latest, bucket_daily, market_regime)
     flow_analysis = _flow_analysis(
         latest, previous, bucket_daily, bucket_weekly, market_regime, market_temperature
@@ -2284,6 +2872,10 @@ def _build_payload(days: int, top_n: int) -> dict[str, Any]:
             "other_open_to_close_pct": _bucket_metric(bucket_daily, "other", "avg_open_to_close_pct"),
         },
         "market_regime": market_regime,
+        "market_direction": market_direction,
+        "execution_permission": execution_permission,
+        "sector_radar": sector_radar,
+        "semiconductor_monitor": semiconductor_monitor,
         "market_temperature": market_temperature,
         "execution_program": _execution_program(),
         "flow_analysis": flow_analysis,
