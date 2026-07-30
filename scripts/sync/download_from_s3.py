@@ -39,6 +39,11 @@ if str(ROOT) not in sys.path:
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import download_file, list_s3_files
 from common_cfg.s3cfg import load_s3_config
+from scripts.pipeline.manage_all_market_microstructure import (
+    MINUTE_S3_ROOT,
+    TICK_S3_ROOT,
+    sync_all_market_datasets,
+)
 
 
 def extract_date_from_filename(filename: str) -> Optional[datetime]:
@@ -300,7 +305,25 @@ def download_all_from_s3(
 
         # .parquet, .md, .jsonファイルをフィルタ（manifest.jsonは除外）
         # backtest/配下およびmarket_summary/配下のファイルも含めてダウンロード
-        all_files = [f for f in s3_files if (f.endswith('.parquet') or f.endswith('.md') or f.endswith('.json')) and f != 'manifest.json']
+        dataset_prefixes = (
+            f"{MINUTE_S3_ROOT}/",
+            f"{TICK_S3_ROOT}/",
+        )
+        protected_files = {
+            "backtest/grok_trending_archive.parquet",
+        }
+        all_files = [
+            f
+            for f in s3_files
+            if (
+                f.endswith(".parquet")
+                or f.endswith(".md")
+                or f.endswith(".json")
+            )
+            and f != "manifest.json"
+            and f not in protected_files
+            and not f.startswith(dataset_prefixes)
+        ]
 
         # 直近N日分のみフィルタ（日付を含むファイルのみ）
         download_files = [f for f in all_files if is_recent_dated_file(f, days=days)]
@@ -470,24 +493,45 @@ Examples:
         clean=args.clean,
         days=args.days
     )
+    dataset_success = 0
+    dataset_fail = 0
+    if not args.files:
+        print("\n[STEP 3] Syncing all-market partitioned datasets...")
+        try:
+            dataset_success, _ = sync_all_market_datasets(
+                days=args.days,
+                dry_run=args.dry_run,
+            )
+        except Exception as exc:
+            print(f"  ✗ All-market dataset sync failed: {exc}")
+            dataset_fail = 1
 
     # サマリー表示
     print("\n" + "=" * 60)
     print("Summary")
     print("=" * 60)
-    print(f"Success: {success_count}")
-    print(f"Failed:  {fail_count}")
+    print(
+        f"Success: {success_count + dataset_success} "
+        f"(parquet={success_count}, all_market={dataset_success})"
+    )
+    print(
+        f"Failed:  {fail_count + dataset_fail} "
+        f"(parquet={fail_count}, all_market={dataset_fail})"
+    )
     print("=" * 60)
 
     if not args.dry_run:
-        if fail_count == 0 and success_count > 0:
+        if fail_count + dataset_fail == 0 and success_count + dataset_success > 0:
             print("\n✅ All files downloaded successfully!")
-        elif success_count > 0:
-            print(f"\n⚠️  Partial success: {fail_count} file(s) failed")
+        elif success_count + dataset_success > 0:
+            print(
+                "\n⚠️  Partial success: "
+                f"{fail_count + dataset_fail} file(s) failed"
+            )
         else:
             print("\n❌ No files downloaded")
 
-    return 0 if fail_count == 0 else 1
+    return 0 if fail_count + dataset_fail == 0 else 1
 
 
 if __name__ == "__main__":

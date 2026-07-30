@@ -274,6 +274,23 @@ jobs:
             exit 1
           fi
 
+      - name: Publish all-market tick and minute partition (17:00 only)
+        if: |
+          success() && (
+            steps.exec_mode.outputs.mode == 'stock_data' ||
+            steps.exec_mode.outputs.mode == 'stock_data_forced'
+          )
+        run: |
+          set -euo pipefail
+          TARGET_TRADING_DATE="${{ steps.check_trading.outputs.latest_trading_day }}"
+          if [ -z "$TARGET_TRADING_DATE" ]; then
+            TARGET_TRADING_DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          fi
+          echo "Publishing all-market microstructure for $TARGET_TRADING_DATE"
+          python3 scripts/pipeline/manage_all_market_microstructure.py daily \
+            --trading-date "$TARGET_TRADING_DATE" \
+            --availability-timeout-seconds 300
+
       - name: Run Data Pipeline
         id: pipeline
         if: |

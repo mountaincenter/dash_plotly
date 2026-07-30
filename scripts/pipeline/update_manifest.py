@@ -28,6 +28,10 @@ from scripts.lib.protected_archive_s3 import (
     read_remote_manifest,
     verify_publish_state,
 )
+from scripts.pipeline.manage_all_market_microstructure import (
+    MINUTE_S3_ROOT,
+    TICK_S3_ROOT,
+)
 
 # S3にアップロードするファイル
 UPLOAD_FILES = [
@@ -355,6 +359,10 @@ def generate_manifest(
     # GROK メタデータを取得
     grok_meta = get_grok_metadata()
 
+    existing_datasets = (existing_manifest or {}).get("datasets", {})
+    if not isinstance(existing_datasets, dict):
+        raise RuntimeError("Existing manifest datasets must be an object")
+
     manifest = {
         "generated_at": datetime.now().isoformat(),
         "update_flag": datetime.now().strftime("%Y-%m-%d"),
@@ -362,6 +370,7 @@ def generate_manifest(
         "grok_last_update_date": grok_meta["grok_last_update_date"],
         "grok_last_update_time": grok_meta["grok_last_update_time"],
         "files": {},
+        "datasets": dict(existing_datasets),
     }
 
     for filename in UPLOAD_FILES:
@@ -536,8 +545,11 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         prefix = (cfg.prefix or "parquet/").rstrip("/") + "/"
 
         # S3上の全ファイルを取得
-        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-        if "Contents" not in response:
+        objects = []
+        paginator = s3_client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            objects.extend(page.get("Contents", []))
+        if not objects:
             print("  [INFO] No files found in S3")
             return
 
@@ -577,7 +589,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         # market_summary/ 配下のファイルも保護
         # これらは data-pipeline.yml の "Archive GROK trending for backtest" および "Generate market summary" ステップで管理される
         import re
-        for obj in response.get("Contents", []):
+        for obj in objects:
             key = obj["Key"]
             # backtest/grok_trending_YYYYMMDD.parquet パターンにマッチするファイルは保持
             if re.match(rf"{prefix}backtest/grok_trending_\d{{8}}\.parquet$", key):
@@ -603,10 +615,15 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
             # pairs/ 配下の全parquetを保持（pairs_signals）
             if key.startswith(f"{prefix}pairs/"):
                 keep_keys.add(key)
+            # 全市場tick/分足はappend-only正本として個別manifestで管理する。
+            if key.startswith(f"{prefix}{MINUTE_S3_ROOT}/"):
+                keep_keys.add(key)
+            if key.startswith(f"{prefix}{TICK_S3_ROOT}/"):
+                keep_keys.add(key)
 
         # 削除対象のファイルを抽出
         delete_targets = [
-            obj for obj in response["Contents"]
+            obj for obj in objects
             if obj["Key"] not in keep_keys and obj["Key"] != prefix and not obj["Key"].endswith("/")  # ディレクトリ自体は除外
         ]
 

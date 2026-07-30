@@ -117,20 +117,15 @@ def list_s3_files(cfg: S3Config) -> list[str]:
         return []
 
     try:
-        response = s3.list_objects_v2(Bucket=cfg.bucket, Prefix=cfg.prefix)
-
-        if "Contents" not in response:
-            return []
-
-        # prefixを除いたファイル名のみ返す
         files = []
-        for obj in response["Contents"]:
-            key = obj["Key"]
-            # prefixを除去
-            if key.startswith(cfg.prefix):
-                filename = key[len(cfg.prefix):]
-                if filename:  # 空文字列を除外
-                    files.append(filename)
+        paginator = s3.get_paginator("list_objects_v2")
+        for response in paginator.paginate(Bucket=cfg.bucket, Prefix=cfg.prefix):
+            for obj in response.get("Contents", []):
+                key = obj["Key"]
+                if key.startswith(cfg.prefix):
+                    filename = key[len(cfg.prefix):]
+                    if filename:
+                        files.append(filename)
 
         return files
 
