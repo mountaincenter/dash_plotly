@@ -18,6 +18,7 @@ from fastapi import APIRouter, Query
 ROOT = Path(__file__).resolve().parents[2]
 PARQUET_DIR = ROOT / "data" / "parquet"
 HISTORY_PATH = PARQUET_DIR / "trading_value_top_history.parquet"
+PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
 TOPIX_PRICES_PATH = PARQUET_DIR / "topix_prices_max_1d.parquet"
 MARKET_BASKET_TURNOVER_PATH = PARQUET_DIR / "market_basket_turnover.parquet"
@@ -48,6 +49,7 @@ _S3_CONTENT_CACHE: dict[str, dict[str, Any]] = {}
 _PAYLOAD_CACHE: dict[tuple[int, int], dict[str, Any]] = {}
 _PAYLOAD_SOURCE_PATHS = (
     HISTORY_PATH,
+    PRICES_PATH,
     INDEX_PRICES_PATH,
     TOPIX_PRICES_PATH,
     MARKET_BASKET_TURNOVER_PATH,
@@ -2730,6 +2732,340 @@ def _sustained_stocks(latest: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _latest_atr14(prices: pd.DataFrame | None, latest_date: str) -> pd.DataFrame:
+    columns = ["ticker", "price_date", "atr14_pct"]
+    if prices is None or prices.empty:
+        return pd.DataFrame(columns=columns)
+
+    required = {"ticker", "date", "High", "Low", "Close"}
+    if not required.issubset(prices.columns):
+        return pd.DataFrame(columns=columns)
+
+    source = prices[list(required)].copy()
+    source["date"] = pd.to_datetime(source["date"], errors="coerce")
+    source["High"] = pd.to_numeric(source["High"], errors="coerce")
+    source["Low"] = pd.to_numeric(source["Low"], errors="coerce")
+    source["Close"] = pd.to_numeric(source["Close"], errors="coerce")
+    source["ticker"] = source["ticker"].astype(str)
+    source = source[
+        source["date"].notna()
+        & source["date"].le(pd.Timestamp(latest_date))
+    ].dropna(subset=["High", "Low", "Close"])
+    if source.empty:
+        return pd.DataFrame(columns=columns)
+
+    source = source.sort_values(["ticker", "date"], kind="mergesort")
+    source["prev_close"] = source.groupby("ticker", sort=False)["Close"].shift(1)
+    source["true_range"] = pd.concat(
+        [
+            (source["High"] - source["Low"]).abs(),
+            (source["High"] - source["prev_close"]).abs(),
+            (source["Low"] - source["prev_close"]).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    source["atr14"] = (
+        source.groupby("ticker", sort=False)["true_range"]
+        .rolling(14, min_periods=14)
+        .mean()
+        .reset_index(level=0, drop=True)
+    )
+    source["atr14_pct"] = source["atr14"] / source["Close"] * 100.0
+    latest = source.groupby("ticker", sort=False).tail(1).copy()
+    latest["price_date"] = latest["date"].dt.strftime("%Y-%m-%d")
+    latest.loc[latest["price_date"].ne(latest_date), "atr14_pct"] = None
+    return latest[columns]
+
+
+def _directional_candidate_lens(
+    latest: pd.DataFrame,
+    recent: pd.DataFrame,
+    dates: list[str],
+    prices: pd.DataFrame | None,
+) -> dict[str, Any]:
+    """Build a next-session shortlist without mixing in execution labels."""
+    if latest.empty or len(dates) < 3:
+        return {
+            "as_of_date": dates[-1] if dates else None,
+            "valid_for": "next_trading_session",
+            "scope": "non_semiconductor_non_etf",
+            "candidates": [],
+            "coverage": {"eligible_count": 0, "atr_available_count": 0},
+        }
+
+    latest_date = dates[-1]
+    last3 = dates[-3:]
+    source = latest[~latest["is_etf"] & ~latest["is_semiconductor"]].copy()
+    if source.empty:
+        return {
+            "as_of_date": latest_date,
+            "valid_for": "next_trading_session",
+            "scope": "non_semiconductor_non_etf",
+            "candidates": [],
+            "coverage": {"eligible_count": 0, "atr_available_count": 0},
+        }
+
+    ticker_3d = (
+        recent[
+            recent["date"].isin(last3)
+            & ~recent["is_etf"]
+            & ~recent["is_semiconductor"]
+        ]
+        .groupby("ticker")
+        .agg(
+            active_days_3d=("date", "nunique"),
+            stock_oc_3d=("open_to_close_pct", "mean"),
+            stock_up_days_3d=("open_to_close_pct", lambda values: int(values.gt(0).sum())),
+            stock_down_days_3d=("open_to_close_pct", lambda values: int(values.lt(0).sum())),
+        )
+    )
+    source = source.join(ticker_3d, on="ticker")
+
+    sector_latest_rows: list[dict[str, Any]] = []
+    for sector, group in source.groupby("sectors", dropna=False):
+        turnover = float(group["trading_value_billion"].sum())
+        leader_turnover = float(group["trading_value_billion"].max()) if not group.empty else 0.0
+        sector_latest_rows.append({
+            "sectors": str(sector or "UNKNOWN"),
+            "sector_oc": _weighted_avg(
+                group["open_to_close_pct"],
+                group["trading_value_billion"],
+            ),
+            "sector_up_rate_pct": _up_rate(group),
+            "sector_leader_share_pct": (
+                leader_turnover / turnover * 100.0 if turnover > 0 else None
+            ),
+        })
+    sector_latest = pd.DataFrame(sector_latest_rows).set_index("sectors")
+    source = source.join(sector_latest, on="sectors")
+
+    sector_daily_rows: list[dict[str, Any]] = []
+    sector_recent = recent[
+        recent["date"].isin(last3)
+        & ~recent["is_etf"]
+        & ~recent["is_semiconductor"]
+    ]
+    for (date, sector), group in sector_recent.groupby(["date", "sectors"], dropna=False):
+        sector_daily_rows.append({
+            "date": str(date),
+            "sectors": str(sector or "UNKNOWN"),
+            "sector_oc": _weighted_avg(
+                group["open_to_close_pct"],
+                group["trading_value_billion"],
+            ),
+        })
+    sector_daily = pd.DataFrame(sector_daily_rows)
+    if sector_daily.empty:
+        sector_3d = pd.DataFrame()
+    else:
+        sector_3d = (
+            sector_daily.groupby("sectors")
+            .agg(
+                sector_active_days_3d=("date", "nunique"),
+                sector_oc_3d=("sector_oc", "mean"),
+                sector_up_days_3d=("sector_oc", lambda values: int(values.gt(0).sum())),
+                sector_down_days_3d=("sector_oc", lambda values: int(values.lt(0).sum())),
+            )
+        )
+    source = source.join(sector_3d, on="sectors")
+
+    source = source.drop(columns=["atr14_pct"], errors="ignore")
+    atr = _latest_atr14(prices, latest_date)
+    source = source.merge(atr, on="ticker", how="left")
+    atr_available = source["atr14_pct"].notna()
+    if atr_available.any():
+        source.loc[atr_available, "atr_percentile"] = (
+            source.loc[atr_available, "atr14_pct"].rank(method="average", pct=True) * 100.0
+        )
+    else:
+        source["atr_percentile"] = None
+
+    abs_oc = source["open_to_close_pct"].abs()
+    abs_oc_q75 = _number(abs_oc.quantile(0.75))
+    turnover_q25 = _number(source["trading_value_billion"].quantile(0.25))
+    atr_q65 = _number(source["atr14_pct"].quantile(0.65))
+
+    candidates: list[dict[str, Any]] = []
+    for _, row in source.iterrows():
+        latest_oc = _number(row.get("open_to_close_pct"))
+        stock_oc_3d = _number(row.get("stock_oc_3d"))
+        sector_oc = _number(row.get("sector_oc"))
+        sector_oc_3d = _number(row.get("sector_oc_3d"))
+        if None in {latest_oc, stock_oc_3d, sector_oc, sector_oc_3d}:
+            continue
+
+        if latest_oc > 0 and stock_oc_3d > 0 and sector_oc > 0 and sector_oc_3d > 0:
+            direction = "long"
+            direction_days = _int_or_none(row.get("stock_up_days_3d")) or 0
+            sector_direction_days = _int_or_none(row.get("sector_up_days_3d")) or 0
+            breadth_support = (_number(row.get("sector_up_rate_pct")) or 0) >= 60.0
+        elif latest_oc < 0 and stock_oc_3d < 0 and sector_oc < 0 and sector_oc_3d < 0:
+            direction = "short"
+            direction_days = _int_or_none(row.get("stock_down_days_3d")) or 0
+            sector_direction_days = _int_or_none(row.get("sector_down_days_3d")) or 0
+            sector_up_rate = _number(row.get("sector_up_rate_pct"))
+            breadth_support = sector_up_rate is not None and sector_up_rate <= 40.0
+        else:
+            continue
+
+        active_days = _int_or_none(row.get("active_days_3d")) or 0
+        consecutive_days = _int_or_none(row.get("consecutive_days_in_top150")) or 0
+        rank_change = _number(row.get("rank_change"))
+        is_new = bool(row.get("is_new_top150"))
+        leader_share = _number(row.get("sector_leader_share_pct"))
+        turnover = _number(row.get("trading_value_billion")) or 0.0
+        atr14_pct = _number(row.get("atr14_pct"))
+        atr_percentile = _number(row.get("atr_percentile"))
+
+        flow_score = 40
+        flow_score += 15 if active_days >= 2 else 0
+        flow_score += 15 if direction_days >= 2 else 0
+        flow_score += 15 if sector_direction_days >= 2 else 0
+        flow_score += 15 if breadth_support else 0
+        flow_score = min(100, flow_score)
+        flow_status = (
+            "confirmed"
+            if active_days >= 2
+            and direction_days >= 2
+            and sector_direction_days >= 2
+            and breadth_support
+            else "forming"
+        )
+
+        calm_reasons: list[str] = []
+        risk_reasons: list[str] = []
+        calm_score: float | None = None
+        calm_status = "unverified"
+        if atr14_pct is None:
+            risk_reasons.append("ATR14未取得")
+        else:
+            calm_score = 0.0
+            if atr_percentile is not None:
+                calm_score += max(0.0, 35.0 * (1.0 - atr_percentile / 100.0))
+            if abs_oc_q75 is not None and abs(latest_oc) <= abs_oc_q75:
+                calm_score += 20.0
+                calm_reasons.append("日中変動が上位25%外")
+            elif abs(latest_oc) <= 3.0:
+                calm_score += 10.0
+            else:
+                risk_reasons.append("当日OCが大きい")
+            if rank_change is not None and abs(rank_change) <= 20:
+                calm_score += 20.0
+                calm_reasons.append("順位変動が小さい")
+            elif rank_change is not None and abs(rank_change) <= 40:
+                calm_score += 10.0
+            else:
+                risk_reasons.append("順位変動が大きい")
+            if not is_new and consecutive_days >= 2:
+                calm_score += 15.0
+                calm_reasons.append("Top150継続")
+            else:
+                risk_reasons.append("新規または継続不足")
+            if leader_share is not None and leader_share <= 60.0:
+                calm_score += 10.0
+                calm_reasons.append("業種内の集中が限定的")
+            else:
+                risk_reasons.append("業種内の首位集中")
+
+            atr_calm = atr_q65 is not None and atr14_pct <= atr_q65
+            oc_calm = abs_oc_q75 is not None and abs(latest_oc) <= abs_oc_q75
+            rank_calm = rank_change is not None and abs(rank_change) <= 40
+            persistence_calm = not is_new and consecutive_days >= 2
+            concentration_calm = leader_share is not None and leader_share <= 60.0
+            calm_status = (
+                "confirmed"
+                if atr_calm and oc_calm and rank_calm and persistence_calm and concentration_calm
+                else "volatile"
+            )
+
+        liquidity_ok = turnover_q25 is None or turnover >= turnover_q25
+        if not liquidity_ok:
+            risk_reasons.append("売買代金が候補内下位")
+        if flow_status == "confirmed" and calm_status == "confirmed" and liquidity_ok:
+            selection_status = "qualified"
+        elif calm_status == "unverified":
+            selection_status = "unverified"
+        else:
+            selection_status = "watch"
+
+        qualification_score = (
+            min(float(flow_score), float(calm_score))
+            if calm_score is not None
+            else None
+        )
+        candidates.append({
+            "as_of_date": latest_date,
+            "valid_for": "next_trading_session",
+            "selection_status": selection_status,
+            "direction": direction,
+            "flow_status": flow_status,
+            "calm_status": calm_status,
+            "flow_score": flow_score,
+            "calm_score": calm_score,
+            "qualification_score": qualification_score,
+            "rank": _int_or_none(row.get("rank")),
+            "rank_change": rank_change,
+            "ticker": str(row.get("ticker") or ""),
+            "code": str(row.get("code") or ""),
+            "stock_name": str(row.get("stock_name") or ""),
+            "sector": str(row.get("sectors") or "UNKNOWN"),
+            "trading_value_billion": turnover,
+            "open_to_close_pct": latest_oc,
+            "stock_oc_3d": stock_oc_3d,
+            "active_days_3d": active_days,
+            "direction_days_3d": direction_days,
+            "sector_oc": sector_oc,
+            "sector_oc_3d": sector_oc_3d,
+            "sector_direction_days_3d": sector_direction_days,
+            "sector_up_rate_pct": _number(row.get("sector_up_rate_pct")),
+            "sector_leader_share_pct": leader_share,
+            "consecutive_days_in_top150": consecutive_days,
+            "atr14_pct": atr14_pct,
+            "atr_percentile": atr_percentile,
+            "price_date": (
+                str(row.get("price_date"))
+                if row.get("price_date") is not None and not pd.isna(row.get("price_date"))
+                else None
+            ),
+            "calm_reasons": calm_reasons,
+            "risk_reasons": risk_reasons,
+        })
+
+    status_order = {"qualified": 0, "watch": 1, "unverified": 2}
+    candidates.sort(
+        key=lambda row: (
+            status_order.get(str(row.get("selection_status")), 9),
+            -(_number(row.get("qualification_score")) or -1.0),
+            -(_number(row.get("flow_score")) or 0.0),
+            -(_number(row.get("trading_value_billion")) or 0.0),
+        )
+    )
+    return {
+        "as_of_date": latest_date,
+        "valid_for": "next_trading_session",
+        "scope": "non_semiconductor_non_etf",
+        "method": "3d_stock_sector_alignment_and_daily_atr14",
+        "coverage": {
+            "eligible_count": int(len(source)),
+            "atr_available_count": int(source["atr14_pct"].notna().sum()),
+        },
+        "thresholds": {
+            "atr_cross_section_q65_pct": atr_q65,
+            "absolute_oc_q75_pct": abs_oc_q75,
+            "turnover_q25_billion": turnover_q25,
+            "sector_breadth_long_pct": 60.0,
+            "sector_breadth_short_pct": 40.0,
+            "sector_leader_share_max_pct": 60.0,
+        },
+        "candidates": candidates[:20],
+        "notes": [
+            "当日大引け確定後に翌営業日の監視候補として使用",
+            "決算・開示・PTS・海外市場は未反映",
+            "執行適性とは独立した資金フロー候補",
+        ],
+    }
+
+
 def _build_payload(days: int, top_n: int) -> dict[str, Any]:
     raw = _read_history()
     if raw is None or raw.empty:
@@ -2800,6 +3136,12 @@ def _build_payload(days: int, top_n: int) -> dict[str, Any]:
         & ~latest["is_etf"]
     ].sort_values(["rank_change", "trading_value_billion"], ascending=[False, False], kind="mergesort")
     sustained_stocks = _sustained_stocks(latest)
+    candidate_lens = _directional_candidate_lens(
+        latest,
+        recent,
+        dates,
+        _read_optional_parquet(PRICES_PATH),
+    )
     sustained_buckets = sorted(
         [
             row for row in bucket_daily
@@ -2879,6 +3221,7 @@ def _build_payload(days: int, top_n: int) -> dict[str, Any]:
         "market_temperature": market_temperature,
         "execution_program": _execution_program(),
         "flow_analysis": flow_analysis,
+        "candidate_lens": _clean(candidate_lens),
         "bucket_daily": bucket_daily,
         "bucket_weekly": bucket_weekly,
         "bucket_snapshot_dates": dates[-5:],
