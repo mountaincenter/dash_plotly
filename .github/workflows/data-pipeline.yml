@@ -192,6 +192,17 @@ jobs:
             echo "💹 Stock Data Mode (16:45 JST) - Grok selection skipped"
           fi
 
+      - name: Publish same-day earnings events (22:15 only)
+        if: steps.exec_mode.outputs.mode == 'grok_daily' || steps.exec_mode.outputs.mode == 'grok_forced'
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: |
+          set -euo pipefail
+          AS_OF_DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          echo "Publishing same-day earnings events for $AS_OF_DATE"
+          python3 scripts/pipeline/manage_jquants_earnings_events.py close \
+            --as-of-date "$AS_OF_DATE"
+
       - name: Check trading day window
         id: check_trading
         if: ${{ github.event.inputs.skip_trading_day_check != 'true' && steps.exec_mode.outputs.skip_trading_check != 'true' }}
@@ -273,6 +284,22 @@ jobs:
             echo "❌ Cleanup failed"
             exit 1
           fi
+
+      - name: Reconcile prior earnings events (16:45 only)
+        if: |
+          success() && (
+            steps.exec_mode.outputs.mode == 'stock_data' ||
+            steps.exec_mode.outputs.mode == 'stock_data_forced'
+          )
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: |
+          set -euo pipefail
+          AS_OF_DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          echo "Reconciling earnings events before $AS_OF_DATE"
+          python3 scripts/pipeline/manage_jquants_earnings_events.py reconcile \
+            --as-of-date "$AS_OF_DATE" \
+            --lookback-days 7
 
       - name: Publish all-market tick and minute partition (17:00 only)
         if: |

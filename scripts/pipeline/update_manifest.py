@@ -32,6 +32,10 @@ from scripts.pipeline.manage_all_market_microstructure import (
     MINUTE_S3_ROOT,
     TICK_S3_ROOT,
 )
+from scripts.pipeline.manage_jquants_earnings_events import (
+    EARNINGS_DATE_S3_ROOT,
+    FINS_SUMMARY_S3_ROOT,
+)
 
 # S3にアップロードするファイル
 UPLOAD_FILES = [
@@ -619,6 +623,11 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
             if key.startswith(f"{prefix}{MINUTE_S3_ROOT}/"):
                 keep_keys.add(key)
             if key.startswith(f"{prefix}{TICK_S3_ROOT}/"):
+                keep_keys.add(key)
+            # 決算予定・実績は論理upsert、物理object不変で個別manifest管理する。
+            if key.startswith(f"{prefix}{EARNINGS_DATE_S3_ROOT}/"):
+                keep_keys.add(key)
+            if key.startswith(f"{prefix}{FINS_SUMMARY_S3_ROOT}/"):
                 keep_keys.add(key)
 
         # 削除対象のファイルを抽出
