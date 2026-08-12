@@ -12,9 +12,8 @@ GitHub Actionsとローカル開発の両方で使用
   5. fetch_watch_daily_jquants - J-Quantsでwatch universeの日足/tech_snapshot生成
   6. fetch_index_prices      - yfinanceで指数・ETF・先物の価格データ取得
   7. fetch_currency_prices   - yfinanceで為替レートデータ取得
-  8. generate_etf_0910_shadow - 200A/1306固定ルールの前向きshadow更新（16:45のみ）
-  9. generate_fins_data      - J-Quants /fins/summaryから財務データ＋決算発表日を一括取得
- 10. update_manifest         - manifest.json生成・S3一括アップロード
+  8. generate_fins_data      - J-Quants /fins/summaryから財務データ＋決算発表日を一括取得
+  9. update_manifest         - manifest.json生成・S3一括アップロード
 
 注意:
   - generate_scalpingは実行されません（スキップ）
@@ -104,12 +103,6 @@ class PipelineRunner:
             ("pipeline.fetch_currency_prices", "為替レート取得（yfinance - FX）"),
         ])
 
-        # 16:45のみ: 当日分足と直前までの外部市場を固定ルールで前向き記録する。
-        if skip_grok:
-            self.steps.append(
-                ("pipeline.generate_etf_0910_shadow", "200A/1306 ETF 09:10 forward shadow更新")
-            )
-
         self.steps.extend([
             ("pipeline.update_topix_prices", "TOPIX系指数データ取得（J-Quants Standard）"),
             ("pipeline.update_sectors_prices", "33業種別指数データ取得（J-Quants Standard）"),
@@ -127,10 +120,9 @@ class PipelineRunner:
         # 派生バックテスト保存（16:45 JST実行時のみ）
         # 正本archiveは読取照合だけに使い、日付別の派生結果を保存する。
         if skip_grok:
-            self.steps.extend([
-                ("pipeline.generate_b4_etf_calendar_signals", "B4 ETFカレンダー発火フラグ生成"),
-                ("pipeline.save_backtest_to_archive", "Grok J-Quants日次派生バックテスト保存"),
-            ])
+            self.steps.append(
+                ("pipeline.save_backtest_to_archive", "Grok J-Quants日次派生バックテスト保存")
+            )
 
         # グランビルバックテスト（16:45 JST実行時のみ）
         if skip_grok:
