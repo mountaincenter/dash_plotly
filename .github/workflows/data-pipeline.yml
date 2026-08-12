@@ -70,12 +70,15 @@ jobs:
 
       - name: Install jquants-cli
         run: |
-          JQUANTS_VERSION="1.0.0"
-          curl -sL "https://github.com/J-Quants/jquants-cli/releases/download/v${JQUANTS_VERSION}/jquants-${JQUANTS_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jquants.tar.gz
+          JQUANTS_VERSION="1.3.0"
+          JQUANTS_SHA256="074b6be27b8e4d343a81af8d207d34e81bd30aee2dd2f5358e6ab903564d2b73"
+          curl -fsSL "https://github.com/J-Quants/jquants-cli/releases/download/v${JQUANTS_VERSION}/jquants-${JQUANTS_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/jquants.tar.gz
+          echo "${JQUANTS_SHA256}  /tmp/jquants.tar.gz" | sha256sum -c -
           tar -xzf /tmp/jquants.tar.gz -C /tmp/
           chmod +x /tmp/jquants
           sudo mv /tmp/jquants /usr/local/bin/jquants
           echo "✅ jquants-cli $(jquants --version) installed"
+          jquants --output json schema eq.daily | python -c 'import json, sys; fields = {row["Field"] for row in json.load(sys.stdin)}; missing = {"MktCap", "ExRT", "AdjFactor"} - fields; assert not missing, f"jquants eq.daily schema missing: {sorted(missing)}"'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -253,7 +256,7 @@ jobs:
 
       - name: Verify S3 backups before Grok selection
         id: verify_backup
-        if: success() && steps.exec_mode.outputs.mode == 'grok_daily' && github.event_name != 'workflow_dispatch'
+        if: success() && steps.exec_mode.outputs.mode == 'grok_daily'
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
@@ -455,6 +458,7 @@ jobs:
           echo "============================================================"
 
           ARCHIVE_FILE="data/parquet/backtest/grok_trending_archive.parquet"
+          LEDGER_FILE="data/parquet/backtest/grok_jquants_backtest_ledger.parquet"
           mkdir -p data/parquet/backtest data/parquet/jquants data/jquants_csv/grok_archive_minute data/jquants_csv/grok_daily
 
           if [ ! -f "$ARCHIVE_FILE" ]; then
@@ -481,6 +485,21 @@ jobs:
           print(f"archive rows={len(df):,} dates={d.dt.date.nunique():,} range={d.min().date()}..{d.max().date()} sha256={h}")
           PY
 
+          echo "📥 Downloading dated derived backtests from S3..."
+          aws s3 sync \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/" \
+            data/parquet/backtest/ \
+            --exclude "*" \
+            --include "grok_trending_20*.parquet" \
+            --only-show-errors
+          echo "📚 Building cumulative derived ledger (canonical remains read-only)..."
+          python3 scripts/pipeline/build_grok_jquants_backtest_ledger.py \
+            --canonical-path "$ARCHIVE_FILE" \
+            --derived-dir data/parquet/backtest \
+            --calendar-path data/parquet/calendar.parquet \
+            --output-path "$LEDGER_FILE" \
+            --validation-path data/parquet/backtest/grok_jquants_backtest_ledger.validation.json
+
           echo "📥 Downloading existing J-Quants caches from S3..."
           if aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
@@ -502,7 +521,7 @@ jobs:
 
           echo "📊 Fetching latest archive-day minute bars..."
           python3 scripts/data/fetch_grok_archive_minute_jquants.py \
-            --archive-path "$ARCHIVE_FILE" \
+            --archive-path "$LEDGER_FILE" \
             --output data/parquet/jquants/grok_archive_minute.parquet \
             --raw-dir data/jquants_csv/grok_archive_minute \
             --requests-per-minute 30 \
@@ -510,28 +529,34 @@ jobs:
 
           echo "📊 Fetching latest archive-day daily fields..."
           python3 scripts/data/fetch_grok_archive_daily_jquants.py \
-            --archive-path "$ARCHIVE_FILE" \
+            --archive-path "$LEDGER_FILE" \
+            --calendar-path data/parquet/calendar.parquet \
             --output data/parquet/jquants/grok_jquants_daily.parquet \
             --raw-dir data/jquants_csv/grok_daily \
+            --all-archive \
             --requests-per-minute 30 \
             --quiet \
             --progress-every 5
 
           echo "📊 Building J-Quants based Grok master files..."
           python3 scripts/analysis/build_grok_master_price_alignment.py \
-            --archive-path "$ARCHIVE_FILE" \
+            --archive-path "$LEDGER_FILE" \
             --minute-path data/parquet/jquants/grok_archive_minute.parquet
           python3 scripts/analysis/build_grok_master_jquants_segments.py \
-            --archive-path "$ARCHIVE_FILE" \
+            --archive-path "$LEDGER_FILE" \
             --minute-path data/analysis/grok_intraday_jquants/grok_master_minute_jquants_basis.parquet \
+            --daily-path data/parquet/jquants/grok_jquants_daily.parquet \
+            --calendar-path data/parquet/calendar.parquet \
             --output-path data/parquet/backtest/grok_master_jquants_segments.parquet
 
           echo "🔎 Validating J-Quants minute cache and Grok master..."
           MASTER_VALIDATION_JSON="data/parquet/backtest/grok_master_jquants_segments.validation.json"
           set +e
           python3 scripts/analysis/validate_grok_jquants_outputs.py \
-            --archive-path "$ARCHIVE_FILE" \
+            --archive-path "$LEDGER_FILE" \
             --minute-path data/parquet/jquants/grok_archive_minute.parquet \
+            --daily-path data/parquet/jquants/grok_jquants_daily.parquet \
+            --calendar-path data/parquet/calendar.parquet \
             --master-path data/parquet/backtest/grok_master_jquants_segments.parquet \
             --output-json "$MASTER_VALIDATION_JSON"
           MASTER_VALIDATION_EXIT=$?
@@ -552,6 +577,21 @@ jobs:
           fi
 
           echo "📤 Uploading validated J-Quants parquet and master files..."
+          aws s3 cp \
+            "$LEDGER_FILE" \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.parquet" \
+            --only-show-errors
+          aws s3 cp \
+            data/parquet/backtest/grok_jquants_backtest_ledger.validation.json \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.validation.json" \
+            --only-show-errors
+          LEDGER_VERIFY="/tmp/grok-jquants-ledger-${GITHUB_RUN_ID}.parquet"
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.parquet" \
+            "$LEDGER_VERIFY" \
+            --only-show-errors
+          cmp "$LEDGER_FILE" "$LEDGER_VERIFY"
+          echo "✅ Derived ledger S3 readback is byte-exact"
           aws s3 cp \
             data/parquet/jquants/grok_archive_minute.parquet \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}jquants/grok_archive_minute.parquet" \
@@ -592,34 +632,23 @@ jobs:
           fi
           echo "✅ prices_max_1d.parquet exists"
 
-          # S3からgrok_trending.parquetをダウンロード（22:00に生成されたもの）
-          echo "📥 Downloading grok_trending.parquet from S3..."
-          if ! aws s3 cp \
-            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
-            data/parquet/grok_trending.parquet \
-            --region ${{ env.AWS_REGION }} \
-            --only-show-errors; then
-            echo "❌ ERROR: Failed to download grok_trending.parquet from S3"
+          # Run Data Pipelineが生成した未公開のローカル成果物を使用する。
+          # 公式D-1 MktCapとMLが揃うまではS3の確定版を上書きしない。
+          echo "🔍 Checking unpublished local grok_trending.parquet..."
+          if [ ! -f "data/parquet/grok_trending.parquet" ]; then
+            echo "❌ ERROR: Local grok_trending.parquet was not generated"
             exit 1
           fi
-          echo "✅ Downloaded grok_trending.parquet"
+          echo "✅ Local unpublished grok_trending.parquet exists"
 
-          # 時価総額カラムを追加（選定日終値ベース）
-          echo "📊 Adding market_cap to grok_trending.parquet..."
-          python3 scripts/pipeline/add_market_cap_to_grok_trending.py
-          if [ $? -eq 0 ]; then
-            echo "✅ Added market_cap column"
-            # 更新されたgrok_trending.parquetをS3にアップロード
-            aws s3 cp \
-              data/parquet/grok_trending.parquet \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
-              --region ${{ env.AWS_REGION }} \
-              --only-show-errors
-            echo "✅ Uploaded updated grok_trending.parquet to S3"
-          else
-            echo "⚠️ Warning: Failed to add market_cap (continuing anyway)"
+          # 推薦日Dに対し、直前営業日D-1の公式J-Quants MktCapを使用する。
+          # ETF/ETNのMktCap=nullは有効だが、D-1ソース行欠損や時点ずれは停止する。
+          echo "📊 Adding official D-1 J-Quants market_cap to grok_trending.parquet..."
+          if ! python3 scripts/pipeline/add_market_cap_to_grok_trending.py; then
+            echo "❌ ERROR: Failed to attach validated official D-1 market_cap"
+            exit 1
           fi
-
+          echo "✅ Added validated official D-1 market_cap column"
           # ML予測（prob_up, quintile）カラムを追加
           echo "🤖 Adding ML predictions (prob_up, quintile) to grok_trending.parquet..."
 
@@ -634,15 +663,51 @@ jobs:
             echo "⚠️ Warning: grok_prices_max_1d.parquet not found in S3"
           fi
 
-          # grok_trending_archive.parquet（generate_grok_prices_max_1d.py用）
+          # 不変正本と、正本以降の監査済み日次派生を含む累積ledger
           aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_trending_archive.parquet" \
             data/parquet/backtest/grok_trending_archive.parquet \
-            --only-show-errors || echo "⚠️ archive not found"
+            --only-show-errors
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.parquet" \
+            data/parquet/backtest/grok_jquants_backtest_ledger.parquet \
+            --only-show-errors
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.validation.json" \
+            data/parquet/backtest/grok_jquants_backtest_ledger.validation.json \
+            --only-show-errors
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          canonical = Path("data/parquet/backtest/grok_trending_archive.parquet")
+          ledger = Path("data/parquet/backtest/grok_jquants_backtest_ledger.parquet")
+          receipt = json.loads(
+              Path(
+                  "data/parquet/backtest/"
+                  "grok_jquants_backtest_ledger.validation.json"
+              ).read_text(encoding="utf-8")
+          )
+          if receipt.get("status") != "passed":
+              raise SystemExit("ledger validation status is not passed")
+          if hashlib.sha256(ledger.read_bytes()).hexdigest() != receipt.get(
+              "ledger_sha256"
+          ):
+              raise SystemExit("ledger checksum differs from validation receipt")
+          if hashlib.sha256(canonical.read_bytes()).hexdigest() != receipt.get(
+              "canonical_sha256"
+          ):
+              raise SystemExit("canonical checksum differs from ledger source receipt")
+          print("✅ ledger/canonical checksums match validation receipt")
+          PY
 
           # 新規銘柄の価格データを取得（grok_trendingの銘柄がgrok_prices_max_1dにない場合）
           echo "📊 Updating grok_prices_max_1d.parquet with new tickers..."
-          python3 scripts/pipeline/generate_grok_prices_max_1d.py || echo "⚠️ Price update failed"
+          if ! python3 scripts/pipeline/generate_grok_prices_max_1d.py; then
+            echo "❌ ERROR: Current Grok price history coverage is incomplete"
+            exit 1
+          fi
 
           # 更新されたgrok_prices_max_1d.parquetをS3にアップロード
           if [ -f "data/parquet/grok_prices_max_1d.parquet" ]; then
@@ -659,13 +724,15 @@ jobs:
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_model.pkl" \
             models/grok_lgbm_model.pkl \
             --only-show-errors; then
-            echo "⚠️ Warning: ML model not found in S3"
+            echo "❌ ERROR: ML model not found in S3"
+            exit 1
           fi
           if ! aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
             models/grok_lgbm_meta.json \
             --only-show-errors; then
-            echo "⚠️ Warning: ML meta not found in S3"
+            echo "❌ ERROR: ML model metadata not found in S3"
+            exit 1
           fi
 
           # 市場データ（index, futures, currency）
@@ -682,21 +749,12 @@ jobs:
             data/parquet/currency_prices_max_1d.parquet \
             --only-show-errors || echo "⚠️ currency_prices not found"
 
-          # ML予測スクリプト実行
-          python3 scripts/pipeline/add_ml_prediction_to_grok_trending.py
-          if [ $? -eq 0 ]; then
-            echo "✅ Added prob_up/quintile columns"
-            # 更新されたgrok_trending.parquetをS3にアップロード
-            aws s3 cp \
-              data/parquet/grok_trending.parquet \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_trending.parquet" \
-              --region ${{ env.AWS_REGION }} \
-              --only-show-errors
-            echo "✅ Uploaded updated grok_trending.parquet (with ML predictions) to S3"
-          else
-            echo "⚠️ Warning: Failed to add ML predictions (continuing anyway)"
+          # ML予測スクリプト実行。公式D-1で再学習済みのモデル以外は停止する。
+          if ! python3 scripts/pipeline/add_ml_prediction_to_grok_trending.py; then
+            echo "❌ ERROR: ML prediction failed or model feature provenance is incompatible"
+            exit 1
           fi
-
+          echo "✅ Added prob_up column with compatible model"
           # trading_recommendation.json を生成（v2.1ロジック - 2階建てアーキテクチャ）
           echo "📊 Generating trading_recommendation.json (v2.1 - 2階建てアーキテクチャ)..."
           python3 scripts/pipeline/generate_trading_recommendation_v2_1.py
@@ -704,19 +762,38 @@ jobs:
           if [ $? -eq 0 ] && [ -f "data/parquet/backtest/trading_recommendation.json" ]; then
             echo "✅ Generated trading_recommendation.json"
 
-            # S3にアップロード
-            echo "📤 Uploading trading_recommendation.json to S3..."
-            aws s3 cp \
-              data/parquet/backtest/trading_recommendation.json \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
-              --region ${{ env.AWS_REGION }} \
-              --only-show-errors
-            echo "✅ Uploaded trading_recommendation.json to S3"
+            echo "✅ Recommendation kept local until Grok finalization succeeds"
           else
             echo "❌ ERROR: Failed to generate trading_recommendation.json"
             exit 1
           fi
 
+          echo "============================================================"
+
+      - name: Publish finalized Grok and manifest (22:15 only)
+        if: success() && steps.exec_mode.outputs.skip_grok == 'false'
+        run: |
+          set -euo pipefail
+          echo "============================================================"
+          echo "Publishing finalized Grok dataset and checksum-pinned manifest"
+          echo "============================================================"
+
+          # 内部で公式D-1 MktCap、prob_up、SHA256、S3 VersionIdを検証し、
+          # datasetを先、manifestを最後に条件付き更新する。
+          python3 scripts/pipeline/update_manifest.py \
+            --manifest-only \
+            --finalize-grok
+
+          if [ ! -f "data/parquet/backtest/trading_recommendation.json" ]; then
+            echo "❌ ERROR: finalized recommendation is missing"
+            exit 1
+          fi
+          aws s3 cp \
+            data/parquet/backtest/trading_recommendation.json \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/trading_recommendation.json" \
+            --region ${{ env.AWS_REGION }} \
+            --only-show-errors
+          echo "✅ Final Grok, manifest, and recommendation published"
           echo "============================================================"
 
       - name: Update day trade list (22:15 only)
@@ -1146,13 +1223,13 @@ jobs:
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
 
-      - name: Archive GROK trending for backtest
+      - name: Confirm derived GROK backtest handling
         id: archive-grok
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          # save_backtest_to_archive.py が grok_trending_{DATE}.parquet を生成するため、
-          # ここでのアーカイブは不要になりました。このステップはスキップします。
-          echo "ℹ️  Archiving is handled by save_backtest_to_archive.py"
+          # save_backtest_to_archive.py は正本を変更せず、
+          # grok_trending_{DATE}.parquet 派生結果だけを生成する。
+          echo "ℹ️  Derived daily output is handled by save_backtest_to_archive.py"
 
           if false; then
             # cron判定
@@ -1500,6 +1577,34 @@ jobs:
             --only-show-errors
           echo "  ✅ grok_trending_archive.parquet"
 
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.parquet" \
+            data/parquet/backtest/grok_jquants_backtest_ledger.parquet \
+            --only-show-errors
+          echo "  ✅ grok_jquants_backtest_ledger.parquet"
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}backtest/grok_jquants_backtest_ledger.validation.json" \
+            data/parquet/backtest/grok_jquants_backtest_ledger.validation.json \
+            --only-show-errors
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          ledger = Path("data/parquet/backtest/grok_jquants_backtest_ledger.parquet")
+          canonical = Path("data/parquet/backtest/grok_trending_archive.parquet")
+          validation = json.loads(Path("data/parquet/backtest/grok_jquants_backtest_ledger.validation.json").read_text())
+          ledger_sha = hashlib.sha256(ledger.read_bytes()).hexdigest()
+          canonical_sha = hashlib.sha256(canonical.read_bytes()).hexdigest()
+          if validation.get("status") != "passed":
+              raise SystemExit("ledger validation status is not passed")
+          if ledger_sha != validation.get("ledger_sha256"):
+              raise SystemExit("ledger checksum differs from validation receipt")
+          if canonical_sha != validation.get("canonical_sha256"):
+              raise SystemExit("canonical checksum differs from ledger source receipt")
+          print("  ✅ ledger/canonical checksums match validation receipt")
+          PY
+
           # grok_prices_max_1d.parquet（S3に存在しない場合はStep 2で再生成）
           if aws s3 cp \
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}grok_prices_max_1d.parquet" \
@@ -1545,12 +1650,13 @@ jobs:
               --only-show-errors
             echo "  ✅ Uploaded to S3"
           else
-            echo "  ⚠️ Failed to update grok_prices_max_1d.parquet (continuing with existing data)"
+            echo "  ❌ Failed to update complete Grok price history"
+            exit 1
           fi
 
           # === Step 3: 特徴量生成 ===
           echo ""
-          echo "📊 Step 3: Generating features..."
+          echo "📊 Step 3: Generating features with validated official D-1 MktCap..."
           mkdir -p data/parquet/ml
           python3 scripts/ml/feature_engineering.py
 
@@ -1566,6 +1672,15 @@ jobs:
           echo ""
           echo "🤖 Step 4: Training ML model..."
           mkdir -p models
+          PREVIOUS_MODEL_META="/tmp/grok_lgbm_meta.previous.json"
+          if aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
+            "$PREVIOUS_MODEL_META" \
+            --only-show-errors 2>/dev/null; then
+            echo "  ✅ Previous model metrics downloaded for release comparison"
+          else
+            echo "  ℹ️ No previous model metadata; absolute release gates will apply"
+          fi
           python3 scripts/ml/train_model.py
 
           if [ $? -eq 0 ]; then
@@ -1574,6 +1689,10 @@ jobs:
             echo "  ❌ Failed to train model"
             exit 1
           fi
+
+          # pickleを読み込む前にmetaのmarket_cap由来とmodel SHA256を照合する。
+          python3 -c 'from scripts.pipeline.add_ml_prediction_to_grok_trending import load_ml_model; load_ml_model(); print("  ✅ Local model/meta package verified")'
+          PREVIOUS_MODEL_META="$PREVIOUS_MODEL_META" python3 -c 'import json, os; from pathlib import Path; from scripts.ml.train_model import validate_model_release; candidate=json.loads(Path("models/grok_lgbm_meta.json").read_text()); previous_path=Path(os.environ["PREVIOUS_MODEL_META"]); previous=json.loads(previous_path.read_text()) if previous_path.exists() else None; validate_model_release(candidate, previous); print("  ✅ WFCV model release gates passed")'
 
           # === Step 5: モデルをS3にアップロード ===
           echo ""
@@ -1590,6 +1709,22 @@ jobs:
             "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
             --only-show-errors
           echo "  ✅ grok_lgbm_meta.json"
+
+          # modelを先、checksumを含むmetaを最後に置換した後、S3から再取得して
+          # byte-exactであることを確認する。片方だけなら22:15推論はfail-closedになる。
+          MODEL_VERIFY_DIR="/tmp/grok-model-verify-${GITHUB_RUN_ID}"
+          mkdir -p "$MODEL_VERIFY_DIR"
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_model.pkl" \
+            "$MODEL_VERIFY_DIR/grok_lgbm_model.pkl" \
+            --only-show-errors
+          aws s3 cp \
+            "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}ml/grok_lgbm_meta.json" \
+            "$MODEL_VERIFY_DIR/grok_lgbm_meta.json" \
+            --only-show-errors
+          cmp models/grok_lgbm_model.pkl "$MODEL_VERIFY_DIR/grok_lgbm_model.pkl"
+          cmp models/grok_lgbm_meta.json "$MODEL_VERIFY_DIR/grok_lgbm_meta.json"
+          echo "  ✅ S3 model/meta byte-exact verification passed"
 
           # 特徴量ファイルもアップロード
           aws s3 cp \

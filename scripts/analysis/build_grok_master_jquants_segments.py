@@ -9,6 +9,7 @@ PnL columns prefixed with jq_ are derived from J-Quants minute bars.
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,17 @@ import pandas as pd
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from scripts.lib.jquants_daily_fields import (
+    JQ_ADJUSTMENT_FACTOR,
+    JQ_EX_RIGHTS_TYPE,
+    JQ_MARKET_CAP_YEN,
+    JQ_MKT_CAP_MILLION_YEN,
+    JQUANTS_DAILY_FIELD_COLUMNS,
+)
+
 ARCHIVE_PATH = BASE_DIR / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
 MINUTE_PATH = (
     BASE_DIR
@@ -24,6 +36,8 @@ MINUTE_PATH = (
     / "grok_intraday_jquants"
     / "grok_master_minute_jquants_basis.parquet"
 )
+DAILY_PATH = BASE_DIR / "data" / "parquet" / "jquants" / "grok_jquants_daily.parquet"
+CALENDAR_PATH = BASE_DIR / "data" / "parquet" / "calendar.parquet"
 OUTPUT_PATH = (
     BASE_DIR
     / "data"
@@ -37,11 +51,23 @@ TARGET_TIMES = {seg: f"{seg[:2]}:{seg[2:]}" for seg in SEG_TIMES}
 NO_MARKET_TRADE_DATA_SOURCE = "jquants_no_market_trade"
 NO_MARKET_TRADE_VALIDATION = "daily_all_null_and_minute_empty"
 
+JQ_MKT_CAP_MILLION_YEN_TARGET = "jq_mkt_cap_million_yen_target"
+JQ_MARKET_CAP_YEN_TARGET = "jq_market_cap_yen_target"
+JQ_EX_RIGHTS_TYPE_TARGET = "jq_ex_rights_type_target"
+JQ_ADJUSTMENT_FACTOR_TARGET = "jq_adjustment_factor_target"
+JQ_MARKET_CAP_ASOF_DATE = "jq_market_cap_asof_date"
+JQ_MKT_CAP_MILLION_YEN_ASOF = "jq_mkt_cap_million_yen_asof"
+JQ_MARKET_CAP_YEN_ASOF = "jq_market_cap_yen_asof"
+JQ_ADJUSTMENT_FACTOR_ASOF = "jq_adjustment_factor_asof"
+JQ_CLOSE_ASOF = "jq_close_asof"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build Grok J-Quants segment master.")
     parser.add_argument("--archive-path", type=Path, default=ARCHIVE_PATH)
     parser.add_argument("--minute-path", type=Path, default=MINUTE_PATH)
+    parser.add_argument("--daily-path", type=Path, default=DAILY_PATH)
+    parser.add_argument("--calendar-path", type=Path, default=CALENDAR_PATH)
     parser.add_argument("--output-path", type=Path, default=OUTPUT_PATH)
     parser.add_argument("--csv-out", type=Path, default=None)
     return parser.parse_args()
@@ -49,6 +75,36 @@ def parse_args() -> argparse.Namespace:
 
 def key_date(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce").dt.strftime("%Y-%m-%d")
+
+
+def load_trading_dates(path: Path) -> list[str]:
+    if not path.exists():
+        raise FileNotFoundError(f"trading calendar not found: {path}")
+    calendar = pd.read_parquet(path)
+    if "date" not in calendar.columns:
+        raise ValueError(f"trading calendar missing date column: {path}")
+    dates = sorted(key_date(calendar["date"]).dropna().unique().tolist())
+    if not dates:
+        raise ValueError(f"trading calendar has no valid dates: {path}")
+    return dates
+
+
+def selection_asof_date_map(
+    target_dates: pd.Series,
+    trading_dates: list[str],
+) -> dict[str, str]:
+    positions = {date: idx for idx, date in enumerate(trading_dates)}
+    result: dict[str, str] = {}
+    for target_date in target_dates.dropna().astype(str).unique().tolist():
+        position = positions.get(target_date)
+        if position is None:
+            raise ValueError(
+                f"archive target date not found in trading calendar: {target_date}"
+            )
+        if position == 0:
+            raise ValueError(f"trading calendar has no prior date for: {target_date}")
+        result[target_date] = trading_dates[position - 1]
+    return result
 
 
 def safe_div(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
@@ -106,6 +162,63 @@ def load_minute(path: Path) -> pd.DataFrame:
         minute[col] = pd.to_numeric(minute[col], errors="coerce")
     minute = minute[minute["_key_backtest_date"].notna() & minute["_key_ticker"].ne("") & minute["datetime"].notna()]
     return minute.sort_values(["_key_backtest_date", "_key_ticker", "datetime"]).reset_index(drop=True)
+
+
+def normalize_jquants_code(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    text = str(value).strip().removesuffix(".0")
+    if len(text) == 5 and text.endswith("0"):
+        text = text[:-1]
+    return text
+
+
+def load_daily(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"J-Quants daily cache not found: {path}")
+    daily = pd.read_parquet(path).copy()
+    required = {
+        "trading_date",
+        "jquants_code",
+        "close",
+        *JQUANTS_DAILY_FIELD_COLUMNS,
+    }
+    missing = sorted(required - set(daily.columns))
+    if missing:
+        raise ValueError(f"J-Quants daily cache missing columns: {missing}")
+
+    daily["_key_daily_date"] = key_date(daily["trading_date"])
+    daily["jq_daily_code"] = daily["jquants_code"].map(normalize_jquants_code)
+    daily["_key_ticker"] = daily["jq_daily_code"] + ".T"
+    daily = daily[
+        daily["_key_daily_date"].notna()
+        & daily["jq_daily_code"].ne("")
+    ].copy()
+    duplicate_count = int(
+        daily.duplicated(["_key_daily_date", "_key_ticker"], keep=False).sum()
+    )
+    if duplicate_count:
+        raise ValueError(f"J-Quants daily cache has duplicate keys: {duplicate_count}")
+
+    daily = daily.rename(
+        columns={
+            "source": "jq_daily_source",
+            "fetched_at": "jq_daily_fields_fetched_at",
+        }
+    )
+    keep = [
+        "_key_daily_date",
+        "_key_ticker",
+        "jq_daily_code",
+        "close",
+        *JQUANTS_DAILY_FIELD_COLUMNS,
+        "jq_daily_source",
+        "jq_daily_fields_fetched_at",
+    ]
+    for col in keep:
+        if col not in daily.columns:
+            daily[col] = pd.NA
+    return daily[keep].reset_index(drop=True)
 
 
 def build_segment_rows(minute: pd.DataFrame) -> pd.DataFrame:
@@ -218,8 +331,104 @@ def build_segment_rows(minute: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_master(archive: pd.DataFrame, segments: pd.DataFrame) -> pd.DataFrame:
-    master = archive.merge(segments, on=["_key_backtest_date", "_key_ticker"], how="left")
+def mark_explicit_no_market_trade(master: pd.DataFrame) -> pd.DataFrame:
+    """Represent an official zero-bar trading day explicitly, not as missing data."""
+    required_archive_status = {
+        "data_source",
+        "phase1_mark_status",
+        "close_execution_status",
+    }
+    if not required_archive_status.issubset(master.columns):
+        return master
+    no_trade = (
+        master["data_source"].eq("jquants_no_market_trade")
+        & master["phase1_mark_status"].eq("no_market_trade")
+        & master["close_execution_status"].eq("no_market_trade")
+    )
+    if not no_trade.any():
+        return master
+
+    values: dict[str, object] = {
+        "jq_bar_count": 0,
+        "jq_open_trade_status": "no_market_trade",
+        "jq_price_alignment_status": "daily_all_null_and_minute_empty",
+        "jq_close_execution_status": "no_market_trade",
+    }
+    for seg in SEG_TIMES:
+        values[f"jq_seg_{seg}_source_kind"] = "no_market_trade"
+        values[f"jq_seg_{seg}_missing_reason"] = "no_market_trade"
+    for column, value in values.items():
+        if column not in master.columns:
+            master[column] = pd.NA
+        master.loc[no_trade, column] = value
+    return master
+
+
+def build_master(
+    archive: pd.DataFrame,
+    segments: pd.DataFrame,
+    daily: pd.DataFrame,
+    trading_dates: list[str],
+) -> pd.DataFrame:
+    master = archive.merge(
+        segments,
+        on=["_key_backtest_date", "_key_ticker"],
+        how="left",
+        validate="one_to_one",
+    )
+    target_daily = daily.drop(columns=["close"]).rename(
+        columns={"_key_daily_date": "_key_backtest_date"}
+    ).copy()
+    target_daily[JQ_MKT_CAP_MILLION_YEN_TARGET] = target_daily[
+        JQ_MKT_CAP_MILLION_YEN
+    ]
+    target_daily[JQ_MARKET_CAP_YEN_TARGET] = target_daily[JQ_MARKET_CAP_YEN]
+    target_daily[JQ_EX_RIGHTS_TYPE_TARGET] = target_daily[JQ_EX_RIGHTS_TYPE]
+    target_daily[JQ_ADJUSTMENT_FACTOR_TARGET] = target_daily[
+        JQ_ADJUSTMENT_FACTOR
+    ]
+    master = master.merge(
+        target_daily,
+        on=["_key_backtest_date", "_key_ticker"],
+        how="left",
+        validate="one_to_one",
+    )
+    master = mark_explicit_no_market_trade(master)
+
+    asof_dates = selection_asof_date_map(
+        master["_key_backtest_date"], trading_dates
+    )
+    master[JQ_MARKET_CAP_ASOF_DATE] = master["_key_backtest_date"].map(
+        asof_dates
+    )
+    asof_daily = daily[
+        [
+            "_key_daily_date",
+            "_key_ticker",
+            "close",
+            JQ_MKT_CAP_MILLION_YEN,
+            JQ_MARKET_CAP_YEN,
+            JQ_ADJUSTMENT_FACTOR,
+            "jq_daily_source",
+            "jq_daily_fields_fetched_at",
+        ]
+    ].rename(
+        columns={
+            "_key_daily_date": JQ_MARKET_CAP_ASOF_DATE,
+            "close": JQ_CLOSE_ASOF,
+            JQ_MKT_CAP_MILLION_YEN: JQ_MKT_CAP_MILLION_YEN_ASOF,
+            JQ_MARKET_CAP_YEN: JQ_MARKET_CAP_YEN_ASOF,
+            JQ_ADJUSTMENT_FACTOR: JQ_ADJUSTMENT_FACTOR_ASOF,
+            "jq_daily_source": "jq_daily_source_asof",
+            "jq_daily_fields_fetched_at": "jq_daily_fields_fetched_at_asof",
+        }
+    )
+    master = master.merge(
+        asof_daily,
+        on=[JQ_MARKET_CAP_ASOF_DATE, "_key_ticker"],
+        how="left",
+        validate="one_to_one",
+    )
 
     no_market_trade = (
         master.get("data_source", pd.Series(index=master.index, dtype="object"))
@@ -281,6 +490,18 @@ def print_summary(master: pd.DataFrame, output_path: Path) -> None:
     print(f"rows               : {len(master):,}")
     print(f"jq matched rows    : {int(master['jq_buy_price'].notna().sum()):,}")
     print(f"jq missing rows    : {int(master['jq_buy_price'].isna().sum()):,}")
+    print(
+        "jq MktCap rows     : "
+        f"{int(master['jq_mkt_cap_million_yen'].notna().sum()):,}"
+    )
+    print(
+        "jq ExRT rows       : "
+        f"{int(master['jq_ex_rights_type'].notna().sum()):,}"
+    )
+    print(
+        "jq as-of MktCap    : "
+        f"{int(master[JQ_MARKET_CAP_YEN_ASOF].notna().sum()):,}"
+    )
     print("\nJ-Quants segment missing counts")
     rows = []
     for seg in SEG_TIMES:
@@ -314,8 +535,10 @@ def main() -> int:
 
     archive = load_archive(args.archive_path)
     minute = load_minute(args.minute_path)
+    daily = load_daily(args.daily_path)
+    trading_dates = load_trading_dates(args.calendar_path)
     segments = build_segment_rows(minute)
-    master = build_master(archive, segments)
+    master = build_master(archive, segments, daily, trading_dates)
 
     args.output_path.parent.mkdir(parents=True, exist_ok=True)
     master.to_parquet(args.output_path, engine="pyarrow", index=False)

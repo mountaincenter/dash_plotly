@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 feature_engineering.py
-grok_trending_archive + 日足データ + 市場データから特徴量を作成
+検証済み派生J-Quants台帳 + 日足データ + 市場データから特徴量を作成
 
 === データソース ===
-- grok_trending_archive.parquet: 学習データ（目的変数 phase2_win 含む）
+- grok_jquants_backtest_ledger.parquet: 不変正本＋監査済み日次派生の学習台帳
+- grok_master_jquants_segments.parquet: 検証済みD-1公式MktCap派生データ
 - grok_prices_max_1d.parquet: 銘柄個別の日足（yfinanceから取得済み）
 - index_prices_max_1d.parquet: 日経225(^N225), TOPIX ETF(1306.T)
 - futures_prices_max_1d.parquet: 日経先物(NKD=F)
@@ -32,8 +33,19 @@ import numpy as np
 from typing import Optional
 from common_cfg.paths import PARQUET_DIR
 
-ARCHIVE_PATH = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
+ARCHIVE_PATH = (
+    PARQUET_DIR / "backtest" / "grok_jquants_backtest_ledger.parquet"
+)
+JQUANTS_MASTER_PATH = (
+    PARQUET_DIR / "backtest" / "grok_master_jquants_segments.parquet"
+)
 PRICES_PATH = PARQUET_DIR / "grok_prices_max_1d.parquet"
+
+JQ_MARKET_CAP_ASOF_DATE = "jq_market_cap_asof_date"
+JQ_MKT_CAP_MILLION_YEN_ASOF = "jq_mkt_cap_million_yen_asof"
+JQ_MARKET_CAP_YEN_ASOF = "jq_market_cap_yen_asof"
+JQ_ADJUSTMENT_FACTOR_ASOF = "jq_adjustment_factor_asof"
+MARKET_CAP_SOURCE = "jquants_eq_daily_mktcap_d_minus_1"
 
 # 市場データパス
 INDEX_PRICES_PATH = PARQUET_DIR / "index_prices_max_1d.parquet"
@@ -49,12 +61,136 @@ MARKET_TICKERS = {
 }
 
 
+def attach_official_market_cap_from_master(
+    archive: pd.DataFrame,
+    master: pd.DataFrame,
+) -> pd.DataFrame:
+    """Replace the derived ML feature with key-aligned official D-1 MktCap.
+
+    ``archive`` is copied and never written here.  Nullable official values are
+    retained as null; missing master keys, duplicate keys, unit mismatches, and
+    same/future-day references are data-quality failures.
+    """
+    key_columns = ["backtest_date", "ticker"]
+    source_columns = [
+        JQ_MARKET_CAP_ASOF_DATE,
+        JQ_MKT_CAP_MILLION_YEN_ASOF,
+        JQ_MARKET_CAP_YEN_ASOF,
+        JQ_ADJUSTMENT_FACTOR_ASOF,
+    ]
+    for label, frame, required in [
+        ("archive", archive, set(key_columns)),
+        ("J-Quants master", master, set(key_columns + source_columns)),
+    ]:
+        missing = sorted(required - set(frame.columns))
+        if missing:
+            raise ValueError(f"{label} missing required columns: {missing}")
+
+    left = archive.copy()
+    left["_ml_row_order"] = np.arange(len(left), dtype=np.int64)
+    left["_key_date"] = pd.to_datetime(
+        left["backtest_date"], errors="coerce"
+    ).dt.normalize()
+    left["_key_ticker"] = left["ticker"].astype(str).str.strip()
+    if left[["_key_date", "_key_ticker"]].isna().any().any():
+        raise ValueError("archive contains invalid backtest keys")
+    if left.duplicated(["_key_date", "_key_ticker"]).any():
+        raise ValueError("archive contains duplicate backtest keys")
+
+    right = master[key_columns + source_columns].copy()
+    right["_key_date"] = pd.to_datetime(
+        right["backtest_date"], errors="coerce"
+    ).dt.normalize()
+    right["_key_ticker"] = right["ticker"].astype(str).str.strip()
+    if right[["_key_date", "_key_ticker"]].isna().any().any():
+        raise ValueError("J-Quants master contains invalid backtest keys")
+    if right.duplicated(["_key_date", "_key_ticker"]).any():
+        raise ValueError("J-Quants master contains duplicate backtest keys")
+    right = right.drop(columns=key_columns)
+
+    merged = left.merge(
+        right,
+        on=["_key_date", "_key_ticker"],
+        how="left",
+        sort=False,
+        validate="one_to_one",
+        indicator="_master_merge",
+    )
+    missing_keys = merged["_master_merge"].ne("both")
+    if missing_keys.any():
+        examples = merged.loc[
+            missing_keys, ["backtest_date", "ticker"]
+        ].head(20).to_dict("records")
+        raise ValueError(
+            "J-Quants master is missing archive keys: "
+            f"missing={int(missing_keys.sum())}, examples={examples}"
+        )
+
+    asof_date = pd.to_datetime(
+        merged[JQ_MARKET_CAP_ASOF_DATE], errors="coerce"
+    ).dt.normalize()
+    invalid_asof = asof_date.isna() | asof_date.ge(merged["_key_date"])
+    if invalid_asof.any():
+        raise ValueError(
+            "J-Quants market-cap as-of date must be present and strictly before "
+            f"backtest date: invalid={int(invalid_asof.sum())}"
+        )
+
+    cap_million = pd.to_numeric(
+        merged[JQ_MKT_CAP_MILLION_YEN_ASOF], errors="coerce"
+    ).astype("Float64")
+    cap_yen = pd.to_numeric(
+        merged[JQ_MARKET_CAP_YEN_ASOF], errors="coerce"
+    ).astype("Float64")
+    comparable = cap_million.notna() & cap_yen.notna()
+    mismatch = comparable & ~np.isclose(
+        cap_yen.astype(float),
+        cap_million.astype(float) * 1_000_000.0,
+        rtol=0.0,
+        atol=0.5,
+    )
+    if mismatch.any():
+        raise ValueError(
+            "J-Quants master market-cap unit mismatch: "
+            f"{int(mismatch.sum())} rows"
+        )
+
+    if "market_cap" in merged.columns:
+        merged["market_cap_archive"] = merged["market_cap"]
+    else:
+        merged["market_cap_archive"] = pd.NA
+    merged["market_cap"] = cap_yen
+    merged["market_cap_source"] = MARKET_CAP_SOURCE
+    merged[JQ_MARKET_CAP_ASOF_DATE] = asof_date.dt.strftime("%Y-%m-%d")
+    merged = merged.sort_values("_ml_row_order")
+    return merged.drop(
+        columns=[
+            "_ml_row_order",
+            "_key_date",
+            "_key_ticker",
+            "_master_merge",
+        ]
+    ).reset_index(drop=True)
+
+
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, pd.DataFrame]]:
     """データ読み込み"""
     print("[INFO] Loading data...")
 
     archive = pd.read_parquet(ARCHIVE_PATH)
     print(f"  Archive: {len(archive)} rows")
+
+    if not JQUANTS_MASTER_PATH.exists():
+        raise FileNotFoundError(
+            f"validated J-Quants master not found: {JQUANTS_MASTER_PATH}"
+        )
+    jquants_master = pd.read_parquet(JQUANTS_MASTER_PATH)
+    archive = attach_official_market_cap_from_master(archive, jquants_master)
+    print(
+        "  Official D-1 MktCap: "
+        f"{archive['market_cap'].notna().sum()}/{len(archive)} rows "
+        f"from {JQUANTS_MASTER_PATH.name}"
+    )
 
     prices = pd.read_parquet(PRICES_PATH)
     prices['date'] = pd.to_datetime(prices['date'])
@@ -325,6 +461,14 @@ def create_features(
     # 市場特徴量を日付ごとにキャッシュ
     market_features_cache = {}
 
+    # 全価格表をarchiveの各行で再走査すると O(archive × prices) になる。
+    # 銘柄単位に一度だけ分割し、計算式を変えずに対象銘柄分だけ渡す。
+    prices_by_ticker = {
+        str(ticker): group.reset_index(drop=True)
+        for ticker, group in prices_df.groupby("ticker", sort=False)
+    }
+    empty_prices = prices_df.iloc[0:0].copy()
+
     feature_records = []
     total = len(archive_df)
 
@@ -333,7 +477,13 @@ def create_features(
         target_date = row['backtest_date']
 
         # 価格ベース特徴量（銘柄個別）
-        price_features = calc_price_features(ticker, target_date, prices_df, buy_price=row.get('buy_price'))
+        ticker_prices = prices_by_ticker.get(str(ticker), empty_prices)
+        price_features = calc_price_features(
+            ticker,
+            target_date,
+            ticker_prices,
+            buy_price=row.get('buy_price'),
+        )
 
         # 市場特徴量（日付ごとにキャッシュ）
         date_key = target_date.strftime('%Y-%m-%d')

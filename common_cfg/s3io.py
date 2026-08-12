@@ -8,6 +8,17 @@ from pathlib import Path
 from .s3cfg import S3Config, load_s3_config
 import sys
 
+PROTECTED_CANONICAL_NAME = "grok_trending_archive.parquet"
+PROTECTED_CANONICAL_KEY_SUFFIX = f"backtest/{PROTECTED_CANONICAL_NAME}"
+
+
+def _is_protected_canonical_upload(path: Path, key: str) -> bool:
+    normalized_key = key.replace("\\", "/").lstrip("/")
+    return (
+        path.name == PROTECTED_CANONICAL_NAME
+        or normalized_key.endswith(PROTECTED_CANONICAL_KEY_SUFFIX)
+    )
+
 
 def _init_s3_client(cfg: S3Config):
     try:
@@ -54,10 +65,7 @@ def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None)
     if not cfg.bucket:
         print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
         return False
-    s3 = _init_s3_client(cfg)
-    if s3 is None:
-        return False
-
+    targets: list[tuple[Path, str]] = []
     for p in files:
         # If base_dir provided, preserve subdirectory structure
         if base_dir and p.is_relative_to(base_dir):
@@ -65,7 +73,20 @@ def upload_files(cfg: S3Config, files: list[Path], base_dir: Path | None = None)
             key = f"{cfg.prefix}{relative_path}"
         else:
             key = f"{cfg.prefix}{p.name}"
+        if _is_protected_canonical_upload(p, key):
+            print(
+                "[ERROR] Protected canonical archive upload is prohibited: "
+                f"{p} -> {key}",
+                file=sys.stderr,
+            )
+            return False
+        targets.append((p, key))
 
+    s3 = _init_s3_client(cfg)
+    if s3 is None:
+        return False
+
+    for p, key in targets:
         extra = {
             "ContentType": "application/octet-stream",
             "CacheControl": "max-age=60",
@@ -145,6 +166,14 @@ def upload_file(cfg: S3Config, file_path: Path, s3_key_name: str) -> bool:
     Returns:
         成功/失敗
     """
+    key = f"{cfg.prefix}{s3_key_name}"
+    if _is_protected_canonical_upload(file_path, key):
+        print(
+            "[ERROR] Protected canonical archive upload is prohibited: "
+            f"{file_path} -> {key}",
+            file=sys.stderr,
+        )
+        return False
     if not cfg.bucket:
         print("[INFO] S3 upload skipped: bucket not set.", file=sys.stderr)
         return False
@@ -152,7 +181,6 @@ def upload_file(cfg: S3Config, file_path: Path, s3_key_name: str) -> bool:
     if s3 is None:
         return False
 
-    key = f"{cfg.prefix}{s3_key_name}"
     extra = {
         "ContentType": "application/octet-stream",
         "CacheControl": "max-age=60",
