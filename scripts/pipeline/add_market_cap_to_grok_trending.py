@@ -1,312 +1,339 @@
 #!/usr/bin/env python3
-"""
-add_market_cap_to_grok_trending.py
+"""Attach official D-1 J-Quants market cap to ``grok_trending.parquet``.
 
-grok_trending.parquetに時価総額(market_cap)カラムを追加する
-
-処理:
-1. grok_trending.parquet を読み込み
-2. prices_max_1d.parquet から終値を取得
-3. J-Quants APIで発行済株式数を取得
-4. 終値 × 発行済株式数 で時価総額を計算
-5. market_capカラムを追加して保存
-
-実行タイミング: 23:00パイプライン（grok_trending.parquet生成後）
+The selection date stored in ``grok_trending.date`` is the next trading day.
+Only the immediately preceding exchange trading day's official ``MktCap`` is
+therefore eligible for recommendation and ML inference.  The protected Grok
+archive is not read or written by this script.
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-from datetime import datetime
-from typing import Optional
 import os
+import sys
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import pandas as pd
-import requests
-from dotenv import load_dotenv
-
-from scripts.lib.price_limit import calc_price_limit, calc_upper_limit_price, calc_max_cost_100
-
-# .env.jquants 読み込み
-load_dotenv(ROOT / ".env.jquants")
-
-# パス設定
-GROK_TRENDING_FILE = Path(os.getenv(
-    "GROK_TRENDING_FILE",
-    ROOT / "data" / "parquet" / "grok_trending.parquet"
-))
-PRICES_FILE = ROOT / "data" / "parquet" / "prices_max_1d.parquet"
-
-# J-Quants v2 認証情報
-JQUANTS_API_KEY = os.getenv("JQUANTS_API_KEY")
-JQUANTS_BASE_URL = "https://api.jquants.com/v2"
+from scripts.lib.jquants_daily_fields import (
+    JQ_ADJUSTMENT_FACTOR,
+    JQ_EX_RIGHTS_TYPE,
+    JQ_MARKET_CAP_YEN,
+    JQ_MKT_CAP_MILLION_YEN,
+    normalize_jquants_daily_fields,
+)
+from scripts.lib.grok_jquants_backtest import validate_selection_market_cap
+from scripts.lib.price_limit import (
+    calc_max_cost_100,
+    calc_price_limit,
+    calc_upper_limit_price,
+)
 
 
-def get_headers() -> dict:
-    """J-Quants v2 API用ヘッダーを取得"""
-    if not JQUANTS_API_KEY:
-        raise ValueError("JQUANTS_API_KEY is required")
-    return {
-        "x-api-key": JQUANTS_API_KEY,
-        "Content-Type": "application/json",
+GROK_TRENDING_FILE = Path(
+    os.getenv(
+        "GROK_TRENDING_FILE",
+        ROOT / "data" / "parquet" / "grok_trending.parquet",
+    )
+)
+DAILY_FEATURES_FILE = Path(
+    os.getenv(
+        "JQUANTS_WATCH_DAILY_FEATURES_FILE",
+        ROOT / "data" / "parquet" / "jquants" / "watch_daily_features.parquet",
+    )
+)
+CALENDAR_FILE = Path(
+    os.getenv(
+        "TRADING_CALENDAR_FILE",
+        ROOT / "data" / "parquet" / "calendar.parquet",
+    )
+)
+
+JQ_MARKET_CAP_ASOF_DATE = "jq_market_cap_asof_date"
+JQ_MKT_CAP_MILLION_YEN_ASOF = "jq_mkt_cap_million_yen_asof"
+JQ_MARKET_CAP_YEN_ASOF = "jq_market_cap_yen_asof"
+JQ_EX_RIGHTS_TYPE_ASOF = "jq_ex_rights_type_asof"
+JQ_ADJUSTMENT_FACTOR_ASOF = "jq_adjustment_factor_asof"
+JQ_DAILY_SOURCE_ASOF = "jq_daily_source_asof"
+JQ_DAILY_FETCHED_AT_ASOF = "jq_daily_fetched_at_asof"
+MARKET_CAP_SOURCE = "jquants_eq_daily_mktcap_d_minus_1"
+
+
+def _require_columns(frame: pd.DataFrame, required: set[str], label: str) -> None:
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"{label} missing required columns: {missing}")
+
+
+def _normalize_ticker(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null", "<na>"}:
+        return ""
+    if text.endswith(".T"):
+        return text
+    if len(text) == 5 and text.endswith("0"):
+        text = text[:-1]
+    return f"{text}.T"
+
+
+def attach_official_market_cap_asof(
+    grok: pd.DataFrame,
+    daily_features: pd.DataFrame,
+    calendar: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach exact previous-trading-day official fields without look-ahead.
+
+    A matched source row with nullable ``MktCap`` is valid (for example an
+    ETF/ETN).  A missing source row is not the same thing and fails loudly.
+    """
+    _require_columns(grok, {"date", "ticker"}, "grok_trending")
+    _require_columns(
+        daily_features,
+        {
+            "trading_date",
+            "ticker",
+            JQ_MKT_CAP_MILLION_YEN,
+            JQ_MARKET_CAP_YEN,
+            JQ_EX_RIGHTS_TYPE,
+            JQ_ADJUSTMENT_FACTOR,
+        },
+        "watch_daily_features",
+    )
+    _require_columns(calendar, {"date"}, "calendar")
+
+    left = grok.copy()
+    left["_pipeline_row_order"] = np.arange(len(left), dtype=np.int64)
+    left["_target_date"] = pd.to_datetime(
+        left["date"], errors="coerce"
+    ).dt.normalize()
+    if left["_target_date"].isna().any():
+        raise ValueError("grok_trending contains invalid date values")
+    left["ticker"] = left["ticker"].map(_normalize_ticker)
+    if left["ticker"].eq("").any():
+        raise ValueError("grok_trending contains invalid ticker values")
+
+    trading_dates = pd.DatetimeIndex(
+        pd.to_datetime(calendar["date"], errors="coerce").dropna().unique()
+    ).normalize().sort_values()
+    if trading_dates.empty:
+        raise ValueError("calendar contains no trading dates")
+
+    previous_by_target: dict[pd.Timestamp, pd.Timestamp] = {}
+    for target_date in left["_target_date"].drop_duplicates():
+        previous = trading_dates[trading_dates < target_date]
+        if previous.empty:
+            raise ValueError(
+                f"calendar has no trading date before target {target_date.date()}"
+            )
+        previous_by_target[target_date] = previous[-1]
+    left["_expected_asof_date"] = left["_target_date"].map(previous_by_target)
+
+    right = normalize_jquants_daily_fields(daily_features)
+    right["ticker"] = right["ticker"].map(_normalize_ticker)
+    right["_expected_asof_date"] = pd.to_datetime(
+        right["trading_date"], errors="coerce"
+    ).dt.normalize()
+    right = right.dropna(subset=["_expected_asof_date"])
+    right = right[right["ticker"].ne("")]
+    duplicate_keys = right.duplicated(
+        ["ticker", "_expected_asof_date"], keep=False
+    )
+    if duplicate_keys.any():
+        examples = (
+            right.loc[duplicate_keys, ["ticker", "trading_date"]]
+            .head(10)
+            .to_dict("records")
+        )
+        raise ValueError(f"watch_daily_features has duplicate keys: {examples}")
+
+    source_columns = {
+        JQ_MKT_CAP_MILLION_YEN: "_source_mkt_cap_million_yen",
+        JQ_MARKET_CAP_YEN: "_source_market_cap_yen",
+        JQ_EX_RIGHTS_TYPE: "_source_ex_rights_type",
+        JQ_ADJUSTMENT_FACTOR: "_source_adjustment_factor",
+        "source": "_source_name",
+        "fetched_at": "_source_fetched_at",
     }
+    available_source_columns = {
+        column: renamed
+        for column, renamed in source_columns.items()
+        if column in right.columns
+    }
+    right = right[
+        ["ticker", "_expected_asof_date", *available_source_columns]
+    ].rename(columns=available_source_columns)
+
+    merged = left.merge(
+        right,
+        on=["ticker", "_expected_asof_date"],
+        how="left",
+        sort=False,
+        validate="many_to_one",
+        indicator="_daily_merge",
+    )
+    missing_rows = merged["_daily_merge"].ne("both")
+    if missing_rows.any():
+        examples = (
+            merged.loc[
+                missing_rows,
+                ["date", "ticker", "_expected_asof_date"],
+            ]
+            .head(20)
+            .assign(
+                _expected_asof_date=lambda frame: frame[
+                    "_expected_asof_date"
+                ].dt.strftime("%Y-%m-%d")
+            )
+            .to_dict("records")
+        )
+        raise ValueError(
+            "official J-Quants D-1 source rows are missing; "
+            f"missing={int(missing_rows.sum())}, examples={examples}"
+        )
+
+    cap_million = pd.to_numeric(
+        merged["_source_mkt_cap_million_yen"], errors="coerce"
+    ).astype("Float64")
+    cap_yen = pd.to_numeric(
+        merged["_source_market_cap_yen"], errors="coerce"
+    ).astype("Float64")
+    comparable = cap_million.notna() & cap_yen.notna()
+    unit_mismatch = comparable & ~np.isclose(
+        cap_yen.astype(float),
+        cap_million.astype(float) * 1_000_000.0,
+        rtol=0.0,
+        atol=0.5,
+    )
+    if unit_mismatch.any():
+        raise ValueError(
+            "J-Quants market-cap unit conversion mismatch: "
+            f"{int(unit_mismatch.sum())} rows"
+        )
+
+    merged[JQ_MARKET_CAP_ASOF_DATE] = merged[
+        "_expected_asof_date"
+    ].dt.strftime("%Y-%m-%d")
+    merged[JQ_MKT_CAP_MILLION_YEN_ASOF] = cap_million
+    merged[JQ_MARKET_CAP_YEN_ASOF] = cap_yen
+    merged[JQ_EX_RIGHTS_TYPE_ASOF] = pd.to_numeric(
+        merged["_source_ex_rights_type"], errors="coerce"
+    ).astype("Int64")
+    merged[JQ_ADJUSTMENT_FACTOR_ASOF] = pd.to_numeric(
+        merged["_source_adjustment_factor"], errors="coerce"
+    ).astype("Float64")
+    merged[JQ_DAILY_SOURCE_ASOF] = merged.get("_source_name", pd.NA)
+    merged[JQ_DAILY_FETCHED_AT_ASOF] = merged.get(
+        "_source_fetched_at", pd.NA
+    )
+    merged["market_cap_source"] = MARKET_CAP_SOURCE
+    # Backward-compatible ML feature name, now backed by official D-1 MktCap.
+    merged["market_cap"] = cap_yen
+
+    if not (
+        pd.to_datetime(merged[JQ_MARKET_CAP_ASOF_DATE])
+        < merged["_target_date"]
+    ).all():
+        raise ValueError("market-cap as-of date is not strictly before target date")
+
+    helper_columns = [
+        "_pipeline_row_order",
+        "_target_date",
+        "_expected_asof_date",
+        "_daily_merge",
+        *available_source_columns.values(),
+    ]
+    merged = merged.sort_values("_pipeline_row_order")
+    return merged.drop(columns=helper_columns, errors="ignore").reset_index(drop=True)
 
 
-def fetch_issued_shares(ticker: str) -> Optional[float]:
-    """
-    J-Quants v2 APIから発行済株式数を取得
-
-    Args:
-        ticker: 銘柄コード (例: "7203.T")
-
-    Returns:
-        発行済株式数、取得失敗時はNone
-    """
+def _write_parquet_atomic(frame: pd.DataFrame, path: Path) -> None:
+    """Write a replaceable pipeline artifact without exposing partial bytes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
     try:
-        code = ticker.replace('.T', '').ljust(5, '0')
-        headers = get_headers()
-
-        # v2: /fins/summary から発行済株式数を取得
-        res = requests.get(
-            f"{JQUANTS_BASE_URL}/fins/summary",
-            headers=headers,
-            params={"code": code},
-            timeout=15
-        )
-        res.raise_for_status()
-        data = res.json()
-
-        statements_list = data.get("data", [])
-        if not statements_list:
-            return None
-
-        # 最新のデータを取得（DiscDate順でソート）
-        statements = sorted(
-            statements_list,
-            key=lambda x: x.get('DiscDate', ''),
-            reverse=True
-        )
-
-        for statement in statements:
-            # v2: ShOutFY = 発行済株式数（期末）
-            issued_shares = statement.get('ShOutFY')
-            if issued_shares:
-                return float(issued_shares)
-
-        return None
-
-    except Exception as e:
-        print(f"[WARN] Failed to fetch issued shares for {ticker}: {e}")
-        return None
+        frame.to_parquet(temporary_path, index=False)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
-def fetch_adjustment_factor(ticker: str, date_str: str) -> float:
-    """
-    J-Quants v2 APIから調整係数を取得
-
-    Args:
-        ticker: 銘柄コード
-        date_str: 日付 (YYYY-MM-DD)
-
-    Returns:
-        調整係数（デフォルト1.0）
-    """
-    try:
-        code = ticker.replace('.T', '').ljust(5, '0')
-        headers = get_headers()
-
-        res = requests.get(
-            f"{JQUANTS_BASE_URL}/equities/bars/daily",
-            headers=headers,
-            params={"code": code, "date": date_str},
-            timeout=15
-        )
-        res.raise_for_status()
-        data = res.json()
-
-        # v2: dataキーまたはdaily_quotesキー（互換性）
-        quotes = data.get("data") or data.get("daily_quotes", [])
-        if not quotes:
-            return 1.0
-
-        return float(quotes[0].get('AdjustmentFactor', 1.0))
-
-    except Exception:
-        return 1.0
+def _add_price_limit_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    out = frame.copy()
+    if "Close" not in out.columns:
+        out["price_limit"] = None
+        out["limit_price_upper"] = None
+        out["max_cost_100"] = None
+        return out
+    close = pd.to_numeric(out["Close"], errors="coerce")
+    out["price_limit"] = close.map(
+        lambda value: calc_price_limit(value)
+        if pd.notna(value) and value > 0
+        else None
+    )
+    out["limit_price_upper"] = close.map(
+        lambda value: calc_upper_limit_price(value)
+        if pd.notna(value) and value > 0
+        else None
+    )
+    out["max_cost_100"] = close.map(
+        lambda value: calc_max_cost_100(value)
+        if pd.notna(value) and value > 0
+        else None
+    )
+    return out
 
 
-def calculate_market_cap(close_price: float, issued_shares: float, adjustment_factor: float = 1.0) -> float:
-    """
-    時価総額を計算
+def main() -> int:
+    print("=== Attach official J-Quants D-1 market cap ===")
+    for label, path in [
+        ("grok_trending", GROK_TRENDING_FILE),
+        ("watch_daily_features", DAILY_FEATURES_FILE),
+        ("calendar", CALENDAR_FILE),
+    ]:
+        if not path.exists():
+            print(f"[ERROR] {label} not found: {path}")
+            return 1
 
-    Args:
-        close_price: 終値
-        issued_shares: 発行済株式数
-        adjustment_factor: 調整係数
+    grok = pd.read_parquet(GROK_TRENDING_FILE)
+    daily_features = pd.read_parquet(DAILY_FEATURES_FILE)
+    calendar = pd.read_parquet(CALENDAR_FILE)
+    print(
+        f"inputs: grok={len(grok):,}, daily_features={len(daily_features):,}, "
+        f"calendar={len(calendar):,}"
+    )
 
-    Returns:
-        時価総額（円）
-    """
-    return close_price * (issued_shares / adjustment_factor)
+    enriched = attach_official_market_cap_asof(grok, daily_features, calendar)
+    validate_selection_market_cap(
+        enriched,
+        pd.to_datetime(enriched["date"], errors="raise").iloc[0],
+        calendar,
+    )
+    enriched = _add_price_limit_columns(enriched)
+    _write_parquet_atomic(enriched, GROK_TRENDING_FILE)
 
-
-def _fetch_market_cap_from_listed_info(ticker: str) -> Optional[float]:
-    """/listed/info の MarketCapitalization（百万円）から時価総額（円）を取得"""
-    try:
-        code = ticker.replace('.T', '').ljust(5, '0')
-        headers = get_headers()
-        res = requests.get(
-            f"{JQUANTS_BASE_URL}/listed/info",
-            headers=headers,
-            params={"code": code},
-            timeout=15
-        )
-        res.raise_for_status()
-        data = res.json()
-        info_list = data.get("info", [])
-        if not info_list:
-            return None
-        mc_million = info_list[0].get("MarketCapitalization")
-        if mc_million is not None:
-            return float(mc_million) * 1_000_000
-        return None
-    except Exception as e:
-        print(f"[WARN] listed/info fallback failed for {ticker}: {e}")
-        return None
-
-
-def get_close_from_prices(ticker: str, prices_df: pd.DataFrame) -> Optional[float]:
-    """prices_max_1d.parquetから最新終値を取得"""
-    try:
-        ticker_df = prices_df[prices_df['ticker'] == ticker].copy()
-        if ticker_df.empty:
-            return None
-        ticker_df['date'] = pd.to_datetime(ticker_df['date'])
-        ticker_df = ticker_df.sort_values('date', ascending=False)
-        return float(ticker_df.iloc[0]['Close'])
-    except Exception:
-        return None
-
-
-def main():
-    """メイン処理"""
-    print("=== grok_trending.parquet に market_cap カラムを追加 ===\n")
-
-    # 1. grok_trending.parquet 読み込み
-    print(f"1. 読み込み: {GROK_TRENDING_FILE}")
-    if not GROK_TRENDING_FILE.exists():
-        print(f"   エラー: ファイルが見つかりません")
-        return 1
-
-    df = pd.read_parquet(GROK_TRENDING_FILE)
-    print(f"   銘柄数: {len(df)}")
-
-    # prices_max_1d.parquet 読み込み
-    print(f"   prices_max_1d.parquet 読み込み中...")
-    if not PRICES_FILE.exists():
-        print(f"   エラー: prices_max_1d.parquet が見つかりません")
-        return 1
-    prices_df = pd.read_parquet(PRICES_FILE)
-    print(f"   prices_max_1d: {len(prices_df)} レコード")
-
-    # 日付取得
-    if 'date' in df.columns:
-        date_str = pd.to_datetime(df['date'].iloc[0]).strftime('%Y-%m-%d')
-    else:
-        date_str = datetime.now().strftime('%Y-%m-%d')
-    print(f"   対象日: {date_str}")
-
-    # 2. 各銘柄の時価総額を計算
-    print("\n2. 時価総額を計算中...")
-    market_caps = []
-    success_count = 0
-
-    for idx, row in df.iterrows():
-        ticker = row['ticker']
-
-        # grok_trending.parquetのCloseがあればそれを使用、なければprices_max_1dから取得
-        close_price = row.get('Close')
-        if pd.isna(close_price) or close_price is None or close_price <= 0:
-            close_price = get_close_from_prices(ticker, prices_df)
-
-        if close_price is None or close_price <= 0:
-            market_caps.append(None)
-            print(f"   {ticker}: 終値取得失敗、スキップ")
-            continue
-
-        # 発行済株式数を取得
-        issued_shares = fetch_issued_shares(ticker)
-        if issued_shares is None or issued_shares <= 0:
-            # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization
-            market_cap = _fetch_market_cap_from_listed_info(ticker)
-            if market_cap is not None:
-                market_caps.append(market_cap)
-                success_count += 1
-                print(f"   {ticker}: {market_cap/1e8:.0f}億円 (listed/info fallback)")
-                continue
-            market_caps.append(None)
-            print(f"   {ticker}: 発行済株式数取得失敗")
-            continue
-
-        # 調整係数を取得
-        adjustment_factor = fetch_adjustment_factor(ticker, date_str)
-
-        # 時価総額を計算
-        market_cap = calculate_market_cap(close_price, issued_shares, adjustment_factor)
-        market_caps.append(market_cap)
-        success_count += 1
-
-        # 億円換算で表示
-        mc_oku = market_cap / 1e8
-        print(f"   {ticker}: {mc_oku:.0f}億円")
-
-    # 3. カラム追加
-    df['market_cap'] = market_caps
-    print(f"\n3. market_capカラム追加完了")
-    print(f"   成功: {success_count}/{len(df)} 銘柄")
-
-    # 3.5. 制限値幅・必要資金カラムを追加
-    print(f"\n3.5. 制限値幅・必要資金カラムを追加中...")
-    if 'Close' not in df.columns:
-        print("   ⚠️ Closeカラムが存在しません。制限値幅の計算をスキップします。")
-        df['price_limit'] = None
-        df['limit_price_upper'] = None
-        df['max_cost_100'] = None
-    else:
-        df['price_limit'] = df['Close'].apply(lambda x: calc_price_limit(x) if pd.notna(x) and x > 0 else None)
-        df['limit_price_upper'] = df.apply(
-            lambda r: calc_upper_limit_price(r['Close']) if pd.notna(r['Close']) and r['Close'] > 0 else None, axis=1
-        )
-        df['max_cost_100'] = df.apply(
-            lambda r: calc_max_cost_100(r['Close']) if pd.notna(r['Close']) and r['Close'] > 0 else None, axis=1
-        )
-        valid_costs = df[df['max_cost_100'].notna()]
-        print(f"   制限値幅: {len(valid_costs)}/{len(df)} 銘柄で計算完了")
-
-    # 4. 保存
-    print(f"\n4. 保存: {GROK_TRENDING_FILE}")
-    df.to_parquet(GROK_TRENDING_FILE, index=False)
-    print("   完了")
-
-    # 5. サマリー
-    valid_caps = df[df['market_cap'].notna()]['market_cap']
-    if len(valid_caps) > 0:
-        print(f"\n=== サマリー ===")
-        print(f"時価総額 中央値: {valid_caps.median() / 1e8:.0f}億円")
-        print(f"時価総額 最小: {valid_caps.min() / 1e8:.0f}億円")
-        print(f"時価総額 最大: {valid_caps.max() / 1e8:.0f}億円")
-
-        # 500-1000億の銘柄数
-        skip_range = valid_caps[(valid_caps >= 500e8) & (valid_caps < 1000e8)]
-        print(f"500-1000億: {len(skip_range)}銘柄（見送り対象）")
-
+    cap_count = int(enriched["market_cap"].notna().sum())
+    null_count = len(enriched) - cap_count
+    source_dates = sorted(enriched[JQ_MARKET_CAP_ASOF_DATE].unique().tolist())
+    print(
+        f"[OK] official D-1 source rows={len(enriched):,}/{len(enriched):,}, "
+        f"MktCap non-null={cap_count:,}, nullable={null_count:,}, "
+        f"asof_dates={source_dates}"
+    )
+    print(f"[OK] atomically saved: {GROK_TRENDING_FILE}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

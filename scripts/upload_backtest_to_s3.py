@@ -18,6 +18,7 @@ DATA_DIR = project_root / "data" / "parquet" / "backtest"
 # S3設定
 S3_BUCKET = "stock-api-data"
 S3_PREFIX = "parquet/backtest/"
+PROTECTED_CANONICAL_NAME = "grok_trending_archive.parquet"
 
 def upload_to_s3(local_path: Path, s3_key: str) -> bool:
     """
@@ -30,6 +31,15 @@ def upload_to_s3(local_path: Path, s3_key: str) -> bool:
     Returns:
         成功時True、失敗時False
     """
+    if (
+        local_path.name == PROTECTED_CANONICAL_NAME
+        or s3_key.replace("\\", "/").endswith(
+            f"backtest/{PROTECTED_CANONICAL_NAME}"
+        )
+    ):
+        print("  ✗ protected canonical archive upload is prohibited")
+        return False
+
     try:
         s3_client = boto3.client('s3')
 
@@ -67,7 +77,6 @@ def main():
         "grok_trending_20251029.parquet",
         "grok_trending_20251030.parquet",
         "grok_trending_20251031.parquet",
-        "grok_trending_archive.parquet",
         "manifest.json"
     ]
 

@@ -13,13 +13,13 @@ Grok trending銘柄のバックテスト結果をアーカイブに保存
     - J-Quants日足とOHLCVを照合し、不整合時は日次保存全体を中止
     - バックテスト結果を計算（Phase1, Phase2, Phase3）
     - 前場・全日の高値・安値・最大上昇率・最大下落率を計算
-    - grok_trending_YYYYMMDD.parquet として保存
-    - grok_trending_archive.parquet に追加
-    - S3にアップロード
+    - grok_trending_YYYYMMDD.parquet を派生ファイルとして保存
+    - grok_trending_archive.parquet は読取専用の照合基準として使用
+    - 派生ファイルのみS3にアップロード
 
 出力:
     - data/parquet/backtest/grok_trending_YYYYMMDD.parquet
-    - data/parquet/backtest/grok_trending_archive.parquet
+    - data/parquet/backtest/grok_trending_YYYYMMDD.parquet
 """
 
 from __future__ import annotations
@@ -36,30 +36,38 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import numpy as np
 import pandas as pd
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3io import upload_file, download_file
 from common_cfg.s3cfg import load_s3_config
-from scripts.lib.jquants_client import JQuantsClient
 from scripts.lib.grok_jquants_backtest import (
     JQuantsBacktestDataError,
-    assert_archive_history_unchanged,
-    assert_archive_target_rows_preserved,
+    MARKET_CAP_PROVENANCE_COLUMNS,
+    SEGMENT_TARGETS,
+    build_derived_backtest_rows,
     calculate_segment_pnl,
     executable_exit,
     has_trade_after_entry,
-    merge_archive_date,
     normalize_daily_prices,
     normalize_minute_bars,
     session_last_close,
     validate_daily_alignment,
     validate_selection_asof,
+    validate_selection_market_cap,
+    validate_target_daily_corporate_actions,
+)
+from scripts.lib.jquants_daily_fields import (
+    DAILY_TRADE_STATUS_NO_MARKET_TRADE,
+    DAILY_TRADE_STATUS_TRADED,
+    JQ_DAILY_TRADE_STATUS,
 )
 from scripts.lib.protected_archive_s3 import (
     download_verified_archive,
-    publish_guarded_archive,
-    publish_guarded_manifest_entry,
-    write_publish_state,
+    file_sha256,
+)
+from scripts.pipeline.add_market_cap_to_grok_trending import (
+    attach_official_market_cap_asof,
 )
 
 # パス定義
@@ -67,10 +75,13 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
-ARCHIVE_PUBLISH_STATE_PATH = BACKTEST_DIR / "grok_trending_archive.publish.json"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
 JQUANTS_MINUTE_WATCH_PATH = PARQUET_DIR / "jquants_minute_watch.parquet"
 JQUANTS_DAILY_PATH = PARQUET_DIR / "prices_max_1d.parquet"
+JQUANTS_DAILY_FEATURES_PATH = (
+    PARQUET_DIR / "jquants" / "watch_daily_features.parquet"
+)
+TRADING_CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 
 # J-Quants入力のキャッシュ
 _jquants_minute_df: Optional[pd.DataFrame] = None
@@ -97,34 +108,6 @@ _jsf_stop_codes: Optional[set] = None
 
 # デイトレードリスト（グローバルキャッシュ）
 _day_trade_list: Optional[pd.DataFrame] = None
-
-# J-Quants クライアント（グローバル）
-_jquants_client: Optional[JQuantsClient] = None
-
-NO_MARKET_TRADE_DATA_SOURCE = "jquants_no_market_trade"
-NO_MARKET_TRADE_VALIDATION = "daily_all_null_and_minute_empty"
-SEGMENT_COLUMNS = [
-    "seg_0930",
-    "seg_1000",
-    "seg_1030",
-    "seg_1100",
-    "seg_1130",
-    "seg_1300",
-    "seg_1330",
-    "seg_1400",
-    "seg_1430",
-    "seg_1500",
-    "seg_1530",
-]
-
-
-def get_jquants_client() -> JQuantsClient:
-    """J-Quantsクライアントを取得（シングルトン）"""
-    global _jquants_client
-    if _jquants_client is None:
-        _jquants_client = JQuantsClient()
-    return _jquants_client
-
 
 def load_trading_restrictions() -> Tuple[dict, dict, set]:
     """
@@ -287,68 +270,6 @@ def get_trading_restriction_info(ticker: str) -> dict:
     }
 
 
-def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optional[float]:
-    """
-    J-Quants APIを使用して時価総額を取得
-
-    Args:
-        ticker: 銘柄コード (例: "7203.T")
-        close_price: 終値
-        date: 取得日
-
-    Returns:
-        時価総額（円）、または取得失敗時はNone
-    """
-    try:
-        # ティッカーからコードを抽出（"7203.T" → "72030"）
-        code = ticker.replace('.T', '').ljust(5, '0')
-
-        client = get_jquants_client()
-
-        # v2: /fins/summary から発行済株式数を取得（v1は/fins/statements）
-        statements_response = client.request('/fins/summary', params={'code': code})
-
-        issued_shares = None
-        if 'data' in statements_response and statements_response['data']:
-            # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
-            statements = sorted(
-                statements_response['data'],
-                key=lambda x: x.get('DiscDate', ''),
-                reverse=True
-            )
-
-            for statement in statements:
-                # v2: ShOutFY = 発行済株式数（期末）
-                issued_shares = statement.get('ShOutFY')
-                if issued_shares:
-                    issued_shares = float(issued_shares)
-                    break
-
-        if issued_shares:
-            # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
-            date_str = date.strftime('%Y-%m-%d')
-            quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
-
-            if 'data' in quotes_response and quotes_response['data']:
-                adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
-                market_cap = close_price * (issued_shares / adjustment_factor)
-                return market_cap
-
-        # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization（百万円）
-        info_response = client.request('/listed/info', params={'code': code})
-        if 'info' in info_response and info_response['info']:
-            mc_million = info_response['info'][0].get('MarketCapitalization')
-            if mc_million is not None:
-                print(f"[INFO] {ticker}: market_cap from /listed/info fallback: {float(mc_million)/100:.0f}億円")
-                return float(mc_million) * 1_000_000
-
-        return None
-
-    except Exception as e:
-        print(f"[WARN] Failed to fetch market cap for {ticker}: {e}")
-        return None
-
-
 def load_jquants_minute() -> pd.DataFrame:
     """Load the pipeline's J-Quants watch-universe minute file once."""
     global _jquants_minute_df
@@ -388,71 +309,12 @@ def fetch_intraday_data(ticker: str, target_date: datetime) -> pd.DataFrame:
     return bars
 
 
-def _jquants_query_code(ticker: str) -> str:
-    code = str(ticker).removesuffix(".T")
-    return code if len(code) == 5 else f"{code}0"
-
-
-def _is_missing_jquants_value(value: object) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, str):
-        return value.strip().lower() in {"", "null", "none", "nan"}
-    return bool(pd.isna(value))
-
-
-def confirm_no_market_trade(ticker: str, target_date: datetime) -> bool:
-    """Confirm an official all-null daily row and an empty minute response."""
-    day = target_date.date().isoformat()
-    code = _jquants_query_code(ticker)
-    client = get_jquants_client()
-    params = {"code": code, "date": day}
-
-    try:
-        daily_response = client.request("/equities/bars/daily", params=params)
-        minute_response = client.request("/equities/bars/minute", params=params)
-    except Exception as error:
-        raise JQuantsBacktestDataError(
-            f"{ticker}: J-Quants no-trade confirmation failed for {day}: {error}"
-        ) from error
-
-    daily_rows = daily_response.get("data", [])
-    minute_rows = minute_response.get("data", [])
-    if not isinstance(daily_rows, list) or len(daily_rows) != 1:
-        return False
-    if not isinstance(minute_rows, list) or minute_rows:
-        return False
-
-    row = daily_rows[0]
-    if not isinstance(row, dict):
-        return False
-    try:
-        row_day = pd.Timestamp(row.get("Date")).date().isoformat()
-    except Exception:
-        return False
-    row_code = str(row.get("Code", "")).removesuffix(".0")
-    if row_day != day or row_code != code:
-        return False
-
-    required_null_fields = {
-        "Open": ("O", "Open"),
-        "High": ("H", "High"),
-        "Low": ("L", "Low"),
-        "Close": ("C", "Close"),
-        "Volume": ("Vo", "Volume"),
-    }
-    for aliases in required_null_fields.values():
-        present = [row[name] for name in aliases if name in row]
-        if not present or any(not _is_missing_jquants_value(value) for value in present):
-            return False
-    return True
-
-
 def validate_batch_coverage(
     grok: pd.DataFrame,
     target_date: datetime,
+    daily_features: pd.DataFrame,
 ) -> set[str]:
-    """Return officially confirmed no-trade tickers; fail on every other gap."""
+    """Validate traded inputs and return explicit official no-market tickers."""
     if "ticker" not in grok.columns:
         raise JQuantsBacktestDataError("grok_trending.parquet has no ticker column")
     selected = grok["ticker"].astype(str)
@@ -468,41 +330,126 @@ def validate_batch_coverage(
     minute_tickers = set(
         minute.loc[minute_datetimes.dt.date.eq(day), "ticker"].astype(str)
     )
+
     daily = load_jquants_daily()
     daily_tickers = set(
         daily.loc[daily["date"].dt.date.eq(day), "ticker"].astype(str)
     )
     selected_tickers = set(selected)
-    missing_minute = sorted(selected_tickers - minute_tickers)
-    missing_daily = sorted(selected_tickers - daily_tickers)
-    if set(missing_minute) != set(missing_daily):
+    feature_dates = pd.to_datetime(
+        daily_features["trading_date"], errors="coerce"
+    ).dt.date
+    feature_rows = daily_features.loc[
+        feature_dates.eq(day)
+        & daily_features["ticker"].astype(str).isin(selected_tickers),
+        ["ticker", JQ_DAILY_TRADE_STATUS],
+    ].copy()
+    feature_rows["ticker"] = feature_rows["ticker"].astype(str)
+    if feature_rows["ticker"].duplicated().any():
         raise JQuantsBacktestDataError(
-            "Incomplete J-Quants batch coverage; archive append refused. "
-            f"missing_minute={missing_minute}, missing_daily={missing_daily}"
+            "J-Quants target-day sidecar has duplicate trade-status keys"
         )
-
-    confirmed_no_trade: set[str] = set()
-    unresolved: list[str] = []
-    for ticker in missing_minute:
-        if confirm_no_market_trade(ticker, target_date):
-            confirmed_no_trade.add(ticker)
-        else:
-            unresolved.append(ticker)
-    if unresolved:
-        raise JQuantsBacktestDataError(
-            "Incomplete J-Quants batch coverage; archive append refused. "
-            f"unconfirmed_missing={unresolved}"
-        )
-
-    covered = selected_tickers - confirmed_no_trade
-    print(
-        f"[OK] J-Quants preflight coverage: {len(covered)}/"
-        f"{len(selected_tickers)} traded, "
-        f"{len(confirmed_no_trade)} confirmed no-trade for {day}"
+    status_by_ticker = dict(
+        zip(feature_rows["ticker"], feature_rows[JQ_DAILY_TRADE_STATUS])
     )
-    if confirmed_no_trade:
-        print(f"[OK] Confirmed no-market-trade: {sorted(confirmed_no_trade)}")
-    return confirmed_no_trade
+    missing_status = sorted(selected_tickers - set(status_by_ticker))
+    invalid_status = {
+        ticker: status
+        for ticker, status in status_by_ticker.items()
+        if status
+        not in {
+            DAILY_TRADE_STATUS_TRADED,
+            DAILY_TRADE_STATUS_NO_MARKET_TRADE,
+        }
+    }
+    if missing_status or invalid_status:
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day trade status is incomplete or invalid: "
+            f"missing={missing_status}, invalid={invalid_status}"
+        )
+
+    no_market_tickers = {
+        ticker
+        for ticker, status in status_by_ticker.items()
+        if status == DAILY_TRADE_STATUS_NO_MARKET_TRADE
+    }
+    traded_tickers = selected_tickers - no_market_tickers
+    missing_minute = sorted(traded_tickers - minute_tickers)
+    missing_daily = sorted(traded_tickers - daily_tickers)
+    unexpected_no_market_minute = sorted(no_market_tickers & minute_tickers)
+    unexpected_no_market_daily = sorted(no_market_tickers & daily_tickers)
+    if (
+        missing_minute
+        or missing_daily
+        or unexpected_no_market_minute
+        or unexpected_no_market_daily
+    ):
+        raise JQuantsBacktestDataError(
+            "Incomplete J-Quants batch coverage; archive append refused. "
+            f"missing_minute={missing_minute}, missing_daily={missing_daily}, "
+            f"no_market_with_minute={unexpected_no_market_minute}, "
+            f"no_market_with_daily_price={unexpected_no_market_daily}"
+        )
+
+    print(
+        f"[OK] J-Quants preflight coverage: traded={len(traded_tickers)}, "
+        f"official_no_market_trade={len(no_market_tickers)}, "
+        f"total={len(selected_tickers)} for {day}"
+    )
+    return no_market_tickers
+
+
+def validate_or_attach_market_cap_provenance(
+    grok: pd.DataFrame,
+    target_date: datetime,
+    daily_features: pd.DataFrame,
+    trading_calendar: pd.DataFrame,
+) -> pd.DataFrame:
+    """Validate current provenance or safely upgrade one fully legacy artifact."""
+    proof_columns = MARKET_CAP_PROVENANCE_COLUMNS
+    present = proof_columns & set(grok.columns)
+    if present == proof_columns:
+        validate_selection_market_cap(grok, target_date, trading_calendar)
+        return grok
+    if present:
+        missing = sorted(proof_columns - present)
+        raise JQuantsBacktestDataError(
+            "Selection has partially populated market-cap provenance; "
+            f"missing={missing}"
+        )
+    if "market_cap" not in grok.columns:
+        raise JQuantsBacktestDataError(
+            "Legacy selection has neither market_cap nor provenance"
+        )
+
+    existing_cap = pd.to_numeric(grok["market_cap"], errors="coerce")
+    enriched = attach_official_market_cap_asof(
+        grok,
+        daily_features,
+        trading_calendar,
+    )
+    official_cap = pd.to_numeric(enriched["market_cap"], errors="coerce")
+    null_mismatch = existing_cap.isna().ne(official_cap.isna())
+    comparable = existing_cap.notna() & official_cap.notna()
+    value_mismatch = comparable & ~pd.Series(
+        np.isclose(
+            existing_cap.astype(float),
+            official_cap.astype(float),
+            rtol=0.0,
+            atol=0.5,
+        ),
+        index=grok.index,
+    )
+    if null_mismatch.any() or value_mismatch.any():
+        raise JQuantsBacktestDataError(
+            "Legacy selection market_cap differs from re-fetched official D-1 data"
+        )
+    validate_selection_market_cap(enriched, target_date, trading_calendar)
+    print(
+        "[OK] Fully legacy market-cap provenance upgraded in memory after exact "
+        "official D-1 value comparison"
+    )
+    return enriched
 
 
 def calculate_morning_metrics(
@@ -773,7 +720,6 @@ def fetch_backtest_data(ticker: str, backtest_date: datetime) -> dict:
             "morning_max_drawdown_pct": morning_max_drawdown_pct,
             "daily_max_gain_pct": daily_max_gain_pct,
             "daily_max_drawdown_pct": daily_max_drawdown_pct,
-            "market_cap": fetch_market_cap(ticker, daily_close, backtest_date),
             "data_source": "jquants_1m",
             "phase1_mark_status": (
                 "available"
@@ -802,20 +748,18 @@ def build_no_market_trade_backtest_data(
     ticker: str,
     backtest_date: datetime,
 ) -> dict[str, Any]:
-    """Build a selected-but-unexecutable row without inventing target-day prices."""
+    """Represent an official all-null daily row without inventing prices."""
     daily = load_jquants_daily()
-    day = backtest_date.date()
-    prior = daily[
-        daily["ticker"].astype(str).eq(ticker)
-        & daily["date"].dt.date.lt(day)
+    ticker_daily = daily[daily["ticker"].astype(str).eq(str(ticker))].copy()
+    ticker_daily["date"] = pd.to_datetime(ticker_daily["date"], errors="coerce")
+    prior = ticker_daily[
+        ticker_daily["date"].dt.date.lt(backtest_date.date())
+        & ticker_daily["Close"].notna()
     ].sort_values("date")
-    if prior.empty or pd.isna(prior.iloc[-1]["Close"]):
-        raise JQuantsBacktestDataError(
-            f"{ticker}: previous J-Quants close is unavailable before {day}"
-        )
+    prev_close = float(prior.iloc[-1]["Close"]) if not prior.empty else None
 
     result: dict[str, Any] = {
-        "prev_close": float(prior.iloc[-1]["Close"]),
+        "prev_close": prev_close,
         "buy_price": None,
         "sell_price": None,
         "daily_close": None,
@@ -837,25 +781,24 @@ def build_no_market_trade_backtest_data(
         "morning_max_drawdown_pct": None,
         "daily_max_gain_pct": None,
         "daily_max_drawdown_pct": None,
-        "market_cap": None,
-        "data_source": NO_MARKET_TRADE_DATA_SOURCE,
+        "data_source": "jquants_no_market_trade",
         "phase1_mark_status": "no_market_trade",
         "close_execution_status": "no_market_trade",
         "jquants_first_time": None,
         "jquants_last_time": None,
         "jquants_bar_count": 0,
-        "jquants_price_validation": NO_MARKET_TRADE_VALIDATION,
-        "segment_definition": "first_executable_open_at_or_after_target_after_entry",
+        "jquants_price_validation": "official_daily_no_market_trade_no_minute",
+        "segment_definition": "no_market_trade",
         "profit_per_100_shares_morning_early": None,
         "profit_per_100_shares_afternoon_early": None,
     }
-    for threshold in ["1pct", "2pct", "3pct"]:
-        result[f"phase3_{threshold}_return"] = None
-        result[f"phase3_{threshold}_win"] = None
-        result[f"phase3_{threshold}_exit_reason"] = None
-        result[f"profit_per_100_shares_phase3_{threshold}"] = None
-    for column in SEGMENT_COLUMNS:
-        result[column] = None
+    for threshold_pct in [1, 2, 3]:
+        prefix = f"phase3_{threshold_pct}pct"
+        result[f"{prefix}_return"] = None
+        result[f"{prefix}_win"] = None
+        result[f"{prefix}_exit_reason"] = "no_market_trade"
+        result[f"profit_per_100_shares_{prefix}"] = None
+    result.update({column: None for column in SEGMENT_TARGETS})
     return result
 
 
@@ -1010,7 +953,52 @@ def run_backtest() -> pd.DataFrame:
 
     # 3. 当日の全選定銘柄について、保存前にJ-Quants入力を一括検査
     validate_selection_asof(df_grok, backtest_date)
-    confirmed_no_trade = validate_batch_coverage(df_grok, backtest_date)
+    if not TRADING_CALENDAR_PATH.exists():
+        raise FileNotFoundError(
+            f"Trading calendar not found: {TRADING_CALENDAR_PATH}"
+        )
+    if not JQUANTS_DAILY_FEATURES_PATH.exists():
+        raise FileNotFoundError(
+            "J-Quants daily field sidecar not found: "
+            f"{JQUANTS_DAILY_FEATURES_PATH}"
+        )
+    trading_calendar = pd.read_parquet(TRADING_CALENDAR_PATH)
+    daily_features = pd.read_parquet(JQUANTS_DAILY_FEATURES_PATH)
+    df_grok = validate_or_attach_market_cap_provenance(
+        df_grok,
+        backtest_date,
+        daily_features,
+        trading_calendar,
+    )
+    validate_target_daily_corporate_actions(
+        df_grok,
+        backtest_date,
+        daily_features,
+    )
+    ex_rights_count = int(
+        pd.to_numeric(
+            daily_features.loc[
+                pd.to_datetime(
+                    daily_features["trading_date"], errors="coerce"
+                ).dt.normalize().eq(pd.Timestamp(backtest_date).normalize())
+                & daily_features["ticker"].astype(str).isin(
+                    set(df_grok["ticker"].astype(str))
+                ),
+                "jq_ex_rights_type",
+            ],
+            errors="coerce",
+        ).notna().sum()
+    )
+    print(
+        "[OK] Official market-cap/corporate-action preflight: "
+        f"D-1 MktCap={len(df_grok)}/{len(df_grok)}, "
+        f"target-day ExRT events={ex_rights_count}"
+    )
+    no_market_tickers = validate_batch_coverage(
+        df_grok,
+        backtest_date,
+        daily_features,
+    )
 
     # 4. 各銘柄のバックテストを実行
     results = []
@@ -1021,7 +1009,7 @@ def run_backtest() -> pd.DataFrame:
         print(f"[{idx+1}/{len(df_grok)}] Processing {ticker}...", end=" ", flush=True)
 
         try:
-            if ticker in confirmed_no_trade:
+            if ticker in no_market_tickers:
                 backtest_data = build_no_market_trade_backtest_data(
                     ticker,
                     backtest_date,
@@ -1108,7 +1096,7 @@ def run_backtest() -> pd.DataFrame:
     if failures:
         details = "\n  - ".join(failures)
         raise JQuantsBacktestDataError(
-            "One or more selected tickers failed; no rows will be archived:\n  - "
+            "One or more selected tickers failed; no derived rows will be saved:\n  - "
             + details
         )
 
@@ -1151,10 +1139,14 @@ def run_backtest() -> pd.DataFrame:
     return df_results
 
 
-def validate_result_batch(df: pd.DataFrame, backtest_date: str) -> str:
-    """Validate traded and officially confirmed no-trade rows before publishing."""
+def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
+    """Validate and publish one derived day while keeping the archive read-only."""
+    cfg = load_s3_config()
+    if not cfg or not cfg.bucket:
+        raise RuntimeError("S3 is not configured; derived daily publish refused")
+
     if df.empty:
-        raise JQuantsBacktestDataError("Cannot archive an empty result batch")
+        raise JQuantsBacktestDataError("Cannot save an empty derived result batch")
     if df[["backtest_date", "ticker"]].duplicated().any():
         raise JQuantsBacktestDataError("Result batch has duplicate ticker-date keys")
     target = pd.Timestamp(backtest_date).strftime("%Y-%m-%d")
@@ -1163,28 +1155,44 @@ def validate_result_batch(df: pd.DataFrame, backtest_date: str) -> str:
     )
     if not result_dates.eq(target).all():
         raise JQuantsBacktestDataError("Result batch contains a non-target date")
-    required_columns = [
-        "data_source",
-        "buy_price",
-        "daily_close",
-        "phase1_mark_status",
-        "close_execution_status",
-        "jquants_bar_count",
-        "jquants_price_validation",
-    ]
-    missing_columns = sorted(set(required_columns) - set(df.columns))
-    if missing_columns:
+    if not TRADING_CALENDAR_PATH.exists() or not JQUANTS_DAILY_FEATURES_PATH.exists():
         raise JQuantsBacktestDataError(
-            f"Result batch has missing canonical columns: {missing_columns}"
+            "Calendar/daily sidecar disappeared before derived daily publish"
         )
-
-    traded = df["data_source"].eq("jquants_1m")
-    no_market_trade = df["data_source"].eq(NO_MARKET_TRADE_DATA_SOURCE)
-    if not (traded | no_market_trade).all():
-        raise JQuantsBacktestDataError("Non-J-Quants result row detected")
+    trading_calendar = pd.read_parquet(TRADING_CALENDAR_PATH)
+    daily_features = pd.read_parquet(JQUANTS_DAILY_FEATURES_PATH)
+    validate_selection_market_cap(df, target, trading_calendar)
+    validate_target_daily_corporate_actions(
+        df,
+        target,
+        daily_features,
+    )
+    required_values = ["phase1_mark_status", "close_execution_status"]
+    missing_required = [
+        column
+        for column in required_values
+        if column not in df.columns or df[column].isna().any()
+    ]
+    if missing_required:
+        raise JQuantsBacktestDataError(
+            f"Result batch has missing canonical values: {missing_required}"
+        )
+    no_market = (
+        df["phase1_mark_status"].eq("no_market_trade")
+        & df["close_execution_status"].eq("no_market_trade")
+    )
+    traded = ~no_market
     if df.loc[traded, ["buy_price", "daily_close"]].isna().any().any():
         raise JQuantsBacktestDataError(
-            "Traded result rows have missing canonical prices"
+            "Traded result batch has missing buy/daily close values"
+        )
+    if not df.loc[traded, "data_source"].eq("jquants_1m").all():
+        raise JQuantsBacktestDataError("Non-J-Quants traded result row detected")
+    if not df.loc[no_market, "data_source"].eq(
+        "jquants_no_market_trade"
+    ).all():
+        raise JQuantsBacktestDataError(
+            "Official no-market row has an invalid data source"
         )
 
     phase1_columns = [
@@ -1209,174 +1217,151 @@ def validate_result_batch(df: pd.DataFrame, backtest_date: str) -> str:
             ]
         )
 
-    phase1_exec = traded & df["phase1_mark_status"].eq("available")
-    phase1_no_morning = traded & df["phase1_mark_status"].eq("no_morning_price")
-    close_exec = traded & df["close_execution_status"].eq("executable")
-    close_mark_only = traded & df["close_execution_status"].eq(
-        "mark_only_no_round_trip"
-    )
-    if not (phase1_exec | phase1_no_morning | no_market_trade).all():
+    phase1_exec = df["phase1_mark_status"].eq("available")
+    phase1_no_trade = df["phase1_mark_status"].eq("no_morning_price")
+    close_exec = df["close_execution_status"].eq("executable")
+    close_no_trade = df["close_execution_status"].eq("mark_only_no_round_trip")
+    if not (phase1_exec | phase1_no_trade | no_market).all():
         raise JQuantsBacktestDataError("Unknown Phase1 mark status")
-    if not (close_exec | close_mark_only | no_market_trade).all():
+    if not (close_exec | close_no_trade | no_market).all():
         raise JQuantsBacktestDataError("Unknown close execution status")
     if df.loc[phase1_exec, phase1_columns].isna().any().any() or df.loc[
-        phase1_no_morning, phase1_columns
+        phase1_no_trade, phase1_columns
     ].notna().any().any():
         raise JQuantsBacktestDataError(
             "Phase1 values are inconsistent with execution status"
         )
     if df.loc[traded, close_columns].isna().any().any():
         raise JQuantsBacktestDataError(
-            "Hypothetical close/Phase3 values must be present for traded rows"
+            "Hypothetical close/Phase3 values must be present for every traded row"
         )
-
-    no_trade_null_columns = sorted(
-        set(
+    no_market_null_columns = [
+        "buy_price",
+        "sell_price",
+        "daily_close",
+        "high",
+        "low",
+        "volume",
+        "Close",
+        "Volume",
+        "Value",
+        *phase1_columns,
+        "phase2_return",
+        "phase2_win",
+        "profit_per_100_shares_phase2",
+        *SEGMENT_TARGETS,
+        "profit_per_100_shares_morning_early",
+        "profit_per_100_shares_afternoon_early",
+    ]
+    for threshold in ["1pct", "2pct", "3pct"]:
+        no_market_null_columns.extend(
             [
-                "buy_price",
-                "sell_price",
-                "daily_close",
-                "high",
-                "low",
-                "volume",
-                "Close",
-                "Volume",
-                "Value",
-                "morning_high",
-                "morning_low",
-                "morning_max_gain_pct",
-                "morning_max_drawdown_pct",
-                "daily_max_gain_pct",
-                "daily_max_drawdown_pct",
-                "market_cap",
-                "profit_per_100_shares_morning_early",
-                "profit_per_100_shares_afternoon_early",
-                *phase1_columns,
-                *close_columns,
-                *SEGMENT_COLUMNS,
+                f"phase3_{threshold}_return",
+                f"phase3_{threshold}_win",
+                f"profit_per_100_shares_phase3_{threshold}",
             ]
         )
-    )
-    missing_no_trade_columns = sorted(set(no_trade_null_columns) - set(df.columns))
-    if missing_no_trade_columns:
+    if df.loc[no_market, no_market_null_columns].notna().any().any():
         raise JQuantsBacktestDataError(
-            f"Result batch has missing no-trade columns: {missing_no_trade_columns}"
+            "Official no-market row contains invented price or P&L values"
         )
-    if no_market_trade.any():
-        no_trade_rows = df.loc[no_market_trade]
-        if not no_trade_rows["phase1_mark_status"].eq("no_market_trade").all():
-            raise JQuantsBacktestDataError("Invalid no-trade Phase1 status")
-        if not no_trade_rows["close_execution_status"].eq("no_market_trade").all():
-            raise JQuantsBacktestDataError("Invalid no-trade close status")
-        if not no_trade_rows["jquants_bar_count"].eq(0).all():
-            raise JQuantsBacktestDataError("No-trade rows must have zero minute bars")
-        if not no_trade_rows["jquants_price_validation"].eq(
-            NO_MARKET_TRADE_VALIDATION
-        ).all():
-            raise JQuantsBacktestDataError("Invalid no-trade validation evidence")
-        if no_trade_rows[no_trade_null_columns].notna().any().any():
-            raise JQuantsBacktestDataError(
-                "No-trade rows must not contain invented target-day values"
-            )
-        if no_trade_rows["prev_close"].isna().any():
-            raise JQuantsBacktestDataError(
-                "No-trade rows require the prior J-Quants close"
-            )
-    return target
-
-
-def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
-    """Validate, conditionally publish, then install one complete J-Quants day."""
-    cfg = load_s3_config()
-    if not cfg or not cfg.bucket:
-        raise RuntimeError("S3 is not configured; canonical archive publish refused")
-
-    target = validate_result_batch(df, backtest_date)
-    date_str = target.replace("-", "")
-    dated_file = BACKTEST_DIR / f"grok_trending_{date_str}.parquet"
-    df.to_parquet(dated_file, index=False)
-    print(f"[OK] Saved dated file: {dated_file}")
+    no_market_exit_columns = [
+        f"phase3_{threshold}_exit_reason"
+        for threshold in ["1pct", "2pct", "3pct"]
+    ]
+    if not df.loc[no_market, no_market_exit_columns].eq(
+        "no_market_trade"
+    ).all().all():
+        raise JQuantsBacktestDataError(
+            "Official no-market row lacks explicit Phase3 no-trade reasons"
+        )
+    if (
+        pd.to_numeric(df.loc[no_market, "jquants_bar_count"], errors="coerce")
+        .fillna(-1)
+        .ne(0)
+        .any()
+    ):
+        raise JQuantsBacktestDataError(
+            "Official no-market row must have zero J-Quants bars"
+        )
 
     with TemporaryDirectory(prefix="grok-archive-", dir=BACKTEST_DIR) as temp_dir:
         temp_root = Path(temp_dir)
         source_path = temp_root / "source.parquet"
-        candidate_path = temp_root / "candidate.parquet"
+        candidate_path = temp_root / "derived-day.parquet"
+        readback_path = temp_root / "s3-readback.parquet"
 
         print("[INFO] Downloading checksum-pinned canonical archive from S3")
         source_state = download_verified_archive(cfg, source_path)
         source_archive = pd.read_parquet(source_path)
-        candidate = merge_archive_date(source_archive, df, target)
-        candidate.to_parquet(candidate_path, index=False)
+        if not BACKTEST_ARCHIVE_PATH.exists():
+            raise JQuantsBacktestDataError(
+                "Local protected archive is absent; S3/local equality cannot be proven"
+            )
+        local_archive_sha = file_sha256(BACKTEST_ARCHIVE_PATH)
+        if local_archive_sha != source_state["sha256"]:
+            raise JQuantsBacktestDataError(
+                "Local protected archive differs from checksum-pinned S3 archive"
+            )
+
+        derived_rows = build_derived_backtest_rows(
+            source_archive,
+            df,
+            target,
+            daily_features,
+        )
+        date_str = target.replace("-", "")
+        dated_file = BACKTEST_DIR / f"grok_trending_{date_str}.parquet"
+        derived_rows.to_parquet(candidate_path, index=False)
 
         reloaded = pd.read_parquet(candidate_path)
-        if len(reloaded) != len(candidate):
+        if len(reloaded) != len(derived_rows):
             raise JQuantsBacktestDataError(
-                "Candidate archive row count changed after parquet serialization"
+                "Derived daily row count changed after parquet serialization"
             )
         if reloaded[["backtest_date", "ticker"]].duplicated().any():
             raise JQuantsBacktestDataError(
-                "Candidate archive contains duplicate keys after serialization"
+                "Derived daily artifact contains duplicate keys after serialization"
             )
-        assert_archive_history_unchanged(source_archive, reloaded, target)
-        assert_archive_target_rows_preserved(df, reloaded, target)
-        candidate_dates = pd.to_datetime(reloaded["backtest_date"], errors="raise")
-        expected_rows = len(source_archive) - int(
-            pd.to_datetime(source_archive["backtest_date"], errors="raise")
-            .dt.strftime("%Y-%m-%d")
-            .eq(target)
-            .sum()
-        ) + len(df)
-        if len(reloaded) != expected_rows:
+        derived_dates = pd.to_datetime(reloaded["backtest_date"], errors="raise")
+        if not derived_dates.dt.strftime("%Y-%m-%d").eq(target).all():
             raise JQuantsBacktestDataError(
-                f"Candidate archive row count mismatch: {len(reloaded)} != {expected_rows}"
+                "Derived daily artifact contains a non-target date"
             )
+        try:
+            pd.testing.assert_frame_equal(
+                derived_rows.reset_index(drop=True),
+                reloaded.reset_index(drop=True),
+                check_dtype=False,
+                check_exact=True,
+                check_categorical=False,
+            )
+        except AssertionError as error:
+            raise JQuantsBacktestDataError(
+                f"Derived daily artifact changed after serialization: {error}"
+            ) from error
 
-        # The dated artifact is non-canonical, but it must exist before the
-        # canonical pointer advances.
+        # Install only the reproducible derived day. The protected archive path
+        # is never an output target.
+        os.replace(candidate_path, dated_file)
+        if file_sha256(BACKTEST_ARCHIVE_PATH) != local_archive_sha:
+            raise JQuantsBacktestDataError(
+                "Protected local archive changed while building the derived day"
+            )
+        print(f"[OK] Saved derived J-Quants day: {dated_file}")
+
         s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
         if not upload_file(cfg, dated_file, s3_key_dated):
             raise RuntimeError(f"Failed to upload dated artifact: {s3_key_dated}")
-        print(f"[OK] Uploaded to S3: {s3_key_dated}")
+        if not download_file(cfg, s3_key_dated, readback_path):
+            raise RuntimeError(f"Failed to read back dated artifact: {s3_key_dated}")
+        if file_sha256(readback_path) != file_sha256(dated_file):
+            raise RuntimeError(f"S3 readback checksum mismatch: {s3_key_dated}")
 
-        publish_state = publish_guarded_archive(
-            cfg,
-            candidate_path,
-            source_state,
-            backtest_date=target,
-            row_count=len(reloaded),
-        )
-        publish_state.update(
-            {
-                "date_min": candidate_dates.min().date().isoformat(),
-                "date_max": candidate_dates.max().date().isoformat(),
-                "unique_ticker_date_keys": int(
-                    reloaded[["ticker", "backtest_date"]].drop_duplicates().shape[0]
-                ),
-                "columns": reloaded.columns.tolist(),
-            }
-        )
-        manifest_state = publish_guarded_manifest_entry(
-            cfg,
-            source_state,
-            publish_state,
-            columns=reloaded.columns.tolist(),
-            date_min=publish_state["date_min"],
-            date_max=publish_state["date_max"],
-            unique_ticker_date_keys=publish_state["unique_ticker_date_keys"],
-        )
-        publish_state.update(manifest_state)
-        write_publish_state(ARCHIVE_PUBLISH_STATE_PATH, publish_state)
-
-        # Install locally only after S3 has accepted and verified the guarded write.
-        os.replace(candidate_path, BACKTEST_ARCHIVE_PATH)
-
-    print(f"[OK] Guarded canonical archive publish: {BACKTEST_ARCHIVE_PATH}")
-    print(f"     Total records: {len(reloaded)}")
-    print(
-        f"     Date range: {candidate_dates.min().date()} "
-        f"to {candidate_dates.max().date()}"
-    )
-    print(f"     S3 VersionId: {publish_state.get('s3_version_id')}")
+    print(f"[OK] Derived daily backtest published: {dated_file}")
+    print(f"     Records: {len(reloaded)}")
+    print(f"     Target date: {target}")
+    print(f"     Canonical archive unchanged: sha256={local_archive_sha}")
 
 
 def main() -> int:
@@ -1389,12 +1374,12 @@ def main() -> int:
             print("[ERROR] No backtest results to save")
             return 1
 
-        # 2. アーカイブに保存
+        # 2. 正本を変更せず、日付別の派生バックテストを保存
         backtest_date = df_results['backtest_date'].iloc[0]
-        save_to_archive(df_results, backtest_date)
+        save_derived_backtest(df_results, backtest_date)
 
         print("\n" + "=" * 80)
-        print("✅ Backtest completed and archived successfully!")
+        print("✅ Derived backtest completed successfully; canonical archive unchanged!")
         print("=" * 80)
 
         return 0

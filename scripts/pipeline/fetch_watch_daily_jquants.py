@@ -12,11 +12,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -25,6 +26,13 @@ if str(ROOT) not in sys.path:
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from common_cfg.s3io import download_file
+from scripts.lib.jquants_daily_fields import (
+    JQ_DAILY_TRADE_STATUS,
+    JQUANTS_DAILY_FIELD_COLUMNS,
+    classify_jquants_daily_trade_status,
+    missing_raw_daily_fields,
+    normalize_jquants_daily_fields,
+)
 from scripts.lib.jquants_fetcher import JQuantsFetcher
 from server.services.tech_utils_v2 import evaluate_latest_snapshot
 
@@ -32,7 +40,18 @@ UNIVERSE_PATH = PARQUET_DIR / "watch_minute_universe.parquet"
 ALL_STOCKS_PATH = PARQUET_DIR / "all_stocks.parquet"
 PRICES_1D_PATH = PARQUET_DIR / "prices_max_1d.parquet"
 TECH_SNAPSHOT_PATH = PARQUET_DIR / "tech_snapshot_1d.parquet"
+DAILY_FEATURES_PATH = PARQUET_DIR / "jquants" / "watch_daily_features.parquet"
 HISTORY_START = "2024-01-01"
+
+DAILY_FEATURE_COLUMNS = [
+    "trading_date",
+    "ticker",
+    "jquants_code",
+    *JQUANTS_DAILY_FIELD_COLUMNS,
+    JQ_DAILY_TRADE_STATUS,
+    "source",
+    "fetched_at",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,6 +62,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--all-stocks-path", type=Path, default=ALL_STOCKS_PATH)
     parser.add_argument("--prices-out", type=Path, default=PRICES_1D_PATH)
     parser.add_argument("--tech-out", type=Path, default=TECH_SNAPSHOT_PATH)
+    parser.add_argument(
+        "--daily-features-out",
+        type=Path,
+        default=DAILY_FEATURES_PATH,
+        help="Nullable J-Quants MktCap/ExRT/AdjFactor sidecar.",
+    )
     parser.add_argument("--sleep", type=float, default=0.5)
     parser.add_argument("--bootstrap-missing", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -119,6 +144,40 @@ def download_existing_prices(path: Path) -> None:
         print(f"[WARN] S3 fallback for prices_max_1d failed: {exc}")
 
 
+def download_existing_daily_features(path: Path) -> None:
+    if path.exists() and path.stat().st_size > 0:
+        return
+    try:
+        cfg = load_s3_config()
+        if cfg and cfg.bucket:
+            download_file(cfg, "jquants/watch_daily_features.parquet", path)
+    except Exception as exc:
+        print(f"[WARN] S3 fallback for watch daily features failed: {exc}")
+
+
+def load_existing_daily_features(path: Path) -> pd.DataFrame:
+    download_existing_daily_features(path)
+    if not path.exists() or path.stat().st_size == 0:
+        return pd.DataFrame(columns=DAILY_FEATURE_COLUMNS)
+    try:
+        df = pd.read_parquet(path)
+    except Exception as exc:
+        print(f"[WARN] failed to read existing watch daily features: {exc}")
+        return pd.DataFrame(columns=DAILY_FEATURE_COLUMNS)
+
+    df = normalize_jquants_daily_fields(df)
+    for col in DAILY_FEATURE_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    df["trading_date"] = pd.to_datetime(
+        df["trading_date"], errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
+    df = df.dropna(subset=["trading_date", "ticker", "jquants_code"])
+    df["ticker"] = df["ticker"].astype(str).str.strip()
+    df["jquants_code"] = df["jquants_code"].map(normalize_code)
+    return df[DAILY_FEATURE_COLUMNS].reset_index(drop=True)
+
+
 def load_existing(path: Path, tickers: set[str]) -> pd.DataFrame:
     download_existing_prices(path)
     if not path.exists() or path.stat().st_size == 0:
@@ -173,17 +232,83 @@ def normalize_daily(raw: pd.DataFrame, target_tickers: set[str]) -> pd.DataFrame
     return normalized.reset_index(drop=True)
 
 
+def normalize_daily_features(
+    raw: pd.DataFrame,
+    target_tickers: set[str],
+) -> pd.DataFrame:
+    if raw.empty:
+        return pd.DataFrame(columns=DAILY_FEATURE_COLUMNS)
+    if "Date" not in raw.columns or "Code" not in raw.columns:
+        raise ValueError("J-Quants daily response missing Date/Code")
+    missing = missing_raw_daily_fields(raw.columns)
+    if missing:
+        raise ValueError(
+            "J-Quants daily response does not support required fields: "
+            f"{missing}"
+        )
+
+    df = normalize_jquants_daily_fields(raw)
+    df[JQ_DAILY_TRADE_STATUS] = classify_jquants_daily_trade_status(df)
+    df["jquants_code"] = df["Code"].map(normalize_code)
+    df["ticker"] = df["jquants_code"] + ".T"
+    df = df[df["ticker"].isin(target_tickers)].copy()
+    if df.empty:
+        return pd.DataFrame(columns=DAILY_FEATURE_COLUMNS)
+
+    df["trading_date"] = pd.to_datetime(
+        df["Date"], errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
+    df["source"] = "jquants_api_v2"
+    df["fetched_at"] = datetime.now(timezone.utc).isoformat()
+    df = df.dropna(subset=["trading_date", "ticker", "jquants_code"])
+    return df[DAILY_FEATURE_COLUMNS].reset_index(drop=True)
+
+
+def merge_daily_features(
+    existing: pd.DataFrame,
+    latest: pd.DataFrame,
+) -> pd.DataFrame:
+    frames = [df for df in [existing, latest] if df is not None and not df.empty]
+    if not frames:
+        return pd.DataFrame(columns=DAILY_FEATURE_COLUMNS)
+    combined = pd.concat(frames, ignore_index=True)
+    combined = normalize_jquants_daily_fields(combined)
+    for col in DAILY_FEATURE_COLUMNS:
+        if col not in combined.columns:
+            combined[col] = pd.NA
+    combined["trading_date"] = pd.to_datetime(
+        combined["trading_date"], errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
+    combined = combined.dropna(subset=["trading_date", "ticker", "jquants_code"])
+    combined["ticker"] = combined["ticker"].astype(str).str.strip()
+    combined["jquants_code"] = combined["jquants_code"].map(normalize_code)
+    combined = combined.sort_values(["trading_date", "ticker", "fetched_at"])
+    combined = combined.drop_duplicates(["trading_date", "ticker"], keep="last")
+    return combined[DAILY_FEATURE_COLUMNS].reset_index(drop=True)
+
+
 def fetch_daily_bars(
     fetcher: JQuantsFetcher,
     code: str | None = None,
+    date: str | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
 ) -> pd.DataFrame:
+    if date and (from_date or to_date):
+        raise ValueError("J-Quants daily request cannot mix date with from/to")
     params: dict[str, str] = {}
     if code:
         params["code"] = code
-    if from_date and to_date and str(from_date) == str(to_date):
-        params["date"] = str(from_date)
+    if date:
+        params["date"] = date
+    elif not code and (from_date or to_date):
+        if from_date and to_date and from_date == to_date:
+            # V2 requires ``date`` for one-day all-market retrieval.
+            params["date"] = from_date
+        else:
+            raise ValueError(
+                "J-Quants all-market daily retrieval requires exactly one date"
+            )
     else:
         if from_date:
             params["from"] = from_date
@@ -201,6 +326,7 @@ def fetch_daily_bars(
 
     raw = pd.DataFrame(data)
     raw = fetcher._normalize_columns(raw)
+    raw = normalize_jquants_daily_fields(raw)
     if "Date" in raw.columns:
         raw["Date"] = pd.to_datetime(raw["Date"], errors="coerce")
     for col in [
@@ -222,7 +348,7 @@ def fetch_daily_bars(
 
 
 def fetch_market_date(fetcher: JQuantsFetcher, target_date: str, target_tickers: set[str]) -> pd.DataFrame:
-    raw = fetch_daily_bars(fetcher, from_date=target_date, to_date=target_date)
+    raw = fetch_daily_bars(fetcher, date=target_date)
     return normalize_daily(raw, target_tickers)
 
 
@@ -273,7 +399,7 @@ def merge_prices(existing: pd.DataFrame, bootstrap: pd.DataFrame, latest: pd.Dat
     return combined[["date", "Open", "High", "Low", "Close", "Volume", "ticker"]].reset_index(drop=True)
 
 
-def generate_tech_snapshot(prices: pd.DataFrame, output_path: Path) -> pd.DataFrame:
+def generate_tech_snapshot(prices: pd.DataFrame) -> pd.DataFrame:
     snapshots: list[dict[str, object]] = []
     for ticker, grp in prices.groupby("ticker"):
         work = grp.sort_values("date").dropna(subset=["Close"]).copy()
@@ -285,9 +411,27 @@ def generate_tech_snapshot(prices: pd.DataFrame, output_path: Path) -> pd.DataFr
             print(f"  [WARN] tech snapshot failed for {ticker}: {exc}")
 
     snapshot_df = pd.DataFrame(snapshots, columns=["ticker", "date", "values", "votes", "overall"])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    snapshot_df.to_parquet(output_path, engine="pyarrow", index=False)
     return snapshot_df
+
+
+def write_parquet_atomic(frame: pd.DataFrame, output_path: Path) -> None:
+    """Install one complete parquet only after serialization succeeds."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output_path.name}.", suffix=".tmp", dir=output_path.parent
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        frame.to_parquet(temporary_path, engine="pyarrow", index=False)
+        reloaded = pd.read_parquet(temporary_path)
+        if len(reloaded) != len(frame) or reloaded.columns.tolist() != frame.columns.tolist():
+            raise RuntimeError(
+                f"serialized parquet verification failed: {output_path}"
+            )
+        os.replace(temporary_path, output_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -311,27 +455,32 @@ def main() -> int:
     print(f"existing rows: {len(existing):,}, tickers={len(existing_tickers)}")
     print(f"missing history tickers: {len(missing_tickers)}")
 
-    try:
-        latest = fetch_market_date(fetcher, target_date, tickers)
-    except requests.HTTPError as exc:
-        status_code = getattr(getattr(exc, "response", None), "status_code", None)
-        if status_code == 400:
-            print(
-                "[ERROR] target daily bars are not available from J-Quants yet; "
-                f"target={target_date}. Delay the manual update and rerun."
-            )
-            return 1
-        else:
-            raise
-
-    if latest.empty:
-        print(
-            "[ERROR] target daily bars returned no rows; "
-            f"target={target_date}. Delay the manual update and rerun."
-        )
+    latest_raw = fetch_daily_bars(
+        fetcher,
+        date=target_date,
+    )
+    latest = normalize_daily(latest_raw, tickers)
+    target_features = normalize_daily_features(latest_raw, tickers)
+    previous_trading_date = fetcher.get_previous_trading_day(target_date)
+    if not previous_trading_date:
+        print(f"[ERROR] previous trading day not found for {target_date}")
         return 1
-
+    previous_raw = fetch_daily_bars(
+        fetcher,
+        date=previous_trading_date,
+    )
+    previous_features = normalize_daily_features(previous_raw, tickers)
+    latest_features = pd.concat(
+        [previous_features, target_features],
+        ignore_index=True,
+    )
     print(f"latest rows: {len(latest):,}, tickers={latest['ticker'].nunique() if not latest.empty else 0}")
+    print(
+        f"daily fields ({previous_trading_date}, {target_date}): "
+        f"{len(latest_features):,}, "
+        f"MktCap={int(latest_features['jq_mkt_cap_million_yen'].notna().sum()) if not latest_features.empty else 0}, "
+        f"ExRT={int(latest_features['jq_ex_rights_type'].notna().sum()) if not latest_features.empty else 0}"
+    )
 
     if args.bootstrap_missing:
         missing_tickers = missing_tickers | (tickers - set(latest["ticker"].unique()))
@@ -356,10 +505,42 @@ def main() -> int:
         print(f"[ERROR] daily prices are stale: latest={latest_date}, target={target_date}")
         return 1
 
-    args.prices_out.parent.mkdir(parents=True, exist_ok=True)
-    combined.to_parquet(args.prices_out, engine="pyarrow", index=False)
-    snapshot_df = generate_tech_snapshot(combined, args.tech_out)
+    existing_features = load_existing_daily_features(args.daily_features_out)
+    daily_features = merge_daily_features(existing_features, latest_features)
+    if daily_features.empty:
+        print("[ERROR] no J-Quants daily feature rows available")
+        return 1
+    latest_feature_date = daily_features["trading_date"].max()
+    if latest_feature_date < target_date:
+        print(
+            "[ERROR] J-Quants daily features are stale: "
+            f"latest={latest_feature_date}, target={target_date}"
+        )
+        return 1
+    previous_coverage = set(
+        daily_features.loc[
+            daily_features["trading_date"].eq(previous_trading_date),
+            "ticker",
+        ].astype(str)
+    )
+    missing_previous = sorted(tickers - previous_coverage)
+    if missing_previous:
+        print(
+            "[WARN] previous-trading-day daily features are unavailable for "
+            f"{len(missing_previous)} watch-universe tickers on "
+            f"{previous_trading_date}; selected Grok tickers are checked "
+            "strictly before market-cap attachment/archive publication: "
+            f"missing={missing_previous}"
+        )
+    snapshot_df = generate_tech_snapshot(combined)
+    write_parquet_atomic(combined, args.prices_out)
+    write_parquet_atomic(daily_features, args.daily_features_out)
+    write_parquet_atomic(snapshot_df, args.tech_out)
     print(f"[OK] saved prices: {args.prices_out} rows={len(combined):,} tickers={combined['ticker'].nunique()}")
+    print(
+        f"[OK] saved fields: {args.daily_features_out} "
+        f"rows={len(daily_features):,}"
+    )
     print(f"[OK] saved tech  : {args.tech_out} rows={len(snapshot_df):,}")
     print(f"range: {combined['date'].min().date()} - {combined['date'].max().date()}")
     return 0

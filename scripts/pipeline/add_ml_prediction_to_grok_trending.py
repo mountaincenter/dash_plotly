@@ -6,7 +6,7 @@ grok_trending.parquetにML予測（prob_up）カラムを追加する
 
 処理:
 1. grok_trending.parquet を読み込み
-2. MLモデルを読み込み（28特徴量）
+2. MLモデルを読み込み（24特徴量）
 3. 価格データ・市場データから特徴量を計算
 4. 各銘柄に対してML予測を実行
 5. prob_up カラムを追加して保存
@@ -20,10 +20,18 @@ import sys
 from pathlib import Path
 import os
 import json
+import hashlib
+import tempfile
 
 import numpy as np
 import pandas as pd
 import joblib
+from scripts.lib.grok_ml_contract import (
+    FEATURE_COLUMNS,
+    FEATURE_CONTRACT,
+    MARKET_CAP_SOURCE,
+    PRICE_HISTORY_SOURCE,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -40,6 +48,130 @@ FUTURES_PRICES_FILE = ROOT / "data" / "parquet" / "futures_prices_max_1d.parquet
 CURRENCY_PRICES_FILE = ROOT / "data" / "parquet" / "currency_prices_max_1d.parquet"
 ML_MODEL_FILE = ROOT / "models" / "grok_lgbm_model.pkl"
 ML_META_FILE = ROOT / "models" / "grok_lgbm_meta.json"
+JQ_MARKET_CAP_ASOF_DATE = "jq_market_cap_asof_date"
+JQ_MARKET_CAP_YEN_ASOF = "jq_market_cap_yen_asof"
+MIN_PRICE_HISTORY_ROWS = 35
+
+
+def validate_official_market_cap_input(frame: pd.DataFrame) -> None:
+    """Reject legacy, look-ahead, or unit-divergent market-cap input."""
+    required = {
+        "date",
+        "ticker",
+        "market_cap",
+        "market_cap_source",
+        JQ_MARKET_CAP_ASOF_DATE,
+        JQ_MARKET_CAP_YEN_ASOF,
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(
+            "ML input is missing official D-1 market-cap provenance: "
+            f"{missing}"
+        )
+
+    invalid_source = frame["market_cap_source"].ne(MARKET_CAP_SOURCE)
+    if invalid_source.any():
+        raise ValueError(
+            "ML input contains non-official market-cap source rows: "
+            f"{int(invalid_source.sum())}"
+        )
+
+    target_date = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
+    if target_date.isna().any() or target_date.nunique() != 1:
+        raise ValueError("ML input must contain exactly one valid target date")
+    tickers = frame["ticker"].astype(str).str.strip()
+    if tickers.eq("").any() or tickers.duplicated().any():
+        raise ValueError("ML input contains empty or duplicate tickers")
+    asof_date = pd.to_datetime(
+        frame[JQ_MARKET_CAP_ASOF_DATE], errors="coerce"
+    ).dt.normalize()
+    invalid_date = target_date.isna() | asof_date.isna() | asof_date.ge(target_date)
+    if invalid_date.any():
+        raise ValueError(
+            "ML market-cap as-of date is not strictly before target date: "
+            f"{int(invalid_date.sum())} rows"
+        )
+
+    market_cap = pd.to_numeric(frame["market_cap"], errors="coerce")
+    official_cap = pd.to_numeric(
+        frame[JQ_MARKET_CAP_YEN_ASOF], errors="coerce"
+    )
+    null_mismatch = market_cap.isna().ne(official_cap.isna())
+    comparable = market_cap.notna() & official_cap.notna()
+    value_mismatch = comparable & ~np.isclose(
+        market_cap.astype(float),
+        official_cap.astype(float),
+        rtol=0.0,
+        atol=0.5,
+    )
+    if null_mismatch.any() or value_mismatch.any():
+        raise ValueError(
+            "ML market_cap differs from official D-1 yen value: "
+            f"{int((null_mismatch | value_mismatch).sum())} rows"
+        )
+
+
+def validate_model_market_cap_source(meta: dict) -> None:
+    """Require a model trained with the same point-in-time cap definition."""
+    actual = meta.get("feature_sources", {}).get("market_cap")
+    if actual != MARKET_CAP_SOURCE:
+        raise ValueError(
+            "ML model market_cap source is incompatible: "
+            f"expected={MARKET_CAP_SOURCE!r}, actual={actual!r}. "
+            "Retrain after building the validated J-Quants D-1 master."
+        )
+
+
+def validate_model_package(meta: dict, model_path: Path = ML_MODEL_FILE) -> None:
+    """Reject old or mismatched model/meta pairs before unpickling the model."""
+    validate_model_market_cap_source(meta)
+    feature_names = meta.get("feature_names")
+    if not isinstance(feature_names, list) or not feature_names:
+        raise ValueError("ML model metadata has no feature_names")
+    if feature_names != list(FEATURE_COLUMNS):
+        raise ValueError(
+            "ML model feature names/order are incompatible with the fixed "
+            f"contract: expected={list(FEATURE_COLUMNS)}, actual={feature_names}"
+        )
+    if meta.get("feature_sources", {}).get("price_history") != PRICE_HISTORY_SOURCE:
+        raise ValueError("ML model price-history source is incompatible")
+    if meta.get("n_features") != len(feature_names):
+        raise ValueError("ML model metadata feature count is inconsistent")
+    if meta.get("feature_contract") != FEATURE_CONTRACT:
+        raise ValueError(
+            "ML model feature-time contract is incompatible: "
+            f"expected={FEATURE_CONTRACT!r}, actual={meta.get('feature_contract')!r}"
+        )
+    expected_sha256 = meta.get("model_sha256")
+    if not isinstance(expected_sha256, str) or len(expected_sha256) != 64:
+        raise ValueError("ML model metadata has no valid model_sha256")
+    if not model_path.exists():
+        raise FileNotFoundError(f"ML model file not found: {model_path}")
+    digest = hashlib.sha256()
+    with model_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    actual_sha256 = digest.hexdigest()
+    if actual_sha256 != expected_sha256:
+        raise ValueError(
+            "ML model bytes do not match metadata SHA256: "
+            f"expected={expected_sha256}, actual={actual_sha256}"
+        )
+
+
+def _write_parquet_atomic(frame: pd.DataFrame, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        frame.to_parquet(temporary_path, index=False)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def get_grade(prob: float, boundaries: list[float]) -> str:
@@ -53,14 +185,14 @@ def get_grade(prob: float, boundaries: list[float]) -> str:
 def load_ml_model():
     """MLモデルとメタ情報を読み込み"""
     if not ML_MODEL_FILE.exists() or not ML_META_FILE.exists():
-        print(f"   ⚠️ MLモデルファイルが見つかりません")
-        print(f"      model: {ML_MODEL_FILE.exists()}")
-        print(f"      meta: {ML_META_FILE.exists()}")
-        return None, None
-
-    model = joblib.load(ML_MODEL_FILE)
-    with open(ML_META_FILE, 'r') as f:
+        raise FileNotFoundError(
+            "ML model package is incomplete: "
+            f"model={ML_MODEL_FILE.exists()}, meta={ML_META_FILE.exists()}"
+        )
+    with open(ML_META_FILE, 'r', encoding='utf-8') as f:
         meta = json.load(f)
+    validate_model_package(meta, ML_MODEL_FILE)
+    model = joblib.load(ML_MODEL_FILE)
 
     return model, meta
 
@@ -125,14 +257,18 @@ def calc_market_features(target_date: pd.Timestamp, market_data: dict) -> dict:
     return features
 
 
-def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.DataFrame, buy_price: float = None) -> dict:
-    """価格ベース特徴量を計算（28特徴量対応）"""
+def calc_price_features(
+    ticker: str,
+    target_date: pd.Timestamp,
+    prices_df: pd.DataFrame,
+) -> dict:
+    """価格ベース特徴量を計算（24特徴量モデル対応）"""
     ticker_prices = prices_df[
         (prices_df['ticker'] == ticker) &
         (prices_df['date'] < target_date)
     ].sort_values('date').tail(60).dropna(subset=['Close'])
 
-    if len(ticker_prices) < 5:
+    if len(ticker_prices) < MIN_PRICE_HISTORY_ROWS:
         return None
 
     closes = ticker_prices['Close'].values
@@ -169,7 +305,6 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
     prev_open = opens[-1]
     prev_range = prev_high - prev_low
     features['prev_close_position'] = (prev_close - prev_low) / prev_range if prev_range > 0 else 0.5
-    features['gap_ratio'] = (buy_price - prev_close) / prev_close if prev_close > 0 and buy_price else 0
     features['prev_candle'] = (prev_close - prev_open) / prev_open if prev_open > 0 else 0
 
     # MACD Histogram: EMA(12) - EMA(26) → signal EMA(9) → hist = macd - signal
@@ -207,7 +342,7 @@ def calc_price_features(ticker: str, target_date: pd.Timestamp, prices_df: pd.Da
 
 
 def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: pd.DataFrame, market_data: dict) -> dict:
-    """grok_dfの各銘柄に対してML予測を実行（28特徴量/4クラスGrade方式）"""
+    """grok_dfの各銘柄に対して24特徴量モデルの予測を実行する。"""
     if model is None:
         return {}
 
@@ -220,10 +355,7 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
 
     for _, row in grok_df.iterrows():
         ticker = row['ticker']
-        close_price = row.get('Close')
-
         existing_features = {
-            'buy_price': close_price,
             'market_cap': row.get('market_cap'),
             'atr14_pct': row.get('atr14_pct'),
             'vol_ratio': row.get('vol_ratio'),
@@ -232,8 +364,18 @@ def predict_ml_for_stocks(grok_df: pd.DataFrame, model, meta: dict, prices_df: p
             'futures_change_pct': row.get('futures_change_pct'),
         }
 
-        price_features = calc_price_features(ticker, target_date, prices_df, buy_price=close_price)
+        price_features = calc_price_features(ticker, target_date, prices_df)
         if price_features is None:
+            available_rows = int(
+                (
+                    prices_df["ticker"].eq(ticker)
+                    & prices_df["date"].lt(target_date)
+                ).sum()
+            )
+            print(
+                f"   ⚠️ {ticker}: 日足履歴不足 "
+                f"({available_rows}/{MIN_PRICE_HISTORY_ROWS})"
+            )
             results[ticker] = {'prob_up': None}
             continue
 
@@ -272,18 +414,19 @@ def main():
 
     df = pd.read_parquet(GROK_TRENDING_FILE)
     print(f"   銘柄数: {len(df)}")
+    validate_official_market_cap_input(df)
+    print("   ✅ 公式J-Quants D-1時価総額の由来・時点を検証")
 
     # 2. MLモデル読み込み
     print("\n2. MLモデル読み込み")
-    model, meta = load_ml_model()
-    if model is None:
-        print("   ⚠️ MLモデルが読み込めません。prob_up はNullで追加します。")
-        df['prob_up'] = None
-        df.to_parquet(GROK_TRENDING_FILE, index=False)
-        print(f"\n   保存完了（prob_up = Null）")
-        return 0
+    try:
+        model, meta = load_ml_model()
+    except Exception as error:
+        print(f"   エラー: 互換性のあるMLモデルを読み込めません: {error}")
+        return 1
 
     print(f"   ✅ モデル読み込み完了")
+    print("   ✅ モデル/metaのSHA256とmarket_cap学習ソースが一致")
     print(f"   特徴量数: {len(meta['feature_names'])}")
     print(f"   Grade boundaries: {meta.get('grade_boundaries', 'N/A')} (参考値、gradeカラムは廃止済み)")
 
@@ -319,6 +462,13 @@ def main():
             success_count += 1
             print(f"   {ticker}: prob_up={prob_up:.3f}")
 
+    if success_count != len(df):
+        print(
+            "   エラー: 全選定銘柄のML予測が揃っていません。"
+            f"success={success_count}, expected={len(df)}"
+        )
+        return 1
+
     df['prob_up'] = prob_up_list
 
     # 旧カラム削除（存在する場合）
@@ -331,7 +481,7 @@ def main():
 
     # 7. 保存
     print(f"\n7. 保存: {GROK_TRENDING_FILE}")
-    df.to_parquet(GROK_TRENDING_FILE, index=False)
+    _write_parquet_atomic(df, GROK_TRENDING_FILE)
     print("   ✅ 完了")
 
     # サマリー

@@ -10,6 +10,7 @@ API directly. The archive parquet is treated as read-only input.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -21,11 +22,21 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.lib.jquants_daily_fields import (
+    JQUANTS_DAILY_FIELD_COLUMNS,
+    missing_raw_daily_fields,
+    normalize_jquants_daily_fields,
+)
+
 DEFAULT_ARCHIVE = ROOT / "data" / "parquet" / "backtest" / "grok_trending_archive.parquet"
 DEFAULT_ANALYSIS_DIR = ROOT / "data" / "analysis" / "grok_intraday_jquants"
 DEFAULT_OUTPUT = DEFAULT_ANALYSIS_DIR / "grok_jquants_daily.parquet"
 DEFAULT_RAW_DIR = ROOT / "data" / "jquants_csv" / "grok_daily"
 DEFAULT_ENV_FILE = ROOT / ".env.jquants"
+DEFAULT_CALENDAR = ROOT / "data" / "parquet" / "calendar.parquet"
 
 PLAN_RPM = {
     "free": 5,
@@ -34,6 +45,7 @@ PLAN_RPM = {
     "premium": 500,
 }
 JQUANTS_CLI_TIMEOUT_SECONDS = 240
+JQUANTS_CLI_VERSION = "1.3.0"
 
 
 class RateLimitError(RuntimeError):
@@ -46,10 +58,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--raw-dir", type=Path, default=DEFAULT_RAW_DIR)
     parser.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE)
+    parser.add_argument("--calendar-path", type=Path, default=DEFAULT_CALENDAR)
     parser.add_argument("--date", help="Fetch one archive backtest date (YYYY-MM-DD).")
+    parser.add_argument(
+        "--market-date",
+        action="append",
+        default=[],
+        help=(
+            "Fetch an explicit market date even when the archive has no selection "
+            "that day. Repeat for multiple dates (YYYY-MM-DD)."
+        ),
+    )
     parser.add_argument("--from", dest="date_from", help="Fetch archive backtest dates from YYYY-MM-DD.")
     parser.add_argument("--to", dest="date_to", help="Fetch archive backtest dates to YYYY-MM-DD.")
     parser.add_argument("--all-archive", action="store_true", help="Fetch every archive backtest date.")
+    parser.add_argument(
+        "--include-selection-asof",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Also fetch the immediately preceding trading date needed for "
+            "selection-time market-cap features."
+        ),
+    )
     parser.add_argument("--max-dates", type=int, default=0, help="Limit date count for smoke tests.")
     parser.add_argument("--sleep", type=float, default=0.25, help="Seconds to sleep between CLI calls.")
     parser.add_argument("--requests-per-minute", type=float, default=0, help="Client-side request cap.")
@@ -102,6 +133,40 @@ def normalize_date(value: object) -> str | None:
     return parsed.strftime("%Y-%m-%d")
 
 
+def load_trading_dates(path: Path) -> list[str]:
+    if not path.exists():
+        raise FileNotFoundError(f"trading calendar not found: {path}")
+    calendar = pd.read_parquet(path)
+    if "date" not in calendar.columns:
+        raise ValueError(f"trading calendar missing date column: {path}")
+    dates = sorted(
+        {
+            normalized
+            for value in calendar["date"]
+            if (normalized := normalize_date(value)) is not None
+        }
+    )
+    if not dates:
+        raise ValueError(f"trading calendar has no valid dates: {path}")
+    return dates
+
+
+def previous_trading_dates(
+    target_dates: list[str],
+    trading_dates: list[str],
+) -> dict[str, str]:
+    positions = {date: idx for idx, date in enumerate(trading_dates)}
+    result: dict[str, str] = {}
+    for target_date in target_dates:
+        position = positions.get(target_date)
+        if position is None:
+            raise ValueError(f"archive target date not found in trading calendar: {target_date}")
+        if position == 0:
+            raise ValueError(f"trading calendar has no prior date for: {target_date}")
+        result[target_date] = trading_dates[position - 1]
+    return result
+
+
 def clean_string(value: object) -> str | None:
     if value is None or pd.isna(value):
         return None
@@ -143,7 +208,16 @@ def load_archive_targets(args: argparse.Namespace) -> tuple[pd.DataFrame, pd.Dat
     df["query_code"] = [ticker_to_code(ticker, code) for ticker, code in zip(df["ticker"], code_series)]
     df = df[df["ticker"].ne("") & df["trading_date"].notna() & df["query_code"].ne("")]
 
-    if args.date:
+    if args.market_date:
+        requested_dates: list[str] = []
+        for value in args.market_date:
+            normalized = normalize_date(value)
+            if normalized is None or normalized != value:
+                raise ValueError(f"invalid --market-date: {value!r}")
+            requested_dates.append(normalized)
+        requested_dates = sorted(set(requested_dates))
+        df = df[df["trading_date"].isin(requested_dates)]
+    elif args.date:
         df = df[df["trading_date"].eq(args.date)]
     elif args.date_from or args.date_to:
         if args.date_from:
@@ -155,18 +229,34 @@ def load_archive_targets(args: argparse.Namespace) -> tuple[pd.DataFrame, pd.Dat
         df = df[df["trading_date"].eq(latest_date)]
 
     pairs = df[["ticker", "query_code", "trading_date"]].drop_duplicates(["ticker", "trading_date"])
-    dates = pd.DataFrame({"trading_date": sorted(pairs["trading_date"].dropna().unique().tolist())})
+    target_dates = (
+        requested_dates
+        if args.market_date
+        else sorted(pairs["trading_date"].dropna().unique().tolist())
+    )
     if args.max_dates > 0:
-        dates = dates.head(args.max_dates)
-        pairs = pairs[pairs["trading_date"].isin(dates["trading_date"])].copy()
+        target_dates = target_dates[: args.max_dates]
+        pairs = pairs[pairs["trading_date"].isin(target_dates)].copy()
+
+    fetch_dates = set(target_dates)
+    if args.include_selection_asof and target_dates:
+        trading_dates = load_trading_dates(args.calendar_path)
+        fetch_dates.update(
+            previous_trading_dates(target_dates, trading_dates).values()
+        )
+    dates = pd.DataFrame({"trading_date": sorted(fetch_dates)})
     return pairs.reset_index(drop=True), dates.reset_index(drop=True)
 
 
 def load_existing_dates(output: Path) -> set[str]:
     if not output.exists():
         return set()
-    existing = pd.read_parquet(output, columns=["trading_date"])
+    existing = pd.read_parquet(output)
     if existing.empty:
+        return set()
+    missing = sorted(set(JQUANTS_DAILY_FIELD_COLUMNS) - set(existing.columns))
+    if missing:
+        print(f"[INFO] daily parquet needs J-Quants field upgrade: {missing}")
         return set()
     return set(existing["trading_date"].astype(str).dropna().unique().tolist())
 
@@ -174,6 +264,67 @@ def load_existing_dates(output: Path) -> set[str]:
 def raw_csv_path(raw_dir: Path, trading_date: str) -> Path:
     base_dir = raw_dir if raw_dir.is_absolute() else ROOT / raw_dir
     return base_dir / f"{trading_date}.csv"
+
+
+def raw_csv_supports_daily_fields(path: Path) -> bool:
+    if not path.exists() or path.stat().st_size == 0:
+        return False
+    try:
+        columns = pd.read_csv(path, nrows=0).columns
+    except Exception:
+        return False
+    return not missing_raw_daily_fields(columns)
+
+
+def jquants_binary(env: dict[str, str]) -> str:
+    return env.get("JQUANTS_BIN", "jquants")
+
+
+def validate_jquants_daily_schema(env: dict[str, str]) -> None:
+    binary = jquants_binary(env)
+    version = subprocess.run(
+        [binary, "--version"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=JQUANTS_CLI_TIMEOUT_SECONDS,
+    )
+    expected_version = f"jquants {JQUANTS_CLI_VERSION}"
+    if version.returncode != 0 or version.stdout.strip() != expected_version:
+        actual = version.stdout.strip() or version.stderr.strip() or "unavailable"
+        raise RuntimeError(
+            "jquants CLI version is not the pinned release: "
+            f"expected={expected_version!r}, actual={actual!r}"
+        )
+    result = subprocess.run(
+        [binary, "--output", "json", "schema", "eq.daily"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=JQUANTS_CLI_TIMEOUT_SECONDS,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"jquants eq.daily schema check failed: {stderr}")
+    try:
+        schema = json.loads(result.stdout)
+        fields = {
+            row["Field"]
+            for row in schema
+            if isinstance(row, dict) and "Field" in row
+        }
+    except (json.JSONDecodeError, TypeError, KeyError) as exc:
+        raise RuntimeError("jquants eq.daily schema returned invalid JSON") from exc
+    missing = missing_raw_daily_fields(fields)
+    if missing:
+        raise RuntimeError(
+            "jquants CLI does not expose required eq.daily fields "
+            f"{missing}; install the pinned 1.3.0 CLI"
+        )
 
 
 def fetch_date(
@@ -186,9 +337,9 @@ def fetch_date(
     path = raw_csv_path(raw_dir, trading_date)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not path.exists() or refresh_raw_csv:
+    if refresh_raw_csv or not raw_csv_supports_daily_fields(path):
         cmd = [
-            "jquants",
+            jquants_binary(env),
             "--output",
             "csv",
             "--save",
@@ -214,6 +365,11 @@ def fetch_date(
             if "status 429" in stderr or "Rate limit" in stderr or "レート制限" in stderr:
                 raise RateLimitError(f"jquants CLI rate limited for {trading_date}: {stderr}")
             raise RuntimeError(f"jquants CLI failed for {trading_date}: {stderr}")
+        if not raw_csv_supports_daily_fields(path):
+            raise RuntimeError(
+                "jquants CLI output is missing MktCap/ExRT/AdjFactor for "
+                f"{trading_date}; install the pinned 1.3.0 CLI"
+            )
 
     if not path.exists() or path.stat().st_size == 0:
         if path.exists() and not keep_empty_csv:
@@ -229,6 +385,7 @@ def fetch_date(
 
 
 def normalize_daily_csv(raw: pd.DataFrame, path: Path) -> pd.DataFrame:
+    raw = normalize_jquants_daily_fields(raw)
     rename = {
         "Date": "trading_date",
         "Code": "jquants_code",
@@ -249,7 +406,9 @@ def normalize_daily_csv(raw: pd.DataFrame, path: Path) -> pd.DataFrame:
         raise ValueError(f"missing columns in {path}: {missing}")
 
     available = {src: dst for src, dst in rename.items() if src in raw.columns}
-    df = raw.rename(columns=available)[list(available.values())].copy()
+    df = raw.rename(columns=available).copy()
+    keep = [*available.values(), *JQUANTS_DAILY_FIELD_COLUMNS]
+    df = df[list(dict.fromkeys(keep))].copy()
     df["jquants_code"] = df["jquants_code"].astype(str).map(normalize_jquants_code)
     df["trading_date"] = pd.to_datetime(df["trading_date"], errors="coerce").dt.strftime("%Y-%m-%d")
     for col in ["open", "high", "low", "close", "volume", "value", "adj_close", "adj_volume"]:
@@ -260,7 +419,11 @@ def normalize_daily_csv(raw: pd.DataFrame, path: Path) -> pd.DataFrame:
         return df
 
     df["source"] = "jquants_cli"
-    df["raw_csv"] = str(path.relative_to(ROOT))
+    try:
+        raw_csv = path.relative_to(ROOT)
+    except ValueError:
+        raw_csv = path
+    df["raw_csv"] = str(raw_csv)
     df["fetched_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return df
 
@@ -272,6 +435,7 @@ def merge_existing(output: Path, fetched: pd.DataFrame) -> pd.DataFrame:
     else:
         combined = fetched
 
+    combined = normalize_jquants_daily_fields(combined)
     combined["trading_date"] = combined["trading_date"].astype(str)
     combined["jquants_code"] = combined["jquants_code"].astype(str)
     combined = combined.dropna(subset=["trading_date", "jquants_code"])
@@ -290,6 +454,7 @@ def merge_existing(output: Path, fetched: pd.DataFrame) -> pd.DataFrame:
         "limit_down_flag",
         "adj_close",
         "adj_volume",
+        *JQUANTS_DAILY_FIELD_COLUMNS,
         "source",
         "raw_csv",
         "fetched_at",
@@ -338,6 +503,7 @@ def main() -> int:
 
     if dates:
         env = load_env_file(args.env_file)
+        validate_jquants_daily_schema(env)
         requests_per_minute = resolve_requests_per_minute(args, env)
         min_interval = 60.0 / requests_per_minute
         inter_request_sleep = max(args.sleep, min_interval)

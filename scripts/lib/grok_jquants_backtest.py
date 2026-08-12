@@ -8,10 +8,42 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
+
+from scripts.lib.jquants_daily_fields import (
+    DAILY_TRADE_STATUS_NO_MARKET_TRADE,
+    DAILY_TRADE_STATUS_TRADED,
+    JQ_DAILY_TRADE_STATUS,
+)
 
 
 PRICE_ATOL = 0.011
 VOLUME_ATOL = 0.5
+MARKET_CAP_SOURCE = "jquants_eq_daily_mktcap_d_minus_1"
+
+MARKET_CAP_PROVENANCE_COLUMN_ORDER = (
+    "market_cap_source",
+    "jq_market_cap_asof_date",
+    "jq_mkt_cap_million_yen_asof",
+    "jq_market_cap_yen_asof",
+    "jq_ex_rights_type_asof",
+    "jq_adjustment_factor_asof",
+    "jq_daily_source_asof",
+    "jq_daily_fetched_at_asof",
+)
+MARKET_CAP_PROVENANCE_COLUMNS = set(MARKET_CAP_PROVENANCE_COLUMN_ORDER)
+
+TARGET_DAILY_PROVENANCE_COLUMN_ORDER = (
+    "jq_daily_target_date",
+    "jq_daily_trade_status_target",
+    "jq_mkt_cap_million_yen_target",
+    "jq_market_cap_yen_target",
+    "jq_ex_rights_type_target",
+    "jq_adjustment_factor_target",
+    "jq_daily_source_target",
+    "jq_daily_fetched_at_target",
+)
+TARGET_DAILY_PROVENANCE_COLUMNS = set(TARGET_DAILY_PROVENANCE_COLUMN_ORDER)
 
 SEGMENT_TARGETS = {
     "seg_0930": time(9, 30),
@@ -65,6 +97,547 @@ def validate_selection_asof(
             raise JQuantsBacktestDataError(
                 f"Selection contains target-day/future {column}: {invalid[:5]}"
             )
+
+
+def validate_selection_market_cap(
+    selection: pd.DataFrame,
+    target_date: date | datetime | pd.Timestamp | str,
+    calendar: pd.DataFrame,
+) -> None:
+    """Prove that every saved market cap is official J-Quants D-1 data."""
+    required = {
+        "date",
+        "ticker",
+        "market_cap",
+        *MARKET_CAP_PROVENANCE_COLUMNS,
+    }
+    missing = sorted(required - set(selection.columns))
+    if missing:
+        raise JQuantsBacktestDataError(
+            f"Selection is missing official market-cap proof columns: {missing}"
+        )
+    if "date" not in calendar.columns:
+        raise JQuantsBacktestDataError("Trading calendar has no date column")
+
+    target = pd.Timestamp(_target_date(target_date))
+    trading_dates = pd.DatetimeIndex(
+        pd.to_datetime(calendar["date"], errors="coerce").dropna().unique()
+    ).normalize()
+    previous = trading_dates[trading_dates < target]
+    if previous.empty:
+        raise JQuantsBacktestDataError(
+            f"Trading calendar has no date before {target.date()}"
+        )
+    expected_asof = previous.max()
+
+    selection_targets = pd.to_datetime(
+        selection["date"], errors="raise"
+    ).dt.normalize()
+    if not selection_targets.eq(target).all():
+        raise JQuantsBacktestDataError(
+            "Selection target date does not match market-cap validation date"
+        )
+    asof = pd.to_datetime(
+        selection["jq_market_cap_asof_date"], errors="raise"
+    ).dt.normalize()
+    if asof.isna().any() or not asof.eq(expected_asof).all():
+        invalid = selection.loc[
+            ~asof.eq(expected_asof), ["ticker", "jq_market_cap_asof_date"]
+        ].head(10).to_dict("records")
+        raise JQuantsBacktestDataError(
+            "Selection market cap is not from the immediately preceding trading "
+            f"day {expected_asof.date()}: {invalid}"
+        )
+    if not selection["market_cap_source"].eq(MARKET_CAP_SOURCE).all():
+        raise JQuantsBacktestDataError(
+            "Selection contains a non-official market-cap source"
+        )
+    if not selection["jq_daily_source_asof"].eq("jquants_api_v2").all():
+        raise JQuantsBacktestDataError(
+            "Selection D-1 market cap was not fetched from the direct J-Quants API"
+        )
+    fetched_at = pd.to_datetime(
+        selection["jq_daily_fetched_at_asof"], errors="coerce", utc=True
+    )
+    if fetched_at.isna().any():
+        raise JQuantsBacktestDataError(
+            "Selection D-1 market-cap provenance has no valid fetched_at"
+        )
+
+    cap_million = pd.to_numeric(
+        selection["jq_mkt_cap_million_yen_asof"], errors="coerce"
+    ).astype("float64")
+    cap_yen = pd.to_numeric(
+        selection["jq_market_cap_yen_asof"], errors="coerce"
+    ).astype("float64")
+    saved_cap = pd.to_numeric(selection["market_cap"], errors="coerce").astype(
+        "float64"
+    )
+    source_null_mismatch = cap_million.isna().ne(cap_yen.isna())
+    unit_comparable = cap_million.notna() & cap_yen.notna()
+    unit_mismatch = unit_comparable & ~np.isclose(
+        cap_yen,
+        cap_million * 1_000_000.0,
+        rtol=0.0,
+        atol=0.5,
+    )
+    saved_null_mismatch = saved_cap.isna().ne(cap_yen.isna())
+    saved_comparable = saved_cap.notna() & cap_yen.notna()
+    saved_value_mismatch = saved_comparable & ~np.isclose(
+        saved_cap,
+        cap_yen,
+        rtol=0.0,
+        atol=0.5,
+    )
+    if (
+        source_null_mismatch.any()
+        or unit_mismatch.any()
+        or saved_null_mismatch.any()
+        or saved_value_mismatch.any()
+    ):
+        raise JQuantsBacktestDataError(
+            "Selection market_cap does not exactly match official J-Quants D-1 "
+            "MktCap in yen"
+        )
+
+    adjustment = pd.to_numeric(
+        selection["jq_adjustment_factor_asof"], errors="coerce"
+    )
+    if adjustment.isna().any() or adjustment.le(0).any():
+        raise JQuantsBacktestDataError(
+            "Selection has missing or non-positive D-1 AdjFactor"
+        )
+    ex_rights = pd.to_numeric(
+        selection["jq_ex_rights_type_asof"], errors="coerce"
+    )
+    invalid_ex_rights = ex_rights.notna() & (
+        ex_rights.mod(1).ne(0) | ~ex_rights.isin([1, 2, 3])
+    )
+    if invalid_ex_rights.any():
+        raise JQuantsBacktestDataError("Selection has invalid D-1 ExRT values")
+
+
+def validate_target_daily_corporate_actions(
+    selection: pd.DataFrame,
+    target_date: date | datetime | pd.Timestamp | str,
+    daily_features: pd.DataFrame,
+) -> None:
+    """Require target-day ExRT/AdjFactor coverage for every selected ticker."""
+    required_selection = {"ticker"}
+    required_daily = {
+        "trading_date",
+        "ticker",
+        JQ_DAILY_TRADE_STATUS,
+        "jq_mkt_cap_million_yen",
+        "jq_market_cap_yen",
+        "jq_ex_rights_type",
+        "jq_adjustment_factor",
+        "source",
+        "fetched_at",
+    }
+    missing_selection = sorted(required_selection - set(selection.columns))
+    missing_daily = sorted(required_daily - set(daily_features.columns))
+    if missing_selection:
+        raise JQuantsBacktestDataError(
+            f"Selection is missing target-day QC columns: {missing_selection}"
+        )
+    if missing_daily:
+        raise JQuantsBacktestDataError(
+            f"J-Quants daily sidecar is missing QC columns: {missing_daily}"
+        )
+
+    target = pd.Timestamp(_target_date(target_date))
+    selected = selection["ticker"].astype(str).str.strip()
+    if selected.eq("").any() or selected.duplicated().any():
+        raise JQuantsBacktestDataError(
+            "Selection tickers are empty or duplicated before target-day QC"
+        )
+
+    features = daily_features.copy()
+    feature_dates = pd.to_datetime(
+        features["trading_date"], errors="coerce"
+    ).dt.normalize()
+    features["_target_date"] = feature_dates
+    features["ticker"] = features["ticker"].astype(str).str.strip()
+    target_rows = features[
+        features["_target_date"].eq(target)
+        & features["ticker"].isin(set(selected))
+    ].copy()
+    if target_rows.duplicated(["ticker", "_target_date"]).any():
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day sidecar contains duplicate ticker-date keys"
+        )
+    missing_tickers = sorted(set(selected) - set(target_rows["ticker"]))
+    if missing_tickers:
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day corporate-action coverage is incomplete: "
+            f"{missing_tickers}"
+        )
+    if not target_rows["source"].eq("jquants_api_v2").all():
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day sidecar contains an unrecognized source"
+        )
+    fetched_at = pd.to_datetime(target_rows["fetched_at"], errors="coerce", utc=True)
+    if fetched_at.isna().any():
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day sidecar contains an invalid fetched_at"
+        )
+
+    valid_trade_statuses = {
+        DAILY_TRADE_STATUS_TRADED,
+        DAILY_TRADE_STATUS_NO_MARKET_TRADE,
+    }
+    invalid_trade_status = ~target_rows[JQ_DAILY_TRADE_STATUS].isin(
+        valid_trade_statuses
+    )
+    if invalid_trade_status.any():
+        invalid = target_rows.loc[
+            invalid_trade_status, ["ticker", JQ_DAILY_TRADE_STATUS]
+        ].to_dict("records")
+        raise JQuantsBacktestDataError(
+            f"J-Quants target-day trade status is invalid: {invalid}"
+        )
+
+    million_yen = pd.to_numeric(
+        target_rows["jq_mkt_cap_million_yen"], errors="coerce"
+    )
+    yen = pd.to_numeric(target_rows["jq_market_cap_yen"], errors="coerce")
+    cap_null_mismatch = million_yen.isna().ne(yen.isna())
+    cap_comparable = million_yen.notna() & yen.notna()
+    cap_unit_mismatch = cap_comparable & ~pd.Series(
+        np.isclose(
+            million_yen.fillna(0).astype(float) * 1_000_000.0,
+            yen.fillna(0).astype(float),
+            rtol=0.0,
+            atol=0.5,
+        ),
+        index=target_rows.index,
+    )
+    if cap_null_mismatch.any() or cap_unit_mismatch.any():
+        raise JQuantsBacktestDataError(
+            "J-Quants target-day MktCap units are inconsistent"
+        )
+
+    adjustment = pd.to_numeric(
+        target_rows["jq_adjustment_factor"], errors="coerce"
+    )
+    if adjustment.isna().any() or adjustment.le(0).any():
+        invalid = target_rows.loc[
+            adjustment.isna() | adjustment.le(0),
+            ["ticker", "jq_adjustment_factor"],
+        ].to_dict("records")
+        raise JQuantsBacktestDataError(
+            f"Target-day AdjFactor is missing or non-positive: {invalid}"
+        )
+
+    raw_ex_rights = target_rows["jq_ex_rights_type"]
+    ex_rights = pd.to_numeric(raw_ex_rights, errors="coerce")
+    invalid_parse = raw_ex_rights.notna() & ex_rights.isna()
+    invalid_domain = ex_rights.notna() & (
+        ex_rights.mod(1).ne(0) | ~ex_rights.isin([1, 2, 3])
+    )
+    if invalid_parse.any() or invalid_domain.any():
+        raise JQuantsBacktestDataError("Target-day ExRT contains invalid values")
+
+
+def attach_target_daily_provenance(
+    rows: pd.DataFrame,
+    target_date: date | datetime | pd.Timestamp | str,
+    daily_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach target-day MktCap/ExRT/AdjFactor evidence to a derived artifact."""
+    validate_target_daily_corporate_actions(rows, target_date, daily_features)
+    target = pd.Timestamp(_target_date(target_date)).normalize()
+    features = daily_features.copy()
+    features["_target_date"] = pd.to_datetime(
+        features["trading_date"], errors="raise"
+    ).dt.normalize()
+    features["ticker"] = features["ticker"].astype(str).str.strip()
+    selected = set(rows["ticker"].astype(str).str.strip())
+    features = features[
+        features["_target_date"].eq(target)
+        & features["ticker"].isin(selected)
+    ].copy()
+    features["jq_daily_target_date"] = features["_target_date"].dt.strftime(
+        "%Y-%m-%d"
+    )
+    proof = features[
+        [
+            "ticker",
+            "jq_daily_target_date",
+            JQ_DAILY_TRADE_STATUS,
+            "jq_mkt_cap_million_yen",
+            "jq_market_cap_yen",
+            "jq_ex_rights_type",
+            "jq_adjustment_factor",
+            "source",
+            "fetched_at",
+        ]
+    ].rename(
+        columns={
+            JQ_DAILY_TRADE_STATUS: "jq_daily_trade_status_target",
+            "jq_mkt_cap_million_yen": "jq_mkt_cap_million_yen_target",
+            "jq_market_cap_yen": "jq_market_cap_yen_target",
+            "jq_ex_rights_type": "jq_ex_rights_type_target",
+            "jq_adjustment_factor": "jq_adjustment_factor_target",
+            "source": "jq_daily_source_target",
+            "fetched_at": "jq_daily_fetched_at_target",
+        }
+    )
+    enriched = rows.copy()
+    enriched["ticker"] = enriched["ticker"].astype(str).str.strip()
+    enriched = enriched.merge(proof, on="ticker", how="left", validate="one_to_one")
+    missing = [
+        column
+        for column in TARGET_DAILY_PROVENANCE_COLUMN_ORDER
+        if column not in enriched.columns
+        or (
+            column
+            not in {
+                "jq_mkt_cap_million_yen_target",
+                "jq_market_cap_yen_target",
+                "jq_ex_rights_type_target",
+            }
+            and enriched[column].isna().any()
+        )
+    ]
+    if missing:
+        raise JQuantsBacktestDataError(
+            f"Derived target-day provenance is incomplete: {missing}"
+        )
+    return enriched
+
+
+def build_derived_backtest_rows(
+    archive: pd.DataFrame,
+    new_rows: pd.DataFrame,
+    target_date: date | datetime | pd.Timestamp | str,
+    daily_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build canonical-compatible daily rows without mutating the canonical archive."""
+    enriched = attach_target_daily_provenance(
+        new_rows,
+        target_date,
+        daily_features,
+    )
+    canonical_rows = align_rows_to_archive_schema(
+        archive,
+        enriched,
+        allowed_extra_columns=(
+            MARKET_CAP_PROVENANCE_COLUMNS | TARGET_DAILY_PROVENANCE_COLUMNS
+        ),
+    )
+    proof_order = [
+        *MARKET_CAP_PROVENANCE_COLUMN_ORDER,
+        *TARGET_DAILY_PROVENANCE_COLUMN_ORDER,
+    ]
+    proof_order = [column for column in proof_order if column not in canonical_rows]
+    derived = pd.concat(
+        [
+            canonical_rows.reset_index(drop=True),
+            enriched[proof_order].reset_index(drop=True),
+        ],
+        axis=1,
+    )
+    expected_columns = archive.columns.tolist() + proof_order
+    if derived.columns.tolist() != expected_columns:
+        raise JQuantsBacktestDataError("Derived backtest column order changed")
+    return derived
+
+
+def validate_backtest_execution_states(frame: pd.DataFrame) -> None:
+    """Reject invented values and inconsistent traded/no-market states."""
+    required = {
+        "data_source",
+        "phase1_mark_status",
+        "close_execution_status",
+        "buy_price",
+        "daily_close",
+        "jquants_bar_count",
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise JQuantsBacktestDataError(
+            f"Backtest execution-state columns are missing: {missing}"
+        )
+
+    phase_no_market = frame["phase1_mark_status"].eq("no_market_trade")
+    close_no_market = frame["close_execution_status"].eq("no_market_trade")
+    if not phase_no_market.eq(close_no_market).all():
+        raise JQuantsBacktestDataError(
+            "Backtest no-market statuses are not paired"
+        )
+    no_market = phase_no_market & close_no_market
+    traded = ~no_market
+
+    valid_phase = frame["phase1_mark_status"].isin(
+        ["available", "no_morning_price", "no_market_trade"]
+    )
+    valid_close = frame["close_execution_status"].isin(
+        ["executable", "mark_only_no_round_trip", "no_market_trade"]
+    )
+    if not valid_phase.all() or not valid_close.all():
+        raise JQuantsBacktestDataError("Backtest has an unknown execution status")
+    if not frame.loc[traded, "data_source"].eq("jquants_1m").all():
+        raise JQuantsBacktestDataError("Traded row has an invalid data source")
+    if frame.loc[traded, ["buy_price", "daily_close"]].isna().any().any():
+        raise JQuantsBacktestDataError("Traded row lacks buy/daily close values")
+    if not frame.loc[no_market, "data_source"].eq(
+        "jquants_no_market_trade"
+    ).all():
+        raise JQuantsBacktestDataError(
+            "Official no-market row has an invalid data source"
+        )
+    if (
+        pd.to_numeric(frame.loc[no_market, "jquants_bar_count"], errors="coerce")
+        .fillna(-1)
+        .ne(0)
+        .any()
+    ):
+        raise JQuantsBacktestDataError(
+            "Official no-market row must have zero J-Quants bars"
+        )
+
+    null_columns = [
+        "buy_price",
+        "sell_price",
+        "daily_close",
+        "high",
+        "low",
+        "volume",
+        "Close",
+        "Volume",
+        "Value",
+        "phase1_return",
+        "phase1_win",
+        "profit_per_100_shares_phase1",
+        "phase2_return",
+        "phase2_win",
+        "profit_per_100_shares_phase2",
+        *SEGMENT_TARGETS,
+        "profit_per_100_shares_morning_early",
+        "profit_per_100_shares_afternoon_early",
+    ]
+    for threshold in ["1pct", "2pct", "3pct"]:
+        null_columns.extend(
+            [
+                f"phase3_{threshold}_return",
+                f"phase3_{threshold}_win",
+                f"profit_per_100_shares_phase3_{threshold}",
+            ]
+        )
+    missing_null_columns = sorted(set(null_columns) - set(frame.columns))
+    if missing_null_columns:
+        raise JQuantsBacktestDataError(
+            "Backtest price/P&L state columns are missing: "
+            f"{missing_null_columns}"
+        )
+    if frame.loc[no_market, null_columns].notna().any().any():
+        raise JQuantsBacktestDataError(
+            "Official no-market row contains invented price or P&L values"
+        )
+    exit_columns = [
+        f"phase3_{threshold}_exit_reason"
+        for threshold in ["1pct", "2pct", "3pct"]
+    ]
+    if not frame.loc[no_market, exit_columns].eq("no_market_trade").all().all():
+        raise JQuantsBacktestDataError(
+            "Official no-market row lacks explicit Phase3 no-trade reasons"
+        )
+
+
+def align_rows_to_archive_schema(
+    archive: pd.DataFrame,
+    new_rows: pd.DataFrame,
+    *,
+    allowed_extra_columns: set[str] | None = None,
+) -> pd.DataFrame:
+    """Return target rows in the exact canonical schema, rejecting silent drift."""
+    if archive.columns.empty:
+        raise JQuantsBacktestDataError("Canonical archive has no schema")
+    required = {"backtest_date", "ticker", "market_cap"}
+    if not required.issubset(archive.columns) or not required.issubset(new_rows.columns):
+        raise JQuantsBacktestDataError(
+            "Canonical archive and new rows must contain key/market_cap columns"
+        )
+    allowed = allowed_extra_columns or set()
+    extra = set(new_rows.columns) - set(archive.columns)
+    unexpected = sorted(extra - allowed)
+    if unexpected:
+        raise JQuantsBacktestDataError(
+            f"New rows would expand the canonical archive schema: {unexpected}"
+        )
+
+    aligned = new_rows.drop(columns=sorted(extra), errors="ignore").copy()
+    for column in archive.columns:
+        if column not in aligned.columns:
+            dtype = archive[column].dtype
+            if pd.api.types.is_float_dtype(dtype) or pd.api.types.is_complex_dtype(
+                dtype
+            ):
+                missing_value = np.nan
+            elif pd.api.types.is_datetime64_any_dtype(
+                dtype
+            ) or pd.api.types.is_timedelta64_dtype(dtype):
+                missing_value = pd.NaT
+            else:
+                missing_value = pd.NA
+            try:
+                aligned[column] = pd.Series(
+                    missing_value,
+                    index=aligned.index,
+                    dtype=dtype,
+                )
+            except (TypeError, ValueError) as error:
+                raise JQuantsBacktestDataError(
+                    "Target rows are missing a canonical column whose dtype "
+                    "cannot represent a missing value: "
+                    f"column={column}, dtype={dtype}"
+                ) from error
+    aligned = aligned.loc[:, archive.columns]
+    for column, dtype in archive.dtypes.items():
+        try:
+            aligned[column] = aligned[column].astype(dtype)
+        except (TypeError, ValueError) as error:
+            raise JQuantsBacktestDataError(
+                "Target rows cannot preserve canonical pandas dtype: "
+                f"column={column}, expected={dtype}, actual={aligned[column].dtype}"
+            ) from error
+    if aligned.columns.tolist() != archive.columns.tolist():
+        raise JQuantsBacktestDataError("Canonical archive column order changed")
+    return aligned
+
+
+def assert_archive_schema_unchanged(
+    archive: pd.DataFrame,
+    candidate: pd.DataFrame,
+) -> None:
+    """Reject column-order or pandas dtype changes in the canonical artifact."""
+    if archive.columns.tolist() != candidate.columns.tolist():
+        raise JQuantsBacktestDataError("Canonical archive column order changed")
+    differences = [
+        {
+            "column": column,
+            "source": str(archive[column].dtype),
+            "candidate": str(candidate[column].dtype),
+        }
+        for column in archive.columns
+        if archive[column].dtype != candidate[column].dtype
+    ]
+    if differences:
+        raise JQuantsBacktestDataError(
+            f"Canonical archive pandas dtype changed: {differences}"
+        )
+
+
+def assert_parquet_schema_unchanged(source_path: Any, candidate_path: Any) -> None:
+    """Reject physical Arrow schema or pandas metadata drift after serialization."""
+    source_schema = pq.read_schema(source_path)
+    candidate_schema = pq.read_schema(candidate_path)
+    if not source_schema.equals(candidate_schema, check_metadata=True):
+        raise JQuantsBacktestDataError(
+            "Canonical archive Parquet/Arrow schema or metadata changed"
+        )
 
 
 def normalize_minute_bars(
@@ -321,7 +894,6 @@ def _assert_frame_content_equal(
             f"DataFrame columns mismatch: {list(expected.columns)} != "
             f"{list(actual.columns)}"
         )
-
     for column in expected.columns:
         expected_values = expected[column].reset_index(drop=True)
         actual_values = actual[column].reset_index(drop=True)
@@ -333,7 +905,6 @@ def _assert_frame_content_equal(
                 f"Column {column!r} missing-value positions changed at rows "
                 f"{changed_rows.tolist()}"
             )
-
         present_rows = np.flatnonzero(~expected_missing)
         try:
             pd.testing.assert_series_equal(
