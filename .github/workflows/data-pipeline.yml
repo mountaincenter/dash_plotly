@@ -325,6 +325,38 @@ jobs:
             --trading-date "$TARGET_TRADING_DATE" \
             --availability-timeout-seconds 300
 
+      - name: Sync verified canonical archive reference (16:45 only)
+        if: |
+          success() && (
+            steps.exec_mode.outputs.mode == 'stock_data' ||
+            steps.exec_mode.outputs.mode == 'stock_data_forced'
+          )
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          import pandas as pd
+
+          from common_cfg.s3cfg import load_s3_config
+          from scripts.lib.protected_archive_s3 import download_verified_archive
+
+          destination = Path("data/parquet/backtest/grok_trending_archive.parquet")
+          if destination.exists():
+              raise RuntimeError(
+                  "Protected canonical archive unexpectedly exists before verified S3 sync"
+              )
+          state = download_verified_archive(load_s3_config(), destination)
+          frame = pd.read_parquet(destination, columns=["backtest_date", "ticker"])
+          dates = pd.to_datetime(frame["backtest_date"], errors="raise")
+          print(
+              "[OK] Synced read-only canonical reference: "
+              f"rows={len(frame):,}, dates={dates.dt.date.nunique():,}, "
+              f"range={dates.min().date()}..{dates.max().date()}, "
+              f"sha256={state['sha256']}, version_id={state['version_id']}"
+          )
+          PY
+
       - name: Run Data Pipeline
         id: pipeline
         if: |
