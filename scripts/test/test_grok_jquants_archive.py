@@ -38,7 +38,6 @@ from scripts.lib.protected_archive_s3 import (
     download_verified_archive,
     publish_guarded_archive,
     publish_guarded_manifest_entry,
-    publish_guarded_trending_and_manifest,
 )
 from scripts.pipeline import update_manifest
 from scripts.pipeline import save_backtest_to_archive as save_backtest
@@ -198,27 +197,24 @@ class JQuantsExecutionTests(unittest.TestCase):
         finalization = workflow.index(
             "- name: Publish finalized Grok and manifest (22:15 only)"
         )
-        ledger_build = workflow.index(
-            "build_grok_jquants_backtest_ledger.py"
-        )
         historical_daily = workflow.index(
             "fetch_grok_archive_daily_jquants.py"
         )
         master_build = workflow.index(
             "build_grok_master_jquants_segments.py"
         )
-        self.assertLess(ledger_build, historical_daily)
         self.assertLess(historical_daily, master_build)
         self.assertIn(
-            '--archive-path "$LEDGER_FILE"',
+            '--archive-path "$ARCHIVE_FILE"',
             workflow,
         )
+        self.assertNotIn("grok_jquants_backtest_ledger", workflow)
         self.assertLess(recommendation, finalization)
-        self.assertNotRegex(
-            workflow,
-            r'aws s3 cp\s+data/parquet/grok_trending\.parquet\s+'
-            r'"s3://[^\"]+grok_trending\.parquet"',
-        )
+        next_step = workflow.index("- name: Update day trade list", finalization)
+        finalization_block = workflow[finalization:next_step]
+        self.assertIn("data/parquet/grok_trending.parquet", finalization_block)
+        self.assertIn("update_manifest.py --manifest-only", finalization_block)
+        self.assertNotIn("--finalize-grok", finalization_block)
         self.assertNotRegex(
             workflow,
             r'aws s3 cp\s+(?:\\\s*)?'
@@ -242,7 +238,8 @@ class JQuantsExecutionTests(unittest.TestCase):
             / "ml"
             / "feature_engineering.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("grok_jquants_backtest_ledger.parquet", feature_script)
+        self.assertIn("grok_trending_archive.parquet", feature_script)
+        self.assertNotIn("grok_jquants_backtest_ledger", feature_script)
 
         with patch.dict("os.environ", {"SKIP_GROK_GENERATION": "true"}):
             from scripts.run_pipeline_scalping_skip_add_grok import PipelineRunner
@@ -840,185 +837,6 @@ class ProtectedArchiveS3Tests(unittest.TestCase):
         init_client.assert_not_called()
 
 
-class FakeTrendingS3:
-    trend_key = "parquet/grok_trending.parquet"
-    manifest_key = "parquet/manifest.json"
-
-    def __init__(self) -> None:
-        source = b"source trending"
-        self.trend_versions = [
-            {
-                "version": "t1",
-                "payload": source,
-                "etag": FakeS3._etag(source),
-                "metadata": {},
-                "checksum": None,
-            }
-        ]
-        manifest = {
-            "files": {
-                "grok_trending.parquet": {
-                    "exists": True,
-                    "size_bytes": len(source),
-                    "row_count": 1,
-                    "columns": ["ticker"],
-                    "updated_at": "existing",
-                },
-            }
-        }
-        self.manifest = json.dumps(manifest).encode()
-        self.manifest_etag = FakeS3._etag(self.manifest)
-        self.manifest_version = "m1"
-        self.manifest_checksum: str | None = None
-        self.fail_manifest = False
-        self.version_counter = 1
-
-    def head_object(self, Bucket: str, Key: str, **kwargs):
-        if Key == self.trend_key:
-            current = self.trend_versions[-1]
-            return {
-                "ETag": current["etag"],
-                "VersionId": current["version"],
-                "Metadata": current["metadata"],
-                "ChecksumSHA256": current["checksum"],
-            }
-        return {
-            "ETag": self.manifest_etag,
-            "VersionId": self.manifest_version,
-            "ChecksumSHA256": self.manifest_checksum,
-        }
-
-    def get_bucket_versioning(self, Bucket: str):
-        return {"Status": "Enabled"}
-
-    def get_object(self, Bucket: str, Key: str, **kwargs):
-        if Key == self.trend_key:
-            version = kwargs.get("VersionId")
-            item = next(
-                value
-                for value in self.trend_versions
-                if value["version"] == version
-            )
-            payload = item["payload"]
-        else:
-            payload = self.manifest
-        return {"Body": io.BytesIO(payload)}
-
-    def put_object(self, Bucket: str, Key: str, Body, **kwargs):
-        payload = Body.read() if hasattr(Body, "read") else Body
-        if Key == self.manifest_key:
-            if self.fail_manifest:
-                raise RuntimeError("simulated manifest failure")
-            if kwargs.get("IfMatch") != self.manifest_etag:
-                raise RuntimeError("manifest precondition failed")
-            self.manifest = payload
-            self.manifest_etag = FakeS3._etag(payload)
-            self.manifest_version = "m2"
-            self.manifest_checksum = kwargs.get("ChecksumSHA256")
-            return {
-                "ETag": self.manifest_etag,
-                "VersionId": self.manifest_version,
-                "ChecksumSHA256": self.manifest_checksum,
-            }
-
-        current = self.trend_versions[-1]
-        if kwargs.get("IfMatch") != current["etag"]:
-            raise RuntimeError("trend precondition failed")
-        self.version_counter += 1
-        item = {
-            "version": f"t{self.version_counter}",
-            "payload": payload,
-            "etag": FakeS3._etag(payload),
-            "metadata": kwargs["Metadata"],
-            "checksum": kwargs.get("ChecksumSHA256"),
-        }
-        self.trend_versions.append(item)
-        return {
-            "ETag": item["etag"],
-            "VersionId": item["version"],
-            "ChecksumSHA256": item["checksum"],
-        }
-
-    def delete_object(self, Bucket: str, Key: str, VersionId: str):
-        if Key != self.trend_key or self.trend_versions[-1]["version"] != VersionId:
-            raise RuntimeError("unexpected version rollback")
-        self.trend_versions.pop()
-        return {"VersionId": VersionId}
-
-
-class GuardedTrendingPublishTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.cfg = S3Config(
-            bucket="bucket",
-            prefix="parquet/",
-            region=None,
-            profile=None,
-            endpoint_url=None,
-        )
-
-    @staticmethod
-    def candidate_manifest() -> dict:
-        return {
-            "files": {
-                "grok_trending.parquet": {
-                    "exists": True,
-                    "size_bytes": 0,
-                    "row_count": 1,
-                    "columns": ["ticker"],
-                    "updated_at": "candidate",
-                }
-            }
-        }
-
-    def test_dataset_is_verified_before_manifest_advances(self) -> None:
-        client = FakeTrendingS3()
-        with tempfile.TemporaryDirectory() as directory:
-            candidate = Path(directory) / "grok_trending.parquet"
-            candidate.write_bytes(b"final trending")
-            state = publish_guarded_trending_and_manifest(
-                self.cfg,
-                candidate,
-                self.candidate_manifest(),
-                entry_metadata={
-                    "row_count": 1,
-                    "columns": ["ticker"],
-                    "data_source": "jquants_eq_daily",
-                },
-                client=client,
-            )
-        entry = json.loads(client.manifest)["files"]["grok_trending.parquet"]
-        self.assertEqual(
-            set(entry),
-            {"exists", "size_bytes", "row_count", "columns", "updated_at"},
-        )
-        self.assertEqual(entry["size_bytes"], len(b"final trending"))
-        self.assertNotIn("sha256", entry)
-        self.assertNotIn("publication-state", client.trend_versions[-1]["metadata"])
-        self.assertEqual(state["s3_version_id"], "t2")
-        self.assertEqual(state["manifest_s3_version_id"], "m2")
-
-    def test_manifest_failure_removes_only_new_dataset_version(self) -> None:
-        client = FakeTrendingS3()
-        source_version = client.trend_versions[-1]["version"]
-        source_manifest = client.manifest
-        client.fail_manifest = True
-        with tempfile.TemporaryDirectory() as directory:
-            candidate = Path(directory) / "grok_trending.parquet"
-            candidate.write_bytes(b"final trending")
-            with self.assertRaises(ProtectedArchiveError):
-                publish_guarded_trending_and_manifest(
-                    self.cfg,
-                    candidate,
-                    self.candidate_manifest(),
-                    entry_metadata={
-                        "row_count": 1,
-                        "columns": ["ticker"],
-                        "data_source": "jquants_eq_daily",
-                    },
-                    client=client,
-                )
-        self.assertEqual(client.trend_versions[-1]["version"], source_version)
-        self.assertEqual(client.manifest, source_manifest)
 
 
 class ProtectedManifestEntryTests(unittest.TestCase):
@@ -1078,28 +896,25 @@ class ProtectedManifestEntryTests(unittest.TestCase):
                 )
         self.assertEqual(manifest["files"]["grok_trending.parquet"], existing_entry)
 
-    def test_non_final_manifest_rejects_missing_remote_grok_entry(self) -> None:
+    def test_non_final_manifest_allows_missing_remote_grok_entry(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with (
                 patch.object(update_manifest, "PARQUET_DIR", Path(directory)),
                 patch.object(update_manifest, "UPLOAD_FILES", ["grok_trending.parquet"]),
                 patch.object(update_manifest, "PROTECTED_FILES", []),
             ):
-                with self.assertRaisesRegex(
-                    RuntimeError,
-                    "no grok_trending entry",
-                ):
-                    update_manifest.generate_manifest(
-                        {"files": {}},
-                        preserve_grok=True,
-                    )
+                manifest = update_manifest.generate_manifest(
+                    {"files": {}},
+                    preserve_grok=True,
+                )
+        self.assertFalse(manifest["files"]["grok_trending.parquet"]["exists"])
 
-    def test_full_manifest_preserves_cumulative_ledger_until_builder_runs(self) -> None:
-        filename = "backtest/grok_jquants_backtest_ledger.parquet"
+    def test_full_manifest_preserves_missing_master_until_builder_runs(self) -> None:
+        filename = "backtest/grok_master_jquants_segments.parquet"
         existing_entry = {
             "exists": True,
             "row_count": 2968,
-            "sha256": "verified-ledger",
+            "sha256": "verified-master",
         }
         existing = {"files": {filename: existing_entry}}
         with tempfile.TemporaryDirectory() as directory:

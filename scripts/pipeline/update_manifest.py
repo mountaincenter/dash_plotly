@@ -24,15 +24,8 @@ from scripts.lib.s3_manager import upload_to_s3
 from common_cfg.paths import PARQUET_DIR
 from common_cfg.s3cfg import load_s3_config
 from scripts.lib.protected_archive_s3 import (
-    TRENDING_NAME,
     file_sha256,
-    publish_guarded_trending_and_manifest,
     read_remote_manifest,
-)
-from scripts.lib.grok_jquants_backtest import validate_selection_market_cap
-from scripts.pipeline.add_ml_prediction_to_grok_trending import (
-    MARKET_CAP_SOURCE,
-    validate_official_market_cap_input,
 )
 from scripts.pipeline.manage_all_market_microstructure import (
     MINUTE_S3_ROOT,
@@ -64,13 +57,11 @@ UPLOAD_FILES = [
     "etf_0910_us_daily.parquet",  # 200A 07:00判定用の米国日足cache
     "financials.parquet",  # J-Quants財務データ
     "announcements.parquet",  # J-Quants決算発表日推定
-    TRENDING_NAME,
+    "grok_trending.parquet",
     "grok_backtest_meta.parquet",  # NEW: バックテストメタ情報
     "grok_top_stocks.parquet",     # NEW: Top5/Top10銘柄リスト
     "jquants/grok_archive_minute.parquet",  # Grok対象日のJ-Quants累積分足cache
     "jquants/grok_jquants_daily.parquet",  # Grok対象日のJ-Quants累積日足cache
-    "backtest/grok_jquants_backtest_ledger.parquet",  # 不変正本＋監査済み日次派生の累積学習台帳
-    "backtest/grok_jquants_backtest_ledger.validation.json",  # 派生台帳の正本不変・checksum証跡
     "backtest/grok_master_jquants_segments.parquet",  # Grok分析用J-Quants基準master（archiveは不変）
     "backtest/grok_master_jquants_segments.validation.json",  # master公開前validation結果
     "backtest/grok_holding_returns.parquet",  # 正本を変更しないd1-d5派生損益台帳
@@ -122,8 +113,8 @@ UPLOAD_FILES = [
     "prices_topix500_oc.parquet",
 ]
 
-# Canonical files are recorded in manifest.json but are not part of the generic
-# upload list. Publishing them requires an explicit or separately guarded path.
+# Canonical files are recorded in manifest.json but are never part of the
+# generic upload list. This pipeline treats them as read-only.
 PROTECTED_FILES = [
     "backtest/grok_trending_archive.parquet",
 ]
@@ -132,14 +123,12 @@ PROTECTED_FILES = [
 # runner. A full manifest pass must retain the last verified remote entry until
 # the dedicated builder publishes its replacement later in the same workflow.
 PRESERVE_IF_MISSING_FILES = {
-    "backtest/grok_jquants_backtest_ledger.parquet",
-    "backtest/grok_jquants_backtest_ledger.validation.json",
     "backtest/grok_master_jquants_segments.parquet",
     "backtest/grok_master_jquants_segments.validation.json",
 }
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
-TRADING_CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
+TRENDING_NAME = "grok_trending.parquet"
 
 
 def resolve_storage_mode() -> tuple[str, bool]:
@@ -195,61 +184,6 @@ def get_file_stats(file_path: Path) -> Dict[str, any]:
             "columns": [],
         }
 
-
-def validate_finalized_grok_artifact(file_path: Path) -> Dict[str, any]:
-    """Validate the one publishable 22:15 Grok artifact and its provenance."""
-    if not file_path.exists() or file_path.stat().st_size == 0:
-        raise RuntimeError(f"Finalized Grok artifact is absent: {file_path}")
-    frame = pd.read_parquet(file_path)
-    if frame.empty:
-        raise RuntimeError("Finalized grok_trending.parquet is empty")
-    required = {"date", "ticker", "prob_up"}
-    missing = sorted(required - set(frame.columns))
-    if missing:
-        raise RuntimeError(f"Finalized Grok artifact is missing columns: {missing}")
-    if frame[["date", "ticker"]].duplicated().any():
-        raise RuntimeError("Finalized Grok artifact contains duplicate ticker-date keys")
-
-    target_dates = pd.to_datetime(frame["date"], errors="raise").dt.normalize()
-    if target_dates.nunique() != 1:
-        raise RuntimeError("Finalized Grok artifact contains multiple target dates")
-    validate_official_market_cap_input(frame)
-    if not TRADING_CALENDAR_PATH.exists():
-        raise RuntimeError(
-            f"Trading calendar required for D-1 validation is absent: "
-            f"{TRADING_CALENDAR_PATH}"
-        )
-    validate_selection_market_cap(
-        frame,
-        target_dates.iloc[0],
-        pd.read_parquet(TRADING_CALENDAR_PATH),
-    )
-
-    probabilities = pd.to_numeric(frame["prob_up"], errors="coerce")
-    if probabilities.isna().any() or probabilities.lt(0).any() or probabilities.gt(1).any():
-        raise RuntimeError(
-            "Finalized Grok artifact has missing or out-of-range ML probabilities"
-        )
-    asof_dates = pd.to_datetime(
-        frame["jq_market_cap_asof_date"], errors="raise"
-    ).dt.strftime("%Y-%m-%d")
-    unique_asof = sorted(asof_dates.unique().tolist())
-    if len(unique_asof) != 1:
-        raise RuntimeError(
-            f"Finalized Grok artifact has multiple D-1 as-of dates: {unique_asof}"
-        )
-
-    return {
-        "row_count": len(frame),
-        "columns": frame.columns.tolist(),
-        "data_source": "jquants_eq_daily",
-        "market_cap_source": MARKET_CAP_SOURCE,
-        "market_cap_definition": (
-            "J-Quants MktCap[previous trading date] * 1,000,000 yen"
-        ),
-        "market_cap_asof_date": unique_asof[0],
-        "target_date": target_dates.iloc[0].strftime("%Y-%m-%d"),
-    }
 
 def load_existing_manifest(*, use_s3: bool) -> Dict[str, any]:
     """Load exactly one environment-owned manifest source."""
@@ -425,13 +359,18 @@ def generate_manifest(
 
         existing_entry = (existing_manifest or {}).get("files", {}).get(filename)
         if preserve_grok and filename == TRENDING_NAME:
-            if not isinstance(existing_entry, dict):
-                raise RuntimeError(
-                    "Remote manifest has no grok_trending entry; "
-                    "non-final pipeline publication refused"
-                )
-            manifest["files"][filename] = dict(existing_entry)
-            print(f"  ↻ {filename}: preserving existing remote entry unchanged")
+            if isinstance(existing_entry, dict):
+                manifest["files"][filename] = dict(existing_entry)
+                print(f"  ↻ {filename}: preserving existing remote entry")
+            else:
+                manifest["files"][filename] = {
+                    "exists": False,
+                    "size_bytes": 0,
+                    "row_count": 0,
+                    "columns": [],
+                    "updated_at": None,
+                }
+                print(f"  - {filename}: no existing remote entry to preserve")
             continue
         if (
             (preserve_missing or filename in PRESERVE_IF_MISSING_FILES)
@@ -492,7 +431,7 @@ def upload_files_to_s3() -> bool:
         if filename == TRENDING_NAME:
             print(
                 "  [INFO] grok_trending.parquet is excluded from generic upload; "
-                "use guarded finalization"
+                "it is published only after market-cap and ML processing"
             )
             continue
         file_path = PARQUET_DIR / filename
@@ -575,29 +514,11 @@ def upload_files_to_s3() -> bool:
 
 
 def upload_manifest_only() -> bool:
-    """Upload manifest after derived artifacts were published by a guarded step."""
+    """Upload manifest after the finalized daily Grok artifact was published."""
     if not MANIFEST_PATH.exists():
         print("  [ERROR] manifest.json does not exist")
         return False
     return upload_to_s3([MANIFEST_PATH], base_dir=PARQUET_DIR)
-
-
-def publish_finalized_grok(manifest: Dict[str, any]) -> Dict[str, any]:
-    """Guardedly publish final Grok bytes and advance manifest last."""
-    file_path = PARQUET_DIR / TRENDING_NAME
-    metadata = validate_finalized_grok_artifact(file_path)
-    state = publish_guarded_trending_and_manifest(
-        load_s3_config(),
-        file_path,
-        manifest,
-        entry_metadata=metadata,
-    )
-    save_manifest(state["manifest"])
-    print(
-        "  [OK] Finalized Grok published and verified: "
-        f"sha256={state['sha256']}, VersionId={state['s3_version_id']}"
-    )
-    return state
 
 
 def cleanup_s3_old_files(keep_files: List[str]) -> None:
@@ -637,8 +558,6 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         keep_keys.add(prefix + "manifest.json")
         keep_keys.add(prefix + "backtest/grok_trending_archive.parquet")  # アーカイブファイルも保持
         keep_keys.add(prefix + "jquants/grok_archive_minute.parquet")  # Grok J-Quants累積分足cacheも保持
-        keep_keys.add(prefix + "backtest/grok_jquants_backtest_ledger.parquet")  # 正本を変更しない累積派生台帳
-        keep_keys.add(prefix + "backtest/grok_jquants_backtest_ledger.validation.json")  # 派生台帳validation
         keep_keys.add(prefix + "backtest/grok_master_jquants_segments.parquet")  # J-Quants基準masterも保持
         keep_keys.add(prefix + "backtest/grok_master_jquants_segments.validation.json")  # master validationも保持
         keep_keys.add(prefix + "backtest/granville_b1b4_archive.parquet")  # グランビルB1-B4バックテストアーカイブ
@@ -730,7 +649,7 @@ def cleanup_s3_old_files(keep_files: List[str]) -> None:
         print(f"  [WARN] S3 cleanup failed: {e}")
 
 
-def main(*, manifest_only: bool = False, finalize_grok: bool = False) -> int:
+def main(*, manifest_only: bool = False) -> int:
     app_env, use_s3 = resolve_storage_mode()
     print("=" * 60)
     print("Update Manifest and Upload to S3" if use_s3 else "Update Local Manifest")
@@ -741,18 +660,11 @@ def main(*, manifest_only: bool = False, finalize_grok: bool = False) -> int:
     # [STEP 1] manifest.json生成
     print("\n[STEP 1] Generating manifest.json...")
     try:
-        if finalize_grok and not use_s3:
-            raise RuntimeError("--finalize-grok requires production S3 mode")
         existing_manifest = load_existing_manifest(use_s3=use_s3)
-        if finalize_grok and not manifest_only:
-            raise RuntimeError(
-                "--finalize-grok requires --manifest-only so no unrelated object "
-                "can change between the dataset and manifest writes"
-            )
         manifest = generate_manifest(
             existing_manifest,
             preserve_missing=manifest_only,
-            preserve_grok=not finalize_grok,
+            preserve_grok=not manifest_only,
         )
         save_manifest(manifest)
     except Exception as e:
@@ -765,9 +677,6 @@ def main(*, manifest_only: bool = False, finalize_grok: bool = False) -> int:
         if not use_s3:
             upload_success = True
             print("  [INFO] Development/local mode: S3 upload skipped")
-        elif finalize_grok:
-            publish_finalized_grok(manifest)
-            upload_success = True
         else:
             upload_success = (
                 upload_manifest_only() if manifest_only else upload_files_to_s3()
@@ -797,11 +706,7 @@ def main(*, manifest_only: bool = False, finalize_grok: bool = False) -> int:
     print(f"S3 upload: {s3_status}")
     print("=" * 60)
 
-    mode = (
-        "guarded-grok-finalization"
-        if finalize_grok
-        else ("manifest-only" if manifest_only else "full")
-    )
+    mode = "manifest-only" if manifest_only else "full"
     print(f"\n✅ Manifest update and S3 upload completed ({mode})!")
     return 0
 
@@ -813,18 +718,5 @@ if __name__ == "__main__":
         action="store_true",
         help="Publish only manifest.json and preserve entries for missing local files",
     )
-    parser.add_argument(
-        "--finalize-grok",
-        action="store_true",
-        help=(
-            "Validate and guarded-publish finalized grok_trending.parquet, then "
-            "publish its existing-format manifest entry"
-        ),
-    )
     args = parser.parse_args()
-    raise SystemExit(
-        main(
-            manifest_only=args.manifest_only,
-            finalize_grok=args.finalize_grok,
-        )
-    )
+    raise SystemExit(main(manifest_only=args.manifest_only))

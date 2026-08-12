@@ -13,11 +13,8 @@ import json
 import numpy as np
 from datetime import datetime, timedelta
 import logging
-from typing import Optional
 
-# J-Quants クライアント
 sys.path.append(str(Path(__file__).resolve().parents[2]))
-from scripts.lib.jquants_client import JQuantsClient
 
 # ログ設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,80 +28,6 @@ DEEP_ANALYSIS_DIR = ROOT / 'data/parquet/backtest/analysis'
 GROK_ANALYSIS_PARQUET = ROOT / 'data/parquet/backtest/grok_analysis_merged_v2_1.parquet'
 PRICES_1D = ROOT / 'data/parquet/prices_max_1d.parquet'
 PRICES_5M = ROOT / 'data/parquet/prices_60d_5m.parquet'
-
-# J-Quantsクライアント（グローバル）
-_jquants_client: Optional[JQuantsClient] = None
-
-
-def get_jquants_client() -> JQuantsClient:
-    """J-Quantsクライアントを取得（シングルトン）"""
-    global _jquants_client
-    if _jquants_client is None:
-        _jquants_client = JQuantsClient()
-    return _jquants_client
-
-
-def fetch_market_cap(ticker: str, close_price: float, date: datetime) -> Optional[float]:
-    """
-    J-Quants APIを使用して時価総額を取得
-
-    Args:
-        ticker: 銘柄コード (例: "7203.T")
-        close_price: 終値
-        date: 取得日
-
-    Returns:
-        時価総額（円）、または取得失敗時はNone
-    """
-    try:
-        # ティッカーからコードを抽出（"7203.T" → "72030"）
-        code = ticker.replace('.T', '').ljust(5, '0')
-
-        client = get_jquants_client()
-
-        # v2: /fins/summary から発行済株式数を取得（v1は/fins/statements）
-        statements_response = client.request('/fins/summary', params={'code': code})
-
-        issued_shares = None
-        if 'data' in statements_response and statements_response['data']:
-            # 最新のデータを取得（v2: DiscDate、v1はDisclosedDate）
-            statements = sorted(
-                statements_response['data'],
-                key=lambda x: x.get('DiscDate', ''),
-                reverse=True
-            )
-
-            for statement in statements:
-                # v2: ShOutFY = 発行済株式数（期末）
-                issued_shares = statement.get('ShOutFY')
-                if issued_shares:
-                    issued_shares = float(issued_shares)
-                    break
-
-        if issued_shares:
-            # v2: /equities/bars/daily から調整係数を取得（v1は/prices/daily_quotes）
-            date_str = date.strftime('%Y-%m-%d')
-            quotes_response = client.request('/equities/bars/daily', params={'code': code, 'from': date_str, 'to': date_str})
-
-            if 'data' in quotes_response and quotes_response['data']:
-                adjustment_factor = float(quotes_response['data'][0].get('AdjustmentFactor', 1.0))
-                market_cap = close_price * (issued_shares / adjustment_factor)
-                return market_cap
-
-        # /fins/summaryにデータがないIPO銘柄等 → /listed/infoのMarketCapitalization（百万円）
-        info_response = client.request('/listed/info', params={'code': code})
-        if 'info' in info_response and info_response['info']:
-            mc_million = info_response['info'][0].get('MarketCapitalization')
-            if mc_million is not None:
-                logger.info(f"{ticker}: market_cap from /listed/info fallback: {float(mc_million)/100:.0f}億円")
-                return float(mc_million) * 1_000_000
-
-        return None
-
-    except Exception as e:
-        logger.warning(f"Failed to fetch market cap for {ticker}: {e}")
-        return None
-
 
 def fetch_previous_days_data(ticker: str, date: datetime, prices_1d_df: pd.DataFrame) -> dict:
     """
@@ -398,7 +321,8 @@ def main():
             grok_trending_map[row['ticker']] = {
                 'categories': row.get('categories', ''),
                 'reason': row.get('reason', ''),
-                'selection_score': row.get('selection_score', 0.0)
+                'selection_score': row.get('selection_score', 0.0),
+                'market_cap': row.get('market_cap'),
             }
         print(f"  grok_trending_{backtest_date.replace('-', '')}.parquet: {len(grok_trending_df)} stocks")
     else:
@@ -438,14 +362,12 @@ def main():
             print(f"    ⚠️  No price data for {backtest_date}, skipping")
             continue
 
-        # Fetch market cap
-        market_cap = fetch_market_cap(ticker, metrics['daily_close'], backtest_dt)
-
         # Fetch previous days data (relative to backtest_date)
         prev_data = fetch_previous_days_data(ticker, backtest_dt, prices_1d_df)
 
         # Get category, reason, selection_score from grok_trending
         trending_data = grok_trending_map.get(ticker, {})
+        market_cap = trending_data.get('market_cap')
 
         # === v2.1: Use trading_recommendation.json values directly (no forced positions) ===
         # v2_1_action from flat structure

@@ -9,12 +9,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import scripts.ml.train_model as train_model
-from scripts.ml.train_model import (
-    FEATURE_COLUMNS,
-    FEATURE_CONTRACT,
-    PRICE_HISTORY_SOURCE,
-    validate_model_release,
-)
+from scripts.ml.train_model import FEATURE_COLUMNS
 
 from scripts.analysis.build_grok_master_jquants_segments import (
     JQ_ADJUSTMENT_FACTOR_ASOF,
@@ -48,19 +43,16 @@ from scripts.lib.jquants_daily_fields import (
     classify_jquants_daily_trade_status,
     normalize_jquants_daily_fields,
 )
-from scripts.lib.grok_jquants_backtest import JQuantsBacktestDataError
-from scripts.ml.feature_engineering import attach_official_market_cap_from_master
+from scripts.lib.grok_jquants_backtest import (
+    JQuantsBacktestDataError,
+    validate_selection_market_cap,
+)
 from scripts.pipeline.add_market_cap_to_grok_trending import (
     JQ_EX_RIGHTS_TYPE_ASOF,
     JQ_MARKET_CAP_ASOF_DATE as LIVE_JQ_MARKET_CAP_ASOF_DATE,
     JQ_MARKET_CAP_YEN_ASOF as LIVE_JQ_MARKET_CAP_YEN_ASOF,
     MARKET_CAP_SOURCE,
     attach_official_market_cap_asof,
-)
-from scripts.pipeline.add_ml_prediction_to_grok_trending import (
-    validate_model_package,
-    validate_model_market_cap_source,
-    validate_official_market_cap_input,
 )
 from scripts.pipeline.fetch_watch_daily_jquants import (
     fetch_daily_bars,
@@ -74,8 +66,6 @@ from scripts.pipeline.generate_grok_prices_max_1d import (
     merge_price_sources,
     validate_current_price_coverage,
 )
-from scripts.pipeline.update_manifest import validate_finalized_grok_artifact
-from scripts.pipeline.build_grok_jquants_backtest_ledger import build_ledger
 
 
 def raw_daily_fixture() -> pd.DataFrame:
@@ -122,99 +112,6 @@ def raw_daily_fixture() -> pd.DataFrame:
 
 
 class JQuantsDailyFieldTests(unittest.TestCase):
-    def test_derived_ledger_appends_only_audited_future_days(self) -> None:
-        canonical = pd.DataFrame(
-            [
-                {
-                    "backtest_date": "2026-08-10",
-                    "date": "2026-08-10",
-                    "ticker": "7203.T",
-                    "market_cap": 43_493_063_000_000.0,
-                    "value": 1.0,
-                }
-            ]
-        )
-        future = pd.DataFrame(
-            [
-                {
-                    "backtest_date": "2026-08-11",
-                    "date": "2026-08-11",
-                    "ticker": "7203.T",
-                    "market_cap": 43_493_063_000_000.0,
-                    "value": 2.0,
-                    "market_cap_source": "jquants_eq_daily_mktcap_d_minus_1",
-                    "jq_market_cap_asof_date": "2026-08-10",
-                    "jq_mkt_cap_million_yen_asof": 43_493_063.0,
-                    "jq_market_cap_yen_asof": 43_493_063_000_000.0,
-                    "jq_ex_rights_type_asof": pd.NA,
-                    "jq_adjustment_factor_asof": 1.0,
-                    "jq_daily_source_asof": "jquants_api_v2",
-                    "jq_daily_fetched_at_asof": "2026-08-10T16:00:00+00:00",
-                    "jq_daily_target_date": "2026-08-11",
-                    "jq_daily_trade_status_target": "traded",
-                    "jq_mkt_cap_million_yen_target": 44_000_000.0,
-                    "jq_market_cap_yen_target": 44_000_000_000_000.0,
-                    "jq_ex_rights_type_target": pd.NA,
-                    "jq_adjustment_factor_target": 1.0,
-                    "jq_daily_source_target": "jquants_api_v2",
-                    "jq_daily_fetched_at_target": "2026-08-11T16:00:00+00:00",
-                }
-            ]
-        )
-        calendar = pd.DataFrame({"date": ["2026-08-10", "2026-08-11"]})
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            historical_legacy = root / "grok_trending_20260810.parquet"
-            future_path = root / "grok_trending_20260811.parquet"
-            canonical.to_parquet(historical_legacy, index=False)
-            future.to_parquet(future_path, index=False)
-            ledger, receipts = build_ledger(
-                canonical,
-                [
-                    ("2026-08-10", historical_legacy),
-                    ("2026-08-11", future_path),
-                ],
-                calendar,
-            )
-            self.assertEqual(len(ledger), 2)
-            self.assertEqual(len(receipts), 1)
-            self.assertEqual(receipts[0]["date"], "2026-08-11")
-            pd.testing.assert_frame_equal(
-                canonical,
-                ledger.iloc[:1].reset_index(drop=True),
-                check_dtype=True,
-                check_exact=True,
-            )
-            self.assertEqual(ledger.iloc[1]["value"], 2.0)
-
-            future.drop(columns=["value"]).to_parquet(
-                future_path,
-                index=False,
-            )
-            with self.assertRaisesRegex(
-                JQuantsBacktestDataError,
-                "lacks canonical columns",
-            ):
-                build_ledger(
-                    canonical,
-                    [("2026-08-11", future_path)],
-                    calendar,
-                )
-
-            future.drop(columns=["jq_daily_source_target"]).to_parquet(
-                future_path,
-                index=False,
-            )
-            with self.assertRaisesRegex(
-                JQuantsBacktestDataError,
-                "audit provenance",
-            ):
-                build_ledger(
-                    canonical,
-                    [("2026-08-11", future_path)],
-                    calendar,
-                )
-
     def test_all_market_daily_request_uses_v2_date_parameter(self) -> None:
         class FakeClient:
             def request_with_pagination(self, endpoint, params, **kwargs):
@@ -339,21 +236,11 @@ class JQuantsDailyFieldTests(unittest.TestCase):
         etf = attached[attached["ticker"].eq("200A.T")].iloc[0]
         self.assertTrue(pd.isna(etf["market_cap"]))
         self.assertEqual(etf["market_cap_source"], MARKET_CAP_SOURCE)
-        validate_official_market_cap_input(attached)
-
-        with tempfile.TemporaryDirectory() as directory:
-            finalized = attached.assign(prob_up=[0.4, 0.6])
-            output = Path(directory) / "grok_trending.parquet"
-            calendar_path = Path(directory) / "calendar.parquet"
-            finalized.to_parquet(output, index=False)
-            calendar.to_parquet(calendar_path, index=False)
-            with patch(
-                "scripts.pipeline.update_manifest.TRADING_CALENDAR_PATH",
-                calendar_path,
-            ):
-                metadata = validate_finalized_grok_artifact(output)
-        self.assertEqual(metadata["row_count"], 2)
-        self.assertEqual(metadata["market_cap_asof_date"], "2026-08-07")
+        validate_selection_market_cap(
+            attached,
+            pd.Timestamp("2026-08-10"),
+            calendar,
+        )
 
     def test_live_market_cap_rejects_same_day_only_source(self) -> None:
         grok = pd.DataFrame(
@@ -413,57 +300,18 @@ class JQuantsDailyFieldTests(unittest.TestCase):
                 calendar,
             )
 
-    def test_training_market_cap_comes_from_derived_master_not_archive(self) -> None:
-        archive = pd.DataFrame(
-            [
-                {
-                    "backtest_date": "2026-08-10",
-                    "ticker": "7203.T",
-                    "market_cap": 1.0,
-                },
-                {
-                    "backtest_date": "2026-08-10",
-                    "ticker": "200A.T",
-                    "market_cap": 2.0,
-                },
-            ]
-        )
-        master = pd.DataFrame(
-            [
-                {
-                    "backtest_date": "2026-08-10",
-                    "ticker": "7203.T",
-                    JQ_MARKET_CAP_ASOF_DATE: "2026-08-07",
-                    JQ_MKT_CAP_MILLION_YEN_ASOF: 43_493_063.0,
-                    JQ_MARKET_CAP_YEN_ASOF: 43_493_063_000_000.0,
-                    JQ_ADJUSTMENT_FACTOR_ASOF: 1.0,
-                },
-                {
-                    "backtest_date": "2026-08-10",
-                    "ticker": "200A.T",
-                    JQ_MARKET_CAP_ASOF_DATE: "2026-08-07",
-                    JQ_MKT_CAP_MILLION_YEN_ASOF: pd.NA,
-                    JQ_MARKET_CAP_YEN_ASOF: pd.NA,
-                    JQ_ADJUSTMENT_FACTOR_ASOF: 1.0,
-                },
-            ]
-        )
-
-        attached = attach_official_market_cap_from_master(archive, master)
-
-        self.assertEqual(len(attached), 2)
-        self.assertEqual(attached.iloc[0]["market_cap_archive"], 1.0)
-        self.assertEqual(attached.iloc[0]["market_cap"], 43_493_063_000_000.0)
-        self.assertTrue(pd.isna(attached.iloc[1]["market_cap"]))
-        self.assertEqual(attached.iloc[1]["market_cap_archive"], 2.0)
-        self.assertTrue(attached["market_cap_source"].eq(MARKET_CAP_SOURCE).all())
-
-    def test_model_metadata_requires_official_market_cap_source(self) -> None:
-        validate_model_market_cap_source(
-            {"feature_sources": {"market_cap": MARKET_CAP_SOURCE}}
-        )
-        with self.assertRaisesRegex(ValueError, "incompatible"):
-            validate_model_market_cap_source({})
+    def test_model_keeps_existing_26_feature_schema(self) -> None:
+        expected = [
+            "buy_price", "market_cap", "atr14_pct", "vol_ratio", "rsi9",
+            "nikkei_change_pct", "futures_change_pct", "volatility_5d",
+            "ma5_deviation", "ma25_deviation", "prev_day_return",
+            "volume_ratio_5d", "price_range_5d", "nikkei_vol_5d",
+            "nikkei_ret_5d", "topix_vol_5d", "topix_ret_5d",
+            "futures_ret_5d", "usdjpy_vol_5d", "usdjpy_ret_5d",
+            "prev_close_position", "gap_ratio", "prev_candle", "macd_hist",
+            "bb_pctb", "vol_trend",
+        ]
+        self.assertEqual(FEATURE_COLUMNS, expected)
 
         with tempfile.TemporaryDirectory() as directory:
             original_model_dir = train_model.MODEL_DIR
@@ -477,67 +325,11 @@ class JQuantsDailyFieldTests(unittest.TestCase):
                 meta = json.loads(
                     (Path(directory) / "grok_lgbm_meta.json").read_text()
                 )
-                model_path = Path(directory) / "grok_lgbm_model.pkl"
-                validate_model_package(meta, model_path)
             finally:
                 train_model.MODEL_DIR = original_model_dir
-        self.assertEqual(
-            meta["feature_sources"]["market_cap"],
-            MARKET_CAP_SOURCE,
-        )
-        self.assertEqual(len(meta["model_sha256"]), 64)
 
-        with tempfile.TemporaryDirectory() as directory:
-            model_path = Path(directory) / "model.pkl"
-            model_path.write_bytes(b"wrong model bytes")
-            with self.assertRaisesRegex(ValueError, "SHA256"):
-                validate_model_package(
-                    {
-                        "feature_names": list(FEATURE_COLUMNS),
-                        "n_features": len(FEATURE_COLUMNS),
-                        "feature_contract": FEATURE_CONTRACT,
-                        "feature_sources": {
-                            "market_cap": MARKET_CAP_SOURCE,
-                            "price_history": PRICE_HISTORY_SOURCE,
-                        },
-                        "model_sha256": "0" * 64,
-                    },
-                    model_path,
-                )
-
-    def test_model_release_gate_rejects_material_regression(self) -> None:
-        previous = {
-            "feature_contract": FEATURE_CONTRACT,
-            "feature_sources": {
-                "market_cap": MARKET_CAP_SOURCE,
-                "price_history": PRICE_HISTORY_SOURCE,
-            },
-            "metrics": {
-                "auc_mean": 0.55,
-                "short_win_rate": 0.60,
-                "total_evaluated": 1_000,
-            }
-        }
-        candidate = {
-            "feature_contract": FEATURE_CONTRACT,
-            "feature_sources": {
-                "market_cap": MARKET_CAP_SOURCE,
-                "price_history": PRICE_HISTORY_SOURCE,
-            },
-            "metrics": {
-                "auc_mean": 0.56,
-                "short_win_rate": 0.61,
-                "short_count": 500,
-                "short_pnl_total": 1_000_000,
-                "short_pf": 1.5,
-                "total_evaluated": 1_100,
-            },
-        }
-        validate_model_release(candidate, previous)
-        regressed = json.loads(json.dumps(candidate))
-        regressed["metrics"]["auc_mean"] = 0.50
-        with self.assertRaisesRegex(ValueError, "release gate failed"):
-            validate_model_release(regressed, previous)
+        self.assertEqual(meta["feature_names"], expected)
+        self.assertEqual(meta["n_features"], 26)
 
     def test_grok_price_history_merges_jquants_and_requires_full_coverage(self) -> None:
         dates = pd.bdate_range("2026-06-01", periods=40)

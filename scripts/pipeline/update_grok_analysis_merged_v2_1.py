@@ -41,26 +41,6 @@ TRADING_REC_PATH = BACKTEST_DIR / "trading_recommendation.json"
 MERGED_V2_1_PATH = BACKTEST_DIR / "grok_analysis_merged_v2_1.parquet"
 
 
-def fetch_market_cap(ticker: str, close_price: float) -> Optional[float]:
-    """yfinanceから時価総額を取得"""
-    try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        market_cap = info.get('marketCap')
-        if market_cap:
-            return float(market_cap)
-
-        # marketCapがない場合は株数×株価で計算
-        shares = info.get('sharesOutstanding')
-        if shares and close_price:
-            return float(shares) * close_price
-
-        return None
-    except Exception as e:
-        print(f"[WARN] {ticker}: 時価総額取得失敗: {e}")
-        return None
-
-
 def calculate_morning_metrics(df_5min, open_price):
     """前場（9:00-11:30）のメトリクス計算"""
     if df_5min is None or df_5min.empty or open_price is None or open_price == 0:
@@ -273,8 +253,8 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
             morning_high = high
             morning_low = low
 
-    # 時価総額取得
-    market_cap = fetch_market_cap(ticker, close_price)
+    # 22:15で付与済みのJ-Quants公式D-1時価総額をそのまま引き継ぐ。
+    market_cap = grok_data.get('market_cap')
 
     # 前日・前々日データ（JQuantsから営業日取得）
     fetcher = JQuantsFetcher()
@@ -374,7 +354,7 @@ def run_backtest(ticker: str, grok_data: dict, trading_rec: dict,
         # 26-31: データソースと当日詳細
         'data_source': 'yfinance',
         'prompt_version': grok_data.get('prompt_version', np.nan),
-        'market_cap': market_cap if market_cap else np.nan,
+        'market_cap': market_cap if pd.notna(market_cap) else np.nan,
         'morning_volume': morning_volume if morning_volume else np.nan,
         'day_high': high,
         'day_low': low,
@@ -498,6 +478,7 @@ def main():
             'grok_rank': row.get('grok_rank'),
             'selection_score': row.get('selection_score'),
             'prompt_version': row.get('prompt_version'),
+            'market_cap': row.get('market_cap'),
         }
 
         # trading_recommendationデータ

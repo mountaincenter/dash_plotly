@@ -1,13 +1,10 @@
-"""Read-only canonical verification and guarded non-canonical Grok publishing."""
+"""Read-only verification helpers for the canonical Grok archive."""
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
 import os
-from copy import deepcopy
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +13,6 @@ from common_cfg.s3io import create_s3_client
 
 
 ARCHIVE_NAME = "backtest/grok_trending_archive.parquet"
-TRENDING_NAME = "grok_trending.parquet"
 MANIFEST_NAME = "manifest.json"
 
 
@@ -63,40 +59,6 @@ def _get_current_object_if_match(
         raise ProtectedArchiveError(
             f"S3 {label} changed after HEAD; conditional download refused: {error}"
         ) from error
-
-
-def _require_bucket_versioning(s3: Any, cfg: S3Config) -> None:
-    status = s3.get_bucket_versioning(Bucket=cfg.bucket).get("Status")
-    if status != "Enabled":
-        raise ProtectedArchiveError(
-            f"S3 bucket versioning must be Enabled, actual={status!r}"
-        )
-
-
-def _rollback_exact_version(
-    s3: Any,
-    cfg: S3Config,
-    *,
-    key: str,
-    new_version_id: str,
-    expected_etag: str | None,
-    expected_version_id: str | None,
-    label: str,
-) -> None:
-    """Delete only one failed publication version and prove restoration."""
-    s3.delete_object(
-        Bucket=cfg.bucket,
-        Key=key,
-        VersionId=new_version_id,
-    )
-    restored = s3.head_object(Bucket=cfg.bucket, Key=key)
-    if restored.get("ETag") != expected_etag or (
-        expected_version_id
-        and restored.get("VersionId") != expected_version_id
-    ):
-        raise ProtectedArchiveError(
-            f"{label} rollback did not restore the exact source object"
-        )
 
 
 def read_remote_manifest(
@@ -242,199 +204,6 @@ def publish_guarded_manifest_entry(
     )
 
 
-def publish_guarded_trending_and_manifest(
-    cfg: S3Config,
-    candidate: Path,
-    manifest: dict[str, Any],
-    *,
-    entry_metadata: dict[str, Any],
-    client: Any | None = None,
-) -> dict[str, Any]:
-    """Publish finalized Grok bytes, then its existing-format manifest entry.
-
-    The fixed S3 key and manifest are two objects, so the data object is written
-    first and the manifest pointer last.  Bucket versioning is mandatory: if
-    the manifest write fails, the exact newly-created data version is deleted
-    and the previous manifest-pinned version becomes current again.
-    """
-    if not candidate.exists() or candidate.stat().st_size == 0:
-        raise ProtectedArchiveError("Finalized grok_trending candidate is absent")
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), dict):
-        raise ProtectedArchiveError("Candidate manifest has no files mapping")
-
-    s3 = _require_client(cfg, client)
-    _require_bucket_versioning(s3, cfg)
-    key = _s3_key(cfg, TRENDING_NAME)
-    manifest_snapshot = read_remote_manifest_snapshot(cfg, client=s3)
-
-    current = s3.head_object(Bucket=cfg.bucket, Key=key, ChecksumMode="ENABLED")
-    current_version = current.get("VersionId")
-    if not current_version:
-        raise ProtectedArchiveError(
-            "S3 bucket versioning is required for recoverable Grok publication"
-        )
-
-    source_reference = {
-        "ETag": current.get("ETag"),
-        "VersionId": current.get("VersionId"),
-    }
-
-    def current_matches_source(head: dict[str, Any]) -> bool:
-        return (
-            head.get("ETag") == source_reference["ETag"]
-            and head.get("VersionId") == source_reference["VersionId"]
-        )
-
-    source_response = s3.get_object(
-        Bucket=cfg.bucket,
-        Key=key,
-        VersionId=current["VersionId"],
-    )
-    source_bytes = source_response["Body"].read()
-    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
-
-    candidate_digest = hashlib.sha256(candidate.read_bytes()).digest()
-    candidate_sha256 = candidate_digest.hex()
-    candidate_checksum = base64.b64encode(candidate_digest).decode("ascii")
-    changed = candidate_sha256 != source_sha256
-    now = datetime.now().astimezone().isoformat()
-
-    if changed:
-        object_metadata = {
-            "sha256": candidate_sha256,
-            "data-source": str(entry_metadata.get("data_source", "")),
-            "market-cap-source": str(
-                entry_metadata.get("market_cap_source", "")
-            ),
-            "market-cap-asof-date": str(
-                entry_metadata.get("market_cap_asof_date", "")
-            ),
-        }
-        with candidate.open("rb") as handle:
-            response = s3.put_object(
-                Bucket=cfg.bucket,
-                Key=key,
-                Body=handle,
-                ContentType="application/octet-stream",
-                CacheControl="max-age=60",
-                ServerSideEncryption="AES256",
-                Metadata=object_metadata,
-                ChecksumSHA256=candidate_checksum,
-                IfMatch=current["ETag"],
-            )
-        published = s3.head_object(
-            Bucket=cfg.bucket,
-            Key=key,
-            ChecksumMode="ENABLED",
-        )
-        if not response.get("VersionId") or (
-            published.get("VersionId") != response.get("VersionId")
-        ):
-            raise ProtectedArchiveError(
-                "Finalized grok_trending VersionId verification failed"
-            )
-        if published.get("Metadata", {}).get("sha256") != candidate_sha256:
-            raise ProtectedArchiveError(
-                "Finalized grok_trending metadata SHA256 mismatch"
-            )
-        remote_checksum = (
-            published.get("ChecksumSHA256") or response.get("ChecksumSHA256")
-        )
-        if remote_checksum and remote_checksum != candidate_checksum:
-            raise ProtectedArchiveError(
-                "Finalized grok_trending object checksum mismatch"
-            )
-    else:
-        published = s3.head_object(
-            Bucket=cfg.bucket,
-            Key=key,
-            ChecksumMode="ENABLED",
-        )
-        if not current_matches_source(published):
-            raise ProtectedArchiveError(
-                "Current grok_trending changed during finalization"
-            )
-        response = {"VersionId": current["VersionId"]}
-        remote_checksum = published.get("ChecksumSHA256")
-
-    candidate_manifest = deepcopy(manifest)
-    candidate_manifest["files"][TRENDING_NAME] = {
-        "exists": True,
-        "size_bytes": candidate.stat().st_size,
-        "row_count": int(entry_metadata["row_count"]),
-        "columns": list(entry_metadata["columns"]),
-        "updated_at": datetime.fromtimestamp(candidate.stat().st_mtime).isoformat(),
-    }
-    candidate_manifest["generated_at"] = now
-    payload = (json.dumps(candidate_manifest, ensure_ascii=False, indent=2) + "\n").encode(
-        "utf-8"
-    )
-    manifest_checksum = base64.b64encode(hashlib.sha256(payload).digest()).decode(
-        "ascii"
-    )
-
-    try:
-        manifest_response = s3.put_object(
-            Bucket=cfg.bucket,
-            Key=manifest_snapshot["key"],
-            Body=payload,
-            ContentType="application/json",
-            CacheControl="no-cache",
-            ServerSideEncryption="AES256",
-            ChecksumSHA256=manifest_checksum,
-            IfMatch=manifest_snapshot["etag"],
-        )
-    except Exception as error:
-        if changed and response.get("VersionId"):
-            try:
-                s3.delete_object(
-                    Bucket=cfg.bucket,
-                    Key=key,
-                    VersionId=response["VersionId"],
-                )
-                restored = s3.head_object(Bucket=cfg.bucket, Key=key)
-                if not current_matches_source(restored):
-                    raise ProtectedArchiveError(
-                        "Rollback did not restore the verified source Grok version"
-                    )
-            except Exception as rollback_error:
-                raise ProtectedArchiveError(
-                    "Manifest publish failed and Grok rollback also failed: "
-                    f"publish={error}; rollback={rollback_error}"
-                ) from rollback_error
-        raise ProtectedArchiveError(
-            f"Finalized Grok manifest publish failed; data rollback completed: {error}"
-        ) from error
-
-    verified_manifest = s3.head_object(
-        Bucket=cfg.bucket,
-        Key=manifest_snapshot["key"],
-        ChecksumMode="ENABLED",
-    )
-    if manifest_response.get("VersionId") and (
-        verified_manifest.get("VersionId") != manifest_response.get("VersionId")
-    ):
-        raise ProtectedArchiveError("Final Grok manifest VersionId verification failed")
-    verified_manifest_checksum = (
-        verified_manifest.get("ChecksumSHA256")
-        or manifest_response.get("ChecksumSHA256")
-    )
-    if (
-        verified_manifest_checksum
-        and verified_manifest_checksum != manifest_checksum
-    ):
-        raise ProtectedArchiveError("Final Grok manifest checksum mismatch")
-
-    return {
-        "manifest": candidate_manifest,
-        "sha256": candidate_sha256,
-        "s3_etag": published.get("ETag"),
-        "s3_version_id": published.get("VersionId"),
-        "manifest_s3_etag": verified_manifest.get("ETag"),
-        "manifest_s3_version_id": verified_manifest.get("VersionId"),
-        "changed": changed,
-        "verified_at": now,
-    }
 
 
 def verify_publish_state(

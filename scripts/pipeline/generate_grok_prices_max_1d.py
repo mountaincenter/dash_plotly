@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 generate_grok_prices_max_1d.py
-派生J-Quants台帳（なければ読取専用正本）の銘柄に対して日足データを取得
+読取専用のGrok正本と当日選定銘柄に対して日足データを取得
 grok_prices_max_1d.parquet を生成
 """
 
@@ -21,9 +21,6 @@ from scripts.lib.yfinance_fetcher import fetch_prices_for_tickers
 from common_cfg.paths import PARQUET_DIR
 
 ARCHIVE_PATH = PARQUET_DIR / "backtest" / "grok_trending_archive.parquet"
-DERIVED_LEDGER_PATH = (
-    PARQUET_DIR / "backtest" / "grok_jquants_backtest_ledger.parquet"
-)
 GROK_TRENDING_PATH = PARQUET_DIR / "grok_trending.parquet"
 OUTPUT_PATH = PARQUET_DIR / "grok_prices_max_1d.parquet"
 JQUANTS_WATCH_PRICES_PATH = PARQUET_DIR / "prices_max_1d.parquet"
@@ -32,18 +29,17 @@ PRICE_COLUMNS = ["date", "Open", "High", "Low", "Close", "Volume", "ticker"]
 
 
 def load_all_tickers() -> list[str]:
-    """Derived ledger/canonical archive + current selection tickers."""
+    """Canonical archive + current selection tickers."""
     tickers = set()
 
-    history_path = DERIVED_LEDGER_PATH if DERIVED_LEDGER_PATH.exists() else ARCHIVE_PATH
-    if history_path.exists():
-        print(f"[INFO] Loading backtest history: {history_path}")
-        df = pd.read_parquet(history_path)
+    if ARCHIVE_PATH.exists():
+        print(f"[INFO] Loading backtest history: {ARCHIVE_PATH}")
+        df = pd.read_parquet(ARCHIVE_PATH)
         archive_tickers = df["ticker"].unique().tolist()
         tickers.update(archive_tickers)
         print(f"  ✓ History: {len(archive_tickers)} tickers")
     else:
-        print(f"[WARN] Backtest history not found: {history_path}")
+        print(f"[WARN] Backtest history not found: {ARCHIVE_PATH}")
 
     # 現在のgrok_trending から取得（新規選定銘柄を含める）
     if GROK_TRENDING_PATH.exists():
