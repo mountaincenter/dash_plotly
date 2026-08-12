@@ -250,7 +250,7 @@ def publish_guarded_trending_and_manifest(
     entry_metadata: dict[str, Any],
     client: Any | None = None,
 ) -> dict[str, Any]:
-    """Publish finalized Grok bytes, then its checksum-pinned manifest entry.
+    """Publish finalized Grok bytes, then its existing-format manifest entry.
 
     The fixed S3 key and manifest are two objects, so the data object is written
     first and the manifest pointer last.  Bucket versioning is mandatory: if
@@ -266,11 +266,6 @@ def publish_guarded_trending_and_manifest(
     _require_bucket_versioning(s3, cfg)
     key = _s3_key(cfg, TRENDING_NAME)
     manifest_snapshot = read_remote_manifest_snapshot(cfg, client=s3)
-    remote_entry = manifest_snapshot["manifest"]["files"].get(TRENDING_NAME)
-    if not isinstance(remote_entry, dict):
-        raise ProtectedArchiveError(
-            "Remote manifest has no grok_trending entry"
-        )
 
     current = s3.head_object(Bucket=cfg.bucket, Key=key, ChecksumMode="ENABLED")
     current_version = current.get("VersionId")
@@ -279,43 +274,9 @@ def publish_guarded_trending_and_manifest(
             "S3 bucket versioning is required for recoverable Grok publication"
         )
 
-    checksum_pinned = bool(remote_entry.get("sha256"))
-
-    def current_matches_manifest(head: dict[str, Any]) -> bool:
-        return (
-            head.get("ETag") == remote_entry.get("s3_etag")
-            and head.get("VersionId") == remote_entry.get("s3_version_id")
-        )
-
-    # Recover a prior process interruption that stopped after the data put but
-    # before the manifest put.  Only our explicitly marked version is removed.
-    if checksum_pinned and not current_matches_manifest(current):
-        metadata = current.get("Metadata", {})
-        if metadata.get("publication-state") != "pending-manifest":
-            raise ProtectedArchiveError(
-                "Current grok_trending object is not identified by the remote "
-                "manifest; guarded publication refused"
-            )
-        s3.delete_object(
-            Bucket=cfg.bucket,
-            Key=key,
-            VersionId=current["VersionId"],
-        )
-        current = s3.head_object(
-            Bucket=cfg.bucket,
-            Key=key,
-            ChecksumMode="ENABLED",
-        )
-        if not current_matches_manifest(current):
-            raise ProtectedArchiveError(
-                "Interrupted Grok publication could not be rolled back"
-            )
-    elif not checksum_pinned and (
-        current.get("Metadata", {}).get("publication-state") == "pending-manifest"
-    ):
+    if current.get("Metadata", {}).get("publication-state") == "pending-manifest":
         raise ProtectedArchiveError(
-            "Legacy manifest cannot identify the source version behind a "
-            "pending Grok publication"
+            "Current Grok object is an unresolved pending publication"
         )
 
     source_reference = {
@@ -336,10 +297,6 @@ def publish_guarded_trending_and_manifest(
     )
     source_bytes = source_response["Body"].read()
     source_sha256 = hashlib.sha256(source_bytes).hexdigest()
-    if checksum_pinned and source_sha256 != remote_entry.get("sha256"):
-        raise ProtectedArchiveError(
-            "Current grok_trending bytes do not match the remote manifest SHA256"
-        )
 
     candidate_digest = hashlib.sha256(candidate.read_bytes()).digest()
     candidate_sha256 = candidate_digest.hex()
@@ -407,25 +364,15 @@ def publish_guarded_trending_and_manifest(
         remote_checksum = published.get("ChecksumSHA256")
 
     candidate_manifest = deepcopy(manifest)
-    entry = dict(candidate_manifest["files"].get(TRENDING_NAME, {}))
-    entry.update(entry_metadata)
-    entry.update(
-        {
-            "exists": True,
-            "size_bytes": candidate.stat().st_size,
-            "sha256": candidate_sha256,
-            "s3_key": key,
-            "s3_etag": published.get("ETag"),
-            "s3_version_id": published.get("VersionId"),
-            "s3_checksum_sha256_base64": remote_checksum,
-            "s3_verified_at": now,
-            "source_s3_sha256": source_sha256,
-            "source_s3_etag": current.get("ETag"),
-            "source_s3_version_id": current.get("VersionId"),
-            "publication_order": "dataset_verified_then_manifest",
-        }
-    )
-    candidate_manifest["files"][TRENDING_NAME] = entry
+    candidate_manifest["files"][TRENDING_NAME] = {
+        "exists": True,
+        "size_bytes": candidate.stat().st_size,
+        "row_count": int(entry_metadata["row_count"]),
+        "columns": list(entry_metadata["columns"]),
+        "updated_at": datetime.fromtimestamp(
+            candidate.stat().st_mtime
+        ).astimezone().isoformat(),
+    }
     candidate_manifest["generated_at"] = now
     payload = (json.dumps(candidate_manifest, ensure_ascii=False, indent=2) + "\n").encode(
         "utf-8"

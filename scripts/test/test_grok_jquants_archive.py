@@ -844,33 +844,26 @@ class FakeTrendingS3:
     trend_key = "parquet/grok_trending.parquet"
     manifest_key = "parquet/manifest.json"
 
-    def __init__(self, *, checksum_pinned: bool = True) -> None:
+    def __init__(self) -> None:
         source = b"source trending"
         self.trend_versions = [
             {
                 "version": "t1",
                 "payload": source,
                 "etag": FakeS3._etag(source),
-                "metadata": (
-                    {"sha256": hashlib.sha256(source).hexdigest()}
-                    if checksum_pinned
-                    else {}
-                ),
+                "metadata": {},
                 "checksum": None,
             }
         ]
-        trend_entry = (
-            {
-                    "sha256": hashlib.sha256(source).hexdigest(),
-                    "s3_etag": self.trend_versions[-1]["etag"],
-                    "s3_version_id": "t1",
-            }
-            if checksum_pinned
-            else {"exists": True, "row_count": 1, "updated_at": "legacy"}
-        )
         manifest = {
             "files": {
-                "grok_trending.parquet": trend_entry,
+                "grok_trending.parquet": {
+                    "exists": True,
+                    "size_bytes": len(source),
+                    "row_count": 1,
+                    "columns": ["ticker"],
+                    "updated_at": "existing",
+                },
             }
         }
         self.manifest = json.dumps(manifest).encode()
@@ -969,8 +962,10 @@ class GuardedTrendingPublishTests(unittest.TestCase):
             "files": {
                 "grok_trending.parquet": {
                     "exists": True,
+                    "size_bytes": 0,
                     "row_count": 1,
                     "columns": ["ticker"],
+                    "updated_at": "candidate",
                 }
             }
         }
@@ -984,12 +979,21 @@ class GuardedTrendingPublishTests(unittest.TestCase):
                 self.cfg,
                 candidate,
                 self.candidate_manifest(),
-                entry_metadata={"data_source": "jquants_eq_daily"},
+                entry_metadata={
+                    "row_count": 1,
+                    "columns": ["ticker"],
+                    "data_source": "jquants_eq_daily",
+                },
                 client=client,
             )
         entry = json.loads(client.manifest)["files"]["grok_trending.parquet"]
-        self.assertEqual(entry["sha256"], hashlib.sha256(b"final trending").hexdigest())
-        self.assertEqual(entry["s3_version_id"], "t2")
+        self.assertEqual(
+            set(entry),
+            {"exists", "size_bytes", "row_count", "columns", "updated_at"},
+        )
+        self.assertEqual(entry["size_bytes"], len(b"final trending"))
+        self.assertNotIn("sha256", entry)
+        self.assertEqual(state["s3_version_id"], "t2")
         self.assertEqual(state["manifest_s3_version_id"], "m2")
 
     def test_manifest_failure_removes_only_new_dataset_version(self) -> None:
@@ -1005,44 +1009,11 @@ class GuardedTrendingPublishTests(unittest.TestCase):
                     self.cfg,
                     candidate,
                     self.candidate_manifest(),
-                    entry_metadata={"data_source": "jquants_eq_daily"},
-                    client=client,
-                )
-        self.assertEqual(client.trend_versions[-1]["version"], source_version)
-        self.assertEqual(client.manifest, source_manifest)
-
-    def test_legacy_manifest_is_migrated_from_verified_current_version(self) -> None:
-        client = FakeTrendingS3(checksum_pinned=False)
-        with tempfile.TemporaryDirectory() as directory:
-            candidate = Path(directory) / "grok_trending.parquet"
-            candidate.write_bytes(b"final trending")
-            state = publish_guarded_trending_and_manifest(
-                self.cfg,
-                candidate,
-                self.candidate_manifest(),
-                entry_metadata={"data_source": "jquants_eq_daily"},
-                client=client,
-            )
-        entry = json.loads(client.manifest)["files"]["grok_trending.parquet"]
-        self.assertEqual(entry["sha256"], hashlib.sha256(b"final trending").hexdigest())
-        self.assertEqual(entry["source_s3_version_id"], "t1")
-        self.assertEqual(entry["s3_version_id"], "t2")
-        self.assertEqual(state["manifest_s3_version_id"], "m2")
-
-    def test_legacy_manifest_failure_restores_verified_source_version(self) -> None:
-        client = FakeTrendingS3(checksum_pinned=False)
-        source_version = client.trend_versions[-1]["version"]
-        source_manifest = client.manifest
-        client.fail_manifest = True
-        with tempfile.TemporaryDirectory() as directory:
-            candidate = Path(directory) / "grok_trending.parquet"
-            candidate.write_bytes(b"final trending")
-            with self.assertRaises(ProtectedArchiveError):
-                publish_guarded_trending_and_manifest(
-                    self.cfg,
-                    candidate,
-                    self.candidate_manifest(),
-                    entry_metadata={"data_source": "jquants_eq_daily"},
+                    entry_metadata={
+                        "row_count": 1,
+                        "columns": ["ticker"],
+                        "data_source": "jquants_eq_daily",
+                    },
                     client=client,
                 )
         self.assertEqual(client.trend_versions[-1]["version"], source_version)
@@ -1083,8 +1054,14 @@ class ProtectedManifestEntryTests(unittest.TestCase):
                 )
         self.assertEqual(manifest["files"]["derived.parquet"], existing_entry)
 
-    def test_non_final_manifest_preserves_legacy_grok_entry_unchanged(self) -> None:
-        existing_entry = {"exists": True, "row_count": 264, "updated_at": "legacy"}
+    def test_non_final_manifest_preserves_existing_grok_entry_unchanged(self) -> None:
+        existing_entry = {
+            "exists": True,
+            "size_bytes": 123,
+            "row_count": 264,
+            "columns": ["ticker"],
+            "updated_at": "existing",
+        }
         existing = {"files": {"grok_trending.parquet": existing_entry}}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

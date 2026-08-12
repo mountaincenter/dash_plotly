@@ -818,7 +818,7 @@ if __name__ == "__main__":
         action="store_true",
         help=(
             "Validate and guarded-publish finalized grok_trending.parquet, then "
-            "advance its checksum-pinned manifest entry"
+            "publish its existing-format manifest entry"
         ),
     )
     args = parser.parse_args()

@@ -807,7 +807,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "============================================================"
-          echo "Publishing finalized Grok dataset and checksum-pinned manifest"
+          echo "Publishing finalized Grok dataset and existing-format manifest"
           echo "============================================================"
 
           # 内部で公式D-1 MktCap、prob_up、SHA256、S3 VersionIdを検証し、
