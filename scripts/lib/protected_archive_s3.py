@@ -274,11 +274,6 @@ def publish_guarded_trending_and_manifest(
             "S3 bucket versioning is required for recoverable Grok publication"
         )
 
-    if current.get("Metadata", {}).get("publication-state") == "pending-manifest":
-        raise ProtectedArchiveError(
-            "Current Grok object is an unresolved pending publication"
-        )
-
     source_reference = {
         "ETag": current.get("ETag"),
         "VersionId": current.get("VersionId"),
@@ -307,7 +302,6 @@ def publish_guarded_trending_and_manifest(
     if changed:
         object_metadata = {
             "sha256": candidate_sha256,
-            "publication-state": "pending-manifest",
             "data-source": str(entry_metadata.get("data_source", "")),
             "market-cap-source": str(
                 entry_metadata.get("market_cap_source", "")
@@ -369,9 +363,7 @@ def publish_guarded_trending_and_manifest(
         "size_bytes": candidate.stat().st_size,
         "row_count": int(entry_metadata["row_count"]),
         "columns": list(entry_metadata["columns"]),
-        "updated_at": datetime.fromtimestamp(
-            candidate.stat().st_mtime
-        ).astimezone().isoformat(),
+        "updated_at": datetime.fromtimestamp(candidate.stat().st_mtime).isoformat(),
     }
     candidate_manifest["generated_at"] = now
     payload = (json.dumps(candidate_manifest, ensure_ascii=False, indent=2) + "\n").encode(

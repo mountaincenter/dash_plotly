@@ -993,6 +993,7 @@ class GuardedTrendingPublishTests(unittest.TestCase):
         )
         self.assertEqual(entry["size_bytes"], len(b"final trending"))
         self.assertNotIn("sha256", entry)
+        self.assertNotIn("publication-state", client.trend_versions[-1]["metadata"])
         self.assertEqual(state["s3_version_id"], "t2")
         self.assertEqual(state["manifest_s3_version_id"], "m2")
 
