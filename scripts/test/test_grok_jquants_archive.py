@@ -42,7 +42,10 @@ from scripts.lib.protected_archive_s3 import (
 )
 from scripts.pipeline import update_manifest
 from scripts.pipeline import save_backtest_to_archive as save_backtest
-from scripts.pipeline.save_backtest_to_archive import calculate_phase3_return
+from scripts.pipeline.save_backtest_to_archive import (
+    assert_parquet_roundtrip_equal,
+    calculate_phase3_return,
+)
 from scripts.pipeline.update_archive_holding_returns import build_holding_returns
 
 
@@ -66,6 +69,36 @@ def minute_frame(times: list[str], prices: list[tuple[float, float, float, float
 
 
 class JQuantsExecutionTests(unittest.TestCase):
+    def test_parquet_roundtrip_treats_na_and_none_as_same_missing_value(self) -> None:
+        expected = pd.DataFrame(
+            {
+                "jquants_daily_code": pd.Series([pd.NA, pd.NA], dtype="object"),
+                "market_cap": [100.0, 200.0],
+            }
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "derived.parquet"
+            expected.to_parquet(path, index=False)
+            actual = pd.read_parquet(path)
+        self.assertEqual(actual["jquants_daily_code"].tolist(), [None, None])
+        assert_parquet_roundtrip_equal(expected, actual)
+
+    def test_parquet_roundtrip_rejects_non_missing_value_change(self) -> None:
+        expected = pd.DataFrame(
+            {"jquants_daily_code": [pd.NA, "72030"], "market_cap": [100.0, 200.0]}
+        )
+        actual = pd.DataFrame(
+            {"jquants_daily_code": [None, "72031"], "market_cap": [100.0, 200.0]}
+        )
+        with self.assertRaises(AssertionError):
+            assert_parquet_roundtrip_equal(expected, actual)
+
+    def test_parquet_roundtrip_rejects_missing_position_change(self) -> None:
+        expected = pd.DataFrame({"jquants_daily_code": [pd.NA, "72030"]})
+        actual = pd.DataFrame({"jquants_daily_code": ["72030", None]})
+        with self.assertRaises(AssertionError):
+            assert_parquet_roundtrip_equal(expected, actual)
+
     def test_official_no_market_day_is_resolved_without_invented_prices(self) -> None:
         target = pd.Timestamp("2026-07-24").to_pydatetime()
         grok = pd.DataFrame({"ticker": ["7203.T", "6898.T"]})

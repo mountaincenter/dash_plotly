@@ -1139,6 +1139,44 @@ def run_backtest() -> pd.DataFrame:
     return df_results
 
 
+def assert_parquet_roundtrip_equal(
+    expected: pd.DataFrame,
+    actual: pd.DataFrame,
+) -> None:
+    """Require identical shape, missing positions, and non-missing values."""
+    left = expected.reset_index(drop=True)
+    right = actual.reset_index(drop=True)
+    if list(left.columns) != list(right.columns):
+        raise AssertionError(
+            f"column order changed: expected={list(left.columns)}, "
+            f"actual={list(right.columns)}"
+        )
+    if left.shape != right.shape:
+        raise AssertionError(
+            f"shape changed: expected={left.shape}, actual={right.shape}"
+        )
+
+    left_missing = left.isna()
+    right_missing = right.isna()
+    pd.testing.assert_frame_equal(
+        left_missing,
+        right_missing,
+        check_dtype=False,
+        check_exact=True,
+    )
+    for column in left.columns:
+        present = ~left_missing[column]
+        if not present.any():
+            continue
+        pd.testing.assert_series_equal(
+            left.loc[present, column].reset_index(drop=True),
+            right.loc[present, column].reset_index(drop=True),
+            check_dtype=False,
+            check_exact=True,
+            check_categorical=False,
+        )
+
+
 def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
     """Validate and publish one derived day while keeping the archive read-only."""
     cfg = load_s3_config()
@@ -1329,13 +1367,7 @@ def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
                 "Derived daily artifact contains a non-target date"
             )
         try:
-            pd.testing.assert_frame_equal(
-                derived_rows.reset_index(drop=True),
-                reloaded.reset_index(drop=True),
-                check_dtype=False,
-                check_exact=True,
-                check_categorical=False,
-            )
+            assert_parquet_roundtrip_equal(derived_rows, reloaded)
         except AssertionError as error:
             raise JQuantsBacktestDataError(
                 f"Derived daily artifact changed after serialization: {error}"
