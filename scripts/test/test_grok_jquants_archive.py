@@ -844,24 +844,33 @@ class FakeTrendingS3:
     trend_key = "parquet/grok_trending.parquet"
     manifest_key = "parquet/manifest.json"
 
-    def __init__(self) -> None:
+    def __init__(self, *, checksum_pinned: bool = True) -> None:
         source = b"source trending"
         self.trend_versions = [
             {
                 "version": "t1",
                 "payload": source,
                 "etag": FakeS3._etag(source),
-                "metadata": {"sha256": hashlib.sha256(source).hexdigest()},
+                "metadata": (
+                    {"sha256": hashlib.sha256(source).hexdigest()}
+                    if checksum_pinned
+                    else {}
+                ),
                 "checksum": None,
             }
         ]
-        manifest = {
-            "files": {
-                "grok_trending.parquet": {
+        trend_entry = (
+            {
                     "sha256": hashlib.sha256(source).hexdigest(),
                     "s3_etag": self.trend_versions[-1]["etag"],
                     "s3_version_id": "t1",
-                }
+            }
+            if checksum_pinned
+            else {"exists": True, "row_count": 1, "updated_at": "legacy"}
+        )
+        manifest = {
+            "files": {
+                "grok_trending.parquet": trend_entry,
             }
         }
         self.manifest = json.dumps(manifest).encode()
@@ -1002,6 +1011,43 @@ class GuardedTrendingPublishTests(unittest.TestCase):
         self.assertEqual(client.trend_versions[-1]["version"], source_version)
         self.assertEqual(client.manifest, source_manifest)
 
+    def test_legacy_manifest_is_migrated_from_verified_current_version(self) -> None:
+        client = FakeTrendingS3(checksum_pinned=False)
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / "grok_trending.parquet"
+            candidate.write_bytes(b"final trending")
+            state = publish_guarded_trending_and_manifest(
+                self.cfg,
+                candidate,
+                self.candidate_manifest(),
+                entry_metadata={"data_source": "jquants_eq_daily"},
+                client=client,
+            )
+        entry = json.loads(client.manifest)["files"]["grok_trending.parquet"]
+        self.assertEqual(entry["sha256"], hashlib.sha256(b"final trending").hexdigest())
+        self.assertEqual(entry["source_s3_version_id"], "t1")
+        self.assertEqual(entry["s3_version_id"], "t2")
+        self.assertEqual(state["manifest_s3_version_id"], "m2")
+
+    def test_legacy_manifest_failure_restores_verified_source_version(self) -> None:
+        client = FakeTrendingS3(checksum_pinned=False)
+        source_version = client.trend_versions[-1]["version"]
+        source_manifest = client.manifest
+        client.fail_manifest = True
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / "grok_trending.parquet"
+            candidate.write_bytes(b"final trending")
+            with self.assertRaises(ProtectedArchiveError):
+                publish_guarded_trending_and_manifest(
+                    self.cfg,
+                    candidate,
+                    self.candidate_manifest(),
+                    entry_metadata={"data_source": "jquants_eq_daily"},
+                    client=client,
+                )
+        self.assertEqual(client.trend_versions[-1]["version"], source_version)
+        self.assertEqual(client.manifest, source_manifest)
+
 
 class ProtectedManifestEntryTests(unittest.TestCase):
     def test_production_manifest_never_falls_back_to_local(self) -> None:
@@ -1036,6 +1082,39 @@ class ProtectedManifestEntryTests(unittest.TestCase):
                     preserve_missing=True,
                 )
         self.assertEqual(manifest["files"]["derived.parquet"], existing_entry)
+
+    def test_non_final_manifest_preserves_legacy_grok_entry_unchanged(self) -> None:
+        existing_entry = {"exists": True, "row_count": 264, "updated_at": "legacy"}
+        existing = {"files": {"grok_trending.parquet": existing_entry}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "grok_trending.parquet").write_bytes(b"local candidate")
+            with (
+                patch.object(update_manifest, "PARQUET_DIR", root),
+                patch.object(update_manifest, "UPLOAD_FILES", ["grok_trending.parquet"]),
+                patch.object(update_manifest, "PROTECTED_FILES", []),
+            ):
+                manifest = update_manifest.generate_manifest(
+                    existing,
+                    preserve_grok=True,
+                )
+        self.assertEqual(manifest["files"]["grok_trending.parquet"], existing_entry)
+
+    def test_non_final_manifest_rejects_missing_remote_grok_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                patch.object(update_manifest, "PARQUET_DIR", Path(directory)),
+                patch.object(update_manifest, "UPLOAD_FILES", ["grok_trending.parquet"]),
+                patch.object(update_manifest, "PROTECTED_FILES", []),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "no grok_trending entry",
+                ):
+                    update_manifest.generate_manifest(
+                        {"files": {}},
+                        preserve_grok=True,
+                    )
 
     def test_full_manifest_preserves_cumulative_ledger_until_builder_runs(self) -> None:
         filename = "backtest/grok_jquants_backtest_ledger.parquet"

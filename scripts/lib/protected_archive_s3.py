@@ -267,9 +267,9 @@ def publish_guarded_trending_and_manifest(
     key = _s3_key(cfg, TRENDING_NAME)
     manifest_snapshot = read_remote_manifest_snapshot(cfg, client=s3)
     remote_entry = manifest_snapshot["manifest"]["files"].get(TRENDING_NAME)
-    if not isinstance(remote_entry, dict) or not remote_entry.get("sha256"):
+    if not isinstance(remote_entry, dict):
         raise ProtectedArchiveError(
-            "Remote manifest has no checksum-pinned grok_trending entry"
+            "Remote manifest has no grok_trending entry"
         )
 
     current = s3.head_object(Bucket=cfg.bucket, Key=key, ChecksumMode="ENABLED")
@@ -279,6 +279,8 @@ def publish_guarded_trending_and_manifest(
             "S3 bucket versioning is required for recoverable Grok publication"
         )
 
+    checksum_pinned = bool(remote_entry.get("sha256"))
+
     def current_matches_manifest(head: dict[str, Any]) -> bool:
         return (
             head.get("ETag") == remote_entry.get("s3_etag")
@@ -287,7 +289,7 @@ def publish_guarded_trending_and_manifest(
 
     # Recover a prior process interruption that stopped after the data put but
     # before the manifest put.  Only our explicitly marked version is removed.
-    if not current_matches_manifest(current):
+    if checksum_pinned and not current_matches_manifest(current):
         metadata = current.get("Metadata", {})
         if metadata.get("publication-state") != "pending-manifest":
             raise ProtectedArchiveError(
@@ -308,6 +310,24 @@ def publish_guarded_trending_and_manifest(
             raise ProtectedArchiveError(
                 "Interrupted Grok publication could not be rolled back"
             )
+    elif not checksum_pinned and (
+        current.get("Metadata", {}).get("publication-state") == "pending-manifest"
+    ):
+        raise ProtectedArchiveError(
+            "Legacy manifest cannot identify the source version behind a "
+            "pending Grok publication"
+        )
+
+    source_reference = {
+        "ETag": current.get("ETag"),
+        "VersionId": current.get("VersionId"),
+    }
+
+    def current_matches_source(head: dict[str, Any]) -> bool:
+        return (
+            head.get("ETag") == source_reference["ETag"]
+            and head.get("VersionId") == source_reference["VersionId"]
+        )
 
     source_response = s3.get_object(
         Bucket=cfg.bucket,
@@ -316,7 +336,7 @@ def publish_guarded_trending_and_manifest(
     )
     source_bytes = source_response["Body"].read()
     source_sha256 = hashlib.sha256(source_bytes).hexdigest()
-    if source_sha256 != remote_entry.get("sha256"):
+    if checksum_pinned and source_sha256 != remote_entry.get("sha256"):
         raise ProtectedArchiveError(
             "Current grok_trending bytes do not match the remote manifest SHA256"
         )
@@ -374,9 +394,17 @@ def publish_guarded_trending_and_manifest(
                 "Finalized grok_trending object checksum mismatch"
             )
     else:
-        published = current
+        published = s3.head_object(
+            Bucket=cfg.bucket,
+            Key=key,
+            ChecksumMode="ENABLED",
+        )
+        if not current_matches_source(published):
+            raise ProtectedArchiveError(
+                "Current grok_trending changed during finalization"
+            )
         response = {"VersionId": current["VersionId"]}
-        remote_checksum = current.get("ChecksumSHA256")
+        remote_checksum = published.get("ChecksumSHA256")
 
     candidate_manifest = deepcopy(manifest)
     entry = dict(candidate_manifest["files"].get(TRENDING_NAME, {}))
@@ -426,9 +454,9 @@ def publish_guarded_trending_and_manifest(
                     VersionId=response["VersionId"],
                 )
                 restored = s3.head_object(Bucket=cfg.bucket, Key=key)
-                if not current_matches_manifest(restored):
+                if not current_matches_source(restored):
                     raise ProtectedArchiveError(
-                        "Rollback did not restore the manifest-pinned Grok version"
+                        "Rollback did not restore the verified source Grok version"
                     )
             except Exception as rollback_error:
                 raise ProtectedArchiveError(

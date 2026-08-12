@@ -425,15 +425,13 @@ def generate_manifest(
 
         existing_entry = (existing_manifest or {}).get("files", {}).get(filename)
         if preserve_grok and filename == TRENDING_NAME:
-            if not isinstance(existing_entry, dict) or not existing_entry.get(
-                "sha256"
-            ):
+            if not isinstance(existing_entry, dict):
                 raise RuntimeError(
-                    "Remote grok_trending entry is not checksum-pinned; "
+                    "Remote manifest has no grok_trending entry; "
                     "non-final pipeline publication refused"
                 )
             manifest["files"][filename] = dict(existing_entry)
-            print(f"  ↻ {filename}: preserving finalized remote entry")
+            print(f"  ↻ {filename}: preserving existing remote entry unchanged")
             continue
         if (
             (preserve_missing or filename in PRESERVE_IF_MISSING_FILES)
