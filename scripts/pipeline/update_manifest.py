@@ -53,6 +53,8 @@ UPLOAD_FILES = [
     "market_flow_200a_forward.parquet",  # 200A固定ルールの前向きshadow記録
     "market_flow_200a_phase_status.json",  # Phase2実績とPhase3昇格ゲート
     "market_flow_checkpoint_validation.json",  # Market Flow先行公開の検証証跡
+    "etf_0910_preopen.json",  # 200A 07:00判定スナップショット
+    "etf_0910_us_daily.parquet",  # 200A 07:00判定用の米国日足cache
     "financials.parquet",  # J-Quants財務データ
     "announcements.parquet",  # J-Quants決算発表日推定
     "grok_trending.parquet",
