@@ -31,6 +31,10 @@ on:
         description: "CME更新モードを強制（07:00相当）"
         type: boolean
         default: false
+      skip_deploy:
+        description: "検証実行ではECR deployを行わない"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -1376,6 +1380,40 @@ jobs:
           fi
         timeout-minutes: 5
 
+      - name: "[CME] Publish 200A 07:00 pre-open decision"
+        if: always() && steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
+        run: |
+          set -euo pipefail
+          echo "Publishing the frozen 200A 07:00 pre-open shadow decision"
+          mkdir -p data/parquet
+
+          aws s3 cp \
+            "s3://${S3_BUCKET}/${S3_PREFIX}calendar.parquet" \
+            data/parquet/calendar.parquet \
+            --only-show-errors
+          aws s3 cp \
+            "s3://${S3_BUCKET}/${S3_PREFIX}etf_0910_us_daily.parquet" \
+            data/parquet/etf_0910_us_daily.parquet \
+            --only-show-errors || true
+
+          python3 scripts/pipeline/generate_etf_0700_preopen.py
+          test -s data/parquet/etf_0910_preopen.json
+
+          aws s3 cp \
+            data/parquet/etf_0910_preopen.json \
+            "s3://${S3_BUCKET}/${S3_PREFIX}etf_0910_preopen.json" \
+            --only-show-errors
+          if [ -f data/parquet/etf_0910_us_daily.parquet ]; then
+            aws s3 cp \
+              data/parquet/etf_0910_us_daily.parquet \
+              "s3://${S3_BUCKET}/${S3_PREFIX}etf_0910_us_daily.parquet" \
+              --only-show-errors
+            echo "✅ etf_0910_preopen.json and US daily cache uploaded to S3"
+          else
+            echo "⚠️ data_unavailable published without a US daily cache"
+          fi
+        timeout-minutes: 5
+
       - name: "[CME] Generate semicon entry decisions"
         if: steps.exec_mode.outputs.mode == 'cme_update' && (steps.check_trading_cme.outcome == 'success' || github.event.inputs.skip_trading_day_check == 'true')
         run: |
@@ -2056,7 +2094,7 @@ jobs:
   deploy:
     name: Build and Push to ECR
     needs: pipeline
-    if: success()
+    if: success() && github.event.inputs.skip_deploy != 'true'
     runs-on: ubuntu-latest
     environment: AWS_OIDC
 
