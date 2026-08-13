@@ -267,59 +267,6 @@ def _fetch_nikkei_vi() -> dict[str, Any] | None:
     }
 
 
-def _fetch_market_breadth(date: str) -> dict[str, Any] | None:
-    """日経電子版から騰落銘柄数・売買代金を取得（日付検証付き）"""
-    try:
-        from bs4 import BeautifulSoup
-        import re
-        url = "https://www.nikkei.com/markets/kabu/japanidx/"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, headers=headers, timeout=10)
-        if resp.status_code != 200:
-            return None
-        soup = BeautifulSoup(resp.text, "html.parser")
-        text = soup.get_text()
-
-        # 日付検証: ページの日付が対象日と一致するか確認
-        # 日経電子版は「3月26日」等の表記でデータ日付を示す
-        target = pd.Timestamp(date)
-        target_patterns = [
-            f"{target.month}月{target.day}日",
-            f"{target.month}/{target.day}",
-            target.strftime("%Y/%m/%d"),
-        ]
-        page_is_current = any(p in text for p in target_patterns)
-        if not page_is_current:
-            print(f"  [WARN] market breadth: page date does not match {date} (18:00更新前の可能性)")
-            return None
-
-        result: dict[str, Any] = {}
-
-        up_match = re.search(r'値上がり銘柄数\s*(\d[,\d]*)', text)
-        down_match = re.search(r'値下がり銘柄数\s*(\d[,\d]*)', text)
-        unchanged_match = re.search(r'変わらず銘柄数\s*(\d[,\d]*)', text)
-
-        if up_match:
-            result["advancing"] = int(up_match.group(1).replace(',', ''))
-        if down_match:
-            result["declining"] = int(down_match.group(1).replace(',', ''))
-        if unchanged_match:
-            result["unchanged"] = int(unchanged_match.group(1).replace(',', ''))
-
-        # 売買代金（百万円）
-        vol_match = re.search(r'売買代金[^\d]*(\d[,\d]*)百万円', text)
-        if vol_match:
-            result["trading_value_million"] = int(vol_match.group(1).replace(',', ''))
-
-        if result:
-            result["source"] = "nikkei_japanidx"
-            return result
-        return None
-    except Exception as e:
-        print(f"  [WARN] market breadth fetch failed: {e}")
-        return None
-
-
 # ---------------------------------------------------------------------------
 # セクション builders
 # ---------------------------------------------------------------------------
@@ -370,11 +317,6 @@ def build_market_summary(date: str) -> dict[str, Any]:
         result["vi"] = vi_data
     else:
         result["vi"] = {"error": "no_data", "source": "rakuten-sec"}
-
-    # 騰落銘柄数・売買代金（日経電子版）
-    breadth = _fetch_market_breadth(date)
-    if breadth:
-        result["market_breadth"] = breadth
 
     return result
 
@@ -656,76 +598,65 @@ def _get_bucket(prob: float | None) -> str:
     return "SKIP"
 
 
-def _build_grok_from_archive(arc_for: pd.DataFrame, date: str) -> dict[str, Any]:
-    """archive データから grok セクションを構築"""
-    details = []
-    for _, row in arc_for.iterrows():
-        # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
-        short_result = _f(row.get("profit_per_100_shares_phase2"))
-        label = ("WIN" if short_result > 0 else "LOSE" if short_result < 0 else "DRAW") if short_result is not None else None
-        prob = row.get("ml_prob")
-        prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
-        bucket = _get_bucket(prob_val)
-        details.append({
-            "ticker": row.get("ticker", ""),
-            "stock_name": row.get("stock_name", ""),
-            "bucket": bucket,
-            "prob": _f(prob_val),
-            "buy_price": _f(row.get("buy_price")),
-            "daily_close": _f(row.get("daily_close")),
-            "shortable": bool(row.get("shortable", False)),
-            "short_category": _short_category(row),
-            "short_result": _f(short_result),
-            "short_result_label": label,
-        })
-
-    # Bucket 分布
-    buckets = [d["bucket"] for d in details if d["bucket"]]
-    bucket_dist = {b: buckets.count(b) for b in ["SHORT", "SKIP"]}
-
-    # SHORT bucket サマリー
-    short_bucket = [d for d in details if d["bucket"] == "SHORT"]
-    short_total = sum(d["short_result"] or 0 for d in short_bucket)
-    short_tradeable = [d for d in short_bucket if d.get("short_category") in ("制度", "いちにち")]
-    short_tradeable_total = sum(d["short_result"] or 0 for d in short_tradeable)
-
-    return {
-        "selection_date": date,
-        "bucket_distribution": bucket_dist,
-        "total": len(details),
-        "details": details,
-        "summary": {
-            "short_bucket_total": _f(short_total),
-            "short_tradeable_total": _f(short_tradeable_total),
-            "short_count": len(short_bucket),
-            "short_win": sum(1 for d in short_bucket if d["short_result_label"] == "WIN"),
-            "short_lose": sum(1 for d in short_bucket if d["short_result_label"] == "LOSE"),
-            "short_draw": sum(1 for d in short_bucket if d["short_result_label"] == "DRAW"),
-        },
-        "source": "archive",
-    }
-
-
 def build_grok(date: str) -> dict[str, Any] | None:
-    """Grok銘柄選定データ"""
+    """当日Grok選定とJ-Quants日足から寄付→大引けの100株ショート損益を作る。"""
     grok = _read_parquet("grok_trending.parquet")
-    if grok is None:
+    prices = _read_parquet("prices_max_1d.parquet")
+    if grok is None or prices is None:
         return None
+    if grok.empty:
+        raise ValueError("grok_trending.parquet is empty")
+    if "date" not in grok.columns or "ticker" not in grok.columns:
+        raise ValueError("grok_trending.parquet lacks date/ticker")
 
-    grok_date = grok["date"].iloc[0]
-    grok_date_str = _to_date(grok_date)
+    grok = grok.copy()
+    grok["ticker"] = grok["ticker"].astype(str)
+    grok_dates = pd.to_datetime(grok["date"], errors="raise").dt.strftime("%Y-%m-%d")
+    unique_grok_dates = sorted(grok_dates.unique().tolist())
+    if unique_grok_dates != [date]:
+        raise ValueError(
+            f"grok_trending date mismatch: target={date}, actual={unique_grok_dates}"
+        )
+    if grok["ticker"].duplicated().any():
+        duplicates = sorted(grok.loc[grok["ticker"].duplicated(), "ticker"].unique())
+        raise ValueError(f"grok_trending has duplicate tickers: {duplicates}")
 
-    # grok_trending は最新選定のみ保持。対象日と不一致なら archive から取得
-    if grok_date_str != date:
-        print(f"  [INFO] grok_trending date={grok_date_str} != target={date}, trying archive")
-        arc = _read_parquet("backtest/grok_trending_archive.parquet")
-        if arc is not None and "selection_date" in arc.columns:
-            arc_for = arc[arc["selection_date"] == date]
-            if not arc_for.empty:
-                # archive からの構築（ml_prob → bucket）
-                return _build_grok_from_archive(arc_for, date)
-        print(f"  [INFO] No grok data for {date}")
-        return None
+    required_price_columns = {"date", "ticker", "Open", "Close"}
+    missing_price_columns = sorted(required_price_columns - set(prices.columns))
+    if missing_price_columns:
+        raise ValueError(f"prices_max_1d missing columns: {missing_price_columns}")
+
+    prices = prices.copy()
+    prices["ticker"] = prices["ticker"].astype(str)
+    price_dates = pd.to_datetime(prices["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    selected_tickers = set(grok["ticker"])
+    target_prices = prices.loc[
+        price_dates.eq(date) & prices["ticker"].isin(selected_tickers),
+        ["ticker", "Open", "Close"],
+    ].copy()
+    if target_prices["ticker"].duplicated().any():
+        duplicates = sorted(
+            target_prices.loc[target_prices["ticker"].duplicated(), "ticker"].unique()
+        )
+        raise ValueError(f"prices_max_1d has duplicate target rows: {duplicates}")
+
+    missing_tickers = sorted(selected_tickers - set(target_prices["ticker"]))
+    if missing_tickers:
+        raise ValueError(f"prices_max_1d lacks target-day Grok rows: {missing_tickers}")
+    target_prices["Open"] = pd.to_numeric(target_prices["Open"], errors="coerce")
+    target_prices["Close"] = pd.to_numeric(target_prices["Close"], errors="coerce")
+    null_price_rows = target_prices[target_prices[["Open", "Close"]].isna().any(axis=1)]
+    if not null_price_rows.empty:
+        raise ValueError(
+            "prices_max_1d has null target-day Open/Close: "
+            f"{sorted(null_price_rows['ticker'].tolist())}"
+        )
+
+    target_prices = target_prices.rename(
+        columns={"Open": "target_open", "Close": "target_close"}
+    )
+    grok = grok.merge(target_prices, on="ticker", how="left", validate="one_to_one")
+    grok_date_str = date
 
     # Bucket 分布（prob_up → bucket）
     bucket_list = []
@@ -735,33 +666,19 @@ def build_grok(date: str) -> dict[str, Any] | None:
         bucket_list.append(_get_bucket(prob_val))
     bucket_dist = {b: bucket_list.count(b) for b in ["SHORT", "SKIP"]}
 
-    # Archive から P2 + daily_close + buy_price 結合
-    arc = _read_parquet("backtest/grok_trending_archive.parquet")
-    p2_map: dict[str, float] = {}
-    close_map: dict[str, float] = {}
-    open_map: dict[str, float] = {}
-    if arc is not None:
-        arc_for = arc[arc["selection_date"] == grok_date_str]
-        for _, r in arc_for.iterrows():
-            p2_map[r["ticker"]] = r.get("profit_per_100_shares_phase2", None)
-            close_map[r["ticker"]] = r.get("daily_close", None)
-            open_map[r["ticker"]] = r.get("buy_price", None)
-
     # 銘柄詳細
-    # profit_per_100_shares_phase2 = (buy_price - daily_close) * 100 = ショート損益そのもの
     details = []
     for i, (_, row) in enumerate(grok.iterrows()):
         ticker = row["ticker"]
-        short_result = p2_map.get(ticker)
-        if short_result is not None:
-            if short_result > 0:
-                label = "WIN"
-            elif short_result < 0:
-                label = "LOSE"
-            else:
-                label = "DRAW"
+        buy_price = float(row["target_open"])
+        daily_close = float(row["target_close"])
+        short_result = (buy_price - daily_close) * 100.0
+        if short_result > 0:
+            label = "WIN"
+        elif short_result < 0:
+            label = "LOSE"
         else:
-            label = None
+            label = "DRAW"
 
         prob = row.get("prob_up")
         prob_val = float(prob) if prob is not None and not pd.isna(prob) else None
@@ -771,8 +688,8 @@ def build_grok(date: str) -> dict[str, Any] | None:
             "stock_name": row.get("stock_name", ""),
             "bucket": bucket_list[i],
             "prob": _f(prob_val),
-            "buy_price": _f(open_map.get(ticker, row.get("Close", row.get("close")))),
-            "daily_close": _f(close_map.get(ticker)),
+            "buy_price": _f(buy_price),
+            "daily_close": _f(daily_close),
             "shortable": bool(row.get("shortable", False)),
             "short_category": _short_category(row),
             "short_result": _f(short_result),
@@ -798,6 +715,7 @@ def build_grok(date: str) -> dict[str, Any] | None:
             "short_lose": sum(1 for d in short_bucket if d["short_result_label"] == "LOSE"),
             "short_draw": sum(1 for d in short_bucket if d["short_result_label"] == "DRAW"),
         },
+        "source": "grok_trending_and_prices_max_1d",
     }
 
 
@@ -973,7 +891,7 @@ def build_jquants_margin(date: str) -> dict[str, Any] | None:
 
 
 def build_jquants_breadth(date: str) -> dict[str, Any] | None:
-    """市場別騰落数（全体/プライム/スタンダード/グロース）"""
+    """J-Quants当日値による市場別騰落数と売買代金。"""
     # 当日データ
     curr_data = _jquants_cmd("eq", "daily", "--date", date)
     if not curr_data:
@@ -1003,15 +921,24 @@ def build_jquants_breadth(date: str) -> dict[str, Any] | None:
 
     # 市場別カウント
     counts = {
-        "total": {"adv": 0, "dec": 0},
-        "prime": {"adv": 0, "dec": 0},
-        "standard": {"adv": 0, "dec": 0},
-        "growth": {"adv": 0, "dec": 0},
+        "total": {"adv": 0, "dec": 0, "unchanged": 0},
+        "prime": {"adv": 0, "dec": 0, "unchanged": 0},
+        "standard": {"adv": 0, "dec": 0, "unchanged": 0},
+        "growth": {"adv": 0, "dec": 0, "unchanged": 0},
     }
+    trading_value_yen = {key: 0.0 for key in counts}
     mkt_map = {"プライム": "prime", "スタンダード": "standard", "グロース": "growth"}
 
     for d in curr_data:
         code = d["Code"]
+        mkt_nm = master.get(code, {}).get("MktNm", "")
+        mkt_key = mkt_map.get(mkt_nm)
+        value = d.get("Va")
+        if value is not None and not pd.isna(value):
+            numeric_value = float(value)
+            trading_value_yen["total"] += numeric_value
+            if mkt_key:
+                trading_value_yen[mkt_key] += numeric_value
         if d.get("C") is None or code not in prev_close:
             continue
         curr_c = float(d["C"])
@@ -1022,11 +949,9 @@ def build_jquants_breadth(date: str) -> dict[str, Any] | None:
         elif curr_c < prev_c:
             direction = "dec"
         else:
-            continue
+            direction = "unchanged"
 
         counts["total"][direction] += 1
-        mkt_nm = master.get(code, {}).get("MktNm", "")
-        mkt_key = mkt_map.get(mkt_nm)
         if mkt_key:
             counts[mkt_key][direction] += 1
 
@@ -1035,12 +960,18 @@ def build_jquants_breadth(date: str) -> dict[str, Any] | None:
         "prev_date": prev_date,
         "total_adv": counts["total"]["adv"],
         "total_dec": counts["total"]["dec"],
+        "total_unchanged": counts["total"]["unchanged"],
+        "total_trading_value_million": int(round(trading_value_yen["total"] / 1e6)),
         "prime_adv": counts["prime"]["adv"],
         "prime_dec": counts["prime"]["dec"],
+        "prime_unchanged": counts["prime"]["unchanged"],
+        "prime_trading_value_million": int(round(trading_value_yen["prime"] / 1e6)),
         "standard_adv": counts["standard"]["adv"],
         "standard_dec": counts["standard"]["dec"],
+        "standard_unchanged": counts["standard"]["unchanged"],
         "growth_adv": counts["growth"]["adv"],
         "growth_dec": counts["growth"]["dec"],
+        "growth_unchanged": counts["growth"]["unchanged"],
         "source": "jquants_eq_daily",
     }
 
@@ -1082,6 +1013,83 @@ def build_anomaly(date: str) -> dict[str, Any] | None:
     return result
 
 
+def _critical_validation_errors(result: dict[str, Any]) -> list[str]:
+    """公開してはいけない欠損・異なるデータ系統を列挙する。"""
+    errors: list[str] = []
+    report_date = result.get("date")
+
+    grok = result.get("grok")
+    if not isinstance(grok, dict):
+        errors.append("grok section is missing")
+    else:
+        details = grok.get("details")
+        if grok.get("selection_date") != report_date:
+            errors.append("grok selection_date differs from report date")
+        if not isinstance(details, list) or len(details) != grok.get("total") or not details:
+            errors.append("grok details count is incomplete")
+        else:
+            required = ("buy_price", "daily_close", "short_result", "short_result_label")
+            for key in required:
+                missing = [d.get("ticker") for d in details if d.get(key) is None]
+                if missing:
+                    errors.append(f"grok {key} is null: {missing}")
+            inconsistent: list[str] = []
+            for detail in details:
+                if any(detail.get(key) is None for key in required):
+                    continue
+                buy_price = float(detail["buy_price"])
+                daily_close = float(detail["daily_close"])
+                short_result = float(detail["short_result"])
+                expected_result = (buy_price - daily_close) * 100.0
+                expected_label = (
+                    "WIN" if expected_result > 0
+                    else "LOSE" if expected_result < 0
+                    else "DRAW"
+                )
+                if not np.isclose(short_result, expected_result, rtol=0.0, atol=1e-6):
+                    inconsistent.append(str(detail.get("ticker")))
+                elif detail.get("short_result_label") != expected_label:
+                    inconsistent.append(str(detail.get("ticker")))
+            if inconsistent:
+                errors.append(f"grok short P&L formula/label mismatch: {inconsistent}")
+        if grok.get("source") != "grok_trending_and_prices_max_1d":
+            errors.append("grok source is not the current-day parquet pair")
+
+    jq = result.get("jquants_breadth")
+    required_jq = (
+        "prime_adv",
+        "prime_dec",
+        "prime_unchanged",
+        "prime_trading_value_million",
+    )
+    if not isinstance(jq, dict):
+        errors.append("jquants_breadth section is missing")
+    else:
+        if jq.get("date") != report_date or jq.get("source") != "jquants_eq_daily":
+            errors.append("jquants_breadth source/date is invalid")
+        missing_jq = [key for key in required_jq if jq.get(key) is None]
+        if missing_jq:
+            errors.append(f"jquants_breadth fields are missing: {missing_jq}")
+
+    market_summary = result.get("market_summary")
+    breadth = market_summary.get("market_breadth") if isinstance(market_summary, dict) else None
+    if not isinstance(breadth, dict):
+        errors.append("market_summary.market_breadth is missing")
+    elif isinstance(jq, dict):
+        expected = {
+            "advancing": jq.get("prime_adv"),
+            "declining": jq.get("prime_dec"),
+            "unchanged": jq.get("prime_unchanged"),
+            "trading_value_million": jq.get("prime_trading_value_million"),
+            "source": "jquants_eq_daily",
+        }
+        actual = {key: breadth.get(key) for key in expected}
+        if actual != expected:
+            errors.append(f"market breadth differs from J-Quants Prime: {actual} != {expected}")
+
+    return errors
+
+
 # ---------------------------------------------------------------------------
 # メイン
 # ---------------------------------------------------------------------------
@@ -1112,11 +1120,19 @@ def main(target_date: str | None = None) -> int:
     result["jquants_short_ratio"] = _safe(lambda: build_jquants_short_ratio(date), "jquants_short_ratio")
     result["jquants_margin"] = _safe(lambda: build_jquants_margin(date), "jquants_margin")
     result["jquants_breadth"] = _safe(lambda: build_jquants_breadth(date), "jquants_breadth")
+    jq_breadth = result.get("jquants_breadth")
+    market_summary = result.get("market_summary")
+    if isinstance(jq_breadth, dict) and isinstance(market_summary, dict):
+        market_summary["market_breadth"] = {
+            "date": jq_breadth.get("date"),
+            "advancing": jq_breadth.get("prime_adv"),
+            "declining": jq_breadth.get("prime_dec"),
+            "unchanged": jq_breadth.get("prime_unchanged"),
+            "trading_value_million": jq_breadth.get("prime_trading_value_million"),
+            "source": "jquants_eq_daily",
+        }
     # 外部CSV取得失敗分を web_search_required に追加
     web_search: list[str] = []
-    ms = result.get("market_summary") or {}
-    if not isinstance(ms.get("market_breadth"), dict):
-        web_search.extend(["騰落銘柄数", "売買代金"])
     rates = result.get("rates") or {}
     if isinstance(rates.get("overnight_call"), dict) and "error" in rates["overnight_call"]:
         web_search.append("無担保コールO/N金利")
@@ -1148,6 +1164,13 @@ def main(target_date: str | None = None) -> int:
         "missing_sections": missing_sections,
         "manual_followup_required": sorted(set(web_search + missing_sections)),
     }
+
+    critical_errors = _critical_validation_errors(result)
+    if critical_errors:
+        print("  [ERROR] Critical report validation failed:")
+        for error in critical_errors:
+            print(f"    - {error}")
+        return 1
 
     # セクション別ステータス
     for key in ["market_summary", "n225_topix_divergence", "sectors", "foreign_markets",

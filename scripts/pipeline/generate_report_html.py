@@ -388,12 +388,12 @@ def _build_market_summary(data: dict) -> str:
         lines.append('  <div style="margin-top:16px;"><div class="grid-3">')
         lines.append(f'    <div class="stat-card"><div class="label">騰落銘柄数（プライム）</div>')
         lines.append(f'      <div class="value num-pos" style="font-size:1.2rem;">{adv:,} / {dec:,}</div>')
-        lines.append(f'      <div class="sub">値上がり{adv:,} 値下がり{dec:,} <span class="evidence-label evidence-fact">日経電子版</span></div></div>')
+        lines.append(f'      <div class="sub">値上がり{adv:,} 値下がり{dec:,} <span class="evidence-label evidence-fact">J-Quants API</span></div></div>')
         if tv is not None:
             tv_oku = tv / 100  # 百万円→億円
             lines.append(f'    <div class="stat-card"><div class="label">売買代金</div>')
             lines.append(f'      <div class="value" style="font-size:1.2rem;">{tv_oku:,.0f}億円</div>')
-            lines.append(f'      <div class="sub">{tv:,}百万円 <span class="evidence-label evidence-fact">日経電子版</span></div></div>')
+            lines.append(f'      <div class="sub">{tv:,}百万円 <span class="evidence-label evidence-fact">J-Quants API</span></div></div>')
         if n_high is not None and n_low is not None:
             intraday = n_high - n_low
             lines.append(f'    <div class="stat-card"><div class="label">日中値幅</div>')
@@ -956,14 +956,14 @@ def _build_sources(data: dict) -> str:
     lines.append(f'    <li>セクター: S3 sectors_prices_max_1d.parquet（33業種）</li>')
     lines.append(f'    <li>アジア市場: report_data_{date}.json（parquet経由）</li>')
     lines.append(f'    <li>コモディティ・NKD先物: report_data_{date}.json（yfinance経由）</li>')
-    lines.append(f'    <li>Grok選定: report_data_{date}.json + S3 grok_trending.parquet + grok_trending_archive</li>')
+    lines.append(f'    <li>Grok選定: report_data_{date}.json + S3 grok_trending.parquet + prices_max_1d.parquet</li>')
     lines.append(f'    <li>カレンダーアノマリー: report_data_{date}.json（market_anomaly.parquet経由）</li>')
     lines.append('  </ul>')
 
     lines.append('  <h3>J-Quants API <span class="evidence-label evidence-fact">事実</span></h3>')
     lines.append('  <ul class="source-list">')
     lines.append(f'    <li>売買代金上位・値上がり率/値下がり率: jquants_volume_leaders</li>')
-    lines.append(f'    <li>市場別騰落数: jquants_breadth</li>')
+    lines.append(f'    <li>市場別騰落数・プライム売買代金: jquants_breadth</li>')
     lines.append(f'    <li>投資部門別: jquants_investor_types</li>')
     lines.append(f'    <li>信用残: jquants_margin</li>')
     lines.append('  </ul>')
@@ -972,7 +972,6 @@ def _build_sources(data: dict) -> str:
     lines.append('  <ul class="source-list">')
     lines.append(f'    <li>USD/JPY: yfinance / currency_prices_max_1d.parquet</li>')
     lines.append(f'    <li>米国10年債: yfinance ^TNX</li>')
-    lines.append(f'    <li>騰落銘柄数・売買代金: <a href="https://www.nikkei.com/markets/kabu/japanidx/" target="_blank">日経電子版</a></li>')
     lines.append(f'    <li>日経VI: <a href="https://www.investing.com/indices/nikkei-volatility" target="_blank">investing.com JNIVE</a></li>')
     lines.append('  </ul>')
 
