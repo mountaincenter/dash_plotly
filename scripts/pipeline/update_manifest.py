@@ -26,6 +26,7 @@ from common_cfg.s3cfg import load_s3_config
 from scripts.lib.protected_archive_s3 import (
     file_sha256,
     read_remote_manifest,
+    verify_publish_state,
 )
 from scripts.pipeline.manage_all_market_microstructure import (
     MINUTE_S3_ROOT,
@@ -113,8 +114,8 @@ UPLOAD_FILES = [
     "prices_topix500_oc.parquet",
 ]
 
-# Canonical files are recorded in manifest.json but are never part of the
-# generic upload list. This pipeline treats them as read-only.
+# Canonical files are recorded in manifest.json but are not part of the generic
+# upload list. Publishing them requires an explicit or separately guarded path.
 PROTECTED_FILES = [
     "backtest/grok_trending_archive.parquet",
 ]
@@ -128,6 +129,9 @@ PRESERVE_IF_MISSING_FILES = {
 }
 
 MANIFEST_PATH = PARQUET_DIR / "manifest.json"
+ARCHIVE_PUBLISH_STATE_PATH = (
+    PARQUET_DIR / "backtest" / "grok_trending_archive.publish.json"
+)
 TRENDING_NAME = "grok_trending.parquet"
 
 
@@ -207,9 +211,23 @@ def load_existing_manifest(*, use_s3: bool) -> Dict[str, any]:
     return {"files": {}}
 
 
+def load_archive_publish_state() -> Dict[str, any] | None:
+    if not ARCHIVE_PUBLISH_STATE_PATH.exists():
+        return None
+    try:
+        state = json.loads(ARCHIVE_PUBLISH_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception as error:
+        raise RuntimeError(f"Invalid archive publish receipt: {error}") from error
+    if not isinstance(state, dict):
+        raise RuntimeError("Archive publish receipt is not a JSON object")
+    return state
+
+
 def get_protected_file_entry(
     filename: str,
     existing_entry: Dict[str, any] | None = None,
+    *,
+    use_s3: bool,
 ) -> Dict[str, any]:
     """Build or preserve a checksum-pinned canonical manifest entry."""
     file_path = PARQUET_DIR / filename
@@ -239,9 +257,9 @@ def get_protected_file_entry(
         ),
         "protected": True,
         "canonical": True,
-        "upload_policy": "manual_explicit_only",
+        "upload_policy": "explicit_or_guarded_pipeline",
         "automatic_bulk_upload": False,
-        "protection_reason": "canonical archive; automated mutation prohibited",
+        "protection_reason": "canonical archive; checksum verification required",
     }
     entry["sha256"] = file_sha256(file_path)
 
@@ -258,10 +276,33 @@ def get_protected_file_entry(
     if existing_sha == entry["sha256"]:
         return {**existing_entry, **entry} if existing_entry else entry
 
-    raise RuntimeError(
-        "Protected canonical archive checksum differs from the existing manifest; "
-        "automated manifest advancement is prohibited"
+    state = load_archive_publish_state()
+    if not state or state.get("sha256") != entry["sha256"]:
+        raise RuntimeError(
+            "Protected archive checksum changed without a matching guarded publish receipt"
+        )
+    if not use_s3:
+        raise RuntimeError(
+            "Protected archive checksum changed in local mode; S3 verification is disabled"
+        )
+    verify_publish_state(load_s3_config(), state)
+    entry.update(
+        {
+            "s3_key": state.get("s3_key"),
+            "s3_etag": state.get("s3_etag"),
+            "s3_version_id": state.get("s3_version_id"),
+            "s3_checksum_sha256_base64": state.get(
+                "s3_checksum_sha256_base64"
+            ),
+            "s3_verified_at": state.get("verified_at"),
+            "s3_sync_status": state.get("status"),
+            "source_s3_etag": state.get("source_s3_etag"),
+            "source_s3_version_id": state.get("source_s3_version_id"),
+            "data_source": state.get("data_source"),
+            "segment_definition": state.get("segment_definition"),
+        }
     )
+    return {**(existing_entry or {}), **entry}
 
 
 def get_grok_metadata() -> Dict[str, any]:
@@ -323,6 +364,7 @@ def generate_manifest(
     existing_manifest: Dict[str, any] | None = None,
     *,
     preserve_missing: bool = False,
+    use_s3: bool = False,
     preserve_grok: bool = False,
 ) -> Dict[str, any]:
     """manifest.jsonを生成"""
@@ -398,7 +440,11 @@ def generate_manifest(
             if isinstance((existing_manifest or {}).get("files", {}), dict)
             else None
         )
-        entry = get_protected_file_entry(filename, existing_entry)
+        entry = get_protected_file_entry(
+            filename,
+            existing_entry,
+            use_s3=use_s3,
+        )
         manifest["files"][filename] = entry
         status = "✓" if entry["exists"] else "✗"
         print(
@@ -441,7 +487,7 @@ def upload_files_to_s3() -> bool:
             print(f"  [WARN] {filename} not found, skipping")
 
     # 正本archiveはmanifestにchecksum付きで記録するが、一括アップロードはしない。
-    # 更新はこのpipelineの対象外。正本は読取専用である。
+    # 更新は明示操作または別のguarded pipelineだけに限定する。
     backtest_dir = PARQUET_DIR / "backtest"
     archive_file = backtest_dir / "grok_trending_archive.parquet"
 
@@ -664,6 +710,7 @@ def main(*, manifest_only: bool = False) -> int:
         manifest = generate_manifest(
             existing_manifest,
             preserve_missing=manifest_only,
+            use_s3=use_s3,
             preserve_grok=not manifest_only,
         )
         save_manifest(manifest)

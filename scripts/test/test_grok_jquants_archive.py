@@ -38,6 +38,7 @@ from scripts.lib.protected_archive_s3 import (
     download_verified_archive,
     publish_guarded_archive,
     publish_guarded_manifest_entry,
+    verify_publish_state,
 )
 from scripts.pipeline import update_manifest
 from scripts.pipeline import save_backtest_to_archive as save_backtest
@@ -221,16 +222,16 @@ class JQuantsExecutionTests(unittest.TestCase):
             r'data/parquet/backtest/grok_trending_archive\.parquet\s+'
             r'(?:\\\s*)?"s3://',
         )
-        derived_script = (
+        archive_script = (
             Path(__file__).resolve().parents[2]
             / "scripts"
             / "pipeline"
             / "save_backtest_to_archive.py"
         ).read_text(encoding="utf-8")
-        self.assertNotIn("publish_guarded_archive(", derived_script)
-        self.assertNotIn(
-            "os.replace(candidate_path, BACKTEST_ARCHIVE_PATH)",
-            derived_script,
+        self.assertIn("publish_guarded_archive(", archive_script)
+        self.assertIn(
+            "os.replace(archive_candidate_path, BACKTEST_ARCHIVE_PATH)",
+            archive_script,
         )
         feature_script = (
             Path(__file__).resolve().parents[2]
@@ -792,37 +793,59 @@ class ProtectedArchiveS3Tests(unittest.TestCase):
                 ],
             )
 
-    def test_canonical_archive_publication_is_disabled(self) -> None:
+    def test_guarded_publish_and_receipt_verification(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "source.parquet"
             candidate_path = Path(directory) / "candidate.parquet"
             candidate_path.write_bytes(b"candidate archive")
-            with self.assertRaisesRegex(ProtectedArchiveError, "read-only"):
-                publish_guarded_archive(
-                    self.cfg,
-                    candidate_path,
-                    {},
-                    backtest_date="2026-07-10",
-                    row_count=10,
-                    client=self.client,
-                )
-        self.assertEqual(self.client.archive, b"source archive")
-        self.assertEqual(self.client.version, "v1")
-
-    def test_canonical_manifest_advancement_is_disabled(self) -> None:
-        with self.assertRaisesRegex(ProtectedArchiveError, "read-only"):
-            publish_guarded_manifest_entry(
+            source = download_verified_archive(
+                self.cfg, source_path, client=self.client
+            )
+            state = publish_guarded_archive(
                 self.cfg,
-                {},
-                {},
+                candidate_path,
+                source,
+                backtest_date="2026-07-10",
+                row_count=10,
+                client=self.client,
+            )
+            manifest_state = publish_guarded_manifest_entry(
+                self.cfg,
+                source,
+                state,
                 columns=["backtest_date", "ticker"],
                 date_min="2025-11-04",
                 date_max="2026-07-10",
                 unique_ticker_date_keys=10,
                 client=self.client,
             )
-        self.assertEqual(self.client.archive, b"source archive")
-        self.assertEqual(self.client.version, "v1")
-        self.assertEqual(self.client.manifest_version, "m1")
+            verify_publish_state(self.cfg, state, client=self.client)
+            self.assertEqual(state["s3_version_id"], "v2")
+            self.assertEqual(self.client.metadata["data-source"], "jquants-1m")
+            self.assertEqual(manifest_state["manifest_s3_version_id"], "m2")
+            entry = json.loads(self.client.manifest)["files"][
+                "backtest/grok_trending_archive.parquet"
+            ]
+            self.assertEqual(entry["sha256"], state["sha256"])
+
+    def test_stale_source_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "source.parquet"
+            candidate_path = Path(directory) / "candidate.parquet"
+            candidate_path.write_bytes(b"candidate archive")
+            source = download_verified_archive(
+                self.cfg, source_path, client=self.client
+            )
+            self.client.etag = '"changed"'
+            with self.assertRaises(ProtectedArchiveError):
+                publish_guarded_archive(
+                    self.cfg,
+                    candidate_path,
+                    source,
+                    backtest_date="2026-07-10",
+                    row_count=10,
+                    client=self.client,
+                )
 
     def test_generic_s3_uploader_rejects_canonical_archive(self) -> None:
         protected = Path("data/parquet/backtest/grok_trending_archive.parquet")
@@ -939,7 +962,9 @@ class ProtectedManifestEntryTests(unittest.TestCase):
             root = Path(directory)
             with patch.object(update_manifest, "PARQUET_DIR", root):
                 entry = update_manifest.get_protected_file_entry(
-                    "backtest/grok_trending_archive.parquet", existing
+                    "backtest/grok_trending_archive.parquet",
+                    existing,
+                    use_s3=False,
                 )
         self.assertEqual(entry, existing)
 
@@ -960,6 +985,7 @@ class ProtectedManifestEntryTests(unittest.TestCase):
                             "canonical": True,
                             "sha256": "different",
                         },
+                        use_s3=True,
                     )
 
 

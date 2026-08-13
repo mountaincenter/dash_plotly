@@ -13,13 +13,13 @@ Grok trending銘柄のバックテスト結果をアーカイブに保存
     - J-Quants日足とOHLCVを照合し、不整合時は日次保存全体を中止
     - バックテスト結果を計算（Phase1, Phase2, Phase3）
     - 前場・全日の高値・安値・最大上昇率・最大下落率を計算
-    - grok_trending_YYYYMMDD.parquet を派生ファイルとして保存
-    - grok_trending_archive.parquet は読取専用の照合基準として使用
-    - 派生ファイルのみS3にアップロード
+    - grok_trending_YYYYMMDD.parquet として保存
+    - grok_trending_archive.parquet に追加
+    - S3にアップロード
 
 出力:
     - data/parquet/backtest/grok_trending_YYYYMMDD.parquet
-    - data/parquet/backtest/grok_trending_YYYYMMDD.parquet
+    - data/parquet/backtest/grok_trending_archive.parquet
 """
 
 from __future__ import annotations
@@ -45,10 +45,13 @@ from scripts.lib.grok_jquants_backtest import (
     JQuantsBacktestDataError,
     MARKET_CAP_PROVENANCE_COLUMNS,
     SEGMENT_TARGETS,
+    assert_archive_history_unchanged,
+    assert_archive_target_rows_preserved,
     build_derived_backtest_rows,
     calculate_segment_pnl,
     executable_exit,
     has_trade_after_entry,
+    merge_archive_date,
     normalize_daily_prices,
     normalize_minute_bars,
     session_last_close,
@@ -65,6 +68,9 @@ from scripts.lib.jquants_daily_fields import (
 from scripts.lib.protected_archive_s3 import (
     download_verified_archive,
     file_sha256,
+    publish_guarded_archive,
+    publish_guarded_manifest_entry,
+    write_publish_state,
 )
 from scripts.pipeline.add_market_cap_to_grok_trending import (
     attach_official_market_cap_asof,
@@ -75,6 +81,7 @@ BACKTEST_DIR = PARQUET_DIR / "backtest"
 BACKTEST_DIR.mkdir(parents=True, exist_ok=True)
 GROK_TRENDING_PATH = BACKTEST_DIR / "grok_trending_temp.parquet"
 BACKTEST_ARCHIVE_PATH = BACKTEST_DIR / "grok_trending_archive.parquet"
+ARCHIVE_PUBLISH_STATE_PATH = BACKTEST_DIR / "grok_trending_archive.publish.json"
 FUTURES_PATH = PARQUET_DIR / "futures_prices_60d_5m.parquet"
 JQUANTS_MINUTE_WATCH_PATH = PARQUET_DIR / "jquants_minute_watch.parquet"
 JQUANTS_DAILY_PATH = PARQUET_DIR / "prices_max_1d.parquet"
@@ -1177,11 +1184,11 @@ def assert_parquet_roundtrip_equal(
         )
 
 
-def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
-    """Validate and publish one derived day while keeping the archive read-only."""
+def save_to_archive(df: pd.DataFrame, backtest_date: str) -> None:
+    """Validate, conditionally publish, then install one complete J-Quants day."""
     cfg = load_s3_config()
     if not cfg or not cfg.bucket:
-        raise RuntimeError("S3 is not configured; derived daily publish refused")
+        raise RuntimeError("S3 is not configured; canonical archive publish refused")
 
     if df.empty:
         raise JQuantsBacktestDataError("Cannot save an empty derived result batch")
@@ -1195,7 +1202,7 @@ def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
         raise JQuantsBacktestDataError("Result batch contains a non-target date")
     if not TRADING_CALENDAR_PATH.exists() or not JQUANTS_DAILY_FEATURES_PATH.exists():
         raise JQuantsBacktestDataError(
-            "Calendar/daily sidecar disappeared before derived daily publish"
+            "Calendar/daily sidecar disappeared before canonical archive publish"
         )
     trading_calendar = pd.read_parquet(TRADING_CALENDAR_PATH)
     daily_features = pd.read_parquet(JQUANTS_DAILY_FEATURES_PATH)
@@ -1326,21 +1333,13 @@ def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
     with TemporaryDirectory(prefix="grok-archive-", dir=BACKTEST_DIR) as temp_dir:
         temp_root = Path(temp_dir)
         source_path = temp_root / "source.parquet"
-        candidate_path = temp_root / "derived-day.parquet"
+        dated_candidate_path = temp_root / "derived-day.parquet"
+        archive_candidate_path = temp_root / "candidate.parquet"
         readback_path = temp_root / "s3-readback.parquet"
 
         print("[INFO] Downloading checksum-pinned canonical archive from S3")
         source_state = download_verified_archive(cfg, source_path)
         source_archive = pd.read_parquet(source_path)
-        if not BACKTEST_ARCHIVE_PATH.exists():
-            raise JQuantsBacktestDataError(
-                "Local protected archive is absent; S3/local equality cannot be proven"
-            )
-        local_archive_sha = file_sha256(BACKTEST_ARCHIVE_PATH)
-        if local_archive_sha != source_state["sha256"]:
-            raise JQuantsBacktestDataError(
-                "Local protected archive differs from checksum-pinned S3 archive"
-            )
 
         derived_rows = build_derived_backtest_rows(
             source_archive,
@@ -1350,37 +1349,67 @@ def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
         )
         date_str = target.replace("-", "")
         dated_file = BACKTEST_DIR / f"grok_trending_{date_str}.parquet"
-        derived_rows.to_parquet(candidate_path, index=False)
+        derived_rows.to_parquet(dated_candidate_path, index=False)
 
-        reloaded = pd.read_parquet(candidate_path)
-        if len(reloaded) != len(derived_rows):
+        dated_reloaded = pd.read_parquet(dated_candidate_path)
+        if len(dated_reloaded) != len(derived_rows):
             raise JQuantsBacktestDataError(
                 "Derived daily row count changed after parquet serialization"
             )
-        if reloaded[["backtest_date", "ticker"]].duplicated().any():
+        if dated_reloaded[["backtest_date", "ticker"]].duplicated().any():
             raise JQuantsBacktestDataError(
                 "Derived daily artifact contains duplicate keys after serialization"
             )
-        derived_dates = pd.to_datetime(reloaded["backtest_date"], errors="raise")
+        derived_dates = pd.to_datetime(
+            dated_reloaded["backtest_date"], errors="raise"
+        )
         if not derived_dates.dt.strftime("%Y-%m-%d").eq(target).all():
             raise JQuantsBacktestDataError(
                 "Derived daily artifact contains a non-target date"
             )
         try:
-            assert_parquet_roundtrip_equal(derived_rows, reloaded)
+            assert_parquet_roundtrip_equal(derived_rows, dated_reloaded)
         except AssertionError as error:
             raise JQuantsBacktestDataError(
                 f"Derived daily artifact changed after serialization: {error}"
             ) from error
 
-        # Install only the reproducible derived day. The protected archive path
-        # is never an output target.
-        os.replace(candidate_path, dated_file)
-        if file_sha256(BACKTEST_ARCHIVE_PATH) != local_archive_sha:
+        canonical_rows = dated_reloaded.loc[:, source_archive.columns].copy()
+        candidate = merge_archive_date(source_archive, canonical_rows, target)
+        candidate.to_parquet(archive_candidate_path, index=False)
+
+        archive_reloaded = pd.read_parquet(archive_candidate_path)
+        if len(archive_reloaded) != len(candidate):
             raise JQuantsBacktestDataError(
-                "Protected local archive changed while building the derived day"
+                "Candidate archive row count changed after parquet serialization"
             )
-        print(f"[OK] Saved derived J-Quants day: {dated_file}")
+        if archive_reloaded[["backtest_date", "ticker"]].duplicated().any():
+            raise JQuantsBacktestDataError(
+                "Candidate archive contains duplicate keys after serialization"
+            )
+        assert_archive_history_unchanged(source_archive, archive_reloaded, target)
+        assert_archive_target_rows_preserved(
+            canonical_rows,
+            archive_reloaded,
+            target,
+        )
+        candidate_dates = pd.to_datetime(
+            archive_reloaded["backtest_date"], errors="raise"
+        )
+        expected_rows = len(source_archive) - int(
+            pd.to_datetime(source_archive["backtest_date"], errors="raise")
+            .dt.strftime("%Y-%m-%d")
+            .eq(target)
+            .sum()
+        ) + len(canonical_rows)
+        if len(archive_reloaded) != expected_rows:
+            raise JQuantsBacktestDataError(
+                "Candidate archive row count mismatch: "
+                f"{len(archive_reloaded)} != {expected_rows}"
+            )
+
+        os.replace(dated_candidate_path, dated_file)
+        print(f"[OK] Saved dated J-Quants day: {dated_file}")
 
         s3_key_dated = f"backtest/grok_trending_{date_str}.parquet"
         if not upload_file(cfg, dated_file, s3_key_dated):
@@ -1390,10 +1419,47 @@ def save_derived_backtest(df: pd.DataFrame, backtest_date: str) -> None:
         if file_sha256(readback_path) != file_sha256(dated_file):
             raise RuntimeError(f"S3 readback checksum mismatch: {s3_key_dated}")
 
-    print(f"[OK] Derived daily backtest published: {dated_file}")
-    print(f"     Records: {len(reloaded)}")
-    print(f"     Target date: {target}")
-    print(f"     Canonical archive unchanged: sha256={local_archive_sha}")
+        publish_state = publish_guarded_archive(
+            cfg,
+            archive_candidate_path,
+            source_state,
+            backtest_date=target,
+            row_count=len(archive_reloaded),
+        )
+        publish_state.update(
+            {
+                "date_min": candidate_dates.min().date().isoformat(),
+                "date_max": candidate_dates.max().date().isoformat(),
+                "unique_ticker_date_keys": int(
+                    archive_reloaded[["ticker", "backtest_date"]]
+                    .drop_duplicates()
+                    .shape[0]
+                ),
+                "columns": archive_reloaded.columns.tolist(),
+            }
+        )
+        manifest_state = publish_guarded_manifest_entry(
+            cfg,
+            source_state,
+            publish_state,
+            columns=archive_reloaded.columns.tolist(),
+            date_min=publish_state["date_min"],
+            date_max=publish_state["date_max"],
+            unique_ticker_date_keys=publish_state["unique_ticker_date_keys"],
+        )
+        publish_state.update(manifest_state)
+        write_publish_state(ARCHIVE_PUBLISH_STATE_PATH, publish_state)
+
+        # Install locally only after S3 has accepted and verified the guarded write.
+        os.replace(archive_candidate_path, BACKTEST_ARCHIVE_PATH)
+
+    print(f"[OK] Guarded canonical archive publish: {BACKTEST_ARCHIVE_PATH}")
+    print(f"     Total records: {len(archive_reloaded)}")
+    print(
+        f"     Date range: {candidate_dates.min().date()} "
+        f"to {candidate_dates.max().date()}"
+    )
+    print(f"     S3 VersionId: {publish_state.get('s3_version_id')}")
 
 
 def main() -> int:
@@ -1406,12 +1472,12 @@ def main() -> int:
             print("[ERROR] No backtest results to save")
             return 1
 
-        # 2. 正本を変更せず、日付別の派生バックテストを保存
+        # 2. アーカイブに保存
         backtest_date = df_results['backtest_date'].iloc[0]
-        save_derived_backtest(df_results, backtest_date)
+        save_to_archive(df_results, backtest_date)
 
         print("\n" + "=" * 80)
-        print("✅ Derived backtest completed successfully; canonical archive unchanged!")
+        print("✅ Backtest completed and archived successfully!")
         print("=" * 80)
 
         return 0

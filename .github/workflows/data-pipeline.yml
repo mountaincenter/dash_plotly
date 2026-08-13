@@ -1200,13 +1200,13 @@ jobs:
           }'
           curl -X POST -H 'Content-type: application/json' --data "$MESSAGE" "$SLACK_WEBHOOK_URL" || true
 
-      - name: Confirm derived GROK backtest handling
+      - name: Archive GROK trending for backtest
         id: archive-grok
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
-          # save_backtest_to_archive.py は正本を変更せず、
-          # grok_trending_{DATE}.parquet 派生結果だけを生成する。
-          echo "ℹ️  Derived daily output is handled by save_backtest_to_archive.py"
+          # save_backtest_to_archive.py が grok_trending_{DATE}.parquet を生成するため、
+          # ここでのアーカイブは不要になりました。このステップはスキップします。
+          echo "ℹ️  Archiving is handled by save_backtest_to_archive.py"
 
           if false; then
             # cron判定
