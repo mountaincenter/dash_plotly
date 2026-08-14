@@ -1504,7 +1504,7 @@ jobs:
           fi
 
       - name: ML Model Retraining (last trading day of week)
-        if: success() && steps.exec_mode.outputs.skip_grok == 'true'
+        if: ${{ false }}
         run: |
           # 週の最終営業日かどうかを判定（J-Quantsカレンダー基準）
           if ! python3 scripts/check_last_trading_day_of_week.py; then
