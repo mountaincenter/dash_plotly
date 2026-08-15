@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 fetch_calendar_prices.py
-Calendar Trades用の価格データ取得
+TOPIX 500 (Core30+Large70+Mid400) の日足価格データ取得
 
-1. 1306.T ETF: AdjO + AdjC（四半期末戦略用）
-2. TOPIX 500 (Core30+Large70+Mid400): AdjO + AdjC（SQ-4戦略用）
+Semicon / Market Flowで使用するAdjOHLCV・売買代金を更新する。
 
 動作モード:
   - 通常（日次）: 差分更新のみ
-  - SQ-4前日 or --full: 全量リフレッシュ（分割調整の遡及反映）
+  - --full またはschema更新時: 全量リフレッシュ（分割調整の遡及反映）
 
 実行方法:
     python3 scripts/pipeline/fetch_calendar_prices.py [--full]
@@ -30,25 +29,12 @@ import pandas as pd
 
 from common_cfg.paths import PARQUET_DIR
 
-ETF_OUTPUT = PARQUET_DIR / "etf_1306_prices.parquet"
 TOPIX500_OUTPUT = PARQUET_DIR / "prices_topix500_oc.parquet"
 META_PATH = PARQUET_DIR / "meta_jquants.parquet"
-CALENDAR_PATH = PARQUET_DIR / "calendar.parquet"
 
-ETF_CODE = "13060"
 TOPIX500_CLASSES = ["TOPIX Core30", "TOPIX Large70", "TOPIX Mid400"]
 BACKTEST_START = "2022-04-01"
 TOPIX500_PRICE_COLUMNS = ["Date", "Code", "AdjO", "AdjH", "AdjL", "AdjC", "AdjVo", "Va"]
-
-
-def is_pre_sq4() -> bool:
-    """明日がSQ-4エントリー日かどうか"""
-    if not CALENDAR_PATH.exists():
-        return False
-    cal = pd.read_parquet(CALENDAR_PATH)
-    cal["date"] = pd.to_datetime(cal["date"])
-    tomorrow = pd.Timestamp(date.today() + timedelta(days=1))
-    return bool(cal[cal["date"] == tomorrow]["sq4_entry"].any())
 
 
 def topix500_needs_schema_refresh() -> bool:
@@ -81,43 +67,6 @@ def jquants_fetch(args: list[str]) -> str:
     if result.returncode != 0:
         return ""
     return result.stdout
-
-
-def fetch_1306_differential() -> pd.DataFrame:
-    """1306 差分更新"""
-    if ETF_OUTPUT.exists():
-        existing = pd.read_parquet(ETF_OUTPUT)
-        last_date = pd.to_datetime(existing["date"]).max().date()
-        from_date = (last_date + timedelta(days=1)).isoformat()
-    else:
-        from_date = BACKTEST_START
-
-    stdout = jquants_fetch(["eq", "daily", "--code", ETF_CODE, "--from", from_date])
-    if not stdout.strip():
-        return pd.DataFrame()
-
-    df = pd.read_csv(io.StringIO(stdout))
-    df = df[["Date", "AdjO", "AdjC"]].rename(
-        columns={"Date": "date", "AdjO": "Open", "AdjC": "Close"}
-    )
-    df["date"] = pd.to_datetime(df["date"]).dt.date
-    return df
-
-
-def fetch_1306_full() -> pd.DataFrame:
-    """1306 全量取得"""
-    from_date = max(BACKTEST_START, subscription_start())
-    stdout = jquants_fetch(["eq", "daily", "--code", ETF_CODE, "--from", from_date])
-    if not stdout.strip():
-        return pd.DataFrame()
-
-    df = pd.read_csv(io.StringIO(stdout))
-    df = df[["Date", "AdjO", "AdjC"]].rename(
-        columns={"Date": "date", "AdjO": "Open", "AdjC": "Close"}
-    )
-    df["date"] = pd.to_datetime(df["date"]).dt.date
-    df = df.sort_values("date").reset_index(drop=True)
-    return df
 
 
 def fetch_topix500_differential(codes: set[str]) -> tuple[pd.DataFrame, int]:
@@ -196,45 +145,17 @@ def fetch_topix500_full(codes: set[str]) -> pd.DataFrame:
 
 def main() -> int:
     force_full = "--full" in sys.argv
-    pre_sq4 = is_pre_sq4()
     schema_refresh = topix500_needs_schema_refresh()
-    full_mode = force_full or pre_sq4 or schema_refresh
+    full_mode = force_full or schema_refresh
 
     print("=" * 60)
-    print("Fetch Calendar Prices (1306 + TOPIX 500)")
-    mode_reason = "--full flag" if force_full else "SQ-4前日" if pre_sq4 else "schema refresh" if schema_refresh else "differential"
+    print("Fetch TOPIX 500 Prices")
+    mode_reason = "--full flag" if force_full else "schema refresh" if schema_refresh else "differential"
     print(f"  Mode: {'FULL REFRESH' if full_mode else 'DIFFERENTIAL'} ({mode_reason})")
     print("=" * 60)
 
-    # --- 1306 ETF ---
-    print("\n[1/2] 1306.T ETF...")
-    if full_mode:
-        df_1306 = fetch_1306_full()
-        print(f"  Full fetch: {len(df_1306)} rows")
-    else:
-        df_new = fetch_1306_differential()
-        if ETF_OUTPUT.exists() and not df_new.empty:
-            existing = pd.read_parquet(ETF_OUTPUT)
-            df_1306 = pd.concat([existing, df_new], ignore_index=True)
-            df_1306["date"] = pd.to_datetime(df_1306["date"]).dt.date
-            df_1306 = df_1306.drop_duplicates(subset=["date"], keep="last")
-            df_1306 = df_1306.sort_values("date").reset_index(drop=True)
-            print(f"  Appended {len(df_new)} new rows → total {len(df_1306)}")
-        elif ETF_OUTPUT.exists():
-            df_1306 = pd.read_parquet(ETF_OUTPUT)
-            print(f"  No new data. Existing: {len(df_1306)} rows")
-        else:
-            df_1306 = fetch_1306_full()
-            print(f"  Initial fetch: {len(df_1306)} rows")
-
-    if not df_1306.empty:
-        df_1306.to_parquet(ETF_OUTPUT, index=False)
-        print(f"  Saved: {ETF_OUTPUT.name}")
-    else:
-        print("  ⚠️ WARNING: 1306 data is empty (jquants API failure or no existing data)")
-
     # --- TOPIX 500 ---
-    print("\n[2/2] TOPIX 500 AdjO+AdjC...")
+    print("\n[1/1] TOPIX 500 AdjOHLCV+Va...")
     codes = get_topix500_codes()
     print(f"  Codes: {len(codes)}")
 

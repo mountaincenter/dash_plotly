@@ -68,21 +68,10 @@ class PipelineRunner:
                 ("pipeline.publish_market_flow_checkpoint", "Market Flow検証・限定S3公開"),
             ])
 
-        # prices_topix更新（16:45のみ: シグナル生成が当日終値を使うため先に実行）
-        if skip_grok:
-            self.steps.append(
-                ("pipeline.update_granville_prices", "グランビルTOPIX価格更新")
-            )
-
-        # signals.parquet 統合ステップ（全て create_all_stocks の前に実行）
-        self.steps.extend([
-            ("pipeline.fetch_calendar_prices", "カレンダー価格データ取得（1306+TOPIX500）"),
-            ("pipeline.generate_granville_signals", "グランビルB1-B4シグナル生成"),
-            ("pipeline.generate_quarter_end", "四半期末戦略バックテスト（1306 ETF）"),
-            ("pipeline.generate_sq4_picks", "SQ-4日銘柄選定"),
-            ("pipeline.generate_sq_plus1_trades", "SQ+1日ショート銘柄選定"),
-            ("pipeline.generate_weekday_edge_trades", "曜日エッジ銘柄選定"),
-        ])
+        # Semicon / Market Flowで使うTOPIX500日足を差分更新する。
+        self.steps.append(
+            ("pipeline.fetch_calendar_prices", "TOPIX500価格データ更新")
+        )
 
         # 共通ステップ
         if not skip_grok:
@@ -121,12 +110,6 @@ class PipelineRunner:
         if skip_grok:
             self.steps.append(
                 ("pipeline.save_backtest_to_archive", "Grokバックテストアーカイブ保存（Phase1）")
-            )
-
-        # グランビルバックテスト（16:45 JST実行時のみ）
-        if skip_grok:
-            self.steps.append(
-                ("pipeline.backtest_granville_b1b4", "グランビルB1-B4バックテストアーカイブ")
             )
 
         # バックテストメタ情報生成（常に実行）

@@ -424,37 +424,22 @@ jobs:
             echo "⚠️ prices_topix500_oc.parquet not found on S3 (will fetch from scratch)"
           fi
 
-          # 4. etf_1306_prices.parquet（差分更新のベース）
-          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}etf_1306_prices.parquet" "data/parquet/etf_1306_prices.parquet" --only-show-errors 2>/dev/null; then
-            echo "✅ etf_1306_prices.parquet downloaded from S3"
-          else
-            echo "⚠️ etf_1306_prices.parquet not found on S3 (will fetch from scratch)"
-          fi
-
-          # 5. granville/prices_topix.parquet（グランビル・ペア用TOPIX価格）
-          mkdir -p data/parquet/granville
-          if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" "data/parquet/granville/prices_topix.parquet" --only-show-errors 2>/dev/null; then
-            echo "✅ granville/prices_topix.parquet downloaded from S3"
-          else
-            echo "⚠️ granville/prices_topix.parquet not found on S3"
-          fi
-
-          # 6. index_prices_max_1d.parquet（グランビルN225レジーム判定用）
+          # 4. index_prices_max_1d.parquet
           if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}index_prices_max_1d.parquet" "data/parquet/index_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
             echo "✅ index_prices_max_1d.parquet downloaded from S3"
           else
             echo "⚠️ index_prices_max_1d.parquet not found on S3"
           fi
 
-          # 7. futures_prices_max_1d.parquet（SQ-4/SQ+1/グランビルCMEギャップ用）
+          # 5. futures_prices_max_1d.parquet
           if aws s3 cp "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors 2>/dev/null; then
             echo "✅ futures_prices_max_1d.parquet downloaded from S3"
           else
             echo "⚠️ futures_prices_max_1d.parquet not found on S3"
           fi
 
-          # 8. nikkei_vi_latest.json（22:00モードのみ: 16:45で保存済みのVI値を取得）
-          # 16:45モードではupdate_granville_prices.pyが生成するのでダウンロード不要
+          # 6. nikkei_vi_latest.json（22:00モードのみ: 16:45で保存済みのVI値を取得）
+          # 16:45モードでは専用ステップが生成するのでダウンロード不要
           # （VI取得失敗時に前日JSONを再アップロードする問題を回避）
           if [ "$SKIP_GROK_GENERATION" = "false" ]; then
             mkdir -p data/analysis
@@ -1247,55 +1232,27 @@ jobs:
             echo "⚠️  grok_trending.parquet not found, skipping backtest archive"
           fi
 
-      - name: Update Granville prices (TOPIX daily)
+      - name: Update Nikkei VI latest (16:45 only)
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
         run: |
           echo "============================================================"
-          echo "Updating Granville TOPIX prices (16:45 only)"
+          echo "Updating Nikkei VI latest (16:45 only)"
           echo "============================================================"
 
-          mkdir -p data/parquet/granville
-
-          # S3からprices_topix.parquetをダウンロード
-          if aws s3 ls "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" > /dev/null 2>&1; then
-            echo "📥 Downloading prices_topix.parquet from S3..."
-            aws s3 cp \
-              "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}granville/prices_topix.parquet" \
-              "data/parquet/granville/prices_topix.parquet" --only-show-errors
-          fi
-
-          python3 scripts/pipeline/update_granville_prices.py
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Granville prices updated"
-            # 日経VI最新値をS3にアップロード（analysis/直下、parquet/prefix外）
-            if [ -f "data/analysis/nikkei_vi_latest.json" ]; then
-              aws s3 cp "data/analysis/nikkei_vi_latest.json" \
-                "s3://${{ env.S3_BUCKET }}/analysis/nikkei_vi_latest.json" --only-show-errors
-              echo "✅ nikkei_vi_latest.json uploaded to S3"
-            fi
+          if python3 -c 'from common_cfg.nikkei_vi import fetch_nikkei_vi, save_vi_latest; data = fetch_nikkei_vi(); path = save_vi_latest(data); print("  ✅ 日経VI: {} (saved to {})".format(data["close"], path.name))'; then
+            aws s3 cp "data/analysis/nikkei_vi_latest.json" \
+              "s3://${{ env.S3_BUCKET }}/analysis/nikkei_vi_latest.json" --only-show-errors
+            echo "✅ nikkei_vi_latest.json uploaded to S3"
           else
-            echo "⚠️ Granville prices update failed (non-critical)"
+            echo "⚠️ 日経VI取得失敗 (non-critical)"
           fi
-        timeout-minutes: 45
+        timeout-minutes: 5
 
-      - name: Upload unified signals to S3
+      - name: Upload TOPIX500 prices to S3
         if: success() && steps.exec_mode.outputs.mode != 'cme_update'
         run: |
-          echo "📤 Uploading unified signals.parquet..."
-          [ -f "data/parquet/signals.parquet" ] && aws s3 cp "data/parquet/signals.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}signals.parquet" --only-show-errors && echo "✅ signals.parquet uploaded"
-
-      - name: Upload Calendar Trades data to S3
-        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
-        run: |
-          echo "📤 Uploading calendar price parquets..."
-          for f in etf_1306_prices.parquet prices_topix500_oc.parquet; do
-            [ -f "data/parquet/$f" ] && aws s3 cp "data/parquet/$f" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}$f" --only-show-errors && echo "✅ $f uploaded"
-          done
-          echo "📤 Uploading calendar trades JSON..."
-          for f in quarter_end_effect.json sq4_trades.json sq_plus1_trades.json weekday_edge_trades.json; do
-            [ -f "data/analysis/$f" ] && aws s3 cp "data/analysis/$f" "s3://${{ env.S3_BUCKET }}/analysis/$f" --only-show-errors && echo "✅ $f uploaded"
-          done
+          echo "📤 Uploading prices_topix500_oc.parquet..."
+          [ -f "data/parquet/prices_topix500_oc.parquet" ] && aws s3 cp "data/parquet/prices_topix500_oc.parquet" "s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}prices_topix500_oc.parquet" --only-show-errors && echo "✅ prices_topix500_oc.parquet uploaded"
 
       - name: Generate semicon domestic candidates
         if: success() && steps.exec_mode.outputs.skip_grok == 'true'
@@ -1329,25 +1286,6 @@ jobs:
             echo "✅ semicon_trend_backtest_report.html uploaded to S3"
           fi
         timeout-minutes: 45
-
-      - name: Generate strategy weekday matrix
-        if: success() && steps.exec_mode.outputs.mode != 'cme_update'
-        run: |
-          echo "📊 Generating strategy × weekday PF matrix..."
-          if [ ! -f "data/parquet/backtest/grok_trending_archive.parquet" ]; then
-            echo "⚠️ grok_trending_archive.parquet not found, skipping strategy matrix"
-            exit 0
-          fi
-          mkdir -p data/analysis
-          python3 scripts/pipeline/generate_strategy_matrix.py || echo "⚠️ Strategy matrix generation failed (non-fatal)"
-
-          if [ -f "data/analysis/strategy_matrix.json" ]; then
-            aws s3 cp \
-              data/analysis/strategy_matrix.json \
-              "s3://${{ env.S3_BUCKET }}/analysis/strategy_matrix.json" \
-              --only-show-errors
-            echo "✅ strategy_matrix.json uploaded to S3"
-          fi
 
       # ===== 07:00 CME更新フェーズ =====
       - name: "[CME] Check trading day"
@@ -1452,8 +1390,6 @@ jobs:
           echo "============================================================"
 
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}prices_topix500_oc.parquet" "data/parquet/prices_topix500_oc.parquet" --only-show-errors || true
-          mkdir -p data/parquet/granville
-          aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}granville/prices_topix.parquet" "data/parquet/granville/prices_topix.parquet" --only-show-errors
           aws s3 cp "s3://${S3_BUCKET}/${S3_PREFIX}futures_prices_max_1d.parquet" "data/parquet/futures_prices_max_1d.parquet" --only-show-errors || true
 
           python3 scripts/analysis/semiconductor/backtest_semicon_trend.py || echo "⚠️ Semicon backtest generation failed (non-fatal)"
